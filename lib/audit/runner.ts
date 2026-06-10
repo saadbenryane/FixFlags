@@ -188,14 +188,16 @@ export async function runAudit(auditId: string): Promise<void> {
       }
     })
 
+    const knownScores = Object.values(areaScores).filter(
+      (s): s is number => s !== null && s !== undefined
+    )
     judgeOutput = {
       pageJob: 'Serve website visitors',
       pageType: 'other' as const,
       verdict: 'Analysis completed with deterministic checks only. AI analysis was unavailable.',
-      score: Math.round(
-        Object.values(areaScores).filter(Boolean).reduce((a, b) => a! + b!, 0)! /
-          Object.values(areaScores).filter(Boolean).length
-      ),
+      score: knownScores.length > 0
+        ? Math.round(knownScores.reduce((a, b) => a + b, 0) / knownScores.length)
+        : null,
       areas: fallbackAreas,
       newFindings: [],
       enrichments: [],

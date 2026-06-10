@@ -21,10 +21,17 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object
       const plan = planFromPriceId(sub.items.data[0]?.price.id ?? '')
       if (plan) {
+        // Match by customer ID, or by the userId we attach at checkout —
+        // subscription events can arrive before checkout.session.completed
+        // links the customer to the user.
+        const userId = sub.metadata?.userId
         await prisma.user.updateMany({
-          where: { stripeCustomerId: sub.customer as string },
+          where: userId
+            ? { OR: [{ id: userId }, { stripeCustomerId: sub.customer as string }] }
+            : { stripeCustomerId: sub.customer as string },
           data: {
             plan,
+            stripeCustomerId: sub.customer as string,
             stripeSubscriptionId: sub.id,
             stripePriceId: sub.items.data[0]?.price.id,
             stripeCurrentPeriodEnd: new Date(((sub as unknown) as Record<string, number>).current_period_end * 1000),
@@ -50,7 +57,13 @@ export async function POST(req: NextRequest) {
     }
     case 'checkout.session.completed': {
       const session = event.data.object
-      if (session.customer_email) {
+      const userId = session.metadata?.userId ?? session.client_reference_id
+      if (userId) {
+        await prisma.user.updateMany({
+          where: { id: userId },
+          data: { stripeCustomerId: session.customer as string },
+        })
+      } else if (session.customer_email) {
         await prisma.user.updateMany({
           where: { email: session.customer_email },
           data: { stripeCustomerId: session.customer as string },

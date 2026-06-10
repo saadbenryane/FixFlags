@@ -17,6 +17,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
 
+  // JSON-RPC notifications carry no id and get no response — ack immediately
+  // instead of waiting out the response timeout below.
+  if (body && typeof body === 'object' && !Array.isArray(body) && body.id === undefined) {
+    return new Response(null, { status: 202 })
+  }
+
   const server = new McpServer({ name: 'qualityos', version: '1.0.0' })
   registerAllTools(server, user)
 

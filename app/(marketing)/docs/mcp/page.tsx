@@ -1,22 +1,17 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+const MCP_URL = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/mcp`
+
 const CONFIG_EXAMPLES = {
-  claudeCode: `# ~/.claude/mcp-servers.json
-{
-  "qualityos": {
-    "command": "npx",
-    "args": ["-y", "@qualityos/mcp"],
-    "env": {
-      "QOS_API_KEY": "qos_live_your_key_here"
-    }
-  }
-}`,
+  claudeCode: `# Run in your terminal
+claude mcp add --transport http qualityos ${MCP_URL} \\
+  --header "x-api-key: qos_live_your_key_here"`,
   cursor: `# .cursor/mcp.json
 {
   "mcpServers": {
     "qualityos": {
-      "url": "https://qualityos.com/api/mcp",
+      "url": "${MCP_URL}",
       "headers": {
         "x-api-key": "qos_live_your_key_here"
       }
@@ -27,7 +22,7 @@ const CONFIG_EXAMPLES = {
 {
   "mcpServers": {
     "qualityos": {
-      "serverUrl": "https://qualityos.com/api/mcp",
+      "serverUrl": "${MCP_URL}",
       "headers": {
         "x-api-key": "qos_live_your_key_here"
       }

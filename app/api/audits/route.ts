@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const createSchema = z.object({
   url: z.string().url('Invalid URL — please include https://'),
@@ -54,6 +55,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Audit limit reached. Upgrade to continue.' },
         { status: 402 }
+      )
+    }
+  } else {
+    // Anonymous audits are limited per IP — each audit costs real compute
+    const reqHeaders = await headers()
+    const ip =
+      reqHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      reqHeaders.get('x-real-ip') ||
+      'unknown'
+    const allowed = await checkRateLimit(`anon-audit:${ip}`, 3, 24 * 3600)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Free audit limit reached for today. Sign up to run more audits.' },
+        { status: 429 }
       )
     }
   }

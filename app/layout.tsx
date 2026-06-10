@@ -3,6 +3,7 @@ import './globals.css'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'QualityOS — Your agent built it. QualityOS checks if it works.',
   description: 'Run a quality audit on any website. Get evidence-backed issues across 7 areas. Copy fix prompts straight into your AI agent. Re-check after fixes.',
   openGraph: {

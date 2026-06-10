@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
     customer_email: user?.stripeCustomerId ? undefined : session.user.email,
     success_url: `${appUrl}/dashboard?upgraded=1`,
     cancel_url: `${appUrl}/pricing`,
+    client_reference_id: session.user.id,
     metadata: { userId: session.user.id },
+    subscription_data: { metadata: { userId: session.user.id } },
   })
 
   return NextResponse.json({ url: checkoutSession.url })
