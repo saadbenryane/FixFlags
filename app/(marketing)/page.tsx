@@ -15,6 +15,9 @@ export default function HomePage() {
       <nav className="border-b px-6 py-4 flex items-center justify-between">
         <span className="font-bold text-lg tracking-tight">QualityOS</span>
         <div className="flex items-center gap-4">
+          <Link href="/samples" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Samples
+          </Link>
           <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Pricing
           </Link>

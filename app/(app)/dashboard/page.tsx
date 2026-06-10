@@ -8,6 +8,7 @@ import { cn, gradeColor, areaLabel } from '@/lib/utils'
 import { Plus, ExternalLink } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
+import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
 import { PLAN_LIMITS } from '@/lib/stripe'
 import { Plan } from '@prisma/client'
 
@@ -38,12 +39,17 @@ export default async function DashboardPage() {
             plan={user?.plan ?? 'FREE'}
           />
         </div>
-        <Button asChild>
-          <Link href="/">
-            <Plus className="h-4 w-4 mr-2" />
-            New audit
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {user?.plan === 'FREE' && (
+            <UpgradeButton />
+          )}
+          <Button asChild>
+            <Link href="/">
+              <Plus className="h-4 w-4 mr-2" />
+              New audit
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl border p-4 bg-muted/20">

@@ -1,0 +1,63 @@
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+
+interface Props {
+  plan: 'FREE' | 'BUILDER' | 'TEAM' | 'STUDIO'
+  cta: string
+  signUpHref: string
+  highlight?: boolean
+  isLoggedIn: boolean
+  currentPlan: string
+}
+
+export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn, currentPlan }: Props) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+
+  const isCurrent = isLoggedIn && currentPlan === plan
+
+  async function handleClick() {
+    if (!isLoggedIn) {
+      router.push(signUpHref)
+      return
+    }
+
+    if (plan === 'FREE') {
+      router.push('/dashboard')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error(data.error || 'Failed to start checkout')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button
+      className="w-full"
+      variant={highlight ? 'default' : 'outline'}
+      disabled={loading || isCurrent}
+      onClick={handleClick}
+    >
+      {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+      {isCurrent ? 'Current plan' : cta}
+    </Button>
+  )
+}

@@ -1,11 +1,16 @@
+import { headers } from 'next/headers'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { CheckCircle2 } from 'lucide-react'
 
 const PLANS = [
   {
     name: 'Free',
+    plan: 'FREE' as const,
     price: '$0',
     period: '',
     audits: '3 total',
@@ -16,6 +21,7 @@ const PLANS = [
   },
   {
     name: 'Builder',
+    plan: 'BUILDER' as const,
     price: '$49',
     period: '/mo',
     founding: '$29/mo for 3 months',
@@ -33,6 +39,7 @@ const PLANS = [
   },
   {
     name: 'Team',
+    plan: 'TEAM' as const,
     price: '$199',
     period: '/mo',
     audits: '100 / month',
@@ -49,6 +56,7 @@ const PLANS = [
   },
   {
     name: 'Studio',
+    plan: 'STUDIO' as const,
     price: '$999',
     period: '/mo',
     founding: '$499/mo for 3 months',
@@ -66,12 +74,23 @@ const PLANS = [
   },
 ]
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  let currentPlan = 'FREE'
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } })
+    currentPlan = user?.plan ?? 'FREE'
+  }
+
   return (
     <div className="min-h-screen">
       <nav className="border-b px-6 py-4 flex items-center justify-between">
         <Link href="/" className="font-bold text-lg tracking-tight">QualityOS</Link>
-        <Link href="/sign-in" className="text-sm font-medium text-primary hover:underline">Sign in</Link>
+        {session ? (
+          <Link href="/dashboard" className="text-sm font-medium text-primary hover:underline">Dashboard</Link>
+        ) : (
+          <Link href="/sign-in" className="text-sm font-medium text-primary hover:underline">Sign in</Link>
+        )}
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 py-16 space-y-12">
@@ -97,7 +116,7 @@ export default function PricingPage() {
                       <span className="text-3xl font-bold">{plan.price}</span>
                       <span className="text-muted-foreground">{plan.period}</span>
                     </div>
-                    {plan.founding && (
+                    {'founding' in plan && plan.founding && (
                       <div className="mt-1 text-xs text-primary font-medium">{plan.founding}</div>
                     )}
                   </div>
@@ -120,13 +139,14 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  className="w-full"
-                  variant={plan.highlight ? 'default' : 'outline'}
-                  asChild
-                >
-                  <Link href={plan.href}>{plan.cta}</Link>
-                </Button>
+                <PricingCTAButton
+                  plan={plan.plan}
+                  cta={plan.cta}
+                  signUpHref={plan.href}
+                  highlight={plan.highlight}
+                  isLoggedIn={!!session}
+                  currentPlan={currentPlan}
+                />
               </CardContent>
             </Card>
           ))}
@@ -138,7 +158,7 @@ export default function PricingPage() {
             A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.
           </p>
           <Button variant="outline" asChild>
-            <Link href="/sign-up">Get Expert Review</Link>
+            <Link href={session ? '/dashboard' : '/sign-up'}>Get Expert Review</Link>
           </Button>
         </div>
       </div>
