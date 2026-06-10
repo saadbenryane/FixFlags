@@ -9,7 +9,7 @@ QualityOS runs a quality audit on any public website and returns evidence-backed
 1. **Capture** — a Puppeteer worker screenshots the page (desktop + mobile) and collects console errors.
 2. **Check** — deterministic checks run against page metadata and Google PageSpeed data.
 3. **Judge** — Claude reviews the screenshots and check results, grades each area, and writes agent-ready fix prompts.
-4. **Re-check** — run the audit again after fixing and findings are diffed (fixed / unchanged / regressed) with a before/after comparison view.
+4. **Re-check** — run the audit again after fixing and get a before/after comparison of scores, grades, and screenshots per area.
 
 ## Stack
 

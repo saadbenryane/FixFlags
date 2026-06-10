@@ -1,9 +1,17 @@
 import Stripe from 'stripe'
 import { Plan } from '@prisma/client'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-})
+let _stripe: Stripe | null = null
+
+// Lazy so the app can boot (and free-tier flows work) without Stripe configured
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-02-24.acacia',
+    })
+  }
+  return _stripe
+}
 
 export const PLAN_LIMITS: Record<Plan, { audits: number; label: string; price: string }> = {
   FREE: { audits: 3, label: 'Free', price: '$0' },
