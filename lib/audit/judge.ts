@@ -30,6 +30,7 @@ export interface JudgeOutput {
     severity: string
     problem: string
     evidence: string
+    whyItMatters: string
     fix: string
     confidence: number
     agentPrompt?: string

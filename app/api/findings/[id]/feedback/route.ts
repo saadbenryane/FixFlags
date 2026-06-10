@@ -23,24 +23,18 @@ export async function POST(
 
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
-  const feedback = await prisma.findingFeedback.upsert({
-    where: {
-      findingId_userId: {
-        findingId,
-        userId: session?.user?.id ?? 'anonymous',
-      },
-    },
-    create: {
-      findingId,
-      userId: session?.user?.id ?? null,
-      vote: parsed.data.vote,
-      comment: parsed.data.comment ?? null,
-    },
-    update: {
-      vote: parsed.data.vote,
-      comment: parsed.data.comment ?? null,
-    },
-  })
+  let feedback
+  if (session?.user?.id) {
+    feedback = await prisma.findingFeedback.upsert({
+      where: { findingId_userId: { findingId, userId: session.user.id } },
+      create: { findingId, userId: session.user.id, vote: parsed.data.vote, comment: parsed.data.comment ?? null },
+      update: { vote: parsed.data.vote, comment: parsed.data.comment ?? null },
+    })
+  } else {
+    feedback = await prisma.findingFeedback.create({
+      data: { findingId, userId: null, vote: parsed.data.vote, comment: parsed.data.comment ?? null },
+    })
+  }
 
   return NextResponse.json(feedback)
 }

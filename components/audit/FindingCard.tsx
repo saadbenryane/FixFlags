@@ -34,7 +34,7 @@ export function FindingCard({ finding, blurred }: Props) {
     finding.fix
 
   return (
-    <div className={cn('rounded-lg border bg-card', blurred && 'select-none')}>
+    <div className={cn('rounded-lg border bg-card relative', blurred && 'select-none')}>
       <div
         className={cn('px-4 py-3', blurred && 'blur-sm pointer-events-none')}
       >

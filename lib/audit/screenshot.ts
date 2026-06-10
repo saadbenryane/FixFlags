@@ -76,6 +76,11 @@ export async function captureScreenshots(
   // Mobile
   try {
     const page = await b.newPage()
+    page.on('console', (msg: ConsoleMessage) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push({ type: 'error', text: msg.text() })
+      }
+    })
     await page.setViewport({ width: 375, height: 812, isMobile: true, deviceScaleFactor: 2 })
     await page.goto(url, {
       waitUntil: 'networkidle2',

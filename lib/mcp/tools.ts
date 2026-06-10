@@ -81,6 +81,9 @@ export function registerAllTools(server: McpServer, user: User) {
         },
       })
       if (!audit) throw new Error('Audit not found')
+      if (audit.userId && audit.userId !== user.id && !audit.isPublic) {
+        throw new Error('Unauthorized')
+      }
       if (audit.status !== 'COMPLETED') {
         return {
           content: [
@@ -126,6 +129,11 @@ export function registerAllTools(server: McpServer, user: User) {
       tool: z.enum(['generic', 'cursor', 'claude', 'lovable', 'bolt']).optional(),
     },
     async ({ auditId, area, tool = 'generic' }) => {
+      const ownerAudit = await prisma.audit.findUnique({ where: { id: auditId }, select: { userId: true, isPublic: true } })
+      if (!ownerAudit) throw new Error('Audit not found')
+      if (ownerAudit.userId && ownerAudit.userId !== user.id && !ownerAudit.isPublic) {
+        throw new Error('Unauthorized')
+      }
       const auditArea = await prisma.auditArea.findUnique({
         where: { auditId_name: { auditId, name: area } },
         include: { findings: { orderBy: { position: 'asc' } } },
@@ -174,8 +182,11 @@ export function registerAllTools(server: McpServer, user: User) {
       tool: z.enum(['generic', 'cursor', 'claude', 'lovable', 'bolt']).optional(),
     },
     async ({ findingId, tool = 'generic' }) => {
-      const finding = await prisma.finding.findUnique({ where: { id: findingId } })
+      const finding = await prisma.finding.findUnique({ where: { id: findingId }, include: { audit: { select: { userId: true, isPublic: true } } } })
       if (!finding) throw new Error('Finding not found')
+      if (finding.audit.userId && finding.audit.userId !== user.id && !finding.audit.isPublic) {
+        throw new Error('Unauthorized')
+      }
 
       const promptMap: Record<string, string | null | undefined> = {
         generic: finding.agentPrompt,
@@ -254,6 +265,8 @@ export function registerAllTools(server: McpServer, user: User) {
         prisma.audit.findUnique({ where: { id: afterId }, include: { areas: true } }),
       ])
       if (!before || !after) throw new Error('One or both audits not found')
+      if (before.userId && before.userId !== user.id && !before.isPublic) throw new Error('Unauthorized')
+      if (after.userId && after.userId !== user.id && !after.isPublic) throw new Error('Unauthorized')
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)
       const areaDeltas = before.areas.map((ba) => {

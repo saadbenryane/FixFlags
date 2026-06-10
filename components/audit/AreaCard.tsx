@@ -1,10 +1,11 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { FindingCard } from './FindingCard'
 import { AreaPromptButton } from './AreaPromptButton'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
 
 interface Finding {
   id: string
@@ -90,13 +91,20 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
               <span className="text-xs text-muted-foreground">
                 {area.findings.length} finding{area.findings.length !== 1 ? 's' : ''}
               </span>
-              <AreaPromptButton
-                areaPrompt={area.areaPrompt}
-                cursorPrompt={area.cursorPrompt}
-                claudePrompt={area.claudePrompt}
-                lovablePrompt={area.lovablePrompt}
-                boltPrompt={area.boltPrompt}
-              />
+              {isPaid ? (
+                <AreaPromptButton
+                  areaPrompt={area.areaPrompt}
+                  cursorPrompt={area.cursorPrompt}
+                  claudePrompt={area.claudePrompt}
+                  lovablePrompt={area.lovablePrompt}
+                  boltPrompt={area.boltPrompt}
+                />
+              ) : (
+                <Link href="/pricing" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
+                  <Lock className="h-3 w-3" />
+                  Upgrade for area prompt
+                </Link>
+              )}
             </div>
           )}
 

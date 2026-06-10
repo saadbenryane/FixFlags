@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 import { Plus, ExternalLink } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_LIMITS } from '@/lib/stripe'
 import { Plan } from '@prisma/client'
 
@@ -28,13 +29,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 max-w-xs space-y-1">
           <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {used} / {limit === Infinity ? '∞' : limit} audits used
-            {user?.plan !== 'FREE' && ` · ${user?.plan} plan`}
-          </p>
+          <UsageMeter
+            used={used}
+            limit={limit === Infinity ? null : limit}
+            plan={user?.plan ?? 'FREE'}
+          />
         </div>
         <Button asChild>
           <Link href="/">

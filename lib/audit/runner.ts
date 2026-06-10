@@ -277,7 +277,7 @@ export async function runAudit(auditId: string): Promise<void> {
         severity: aiSeverityToEnum(f.severity),
         problem: f.problem,
         evidence: f.evidence,
-        whyItMatters: f.evidence,
+        whyItMatters: f.whyItMatters ?? f.evidence,
         fix: f.fix,
         confidence: f.confidence,
         agentPrompt: f.agentPrompt ?? null,

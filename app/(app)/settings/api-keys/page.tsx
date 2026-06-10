@@ -50,6 +50,7 @@ export default function ApiKeysPage() {
   }
 
   async function deleteKey(id: string) {
+    if (!window.confirm('Delete this API key? Any integrations using it will stop working.')) return
     await fetch(`/api/api-keys?id=${id}`, { method: 'DELETE' })
     setKeys((prev) => prev.filter((k) => k.id !== id))
     toast.success('API key deleted')

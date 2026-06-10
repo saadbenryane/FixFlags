@@ -53,12 +53,13 @@ export const QUALITY_REPORT_TOOL: Anthropic.Tool = {
         description: '2-4 AI-only findings for things deterministic rules cannot catch (conversion, content quality, UX issues visible in screenshots)',
         items: {
           type: 'object',
-          required: ['area', 'severity', 'problem', 'evidence', 'fix', 'confidence'],
+          required: ['area', 'severity', 'problem', 'evidence', 'whyItMatters', 'fix', 'confidence'],
           properties: {
             area: { type: 'string', enum: ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE'] },
             severity: { type: 'string', enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] },
             problem: { type: 'string' },
             evidence: { type: 'string' },
+            whyItMatters: { type: 'string', description: '1-2 sentences explaining the real-world business impact' },
             fix: { type: 'string' },
             confidence: { type: 'number' },
             agentPrompt: { type: 'string' },
