@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  BUILDER
+  TEAM
+  STUDIO
+}
+
+enum AuditStatus {
+  QUEUED
+  CAPTURING
+  CHECKING
+  JUDGING
+  COMPLETED
+  FAILED
+}
+
+enum AreaName {
+  PERFORMANCE
+  ACCESSIBILITY
+  SEO
+  CONVERSION
+  TRUST
+  CONTENT
+  MOBILE
+}
+
+enum AreaGrade {
+  A
+  B
+  C
+  D
+  F
+}
+
+enum AreaStatus {
+  EXCELLENT
+  GOOD
+  NEEDS_WORK
+  CRITICAL
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum FindingSource {
+  DETERMINISTIC
+  AI
+}
+
+enum FindingStatus {
+  OPEN
+  FIXED
+  UNCHANGED
+  REGRESSED
+}
+
+enum Device {
+  DESKTOP
+  MOBILE
+}
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  name                   String?
+  emailVerified          Boolean   @default(false)
+  role                   String    @default("user")
+  plan                   Plan      @default(FREE)
+  auditsUsed             Int       @default(0)
+  auditsLimit            Int       @default(3)
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  projects               Project[]
+  audits                 Audit[]
+  apiKeys                ApiKey[]
+  sessions               Session[]
+  accounts               Account[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sessions")
+}
+
+model Account {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId            String
+  providerId           String
+  accessToken          String?
+  refreshToken         String?
+  accessTokenExpiresAt DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@map("verifications")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  key       String    @unique
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
+model Project {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  url               String
+  monitoringEnabled Boolean  @default(false)
+  audits            Audit[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@map("projects")
+}
+
+model Audit {
+  id        String      @id @default(cuid())
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  url       String
+  status    AuditStatus @default(QUEUED)
+
+  pageJob  String?
+  pageType String?
+  verdict  String?
+  score    Int?
+
+  parentId String?
+  parent   Audit?  @relation("Rechecks", fields: [parentId], references: [id])
+  rechecks Audit[] @relation("Rechecks")
+
+  isPublic Boolean @default(false)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  errorMsg    String?
+
+  htmlMetadata    Json?
+  performanceData Json?
+  consoleErrors   Json?
+
+  areas       AuditArea[]
+  screenshots Screenshot[]
+  findings    Finding[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("audits")
+}
+
+model AuditArea {
+  id      String     @id @default(cuid())
+  auditId String
+  audit   Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  name    AreaName
+  score   Int?
+  grade   AreaGrade
+  status  AreaStatus
+  summary String     @db.Text
+
+  areaPrompt    String  @db.Text
+  cursorPrompt  String? @db.Text
+  claudePrompt  String? @db.Text
+  lovablePrompt String? @db.Text
+  boltPrompt    String? @db.Text
+
+  findings Finding[]
+
+  @@unique([auditId, name])
+  @@index([auditId])
+  @@map("audit_areas")
+}
+
+model Screenshot {
+  id      String @id @default(cuid())
+  auditId String
+  audit   Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  device  Device
+  url     String
+  width   Int
+  height  Int
+
+  @@index([auditId])
+  @@map("screenshots")
+}
+
+model Finding {
+  id       String        @id @default(cuid())
+  auditId  String
+  audit    Audit         @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  areaId   String?
+  area_rel AuditArea?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  source   FindingSource
+
+  area         String
+  severity     Severity
+  problem      String
+  evidence     String    @db.Text
+  whyItMatters String    @db.Text
+  fix          String    @db.Text
+  confidence   Float
+
+  agentPrompt   String? @db.Text
+  cursorPrompt  String? @db.Text
+  claudePrompt  String? @db.Text
+  lovablePrompt String? @db.Text
+  boltPrompt    String? @db.Text
+
+  verificationRule String? @db.Text
+
+  checkId      String?
+  position     Int
+  status       FindingStatus @default(OPEN)
+  resolvedInId String?
+
+  feedback  FindingFeedback[]
+  createdAt DateTime          @default(now())
+
+  @@index([auditId])
+  @@map("findings")
+}
+
+model FindingFeedback {
+  id        String   @id @default(cuid())
+  findingId String
+  finding   Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  userId    String?
+  vote      Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([findingId, userId])
+  @@index([findingId])
+  @@map("finding_feedback")
+}
