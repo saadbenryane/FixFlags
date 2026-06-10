@@ -73,7 +73,7 @@ export default function HomePage() {
                 }`}>
                   {f.grade}
                 </span>
-                <span className="text-xs text-muted-foreground w-16 shrink-0">{f.area}</span>
+                <span className="text-xs text-muted-foreground w-20 shrink-0">{f.area}</span>
                 <span className="text-sm">{f.issue}</span>
               </div>
             ))}

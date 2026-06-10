@@ -158,7 +158,7 @@ export default async function PricingPage() {
             A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.
           </p>
           <Button variant="outline" asChild>
-            <Link href={session ? '/dashboard' : '/sign-up'}>Get Expert Review</Link>
+            <a href="mailto:saadbenryane@gmail.com?subject=QualityOS%20Expert%20Review">Get Expert Review</a>
           </Button>
         </div>
       </div>

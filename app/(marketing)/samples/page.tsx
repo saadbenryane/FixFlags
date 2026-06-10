@@ -138,7 +138,7 @@ export default function SamplesPage() {
                 {sample.topFindings.map((f, i) => (
                   <div key={i} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2">
                     <Badge className={cn('text-xs shrink-0 mt-0.5', severityColor[f.severity])}>{f.severity}</Badge>
-                    <span className="text-xs text-muted-foreground w-14 shrink-0 pt-0.5">{areaLabel(f.area)}</span>
+                    <span className="text-xs text-muted-foreground w-20 shrink-0 pt-0.5">{areaLabel(f.area)}</span>
                     <span className="text-sm">{f.problem}</span>
                   </div>
                 ))}
