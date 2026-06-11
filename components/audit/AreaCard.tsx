@@ -6,6 +6,7 @@ import { FindingCard } from './FindingCard'
 import { AreaPromptButton } from './AreaPromptButton'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
+import { UPSELLS } from '@/lib/marketing/copy'
 
 interface Finding {
   id: string
@@ -102,7 +103,7 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
               ) : (
                 <Link href="/pricing" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
                   <Lock className="h-3 w-3" />
-                  Upgrade for area prompt
+                  {UPSELLS.areaGate.areaPrompt}
                 </Link>
               )}
             </div>
@@ -117,10 +118,10 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
           {!isPaid && hiddenCount > 0 && (
             <div className="rounded-lg border-2 border-dashed border-muted p-4 text-center space-y-2">
               <p className="text-sm font-medium">
-                +{hiddenCount} more finding{hiddenCount !== 1 ? 's' : ''} hidden
+                {UPSELLS.areaGate.hiddenFindings(hiddenCount)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Upgrade to Builder to see all findings and the full area prompt
+                {UPSELLS.areaGate.upgradeBody}
               </p>
             </div>
           )}

@@ -1,5 +1,11 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { MCP_DOCS, MCP_SECTION } from '@/lib/marketing/copy'
+import { buildPageMetadata } from '@/lib/marketing/metadata'
+
+export const metadata = buildPageMetadata('mcp', '/docs/mcp')
 
 const CONFIG_EXAMPLES = {
   claudeCode: `# ~/.claude/mcp-servers.json
@@ -48,29 +54,24 @@ const TOOLS = [
 
 export default function McpDocsPage() {
   return (
-    <div className="min-h-screen">
-      <nav className="border-b px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg tracking-tight">QualityOS</Link>
-        <Link href="/settings/api-keys" className="text-sm font-medium text-primary hover:underline">
-          Get API key →
-        </Link>
-      </nav>
-
-      <div className="max-w-3xl mx-auto px-4 py-12 space-y-10">
-        <div className="space-y-3">
-          <h1 className="text-4xl font-bold">MCP Integration</h1>
-          <p className="text-muted-foreground text-lg">
-            Connect QualityOS to your AI coding tool. Run audits and get fix prompts without leaving your editor.
-          </p>
-        </div>
+    <div className="max-w-3xl mx-auto px-4 py-12 space-y-10">
+      <div className="space-y-3">
+        <h1 className="text-4xl font-bold">{MCP_DOCS.headline}</h1>
+        <p className="text-muted-foreground text-lg">{MCP_DOCS.subhead}</p>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/settings/api-keys">Get API key</Link>
+        </Button>
+      </div>
 
         <div className="rounded-xl bg-muted/30 border p-6 space-y-3">
-          <h2 className="font-semibold">Quick start</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">Quick start</h2>
+            <Badge variant="secondary" className="text-xs">{MCP_DOCS.builderRequired}</Badge>
+          </div>
           <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Create a free account and upgrade to Builder</li>
-            <li>Go to Settings → API Keys and generate a key</li>
-            <li>Add the config below to your editor</li>
-            <li>Ask your AI agent to audit your site</li>
+            {MCP_DOCS.quickStart.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
           </ol>
         </div>
 
@@ -96,6 +97,8 @@ export default function McpDocsPage() {
               </Card>
             )
           })}
+
+          <p className="text-sm text-muted-foreground">{MCP_DOCS.lovableBoltNote}</p>
         </div>
 
         <div className="space-y-4">
@@ -114,21 +117,10 @@ export default function McpDocsPage() {
           <CardContent className="pt-6 space-y-3">
             <h3 className="font-semibold">Example workflow</h3>
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-{`User: "Audit https://myapp.com and fix the Mobile issues"
-
-Claude calls: qos_audit_url → qos_get_area("Mobile")
-Claude: "Mobile score is 41/100 (grade D). Here's what I found:
-  - Primary CTA is below fold on 375px screens
-  - 3 buttons with tap targets under 40px
-  Should I apply fixes now?"
-User: "Yes"
-Claude: applies fixes
-Claude: calls qos_recheck
-Claude: "Mobile improved from 41 → 78 (D → B). 3 issues fixed."`}
+              {MCP_SECTION.workflow}
             </pre>
           </CardContent>
         </Card>
-      </div>
     </div>
   )
 }

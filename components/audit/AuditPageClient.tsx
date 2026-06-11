@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, Share2, AlertCircle, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
+import { UPSELLS, AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 interface Props {
   id: string
@@ -121,7 +122,7 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
         {/* Progress */}
         {inProgress && (
           <div className="flex flex-col items-center py-12 space-y-6">
-            <h2 className="text-xl font-semibold">Auditing your site...</h2>
+            <h2 className="text-xl font-semibold">{AUDIT_PROGRESS.inProgress}</h2>
             <AuditProgress
               status={status}
               desktopScreenshotUrl={desktopScreenshot?.url}
@@ -179,32 +180,36 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
             {/* CTA for anon/free users */}
             {!isLoggedIn && (
               <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
-                <h3 className="font-semibold">Save this report + get more free audits</h3>
-                <p className="text-sm text-muted-foreground">
-                  Create a free account to save audit history and get 3 audits per month.
-                </p>
+                <h3 className="font-semibold">{UPSELLS.anon.headline}</h3>
+                <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
                 <div className="flex justify-center gap-3">
                   <Button asChild>
-                    <Link href="/sign-up">Create free account</Link>
+                    <Link href="/sign-up">{UPSELLS.anon.primaryCta}</Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link href="/pricing">See paid plans</Link>
+                    <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
                   </Button>
                 </div>
               </div>
             )}
 
-            {isLoggedIn && !isPaid && (
-              <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
-                <h3 className="font-semibold">Unlock full reports + re-check</h3>
-                <p className="text-sm text-muted-foreground">
-                  Upgrade to Builder for all findings, re-checks, and MCP access.
-                </p>
-                <Button asChild>
-                  <Link href="/pricing">Upgrade to Builder — $49/mo</Link>
-                </Button>
-              </div>
-            )}
+            {isLoggedIn && !isPaid && (() => {
+              const FREE_FINDING_LIMIT = 3
+              const hiddenCount = audit.areas?.reduce((sum: number, area: { findings: unknown[] }) => {
+                const hidden = Math.max(0, (area.findings?.length ?? 0) - FREE_FINDING_LIMIT)
+                return sum + hidden
+              }, 0) ?? 0
+
+              return (
+                <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
+                  <h3 className="font-semibold">{UPSELLS.freeUser.headline(hiddenCount)}</h3>
+                  <p className="text-sm text-muted-foreground">{UPSELLS.freeUser.body}</p>
+                  <Button asChild>
+                    <Link href="/pricing">{UPSELLS.freeUser.cta}</Link>
+                  </Button>
+                </div>
+              )
+            })()}
           </>
         )}
       </div>

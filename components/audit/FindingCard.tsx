@@ -6,6 +6,7 @@ import { PromptCopyButton } from './PromptCopyButton'
 import { FindingFeedback } from './FindingFeedback'
 import { cn, severityColor } from '@/lib/utils'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { UPSELLS } from '@/lib/marketing/copy'
 
 interface Finding {
   id: string
@@ -80,7 +81,7 @@ export function FindingCard({ finding, blurred }: Props) {
       {blurred && (
         <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
           <Button size="sm" variant="outline">
-            Unlock full report
+            {UPSELLS.areaGate.unlockReport}
           </Button>
         </div>
       )}

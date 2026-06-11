@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { UPSELLS } from '@/lib/marketing/copy'
 
 interface Props {
   used: number
@@ -38,7 +39,7 @@ export function UsageMeter({ used, limit, plan }: Props) {
 
       {atLimit && (
         <p className="text-xs text-destructive">
-          Audit limit reached.{' '}
+          {UPSELLS.atLimit}.{' '}
           <Link href="/pricing" className="underline">Upgrade to continue</Link>
         </p>
       )}

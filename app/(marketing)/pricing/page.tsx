@@ -5,100 +5,31 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
+import { FaqSection } from '@/components/marketing/FaqSection'
 import { CheckCircle2 } from 'lucide-react'
+import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { buildPageMetadata } from '@/lib/marketing/metadata'
 
-const PLANS = [
-  {
-    name: 'Free',
-    plan: 'FREE' as const,
-    price: '$0',
-    period: '',
-    audits: '3 total',
-    features: ['Top 3 findings per area', 'Copyable fix prompts', 'No credit card'],
-    cta: 'Get started free',
-    href: '/sign-up',
-    highlight: false,
-  },
-  {
-    name: 'Builder',
-    plan: 'BUILDER' as const,
-    price: '$49',
-    period: '/mo',
-    founding: '$29/mo for 3 months',
-    audits: '25 / month',
-    features: [
-      'Full reports — all findings',
-      'All area prompts',
-      'Re-check after fixes',
-      'Audit history',
-      'MCP API access',
-    ],
-    cta: 'Start Builder',
-    href: '/sign-up?plan=BUILDER',
-    highlight: true,
-  },
-  {
-    name: 'Team',
-    plan: 'TEAM' as const,
-    price: '$199',
-    period: '/mo',
-    audits: '100 / month',
-    features: [
-      'Everything in Builder',
-      '5 projects',
-      'Before/after comparison',
-      'Monitoring with alerts',
-      'Priority queue',
-    ],
-    cta: 'Start Team',
-    href: '/sign-up?plan=TEAM',
-    highlight: false,
-  },
-  {
-    name: 'Studio',
-    plan: 'STUDIO' as const,
-    price: '$999',
-    period: '/mo',
-    founding: '$499/mo for 3 months',
-    audits: '500 / month',
-    features: [
-      'Everything in Team',
-      '20 projects',
-      'Shareable public reports',
-      'Agency use',
-      'Priority support',
-    ],
-    cta: 'Start Studio',
-    href: '/sign-up?plan=STUDIO',
-    highlight: false,
-  },
-]
+export const metadata = buildPageMetadata('pricing', '/pricing')
 
 export default async function PricingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   let currentPlan = 'FREE'
   if (session?.user?.id) {
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } })
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { plan: true },
+    })
     currentPlan = user?.plan ?? 'FREE'
   }
 
   return (
-    <div className="min-h-screen">
-      <nav className="border-b px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg tracking-tight">QualityOS</Link>
-        {session ? (
-          <Link href="/dashboard" className="text-sm font-medium text-primary hover:underline">Dashboard</Link>
-        ) : (
-          <Link href="/sign-in" className="text-sm font-medium text-primary hover:underline">Sign in</Link>
-        )}
-      </nav>
-
-      <div className="max-w-5xl mx-auto px-4 py-16 space-y-12">
+    <div className="max-w-5xl mx-auto px-4 py-16 space-y-12">
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold">Simple pricing</h1>
-          <p className="text-muted-foreground text-lg">Start free. Upgrade when you ship more.</p>
+          <h1 className="text-4xl font-bold">{PRICING.headline}</h1>
+          <p className="text-muted-foreground text-lg">{PRICING.subhead}</p>
           <div className="inline-block rounded-full bg-primary/10 text-primary text-sm font-medium px-4 py-1.5">
-            🚀 Founding offer active — lock in launch-week pricing
+            {PRICING.foundingBadge}
           </div>
         </div>
 
@@ -112,11 +43,13 @@ export default async function PricingPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle>{plan.name}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">{plan.persona}</p>
+                    <p className="text-sm font-medium mt-1">{plan.outcome}</p>
                     <div className="mt-2">
                       <span className="text-3xl font-bold">{plan.price}</span>
                       <span className="text-muted-foreground">{plan.period}</span>
                     </div>
-                    {'founding' in plan && plan.founding && (
+                    {plan.founding && (
                       <div className="mt-1 text-xs text-primary font-medium">{plan.founding}</div>
                     )}
                   </div>
@@ -126,9 +59,7 @@ export default async function PricingPage() {
                     </div>
                   )}
                 </div>
-                <CardDescription className="text-xs font-medium mt-1">
-                  {plan.audits}
-                </CardDescription>
+                <CardDescription className="text-xs font-medium mt-1">{plan.audits}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
@@ -152,16 +83,24 @@ export default async function PricingPage() {
           ))}
         </div>
 
-        <div className="text-center border rounded-xl p-8 space-y-3">
-          <h3 className="text-xl font-semibold">Expert Review — $500</h3>
-          <p className="text-muted-foreground">
-            A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.
-          </p>
+        <p className="text-center text-sm text-muted-foreground">{PRICING.allPlansInclude}</p>
+
+        <div className="text-center border rounded-xl p-8 space-y-4">
+          <h3 className="text-xl font-semibold">{PRICING.expertReview.title}</h3>
+          <p className="text-muted-foreground">{PRICING.expertReview.body}</p>
+          <ol className="text-sm text-muted-foreground space-y-2 max-w-md mx-auto text-left list-decimal list-inside">
+            {PRICING.expertReview.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
           <Button variant="outline" asChild>
-            <Link href={session ? '/dashboard' : '/sign-up'}>Get Expert Review</Link>
+            <Link href={session ? '/dashboard' : '/sign-up'}>{PRICING.expertReview.cta}</Link>
           </Button>
         </div>
-      </div>
+
+        <div className="max-w-2xl mx-auto">
+          <FaqSection items={PRICING_FAQ} title="Pricing questions" />
+        </div>
     </div>
   )
 }

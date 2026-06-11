@@ -1,11 +1,12 @@
 'use client'
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 const STAGES = [
-  { status: 'CAPTURING', label: 'Taking screenshots...' },
-  { status: 'CHECKING', label: 'Running 60 quality checks...' },
-  { status: 'JUDGING', label: 'AI is analyzing your page...' },
-  { status: 'COMPLETED', label: 'Report ready' },
+  { status: 'CAPTURING', label: AUDIT_PROGRESS.capturing },
+  { status: 'CHECKING', label: AUDIT_PROGRESS.checking },
+  { status: 'JUDGING', label: AUDIT_PROGRESS.judging },
+  { status: 'COMPLETED', label: AUDIT_PROGRESS.completed },
 ]
 
 function stageIndex(status: string): number {

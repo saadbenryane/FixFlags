@@ -93,8 +93,21 @@ model User {
   apiKeys                ApiKey[]
   sessions               Session[]
   accounts               Account[]
+  emailLogs              EmailLog[]
 
   @@map("users")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailType String
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, emailType])
+  @@index([userId])
+  @@map("email_logs")
 }
 
 model Session {

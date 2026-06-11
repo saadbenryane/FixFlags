@@ -1,13 +1,22 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
+import { ThemeProvider } from '@/components/theme-provider'
+import { BRAND, HERO } from '@/lib/marketing/copy'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'QualityOS — Your agent built it. QualityOS checks if it works.',
-  description: 'Run a quality audit on any website. Get evidence-backed issues across 7 areas. Copy fix prompts straight into your AI agent. Re-check after fixes.',
+  title: `${BRAND.name} — ${HERO.headline} ${HERO.headlineAccent}`,
+  description: HERO.subhead,
   openGraph: {
-    title: 'QualityOS',
-    description: 'Your agent built it. QualityOS checks if it works.',
+    title: BRAND.name,
+    description: `${HERO.headline} ${HERO.headlineAccent}`,
     type: 'website',
   },
 }
@@ -19,9 +28,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
-        {children}
-        <Toaster richColors position="bottom-right" />
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {children}
+          <Toaster richColors position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   )

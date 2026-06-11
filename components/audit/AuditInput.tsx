@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { HERO } from '@/lib/marketing/copy'
 
 export function AuditInput() {
   const router = useRouter()
@@ -75,7 +76,7 @@ export function AuditInput() {
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
-              Audit my site
+              {HERO.primaryCta}
               <ArrowRight className="h-4 w-4" />
             </>
           )}
