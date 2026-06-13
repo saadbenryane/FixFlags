@@ -25,9 +25,10 @@ interface Finding {
 interface Props {
   finding: Finding
   blurred?: boolean
+  showFeedback?: boolean
 }
 
-export function FindingCard({ finding, blurred }: Props) {
+export function FindingCard({ finding, blurred, showFeedback = true }: Props) {
   const [expanded, setExpanded] = useState(false)
 
   const bestPrompt =
@@ -72,7 +73,7 @@ export function FindingCard({ finding, blurred }: Props) {
             </div>
             <div className="flex items-center justify-between flex-wrap gap-2">
               <PromptCopyButton prompt={bestPrompt} label="Copy fix prompt" />
-              <FindingFeedback findingId={finding.id} />
+              {showFeedback && <FindingFeedback findingId={finding.id} />}
             </div>
           </div>
         )}

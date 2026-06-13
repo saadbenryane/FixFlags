@@ -10,6 +10,12 @@ export interface PageSpeedResult {
   raw: Record<string, unknown>
 }
 
+export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeedResult, 'raw'> {
+  const { raw: _raw, ...stored } = result
+  void _raw
+  return stored
+}
+
 async function runPageSpeed(
   url: string,
   strategy: 'desktop' | 'mobile'

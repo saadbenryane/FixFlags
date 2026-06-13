@@ -212,18 +212,16 @@ export default function HomePage() {
           <Heading as="h2" className="text-center">
             {SOCIAL_PROOF.headline}
           </Heading>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {SOCIAL_PROOF.samples.map((sample) => (
-              <Card key={sample.name} interactive>
-                <CardContent className="pt-6 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{sample.name}</span>
-                    <span className="text-2xl font-bold text-primary">{sample.score}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{sample.finding}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="max-w-md mx-auto">
+            <Card interactive>
+              <CardContent className="pt-6 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{SOCIAL_PROOF.sample.name}</span>
+                  <span className="text-2xl font-bold text-primary">{SOCIAL_PROOF.sample.score}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{SOCIAL_PROOF.sample.finding}</p>
+              </CardContent>
+            </Card>
           </div>
           <div className="text-center">
             <Button variant="outline" asChild>

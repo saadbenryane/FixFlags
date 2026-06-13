@@ -52,45 +52,39 @@ export async function persistAuditResults(
   await clearAuditResults(auditId)
 
   await prisma.$transaction(async (tx) => {
-    const areaRecords = new Map<string, string>()
+    const areaRecords = await Promise.all(
+      judgeOutput.areas.map((areaData) => {
+        const areaName = areaData.name as AreaName
+        const deterministicScore = areaScores[areaName]
+        const finalScore = areaData.score ?? deterministicScore ?? undefined
 
-    for (const areaData of judgeOutput.areas) {
-      const areaName = areaData.name as AreaName
-      const deterministicScore = areaScores[areaName]
-      const finalScore = areaData.score ?? deterministicScore ?? undefined
-      const grade = aiGradeToEnum(areaData.grade)
-      const status = aiStatusToEnum(areaData.status)
-
-      const areaRecord = await tx.auditArea.create({
-        data: {
-          auditId,
-          name: areaName,
-          score: finalScore ?? null,
-          grade,
-          status,
-          summary: areaData.summary,
-          areaPrompt: areaData.areaPrompt,
-          cursorPrompt: areaData.cursorPrompt ?? null,
-          claudePrompt: areaData.claudePrompt ?? null,
-          lovablePrompt: areaData.lovablePrompt ?? null,
-          boltPrompt: areaData.boltPrompt ?? null,
-        },
+        return tx.auditArea.create({
+          data: {
+            auditId,
+            name: areaName,
+            score: finalScore ?? null,
+            grade: aiGradeToEnum(areaData.grade),
+            status: aiStatusToEnum(areaData.status),
+            summary: areaData.summary,
+            areaPrompt: areaData.areaPrompt,
+            cursorPrompt: areaData.cursorPrompt ?? null,
+            claudePrompt: areaData.claudePrompt ?? null,
+            lovablePrompt: areaData.lovablePrompt ?? null,
+            boltPrompt: areaData.boltPrompt ?? null,
+          },
+        })
       })
+    )
 
-      areaRecords.set(areaName, areaRecord.id)
-    }
-
+    const areaIdByName = new Map(areaRecords.map((record) => [record.name, record.id]))
     const enrichmentMap = new Map(judgeOutput.enrichments.map((e) => [e.checkId, e]))
 
-    for (let i = 0; i < deterministicFindings.length; i++) {
-      const f = deterministicFindings[i]
-      const enrichment = enrichmentMap.get(f.checkId)
-      const areaId = areaRecords.get(f.area)
-
-      await tx.finding.create({
-        data: {
+    const findingRows = [
+      ...deterministicFindings.map((f, i) => {
+        const enrichment = enrichmentMap.get(f.checkId)
+        return {
           auditId,
-          areaId: areaId ?? null,
+          areaId: areaIdByName.get(f.area as AreaName) ?? null,
           source: 'DETERMINISTIC' as FindingSource,
           area: f.area,
           severity: f.severity as Severity,
@@ -109,42 +103,39 @@ export async function persistAuditResults(
           verificationRule: enrichment?.verificationRule ?? null,
           checkId: f.checkId,
           position: i,
-        },
-      })
-    }
+        }
+      }),
+      ...judgeOutput.newFindings.map((f, i) => ({
+        auditId,
+        areaId: areaIdByName.get(f.area as AreaName) ?? null,
+        source: 'AI' as FindingSource,
+        area: f.area,
+        severity: aiSeverityToEnum(f.severity),
+        problem: f.problem,
+        evidence: f.evidence,
+        whyItMatters: f.whyItMatters ?? f.evidence,
+        fix: f.fix,
+        confidence: f.confidence,
+        agentPrompt: f.agentPrompt ?? null,
+        cursorPrompt: f.cursorPrompt ?? null,
+        claudePrompt: f.claudePrompt ?? null,
+        lovablePrompt: f.lovablePrompt ?? null,
+        boltPrompt: f.boltPrompt ?? null,
+        verificationRule: f.verificationRule ?? null,
+        checkId: null,
+        position: deterministicFindings.length + i,
+      })),
+    ]
 
-    for (let i = 0; i < judgeOutput.newFindings.length; i++) {
-      const f = judgeOutput.newFindings[i]
-      const areaId = areaRecords.get(f.area)
-
-      await tx.finding.create({
-        data: {
-          auditId,
-          areaId: areaId ?? null,
-          source: 'AI' as FindingSource,
-          area: f.area,
-          severity: aiSeverityToEnum(f.severity),
-          problem: f.problem,
-          evidence: f.evidence,
-          whyItMatters: f.whyItMatters ?? f.evidence,
-          fix: f.fix,
-          confidence: f.confidence,
-          agentPrompt: f.agentPrompt ?? null,
-          cursorPrompt: f.cursorPrompt ?? null,
-          claudePrompt: f.claudePrompt ?? null,
-          lovablePrompt: f.lovablePrompt ?? null,
-          boltPrompt: f.boltPrompt ?? null,
-          verificationRule: f.verificationRule ?? null,
-          checkId: null,
-          position: deterministicFindings.length + i,
-        },
-      })
+    if (findingRows.length > 0) {
+      await tx.finding.createMany({ data: findingRows })
     }
 
     await tx.audit.update({
       where: { id: auditId },
       data: {
         status: 'COMPLETED',
+        progress: 100,
         pageJob: judgeOutput.pageJob,
         pageType: judgeOutput.pageType,
         verdict: judgeOutput.verdict,

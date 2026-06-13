@@ -34,24 +34,7 @@ export interface PageMetadata {
   jsonLd: unknown[]
 }
 
-export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10_000)
-
-  let html: string
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'QualityOS/1.0 (+https://qualityos.com)',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    })
-    html = await res.text()
-  } finally {
-    clearTimeout(timeout)
-  }
-
+export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const $ = cheerio.load(html)
 
   // Extract structured data
@@ -223,3 +206,38 @@ export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> 
     jsonLd,
   }
 }
+
+/** Persist only summary fields — large arrays are only needed during checks. */
+export function trimMetadataForStorage(metadata: PageMetadata) {
+  const { images, links, jsonLd, pageText, h2s, ...compact } = metadata
+  void images
+  void links
+  void jsonLd
+  return {
+    ...compact,
+    h2s: h2s.slice(0, 10),
+    pageText: pageText.slice(0, 500),
+  }
+}
+
+export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10_000)
+
+  let html: string
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'QualityOS/1.0 (+https://qualityos.com)',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+    })
+    html = await res.text()
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  return parseMetadataFromHtml(html, url)
+}
+

@@ -22,6 +22,7 @@ export async function createAndEnqueueAudit(
       userId: options.userId ?? null,
       parentId: options.parentId ?? null,
       status: 'QUEUED',
+      progress: 5,
     },
   })
 

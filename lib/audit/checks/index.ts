@@ -24,7 +24,8 @@ export async function runAllChecks(
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null,
-  consoleErrors: Array<{ type: string; text: string }>
+  consoleErrors: Array<{ type: string; text: string }>,
+  onAreaComplete?: (index: number) => void
 ): Promise<DeterministicFinding[]> {
   const allFindings: DeterministicFinding[] = []
 
@@ -38,13 +39,14 @@ export async function runAllChecks(
     () => runContentChecks(metadata),
   ]
 
-  for (const checker of checkers) {
+  for (let i = 0; i < checkers.length; i++) {
     try {
-      const findings = await checker()
+      const findings = await checkers[i]()
       allFindings.push(...findings)
     } catch (err) {
       console.error('Check module failed:', err)
     }
+    onAreaComplete?.(i)
   }
 
   // Deduplicate by checkId

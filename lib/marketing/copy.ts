@@ -27,7 +27,7 @@ export const HERO = {
     'Paste a URL. Get a graded report with evidence and fix prompts for your AI editor.',
   trustLine: 'Free. No account. Under 60 seconds.',
   primaryCta: 'Audit my site',
-  secondaryCta: 'See sample reports',
+  secondaryCta: 'See sample report',
 } as const
 
 /** Friction reducers only — not product claims. Product proof lives in the sample card. */
@@ -99,12 +99,12 @@ export const DIFFERENTIATION = {
 
 export const SOCIAL_PROOF = {
   headline: 'Even strong sites fail these checks',
-  cta: 'See full sample reports',
-  samples: [
-    { name: 'Stripe', score: 91, finding: '3 third-party scripts add ~80ms render delay' },
-    { name: 'Linear', score: 78, finding: 'Mobile LCP is 3.8s. Hero video loads before text content.' },
-    { name: 'Cal.com', score: 63, finding: 'Mobile PageSpeed score 43. Primary CTA below fold on 375px.' },
-  ],
+  cta: 'See sample report',
+  sample: {
+    name: 'Stripe',
+    score: 91,
+    finding: '3 third-party scripts add ~80ms render delay',
+  },
 } as const
 
 export const QUALITY_AREAS_SECTION = {
@@ -333,14 +333,8 @@ export const PLANS = [
 ] as const
 
 export const SAMPLES_PAGE = {
-  headline: 'Real audits. Real sites. Real issues.',
-  subhead:
-    'These are the kinds of problems AI-built sites ship with, and the prompts QualityOS generates to fix them.',
-  findingsFooter:
-    'Each finding includes a copy-ready fix prompt for Cursor, Claude Code, Lovable, and Bolt.',
-  bottomHeadline: 'Audit your site now',
-  bottomCta: 'Start auditing',
-  cardCta: 'Audit a site like this',
+  subhead: 'This is what a completed QualityOS audit looks like.',
+  bottomCta: 'Audit your site',
 } as const
 
 export const MCP_DOCS = {
@@ -410,6 +404,30 @@ export const AUDIT_PROGRESS = {
   judging: 'AI is analyzing your page...',
   completed: 'Report ready',
   inProgress: 'Auditing your site...',
+  usuallyUnder: 'Usually under 60 seconds',
+  stages: [
+    { status: 'QUEUED', label: 'Starting audit', subtitle: 'Preparing your report...' },
+    { status: 'CAPTURING', label: 'Capturing your page', subtitle: 'Desktop and mobile screenshots...' },
+    { status: 'CHECKING', label: 'Running checks', subtitle: 'Performance, SEO, accessibility, and more...' },
+    { status: 'JUDGING', label: 'AI review', subtitle: 'Turning findings into fix prompts...' },
+  ],
+  activity: [
+    'Measuring load speed and Core Web Vitals...',
+    'Checking SEO tags and link preview metadata...',
+    'Scanning accessibility on images and headings...',
+    'Reviewing trust signals like HTTPS and privacy links...',
+    'Testing mobile layout and performance...',
+    'Looking for conversion gaps in your hero and CTAs...',
+    'Validating page structure and indexing signals...',
+    'Checking console errors and broken resources...',
+    'Reviewing meta tags and social sharing setup...',
+    'Analyzing content clarity and call-to-action placement...',
+    'Evaluating performance bottlenecks and render blocking...',
+    'Cross-checking accessibility on forms and navigation...',
+    'Summarizing findings for your fix prompts...',
+    'Prioritizing issues by launch impact...',
+    'Preparing your graded report...',
+  ],
 } as const
 
 export const SEO = {
@@ -424,9 +442,9 @@ export const SEO = {
       'Start free with 3 audits total. Upgrade to Builder for full reports, re-checks, and MCP integration. Founding offer active.',
   },
   samples: {
-    title: 'Sample Reports',
+    title: 'Sample Report',
     description:
-      'See real QualityOS audits of Stripe, Linear, and Cal.com. Evidence-backed findings with copy-ready fix prompts.',
+      'See a real QualityOS audit of stripe.com — evidence-backed findings with copy-ready fix prompts.',
   },
   mcp: {
     title: 'MCP Integration',

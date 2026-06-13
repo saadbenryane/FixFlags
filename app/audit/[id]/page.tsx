@@ -1,7 +1,12 @@
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
+import { AuditReport } from '@/components/audit/AuditReport'
+import { AuditPageActions } from '@/components/audit/AuditPageActions'
+import { AuditShell } from '@/components/layout/audit-shell'
+import { Button } from '@/components/ui/button'
+import { Container } from '@/components/ui/container'
+import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -9,19 +14,52 @@ interface Props {
 
 export default async function AuditPage({ params }: Props) {
   const { id } = await params
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  const result = await getGatedAuditForRequest(id)
 
-  let isPaid = false
-  if (session?.user?.id) {
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } })
-    isPaid = user?.plan !== 'FREE' && user?.plan != null
+  if (result.kind === 'not_found') {
+    notFound()
+  }
+
+  if (result.kind === 'forbidden') {
+    return (
+      <AuditShell session={null}>
+        <Container className="py-24 text-center space-y-4">
+          <h2 className="text-xl font-semibold">Access denied</h2>
+          <p className="text-muted-foreground text-sm">You do not have access to this audit.</p>
+          <Button asChild>
+            <Link href="/">Go home</Link>
+          </Button>
+        </Container>
+      </AuditShell>
+    )
+  }
+
+  const { audit, isPaid, isLoggedIn, session } = result
+
+  if (audit.status === 'COMPLETED') {
+    return (
+      <AuditShell
+        session={session}
+        actions={
+          <AuditPageActions
+            auditId={id}
+            isPaid={isPaid}
+            isLoggedIn={isLoggedIn}
+            isPublic={audit.isPublic}
+            hasParent={!!audit.parentId}
+          />
+        }
+      >
+        <AuditReport audit={audit} isPaid={isPaid} isLoggedIn={isLoggedIn} />
+      </AuditShell>
+    )
   }
 
   return (
     <AuditPageClient
       id={id}
-      isPaid={isPaid}
-      isLoggedIn={!!session?.user}
+      initialAudit={audit}
+      pollStatus
       session={session}
     />
   )

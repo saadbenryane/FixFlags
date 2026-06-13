@@ -61,6 +61,19 @@ const judgeOutputSchema = z.object({
 
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>
 
+export function isRetryableJudgeError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  if (err.name === 'AbortError') return true
+  const message = err.message.toLowerCase()
+  return (
+    message.includes('overloaded') ||
+    message.includes('rate limit') ||
+    message.includes('timeout') ||
+    message.includes('503') ||
+    message.includes('529')
+  )
+}
+
 export async function runJudge(
   url: string,
   metadata: PageMetadata,

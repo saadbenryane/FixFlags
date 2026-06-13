@@ -23,14 +23,15 @@ export async function diffFindingsAgainstParent(
   ])
 
   const recheckByCheckId = new Map(recheckFindings.map((f) => [f.checkId!, f]))
+  const updates: Array<{ id: string; data: { status: FindingStatus; resolvedInId?: string } }> = []
 
   for (const parentFinding of parentFindings) {
     const checkId = parentFinding.checkId!
     const recheckFinding = recheckByCheckId.get(checkId)
 
     if (!recheckFinding) {
-      await prisma.finding.update({
-        where: { id: parentFinding.id },
+      updates.push({
+        id: parentFinding.id,
         data: { status: 'FIXED', resolvedInId: recheckAuditId },
       })
       continue
@@ -43,23 +44,32 @@ export async function diffFindingsAgainstParent(
     if (recheckRank > parentRank) status = 'REGRESSED'
     else if (recheckRank < parentRank) status = 'FIXED'
 
-    await prisma.finding.update({
-      where: { id: recheckFinding.id },
+    updates.push({
+      id: recheckFinding.id,
       data: { status },
     })
+  }
+
+  if (updates.length > 0) {
+    await prisma.$transaction(
+      updates.map((update) =>
+        prisma.finding.update({ where: { id: update.id }, data: update.data })
+      )
+    )
   }
 }
 
 export async function getFindingDiffSummary(beforeId: string, afterId: string) {
-  const afterFindings = await prisma.finding.findMany({
-    where: { auditId: afterId, checkId: { not: null } },
-    select: { checkId: true, status: true, problem: true, area: true, severity: true },
-  })
-
-  const parentFindings = await prisma.finding.findMany({
-    where: { auditId: beforeId, checkId: { not: null } },
-    select: { checkId: true, status: true, problem: true, area: true, severity: true },
-  })
+  const [afterFindings, parentFindings] = await Promise.all([
+    prisma.finding.findMany({
+      where: { auditId: afterId, checkId: { not: null } },
+      select: { checkId: true, status: true, problem: true, area: true, severity: true },
+    }),
+    prisma.finding.findMany({
+      where: { auditId: beforeId, checkId: { not: null } },
+      select: { checkId: true, status: true, problem: true, area: true, severity: true },
+    }),
+  ])
 
   const afterByCheckId = new Map(afterFindings.map((f) => [f.checkId!, f]))
   const parentByCheckId = new Map(parentFindings.map((f) => [f.checkId!, f]))

@@ -20,7 +20,11 @@ export default async function DashboardPage() {
 
   const audits = await prisma.audit.findMany({
     where: { userId: session!.user.id, status: 'COMPLETED' },
-    include: { areas: true },
+    include: {
+      areas: {
+        select: { name: true, grade: true },
+      },
+    },
     orderBy: { createdAt: 'desc' },
     take: 20,
   })

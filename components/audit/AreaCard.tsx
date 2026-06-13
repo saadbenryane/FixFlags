@@ -6,7 +6,7 @@ import { FindingCard } from './FindingCard'
 import { AreaPromptButton } from './AreaPromptButton'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
-import { UPSELLS } from '@/lib/marketing/copy'
+import { UPSELLS } from '@/lib/marketing/copy-client'
 import { FREE_FINDING_LIMIT } from '@/lib/audit/access'
 
 interface Finding {
@@ -42,9 +42,10 @@ interface Props {
   area: Area
   isPaid?: boolean
   defaultOpen?: boolean
+  showFeedback?: boolean
 }
 
-export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
+export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedback = true }: Props) {
   const [open, setOpen] = useState(defaultOpen)
 
   const visibleFindings = isPaid
@@ -110,7 +111,7 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
 
           <div className="space-y-2">
             {visibleFindings.map((finding) => (
-              <FindingCard key={finding.id} finding={finding} />
+              <FindingCard key={finding.id} finding={finding} showFeedback={showFeedback} />
             ))}
           </div>
 

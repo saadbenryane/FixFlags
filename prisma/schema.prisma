@@ -186,6 +186,7 @@ model Audit {
   project   Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
   url       String
   status    AuditStatus @default(QUEUED)
+  progress  Int         @default(0)
 
   pageJob  String?
   pageType String?
@@ -216,6 +217,9 @@ model Audit {
   @@index([userId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
+  @@index([status, updatedAt])
+  @@index([userId, status])
+  @@index([parentId])
   @@map("audits")
 }
 
@@ -288,6 +292,7 @@ model Finding {
   createdAt DateTime          @default(now())
 
   @@index([auditId])
+  @@index([auditId, checkId])
   @@map("findings")
 }
 

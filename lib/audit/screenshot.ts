@@ -1,7 +1,10 @@
-import puppeteer, { Browser, ConsoleMessage } from 'puppeteer'
+import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
 import { uploadScreenshot } from '../storage/r2'
 
 let browser: Browser | null = null
+
+const SETTLE_MS = 1500
+const TIMEOUT_MS = 30_000
 
 async function getBrowser(): Promise<Browser> {
   if (browser && browser.connected) return browser
@@ -20,7 +23,79 @@ export interface ScreenshotResult {
   mobileUrl: string | null
   desktopBase64: string | null
   mobileBase64: string | null
+  desktopHtml: string | null
   consoleErrors: Array<{ type: string; text: string }>
+}
+
+interface ViewportCapture {
+  base64: string | null
+  url: string | null
+  html: string | null
+}
+
+async function captureViewport(
+  b: Browser,
+  targetUrl: string,
+  auditId: string,
+  options: {
+    width: number
+    height: number
+    device: 'desktop' | 'mobile'
+    isMobile?: boolean
+    deviceScaleFactor?: number
+    captureHtml?: boolean
+  },
+  consoleErrors: Array<{ type: string; text: string }>
+): Promise<ViewportCapture> {
+  const result: ViewportCapture = { base64: null, url: null, html: null }
+
+  try {
+    const page = await b.newPage()
+    page.on('console', (msg: ConsoleMessage) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push({ type: msg.type(), text: msg.text() })
+      }
+    })
+
+    await page.setViewport({
+      width: options.width,
+      height: options.height,
+      isMobile: options.isMobile,
+      deviceScaleFactor: options.deviceScaleFactor,
+    })
+
+    await page.goto(targetUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: TIMEOUT_MS,
+    })
+    await settlePage(page)
+
+    if (options.captureHtml) {
+      result.html = await page.content()
+    }
+
+    const buffer = (await page.screenshot({
+      type: 'webp',
+      quality: 80,
+      fullPage: false,
+    })) as Buffer
+
+    result.base64 = buffer.toString('base64')
+
+    if (process.env.R2_BUCKET_NAME) {
+      result.url = await uploadScreenshot(auditId, options.device, buffer)
+    }
+
+    await page.close()
+  } catch (err) {
+    console.error(`${options.device} screenshot failed:`, err)
+  }
+
+  return result
+}
+
+async function settlePage(page: Page) {
+  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
 }
 
 export async function captureScreenshots(
@@ -30,82 +105,31 @@ export async function captureScreenshots(
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
 
-  const result: ScreenshotResult = {
-    desktopUrl: null,
-    mobileUrl: null,
-    desktopBase64: null,
-    mobileBase64: null,
-    consoleErrors: [],
+  const [desktop, mobile] = await Promise.all([
+    captureViewport(
+      b,
+      url,
+      auditId,
+      { width: 1280, height: 900, device: 'desktop', captureHtml: true },
+      consoleErrors
+    ),
+    captureViewport(
+      b,
+      url,
+      auditId,
+      { width: 375, height: 812, device: 'mobile', isMobile: true, deviceScaleFactor: 2 },
+      consoleErrors
+    ),
+  ])
+
+  return {
+    desktopUrl: desktop.url,
+    mobileUrl: mobile.url,
+    desktopBase64: desktop.base64,
+    mobileBase64: mobile.base64,
+    desktopHtml: desktop.html,
+    consoleErrors,
   }
-
-  const timeoutMs = 30_000
-
-  // Desktop
-  try {
-    const page = await b.newPage()
-    page.on('console', (msg: ConsoleMessage) => {
-      const type = msg.type()
-      if (type === 'error') {
-        consoleErrors.push({ type, text: msg.text() })
-      }
-    })
-
-    await page.setViewport({ width: 1280, height: 900 })
-    await page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: timeoutMs,
-    })
-
-    const desktopBuffer = await page.screenshot({
-      type: 'webp',
-      quality: 80,
-      fullPage: false,
-    }) as Buffer
-
-    result.desktopBase64 = desktopBuffer.toString('base64')
-
-    if (process.env.R2_BUCKET_NAME) {
-      result.desktopUrl = await uploadScreenshot(auditId, 'desktop', desktopBuffer)
-    }
-
-    await page.close()
-  } catch (err) {
-    console.error('Desktop screenshot failed:', err)
-  }
-
-  // Mobile
-  try {
-    const page = await b.newPage()
-    page.on('console', (msg: ConsoleMessage) => {
-      if (msg.type() === 'error') {
-        consoleErrors.push({ type: 'error', text: msg.text() })
-      }
-    })
-    await page.setViewport({ width: 375, height: 812, isMobile: true, deviceScaleFactor: 2 })
-    await page.goto(url, {
-      waitUntil: 'networkidle2',
-      timeout: timeoutMs,
-    })
-
-    const mobileBuffer = await page.screenshot({
-      type: 'webp',
-      quality: 80,
-      fullPage: false,
-    }) as Buffer
-
-    result.mobileBase64 = mobileBuffer.toString('base64')
-
-    if (process.env.R2_BUCKET_NAME) {
-      result.mobileUrl = await uploadScreenshot(auditId, 'mobile', mobileBuffer)
-    }
-
-    await page.close()
-  } catch (err) {
-    console.error('Mobile screenshot failed:', err)
-  }
-
-  result.consoleErrors = consoleErrors
-  return result
 }
 
 export async function closeBrowser() {
