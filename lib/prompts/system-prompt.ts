@@ -164,5 +164,7 @@ Grade benchmarks:
 - SEO: A (all tags + structured data), B (1-2 missing), C (missing desc or multiple H1), D/F (no title or noindex)
 - CONVERSION/TRUST/CONTENT: grade by what you see in screenshots and page text
 
+IMPORTANT: If you grade an area B or below, you MUST include at least one finding in newFindings for that area (or rely on deterministic findings). Never give a poor grade with zero findings — the summary alone is not enough for builders to act.
+
 Return ALL 7 area entries. For areas with no issues, grade A with a positive summary.`
 }

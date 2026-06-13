@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
-import { reserveUserAuditSlot } from '@/lib/audit/usage'
-import { canAccessPaidFeatures } from '@/lib/auth/permissions'
-import { canManageAudit } from '@/lib/audit/access'
+import { startRecheckAudit } from '@/lib/audit/recheck'
+import { prisma } from '@/lib/db'
 
 export async function POST(
   _req: NextRequest,
@@ -15,11 +12,6 @@ export async function POST(
   try {
     const { id: parentId } = await params
 
-    const parent = await prisma.audit.findUnique({ where: { id: parentId } })
-    if (!parent) {
-      return apiError('Audit not found', 404)
-    }
-
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
     if (!session?.user) {
@@ -27,32 +19,19 @@ export async function POST(
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user || !canAccessPaidFeatures(user)) {
-      return apiError('Upgrade to Builder to use re-check', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'upgrade',
+    if (!user) {
+      return apiError('User not found', 404)
+    }
+
+    const outcome = await startRecheckAudit(parentId, user)
+    if (!outcome.ok) {
+      return apiError(outcome.error, outcome.status, {
+        code: outcome.code,
+        action: outcome.action,
       })
     }
 
-    if (!canManageAudit(parent, session.user)) {
-      return apiError('You can only re-check your own audits', 403)
-    }
-
-    const limitCheck = await reserveUserAuditSlot(session.user.id)
-    if (!limitCheck.allowed) {
-      return apiError(limitCheck.error!, 402, {
-        code: limitCheck.code,
-        action: limitCheck.action,
-      })
-    }
-
-    const { auditId, status } = await createAndEnqueueAudit({
-      url: parent.url,
-      userId: session.user.id,
-      parentId,
-    })
-
-    return NextResponse.json({ auditId, status }, { status: 201 })
+    return NextResponse.json(outcome.result, { status: 201 })
   } catch (err) {
     return handleRouteError(err)
   }

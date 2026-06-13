@@ -1,23 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { SignOutButton } from '@/components/auth/SignOutButton'
-
-interface MeUser {
-  email?: string | null
-  plan?: string
-}
+import { useMe } from '@/hooks/useMe'
 
 export function MarketingHeaderAuth() {
-  const [user, setUser] = useState<MeUser | null>(null)
-
-  useEffect(() => {
-    fetch('/api/me')
-      .then((res) => (res.ok ? res.json() : { user: null }))
-      .then((data) => setUser(data.user ?? null))
-      .catch(() => setUser(null))
-  }, [])
+  const { user } = useMe()
 
   if (!user) {
     return (

@@ -158,7 +158,7 @@ export async function incrementUsageOnCompleteForAudit(
   await prisma.$transaction(async (tx) => {
     const audit = await tx.audit.findUnique({
       where: { id: auditId },
-      select: { usageCountedAt: true, userId: true },
+      select: { usageCountedAt: true, userId: true, skipUsageCount: true },
     })
     if (!audit || audit.userId !== userId || audit.usageCountedAt) return
 
@@ -174,6 +174,14 @@ export async function incrementUsageOnCompleteForAudit(
       return
     }
 
+    if (audit.skipUsageCount) {
+      await tx.audit.update({
+        where: { id: auditId },
+        data: { usageCountedAt: new Date() },
+      })
+      return
+    }
+
     await tx.audit.update({
       where: { id: auditId },
       data: { usageCountedAt: new Date() },
@@ -182,22 +190,6 @@ export async function incrementUsageOnCompleteForAudit(
       where: { id: userId },
       data: { auditsUsed: { increment: 1 } },
     })
-  })
-}
-
-/** @deprecated Use incrementUsageOnCompleteForAudit for idempotent counting */
-export async function incrementUsageOnComplete(userId: string): Promise<void> {
-  if (isDevUnlimitedScans()) return
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  })
-  if (user && hasUnlimitedScans(user)) return
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { auditsUsed: { increment: 1 } },
   })
 }
 

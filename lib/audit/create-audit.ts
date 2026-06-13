@@ -6,6 +6,7 @@ export interface CreateAuditOptions {
   url: string
   userId?: string | null
   parentId?: string
+  skipUsageCount?: boolean
 }
 
 export interface CreateAuditResult {
@@ -21,6 +22,7 @@ export async function createAndEnqueueAudit(
       url: options.url,
       userId: options.userId ?? null,
       parentId: options.parentId ?? null,
+      skipUsageCount: options.skipUsageCount ?? false,
       status: 'QUEUED',
       progress: 5,
     },

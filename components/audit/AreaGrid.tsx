@@ -1,4 +1,5 @@
 'use client'
+
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 
 interface Area {
@@ -15,30 +16,58 @@ interface Props {
 }
 
 export function AreaGrid({ areas, activeArea, onAreaClick }: Props) {
-  const orderedNames = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']
-  const ordered = orderedNames.map((n) => areas.find((a) => a.name === n)).filter(Boolean) as Area[]
+  const orderedNames = [
+    'PERFORMANCE',
+    'ACCESSIBILITY',
+    'SEO',
+    'CONVERSION',
+    'TRUST',
+    'CONTENT',
+    'MOBILE',
+  ]
+  const ordered = orderedNames
+    .map((n) => areas.find((a) => a.name === n))
+    .filter(Boolean) as Area[]
+
+  function handleClick(name: string) {
+    if (onAreaClick) {
+      onAreaClick(name)
+      return
+    }
+    const el = document.getElementById(`area-${name}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-      {ordered.map((area) => (
-        <button
-          key={area.name}
-          onClick={() => onAreaClick?.(area.name)}
-          className={cn(
-            'flex flex-col items-center rounded-lg border-2 px-2 py-3 transition-all hover:shadow-sm',
-            gradeColor(area.grade),
-            activeArea === area.name ? 'ring-2 ring-primary ring-offset-1' : ''
-          )}
-        >
-          <span className="text-xl font-bold">{area.grade}</span>
-          {area.score !== null && (
-            <span className="text-xs font-medium">{area.score}</span>
-          )}
-          <span className="mt-1 text-[10px] text-center leading-tight font-medium">
-            {areaLabel(area.name)}
-          </span>
-        </button>
-      ))}
-    </div>
+    <nav aria-label="Audit areas" className="-mx-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-thin">
+        {ordered.map((area) => {
+          const hasIssues = area.grade !== 'A'
+          return (
+            <button
+              key={area.name}
+              type="button"
+              onClick={() => handleClick(area.name)}
+              className={cn(
+                'flex shrink-0 flex-col items-center rounded-lg border px-3 py-2 min-w-[72px] transition-all hover:shadow-card',
+                gradeColor(area.grade),
+                activeArea === area.name && 'ring-2 ring-brand ring-offset-2 ring-offset-background'
+              )}
+            >
+              <span className="text-lg font-bold leading-none">{area.grade}</span>
+              {area.score !== null && (
+                <span className="text-[10px] font-medium tabular-nums mt-0.5">{area.score}</span>
+              )}
+              <span className="mt-1 text-[9px] text-center leading-tight font-medium max-w-[64px]">
+                {areaLabel(area.name)}
+              </span>
+              {hasIssues && (
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </nav>
   )
 }

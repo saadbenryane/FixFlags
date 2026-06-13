@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
+import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 
 interface Props {
   auditId: string
@@ -16,8 +17,12 @@ interface Props {
   isLoggedIn: boolean
   isPublic: boolean
   hasParent: boolean
+  compareAuditId?: string | null
   plan?: Plan
   projectId?: string | null
+  canUseFreeRecheck?: boolean
+  canSharePublicly?: boolean
+  hasUsedFreeRecheck?: boolean
 }
 
 export function AuditPageActions({
@@ -26,11 +31,19 @@ export function AuditPageActions({
   isLoggedIn,
   isPublic: initialIsPublic,
   hasParent,
+  compareAuditId,
   plan = 'FREE',
   projectId,
+  canUseFreeRecheck = false,
+  canSharePublicly = false,
+  hasUsedFreeRecheck = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
+  const [recheckLoading, setRecheckLoading] = useState(false)
+
+  const showRecheck = isPaid || canUseFreeRecheck
+  const recheckLabel = canUseFreeRecheck && !isPaid ? 'Re-check free (1x)' : 'Re-check'
 
   async function handleShare() {
     try {
@@ -44,6 +57,15 @@ export function AuditPageActions({
         } else {
           toast.success('Report is now private.')
         }
+      } else if (res.status === 402 && data.code === 'UPGRADE_REQUIRED') {
+        const content = getUpgradeMomentContent('share_blocked')
+        toast.error(content.headline, {
+          description: content.body,
+          action: {
+            label: 'View Team plan',
+            onClick: () => router.push('/pricing'),
+          },
+        })
       } else {
         toast.error(data.error || 'Failed to update sharing')
       }
@@ -53,12 +75,27 @@ export function AuditPageActions({
   }
 
   async function handleRecheck() {
-    const res = await fetch(`/api/audits/${auditId}/recheck`, { method: 'POST' })
-    const data = await res.json()
-    if (res.ok) {
-      router.push(`/audit/${data.auditId}`)
-    } else {
-      toast.error(data.error || 'Failed to start re-check')
+    setRecheckLoading(true)
+    try {
+      const res = await fetch(`/api/audits/${auditId}/recheck`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        router.push(`/audit/${data.auditId}`)
+      } else if (res.status === 402) {
+        const moment = data.code === 'UPGRADE_REQUIRED' ? 'trial_exhausted' : 'free_default'
+        const content = getUpgradeMomentContent(moment)
+        toast.error(content.headline, {
+          description: content.body,
+          action: {
+            label: 'Upgrade',
+            onClick: () => router.push('/pricing'),
+          },
+        })
+      } else {
+        toast.error(data.error || 'Failed to start re-check')
+      }
+    } finally {
+      setRecheckLoading(false)
     }
   }
 
@@ -71,24 +108,33 @@ export function AuditPageActions({
           enabled={isLoggedIn}
         />
       )}
-      {hasParent && (
+      {(hasParent || compareAuditId) && (
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/compare/${auditId}`}>
+          <Link href={`/compare/${compareAuditId ?? auditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
             View comparison
           </Link>
         </Button>
       )}
-      {isLoggedIn && (
-        <Button variant="outline" size="sm" onClick={handleShare}>
+      {isLoggedIn && (canSharePublicly || isPublic) && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShare}
+          title={
+            !canSharePublicly && !isPublic
+              ? 'Upgrade to Team to share client report links'
+              : undefined
+          }
+        >
           <Share2 className="h-4 w-4 mr-2" />
           {isPublic ? 'Make private' : 'Share'}
         </Button>
       )}
-      {isPaid && (
-        <Button size="sm" onClick={handleRecheck}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Re-check
+      {showRecheck && (
+        <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />
+          {recheckLabel}
         </Button>
       )}
     </>

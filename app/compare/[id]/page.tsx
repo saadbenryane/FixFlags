@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
 import { AreaDiff } from '@/components/compare/AreaDiff'
 import { FindingDiff } from '@/components/compare/FindingDiff'
 import { BeforeAfterSlider } from '@/components/compare/BeforeAfterSlider'
@@ -11,9 +12,12 @@ import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading, Muted } from '@/components/ui/typography'
+import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
+import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFindingDiffSummary } from '@/lib/audit/diff-findings'
 import { canAccessAudit } from '@/lib/audit/access'
-import { canAccessPaidFeatures } from '@/lib/auth/permissions'
+import { canAccessCompare, getEntitlements } from '@/lib/auth/entitlements'
+import { isAdminUser } from '@/lib/auth/permissions'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -28,8 +32,8 @@ export default async function ComparePage({ params }: Props) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  if (!user || !canAccessPaidFeatures(user)) {
-    redirect('/pricing')
+  if (!user) {
+    redirect(signInUrl(await getRequestedPath(`/compare/${id}`)))
   }
 
   const recheckAudit = await prisma.audit.findUnique({
@@ -54,6 +58,31 @@ export default async function ComparePage({ params }: Props) {
     redirect(`/audit/${id}`)
   }
 
+  const showAdmin = isAdminUser(user)
+
+  if (!canAccessCompare(user, recheckAudit)) {
+    return (
+      <AuditShell session={session} showAdmin={showAdmin}>
+        <Section spacing="default">
+          <Container className="max-w-3xl py-12 space-y-6">
+            <div className="space-y-1">
+              <Heading as="h1">Before vs After</Heading>
+              <Muted>Re-check is required to compare scores.</Muted>
+            </div>
+            <ContextualUpgradeCard
+              moment="trial_exhausted"
+              isLoggedIn
+              currentPlan={user.plan}
+            />
+            <Button asChild variant="outline">
+              <Link href={`/audit/${id}`}>Back to report</Link>
+            </Button>
+          </Container>
+        </Section>
+      </AuditShell>
+    )
+  }
+
   if (
     !canAccessAudit(recheckAudit, session.user) ||
     !canAccessAudit(recheckAudit.parent, session.user)
@@ -68,8 +97,12 @@ export default async function ComparePage({ params }: Props) {
   const beforeDesktop = before.screenshots.find((s) => s.device === 'DESKTOP')
   const afterDesktop = after.screenshots.find((s) => s.device === 'DESKTOP')
 
+  const scoreDelta =
+    before.score !== null && after.score !== null ? after.score - before.score : 0
+  const compareMoment = resolveCompareUpgradeMoment(before.score, after.score)
+
   return (
-    <AuditShell session={session}>
+    <AuditShell session={session} showAdmin={showAdmin}>
       <Section spacing="default">
         <Container className="max-w-4xl space-y-8">
           <div className="space-y-1">
@@ -85,7 +118,7 @@ export default async function ComparePage({ params }: Props) {
           <div className="flex-1 text-center">
             {before.score !== null && after.score !== null ? (
               <div
-                className={`text-2xl font-bold tabular-nums ${after.score > before.score ? 'text-green-600' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
+                className={`text-2xl font-bold tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
               >
                 {after.score > before.score ? '+' : ''}
                 {after.score - before.score}
@@ -100,6 +133,15 @@ export default async function ComparePage({ params }: Props) {
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
         </div>
+
+        {!user.plan || user.plan === 'FREE' ? (
+          <ContextualUpgradeCard
+            moment={compareMoment}
+            scoreDelta={scoreDelta}
+            isLoggedIn
+            currentPlan={user.plan}
+          />
+        ) : null}
 
         <AreaDiff beforeAreas={before.areas} afterAreas={after.areas} />
 

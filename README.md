@@ -74,6 +74,8 @@ QualityOS exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/set
 
 See [MCP docs](/docs/mcp) for full tool reference.
 
+**OAuth sign-in:** Set both `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (and/or GitHub equivalents) in `.env.local`. Sign-in and sign-up pages show Google/GitHub buttons automatically.
+
 ## Production deployment (Railway)
 
 Deploy **two services** from this repo:

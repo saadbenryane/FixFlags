@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -77,7 +78,26 @@ export function ProjectsPanel({ plan }: Props) {
     toast.success('Project deleted')
   }
 
-  if (limit === 0) return null
+  if (limit === 0) {
+    return (
+      <Card className="border-border/60">
+        <CardContent className="space-y-3 py-5">
+          <div>
+            <h2 className="text-sm font-medium">Projects</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Organize audits across sites on Team or Studio plans.
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Team includes up to 5 projects. Studio includes up to 20.
+          </p>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/pricing">See Team plans</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-4">

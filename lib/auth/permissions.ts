@@ -1,11 +1,11 @@
-import { Plan, User } from '@prisma/client'
+import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 export const UNLIMITED_SCAN_LIMIT = -1
 
-/** Local `npm run dev` — all scan limits and plan gates are disabled. */
+/** Local `npm run dev` — disables scan usage limits only (not plan feature gates). */
 export function isDevUnlimitedScans(): boolean {
-  return process.env.NODE_ENV === 'development'
+  return process.env.NODE_ENV === 'development' && process.env.DEV_SIMULATE_BILLING !== 'true'
 }
 
 type AdminUser = Pick<User, 'id' | 'role'>
@@ -67,18 +67,13 @@ export async function getScanUsage(
   }
 }
 
-export function canAccessPaidFeatures(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
-  if (isDevUnlimitedScans()) return true
-  if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan !== 'FREE'
-}
-
-export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
-  return canAccessPaidFeatures(user)
-}
-
-export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
-  if (isDevUnlimitedScans()) return true
-  if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan === 'STUDIO'
-}
+export {
+  canAccessPaidFeatures,
+  canUseApiKeys,
+  canUseFreeRecheck,
+  canAccessRecheck,
+  canAccessCompare,
+  canSharePublicly,
+  getEntitlements,
+  shouldEnforcePlanGates,
+} from '@/lib/auth/entitlements'

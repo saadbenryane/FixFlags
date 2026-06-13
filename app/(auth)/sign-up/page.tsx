@@ -1,20 +1,22 @@
 'use client'
+
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
-import { AUTH, BRAND } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy'
+import { AuthCard } from '@/components/auth/AuthCard'
+import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
+import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 
 function SignUpForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const plan = searchParams.get('plan') as keyof typeof AUTH.signUp.planTitles | null
+  const { oauthCallbackURL, navigateAfterAuth, signInHref, plan } = useAuthRedirect()
+  useRedirectIfAuthenticated()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -32,24 +34,7 @@ function SignUpForm() {
       }
 
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
-
-      if (plan && ['BUILDER', 'TEAM', 'STUDIO'].includes(plan)) {
-        const checkoutRes = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan }),
-        })
-        if (checkoutRes.ok) {
-          const { url } = await checkoutRes.json()
-          if (url) {
-            window.location.href = url
-            return
-          }
-        }
-        router.push('/pricing')
-      } else {
-        router.push('/dashboard')
-      }
+      await navigateAfterAuth()
     } catch {
       toast.error('Something went wrong')
     } finally {
@@ -57,74 +42,70 @@ function SignUpForm() {
     }
   }
 
-  const planTitle = plan && plan in AUTH.signUp.planTitles
-    ? AUTH.signUp.planTitles[plan]
-    : null
+  const planTitle =
+    plan && plan in AUTH.signUp.planTitles
+      ? AUTH.signUp.planTitles[plan as keyof typeof AUTH.signUp.planTitles]
+      : null
+
+  const subtitle = planTitle
+    ? planTitle
+    : hasOAuthEnabled()
+      ? AUTH.signUp.subtitleWithOAuth
+      : AUTH.signUp.subtitle
 
   return (
-    <div className="w-full max-w-sm space-y-4">
-      <div className="text-center space-y-1">
-        <Link href="/" className="font-bold text-xl tracking-tight">
-          {BRAND.name}
-        </Link>
-        <p className="text-sm text-muted-foreground">{AUTH.signUp.title}</p>
-        {planTitle ? (
-          <p className="text-xs text-primary font-medium">{planTitle}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">{AUTH.signUp.subtitle}</p>
-        )}
-      </div>
-      <Card>
-        <CardContent className="pt-6">
-          <FormContainer onSubmit={handleSubmit}>
-            <IconInput
-              label="Name"
-              icon={<User className="h-4 w-4" />}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-            />
-            <IconInput
-              type="email"
-              label="Email"
-              icon={<Mail className="h-4 w-4" />}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-            <IconInput
-              type="password"
-              label="Password"
-              icon={<Lock className="h-4 w-4" />}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {AUTH.signUp.cta}
-            </Button>
-          </FormContainer>
-        </CardContent>
-      </Card>
-      <p className="text-center text-sm text-muted-foreground">
-        {AUTH.signUp.footer}{' '}
-        <Link href="/sign-in" className="text-primary link-underline-grow">
-          {AUTH.signUp.footerLink}
-        </Link>
-      </p>
-    </div>
+    <AuthCard
+      title={AUTH.signUp.title}
+      subtitle={subtitle}
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          {AUTH.signUp.footer}{' '}
+          <Link href={signInHref()} className="text-primary link-underline-grow">
+            {AUTH.signUp.footerLink}
+          </Link>
+        </p>
+      }
+    >
+      <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
+      <FormContainer onSubmit={handleSubmit}>
+        <IconInput
+          label="Name"
+          icon={<User className="h-4 w-4" />}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name"
+        />
+        <IconInput
+          type="email"
+          label="Email"
+          icon={<Mail className="h-4 w-4" />}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          required
+        />
+        <IconInput
+          type="password"
+          label="Password"
+          icon={<Lock className="h-4 w-4" />}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+        />
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {AUTH.signUp.cta}
+        </Button>
+      </FormContainer>
+    </AuthCard>
   )
 }
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <Suspense>
-        <SignUpForm />
-      </Suspense>
-    </div>
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
   )
 }

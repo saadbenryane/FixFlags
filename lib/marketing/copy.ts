@@ -10,33 +10,49 @@ import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'Check your site before you ship',
-  category: 'Post-build QA for AI-shipped apps',
-  oneLiner: 'Paste a URL. Get a grade and fix prompts.',
-  tribeBadge: 'For builders using Cursor, Lovable, and Bolt',
-  mechanismLine: 'Every finding ships with a fix prompt your agent can run',
+  tagline: 'AI reviews your site like a person would',
+  category: 'Automated checks + AI review with fix prompts',
+  oneLiner: 'Paste a URL. AI reviews it like a person would.',
+  tribeBadge: 'AI + automated checks',
 } as const
 
 /** Named once on the page — do not repeat in every section */
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
-export const AUDIT_CATEGORIES =
-  'Performance, SEO, mobile, conversion, trust, content, and accessibility' as const
-
 export const HERO = {
-  headline: 'Check your site before you ship',
-  headlineLine1: 'Check your site',
-  headlineLine2: 'before you ship',
-  headlineEmoji: '🚀',
+  headline: 'AI reviews your site like a person would',
+  headlineLine1: 'AI reviews your site',
+  headlineLine2: 'like a person would',
+  headlineAccent: true,
   subhead:
-    'Paste a URL. Get a graded report with evidence and fix prompts for your AI editor.',
+    'Screenshots, automated checks, then an AI judge. Every issue includes a fix prompt.',
   trustLine: 'Free. No account. Under 60 seconds.',
   primaryCta: 'Audit my site',
   secondaryCta: 'See sample report',
 } as const
 
-/** Friction reducers only — not product claims. Product proof lives in the sample card. */
-export const HERO_PILLS = ['Free first audit', 'No account', 'Under 60 seconds'] as const
+export const HERO_MECHANISM_LINE =
+  'Capture screenshots · Run checks · AI judge reads the page' as const
+
+export const AI_REVIEW_SECTION = {
+  label: 'How it works',
+  headline: 'A review, not a dashboard',
+  subhead: 'Lighthouse checks metrics. We read your screenshots.',
+  steps: [
+    {
+      title: 'Capture',
+      body: 'Desktop and mobile screenshots of your live page.',
+    },
+    {
+      title: 'Check',
+      body: 'Core Web Vitals, SEO tags, accessibility, console errors.',
+    },
+    {
+      title: 'Judge',
+      body: 'AI finds conversion gaps, trust issues, and unclear copy.',
+    },
+  ],
+} as const
 
 export const SAMPLE_FINDINGS = [
   { area: 'Mobile', grade: 'C', issue: 'Primary CTA below fold at 375px' },
@@ -44,66 +60,70 @@ export const SAMPLE_FINDINGS = [
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
+export const SAMPLE_FINDINGS_HEADER = 'AI review excerpt'
+export const SAMPLE_FINDINGS_VERDICT =
+  'Hero copy is vague. Mobile CTA is buried. Fix prompt on each finding.'
+
 export const SAMPLE_FINDINGS_FOOTER = 'Each finding includes a copy-ready fix prompt'
 
 export const WORKFLOW_SECTION = {
-  headline: 'Four steps to a launch-ready site',
+  headline: 'From review to fix',
 } as const
 
 export const WORKFLOW_STEPS = [
   {
     step: 1,
     title: 'Paste your URL',
-    body: 'Any public page: landing, pricing, portfolio',
+    body: 'Any public page',
   },
   {
     step: 2,
-    title: 'Read your grades',
-    body: 'Performance, SEO, mobile, conversion, trust, and more',
+    title: 'Read the review',
+    body: 'Evidence and why each issue matters',
   },
   {
     step: 3,
     title: 'Copy a fix prompt',
-    body: `Paste into ${AI_TOOLS}`,
+    body: `Into ${AI_TOOLS}, or to your dev`,
   },
   {
     step: 4,
-    title: 'Re-check after fixes',
-    body: 'Before/after scores show what changed',
+    title: 'Re-check',
+    body: 'Before/after scores',
   },
 ] as const
 
 export const PROBLEM_SECTION = {
-  headline: 'Fast to ship. Easy to miss the details.',
+  headline: 'Tools miss what people notice.',
   pains: [
     {
-      title: 'Broken on mobile',
-      body: 'CTA below the fold, tap targets too small, layout breaks at 375px',
+      title: 'Off on mobile',
+      body: 'CTA below the fold. Tap targets too small.',
     },
     {
-      title: 'Broken in previews',
-      body: 'Missing og:image, weak meta, blank cards when you share the link',
+      title: 'Blank when shared',
+      body: 'Missing og:image. Empty link cards.',
     },
     {
-      title: 'Broken for conversion',
-      body: 'Vague hero copy, weak trust signals, unclear what the page wants you to do',
+      title: 'Unclear next step',
+      body: 'Visitors leave. Weak trust signals.',
     },
   ],
 } as const
 
 export const DIFFERENTIATION = {
-  headline: 'Graded findings with fix prompts, not just a score',
+  headline: 'AI review with fix prompts',
   rows: [
-    { feature: 'Says why each issue hurts launch', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Grades conversion and trust', lighthouse: 'No', manual: 'Maybe', qualityos: 'Yes' },
+    { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
-    { feature: 'Re-check after your agent fixes it', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
+    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
 } as const
 
 export const SOCIAL_PROOF = {
-  headline: 'Even strong sites fail these checks',
+  headline: 'What the score missed',
   cta: 'See sample report',
   sample: {
     name: 'Stripe',
@@ -113,17 +133,17 @@ export const SOCIAL_PROOF = {
 } as const
 
 export const QUALITY_AREAS_SECTION = {
-  headline: 'Everything we check in one report',
+  headline: 'Seven areas. One review.',
 } as const
 
 export const QUALITY_AREAS = [
-  { name: 'Performance', impact: 'Slow pages lose visitors before they read a word' },
-  { name: 'Accessibility', impact: 'Real users cannot complete key actions' },
-  { name: 'SEO', impact: 'Broken previews and missing schema hide you on Google and Slack' },
-  { name: 'Conversion', impact: 'Does the page guide someone to sign up or buy?' },
-  { name: 'Trust', impact: 'Do you look legitimate enough to pay or share data?' },
-  { name: 'Content', impact: 'Does the copy match what you are selling?' },
-  { name: 'Mobile', impact: 'Where most AI-built sites break first' },
+  { name: 'Performance', impact: 'Slow pages lose visitors early' },
+  { name: 'Accessibility', impact: 'Users cannot complete key actions' },
+  { name: 'SEO', impact: 'Bad previews hide you on Google and Slack' },
+  { name: 'Conversion', impact: 'Does the page say what to do next?' },
+  { name: 'Trust', impact: 'Do you look safe to pay or sign up?' },
+  { name: 'Content', impact: 'Does the copy match what you sell?' },
+  { name: 'Mobile', impact: 'Where most visitors land first' },
 ] as const
 
 export const MCP_SECTION = {
@@ -144,22 +164,24 @@ Claude: "Mobile improved from 41 → 78 (D → B). 3 issues fixed."`,
 } as const
 
 export const PRICING_TEASER = {
-  headline: 'Start free. Upgrade when you ship.',
-  plans: [
-    { name: 'Free', outcome: 'See what\u2019s broken', price: '$0' },
-    { name: 'Builder', outcome: 'Fix everything, re-check everything', price: '$49/mo' },
-    { name: 'Team', outcome: 'Organize audits across projects', price: '$199/mo' },
-  ],
+  headline: 'Start free. Pay when you need more.',
+  plans: getMarketingPlans()
+    .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
+    .map((p) => ({
+      name: p.name,
+      outcome: p.outcome,
+      price: `${p.price}${p.period}`,
+    })),
   cta: 'See full pricing',
 } as const
 
 export const MID_CTA = {
-  headline: 'Run it on your site',
+  headline: 'Run it on your URL',
   trustLine: HERO.trustLine,
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Paste your URL. See your grade.',
+  headline: 'Paste your URL',
   trustLine: HERO.trustLine,
 } as const
 
@@ -172,7 +194,7 @@ export const FAQ = [
   {
     question: 'What does QualityOS check that Lighthouse doesn\u2019t?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. QualityOS also grades conversion, trust, content, and mobile UX. Every finding includes evidence, launch impact, and a fix prompt for your AI editor.',
+      'Lighthouse scores performance, accessibility, and SEO. QualityOS adds an AI judge that reads your screenshots for conversion, trust, content, and mobile UX. Every finding includes evidence and a fix prompt.',
   },
   {
     question: 'Do I need an account for my first audit?',
@@ -197,7 +219,7 @@ export const FAQ = [
   {
     question: 'Can I re-check after my agent fixes issues?',
     answer:
-      'Re-check is available on Builder and above. Run a new audit on the same URL and compare before/after scores to prove fixes worked.',
+      'Registered free users get one free re-check to compare before/after scores. Paid plans include unlimited re-checks that do not count against your monthly new-URL audit limit.',
   },
   {
     question: 'Does it work on staging/password-protected sites?',
@@ -205,9 +227,14 @@ export const FAQ = [
       'QualityOS audits publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
   },
   {
+    question: 'We already have a live site. Is this only for pre-launch?',
+    answer:
+      'No. QualityOS audits any public page, live or new. Most live sites still fail conversion, trust, or mobile checks even when performance scores look fine.',
+  },
+  {
     question: 'Who is QualityOS for?',
     answer:
-      'Solo builders and small teams shipping with AI coding tools who want to catch launch issues before sharing a link. Not built for enterprise QA teams running manual test suites.',
+      'Solo builders, founders, and small teams with a new launch or a live site that should convert better. Works with AI editors like Cursor and Claude, or hand off fix prompts to your dev. Not built for enterprise QA teams running manual test suites.',
   },
 ] as const
 
@@ -215,9 +242,9 @@ export const FAQ = [
 export const HOME_FAQ = [
   FAQ[0],
   FAQ[1],
-  FAQ[3],
-  FAQ[4],
   FAQ[7],
+  FAQ[4],
+  FAQ[8],
 ] as const
 
 export const PRICING_FAQ = [
@@ -264,7 +291,8 @@ export const PRICING = {
 export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
-  subhead: 'This is what a completed QualityOS audit looks like.',
+  subhead: 'This is what a completed QualityOS audit looks like on the free tier.',
+  tierNote: 'Free shows top 3 findings per area. Builder unlocks every finding, area prompts, and re-check.',
   bottomCta: 'Audit your site',
 } as const
 
@@ -275,32 +303,113 @@ export const MCP_DOCS = {
   quickStart: [
     'Create a free account and upgrade to Builder',
     'Go to Settings → API Keys and generate a key',
-    'Add the config below to your editor',
+    'Add the HTTP config below to your editor',
     'Ask your AI agent to audit your site',
   ],
   builderRequired: 'Requires Builder plan',
   lovableBoltNote:
     'Lovable and Bolt don\u2019t support MCP yet. Copy fix prompts from the web UI or audit report directly into those tools.',
+  tools: [
+    { name: 'qos_audit_url', desc: 'Start a quality audit on any URL. Returns auditId.' },
+    { name: 'qos_get_audit_status', desc: 'Check if an audit is complete.' },
+    { name: 'qos_get_report', desc: 'Get the full report with all 7 area grades and scores.' },
+    {
+      name: 'qos_get_area',
+      desc: 'Get detailed findings + fix prompt for one area (Performance, SEO, Mobile, etc.)',
+    },
+    { name: 'qos_get_finding', desc: 'Get the fix prompt for a specific finding.' },
+    { name: 'qos_recheck', desc: 'Run a new audit on the same URL to verify fixes.' },
+    {
+      name: 'qos_compare',
+      desc: 'Compare two audits — see what improved, stayed the same, or regressed.',
+    },
+  ],
+  configExamples: {
+    claudeCode: `# ~/.claude/mcp.json
+{
+  "mcpServers": {
+    "qualityos": {
+      "url": "https://qualityos.com/api/mcp",
+      "headers": {
+        "x-api-key": "qos_live_your_key_here"
+      }
+    }
+  }
+}`,
+    cursor: `# .cursor/mcp.json
+{
+  "mcpServers": {
+    "qualityos": {
+      "url": "https://qualityos.com/api/mcp",
+      "headers": {
+        "x-api-key": "qos_live_your_key_here"
+      }
+    }
+  }
+}`,
+    windsurf: `# ~/.codeium/windsurf/mcp_config.json
+{
+  "mcpServers": {
+    "qualityos": {
+      "serverUrl": "https://qualityos.com/api/mcp",
+      "headers": {
+        "x-api-key": "qos_live_your_key_here"
+      }
+    }
+  }
+}`,
+  },
+  configLabels: {
+    claudeCode: 'Claude Code',
+    cursor: 'Cursor',
+    windsurf: 'Windsurf',
+  },
 } as const
 
 export const AUTH = {
   signIn: {
     title: 'Sign in to your account',
+    subtitle: 'Use your email and password to continue',
+    subtitleWithOAuth: 'Continue with Google or GitHub, or use email',
     cta: 'Sign in',
     footer: 'Don\u2019t have an account?',
     footerLink: 'Sign up',
+    forgotPassword: 'Forgot password?',
   },
   signUp: {
     title: 'Create your free account',
     subtitle: 'Save audit history · 3 free audits · Upgrade anytime',
+    subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
     cta: 'Create account',
     footer: 'Already have an account?',
     footerLink: 'Sign in',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Builder — full reports from day one',
       TEAM: 'You\u2019re signing up for Team — organize audits across up to 5 projects',
-      STUDIO: 'You\u2019re signing up for Studio — public sharing and up to 20 projects',
+      STUDIO: 'You\u2019re signing up for Studio — audit client sites at scale with up to 20 projects',
     },
+  },
+  forgotPassword: {
+    title: 'Reset your password',
+    subtitle: 'Enter your email and we\u2019ll send a reset link',
+    sentSubtitle: 'Check your inbox',
+    sentBody: 'If an account exists for that email, we sent a password reset link.',
+    cta: 'Send reset link',
+    backToSignIn: 'Back to sign in',
+    error: 'Could not send reset email. Try again.',
+    notConfigured: 'Password reset requires email to be configured on the server.',
+  },
+  resetPassword: {
+    title: 'Choose a new password',
+    subtitle: 'Must be at least 8 characters',
+    cta: 'Update password',
+    mismatch: 'Passwords do not match',
+    success: 'Password updated. Sign in with your new password.',
+    error: 'Could not reset password. The link may have expired.',
+    invalidTitle: 'Invalid reset link',
+    invalidSubtitle: 'This link expired or was already used',
+    invalidBody: 'Request a new password reset link to continue.',
+    requestNewLink: 'Request a new link',
   },
 } as const
 
@@ -310,14 +419,6 @@ export const UPSELLS = {
     body: 'Create a free account to save history and run 3 audits total.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
-  },
-  freeUser: {
-    headline: (hiddenCount: number) =>
-      hiddenCount > 0
-        ? `You have ${hiddenCount} hidden issue${hiddenCount !== 1 ? 's' : ''}`
-        : 'Unlock full reports + re-check',
-    body: 'Upgrade to see all findings and re-check after fixes.',
-    cta: 'Upgrade to Builder — $49/mo',
   },
   areaGate: {
     hiddenFindings: (count: number) =>
@@ -329,6 +430,53 @@ export const UPSELLS = {
   atLimit: 'Token limit reached. Upgrade to continue',
 } as const
 
+export const UPGRADE_MOMENTS = {
+  hidden_findings: {
+    headline: (hiddenCount: number) =>
+      `+${hiddenCount} more issue${hiddenCount !== 1 ? 's' : ''} your agent could fix`,
+    body: 'Upgrade to Builder to see every finding, full area prompts, and unlimited re-checks.',
+    cta: 'Upgrade to Builder — $29/mo founding',
+    plan: 'BUILDER' as const,
+  },
+  trial_recheck_available: {
+    headline: 'Prove your fixes worked',
+    body: 'Paste fix prompts into your editor, ship changes, then re-check once for free to compare before/after scores.',
+    cta: 'Use your free re-check',
+    plan: 'BUILDER' as const,
+  },
+  compare_improved: {
+    headline: (scoreDelta: number) =>
+      `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
+    body: 'Keep proving every ship with unlimited re-checks, full reports, and MCP in Cursor.',
+    cta: 'Start Builder — $29/mo founding',
+    plan: 'BUILDER' as const,
+  },
+  compare_flat: {
+    headline: 'Unlock full prompts to fix what remains',
+    body: 'Builder shows every issue and agent-ready area prompts so your editor can close the gaps.',
+    cta: 'Upgrade to Builder — $29/mo founding',
+    plan: 'BUILDER' as const,
+  },
+  trial_exhausted: {
+    headline: "You've used your free re-check",
+    body: 'Upgrade to Builder for unlimited re-checks and before/after comparisons on every ship.',
+    cta: 'Upgrade to Builder — $29/mo founding',
+    plan: 'BUILDER' as const,
+  },
+  share_blocked: {
+    headline: 'Share client report links on Team',
+    body: 'Send read-only audit links to stakeholders before your next client call.',
+    cta: 'Start Team — $199/mo',
+    plan: 'TEAM' as const,
+  },
+  free_default: {
+    headline: 'Unlock full reports + re-check',
+    body: 'Upgrade to see all findings and re-check after fixes.',
+    cta: 'Upgrade to Builder — $29/mo founding',
+    plan: 'BUILDER' as const,
+  },
+} as const
+
 export const AUDIT_PROGRESS = {
   capturing: 'Taking screenshots...',
   checking: 'Running automated checks across performance, SEO, accessibility, and more...',
@@ -336,6 +484,8 @@ export const AUDIT_PROGRESS = {
   completed: 'Report ready',
   inProgress: 'Auditing your site...',
   usuallyUnder: 'Usually under 60 seconds',
+  workerQueuedWarning:
+    'Audit is still queued. In local dev, run npm run dev:all so the worker processes jobs.',
   stages: [
     { status: 'QUEUED', label: 'Starting audit', subtitle: 'Preparing your report...' },
     { status: 'CAPTURING', label: 'Capturing your page', subtitle: 'Desktop and mobile screenshots...' },
@@ -357,15 +507,15 @@ export const AUDIT_PROGRESS = {
     'Cross-checking accessibility on forms and navigation...',
     'Summarizing findings for your fix prompts...',
     'Prioritizing issues by launch impact...',
-    'Preparing your graded report...',
+    'Preparing your report...',
   ],
 } as const
 
 export const SEO = {
   home: {
-    title: 'Check your site before you ship',
+    title: 'AI reviews your site like a person would',
     description:
-      'Paste any public URL. Graded on performance, SEO, mobile, conversion, and trust. Every finding includes a fix prompt for Cursor, Claude, Lovable, and Bolt.',
+      'Screenshots, automated checks, and an AI judge. Every issue includes a fix prompt. Free first audit.',
   },
   pricing: {
     title: 'Pricing',
@@ -386,6 +536,14 @@ export const SEO = {
     title: 'FAQ',
     description:
       'Answers about QualityOS audits, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+  },
+  privacy: {
+    title: 'Privacy Policy',
+    description: 'How QualityOS collects and uses your data.',
+  },
+  terms: {
+    title: 'Terms of Service',
+    description: 'Terms for using QualityOS.',
   },
 } as const
 

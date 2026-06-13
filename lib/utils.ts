@@ -7,24 +7,48 @@ export function cn(...inputs: ClassValue[]) {
 
 export function gradeColor(grade: string): string {
   const map: Record<string, string> = {
-    A: 'text-green-600 bg-green-50 border-green-200',
-    B: 'text-lime-600 bg-lime-50 border-lime-200',
-    C: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-    D: 'text-orange-600 bg-orange-50 border-orange-200',
-    F: 'text-red-600 bg-red-50 border-red-200',
+    A: 'text-grade-A bg-grade-A/10 border-grade-A/25',
+    B: 'text-grade-B bg-grade-B/10 border-grade-B/25',
+    C: 'text-grade-C bg-grade-C/10 border-grade-C/25',
+    D: 'text-grade-D bg-grade-D/10 border-grade-D/25',
+    F: 'text-grade-F bg-grade-F/10 border-grade-F/25',
   }
-  return map[grade] ?? 'text-gray-600 bg-gray-50 border-gray-200'
+  return map[grade] ?? 'text-muted-foreground bg-muted border-border'
 }
 
 export function severityColor(severity: string): string {
   const map: Record<string, string> = {
-    CRITICAL: 'text-red-700 bg-red-100',
-    HIGH: 'text-orange-700 bg-orange-100',
-    MEDIUM: 'text-yellow-700 bg-yellow-100',
-    LOW: 'text-blue-700 bg-blue-100',
-    INFO: 'text-gray-700 bg-gray-100',
+    CRITICAL: 'text-destructive bg-destructive/12',
+    HIGH: 'text-grade-D bg-grade-D/12',
+    MEDIUM: 'text-grade-C bg-grade-C/12',
+    LOW: 'text-blue-600 bg-blue-500/12 dark:text-blue-400',
+    INFO: 'text-muted-foreground bg-muted',
   }
-  return map[severity] ?? 'text-gray-700 bg-gray-100'
+  return map[severity] ?? 'text-muted-foreground bg-muted'
+}
+
+const SEVERITY_ORDER: Record<string, number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+  INFO: 4,
+}
+
+const GRADE_ORDER: Record<string, number> = {
+  F: 0,
+  D: 1,
+  C: 2,
+  B: 3,
+  A: 4,
+}
+
+export function severityRank(severity: string): number {
+  return SEVERITY_ORDER[severity] ?? 99
+}
+
+export function gradeRank(grade: string): number {
+  return GRADE_ORDER[grade] ?? 99
 }
 
 export function areaLabel(name: string): string {

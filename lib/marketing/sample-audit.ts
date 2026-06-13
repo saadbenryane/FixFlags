@@ -12,7 +12,7 @@ export const SAMPLE_STRIPE_AUDIT = {
     },
     {
       device: 'MOBILE' as const,
-      url: 'https://image.thum.io/get/width/375/crop/800/https://stripe.com',
+      url: 'https://image.thum.io/get/width/375/noanimate/https://stripe.com',
     },
   ],
   areas: [
@@ -37,8 +37,30 @@ export const SAMPLE_STRIPE_AUDIT = {
           whyItMatters:
             'Each millisecond of render delay increases bounce rate on high-intent landing pages. Developer audiences are especially sensitive to perceived speed.',
           fix: 'Add defer or async attributes to non-critical third-party scripts, or load them after window.load via a small loader snippet.',
-          agentPrompt:
-            'On stripe.com homepage, defer loading of analytics.js, segment.io, and Hotjar until after the hero section paints. Use async/defer attributes or a post-load loader. Do not block LCP.',
+        },
+        {
+          id: 'sample-stripe-perf-2',
+          severity: 'INFO',
+          problem: 'Preconnect hints missing for CDN origins',
+          evidence: 'No rel=preconnect for cdn.stripe.com in document head.',
+          whyItMatters: 'DNS + TLS setup for CDN assets can add latency on first paint.',
+          fix: 'Add preconnect links for primary CDN and font origins used above the fold.',
+        },
+        {
+          id: 'sample-stripe-perf-3',
+          severity: 'INFO',
+          problem: 'Hero image lacks explicit dimensions',
+          evidence: 'Largest hero visual has no width/height attributes, contributing to minor CLS risk.',
+          whyItMatters: 'Layout shift during load hurts perceived quality on marketing pages.',
+          fix: 'Set width and height on hero imagery or reserve aspect-ratio in CSS.',
+        },
+        {
+          id: 'sample-stripe-perf-4',
+          severity: 'LOW',
+          problem: 'Unused CSS bundle on homepage',
+          evidence: 'Coverage report shows ~12% of CSS rules unused on initial navigation.',
+          whyItMatters: 'Extra CSS bytes slow first load on mobile networks.',
+          fix: 'Split critical CSS for above-the-fold content and defer non-critical styles.',
         },
       ],
     },
@@ -105,8 +127,6 @@ export const SAMPLE_STRIPE_AUDIT = {
           whyItMatters:
             'Choice overload slows decision-making for first-time visitors who haven\'t yet formed a mental model of Stripe\'s product suite.',
           fix: 'Group related items under fewer top-level categories, or add a "Getting started" path that surfaces the 3–4 most common entry points.',
-          agentPrompt:
-            'Simplify stripe.com homepage navigation for first-time visitors. Reduce visible top-level items from 22 to 5–6 grouped categories. Add a "Getting started" dropdown with the most common paths: Payments, Billing, Connect, and Docs.',
         },
       ],
     },
@@ -129,8 +149,6 @@ export const SAMPLE_STRIPE_AUDIT = {
           whyItMatters:
             'Janky first impressions on mobile reduce trust for a payments brand where reliability is the core promise.',
           fix: 'Use prefers-reduced-motion to disable the animation, or replace CSS gradient animation with a static gradient on viewports under 768px.',
-          agentPrompt:
-            'On stripe.com mobile homepage, disable or simplify the hero gradient CSS animation on viewports under 768px and when prefers-reduced-motion is set. Replace with a static gradient to eliminate frame drops on low-end devices.',
         },
       ],
     },

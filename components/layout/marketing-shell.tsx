@@ -1,5 +1,4 @@
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
+import { SiteShell } from '@/components/layout/site-shell'
 import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 
 interface MarketingShellProps {
@@ -8,10 +7,8 @@ interface MarketingShellProps {
 
 export function MarketingShell({ children }: MarketingShellProps) {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header right={<MarketingHeaderAuth />} />
-      <div className="flex-1">{children}</div>
-      <Footer />
-    </div>
+    <SiteShell variant="marketing" headerRight={<MarketingHeaderAuth />}>
+      {children}
+    </SiteShell>
   )
 }

@@ -1,4 +1,4 @@
-import { Audit, User } from '@prisma/client'
+import { Audit } from '@prisma/client'
 
 const FREE_FINDING_LIMIT = 3
 
@@ -20,10 +20,6 @@ export function canManageAudit(
 ): boolean {
   if (!audit.userId) return false
   return sessionUser?.id === audit.userId
-}
-
-export function isPaidUser(user: Pick<User, 'plan'> | null | undefined): boolean {
-  return !!user && user.plan !== 'FREE'
 }
 
 interface FindingRow {
@@ -73,8 +69,9 @@ export function gateAuditResponse<T extends {
         agentPrompt: null,
         cursorPrompt: null,
         claudePrompt: null,
-        lovablePrompt: null,
-        boltPrompt: null,
+        // Keep no-code-builder prompts on free tier — primary ICP uses Lovable/Bolt
+        lovablePrompt: f.lovablePrompt ?? null,
+        boltPrompt: f.boltPrompt ?? null,
         verificationRule: null,
       })),
       cursorPrompt: null,

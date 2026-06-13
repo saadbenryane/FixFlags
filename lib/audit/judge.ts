@@ -145,6 +145,8 @@ function normalizeJudgeOutput(raw: unknown): unknown {
 
   return {
     ...data,
+    newFindings: Array.isArray(data.newFindings) ? data.newFindings : [],
+    enrichments: Array.isArray(data.enrichments) ? data.enrichments : [],
     areas: data.areas.map((area) => {
       if (!area || typeof area !== 'object') return area
       const row = area as Record<string, unknown>

@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { registerAllTools, validateApiKey } from '@/lib/mcp/tools'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -16,32 +15,43 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
+  const abortController = new AbortController()
+
+  req.signal.addEventListener('abort', () => abortController.abort(), { once: true })
 
   const server = new McpServer({ name: 'qualityos', version: '1.0.0' })
   registerAllTools(server, user)
 
-  // Use in-memory transport pair to process a single request
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-
   await server.connect(serverTransport)
 
-  // Collect the response from the server
   let responseMessage: unknown = null
-  const originalOnMessage = clientTransport.onmessage
 
   await new Promise<void>((resolve) => {
     clientTransport.onmessage = (message) => {
       responseMessage = message
       resolve()
     }
-    // Send the request through the client transport
+
     clientTransport.send(body).catch(() => resolve())
-    // Timeout after 50s
-    setTimeout(resolve, 50_000)
+
+    const timeout = setTimeout(resolve, 50_000)
+    abortController.signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timeout)
+        resolve()
+      },
+      { once: true }
+    )
   })
 
   if (responseMessage) {
     return Response.json(responseMessage)
+  }
+
+  if (abortController.signal.aborted) {
+    return Response.json({ error: 'Client disconnected' }, { status: 499 })
   }
 
   return Response.json({ error: 'No response from MCP server' }, { status: 500 })

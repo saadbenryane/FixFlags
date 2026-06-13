@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { FindingStatus, Severity } from '@prisma/client'
+import { buildAiFindingMatchKey } from '@/lib/audit/validate-judge-output'
 
 const severityRank: Record<Severity, number> = {
   CRITICAL: 5,
@@ -9,25 +10,39 @@ const severityRank: Record<Severity, number> = {
   INFO: 1,
 }
 
+type FindingRow = {
+  id: string
+  checkId: string | null
+  problem: string
+  area: string
+  severity: Severity
+  status: FindingStatus
+}
+
+function findingMatchKey(f: Pick<FindingRow, 'checkId' | 'problem' | 'area'>): string {
+  if (f.checkId) return `check:${f.checkId}`
+  return buildAiFindingMatchKey(f.problem, f.area)
+}
+
 export async function diffFindingsAgainstParent(
   recheckAuditId: string,
   parentAuditId: string
 ): Promise<void> {
   const [parentFindings, recheckFindings] = await Promise.all([
     prisma.finding.findMany({
-      where: { auditId: parentAuditId, checkId: { not: null } },
+      where: { auditId: parentAuditId },
     }),
     prisma.finding.findMany({
-      where: { auditId: recheckAuditId, checkId: { not: null } },
+      where: { auditId: recheckAuditId },
     }),
   ])
 
-  const recheckByCheckId = new Map(recheckFindings.map((f) => [f.checkId!, f]))
+  const recheckByKey = new Map(recheckFindings.map((f) => [findingMatchKey(f), f]))
   const updates: Array<{ id: string; data: { status: FindingStatus; resolvedInId?: string } }> = []
 
   for (const parentFinding of parentFindings) {
-    const checkId = parentFinding.checkId!
-    const recheckFinding = recheckByCheckId.get(checkId)
+    const key = findingMatchKey(parentFinding)
+    const recheckFinding = recheckByKey.get(key)
 
     if (!recheckFinding) {
       updates.push({
@@ -62,17 +77,17 @@ export async function diffFindingsAgainstParent(
 export async function getFindingDiffSummary(beforeId: string, afterId: string) {
   const [afterFindings, parentFindings] = await Promise.all([
     prisma.finding.findMany({
-      where: { auditId: afterId, checkId: { not: null } },
+      where: { auditId: afterId },
       select: { checkId: true, status: true, problem: true, area: true, severity: true },
     }),
     prisma.finding.findMany({
-      where: { auditId: beforeId, checkId: { not: null } },
+      where: { auditId: beforeId },
       select: { checkId: true, status: true, problem: true, area: true, severity: true },
     }),
   ])
 
-  const afterByCheckId = new Map(afterFindings.map((f) => [f.checkId!, f]))
-  const parentByCheckId = new Map(parentFindings.map((f) => [f.checkId!, f]))
+  const afterByKey = new Map(afterFindings.map((f) => [findingMatchKey(f), f]))
+  const parentByKey = new Map(parentFindings.map((f) => [findingMatchKey(f), f]))
 
   const fixed: typeof afterFindings = []
   const unchanged: typeof afterFindings = []
@@ -80,7 +95,7 @@ export async function getFindingDiffSummary(beforeId: string, afterId: string) {
   const newIssues: typeof afterFindings = []
 
   for (const pf of parentFindings) {
-    const af = afterByCheckId.get(pf.checkId!)
+    const af = afterByKey.get(findingMatchKey(pf))
     if (!af) {
       fixed.push({ ...pf, status: 'FIXED' })
     } else if (af.status === 'REGRESSED') {
@@ -93,7 +108,7 @@ export async function getFindingDiffSummary(beforeId: string, afterId: string) {
   }
 
   for (const af of afterFindings) {
-    if (!parentByCheckId.has(af.checkId!)) {
+    if (!parentByKey.has(findingMatchKey(af))) {
       newIssues.push(af)
     }
   }

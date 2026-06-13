@@ -8,6 +8,7 @@ import { persistAuditResults } from './persist'
 import { diffFindingsAgainstParent } from './diff-findings'
 import { incrementUsageOnCompleteForAudit } from './usage'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
+import { validateAndRepairJudgeOutput } from './validate-judge-output'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { isR2Configured } from '@/lib/storage/r2'
 
@@ -17,7 +18,7 @@ function sanitizeAuditErrorMessage(message: string): string {
 
 async function runPostCompletionSteps(
   auditId: string,
-  audit: { userId: string | null; parentId: string | null },
+  audit: { userId: string | null; parentId: string | null; skipUsageCount?: boolean },
   judgeResult: {
     usage: { inputTokens: number; outputTokens: number; model: string }
   },
@@ -49,6 +50,15 @@ async function runPostCompletionSteps(
       await incrementUsageOnCompleteForAudit(auditId, audit.userId)
     } catch (err) {
       console.error(`Post-completion usage increment failed for audit ${auditId}:`, err)
+    }
+  }
+
+  if (audit.skipUsageCount && audit.parentId && audit.userId) {
+    try {
+      const { consumeTrialRecheckOnSuccess } = await import('@/lib/auth/entitlements')
+      await consumeTrialRecheckOnSuccess(audit.userId)
+    } catch (err) {
+      console.error(`Trial recheck consumption failed for audit ${auditId}:`, err)
     }
   }
 }
@@ -145,9 +155,11 @@ export async function runAudit(auditId: string): Promise<void> {
     throw err
   }
 
-  const storedPerformance = {
+  const storedPerformance: Record<string, unknown> = {
     desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
     mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
+    screenshotStatus:
+      screenshots.desktopUrl || screenshots.mobileUrl ? 'ok' : 'failed',
   }
 
   await prisma.audit.update({
@@ -228,6 +240,11 @@ export async function runAudit(auditId: string): Promise<void> {
     }
   }
 
+  judgeResult.output = validateAndRepairJudgeOutput(
+    judgeResult.output,
+    deterministicFindings
+  )
+
   await persistAuditResults(auditId, judgeResult.output, deterministicFindings, areaScores)
 
   const finished = await prisma.audit.findUnique({
@@ -241,7 +258,11 @@ export async function runAudit(auditId: string): Promise<void> {
 
   await runPostCompletionSteps(
     auditId,
-    { userId: audit.userId, parentId: audit.parentId },
+    {
+      userId: audit.userId,
+      parentId: audit.parentId,
+      skipUsageCount: audit.skipUsageCount,
+    },
     judgeResult,
     durationMs,
     pagespeedCalls

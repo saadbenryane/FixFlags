@@ -15,13 +15,13 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 }
 
 export function Heading({ as: Tag = "h2", className, ...props }: HeadingProps) {
-  const isDisplay = Tag === "h1"
+  const isDisplay = Tag === "h1" || Tag === "h2"
   return (
     <Tag
       className={cn(
         isDisplay
           ? "font-display font-normal leading-display tracking-display text-balance"
-          : "font-semibold leading-heading tracking-heading text-balance",
+          : "font-sans font-semibold leading-heading tracking-heading text-balance",
         headingStyles[Tag],
         className
       )}

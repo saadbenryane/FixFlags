@@ -1,12 +1,14 @@
 'use client'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { FindingCard } from './FindingCard'
 import { AreaPromptButton } from './AreaPromptButton'
-import { cn, gradeColor, areaLabel } from '@/lib/utils'
+import { GradeBadge } from './GradeBadge'
+import { areaLabel } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
-import { UPSELLS } from '@/lib/marketing/copy-client'
+import { UPSELLS } from '@/lib/marketing/copy'
 import { FREE_FINDING_LIMIT } from '@/lib/audit/access'
 
 interface Finding {
@@ -45,36 +47,41 @@ interface Props {
   showFeedback?: boolean
 }
 
-export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedback = true }: Props) {
+export function AreaCard({
+  area,
+  isPaid = false,
+  defaultOpen = false,
+  showFeedback = true,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen)
 
   const visibleFindings = isPaid
     ? area.findings
     : area.findings.slice(0, FREE_FINDING_LIMIT)
   const hiddenCount = area.findings.length - FREE_FINDING_LIMIT
+  const findingCount = area.findings.length
 
   return (
-    <Card>
+    <Card id={`area-${area.name}`} className="scroll-mt-24">
       <CardHeader className="pb-3">
         <button
           onClick={() => setOpen(!open)}
           className="flex items-start justify-between gap-4 text-left w-full"
         >
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div
-              className={cn(
-                'rounded-lg border-2 px-2.5 py-1 text-center shrink-0',
-                gradeColor(area.grade)
-              )}
-            >
-              <div className="text-xl font-bold leading-none">{area.grade}</div>
-              {area.score !== null && (
-                <div className="text-xs mt-0.5">{area.score}</div>
-              )}
-            </div>
+            <GradeBadge grade={area.grade} score={area.score} size="md" />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold">{areaLabel(area.name)}</div>
-              <p className="text-sm text-muted-foreground leading-snug mt-0.5">{area.summary}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold">{areaLabel(area.name)}</span>
+                {!open && findingCount > 0 && (
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                    {findingCount} finding{findingCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground leading-snug mt-0.5 text-pretty">
+                {area.summary}
+              </p>
             </div>
           </div>
           {open ? (
@@ -88,10 +95,7 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedba
       {open && (
         <CardContent className="pt-0 space-y-3">
           {area.findings.length > 0 && (
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground">
-                {area.findings.length} finding{area.findings.length !== 1 ? 's' : ''}
-              </span>
+            <div className="flex items-center justify-end flex-wrap gap-2">
               {isPaid ? (
                 <AreaPromptButton
                   areaPrompt={area.areaPrompt}
@@ -101,7 +105,10 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedba
                   boltPrompt={area.boltPrompt}
                 />
               ) : (
-                <Link href="/pricing" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
+                <Link
+                  href="/pricing"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1"
+                >
                   <Lock className="h-3 w-3" />
                   {UPSELLS.areaGate.areaPrompt}
                 </Link>
@@ -109,9 +116,14 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedba
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="rounded-lg overflow-hidden border border-border/60">
             {visibleFindings.map((finding) => (
-              <FindingCard key={finding.id} finding={finding} showFeedback={showFeedback} />
+              <FindingCard
+                key={finding.id}
+                finding={finding}
+                showFeedback={showFeedback}
+                variant="row"
+              />
             ))}
           </div>
 
@@ -120,15 +132,17 @@ export function AreaCard({ area, isPaid = false, defaultOpen = false, showFeedba
               <p className="text-sm font-medium">
                 {UPSELLS.areaGate.hiddenFindings(hiddenCount)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {UPSELLS.areaGate.upgradeBody}
-              </p>
+              <p className="text-xs text-muted-foreground">{UPSELLS.areaGate.upgradeBody}</p>
             </div>
           )}
 
-          {area.findings.length === 0 && (
-            <p className="text-sm text-green-600 font-medium">
-              ✓ No issues found in this area
+          {area.findings.length === 0 && area.grade === 'A' && (
+            <p className="text-sm text-grade-A font-medium">✓ No issues found in this area</p>
+          )}
+
+          {area.findings.length === 0 && area.grade !== 'A' && (
+            <p className="text-sm text-muted-foreground">
+              No individual findings listed — see the area summary above for what to improve.
             </p>
           )}
         </CardContent>

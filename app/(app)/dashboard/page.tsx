@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
@@ -5,29 +6,34 @@ import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
-import { Plus, ExternalLink } from 'lucide-react'
+import { Plus, ExternalLink, ArrowLeftRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
 import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
+import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
+import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { getEffectiveScanLimit, getPendingScanCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
-import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
-
-const AREA_ORDER = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']
+import { AREA_ORDER } from '@/lib/audit/constants'
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   const userId = session!.user.id
 
-  await claimAnonymousAudits(userId)
-
   const user = await prisma.user.findUnique({ where: { id: userId } })
 
   const audits = await prisma.audit.findMany({
-    where: { userId, status: 'COMPLETED' },
+    where: { userId, status: 'COMPLETED', parentId: null },
     include: {
       areas: {
         select: { name: true, grade: true },
+      },
+      rechecks: {
+        where: { status: 'COMPLETED' },
+        select: { id: true },
+        take: 1,
+        orderBy: { createdAt: 'desc' },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -41,20 +47,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 max-w-xs space-y-1">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <UsageMeter
-            used={used}
-            limit={isUnlimited ? null : effectiveLimit}
-            pending={pending}
-            plan={user?.plan ?? 'FREE'}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {user?.plan === 'FREE' && !isUnlimited && (
-            <UpgradeButton />
-          )}
+      <Suspense>
+        <DashboardCheckoutToast />
+      </Suspense>
+      <ClaimAnonymousAudits />
+      <PageHeader title="Dashboard">
+        <div className="flex items-center gap-2 shrink-0">
+          {user?.plan === 'FREE' && !isUnlimited && <UpgradeButton />}
           <Button asChild>
             <Link href="/">
               <Plus className="h-4 w-4 mr-2" />
@@ -62,6 +61,14 @@ export default async function DashboardPage() {
             </Link>
           </Button>
         </div>
+      </PageHeader>
+      <div className="flex-1 max-w-xs space-y-1 -mt-4">
+        <UsageMeter
+          used={used}
+          limit={isUnlimited ? null : effectiveLimit}
+          pending={pending}
+          plan={user?.plan ?? 'FREE'}
+        />
       </div>
 
       <div className="rounded-xl border p-4 bg-muted/20">
@@ -109,6 +116,12 @@ export default async function DashboardPage() {
                             {area.grade}
                           </div>
                         ))}
+                        {audit.rechecks.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
+                            <ArrowLeftRight className="h-3 w-3" />
+                            Compare
+                          </span>
+                        )}
                       </div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>

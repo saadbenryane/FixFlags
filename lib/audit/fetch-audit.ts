@@ -1,7 +1,8 @@
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { canAccessAudit, gateAuditResponse, isPaidUser } from '@/lib/audit/access'
+import { canAccessAudit, gateAuditResponse } from '@/lib/audit/access'
+import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
 
 export const auditFullInclude = {
   areas: {
@@ -35,13 +36,12 @@ export async function resolveSessionUser() {
   return auth.api.getSession({ headers: await headers() }).catch(() => null)
 }
 
-export async function resolveIsPaid(userId: string | undefined) {
-  if (!userId) return false
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true },
-  })
-  return isPaidUser(user)
+export async function resolveIsPaidForAudit(
+  audit: { userId: string | null; isPublic: boolean },
+  sessionUser?: { id: string } | null
+): Promise<boolean> {
+  const tier = await resolveReportTierForAudit(audit, sessionUser)
+  return tier === 'paid'
 }
 
 export async function getGatedAuditForRequest(id: string) {
@@ -56,7 +56,7 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'forbidden' as const }
   }
 
-  const isPaid = await resolveIsPaid(session?.user?.id)
+  const isPaid = await resolveIsPaidForAudit(audit, session?.user)
   const gated = gateAuditResponse(stripInternalAuditFields(audit), isPaid)
 
   return {

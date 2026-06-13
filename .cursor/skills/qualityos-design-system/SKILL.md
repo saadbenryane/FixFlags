@@ -11,15 +11,18 @@ Project tokens live in `lib/design/tokens.css` and `app/globals.css`. Read befor
 
 | Share | Token | Role |
 |-------|-------|------|
-| 60% | `--background`, `--muted`, `--border` | Warm stone surfaces — most of the screen |
-| 30% | `--foreground`, `--primary` | Ink structure — headings, primary buttons, body |
-| 10% | `--brand` (amber) | One accent — CTAs highlights, grades, focus rings, proof |
+| 60% | `--background`, `--muted` | Warm paper surfaces |
+| 30% | `--foreground`, `--primary` | Ink structure |
+| 10% | `--brand` (refined ochre) | CTAs, scores, focus — max 3× above fold |
 
 **Rules:**
+- Brand is ochre (28°), not neon amber
+- Depth via `--shadow-card` / `--shadow-raised`, not borders on cards
+- Section rhythm: `bg-muted/35` alternation, not `border-y`
 - Never add a second accent hue on marketing pages
-- `--brand` for interactive highlights; `--primary` for filled ink buttons
-- Test hierarchy in grayscale — if structure breaks, fix contrast before hue
-- Dark mode is re-authored, not inverted (see `.dark` in tokens.css)
+- Dark mode is re-authored, not inverted
+
+See also: [lean-visual.md](../qualityos-marketing/lean-visual.md) for borderless marketing rules.
 
 ## Kerning & letter-spacing
 
@@ -45,11 +48,13 @@ Use `text-wrap: balance` on headings, `text-wrap: pretty` on body paragraphs.
 
 ## Font stack
 
-- **Display:** Instrument Serif (`font-display`) — hero, section titles
-- **Body:** DM Sans 400/500/600/700 (`font-sans`)
-- **Mono:** JetBrains Mono — grades, labels, code blocks
+- **Display:** Fraunces variable (`font-display`, SOFT 50) — hero h1, section h2, logo
+- **Body:** Source Sans 3 400/500/600/700 (`font-sans`) — UI, paragraphs, forms
+- **Mono:** IBM Plex Mono 400/500 — grades, labels, code blocks
 
-Enable: `font-feature-settings: "kern" 1, "liga" 1, "calt" 1`
+Enable: `font-feature-settings: "kern" 1, "liga" 1, "calt" 1` + `font-optical-sizing: auto`
+
+**Avoid:** Instrument Serif, DM Sans, Inter, generic startup stacks. Do not tighten body tracking.
 
 ## Spacing (8px grid)
 

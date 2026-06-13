@@ -1,57 +1,59 @@
 /**
  * QualityOS design tokens
  *
- * Color: 60-30-10 rule — warm stone neutrals (60%), ink structure (30%), amber brand (10%)
- * Radius: concentric nesting — inner = outer − gap (see BetterCorners / Cloud Four)
- * Type: display serif + sans body + mono labels; kerning scales by size role
+ * Palette: warm paper neutrals (60%), ink structure (30%), ochre accent (10%)
+ * Depth: shadow-first — borders reserved for inputs and data tables only
+ * Type: Fraunces display + Source Sans 3 body + IBM Plex Mono labels
  */
 
 :root {
-  /* ── Color: 60% neutrals ── */
-  --background: 40 22% 98%;
-  --foreground: 24 12% 11%;
-  --card: 40 28% 99%;
-  --card-foreground: 24 12% 11%;
-  --muted: 35 18% 94%;
-  --muted-foreground: 24 7% 44%;
-  --border: 32 14% 87%;
+  /* ── Color: 60% neutrals (paper, not gray) ── */
+  --background: 42 26% 99%;
+  --foreground: 25 10% 13%;
+  --card: 42 32% 99.5%;
+  --card-foreground: 25 10% 13%;
+  --muted: 38 16% 96.5%;
+  --muted-foreground: 25 5% 44%;
+  --border: 36 10% 90%;
 
   /* ── Color: 30% structure (ink) ── */
-  --primary: 24 12% 11%;
-  --primary-foreground: 40 22% 98%;
-  --secondary: 35 16% 92%;
-  --secondary-foreground: 24 12% 11%;
+  --primary: 25 10% 13%;
+  --primary-foreground: 42 26% 99%;
+  --secondary: 38 14% 94%;
+  --secondary-foreground: 25 10% 13%;
 
-  /* ── Color: 10% brand accent (amber — ship / grade / action) ── */
-  --brand: 32 94% 42%;
-  --brand-foreground: 40 22% 98%;
-  --accent: 38 90% 94%;
-  --accent-foreground: 24 12% 11%;
-  --ring: 32 94% 42%;
+  /* ── Color: 10% accent (refined ochre — not neon amber) ── */
+  --brand: 28 62% 37%;
+  --brand-foreground: 42 26% 99%;
+  --accent: 36 40% 95%;
+  --accent-foreground: 25 10% 13%;
+  --ring: 28 62% 37%;
 
-  --popover: 40 28% 99%;
-  --popover-foreground: 24 12% 11%;
-  --input: 32 14% 87%;
+  --popover: 42 32% 99.5%;
+  --popover-foreground: 25 10% 13%;
+  --input: 36 10% 88%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 98%;
+  --success-muted: 142 76% 96%;
+  --success-border: 142 52% 85%;
 
-  /* ── Concentric radius scale ──
-     inner radius = outer radius − gap (padding between curves)
-     Ref: https://cloudfour.com/thinks/the-math-behind-nesting-rounded-corners/ */
-  --radius-input: 0.375rem; /* 6px — controls, small chips */
-  --radius-inner: 0.625rem; /* 10px — nested panels, grade badges */
-  --radius-modal: 0.875rem; /* 14px — dialogs, sheets */
-  --radius-outer: 1.25rem; /* 20px — cards, marketing panels */
+  /* ── Concentric radius ── */
+  --radius-input: 0.375rem;
+  --radius-inner: 0.625rem;
+  --radius-modal: 0.875rem;
+  --radius-outer: 1.25rem;
   --radius-card: var(--radius-outer);
-  --gap-nested-sm: 0.5rem; /* 8px */
-  --gap-nested-md: 0.75rem; /* 12px */
-  --gap-nested-lg: 1rem; /* 16px */
+  --gap-nested-sm: 0.5rem;
+  --gap-nested-md: 0.75rem;
+  --gap-nested-lg: 1rem;
   --radius-nested-sm: calc(var(--radius-outer) - var(--gap-nested-sm));
   --radius-nested-md: calc(var(--radius-outer) - var(--gap-nested-md));
   --radius-nested-lg: calc(var(--radius-outer) - var(--gap-nested-lg));
-  --radius: 0.575rem; /* legacy shadcn lg */
+  --radius: 0.575rem;
 
-  /* ── Typography scale ── */
+  /* ── Typography ── */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -62,34 +64,30 @@
   --text-4xl: 2.25rem;
   --text-5xl: 3rem;
 
-  /* Line-height: display needs air; body needs 1.5+ for readability */
-  --leading-display: 1.18;
+  --leading-display: 1.14;
   --leading-heading: 1.28;
-  --leading-body: 1.6;
-  --leading-relaxed: 1.65;
+  --leading-body: 1.62;
+  --leading-relaxed: 1.68;
 
-  /* Letter-spacing (kerning roles):
-     - Large display: subtle negative (optical tightening)
-     - Body: neutral (browser kerning ON)
-     - Uppercase labels: positive (required for legibility) */
-  --tracking-display: -0.012em;
-  --tracking-heading: -0.006em;
+  --tracking-display: -0.018em;
+  --tracking-heading: -0.008em;
   --tracking-body: 0;
-  --tracking-label: 0.12em;
+  --tracking-label: 0.1em;
 
-  --shadow-card: 0 1px 2px rgb(24 12% 11% / 0.04), 0 8px 24px -4px rgb(24 12% 11% / 0.07);
-  --shadow-card-hover: 0 2px 4px rgb(24 12% 11% / 0.05), 0 12px 32px -4px rgb(24 12% 11% / 0.1);
+  /* Shadow-first depth (no border crutch) */
+  --shadow-card: 0 1px 2px rgb(25 10% 13% / 0.03), 0 6px 20px -4px rgb(25 10% 13% / 0.06);
+  --shadow-card-hover: 0 2px 6px rgb(25 10% 13% / 0.04), 0 16px 36px -6px rgb(25 10% 13% / 0.09);
+  --shadow-raised: 0 12px 40px -12px rgb(25 10% 13% / 0.1);
 
-  --glass-bg-subtle: rgba(255, 255, 255, 0.45);
-  --glass-bg: rgba(255, 255, 255, 0.65);
-  --glass-bg-strong: rgba(255, 255, 255, 0.78);
-  --glass-bg-elevated: rgba(255, 255, 255, 0.82);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --overlay-pill-bg: rgba(255, 255, 255, 0.32);
-  --overlay-pill-border: rgba(255, 255, 255, 0.42);
-  --cover-gradient: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.9) 45%, transparent 90%);
+  --glass-bg-subtle: rgba(255, 252, 248, 0.55);
+  --glass-bg: rgba(255, 252, 248, 0.72);
+  --glass-bg-strong: rgba(255, 252, 248, 0.85);
+  --glass-bg-elevated: rgba(255, 252, 248, 0.92);
+  --glass-border: transparent;
+  --overlay-pill-bg: hsl(38 16% 96.5% / 0.9);
+  --overlay-pill-border: transparent;
+  --cover-gradient: linear-gradient(to top, #fffdf9 0%, rgba(255, 253, 249, 0.9) 45%, transparent 90%);
 
-  /* ── Terminal / code blocks ── */
   --terminal: 30 8% 10%;
   --terminal-foreground: 35 12% 82%;
   --terminal-muted: 30 6% 48%;
@@ -97,45 +95,50 @@
 }
 
 .dark {
-  --background: 24 12% 6%;
-  --foreground: 40 18% 96%;
-  --card: 24 10% 8%;
-  --card-foreground: 40 18% 96%;
-  --muted: 24 8% 14%;
-  --muted-foreground: 30 8% 62%;
-  --border: 24 8% 16%;
+  --background: 25 10% 6%;
+  --foreground: 40 16% 96%;
+  --card: 25 8% 8%;
+  --card-foreground: 40 16% 96%;
+  --muted: 25 6% 13%;
+  --muted-foreground: 30 6% 58%;
+  --border: 25 6% 15%;
 
-  --primary: 40 18% 96%;
-  --primary-foreground: 24 12% 8%;
-  --secondary: 24 8% 14%;
-  --secondary-foreground: 40 18% 96%;
+  --primary: 40 16% 96%;
+  --primary-foreground: 25 10% 8%;
+  --secondary: 25 6% 13%;
+  --secondary-foreground: 40 16% 96%;
 
-  --brand: 38 92% 50%;
-  --brand-foreground: 24 12% 8%;
-  --accent: 32 35% 12%;
-  --accent-foreground: 40 18% 96%;
-  --ring: 38 92% 50%;
+  --brand: 32 70% 48%;
+  --brand-foreground: 25 10% 8%;
+  --accent: 28 20% 12%;
+  --accent-foreground: 40 16% 96%;
+  --ring: 32 70% 48%;
 
-  --popover: 24 10% 8%;
-  --popover-foreground: 40 18% 96%;
-  --input: 24 8% 16%;
+  --popover: 25 8% 8%;
+  --popover-foreground: 40 16% 96%;
+  --input: 25 6% 15%;
   --destructive: 0 62% 40%;
   --destructive-foreground: 0 0% 98%;
+  --success: 142 70% 45%;
+  --success-foreground: 0 0% 98%;
+  --success-muted: 142 30% 12%;
+  --success-border: 142 35% 22%;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px -4px rgb(0 0 0 / 0.28);
-  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.25), 0 12px 32px -4px rgb(0 0 0 / 0.32);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.18), 0 6px 20px -4px rgb(0 0 0 / 0.24);
+  --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.22), 0 16px 36px -6px rgb(0 0 0 / 0.28);
+  --shadow-raised: 0 12px 40px -12px rgb(0 0 0 / 0.35);
 
-  --glass-bg-subtle: rgba(0, 0, 0, 0.35);
-  --glass-bg: rgba(0, 0, 0, 0.5);
-  --glass-bg-strong: rgba(0, 0, 0, 0.62);
-  --glass-bg-elevated: rgba(0, 0, 0, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --overlay-pill-bg: rgba(0, 0, 0, 0.34);
-  --overlay-pill-border: rgba(255, 255, 255, 0.2);
-  --cover-gradient: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 90%);
+  --glass-bg-subtle: rgba(12, 10, 9, 0.4);
+  --glass-bg: rgba(12, 10, 9, 0.55);
+  --glass-bg-strong: rgba(12, 10, 9, 0.68);
+  --glass-bg-elevated: rgba(12, 10, 9, 0.78);
+  --glass-border: transparent;
+  --overlay-pill-bg: hsl(25 6% 13% / 0.85);
+  --overlay-pill-border: transparent;
+  --cover-gradient: linear-gradient(to top, rgba(12, 10, 9, 0.88) 0%, rgba(12, 10, 9, 0.5) 45%, transparent 90%);
 
-  --terminal: 24 10% 6%;
+  --terminal: 25 10% 6%;
   --terminal-foreground: 35 14% 78%;
   --terminal-muted: 30 8% 52%;
-  --terminal-border: 24 8% 14%;
+  --terminal-border: 25 6% 14%;
 }

@@ -1,6 +1,18 @@
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from './db'
+import { Resend } from 'resend'
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'QualityOS <hello@qualityos.com>'
+
+function hasGoogleOAuth(): boolean {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+}
+
+function hasGithubOAuth(): boolean {
+  return !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET)
+}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -11,17 +23,33 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    sendResetPassword: async ({ user, url }) => {
+      if (!resend) {
+        throw new Error('Password reset email is not configured (RESEND_API_KEY missing)')
+      }
+      void resend.emails.send({
+        from: FROM_EMAIL,
+        to: user.email,
+        subject: 'Reset your QualityOS password',
+        html: `
+          <p>Hi${user.name ? ` ${user.name}` : ''},</p>
+          <p>Click the link below to reset your password. This link expires in one hour.</p>
+          <p><a href="${url}">Reset password</a></p>
+          <p>If you did not request this, you can ignore this email.</p>
+        `,
+      })
+    },
   },
   socialProviders: {
-    ...(process.env.GOOGLE_CLIENT_ID && {
+    ...(hasGoogleOAuth() && {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       },
     }),
-    ...(process.env.GITHUB_CLIENT_ID && {
+    ...(hasGithubOAuth() && {
       github: {
-        clientId: process.env.GITHUB_CLIENT_ID,
+        clientId: process.env.GITHUB_CLIENT_ID!,
         clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       },
     }),

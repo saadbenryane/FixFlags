@@ -1,5 +1,4 @@
 'use client'
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,22 +12,12 @@ import { Body, Heading, Muted } from '@/components/ui/typography'
 import { CheckCircle2 } from 'lucide-react'
 import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import { useMe } from '@/hooks/useMe'
 
 export function PricingPageClient() {
-  const [currentPlan, setCurrentPlan] = useState('FREE')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/me')
-      .then((res) => (res.ok ? res.json() : { user: null }))
-      .then((data) => {
-        if (data.user) {
-          setIsLoggedIn(true)
-          setCurrentPlan(data.user.plan ?? 'FREE')
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const { user } = useMe()
+  const currentPlan = user?.plan ?? 'FREE'
+  const isLoggedIn = !!user
 
   return (
     <Section spacing="default">
@@ -46,7 +35,7 @@ export function PricingPageClient() {
             <Card
               key={plan.name}
               className={cn(
-                plan.highlight && 'border-brand/40 shadow-card-hover ring-1 ring-brand/20'
+                plan.highlight && 'border-brand/40 shadow-card-hover bg-brand/[0.03]'
               )}
             >
               <CardHeader>

@@ -1,5 +1,6 @@
 import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
 import { uploadScreenshot } from '../storage/r2'
+import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 
 let browser: Browser | null = null
 
@@ -110,14 +111,14 @@ export async function captureScreenshots(
       b,
       url,
       auditId,
-      { width: 1280, height: 900, device: 'desktop', captureHtml: true },
+      { width: DESKTOP_VIEWPORT.width, height: DESKTOP_VIEWPORT.height, device: 'desktop', captureHtml: true },
       consoleErrors
     ),
     captureViewport(
       b,
       url,
       auditId,
-      { width: 375, height: 812, device: 'mobile', isMobile: true, deviceScaleFactor: 2 },
+      { width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height, device: 'mobile', isMobile: true, deviceScaleFactor: 2 },
       consoleErrors
     ),
   ])

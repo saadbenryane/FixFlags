@@ -92,6 +92,7 @@ model User {
   stripeSubscriptionId   String?   @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
+  freeRecheckUsedAt      DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   projects               Project[]
@@ -206,6 +207,7 @@ model Audit {
   rechecks Audit[] @relation("Rechecks")
 
   isPublic Boolean @default(false)
+  skipUsageCount Boolean @default(false)
 
   startedAt   DateTime?
   completedAt DateTime?

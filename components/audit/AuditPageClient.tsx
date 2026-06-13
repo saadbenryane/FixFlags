@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Container } from '@/components/ui/container'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy-client'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { parseApiErrorResponse } from '@/lib/api/errors'
 
@@ -55,6 +55,9 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   const desktopScreenshot = statusPayload?.screenshots?.find(
     (s) => s.device === 'DESKTOP'
+  )
+  const mobileScreenshot = statusPayload?.screenshots?.find(
+    (s) => s.device === 'MOBILE'
   )
 
   async function handleRetry() {
@@ -159,29 +162,35 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   return (
     <AuditShell session={session}>
-      <Container className="max-w-3xl py-8 space-y-8">
+      <Container className="max-w-4xl py-8 space-y-8">
         {inProgress && (
-          <div className="flex flex-col items-center py-12 space-y-6">
-            <h2 className="text-xl font-semibold">{AUDIT_PROGRESS.inProgress}</h2>
+          <div className="space-y-6 py-6 md:py-10">
+            <h2 className="text-xl font-semibold text-center md:text-left">
+              {AUDIT_PROGRESS.inProgress}
+            </h2>
             <AuditProgress
               status={status}
               progress={progress}
               url={url}
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}
+              mobileScreenshotUrl={mobileScreenshot?.url}
             />
           </div>
         )}
 
         {finishing && (
-          <div className="flex flex-col items-center py-12 space-y-6">
-            <h2 className="text-xl font-semibold">Preparing your report...</h2>
+          <div className="space-y-6 py-6 md:py-10">
+            <h2 className="text-xl font-semibold text-center md:text-left">
+              Preparing your report...
+            </h2>
             <AuditProgress
               status="COMPLETED"
               progress={100}
               url={url}
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}
+              mobileScreenshotUrl={mobileScreenshot?.url}
             />
           </div>
         )}

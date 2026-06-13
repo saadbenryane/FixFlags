@@ -45,6 +45,12 @@ const config: Config = {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+          muted: 'hsl(var(--success-muted))',
+          border: 'hsl(var(--success-border))',
+        },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
@@ -107,6 +113,7 @@ const config: Config = {
         lg: '0 10px 20px -5px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.08)',
         card: 'var(--shadow-card)',
         'card-hover': 'var(--shadow-card-hover)',
+        raised: 'var(--shadow-raised)',
         filterPill: '0 0 12px 0 rgb(0 0 0 / 0.06)',
       },
       zIndex: {

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     line_items: [{ price: priceId, quantity: 1 }],
     customer: user?.stripeCustomerId ?? undefined,
     customer_email: user?.stripeCustomerId ? undefined : session.user.email,
-    success_url: `${appUrl}/dashboard?upgraded=1`,
+    success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
     cancel_url: `${appUrl}/pricing`,
     metadata: {
       userId: session.user.id,

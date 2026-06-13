@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { formatUsd, sumEstimatedCost } from '@/lib/billing/costs'
 
 function startOf(daysAgo: number): Date {
@@ -100,6 +102,13 @@ export default async function AdminPage() {
             </Card>
           ))}
         </div>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold mb-3">Admin tools</h2>
+        <Button variant="outline" asChild>
+          <Link href="/admin/expert-reviews">Expert Review orders</Link>
+        </Button>
       </div>
 
       <div>

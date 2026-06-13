@@ -1,10 +1,15 @@
 'use client'
+
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { MCP_DOCS } from '@/lib/marketing/copy'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { useMe } from '@/hooks/useMe'
 
 interface ApiKey {
   id: string
@@ -15,18 +20,27 @@ interface ApiKey {
 }
 
 export default function ApiKeysPage() {
+  const { user, isLoading: meLoading } = useMe()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKeyName, setNewKeyName] = useState('')
   const [creating, setCreating] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const plan = user?.plan ?? 'FREE'
+  const canUseKeys = user?.entitlements?.canUseMcp ?? false
 
   useEffect(() => {
+    if (meLoading) return
     fetch('/api/api-keys')
-      .then((r) => r.json())
-      .then(setKeys)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((keyList) => {
+        if (Array.isArray(keyList)) setKeys(keyList)
+      })
       .catch(() => toast.error('Failed to load API keys'))
-  }, [])
+      .finally(() => setLoading(false))
+  }, [meLoading])
 
   async function createKey() {
     setCreating(true)
@@ -62,22 +76,38 @@ export default function ApiKeysPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">API Keys</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Use API keys to connect QualityOS to Claude Code, Cursor, or Windsurf via MCP.
-        </p>
-      </div>
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading...</p>
+  }
 
-      {newKey && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-3">
-          <p className="text-sm font-medium text-green-800">
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="API Keys"
+        description="Use API keys to connect QualityOS to Claude Code, Cursor, or Windsurf via MCP."
+      />
+
+      {!canUseKeys && (
+        <Card className="border-brand/30 bg-brand/5">
+          <CardContent className="space-y-3 py-5">
+            <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
+            <p className="text-sm text-muted-foreground">
+              Upgrade to Builder to generate API keys and audit from your editor.
+            </p>
+            <Button asChild size="sm">
+              <Link href="/pricing">Upgrade to Builder</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {canUseKeys && newKey && (
+        <div className="space-y-3 rounded-lg border border-success-border bg-success-muted p-4">
+          <p className="text-sm font-medium text-success">
             API key created — copy it now, you won&apos;t see it again
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-white border rounded px-3 py-2 font-mono break-all">
+            <code className="flex-1 break-all rounded border bg-background px-3 py-2 font-mono text-xs">
               {newKey}
             </code>
             <Button size="sm" variant="outline" onClick={() => copyKey(newKey)}>
@@ -90,60 +120,64 @@ export default function ApiKeysPage() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Create new key</CardTitle>
-          <CardDescription>Give it a name to remember where it&apos;s used</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g. Claude Code"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && createKey()}
-            />
-            <Button onClick={createKey} disabled={creating}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-2">
-        {keys.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No API keys yet</p>
-        ) : (
-          keys.map((key) => (
-            <div key={key.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{key.name}</div>
-                <code className="text-xs text-muted-foreground">{key.key}</code>
-              </div>
-              {key.lastUsed && (
-                <span className="text-xs text-muted-foreground shrink-0">
-                  Used {new Date(key.lastUsed).toLocaleDateString()}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => deleteKey(key.id)}
-                className="text-destructive hover:text-destructive shrink-0"
-              >
-                <Trash2 className="h-4 w-4" />
+      {canUseKeys && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Create new key</CardTitle>
+            <CardDescription>Give it a name to remember where it&apos;s used</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. Claude Code"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && createKey()}
+              />
+              <Button onClick={createKey} disabled={creating}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create
               </Button>
             </div>
-          ))
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {canUseKeys && (
+        <div className="space-y-2">
+          {keys.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No API keys yet</p>
+          ) : (
+            keys.map((key) => (
+              <div key={key.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{key.name}</div>
+                  <code className="text-xs text-muted-foreground">{key.key}</code>
+                </div>
+                {key.lastUsed && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    Used {new Date(key.lastUsed).toLocaleDateString()}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteKey(key.id)}
+                  className="shrink-0 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       <div className="text-center text-sm text-muted-foreground">
         See the{' '}
-        <a href="/docs/mcp" className="text-primary hover:underline">
+        <Link href="/docs/mcp" className="text-primary hover:underline">
           MCP setup guide
-        </a>{' '}
+        </Link>{' '}
         to connect your key to Claude Code, Cursor, or Windsurf.
       </div>
     </div>

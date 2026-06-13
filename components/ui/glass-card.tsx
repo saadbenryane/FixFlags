@@ -2,7 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-const glassCardVariants = cva("rounded-card border border-border/50", {
+const glassCardVariants = cva("rounded-card border-0 shadow-card", {
   variants: {
     variant: {
       subtle: "bg-[var(--glass-bg-subtle)]",

@@ -4,9 +4,10 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { handleRouteError } from '@/lib/api/errors'
 import { isAdminUser, getScanUsage } from '@/lib/auth/permissions'
+import { getEntitlements } from '@/lib/auth/entitlements'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
@@ -14,7 +15,10 @@ export async function GET() {
       return NextResponse.json({ user: null })
     }
 
-    await claimAnonymousAudits(session.user.id)
+    const shouldClaim = new URL(request.url).searchParams.get('claim') === '1'
+    const claimedCount = shouldClaim
+      ? await claimAnonymousAudits(session.user.id)
+      : 0
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -25,6 +29,7 @@ export async function GET() {
         role: true,
         auditsUsed: true,
         auditsLimit: true,
+        freeRecheckUsedAt: true,
       },
     })
 
@@ -39,7 +44,15 @@ export async function GET() {
       auditsLimit: user.auditsLimit,
     })
 
+    const entitlements = getEntitlements({
+      id: session.user.id,
+      role: user.role,
+      plan: user.plan,
+      freeRecheckUsedAt: user.freeRecheckUsedAt,
+    })
+
     return NextResponse.json({
+      claimedCount,
       user: {
         id: session.user.id,
         email: user.email ?? session.user.email,
@@ -48,6 +61,7 @@ export async function GET() {
         role: user.role,
         isAdmin: isAdminUser({ id: session.user.id, role: user.role }),
         tokens,
+        entitlements,
       },
     })
   } catch (err) {

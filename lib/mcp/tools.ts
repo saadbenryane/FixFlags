@@ -4,8 +4,11 @@ import { prisma } from '../db'
 import { User } from '@prisma/client'
 import { createAndEnqueueAudit } from '../audit/create-audit'
 import { reserveUserAuditSlot } from '../audit/usage'
+import { startRecheckAudit } from '../audit/recheck'
 import { getFindingDiffSummary } from '../audit/diff-findings'
-import { canAccessPaidFeatures, canUseApiKeys } from '../auth/permissions'
+import { pollAuditUntilDone } from '../audit/poll-audit'
+import { AREA_ORDER } from '../audit/constants'
+import { canUseApiKeys } from '../auth/permissions'
 
 async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
@@ -19,6 +22,16 @@ async function assertUserCanAudit(user: User): Promise<void> {
   const check = await reserveUserAuditSlot(user.id)
   if (!check.allowed) throw new Error(check.error ?? 'Audit limit reached')
 }
+
+const areaEnum = z.enum([
+  AREA_ORDER[0],
+  AREA_ORDER[1],
+  AREA_ORDER[2],
+  AREA_ORDER[3],
+  AREA_ORDER[4],
+  AREA_ORDER[5],
+  AREA_ORDER[6],
+])
 
 export function registerAllTools(server: McpServer, user: User) {
   // qos_audit_url
@@ -35,13 +48,10 @@ export function registerAllTools(server: McpServer, user: User) {
 
       const { auditId } = await createAndEnqueueAudit({ url, userId: freshUser.id })
 
+      let status = 'QUEUED'
       if (waitForCompletion) {
-        const start = Date.now()
-        while (Date.now() - start < 90_000) {
-          await new Promise((r) => setTimeout(r, 3000))
-          const updated = await prisma.audit.findUnique({ where: { id: auditId } })
-          if (updated?.status === 'COMPLETED' || updated?.status === 'FAILED') break
-        }
+        const result = await pollAuditUntilDone({ auditId })
+        status = result.status
       }
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://qualityos.com'
@@ -51,7 +61,7 @@ export function registerAllTools(server: McpServer, user: User) {
             type: 'text' as const,
             text: JSON.stringify({
               auditId,
-              status: 'QUEUED',
+              status,
               reportUrl: `${appUrl}/audit/${auditId}`,
             }),
           },
@@ -68,9 +78,13 @@ export function registerAllTools(server: McpServer, user: User) {
     async ({ auditId }) => {
       const audit = await prisma.audit.findUnique({
         where: { id: auditId },
-        select: { id: true, status: true, url: true, createdAt: true },
+        select: { id: true, status: true, url: true, createdAt: true, userId: true, isPublic: true },
       })
       if (!audit) throw new Error('Audit not found')
+      const { canAccessAudit } = await import('@/lib/audit/access')
+      if (!canAccessAudit(audit, { id: user.id })) {
+        throw new Error('You do not have access to this audit')
+      }
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(audit) }],
       }
@@ -135,7 +149,7 @@ export function registerAllTools(server: McpServer, user: User) {
     'Get detailed findings and fix prompt for a specific quality area',
     {
       auditId: z.string(),
-      area: z.enum(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']),
+      area: areaEnum,
       tool: z.enum(['generic', 'cursor', 'claude', 'lovable', 'bolt']).optional(),
     },
     async ({ auditId, area, tool = 'generic' }) => {
@@ -237,35 +251,24 @@ export function registerAllTools(server: McpServer, user: User) {
     async ({ parentAuditId, waitForCompletion }) => {
       await assertMcpAccess(user)
 
-      const parent = await prisma.audit.findUnique({ where: { id: parentAuditId } })
-      if (!parent) throw new Error('Parent audit not found')
-      if (parent.userId !== user.id) {
-        throw new Error('You can only re-check your own audits')
+      const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
+      if (!freshUser) throw new Error('User not found')
+
+      const outcome = await startRecheckAudit(parentAuditId, freshUser)
+      if (!outcome.ok) {
+        throw new Error(outcome.error)
       }
 
-      if (!canAccessPaidFeatures(user)) {
-        throw new Error('Upgrade to Builder to use re-check')
-      }
+      const { auditId } = outcome.result
 
-      await assertUserCanAudit(user)
-
-      const { auditId } = await createAndEnqueueAudit({
-        url: parent.url,
-        userId: user.id,
-        parentId: parentAuditId,
-      })
-
+      let status = 'QUEUED'
       if (waitForCompletion) {
-        const start = Date.now()
-        while (Date.now() - start < 90_000) {
-          await new Promise((r) => setTimeout(r, 3000))
-          const updated = await prisma.audit.findUnique({ where: { id: auditId } })
-          if (updated?.status === 'COMPLETED' || updated?.status === 'FAILED') break
-        }
+        const result = await pollAuditUntilDone({ auditId })
+        status = result.status
       }
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ auditId, status: 'QUEUED' }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ auditId, status }) }],
       }
     }
   )

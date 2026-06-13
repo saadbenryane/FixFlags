@@ -13,11 +13,17 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     font-kerning: normal;
+    font-optical-sizing: auto;
     letter-spacing: var(--tracking-body);
     line-height: var(--leading-body);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  .font-display {
+    font-variation-settings: "SOFT" 50, "WONK" 0;
+    font-optical-sizing: auto;
   }
 
   h1, h2, h3, h4 {
@@ -57,14 +63,15 @@
   }
 
   .surface-card {
-    @apply rounded-card shadow-card glass-surface border border-border/50;
+    @apply rounded-card bg-card shadow-card;
+  }
+
+  .surface-raised {
+    @apply rounded-card bg-card shadow-card transition-shadow duration-300 hover:shadow-card-hover;
   }
 
   .overlay-pill-glass {
     background: var(--overlay-pill-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-color: var(--overlay-pill-border);
   }
 
   .link-underline-grow {
@@ -81,12 +88,12 @@
   }
 
   .section-label {
-    @apply font-mono text-[11px] uppercase text-muted-foreground;
+    @apply font-mono text-[11px] uppercase text-muted-foreground/80;
     letter-spacing: var(--tracking-label);
   }
 
   .marketing-panel {
-    @apply rounded-card border border-border/60 bg-card/80 shadow-card backdrop-blur-sm;
+    @apply rounded-card bg-card shadow-card;
   }
 
   .rounded-nested-md {

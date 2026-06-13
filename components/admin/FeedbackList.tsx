@@ -1,6 +1,7 @@
 'use client'
 import { Badge } from '@/components/ui/badge'
-import { cn, severityColor, areaLabel } from '@/lib/utils'
+import { SeverityBadge } from '@/components/audit/SeverityBadge'
+import { areaLabel } from '@/lib/utils'
 
 interface FeedbackItem {
   key: string
@@ -23,7 +24,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
         <div key={item.key} className="rounded-lg border bg-card p-4 space-y-2">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={cn('text-xs', severityColor(item.severity))}>{item.severity}</Badge>
+              <SeverityBadge severity={item.severity} />
               <Badge variant="outline" className="text-xs">{areaLabel(item.area)}</Badge>
               {item.checkId && (
                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{item.checkId}</code>

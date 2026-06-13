@@ -1,4 +1,5 @@
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
+import { AREA_ORDER } from '@/lib/audit/constants'
 
 interface AreaData {
   name: string
@@ -20,8 +21,6 @@ interface Props {
   beforeAreas: AreaData[]
   afterAreas: AreaData[]
 }
-
-const AREA_ORDER = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']
 
 const gradeValue: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, F: 1 }
 
