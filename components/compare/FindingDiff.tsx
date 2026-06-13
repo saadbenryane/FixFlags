@@ -30,7 +30,7 @@ export function FindingDiff({ fixed, regressed, newIssues }: Props) {
         <DiffSection title="Regressed" items={regressed} className="text-destructive border-destructive/30" />
       )}
       {newIssues.length > 0 && (
-        <DiffSection title="New issues" items={newIssues} className="text-amber-600 border-amber-200" />
+        <DiffSection title="New issues" items={newIssues} className="text-brand border-brand/30" />
       )}
     </div>
   )

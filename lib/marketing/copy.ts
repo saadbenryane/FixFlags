@@ -6,6 +6,8 @@
  * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
  */
 
+import { getMarketingPlans } from '@/lib/billing/plans'
+
 export const BRAND = {
   name: 'QualityOS',
   tagline: 'Check your site before you ship',
@@ -23,6 +25,9 @@ export const AUDIT_CATEGORIES =
 
 export const HERO = {
   headline: 'Check your site before you ship',
+  headlineLine1: 'Check your site',
+  headlineLine2: 'before you ship',
+  headlineEmoji: '🚀',
   subhead:
     'Paste a URL. Get a graded report with evidence and fix prompts for your AI editor.',
   trustLine: 'Free. No account. Under 60 seconds.',
@@ -143,7 +148,7 @@ export const PRICING_TEASER = {
   plans: [
     { name: 'Free', outcome: 'See what\u2019s broken', price: '$0' },
     { name: 'Builder', outcome: 'Fix everything, re-check everything', price: '$49/mo' },
-    { name: 'Team', outcome: 'Monitor regressions across projects', price: '$199/mo' },
+    { name: 'Team', outcome: 'Organize audits across projects', price: '$199/mo' },
   ],
   cta: 'See full pricing',
 } as const
@@ -252,85 +257,11 @@ export const PRICING = {
     ],
     cta: 'Get Expert Review',
   },
-  allPlansInclude: 'All plans include evidence-backed findings and agent-ready prompts.',
+  allPlansInclude:
+    'All plans include evidence-backed findings. Free shows human fix text for top findings; Builder+ unlocks full agent-ready prompts.',
 } as const
 
-export const PLANS = [
-  {
-    name: 'Free',
-    plan: 'FREE' as const,
-    price: '$0',
-    period: '',
-    persona: 'Try before launch',
-    outcome: 'See what\u2019s broken',
-    audits: '3 audits total',
-    founding: undefined as string | undefined,
-    features: ['Top 3 findings per area', 'Copyable fix prompts', 'No credit card'],
-    cta: 'Get started free',
-    href: '/sign-up',
-    highlight: false,
-  },
-  {
-    name: 'Builder',
-    plan: 'BUILDER' as const,
-    price: '$49',
-    period: '/mo',
-    persona: 'Solo builders shipping weekly',
-    outcome: 'Fix everything, re-check everything',
-    audits: '25 / month',
-    founding: '$29/mo for 3 months',
-    features: [
-      'See every issue, not just the top 3',
-      'All area prompts',
-      'Prove your agent actually fixed it',
-      'Audit history',
-      'Audit from Cursor without switching tabs',
-    ],
-    cta: 'Start Builder',
-    href: '/sign-up?plan=BUILDER',
-    highlight: true,
-  },
-  {
-    name: 'Team',
-    plan: 'TEAM' as const,
-    price: '$199',
-    period: '/mo',
-    persona: 'Small teams with multiple sites',
-    outcome: 'Monitor regressions across projects',
-    audits: '100 / month',
-    founding: undefined as string | undefined,
-    features: [
-      'Everything in Builder',
-      '5 projects',
-      'Show stakeholders what improved',
-      'Get alerted when a deploy breaks quality',
-      'Priority queue',
-    ],
-    cta: 'Start Team',
-    href: '/sign-up?plan=TEAM',
-    highlight: false,
-  },
-  {
-    name: 'Studio',
-    plan: 'STUDIO' as const,
-    price: '$999',
-    period: '/mo',
-    persona: 'Agencies and dev shops',
-    outcome: 'Audit client sites at scale',
-    audits: '500 / month',
-    founding: '$499/mo for 3 months',
-    features: [
-      'Everything in Team',
-      '20 projects',
-      'Shareable public reports',
-      'Agency use',
-      'Priority support',
-    ],
-    cta: 'Start Studio',
-    href: '/sign-up?plan=STUDIO',
-    highlight: false,
-  },
-] as const
+export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
   subhead: 'This is what a completed QualityOS audit looks like.',
@@ -367,8 +298,8 @@ export const AUTH = {
     footerLink: 'Sign in',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Builder — full reports from day one',
-      TEAM: 'You\u2019re signing up for Team — monitoring and comparison included',
-      STUDIO: 'You\u2019re signing up for Studio — audit client sites at scale',
+      TEAM: 'You\u2019re signing up for Team — organize audits across up to 5 projects',
+      STUDIO: 'You\u2019re signing up for Studio — public sharing and up to 20 projects',
     },
   },
 } as const

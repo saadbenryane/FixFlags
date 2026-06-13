@@ -1,17 +1,15 @@
-import { AuditInput } from '@/components/audit/AuditInput'
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { HeroSection } from '@/components/marketing/HeroSection'
+import { SectionIntro } from '@/components/marketing/SectionIntro'
+import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
+import { ComparisonTable } from '@/components/marketing/ComparisonTable'
+import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
-import { GlassCard } from '@/components/ui/glass-card'
 import { Section } from '@/components/ui/section'
-import { Body, Heading, Muted } from '@/components/ui/typography'
+import { Body, Heading } from '@/components/ui/typography'
 import {
-  BRAND,
-  HERO,
-  HERO_PILLS,
-  SAMPLE_FINDINGS,
-  SAMPLE_FINDINGS_FOOTER,
   WORKFLOW_SECTION,
   WORKFLOW_STEPS,
   PROBLEM_SECTION,
@@ -29,126 +27,40 @@ import {
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import {
   ArrowRight,
-  CheckCircle2,
-  Zap,
   AlertTriangle,
   Search,
   TrendingDown,
   Plug,
 } from 'lucide-react'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 export const metadata = buildPageMetadata('home', '/')
 
 const PAIN_ICONS = [AlertTriangle, Search, TrendingDown]
 
-function AuditCtaBlock({
-  headline,
-  trustLine,
-}: {
-  headline: string
-  trustLine: string
-}) {
-  return (
-    <div className="flex flex-col items-center text-center space-y-4">
-      <Heading as="h2">{headline}</Heading>
-      <AuditInput />
-      <Muted>{trustLine}</Muted>
-    </div>
-  )
-}
-
 export default function HomePage() {
   return (
     <>
-      {/* Hero */}
-      <Section spacing="loose" className="flex flex-col items-center text-center space-y-8">
-        <Container className="flex flex-col items-center space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full border overlay-pill-glass px-3 py-1 text-xs text-muted-foreground">
-            <Zap className="h-3 w-3 text-primary" />
-            {BRAND.tribeBadge}
-          </div>
+      <HeroSection />
 
-          <div className="space-y-4 max-w-3xl">
-            <Heading as="h1">{HERO.headline}</Heading>
-            <Body className="max-w-2xl mx-auto text-muted-foreground">{HERO.subhead}</Body>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            {HERO_PILLS.map((item, i) => (
-              <span key={item} className="inline-flex items-center gap-4">
-                {i > 0 && <span className="hidden sm:inline text-border">·</span>}
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />
-                  {item}
-                </span>
-              </span>
-            ))}
-          </div>
-
-          <AuditInput />
-
-          <Muted>{HERO.trustLine}</Muted>
-
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/samples">
-              {HERO.secondaryCta}
-              <ArrowRight className="ml-2 h-3 w-3" />
-            </Link>
-          </Button>
-
-          {/* Sample findings teaser */}
-          <GlassCard variant="medium" className="w-full max-w-lg mt-4 overflow-hidden p-0">
-            <div className="border-b px-4 py-3 bg-muted/30 flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              <span className="text-xs text-muted-foreground ml-2">Sample audit results</span>
-            </div>
-            <div className="divide-y">
-              {SAMPLE_FINDINGS.map((f) => (
-                <div key={f.issue} className="flex items-center gap-3 px-4 py-3">
-                  <span
-                    className={`text-sm font-bold w-6 text-center rounded ${
-                      f.grade === 'D'
-                        ? 'text-orange-600'
-                        : f.grade === 'C'
-                          ? 'text-yellow-600'
-                          : 'text-lime-600'
-                    }`}
-                  >
-                    {f.grade}
-                  </span>
-                  <span className="text-xs text-muted-foreground w-16 shrink-0">{f.area}</span>
-                  <span className="text-sm">{f.issue}</span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t px-4 py-3 bg-muted/20 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-xs text-muted-foreground">{SAMPLE_FINDINGS_FOOTER}</span>
-            </div>
-          </GlassCard>
-        </Container>
-      </Section>
-
-      {/* Problem (PAS before solution) */}
+      {/* Problem */}
       <Section spacing="default">
-        <Container className="space-y-10">
-          <Heading as="h2" className="text-center">
-            {PROBLEM_SECTION.headline}
-          </Heading>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <Container className="space-y-12">
+          <SectionIntro label="The gap" headline={PROBLEM_SECTION.headline} />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {PROBLEM_SECTION.pains.map((pain, i) => {
               const Icon = PAIN_ICONS[i]
               return (
-                <Card key={pain.title}>
-                  <CardContent className="pt-6 space-y-2">
-                    <Icon className="h-5 w-5 text-primary" />
-                    <div className="font-semibold">{pain.title}</div>
-                    <p className="text-sm text-muted-foreground">{pain.body}</p>
-                  </CardContent>
-                </Card>
+                <div
+                  key={pain.title}
+                  className="marketing-panel group relative overflow-hidden p-6 transition-shadow duration-300 hover:shadow-card-hover"
+                >
+                  <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-brand/80 to-brand/20" />
+                  <Icon className="mb-4 h-5 w-5 text-brand" />
+                  <h3 className="text-lg font-semibold tracking-tight">{pain.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{pain.body}</p>
+                </div>
               )
             })}
           </div>
@@ -156,19 +68,21 @@ export default function HomePage() {
       </Section>
 
       {/* How it works */}
-      <Section spacing="default" className="bg-muted/20">
-        <Container className="space-y-10">
-          <Heading as="h2" className="text-center">
-            {WORKFLOW_SECTION.headline}
-          </Heading>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <Section spacing="default" className="border-y border-border/60 bg-muted/30">
+        <Container className="space-y-12">
+          <SectionIntro label="Workflow" headline={WORKFLOW_SECTION.headline} />
+          <div className="relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              aria-hidden
+              className="absolute left-[12.5%] right-[12.5%] top-4 hidden h-px bg-border lg:block"
+            />
             {WORKFLOW_STEPS.map((step) => (
-              <div key={step.step} className="space-y-2 text-center">
-                <div className="mx-auto w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+              <div key={step.step} className="relative space-y-3 text-center">
+                <div className="relative z-10 mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background font-mono text-sm font-semibold shadow-sm">
                   {step.step}
                 </div>
                 <div className="font-semibold">{step.title}</div>
-                <p className="text-sm text-muted-foreground">{step.body}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
               </div>
             ))}
           </div>
@@ -177,49 +91,31 @@ export default function HomePage() {
 
       {/* Differentiation */}
       <Section spacing="default">
-        <Container className="space-y-8">
-          <Heading as="h2" className="text-center">
-            {DIFFERENTIATION.headline}
-          </Heading>
-          <div className="overflow-x-auto rounded-card border bg-card shadow-card">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-4 font-medium" />
-                  <th className="p-4 font-medium text-muted-foreground">PageSpeed / Lighthouse</th>
-                  <th className="p-4 font-medium text-muted-foreground">Manual QA</th>
-                  <th className="p-4 font-medium text-primary">{BRAND.name}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {DIFFERENTIATION.rows.map((row) => (
-                  <tr key={row.feature} className="border-b last:border-0">
-                    <td className="p-4 font-medium">{row.feature}</td>
-                    <td className="p-4 text-center text-muted-foreground">{row.lighthouse}</td>
-                    <td className="p-4 text-center text-muted-foreground">{row.manual}</td>
-                    <td className="p-4 text-center font-medium text-primary">{row.qualityos}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Container className="space-y-10">
+          <SectionIntro label="Why us" headline={DIFFERENTIATION.headline} />
+          <ComparisonTable rows={DIFFERENTIATION.rows} />
         </Container>
       </Section>
 
       {/* Social proof */}
-      <Section spacing="default" className="bg-muted/20">
+      <Section spacing="default" className="bg-muted/30">
         <Container className="space-y-8">
-          <Heading as="h2" className="text-center">
-            {SOCIAL_PROOF.headline}
-          </Heading>
-          <div className="max-w-md mx-auto">
-            <Card interactive>
-              <CardContent className="pt-6 space-y-2">
-                <div className="flex items-center justify-between">
+          <SectionIntro label="Proof" headline={SOCIAL_PROOF.headline} />
+          <div className="mx-auto max-w-lg">
+            <Card interactive className="overflow-hidden border-border/60 shadow-card">
+              <CardContent className="space-y-4 p-0">
+                <div className="rounded-nested-top-md flex items-center justify-between border-b bg-muted/30 px-6 py-4">
                   <span className="font-semibold">{SOCIAL_PROOF.sample.name}</span>
-                  <span className="text-2xl font-bold text-primary">{SOCIAL_PROOF.sample.score}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-mono text-3xl font-bold tabular-nums text-brand">
+                      {SOCIAL_PROOF.sample.score}
+                    </span>
+                    <span className="text-xs text-muted-foreground">/100</span>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{SOCIAL_PROOF.sample.finding}</p>
+                <p className="px-6 pb-6 text-sm leading-relaxed text-muted-foreground">
+                  {SOCIAL_PROOF.sample.finding}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -236,22 +132,31 @@ export default function HomePage() {
 
       {/* Mid-page CTA */}
       <Section spacing="default">
-        <Container className="max-w-3xl">
+        <Container>
           <AuditCtaBlock headline={MID_CTA.headline} trustLine={MID_CTA.trustLine} />
         </Container>
       </Section>
 
-      {/* 7 Quality Areas */}
-      <Section spacing="default" className="bg-muted/20">
-        <Container className="space-y-8">
-          <Heading as="h2" className="text-center">
-            {QUALITY_AREAS_SECTION.headline}
-          </Heading>
+      {/* Quality areas */}
+      <Section spacing="default" className="border-y border-border/60 bg-muted/20">
+        <Container className="space-y-10">
+          <SectionIntro label="Coverage" headline={QUALITY_AREAS_SECTION.headline} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {QUALITY_AREAS.map((area) => (
-              <div key={area.name} className="rounded-lg border bg-card p-4 space-y-1 shadow-sm">
-                <div className="font-semibold">{area.name}</div>
-                <p className="text-sm text-muted-foreground">{area.impact}</p>
+            {QUALITY_AREAS.map((area, i) => (
+              <div
+                key={area.name}
+                className={cn(
+                  'marketing-panel flex gap-4 p-5',
+                  i % 2 === 1 && 'sm:translate-y-3'
+                )}
+              >
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="space-y-1">
+                  <div className="font-semibold">{area.name}</div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{area.impact}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -260,19 +165,16 @@ export default function HomePage() {
 
       {/* MCP */}
       <Section spacing="default">
-        <Container className="max-w-3xl space-y-6">
-          <div className="flex items-center gap-3 justify-center">
-            <Plug className="h-6 w-6 text-primary" />
+        <Container className="max-w-3xl space-y-8">
+          <div className="space-y-3 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Plug className="h-5 w-5 text-brand" />
+              <p className="section-label">MCP integration</p>
+            </div>
             <Heading as="h2">{MCP_SECTION.headline}</Heading>
+            <Body className="text-muted-foreground">{MCP_SECTION.body}</Body>
           </div>
-          <Body className="text-center text-muted-foreground">{MCP_SECTION.body}</Body>
-          <Card>
-            <CardContent className="pt-6">
-              <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                {MCP_SECTION.workflow}
-              </pre>
-            </CardContent>
-          </Card>
+          <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
           <div className="text-center">
             <Button variant="outline" asChild>
               <Link href="/docs/mcp">
@@ -285,25 +187,35 @@ export default function HomePage() {
       </Section>
 
       {/* Pricing teaser */}
-      <Section spacing="default" className="bg-muted/20">
-        <Container className="space-y-8">
-          <Heading as="h2" className="text-center">
-            {PRICING_TEASER.headline}
-          </Heading>
+      <Section spacing="default" className="bg-muted/30">
+        <Container className="space-y-10">
+          <SectionIntro label="Pricing" headline={PRICING_TEASER.headline} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {PRICING_TEASER.plans.map((plan) => (
-              <Card
-                key={plan.name}
-                interactive
-                className={plan.name === 'Builder' ? 'border-primary ring-2 ring-primary/20' : ''}
-              >
-                <CardContent className="pt-6 space-y-2 text-center">
-                  <div className="font-semibold">{plan.name}</div>
-                  <div className="text-2xl font-bold">{plan.price}</div>
-                  <p className="text-sm text-muted-foreground">{plan.outcome}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {PRICING_TEASER.plans.map((plan) => {
+              const highlighted = plan.name === 'Builder'
+              return (
+                <Card
+                  key={plan.name}
+                  interactive
+                  className={cn(
+                    'relative text-center transition-shadow',
+                    highlighted &&
+                      'border-brand/40 shadow-card-hover ring-1 ring-brand/20'
+                  )}
+                >
+                  {highlighted && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-label text-brand-foreground">
+                      Popular
+                    </span>
+                  )}
+                  <CardContent className="space-y-2 pt-8">
+                    <div className="font-semibold">{plan.name}</div>
+                    <div className="font-display text-3xl">{plan.price}</div>
+                    <p className="text-sm text-muted-foreground">{plan.outcome}</p>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
           <div className="text-center">
             <Button variant="outline" asChild>
@@ -320,8 +232,8 @@ export default function HomePage() {
       <Section spacing="default">
         <Container className="max-w-2xl">
           <FaqSection items={HOME_FAQ} title={FAQ_SECTION.title} />
-          <div className="text-center mt-6">
-            <Link href="/faq" className="text-sm text-primary link-underline-grow">
+          <div className="mt-6 text-center">
+            <Link href="/faq" className="text-sm text-brand link-underline-grow">
               {FAQ_SECTION.viewAll}
             </Link>
           </div>
@@ -329,12 +241,9 @@ export default function HomePage() {
       </Section>
 
       {/* Final CTA */}
-      <Section spacing="loose" className="bg-muted/20">
-        <Container className="max-w-3xl">
-          <AuditCtaBlock
-            headline={FINAL_CTA.headline}
-            trustLine={FINAL_CTA.trustLine}
-          />
+      <Section spacing="loose" className="border-t border-border/60 bg-muted/20">
+        <Container>
+          <AuditCtaBlock headline={FINAL_CTA.headline} trustLine={FINAL_CTA.trustLine} />
         </Container>
       </Section>
     </>

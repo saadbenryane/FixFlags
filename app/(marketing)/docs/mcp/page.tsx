@@ -2,6 +2,10 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Container } from '@/components/ui/container'
+import { Section } from '@/components/ui/section'
+import { Body, Heading } from '@/components/ui/typography'
+import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { MCP_DOCS, MCP_SECTION } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -54,21 +58,26 @@ const TOOLS = [
 
 export default function McpDocsPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12 space-y-10">
-      <div className="space-y-3">
-        <h1 className="text-4xl font-bold">{MCP_DOCS.headline}</h1>
-        <p className="text-muted-foreground text-lg">{MCP_DOCS.subhead}</p>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/settings/api-keys">Get API key</Link>
-        </Button>
-      </div>
+    <Section spacing="default">
+      <Container className="max-w-3xl space-y-10">
+        <div className="space-y-3">
+          <Heading as="h1">{MCP_DOCS.headline}</Heading>
+          <Body className="text-muted-foreground">{MCP_DOCS.subhead}</Body>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/settings/api-keys">Get API key</Link>
+          </Button>
+        </div>
 
-        <div className="rounded-xl bg-muted/30 border p-6 space-y-3">
+        <div className="marketing-panel space-y-3 p-6">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold">Quick start</h2>
-            <Badge variant="secondary" className="text-xs">{MCP_DOCS.builderRequired}</Badge>
+            <Heading as="h2" className="text-lg">
+              Quick start
+            </Heading>
+            <Badge variant="secondary" className="text-xs">
+              {MCP_DOCS.builderRequired}
+            </Badge>
           </div>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+          <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
             {MCP_DOCS.quickStart.map((step, i) => (
               <li key={i}>{step}</li>
             ))}
@@ -76,7 +85,7 @@ export default function McpDocsPage() {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Configuration</h2>
+          <Heading as="h2">Configuration</Heading>
 
           {Object.entries(CONFIG_EXAMPLES).map(([tool, config]) => {
             const labels: Record<string, string> = {
@@ -85,12 +94,12 @@ export default function McpDocsPage() {
               windsurf: 'Windsurf',
             }
             return (
-              <Card key={tool}>
-                <CardHeader className="pb-2">
+              <Card key={tool} className="overflow-hidden border-border/60">
+                <CardHeader className="rounded-nested-top-md border-b bg-muted/30 pb-2">
                   <CardTitle className="text-base">{labels[tool]}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <pre className="rounded-lg bg-muted px-4 py-3 text-xs overflow-x-auto">
+                <CardContent className="p-0">
+                  <pre className="overflow-x-auto p-4 font-mono text-xs">
                     <code>{config}</code>
                   </pre>
                 </CardContent>
@@ -102,25 +111,19 @@ export default function McpDocsPage() {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Available tools</h2>
+          <Heading as="h2">Available tools</Heading>
           <div className="space-y-2">
             {TOOLS.map((t) => (
               <div key={t.name} className="flex gap-3 text-sm">
-                <code className="text-primary font-mono shrink-0">{t.name}</code>
+                <code className="shrink-0 font-mono text-brand">{t.name}</code>
                 <span className="text-muted-foreground">{t.desc}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <Card className="bg-muted/20">
-          <CardContent className="pt-6 space-y-3">
-            <h3 className="font-semibold">Example workflow</h3>
-            <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-              {MCP_SECTION.workflow}
-            </pre>
-          </CardContent>
-        </Card>
-    </div>
+        <TerminalBlock label="Example workflow">{MCP_SECTION.workflow}</TerminalBlock>
+      </Container>
+    </Section>
   )
 }

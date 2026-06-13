@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import {
   checkAnonymousAuditAllowed,
-  checkUserAuditAllowed,
+  reserveUserAuditSlot,
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { normalizeAuditUrl } from '@/lib/audit/url'
@@ -34,9 +33,7 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
     if (session?.user) {
-      const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-      if (!user) return apiError('User not found', 404)
-      const limitCheck = await checkUserAuditAllowed(user)
+      const limitCheck = await reserveUserAuditSlot(session.user.id)
       if (!limitCheck.allowed) {
         return apiError(limitCheck.error!, 402, {
           code: limitCheck.code,

@@ -49,7 +49,11 @@ export default async function AdminAuditsPage() {
                   <Badge variant="outline" className="text-xs">{audit.status}</Badge>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {audit.status === 'COMPLETED' ? '1' : '–'}
+                  {audit.runCost
+                    ? `${audit.runCost.llmInputTokens + audit.runCost.llmOutputTokens}`
+                    : audit.status === 'COMPLETED'
+                      ? '–'
+                      : '–'}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}

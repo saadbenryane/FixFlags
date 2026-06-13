@@ -73,6 +73,12 @@ enum Device {
   MOBILE
 }
 
+enum ExpertReviewStatus {
+  PENDING
+  PAID
+  FULFILLED
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -94,6 +100,7 @@ model User {
   sessions               Session[]
   accounts               Account[]
   emailLogs              EmailLog[]
+  expertReviewOrders     ExpertReviewOrder[]
 
   @@map("users")
 }
@@ -202,6 +209,7 @@ model Audit {
 
   startedAt   DateTime?
   completedAt DateTime?
+  usageCountedAt DateTime?
   errorMsg    String?
 
   htmlMetadata    Json?
@@ -212,6 +220,7 @@ model Audit {
   screenshots Screenshot[]
   findings    Finding[]
   runCost     AuditRunCost?
+  expertReviewOrders ExpertReviewOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -325,4 +334,20 @@ model FindingFeedback {
   @@unique([findingId, userId])
   @@index([findingId])
   @@map("finding_feedback")
+}
+
+model ExpertReviewOrder {
+  id              String              @id @default(cuid())
+  userId          String?
+  user            User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email           String
+  auditId         String?
+  audit           Audit?              @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  stripeSessionId String              @unique
+  status          ExpertReviewStatus  @default(PENDING)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([userId])
+  @@map("expert_review_orders")
 }

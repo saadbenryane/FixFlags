@@ -34,7 +34,19 @@ function SignUpForm() {
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
 
       if (plan && ['BUILDER', 'TEAM', 'STUDIO'].includes(plan)) {
-        router.push(`/pricing`)
+        const checkoutRes = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan }),
+        })
+        if (checkoutRes.ok) {
+          const { url } = await checkoutRes.json()
+          if (url) {
+            window.location.href = url
+            return
+          }
+        }
+        router.push('/pricing')
       } else {
         router.push('/dashboard')
       }

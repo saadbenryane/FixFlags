@@ -7,6 +7,7 @@ import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
+import { prisma } from '@/lib/db'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -36,6 +37,11 @@ export default async function AuditPage({ params }: Props) {
 
   const { audit, isPaid, isLoggedIn, session } = result
 
+  const user = await prisma.user.findUnique({
+    where: { id: session!.user.id },
+    select: { plan: true },
+  })
+
   if (audit.status === 'COMPLETED') {
     return (
       <AuditShell
@@ -47,6 +53,8 @@ export default async function AuditPage({ params }: Props) {
             isLoggedIn={isLoggedIn}
             isPublic={audit.isPublic}
             hasParent={!!audit.parentId}
+            plan={user?.plan ?? 'FREE'}
+            projectId={audit.projectId}
           />
         }
       >

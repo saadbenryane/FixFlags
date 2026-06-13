@@ -46,7 +46,7 @@ export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   if (used >= ANON_AUDIT_LIMIT) {
     return {
       allowed: false,
-      error: 'Free scan used. Create a free account to save this report and get 3 more scans.',
+      error: 'Free scan used. Create a free account to save this report and run up to 3 audits total.',
       code: 'ANON_LIMIT',
       action: 'signup',
     }
@@ -126,10 +126,14 @@ export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   })
 }
 
-export async function markAnonymousAuditCompleted(): Promise<void> {
+export async function markAnonymousAuditCompletedOnce(auditId: string): Promise<void> {
   if (isDevUnlimitedScans()) return
 
   const cookieStore = await cookies()
+  const countedKey = 'qos_anon_counted_ids'
+  const counted = readAnonAuditIds(cookieStore.get(countedKey)?.value)
+  if (counted.includes(auditId)) return
+
   const used = parseInt(cookieStore.get(ANON_COOKIE)?.value ?? '0', 10)
   cookieStore.set(ANON_COOKIE, String(used + 1), {
     httpOnly: true,
@@ -137,8 +141,51 @@ export async function markAnonymousAuditCompleted(): Promise<void> {
     sameSite: 'lax',
     path: '/',
   })
+  cookieStore.set(countedKey, JSON.stringify([...counted, auditId].slice(-20)), {
+    httpOnly: true,
+    maxAge: 60 * 60 * 24 * 30,
+    sameSite: 'lax',
+    path: '/',
+  })
 }
 
+export async function incrementUsageOnCompleteForAudit(
+  auditId: string,
+  userId: string
+): Promise<void> {
+  if (isDevUnlimitedScans()) return
+
+  await prisma.$transaction(async (tx) => {
+    const audit = await tx.audit.findUnique({
+      where: { id: auditId },
+      select: { usageCountedAt: true, userId: true },
+    })
+    if (!audit || audit.userId !== userId || audit.usageCountedAt) return
+
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    })
+    if (user && hasUnlimitedScans(user)) {
+      await tx.audit.update({
+        where: { id: auditId },
+        data: { usageCountedAt: new Date() },
+      })
+      return
+    }
+
+    await tx.audit.update({
+      where: { id: auditId },
+      data: { usageCountedAt: new Date() },
+    })
+    await tx.user.update({
+      where: { id: userId },
+      data: { auditsUsed: { increment: 1 } },
+    })
+  })
+}
+
+/** @deprecated Use incrementUsageOnCompleteForAudit for idempotent counting */
 export async function incrementUsageOnComplete(userId: string): Promise<void> {
   if (isDevUnlimitedScans()) return
 
@@ -151,5 +198,49 @@ export async function incrementUsageOnComplete(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
     data: { auditsUsed: { increment: 1 } },
+  })
+}
+
+/** Atomically verify limit and reserve a scan slot before enqueue. */
+export async function reserveUserAuditSlot(
+  userId: string
+): Promise<UsageLimitResult> {
+  if (isDevUnlimitedScans()) return { allowed: true }
+
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      return { allowed: false, error: 'User not found' }
+    }
+
+    if (hasUnlimitedScans(user) || isAdminUser(user)) {
+      return { allowed: true }
+    }
+
+    const limit = getEffectiveScanLimit(user)
+    if (isUnlimitedScanLimit(limit)) {
+      return { allowed: true }
+    }
+
+    const pending = await tx.audit.count({
+      where: {
+        userId,
+        status: { notIn: ['COMPLETED', 'FAILED'] },
+      },
+    })
+
+    if (user.auditsUsed + pending >= limit) {
+      const isFree = user.plan === 'FREE'
+      return {
+        allowed: false,
+        error: isFree
+          ? 'Token limit reached. Upgrade to continue scanning.'
+          : 'Token limit reached. Upgrade your plan to continue.',
+        code: isFree ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
+        action: 'upgrade',
+      }
+    }
+
+    return { allowed: true }
   })
 }

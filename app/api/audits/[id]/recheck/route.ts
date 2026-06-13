@@ -4,8 +4,9 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
-import { checkUserAuditAllowed } from '@/lib/audit/usage'
+import { reserveUserAuditSlot } from '@/lib/audit/usage'
 import { canAccessPaidFeatures } from '@/lib/auth/permissions'
+import { canManageAudit } from '@/lib/audit/access'
 
 export async function POST(
   _req: NextRequest,
@@ -33,7 +34,11 @@ export async function POST(
       })
     }
 
-    const limitCheck = await checkUserAuditAllowed(user)
+    if (!canManageAudit(parent, session.user)) {
+      return apiError('You can only re-check your own audits', 403)
+    }
+
+    const limitCheck = await reserveUserAuditSlot(session.user.id)
     if (!limitCheck.allowed) {
       return apiError(limitCheck.error!, 402, {
         code: limitCheck.code,

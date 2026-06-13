@@ -9,6 +9,7 @@ import { Plus, ExternalLink } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
+import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
 import { getEffectiveScanLimit, getPendingScanCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 
@@ -67,6 +68,8 @@ export default async function DashboardPage() {
         <p className="text-sm font-medium mb-3">Audit a new URL</p>
         <AuditInput />
       </div>
+
+      <ProjectsPanel plan={user?.plan ?? 'FREE'} />
 
       {audits.length === 0 ? (
         <Card>

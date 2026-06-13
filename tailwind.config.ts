@@ -23,7 +23,9 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'ui-serif', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -51,6 +53,16 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
+        brand: {
+          DEFAULT: 'hsl(var(--brand))',
+          foreground: 'hsl(var(--brand-foreground))',
+        },
+        terminal: {
+          DEFAULT: 'hsl(var(--terminal))',
+          foreground: 'hsl(var(--terminal-foreground))',
+          muted: 'hsl(var(--terminal-muted))',
+          border: 'hsl(var(--terminal-border))',
+        },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
@@ -62,19 +74,32 @@ const config: Config = {
         grade: {
           A: '#22c55e',
           B: '#84cc16',
-          C: '#eab308',
+          C: 'hsl(var(--brand))',
           D: '#f97316',
           F: '#ef4444',
         },
       },
       borderRadius: {
-        sm: '0.14375rem',
-        md: '0.43125rem',
+        sm: 'var(--radius-input)',
+        md: 'var(--radius-inner)',
         lg: 'var(--radius)',
-        xl: '0.8625rem',
-        '2xl': '1.15rem',
+        xl: 'var(--radius-modal)',
+        '2xl': 'var(--radius-outer)',
         '3xl': '1.725rem',
         card: 'var(--radius-card)',
+        nested: 'var(--radius-nested-md)',
+      },
+      letterSpacing: {
+        display: 'var(--tracking-display)',
+        heading: 'var(--tracking-heading)',
+        body: 'var(--tracking-body)',
+        label: 'var(--tracking-label)',
+      },
+      lineHeight: {
+        display: 'var(--leading-display)',
+        heading: 'var(--leading-heading)',
+        body: 'var(--leading-body)',
+        relaxed: 'var(--leading-relaxed)',
       },
       boxShadow: {
         sm: '0 1px 3px 0 rgb(0 0 0 / 0.03), 0 1px 2px -1px rgb(0 0 0 / 0.03)',

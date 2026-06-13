@@ -39,7 +39,7 @@ export function Header({ right, className }: HeaderProps) {
       )}
     >
       <Container className="flex h-full items-center justify-between">
-        <Link href="/" className="font-bold text-lg tracking-tight">
+        <Link href="/" className="font-display text-xl tracking-tight">
           {BRAND.name}
         </Link>
 
@@ -56,7 +56,7 @@ export function Header({ right, className }: HeaderProps) {
           ))}
           <ThemeToggle />
           {right ?? (
-            <Button variant="default" size="sm" asChild className="ml-2">
+            <Button variant="default" size="sm" asChild className="ml-2 bg-foreground text-background hover:bg-foreground/90">
               <Link href="/sign-in">Sign in</Link>
             </Button>
           )}

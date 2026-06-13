@@ -1,0 +1,141 @@
+/**
+ * QualityOS design tokens
+ *
+ * Color: 60-30-10 rule — warm stone neutrals (60%), ink structure (30%), amber brand (10%)
+ * Radius: concentric nesting — inner = outer − gap (see BetterCorners / Cloud Four)
+ * Type: display serif + sans body + mono labels; kerning scales by size role
+ */
+
+:root {
+  /* ── Color: 60% neutrals ── */
+  --background: 40 22% 98%;
+  --foreground: 24 12% 11%;
+  --card: 40 28% 99%;
+  --card-foreground: 24 12% 11%;
+  --muted: 35 18% 94%;
+  --muted-foreground: 24 7% 44%;
+  --border: 32 14% 87%;
+
+  /* ── Color: 30% structure (ink) ── */
+  --primary: 24 12% 11%;
+  --primary-foreground: 40 22% 98%;
+  --secondary: 35 16% 92%;
+  --secondary-foreground: 24 12% 11%;
+
+  /* ── Color: 10% brand accent (amber — ship / grade / action) ── */
+  --brand: 32 94% 42%;
+  --brand-foreground: 40 22% 98%;
+  --accent: 38 90% 94%;
+  --accent-foreground: 24 12% 11%;
+  --ring: 32 94% 42%;
+
+  --popover: 40 28% 99%;
+  --popover-foreground: 24 12% 11%;
+  --input: 32 14% 87%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* ── Concentric radius scale ──
+     inner radius = outer radius − gap (padding between curves)
+     Ref: https://cloudfour.com/thinks/the-math-behind-nesting-rounded-corners/ */
+  --radius-input: 0.375rem; /* 6px — controls, small chips */
+  --radius-inner: 0.625rem; /* 10px — nested panels, grade badges */
+  --radius-modal: 0.875rem; /* 14px — dialogs, sheets */
+  --radius-outer: 1.25rem; /* 20px — cards, marketing panels */
+  --radius-card: var(--radius-outer);
+  --gap-nested-sm: 0.5rem; /* 8px */
+  --gap-nested-md: 0.75rem; /* 12px */
+  --gap-nested-lg: 1rem; /* 16px */
+  --radius-nested-sm: calc(var(--radius-outer) - var(--gap-nested-sm));
+  --radius-nested-md: calc(var(--radius-outer) - var(--gap-nested-md));
+  --radius-nested-lg: calc(var(--radius-outer) - var(--gap-nested-lg));
+  --radius: 0.575rem; /* legacy shadcn lg */
+
+  /* ── Typography scale ── */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  /* Line-height: display needs air; body needs 1.5+ for readability */
+  --leading-display: 1.18;
+  --leading-heading: 1.28;
+  --leading-body: 1.6;
+  --leading-relaxed: 1.65;
+
+  /* Letter-spacing (kerning roles):
+     - Large display: subtle negative (optical tightening)
+     - Body: neutral (browser kerning ON)
+     - Uppercase labels: positive (required for legibility) */
+  --tracking-display: -0.012em;
+  --tracking-heading: -0.006em;
+  --tracking-body: 0;
+  --tracking-label: 0.12em;
+
+  --shadow-card: 0 1px 2px rgb(24 12% 11% / 0.04), 0 8px 24px -4px rgb(24 12% 11% / 0.07);
+  --shadow-card-hover: 0 2px 4px rgb(24 12% 11% / 0.05), 0 12px 32px -4px rgb(24 12% 11% / 0.1);
+
+  --glass-bg-subtle: rgba(255, 255, 255, 0.45);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --overlay-pill-bg: rgba(255, 255, 255, 0.32);
+  --overlay-pill-border: rgba(255, 255, 255, 0.42);
+  --cover-gradient: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.9) 45%, transparent 90%);
+
+  /* ── Terminal / code blocks ── */
+  --terminal: 30 8% 10%;
+  --terminal-foreground: 35 12% 82%;
+  --terminal-muted: 30 6% 48%;
+  --terminal-border: 30 8% 18%;
+}
+
+.dark {
+  --background: 24 12% 6%;
+  --foreground: 40 18% 96%;
+  --card: 24 10% 8%;
+  --card-foreground: 40 18% 96%;
+  --muted: 24 8% 14%;
+  --muted-foreground: 30 8% 62%;
+  --border: 24 8% 16%;
+
+  --primary: 40 18% 96%;
+  --primary-foreground: 24 12% 8%;
+  --secondary: 24 8% 14%;
+  --secondary-foreground: 40 18% 96%;
+
+  --brand: 38 92% 50%;
+  --brand-foreground: 24 12% 8%;
+  --accent: 32 35% 12%;
+  --accent-foreground: 40 18% 96%;
+  --ring: 38 92% 50%;
+
+  --popover: 24 10% 8%;
+  --popover-foreground: 40 18% 96%;
+  --input: 24 8% 16%;
+  --destructive: 0 62% 40%;
+  --destructive-foreground: 0 0% 98%;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px -4px rgb(0 0 0 / 0.28);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.25), 0 12px 32px -4px rgb(0 0 0 / 0.32);
+
+  --glass-bg-subtle: rgba(0, 0, 0, 0.35);
+  --glass-bg: rgba(0, 0, 0, 0.5);
+  --glass-bg-strong: rgba(0, 0, 0, 0.62);
+  --glass-bg-elevated: rgba(0, 0, 0, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --overlay-pill-bg: rgba(0, 0, 0, 0.34);
+  --overlay-pill-border: rgba(255, 255, 255, 0.2);
+  --cover-gradient: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 90%);
+
+  --terminal: 24 10% 6%;
+  --terminal-foreground: 35 14% 78%;
+  --terminal-muted: 30 8% 52%;
+  --terminal-border: 24 8% 14%;
+}

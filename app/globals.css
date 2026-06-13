@@ -1,78 +1,8 @@
+@import '../lib/design/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 40%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.575rem;
-    --radius-card: 2.0125rem;
-
-    --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.04), 0 8px 24px -4px rgb(0 0 0 / 0.06);
-    --shadow-card-hover: 0 4px 12px -2px rgb(0 0 0 / 0.06), 0 12px 32px -4px rgb(0 0 0 / 0.08);
-    --glass-bg-subtle: rgba(255, 255, 255, 0.45);
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-bg-strong: rgba(255, 255, 255, 0.78);
-    --glass-bg-elevated: rgba(255, 255, 255, 0.82);
-    --glass-border: rgba(255, 255, 255, 0.15);
-    --overlay-pill-bg: rgba(255, 255, 255, 0.32);
-    --overlay-pill-border: rgba(255, 255, 255, 0.42);
-
-    --cover-gradient: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.9) 45%, transparent 90%);
-  }
-
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-
-    --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.2), 0 8px 24px -4px rgb(0 0 0 / 0.25);
-    --shadow-card-hover: 0 4px 12px -2px rgb(0 0 0 / 0.25), 0 12px 32px -4px rgb(0 0 0 / 0.3);
-    --glass-bg-subtle: rgba(0, 0, 0, 0.35);
-    --glass-bg: rgba(0, 0, 0, 0.5);
-    --glass-bg-strong: rgba(0, 0, 0, 0.62);
-    --glass-bg-elevated: rgba(0, 0, 0, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --overlay-pill-bg: rgba(0, 0, 0, 0.34);
-    --overlay-pill-border: rgba(255, 255, 255, 0.2);
-
-    --cover-gradient: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 90%);
-  }
-}
 
 @layer base {
   * {
@@ -81,8 +11,21 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    font-kerning: normal;
+    letter-spacing: var(--tracking-body);
+    line-height: var(--leading-body);
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   input:-webkit-autofill,
@@ -136,82 +79,33 @@
   .link-underline-grow:hover::after {
     @apply w-full;
   }
+
+  .section-label {
+    @apply font-mono text-[11px] uppercase text-muted-foreground;
+    letter-spacing: var(--tracking-label);
+  }
+
+  .marketing-panel {
+    @apply rounded-card border border-border/60 bg-card/80 shadow-card backdrop-blur-sm;
+  }
+
+  .rounded-nested-md {
+    border-radius: var(--radius-nested-md);
+  }
+
+  .rounded-nested-top-md {
+    border-top-left-radius: var(--radius-nested-md);
+    border-top-right-radius: var(--radius-nested-md);
+  }
+
+  .rounded-nested-bottom-md {
+    border-bottom-left-radius: var(--radius-nested-md);
+    border-bottom-right-radius: var(--radius-nested-md);
+  }
 }
 
 @layer utilities {
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes slide-up-fade {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes soft-reveal {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes word-reveal {
-    from {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes gradient-shift {
-    0%,
-    100% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-  }
+  /* Animation keyframes live in tailwind.config.ts */
 }
 
 @media (prefers-reduced-motion: reduce) {

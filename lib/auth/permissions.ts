@@ -76,3 +76,9 @@ export function canAccessPaidFeatures(user: Pick<User, 'id' | 'role' | 'plan'>):
 export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   return canAccessPaidFeatures(user)
 }
+
+export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+  if (isDevUnlimitedScans()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  return user.plan === 'STUDIO'
+}

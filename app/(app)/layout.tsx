@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="border-b px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg tracking-tight">QualityOS</Link>
+        <Link href="/" className="font-display text-lg tracking-heading">QualityOS</Link>
         <div className="flex items-center gap-4">
           <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
           <Link href="/settings/api-keys" className="text-sm text-muted-foreground hover:text-foreground">API Keys</Link>

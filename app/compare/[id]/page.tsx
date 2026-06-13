@@ -9,7 +9,11 @@ import { BeforeAfterSlider } from '@/components/compare/BeforeAfterSlider'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
+import { Section } from '@/components/ui/section'
+import { Heading, Muted } from '@/components/ui/typography'
 import { getFindingDiffSummary } from '@/lib/audit/diff-findings'
+import { canAccessAudit } from '@/lib/audit/access'
+import { canAccessPaidFeatures } from '@/lib/auth/permissions'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -18,6 +22,15 @@ interface Props {
 export default async function ComparePage({ params }: Props) {
   const { id } = await params
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+
+  if (!session?.user) {
+    redirect(`/sign-in?next=/compare/${id}`)
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+  if (!user || !canAccessPaidFeatures(user)) {
+    redirect('/pricing')
+  }
 
   const recheckAudit = await prisma.audit.findUnique({
     where: { id },
@@ -41,6 +54,13 @@ export default async function ComparePage({ params }: Props) {
     redirect(`/audit/${id}`)
   }
 
+  if (
+    !canAccessAudit(recheckAudit, session.user) ||
+    !canAccessAudit(recheckAudit.parent, session.user)
+  ) {
+    notFound()
+  }
+
   const before = recheckAudit.parent
   const after = recheckAudit
   const findingDiff = await getFindingDiffSummary(before.id, after.id)
@@ -50,21 +70,25 @@ export default async function ComparePage({ params }: Props) {
 
   return (
     <AuditShell session={session}>
-      <Container className="max-w-4xl py-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold">Before vs After</h1>
-          <p className="text-sm text-muted-foreground mt-1 truncate">{after.url}</p>
-        </div>
+      <Section spacing="default">
+        <Container className="max-w-4xl space-y-8">
+          <div className="space-y-1">
+            <Heading as="h1">Before vs After</Heading>
+            <Muted className="truncate">{after.url}</Muted>
+          </div>
 
         <div className="flex items-center gap-6 p-4 rounded-xl border bg-card">
           <div className="text-center">
-            <div className="text-3xl font-bold">{before.score ?? '–'}</div>
+            <div className="text-3xl font-bold tabular-nums">{before.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">Before</div>
           </div>
           <div className="flex-1 text-center">
             {before.score !== null && after.score !== null ? (
-              <div className={`text-2xl font-bold ${after.score > before.score ? 'text-green-600' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {after.score > before.score ? '+' : ''}{after.score - before.score}
+              <div
+                className={`text-2xl font-bold tabular-nums ${after.score > before.score ? 'text-green-600' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
+                {after.score > before.score ? '+' : ''}
+                {after.score - before.score}
               </div>
             ) : (
               <div className="text-2xl text-muted-foreground">–</div>
@@ -72,7 +96,7 @@ export default async function ComparePage({ params }: Props) {
             <div className="text-xs text-muted-foreground mt-1">Overall change</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold">{after.score ?? '–'}</div>
+            <div className="text-3xl font-bold tabular-nums">{after.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
         </div>
@@ -100,7 +124,8 @@ export default async function ComparePage({ params }: Props) {
             <Link href={`/audit/${after.id}`}>View latest audit</Link>
           </Button>
         </div>
-      </Container>
+        </Container>
+      </Section>
     </AuditShell>
   )
 }

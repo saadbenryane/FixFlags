@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { prisma } from '@/lib/db'
+import { notifyExpertReviewPaid } from '@/lib/email/expert-review'
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
@@ -70,9 +71,27 @@ export async function POST(req: NextRequest) {
     }
     case 'checkout.session.completed': {
       const session = event.data.object
+
+      if (session.metadata?.type === 'expert_review') {
+        const order = await prisma.expertReviewOrder.update({
+          where: { stripeSessionId: session.id },
+          data: { status: 'PAID' },
+        })
+        await notifyExpertReviewPaid({
+          email: order.email,
+          auditId: order.auditId,
+          orderId: order.id,
+        })
+      }
+
       if (session.customer_email) {
         await prisma.user.updateMany({
           where: { email: session.customer_email },
+          data: { stripeCustomerId: session.customer as string },
+        })
+      } else if (session.metadata?.userId && session.customer) {
+        await prisma.user.update({
+          where: { id: session.metadata.userId },
           data: { stripeCustomerId: session.customer as string },
         })
       }

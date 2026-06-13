@@ -11,6 +11,7 @@ import { Container } from '@/components/ui/container'
 import { RefreshCw, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy-client'
+import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { parseApiErrorResponse } from '@/lib/api/errors'
 
 function formatAuditErrorMessage(errorMsg?: string | null): string {
@@ -38,14 +39,19 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   const { audit, isLoading, isComplete, isFailed, isNotFound, isForbidden, fetchError, status, progress, url, startedAt, statusPayload } =
     useAuditPolling(id, { initialAudit, pollStatus })
   const [retryLoading, setRetryLoading] = useState(false)
+  const [limitGate, setLimitGate] = useState<{
+    message: string
+    code?: string
+    action?: string
+  } | null>(null)
   const refreshedRef = useRef(false)
 
   useEffect(() => {
-    if (isComplete && audit && !refreshedRef.current) {
+    if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
       router.refresh()
     }
-  }, [isComplete, audit, router])
+  }, [isComplete, router])
 
   const desktopScreenshot = statusPayload?.screenshots?.find(
     (s) => s.device === 'DESKTOP'
@@ -55,6 +61,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     const retryUrl = url ?? (initialAudit?.url as string | undefined)
     if (!retryUrl) return
     setRetryLoading(true)
+    setLimitGate(null)
     try {
       const res = await fetch('/api/audits', {
         method: 'POST',
@@ -62,7 +69,12 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         body: JSON.stringify({ url: retryUrl }),
       })
       if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
+        const parsed = await parseApiErrorResponse(res)
+        if (res.status === 402) {
+          setLimitGate(parsed)
+        } else {
+          toast.error(parsed.message)
+        }
         return
       }
       const data = await res.json()
@@ -116,14 +128,26 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
           <p className="text-muted-foreground text-sm">
             {formatAuditErrorMessage(errorMsg)}
           </p>
-          <div className="flex justify-center gap-3">
-            <Button variant="outline" onClick={handleRetry} disabled={retryLoading}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try again
-            </Button>
-            <Button asChild>
-              <Link href="/">New audit</Link>
-            </Button>
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex justify-center gap-3">
+              <Button variant="outline" onClick={handleRetry} disabled={retryLoading}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try again
+              </Button>
+              <Button asChild>
+                <Link href="/">New audit</Link>
+              </Button>
+            </div>
+            {limitGate && (
+              <div className="w-full max-w-md">
+                <AuditLimitGate
+                  message={limitGate.message}
+                  code={limitGate.code}
+                  action={limitGate.action}
+                  onDismiss={() => setLimitGate(null)}
+                />
+              </div>
+            )}
           </div>
         </Container>
       </AuditShell>
@@ -131,6 +155,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   }
 
   const inProgress = !isComplete && !isFailed
+  const finishing = isComplete && !isFailed
 
   return (
     <AuditShell session={session}>
@@ -141,6 +166,19 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             <AuditProgress
               status={status}
               progress={progress}
+              url={url}
+              startedAt={startedAt}
+              desktopScreenshotUrl={desktopScreenshot?.url}
+            />
+          </div>
+        )}
+
+        {finishing && (
+          <div className="flex flex-col items-center py-12 space-y-6">
+            <h2 className="text-xl font-semibold">Preparing your report...</h2>
+            <AuditProgress
+              status="COMPLETED"
+              progress={100}
               url={url}
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}

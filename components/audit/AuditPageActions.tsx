@@ -6,15 +6,29 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, Share2, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
+import { projectLimitForPlan } from '@/lib/billing/plans'
+import { Plan } from '@prisma/client'
+
 interface Props {
   auditId: string
   isPaid: boolean
   isLoggedIn: boolean
   isPublic: boolean
   hasParent: boolean
+  plan?: Plan
+  projectId?: string | null
 }
 
-export function AuditPageActions({ auditId, isPaid, isLoggedIn, isPublic: initialIsPublic, hasParent }: Props) {
+export function AuditPageActions({
+  auditId,
+  isPaid,
+  isLoggedIn,
+  isPublic: initialIsPublic,
+  hasParent,
+  plan = 'FREE',
+  projectId,
+}: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
 
@@ -50,6 +64,13 @@ export function AuditPageActions({ auditId, isPaid, isLoggedIn, isPublic: initia
 
   return (
     <>
+      {projectLimitForPlan(plan) > 0 && (
+        <ProjectAssignSelect
+          auditId={auditId}
+          initialProjectId={projectId}
+          enabled={isLoggedIn}
+        />
+      )}
       {hasParent && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${auditId}`}>

@@ -19,6 +19,9 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
+  ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
+  ADMIN_USER_IDS: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -51,6 +54,40 @@ export function validateAuditEnv(): void {
   }
   if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
     throw new Error('Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY')
+  }
+  if (process.env.NODE_ENV === 'production') {
+    const r2Required = [
+      'R2_BUCKET_NAME',
+      'R2_ACCOUNT_ID',
+      'R2_ACCESS_KEY_ID',
+      'R2_SECRET_ACCESS_KEY',
+      'R2_PUBLIC_URL',
+    ] as const
+    const missingR2 = r2Required.filter((k) => !process.env[k])
+    if (missingR2.length > 0) {
+      throw new Error(`Missing required R2 env vars in production: ${missingR2.join(', ')}`)
+    }
+  }
+}
+
+/** Validate production app env at startup. */
+export function validateProductionEnv(): void {
+  if (process.env.NODE_ENV !== 'production') return
+  getEnv()
+  validateAuditEnv()
+  const required = [
+    'BETTER_AUTH_SECRET',
+    'BETTER_AUTH_URL',
+    'NEXT_PUBLIC_APP_URL',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'CRON_SECRET',
+    'RESEND_API_KEY',
+    'RESEND_FROM_EMAIL',
+  ] as const
+  const missing = required.filter((k) => !process.env[k])
+  if (missing.length > 0) {
+    throw new Error(`Missing required production env vars: ${missing.join(', ')}`)
   }
 }
 

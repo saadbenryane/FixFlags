@@ -6,30 +6,72 @@ import { runAllChecks, computeAreaScores } from './checks'
 import { runJudge, isRetryableJudgeError } from './judge'
 import { persistAuditResults } from './persist'
 import { diffFindingsAgainstParent } from './diff-findings'
-import { incrementUsageOnComplete, markAnonymousAuditCompleted } from './usage'
+import { incrementUsageOnCompleteForAudit } from './usage'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
 import { persistAuditRunCost } from '@/lib/billing/costs'
+import { isR2Configured } from '@/lib/storage/r2'
 
 function sanitizeAuditErrorMessage(message: string): string {
   return message.replace(/\s+/g, ' ').trim().slice(0, 500)
+}
+
+async function runPostCompletionSteps(
+  auditId: string,
+  audit: { userId: string | null; parentId: string | null },
+  judgeResult: {
+    usage: { inputTokens: number; outputTokens: number; model: string }
+  },
+  durationMs: number,
+  pagespeedCalls: number
+): Promise<void> {
+  try {
+    await persistAuditRunCost(auditId, {
+      durationMs,
+      llmInputTokens: judgeResult.usage.inputTokens,
+      llmOutputTokens: judgeResult.usage.outputTokens,
+      llmModel: judgeResult.usage.model,
+      pagespeedCalls,
+    })
+  } catch (err) {
+    console.error(`Post-completion cost persist failed for audit ${auditId}:`, err)
+  }
+
+  if (audit.parentId) {
+    try {
+      await diffFindingsAgainstParent(auditId, audit.parentId)
+    } catch (err) {
+      console.error(`Post-completion diff failed for audit ${auditId}:`, err)
+    }
+  }
+
+  if (audit.userId) {
+    try {
+      await incrementUsageOnCompleteForAudit(auditId, audit.userId)
+    } catch (err) {
+      console.error(`Post-completion usage increment failed for audit ${auditId}:`, err)
+    }
+  }
 }
 
 export async function runAudit(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({ where: { id: auditId } })
   if (!audit) throw new Error(`Audit ${auditId} not found`)
 
+  if (audit.status === 'COMPLETED') {
+    console.log(`Audit ${auditId} already completed — skipping worker retry`)
+    return
+  }
+
   const url = audit.url
-  const startedAt = new Date()
 
   // Clean partial results from a previous attempt
   await prisma.screenshot.deleteMany({ where: { auditId } })
 
-  // Phase 1 — Capture screenshots + PageSpeed in parallel
   await prisma.audit.update({
     where: { id: auditId },
     data: {
       status: 'CAPTURING',
-      startedAt,
+      startedAt: audit.startedAt ?? new Date(),
       errorMsg: null,
       progress: AUDIT_PROGRESS.CAPTURING,
     },
@@ -51,32 +93,40 @@ export async function runAudit(auditId: string): Promise<void> {
   const pagespeedCalls =
     (pagespeed.desktop ? 1 : 0) + (pagespeed.mobile ? 1 : 0)
 
-  try {
-    if (screenshots.desktopUrl) {
-      await prisma.screenshot.create({
-        data: {
-          auditId,
-          device: 'DESKTOP',
-          url: screenshots.desktopUrl,
-          width: 1280,
-          height: 900,
-        },
+  if (isR2Configured()) {
+    if (!screenshots.desktopUrl || !screenshots.mobileUrl) {
+      const msg =
+        'Screenshot storage failed. Check R2 configuration (R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT).'
+      await prisma.audit.update({
+        where: { id: auditId },
+        data: { status: 'FAILED', errorMsg: msg },
       })
-      await setAuditProgress(auditId, AUDIT_PROGRESS.DESKTOP_SCREENSHOT)
+      throw new Error(msg)
     }
-    if (screenshots.mobileUrl) {
-      await prisma.screenshot.create({
-        data: {
-          auditId,
-          device: 'MOBILE',
-          url: screenshots.mobileUrl,
-          width: 375,
-          height: 812,
-        },
-      })
-    }
-  } catch (err) {
-    console.error('Screenshot persist failed, continuing:', err)
+  }
+
+  if (screenshots.desktopUrl) {
+    await prisma.screenshot.create({
+      data: {
+        auditId,
+        device: 'DESKTOP',
+        url: screenshots.desktopUrl,
+        width: 1280,
+        height: 900,
+      },
+    })
+    await setAuditProgress(auditId, AUDIT_PROGRESS.DESKTOP_SCREENSHOT)
+  }
+  if (screenshots.mobileUrl) {
+    await prisma.screenshot.create({
+      data: {
+        auditId,
+        device: 'MOBILE',
+        url: screenshots.mobileUrl,
+        width: 375,
+        height: 812,
+      },
+    })
   }
 
   let metadata
@@ -111,7 +161,6 @@ export async function runAudit(auditId: string): Promise<void> {
     },
   })
 
-  // Phase 2 — Deterministic checks
   const deterministicFindings = await runAllChecks(
     url,
     metadata,
@@ -128,7 +177,6 @@ export async function runAudit(auditId: string): Promise<void> {
 
   const areaScores = computeAreaScores(deterministicFindings, pagespeed.desktop, pagespeed.mobile)
 
-  // Phase 3 — AI judge (retry once on retryable errors)
   await prisma.audit.update({
     where: { id: auditId },
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
@@ -191,21 +239,11 @@ export async function runAudit(auditId: string): Promise<void> {
       ? finished.completedAt.getTime() - finished.startedAt.getTime()
       : 0
 
-  await persistAuditRunCost(auditId, {
+  await runPostCompletionSteps(
+    auditId,
+    { userId: audit.userId, parentId: audit.parentId },
+    judgeResult,
     durationMs,
-    llmInputTokens: judgeResult.usage.inputTokens,
-    llmOutputTokens: judgeResult.usage.outputTokens,
-    llmModel: judgeResult.usage.model,
-    pagespeedCalls,
-  })
-
-  if (audit.parentId) {
-    await diffFindingsAgainstParent(auditId, audit.parentId)
-  }
-
-  if (audit.userId) {
-    await incrementUsageOnComplete(audit.userId)
-  } else {
-    await markAnonymousAuditCompleted()
-  }
+    pagespeedCalls
+  )
 }

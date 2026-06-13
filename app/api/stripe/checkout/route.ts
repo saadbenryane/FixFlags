@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getStripe, STRIPE_PRICE_IDS } from '@/lib/stripe'
+import { getStripe, resolveCheckoutPriceId } from '@/lib/stripe'
+import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { Plan } from '@prisma/client'
 
 const schema = z.object({
   plan: z.enum(['BUILDER', 'TEAM', 'STUDIO']),
+  useFounding: z.boolean().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
-  const priceId = STRIPE_PRICE_IDS[parsed.data.plan as Plan]
+  const plan = parsed.data.plan
+  const useFounding = parsed.data.useFounding !== false
+  const priceId = resolveCheckoutPriceId(plan, useFounding)
   if (!priceId) return NextResponse.json({ error: 'Price not configured' }, { status: 500 })
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
@@ -32,7 +35,11 @@ export async function POST(req: NextRequest) {
     customer_email: user?.stripeCustomerId ? undefined : session.user.email,
     success_url: `${appUrl}/dashboard?upgraded=1`,
     cancel_url: `${appUrl}/pricing`,
-    metadata: { userId: session.user.id },
+    metadata: {
+      userId: session.user.id,
+      plan,
+      founding: useFounding && !!PLAN_DEFINITIONS[plan].foundingPriceId ? '1' : '0',
+    },
   })
 
   return NextResponse.json({ url: checkoutSession.url })

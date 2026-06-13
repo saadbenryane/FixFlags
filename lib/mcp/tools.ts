@@ -3,11 +3,20 @@ import { z } from 'zod'
 import { prisma } from '../db'
 import { User } from '@prisma/client'
 import { createAndEnqueueAudit } from '../audit/create-audit'
-import { checkUserAuditAllowed } from '../audit/usage'
+import { reserveUserAuditSlot } from '../audit/usage'
 import { getFindingDiffSummary } from '../audit/diff-findings'
+import { canAccessPaidFeatures, canUseApiKeys } from '../auth/permissions'
+
+async function assertMcpAccess(user: User): Promise<User> {
+  const fresh = await prisma.user.findUnique({ where: { id: user.id } })
+  if (!fresh || !canUseApiKeys(fresh)) {
+    throw new Error('Upgrade to Builder to use MCP API access')
+  }
+  return fresh
+}
 
 async function assertUserCanAudit(user: User): Promise<void> {
-  const check = await checkUserAuditAllowed(user)
+  const check = await reserveUserAuditSlot(user.id)
   if (!check.allowed) throw new Error(check.error ?? 'Audit limit reached')
 }
 
@@ -21,9 +30,10 @@ export function registerAllTools(server: McpServer, user: User) {
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
     },
     async ({ url, waitForCompletion }) => {
-      await assertUserCanAudit(user)
+      const freshUser = await assertMcpAccess(user)
+      await assertUserCanAudit(freshUser)
 
-      const { auditId } = await createAndEnqueueAudit({ url, userId: user.id })
+      const { auditId } = await createAndEnqueueAudit({ url, userId: freshUser.id })
 
       if (waitForCompletion) {
         const start = Date.now()
@@ -225,10 +235,15 @@ export function registerAllTools(server: McpServer, user: User) {
       waitForCompletion: z.boolean().optional(),
     },
     async ({ parentAuditId, waitForCompletion }) => {
+      await assertMcpAccess(user)
+
       const parent = await prisma.audit.findUnique({ where: { id: parentAuditId } })
       if (!parent) throw new Error('Parent audit not found')
+      if (parent.userId !== user.id) {
+        throw new Error('You can only re-check your own audits')
+      }
 
-      if (user.plan === 'FREE') {
+      if (!canAccessPaidFeatures(user)) {
         throw new Error('Upgrade to Builder to use re-check')
       }
 
@@ -317,6 +332,7 @@ export async function validateApiKey(key: string | null): Promise<User | null> {
     include: { user: true },
   })
   if (!apiKey) return null
+  if (!canUseApiKeys(apiKey.user)) return null
   await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsed: new Date() } })
   return apiKey.user
 }

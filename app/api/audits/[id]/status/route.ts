@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
+import { markAnonymousAuditCompletedOnce } from '@/lib/audit/usage'
 
 export async function GET(
   _req: NextRequest,
@@ -40,6 +41,10 @@ export async function GET(
 
     if (!canAccessAudit(audit, session?.user)) {
       return apiError('You do not have access to this audit', 403)
+    }
+
+    if (!audit.userId && audit.status === 'COMPLETED') {
+      await markAnonymousAuditCompletedOnce(id)
     }
 
     return NextResponse.json(audit)

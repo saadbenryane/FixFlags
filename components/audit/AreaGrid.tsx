@@ -1,3 +1,4 @@
+'use client'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 
 interface Area {
