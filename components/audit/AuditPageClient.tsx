@@ -1,29 +1,37 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuditPolling } from '@/hooks/useAuditPolling'
 import { AuditProgress } from '@/components/audit/AuditProgress'
 import { AuditVerdict } from '@/components/audit/AuditVerdict'
 import { AreaGrid } from '@/components/audit/AreaGrid'
 import { AreaCard } from '@/components/audit/AreaCard'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
+import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Container } from '@/components/ui/container'
 import { RefreshCw, Share2, AlertCircle, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { UPSELLS, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { parseApiErrorResponse } from '@/lib/api/errors'
 
 interface Props {
   id: string
   isPaid: boolean
   isLoggedIn: boolean
+  session?: { user: { id: string } } | null
 }
 
 const AREA_ORDER = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']
 
-export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
-  const { audit, isLoading, isComplete, isFailed, status } = useAuditPolling(id)
+export function AuditPageClient({ id, isPaid, isLoggedIn, session }: Props) {
+  const router = useRouter()
+  const { audit, isLoading, isComplete, isFailed, isNotFound, isForbidden, fetchError, status } =
+    useAuditPolling(id)
   const [isPublic, setIsPublic] = useState<boolean | null>(null)
+  const [retryLoading, setRetryLoading] = useState(false)
 
   const desktopScreenshot = audit?.screenshots?.find(
     (s: { device: string }) => s.device === 'DESKTOP'
@@ -42,12 +50,10 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
           toast.success('Report is now private.')
         }
       } else {
-        await navigator.clipboard.writeText(window.location.href)
-        toast.success('URL copied to clipboard')
+        toast.error(data.error || 'Failed to update sharing')
       }
     } catch {
-      await navigator.clipboard.writeText(window.location.href)
-      toast.success('URL copied to clipboard')
+      toast.error('Failed to update sharing')
     }
   }
 
@@ -55,23 +61,99 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
     const res = await fetch(`/api/audits/${id}/recheck`, { method: 'POST' })
     const data = await res.json()
     if (res.ok) {
-      window.location.href = `/audit/${data.auditId}`
+      router.push(`/audit/${data.auditId}`)
     } else {
       toast.error(data.error || 'Failed to start re-check')
     }
   }
 
+  async function handleRetry() {
+    if (!audit?.url) return
+    setRetryLoading(true)
+    try {
+      const res = await fetch('/api/audits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: audit.url }),
+      })
+      if (!res.ok) {
+        toast.error(await parseApiErrorResponse(res))
+        return
+      }
+      const data = await res.json()
+      router.push(`/audit/${data.auditId}`)
+    } catch {
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setRetryLoading(false)
+    }
+  }
+
+  const actions =
+    isComplete && audit ? (
+      <>
+        {audit?.parentId && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/compare/${id}`}>
+              <ArrowLeftRight className="h-4 w-4 mr-2" />
+              View comparison
+            </Link>
+          </Button>
+        )}
+        {isLoggedIn && (
+          <Button variant="outline" size="sm" onClick={handleShare}>
+            <Share2 className="h-4 w-4 mr-2" />
+            {(isPublic !== null ? isPublic : audit?.isPublic) ? 'Make private' : 'Share'}
+          </Button>
+        )}
+        {isPaid && (
+          <Button size="sm" onClick={handleRecheck}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Re-check
+          </Button>
+        )}
+      </>
+    ) : undefined
+
+  if (isNotFound) {
+    return (
+      <AuditShell session={session}>
+        <Container className="py-24 text-center space-y-4">
+          <h2 className="text-xl font-semibold">Audit not found</h2>
+          <p className="text-muted-foreground text-sm">This audit does not exist or has been removed.</p>
+          <Button asChild>
+            <Link href="/">Start a new audit</Link>
+          </Button>
+        </Container>
+      </AuditShell>
+    )
+  }
+
+  if (isForbidden) {
+    return (
+      <AuditShell session={session}>
+        <Container className="py-24 text-center space-y-4">
+          <h2 className="text-xl font-semibold">Access denied</h2>
+          <p className="text-muted-foreground text-sm">{fetchError || 'You do not have access to this audit.'}</p>
+          <Button asChild>
+            <Link href="/">Go home</Link>
+          </Button>
+        </Container>
+      </AuditShell>
+    )
+  }
+
   if (isFailed) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="max-w-md text-center space-y-4">
+      <AuditShell session={session}>
+        <Container className="py-24 text-center space-y-4 max-w-md mx-auto">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
           <h2 className="text-xl font-semibold">Audit failed</h2>
           <p className="text-muted-foreground text-sm">
             {audit?.errorMsg || "We couldn't complete this audit. The site may be unreachable or blocking bots."}
           </p>
           <div className="flex justify-center gap-3">
-            <Button variant="outline" onClick={handleRecheck}>
+            <Button variant="outline" onClick={handleRetry} disabled={retryLoading}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Try again
             </Button>
@@ -79,47 +161,16 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
               <Link href="/">New audit</Link>
             </Button>
           </div>
-        </div>
-      </div>
+        </Container>
+      </AuditShell>
     )
   }
 
   const inProgress = !isComplete && !isFailed
-  const currentIsPublic = isPublic !== null ? isPublic : audit?.isPublic
 
   return (
-    <div className="min-h-screen">
-      {/* Nav */}
-      <nav className="border-b px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg tracking-tight">
-          QualityOS
-        </Link>
-        {isComplete && (
-          <div className="flex items-center gap-2">
-            {audit?.parentId && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/compare/${id}`}>
-                  <ArrowLeftRight className="h-4 w-4 mr-2" />
-                  View comparison
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-2" />
-              {currentIsPublic ? 'Make private' : 'Share'}
-            </Button>
-            {isPaid && (
-              <Button size="sm" onClick={handleRecheck}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Re-check
-              </Button>
-            )}
-          </div>
-        )}
-      </nav>
-
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        {/* Progress */}
+    <AuditShell session={session} actions={actions}>
+      <Container className="max-w-3xl py-8 space-y-8">
         {inProgress && (
           <div className="flex flex-col items-center py-12 space-y-6">
             <h2 className="text-xl font-semibold">{AUDIT_PROGRESS.inProgress}</h2>
@@ -130,7 +181,6 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
           </div>
         )}
 
-        {/* Loading skeleton */}
         {isLoading && !audit && (
           <div className="space-y-4">
             <Skeleton className="h-24 w-full" />
@@ -139,10 +189,8 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
           </div>
         )}
 
-        {/* Results */}
         {isComplete && audit && (
           <>
-            {/* Verdict */}
             <AuditVerdict
               pageJob={audit.pageJob}
               pageType={audit.pageType}
@@ -151,15 +199,12 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
               url={audit.url}
             />
 
-            {/* Screenshots */}
             {audit.screenshots?.length > 0 && (
               <ScreenshotViewer screenshots={audit.screenshots} />
             )}
 
-            {/* Area grid */}
             <AreaGrid areas={audit.areas} />
 
-            {/* Area cards */}
             <div className="space-y-3">
               {AREA_ORDER.map((areaName) => {
                 const area = audit.areas?.find(
@@ -177,7 +222,6 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
               })}
             </div>
 
-            {/* CTA for anon/free users */}
             {!isLoggedIn && (
               <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
                 <h3 className="font-semibold">{UPSELLS.anon.headline}</h3>
@@ -212,7 +256,7 @@ export function AuditPageClient({ id, isPaid, isLoggedIn }: Props) {
             })()}
           </>
         )}
-      </div>
-    </div>
+      </Container>
+    </AuditShell>
   )
 }

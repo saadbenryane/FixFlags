@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
 import { QUALITY_REPORT_TOOL, buildJudgePrompt } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
@@ -8,49 +9,57 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
-export interface JudgeOutput {
-  pageJob: string
-  pageType: string
-  verdict: string
-  score: number
-  areas: Array<{
-    name: string
-    score?: number
-    grade: string
-    status: string
-    summary: string
-    areaPrompt: string
-    cursorPrompt?: string
-    claudePrompt?: string
-    lovablePrompt?: string
-    boltPrompt?: string
-  }>
-  newFindings: Array<{
-    area: string
-    severity: string
-    problem: string
-    evidence: string
-    whyItMatters: string
-    fix: string
-    confidence: number
-    agentPrompt?: string
-    cursorPrompt?: string
-    claudePrompt?: string
-    lovablePrompt?: string
-    boltPrompt?: string
-    verificationRule?: string
-  }>
-  enrichments: Array<{
-    checkId: string
-    whyItMatters: string
-    agentPrompt?: string
-    cursorPrompt?: string
-    claudePrompt?: string
-    lovablePrompt?: string
-    boltPrompt?: string
-    verificationRule?: string
-  }>
-}
+const judgeOutputSchema = z.object({
+  pageJob: z.string(),
+  pageType: z.string(),
+  verdict: z.string(),
+  score: z.number(),
+  areas: z.array(
+    z.object({
+      name: z.string(),
+      score: z.number().optional(),
+      grade: z.string(),
+      status: z.string(),
+      summary: z.string(),
+      areaPrompt: z.string(),
+      cursorPrompt: z.string().optional(),
+      claudePrompt: z.string().optional(),
+      lovablePrompt: z.string().optional(),
+      boltPrompt: z.string().optional(),
+    })
+  ),
+  newFindings: z.array(
+    z.object({
+      area: z.string(),
+      severity: z.string(),
+      problem: z.string(),
+      evidence: z.string(),
+      whyItMatters: z.string(),
+      fix: z.string(),
+      confidence: z.number(),
+      agentPrompt: z.string().optional(),
+      cursorPrompt: z.string().optional(),
+      claudePrompt: z.string().optional(),
+      lovablePrompt: z.string().optional(),
+      boltPrompt: z.string().optional(),
+      verificationRule: z.string().optional(),
+    })
+  ),
+  enrichments: z.array(
+    z.object({
+      checkId: z.string(),
+      whyItMatters: z.string(),
+      agentPrompt: z.string().optional(),
+      cursorPrompt: z.string().optional(),
+      claudePrompt: z.string().optional(),
+      lovablePrompt: z.string().optional(),
+      boltPrompt: z.string().optional(),
+      verificationRule: z.string().optional(),
+    })
+  ),
+})
+
+export type JudgeOutput = z.infer<typeof judgeOutputSchema>
 
 export async function runJudge(
   url: string,
@@ -118,10 +127,7 @@ export async function runJudge(
         messages: [
           {
             role: 'user',
-            content: [
-              ...imageContent,
-              { type: 'text', text: buildJudgePrompt(context) },
-            ],
+            content: [...imageContent, { type: 'text', text: buildJudgePrompt(context) }],
           },
         ],
       },
@@ -133,7 +139,12 @@ export async function runJudge(
       throw new Error('No tool_use in judge response')
     }
 
-    return toolUse.input as JudgeOutput
+    const parsed = judgeOutputSchema.safeParse(toolUse.input)
+    if (!parsed.success) {
+      throw new Error(`Invalid judge output: ${parsed.error.message}`)
+    }
+
+    return parsed.data
   } finally {
     clearTimeout(timeout)
   }

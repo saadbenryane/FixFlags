@@ -6,3 +6,9 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# Deploy a second Railway service for the audit worker:
+#   Start command: npm run worker:build && npm run worker:start
+#   Same env vars as web: DATABASE_URL, REDIS_URL, ANTHROPIC_API_KEY, etc.
+# Schedule cron (e.g. every 15 min) hitting:
+#   POST /api/cron/recover-stuck-audits with Authorization: Bearer $CRON_SECRET

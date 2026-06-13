@@ -8,107 +8,123 @@
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'Your agent built it. QualityOS checks if it works.',
+  tagline: 'Check your site before you ship',
   category: 'Post-build QA for AI-shipped apps',
-  oneLiner: 'The quality layer between "AI shipped it" and "ready to launch."',
-  tribeBadge: 'For teams shipping with AI agents',
-  mechanismLine: 'The only audit that writes fix prompts your agent can run',
+  oneLiner: 'Paste a URL. Get a grade and fix prompts.',
+  tribeBadge: 'For builders using Cursor, Lovable, and Bolt',
+  mechanismLine: 'Every finding ships with a fix prompt your agent can run',
 } as const
 
+/** Named once on the page — do not repeat in every section */
+export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
+
+export const AUDIT_CATEGORIES =
+  'Performance, SEO, mobile, conversion, trust, content, and accessibility' as const
+
 export const HERO = {
-  headline: 'Your agent built it.',
-  headlineAccent: 'QualityOS checks if it works.',
+  headline: 'Check your site before you ship',
   subhead:
-    'Run a 60-second audit across 7 quality areas. Get evidence-backed findings with copy-ready fix prompts for Cursor, Claude Code, Lovable, and Bolt. Re-check after your agent applies fixes.',
-  trustLine: 'Free first audit — no account, no credit card. 60+ checks + AI analysis.',
+    'Paste a URL. Get a graded report with evidence and fix prompts for your AI editor.',
+  trustLine: 'Free. No account. Under 60 seconds.',
   primaryCta: 'Audit my site',
   secondaryCta: 'See sample reports',
 } as const
 
+/** Friction reducers only — not product claims. Product proof lives in the sample card. */
+export const HERO_PILLS = ['Free first audit', 'No account', 'Under 60 seconds'] as const
+
 export const SAMPLE_FINDINGS = [
   { area: 'Mobile', grade: 'C', issue: 'Primary CTA below fold at 375px' },
-  { area: 'SEO', grade: 'D', issue: 'og:image missing — link previews show blank' },
+  { area: 'SEO', grade: 'D', issue: 'og:image missing. Link previews show blank.' },
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
-export const SAMPLE_FINDINGS_FOOTER =
-  'Each finding includes a copy-ready fix prompt for Cursor, Claude, Lovable, or Bolt'
+export const SAMPLE_FINDINGS_FOOTER = 'Each finding includes a copy-ready fix prompt'
+
+export const WORKFLOW_SECTION = {
+  headline: 'Four steps to a launch-ready site',
+} as const
 
 export const WORKFLOW_STEPS = [
   {
     step: 1,
     title: 'Paste your URL',
-    body: 'Any public site — landing page, pricing, portfolio',
+    body: 'Any public page: landing, pricing, portfolio',
   },
   {
     step: 2,
-    title: 'Get graded across 7 areas',
-    body: 'Performance, Accessibility, SEO, Conversion, Trust, Content, Mobile',
+    title: 'Read your grades',
+    body: 'Performance, SEO, mobile, conversion, trust, and more',
   },
   {
     step: 3,
     title: 'Copy a fix prompt',
-    body: 'One prompt per area, tuned for your AI tool',
+    body: `Paste into ${AI_TOOLS}`,
   },
   {
     step: 4,
     title: 'Re-check after fixes',
-    body: 'Before/after scores prove you actually improved',
+    body: 'Before/after scores show what changed',
   },
 ] as const
 
 export const PROBLEM_SECTION = {
-  headline: 'AI makes shipping fast. It doesn\u2019t make shipping right.',
+  headline: 'Fast to ship. Easy to miss the details.',
   pains: [
     {
-      title: 'Launch embarrassment',
-      body: 'Mobile CTA below fold, broken link previews, 4s load times',
+      title: 'Broken on mobile',
+      body: 'CTA below the fold, tap targets too small, layout breaks at 375px',
     },
     {
-      title: 'Invisible SEO debt',
-      body: 'Missing og:image, no structured data, weak meta',
+      title: 'Broken in previews',
+      body: 'Missing og:image, weak meta, blank cards when you share the link',
     },
     {
-      title: 'Conversion leaks',
-      body: 'Generic hero copy, weak trust signals, unclear page job',
+      title: 'Broken for conversion',
+      body: 'Vague hero copy, weak trust signals, unclear what the page wants you to do',
     },
   ],
 } as const
 
 export const DIFFERENTIATION = {
-  headline: 'Not another audit score. A fix loop.',
+  headline: 'Graded findings with fix prompts, not just a score',
   rows: [
-    { feature: 'Business impact explained', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Conversion + trust analysis', lighthouse: 'No', manual: 'Maybe', qualityos: 'Yes' },
-    { feature: 'Agent-ready fix prompts', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
-    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
-    { feature: 'Works in Cursor/Claude via MCP', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
+    { feature: 'Says why each issue hurts launch', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Grades conversion and trust', lighthouse: 'No', manual: 'Maybe', qualityos: 'Yes' },
+    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
+    { feature: 'Re-check after your agent fixes it', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
+    { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
 } as const
 
 export const SOCIAL_PROOF = {
-  headline: 'We audit real sites. Here\u2019s what we find.',
+  headline: 'Even strong sites fail these checks',
+  cta: 'See full sample reports',
   samples: [
     { name: 'Stripe', score: 91, finding: '3 third-party scripts add ~80ms render delay' },
     { name: 'Linear', score: 78, finding: 'Mobile LCP is 3.8s. Hero video loads before text content.' },
-    { name: 'Cal.com', score: 63, finding: 'Mobile PageSpeed score 43 — primary CTA below fold on 375px' },
+    { name: 'Cal.com', score: 63, finding: 'Mobile PageSpeed score 43. Primary CTA below fold on 375px.' },
   ],
 } as const
 
+export const QUALITY_AREAS_SECTION = {
+  headline: 'Everything we check in one report',
+} as const
+
 export const QUALITY_AREAS = [
-  { name: 'Performance', impact: 'Slow pages kill conversion before anyone reads your copy' },
-  { name: 'Accessibility', impact: 'Real users can\u2019t use your app; legal risk on public sites' },
-  { name: 'SEO', impact: 'Broken previews and missing schema = invisible on Google and Slack' },
-  { name: 'Conversion', impact: 'Is the page actually doing its job?' },
-  { name: 'Trust', impact: 'Do you look legitimate enough to pay or sign up?' },
-  { name: 'Content', impact: 'Does the copy match what you\u2019re selling?' },
-  { name: 'Mobile', impact: 'Most AI-built sites break here first' },
+  { name: 'Performance', impact: 'Slow pages lose visitors before they read a word' },
+  { name: 'Accessibility', impact: 'Real users cannot complete key actions' },
+  { name: 'SEO', impact: 'Broken previews and missing schema hide you on Google and Slack' },
+  { name: 'Conversion', impact: 'Does the page guide someone to sign up or buy?' },
+  { name: 'Trust', impact: 'Do you look legitimate enough to pay or share data?' },
+  { name: 'Content', impact: 'Does the copy match what you are selling?' },
+  { name: 'Mobile', impact: 'Where most AI-built sites break first' },
 ] as const
 
 export const MCP_SECTION = {
-  headline: 'Audit without leaving your editor',
-  body: 'Connect QualityOS to Cursor, Claude Code, or Windsurf via MCP. Your agent audits, fixes, and re-checks without copy-pasting URLs.',
-  cta: 'Set up MCP integration',
+  headline: 'Run audits from your editor',
+  body: `Connect via MCP. Your agent in Cursor or Claude audits, fixes, and re-checks without you copy-pasting URLs.`,
+  cta: 'See MCP setup',
   workflow: `User: "Audit https://myapp.com and fix the Mobile issues"
 
 Claude calls: qos_audit_url → qos_get_area("Mobile")
@@ -132,21 +148,31 @@ export const PRICING_TEASER = {
   cta: 'See full pricing',
 } as const
 
-export const FINAL_CTA = {
-  headline: 'Find out if you\u2019re launch-ready',
+export const MID_CTA = {
+  headline: 'Run it on your site',
   trustLine: HERO.trustLine,
+} as const
+
+export const FINAL_CTA = {
+  headline: 'Paste your URL. See your grade.',
+  trustLine: HERO.trustLine,
+} as const
+
+export const FAQ_SECTION = {
+  title: 'Common questions',
+  viewAll: 'View all questions',
 } as const
 
 export const FAQ = [
   {
     question: 'What does QualityOS check that Lighthouse doesn\u2019t?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. QualityOS adds conversion analysis, trust signals, content quality, and mobile UX — then writes fix prompts your AI agent can run. Every finding includes evidence and business impact, not just a metric.',
+      'Lighthouse scores performance, accessibility, and SEO. QualityOS also grades conversion, trust, content, and mobile UX. Every finding includes evidence, launch impact, and a fix prompt for your AI editor.',
   },
   {
     question: 'Do I need an account for my first audit?',
     answer:
-      'No. Paste any public URL and get a full audit in under 60 seconds — no account, no credit card. Create a free account to save reports and run 3 audits total.',
+      'No. Paste any public URL and get a full audit in under 60 seconds. No account, no credit card. Create a free account to save reports and run 3 audits total.',
   },
   {
     question: 'What\u2019s included in the free plan vs Builder?',
@@ -176,8 +202,17 @@ export const FAQ = [
   {
     question: 'Who is QualityOS for?',
     answer:
-      'Solo builders and small teams shipping with AI coding tools who need to launch with confidence — not enterprise QA teams running manual test suites.',
+      'Solo builders and small teams shipping with AI coding tools who want to catch launch issues before sharing a link. Not built for enterprise QA teams running manual test suites.',
   },
+] as const
+
+/** Top objections for the home page — full list lives on /faq */
+export const HOME_FAQ = [
+  FAQ[0],
+  FAQ[1],
+  FAQ[3],
+  FAQ[4],
+  FAQ[7],
 ] as const
 
 export const PRICING_FAQ = [
@@ -371,7 +406,7 @@ export const UPSELLS = {
 
 export const AUDIT_PROGRESS = {
   capturing: 'Taking screenshots...',
-  checking: 'Running 60+ checks across performance, SEO, accessibility, and more...',
+  checking: 'Running automated checks across performance, SEO, accessibility, and more...',
   judging: 'AI is analyzing your page...',
   completed: 'Report ready',
   inProgress: 'Auditing your site...',
@@ -379,9 +414,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'Post-build QA for AI-shipped apps',
+    title: 'Check your site before you ship',
     description:
-      'Your agent built it. QualityOS checks if it works. Run a 60-second audit across 7 quality areas with copy-ready fix prompts for Cursor, Claude Code, Lovable, and Bolt.',
+      'Paste any public URL. Graded on performance, SEO, mobile, conversion, and trust. Every finding includes a fix prompt for Cursor, Claude, Lovable, and Bolt.',
   },
   pricing: {
     title: 'Pricing',

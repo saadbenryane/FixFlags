@@ -1,47 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getAuditQueue } from '@/lib/queue/client'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { handleRouteError, apiError } from '@/lib/api/errors'
+import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
+import { checkUserAuditAllowed } from '@/lib/audit/usage'
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: parentId } = await params
+  try {
+    const { id: parentId } = await params
 
-  const parent = await prisma.audit.findUnique({ where: { id: parentId } })
-  if (!parent) {
-    return NextResponse.json({ error: 'Audit not found' }, { status: 404 })
-  }
+    const parent = await prisma.audit.findUnique({ where: { id: parentId } })
+    if (!parent) {
+      return apiError('Audit not found', 404)
+    }
 
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
-  // Paid users only
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Sign in to re-check audits' }, { status: 401 })
-  }
+    if (!session?.user) {
+      return apiError('Sign in to re-check audits', 401)
+    }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  if (!user || user.plan === 'FREE') {
-    return NextResponse.json({ error: 'Upgrade to Builder to use re-check' }, { status: 402 })
-  }
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!user || user.plan === 'FREE') {
+      return apiError('Upgrade to Builder to use re-check', 402)
+    }
 
-  const audit = await prisma.audit.create({
-    data: {
+    const limitCheck = await checkUserAuditAllowed(user)
+    if (!limitCheck.allowed) {
+      return apiError(limitCheck.error!, 402)
+    }
+
+    const { auditId, status } = await createAndEnqueueAudit({
       url: parent.url,
       userId: session.user.id,
       parentId,
-      status: 'QUEUED',
-    },
-  })
+    })
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { auditsUsed: { increment: 1 } },
-  })
-
-  await getAuditQueue().add('audit', { auditId: audit.id }, { jobId: audit.id })
-
-  return NextResponse.json({ auditId: audit.id, status: 'QUEUED' }, { status: 201 })
+    return NextResponse.json({ auditId, status }, { status: 201 })
+  } catch (err) {
+    return handleRouteError(err)
+  }
 }

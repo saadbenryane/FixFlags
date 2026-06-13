@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
+import { parseApiErrorResponse } from '@/lib/api/errors'
 
 export function AuditInput() {
   const router = useRouter()
@@ -44,13 +45,13 @@ export function AuditInput() {
         body: JSON.stringify({ url: normalized }),
       })
 
-      const data = await res.json()
-
       if (!res.ok) {
-        toast.error(data.error || 'Failed to start audit')
+        const message = await parseApiErrorResponse(res)
+        toast.error(message)
         return
       }
 
+      const data = await res.json()
       router.push(`/audit/${data.auditId}`)
     } catch {
       toast.error('Something went wrong. Please try again.')

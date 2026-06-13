@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe, planFromPriceId, PLAN_LIMITS } from '@/lib/stripe'
+import { getStripe, planFromPriceId, PLAN_LIMITS } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   let event
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err) {
     return NextResponse.json({ error: `Webhook error: ${(err as Error).message}` }, { status: 400 })
   }
@@ -21,16 +21,28 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object
       const plan = planFromPriceId(sub.items.data[0]?.price.id ?? '')
       if (plan) {
-        await prisma.user.updateMany({
+        const periodEnd = new Date(((sub as unknown) as Record<string, number>).current_period_end * 1000)
+        const users = await prisma.user.findMany({
           where: { stripeCustomerId: sub.customer as string },
-          data: {
-            plan,
-            stripeSubscriptionId: sub.id,
-            stripePriceId: sub.items.data[0]?.price.id,
-            stripeCurrentPeriodEnd: new Date(((sub as unknown) as Record<string, number>).current_period_end * 1000),
-            auditsLimit: PLAN_LIMITS[plan].audits,
-          },
+          select: { id: true, stripeCurrentPeriodEnd: true },
         })
+
+        for (const u of users) {
+          const resetUsage =
+            u.stripeCurrentPeriodEnd && periodEnd > u.stripeCurrentPeriodEnd
+
+          await prisma.user.update({
+            where: { id: u.id },
+            data: {
+              plan,
+              stripeSubscriptionId: sub.id,
+              stripePriceId: sub.items.data[0]?.price.id,
+              stripeCurrentPeriodEnd: periodEnd,
+              auditsLimit: PLAN_LIMITS[plan].audits,
+              ...(resetUsage ? { auditsUsed: 0 } : {}),
+            },
+          })
+        }
       }
       break
     }

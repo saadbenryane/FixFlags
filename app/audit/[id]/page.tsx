@@ -17,5 +17,12 @@ export default async function AuditPage({ params }: Props) {
     isPaid = user?.plan !== 'FREE' && user?.plan != null
   }
 
-  return <AuditPageClient id={id} isPaid={isPaid} isLoggedIn={!!session?.user} />
+  return (
+    <AuditPageClient
+      id={id}
+      isPaid={isPaid}
+      isLoggedIn={!!session?.user}
+      session={session}
+    />
+  )
 }

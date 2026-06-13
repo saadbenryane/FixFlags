@@ -2,17 +2,21 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { SignOutButton } from '@/components/auth/SignOutButton'
 
 interface MarketingShellProps {
   children: React.ReactNode
-  session?: { user: { id: string } } | null
+  session?: { user: { email?: string | null } } | null
 }
 
 export function MarketingShell({ children, session }: MarketingShellProps) {
   const headerRight = session ? (
-    <Button variant="default" size="sm" asChild>
-      <Link href="/dashboard">Dashboard</Link>
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" asChild>
+        <Link href="/dashboard">Dashboard</Link>
+      </Button>
+      <SignOutButton />
+    </div>
   ) : undefined
 
   return (

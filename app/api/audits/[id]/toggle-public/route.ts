@@ -2,26 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { handleRouteError, apiError } from '@/lib/api/errors'
+import { canManageAudit } from '@/lib/audit/access'
 
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  try {
+    const { id } = await params
+    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
-  const audit = await prisma.audit.findUnique({ where: { id }, select: { userId: true, isPublic: true } })
-  if (!audit) return NextResponse.json({ error: 'Audit not found' }, { status: 404 })
+    const audit = await prisma.audit.findUnique({
+      where: { id },
+      select: { userId: true, isPublic: true },
+    })
+    if (!audit) return apiError('Audit not found', 404)
 
-  if (audit.userId && audit.userId !== session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!canManageAudit(audit, session?.user)) {
+      return apiError('Sign in to manage sharing for this audit', 401)
+    }
+
+    const updated = await prisma.audit.update({
+      where: { id },
+      data: { isPublic: !audit.isPublic },
+      select: { isPublic: true },
+    })
+
+    return NextResponse.json(updated)
+  } catch (err) {
+    return handleRouteError(err)
   }
-
-  const updated = await prisma.audit.update({
-    where: { id },
-    data: { isPublic: !audit.isPublic },
-    select: { isPublic: true },
-  })
-
-  return NextResponse.json(updated)
 }

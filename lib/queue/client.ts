@@ -1,21 +1,12 @@
 import { Queue } from 'bullmq'
-
-function getRedisOptions() {
-  const url = process.env.REDIS_URL || 'redis://localhost:6379'
-  return {
-    url: url.includes('?') ? url : `${url}?family=0`,
-    maxRetriesPerRequest: null as unknown as undefined,
-    enableReadyCheck: false,
-    lazyConnect: true,
-  }
-}
+import { getRedisConnectionOptions } from './redis'
 
 let _auditQueue: Queue | null = null
 
 export function getAuditQueue(): Queue {
   if (!_auditQueue) {
     _auditQueue = new Queue('audit', {
-      connection: getRedisOptions(),
+      connection: getRedisConnectionOptions(),
       defaultJobOptions: {
         attempts: 2,
         backoff: { type: 'fixed', delay: 10_000 },

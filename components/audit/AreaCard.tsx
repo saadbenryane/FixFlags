@@ -7,6 +7,7 @@ import { AreaPromptButton } from './AreaPromptButton'
 import { cn, gradeColor, areaLabel } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { UPSELLS } from '@/lib/marketing/copy'
+import { FREE_FINDING_LIMIT } from '@/lib/audit/access'
 
 interface Finding {
   id: string
@@ -42,8 +43,6 @@ interface Props {
   isPaid?: boolean
   defaultOpen?: boolean
 }
-
-const FREE_FINDING_LIMIT = 3
 
 export function AreaCard({ area, isPaid = false, defaultOpen = false }: Props) {
   const [open, setOpen] = useState(defaultOpen)

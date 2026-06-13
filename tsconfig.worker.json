@@ -5,8 +5,14 @@
     "moduleResolution": "node",
     "noEmit": false,
     "outDir": "dist",
-    "jsx": "react"
+    "jsx": "react",
+    "incremental": false,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "include": ["worker/**/*.ts", "lib/**/*.ts"],
+  "include": ["worker/**/*.ts"],
   "exclude": ["node_modules", "app", ".next"]
 }

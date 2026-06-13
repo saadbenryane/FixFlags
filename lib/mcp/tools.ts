@@ -1,8 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { prisma } from '../db'
-import { getAuditQueue } from '../queue/client'
 import { User } from '@prisma/client'
+import { createAndEnqueueAudit } from '../audit/create-audit'
+import { checkUserAuditAllowed } from '../audit/usage'
+import { getFindingDiffSummary } from '../audit/diff-findings'
+
+async function assertUserCanAudit(user: User): Promise<void> {
+  const check = await checkUserAuditAllowed(user)
+  if (!check.allowed) throw new Error(check.error ?? 'Audit limit reached')
+}
 
 export function registerAllTools(server: McpServer, user: User) {
   // qos_audit_url
@@ -14,22 +21,15 @@ export function registerAllTools(server: McpServer, user: User) {
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
     },
     async ({ url, waitForCompletion }) => {
-      const audit = await prisma.audit.create({
-        data: { url, userId: user.id, status: 'QUEUED' },
-      })
+      await assertUserCanAudit(user)
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { auditsUsed: { increment: 1 } },
-      })
-
-      await getAuditQueue().add('audit', { auditId: audit.id }, { jobId: audit.id })
+      const { auditId } = await createAndEnqueueAudit({ url, userId: user.id })
 
       if (waitForCompletion) {
         const start = Date.now()
         while (Date.now() - start < 90_000) {
           await new Promise((r) => setTimeout(r, 3000))
-          const updated = await prisma.audit.findUnique({ where: { id: audit.id } })
+          const updated = await prisma.audit.findUnique({ where: { id: auditId } })
           if (updated?.status === 'COMPLETED' || updated?.status === 'FAILED') break
         }
       }
@@ -40,9 +40,9 @@ export function registerAllTools(server: McpServer, user: User) {
           {
             type: 'text' as const,
             text: JSON.stringify({
-              auditId: audit.id,
+              auditId,
               status: 'QUEUED',
-              reportUrl: `${appUrl}/audit/${audit.id}`,
+              reportUrl: `${appUrl}/audit/${auditId}`,
             }),
           },
         ],
@@ -228,28 +228,29 @@ export function registerAllTools(server: McpServer, user: User) {
       const parent = await prisma.audit.findUnique({ where: { id: parentAuditId } })
       if (!parent) throw new Error('Parent audit not found')
 
-      const audit = await prisma.audit.create({
-        data: { url: parent.url, userId: user.id, parentId: parentAuditId, status: 'QUEUED' },
-      })
+      if (user.plan === 'FREE') {
+        throw new Error('Upgrade to Builder to use re-check')
+      }
 
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { auditsUsed: { increment: 1 } },
-      })
+      await assertUserCanAudit(user)
 
-      await getAuditQueue().add('audit', { auditId: audit.id }, { jobId: audit.id })
+      const { auditId } = await createAndEnqueueAudit({
+        url: parent.url,
+        userId: user.id,
+        parentId: parentAuditId,
+      })
 
       if (waitForCompletion) {
         const start = Date.now()
         while (Date.now() - start < 90_000) {
           await new Promise((r) => setTimeout(r, 3000))
-          const updated = await prisma.audit.findUnique({ where: { id: audit.id } })
+          const updated = await prisma.audit.findUnique({ where: { id: auditId } })
           if (updated?.status === 'COMPLETED' || updated?.status === 'FAILED') break
         }
       }
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ auditId: audit.id, status: 'QUEUED' }) }],
+        content: [{ type: 'text' as const, text: JSON.stringify({ auditId, status: 'QUEUED' }) }],
       }
     }
   )
@@ -279,6 +280,8 @@ export function registerAllTools(server: McpServer, user: User) {
         }
       })
 
+      const findingDiff = await getFindingDiffSummary(beforeId, afterId)
+
       return {
         content: [
           {
@@ -288,6 +291,17 @@ export function registerAllTools(server: McpServer, user: User) {
               beforeScore: before.score,
               afterScore: after.score,
               areas: areaDeltas,
+              findings: {
+                fixed: findingDiff.fixed.length,
+                unchanged: findingDiff.unchanged.length,
+                regressed: findingDiff.regressed.length,
+                newIssues: findingDiff.newIssues.length,
+                details: {
+                  fixed: findingDiff.fixed,
+                  regressed: findingDiff.regressed,
+                  newIssues: findingDiff.newIssues,
+                },
+              },
             }),
           },
         ],

@@ -9,17 +9,22 @@ import { Body, Heading, Muted } from '@/components/ui/typography'
 import {
   BRAND,
   HERO,
+  HERO_PILLS,
   SAMPLE_FINDINGS,
   SAMPLE_FINDINGS_FOOTER,
+  WORKFLOW_SECTION,
   WORKFLOW_STEPS,
   PROBLEM_SECTION,
   DIFFERENTIATION,
   SOCIAL_PROOF,
+  QUALITY_AREAS_SECTION,
   QUALITY_AREAS,
   MCP_SECTION,
   PRICING_TEASER,
+  MID_CTA,
   FINAL_CTA,
-  FAQ,
+  HOME_FAQ,
+  FAQ_SECTION,
 } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import {
@@ -37,6 +42,22 @@ export const metadata = buildPageMetadata('home', '/')
 
 const PAIN_ICONS = [AlertTriangle, Search, TrendingDown]
 
+function AuditCtaBlock({
+  headline,
+  trustLine,
+}: {
+  headline: string
+  trustLine: string
+}) {
+  return (
+    <div className="flex flex-col items-center text-center space-y-4">
+      <Heading as="h2">{headline}</Heading>
+      <AuditInput />
+      <Muted>{trustLine}</Muted>
+    </div>
+  )
+}
+
 export default function HomePage() {
   return (
     <>
@@ -49,11 +70,20 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-4 max-w-3xl">
-            <Heading as="h1">
-              {HERO.headline}{' '}
-              <span className="text-primary">{HERO.headlineAccent}</span>
-            </Heading>
+            <Heading as="h1">{HERO.headline}</Heading>
             <Body className="max-w-2xl mx-auto text-muted-foreground">{HERO.subhead}</Body>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            {HERO_PILLS.map((item, i) => (
+              <span key={item} className="inline-flex items-center gap-4">
+                {i > 0 && <span className="hidden sm:inline text-border">·</span>}
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3 w-3 text-primary shrink-0" />
+                  {item}
+                </span>
+              </span>
+            ))}
           </div>
 
           <AuditInput />
@@ -102,27 +132,7 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* Workflow */}
-      <Section spacing="default" className="bg-muted/20">
-        <Container className="space-y-10">
-          <Heading as="h2" className="text-center">
-            How it works
-          </Heading>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {WORKFLOW_STEPS.map((step) => (
-              <div key={step.step} className="space-y-2 text-center">
-                <div className="mx-auto w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                  {step.step}
-                </div>
-                <div className="font-semibold">{step.title}</div>
-                <p className="text-sm text-muted-foreground">{step.body}</p>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
-      {/* Problem */}
+      {/* Problem (PAS before solution) */}
       <Section spacing="default">
         <Container className="space-y-10">
           <Heading as="h2" className="text-center">
@@ -145,8 +155,28 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* Differentiation */}
+      {/* How it works */}
       <Section spacing="default" className="bg-muted/20">
+        <Container className="space-y-10">
+          <Heading as="h2" className="text-center">
+            {WORKFLOW_SECTION.headline}
+          </Heading>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {WORKFLOW_STEPS.map((step) => (
+              <div key={step.step} className="space-y-2 text-center">
+                <div className="mx-auto w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                  {step.step}
+                </div>
+                <div className="font-semibold">{step.title}</div>
+                <p className="text-sm text-muted-foreground">{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </Section>
+
+      {/* Differentiation */}
+      <Section spacing="default">
         <Container className="space-y-8">
           <Heading as="h2" className="text-center">
             {DIFFERENTIATION.headline}
@@ -177,7 +207,7 @@ export default function HomePage() {
       </Section>
 
       {/* Social proof */}
-      <Section spacing="default">
+      <Section spacing="default" className="bg-muted/20">
         <Container className="space-y-8">
           <Heading as="h2" className="text-center">
             {SOCIAL_PROOF.headline}
@@ -198,7 +228,7 @@ export default function HomePage() {
           <div className="text-center">
             <Button variant="outline" asChild>
               <Link href="/samples">
-                View full sample reports
+                {SOCIAL_PROOF.cta}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -206,11 +236,18 @@ export default function HomePage() {
         </Container>
       </Section>
 
+      {/* Mid-page CTA */}
+      <Section spacing="default">
+        <Container className="max-w-3xl">
+          <AuditCtaBlock headline={MID_CTA.headline} trustLine={MID_CTA.trustLine} />
+        </Container>
+      </Section>
+
       {/* 7 Quality Areas */}
       <Section spacing="default" className="bg-muted/20">
         <Container className="space-y-8">
           <Heading as="h2" className="text-center">
-            7 quality areas that matter at launch
+            {QUALITY_AREAS_SECTION.headline}
           </Heading>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {QUALITY_AREAS.map((area) => (
@@ -239,7 +276,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
           <div className="text-center">
-            <Button asChild>
+            <Button variant="outline" asChild>
               <Link href="/docs/mcp">
                 {MCP_SECTION.cta}
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -284,10 +321,10 @@ export default function HomePage() {
       {/* FAQ */}
       <Section spacing="default">
         <Container className="max-w-2xl">
-          <FaqSection items={FAQ} />
+          <FaqSection items={HOME_FAQ} title={FAQ_SECTION.title} />
           <div className="text-center mt-6">
             <Link href="/faq" className="text-sm text-primary link-underline-grow">
-              View all questions
+              {FAQ_SECTION.viewAll}
             </Link>
           </div>
         </Container>
@@ -295,10 +332,11 @@ export default function HomePage() {
 
       {/* Final CTA */}
       <Section spacing="loose" className="bg-muted/20">
-        <Container className="max-w-3xl text-center space-y-6">
-          <Heading as="h2">{FINAL_CTA.headline}</Heading>
-          <AuditInput />
-          <Muted>{FINAL_CTA.trustLine}</Muted>
+        <Container className="max-w-3xl">
+          <AuditCtaBlock
+            headline={FINAL_CTA.headline}
+            trustLine={FINAL_CTA.trustLine}
+          />
         </Container>
       </Section>
     </>

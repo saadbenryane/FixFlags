@@ -1,10 +1,15 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { auth } from '@/lib/auth'
 import { AreaDiff } from '@/components/compare/AreaDiff'
+import { FindingDiff } from '@/components/compare/FindingDiff'
 import { BeforeAfterSlider } from '@/components/compare/BeforeAfterSlider'
+import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { Container } from '@/components/ui/container'
+import { getFindingDiffSummary } from '@/lib/audit/diff-findings'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -12,6 +17,7 @@ interface Props {
 
 export default async function ComparePage({ params }: Props) {
   const { id } = await params
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
   const recheckAudit = await prisma.audit.findUnique({
     where: { id },
@@ -37,27 +43,19 @@ export default async function ComparePage({ params }: Props) {
 
   const before = recheckAudit.parent
   const after = recheckAudit
+  const findingDiff = await getFindingDiffSummary(before.id, after.id)
 
   const beforeDesktop = before.screenshots.find((s) => s.device === 'DESKTOP')
   const afterDesktop = after.screenshots.find((s) => s.device === 'DESKTOP')
 
   return (
-    <div className="min-h-screen">
-      <nav className="border-b px-6 py-4 flex items-center gap-4">
-        <Link href={`/audit/${id}`} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span className="font-bold text-lg tracking-tight">QualityOS</span>
-        <span className="text-sm text-muted-foreground">Comparison</span>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <AuditShell session={session}>
+      <Container className="max-w-4xl py-8 space-y-8">
         <div>
           <h1 className="text-2xl font-bold">Before vs After</h1>
           <p className="text-sm text-muted-foreground mt-1 truncate">{after.url}</p>
         </div>
 
-        {/* Score delta */}
         <div className="flex items-center gap-6 p-4 rounded-xl border bg-card">
           <div className="text-center">
             <div className="text-3xl font-bold">{before.score ?? '–'}</div>
@@ -79,10 +77,14 @@ export default async function ComparePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Area diffs */}
         <AreaDiff beforeAreas={before.areas} afterAreas={after.areas} />
 
-        {/* Screenshot comparison */}
+        <FindingDiff
+          fixed={findingDiff.fixed}
+          regressed={findingDiff.regressed}
+          newIssues={findingDiff.newIssues}
+        />
+
         {beforeDesktop && afterDesktop && (
           <div className="space-y-3">
             <h2 className="text-sm font-semibold">Screenshot comparison</h2>
@@ -98,7 +100,7 @@ export default async function ComparePage({ params }: Props) {
             <Link href={`/audit/${after.id}`}>View latest audit</Link>
           </Button>
         </div>
-      </div>
-    </div>
+      </Container>
+    </AuditShell>
   )
 }

@@ -12,11 +12,11 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: `${BRAND.name} — ${HERO.headline} ${HERO.headlineAccent}`,
+  title: `${BRAND.name} — ${HERO.headline}`,
   description: HERO.subhead,
   openGraph: {
     title: BRAND.name,
-    description: `${HERO.headline} ${HERO.headlineAccent}`,
+    description: HERO.subhead,
     type: 'website',
   },
 }

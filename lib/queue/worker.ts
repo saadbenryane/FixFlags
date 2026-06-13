@@ -1,24 +1,34 @@
 import { Worker } from 'bullmq'
+import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
-
-function getRedisOptions() {
-  const url = process.env.REDIS_URL || 'redis://localhost:6379'
-  return {
-    url: url.includes('?') ? url : `${url}?family=0`,
-    maxRetriesPerRequest: null as unknown as undefined,
-    enableReadyCheck: false,
-  }
-}
+import { getWorkerRedisConnectionOptions } from './redis'
 
 export function startWorker() {
   const worker = new Worker(
     'audit',
     async (job) => {
-      const { auditId } = job.data
-      await runAudit(auditId)
+      const { auditId } = job.data as { auditId: string }
+      try {
+        await runAudit(auditId)
+      } catch (err) {
+        const audit = await prisma.audit.findUnique({
+          where: { id: auditId },
+          select: { status: true },
+        })
+        if (audit && audit.status !== 'FAILED' && audit.status !== 'COMPLETED') {
+          await prisma.audit.update({
+            where: { id: auditId },
+            data: {
+              status: 'FAILED',
+              errorMsg: (err as Error).message || 'Audit failed unexpectedly',
+            },
+          })
+        }
+        throw err
+      }
     },
     {
-      connection: getRedisOptions(),
+      connection: getWorkerRedisConnectionOptions(),
       concurrency: 3,
     }
   )
@@ -27,8 +37,24 @@ export function startWorker() {
     console.log(`Audit job ${job.id} completed for audit ${job.data.auditId}`)
   })
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', async (job, err) => {
     console.error(`Audit job ${job?.id} failed:`, err)
+    if (!job) return
+
+    const attempts = job.opts.attempts ?? 1
+    if (job.attemptsMade >= attempts) {
+      const auditId = (job.data as { auditId: string }).auditId
+      await prisma.audit.updateMany({
+        where: {
+          id: auditId,
+          status: { notIn: ['COMPLETED', 'FAILED'] },
+        },
+        data: {
+          status: 'FAILED',
+          errorMsg: err.message || 'Audit failed after all retry attempts',
+        },
+      })
+    }
   })
 
   return worker
