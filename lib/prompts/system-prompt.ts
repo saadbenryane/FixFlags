@@ -1,9 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-export const QUALITY_REPORT_TOOL: Anthropic.Tool = {
-  name: 'quality_report',
-  description: 'Output a structured quality audit report for a website',
-  input_schema: {
+export const QUALITY_REPORT_SCHEMA = {
     type: 'object' as const,
     required: ['pageJob', 'pageType', 'verdict', 'score', 'areas', 'newFindings', 'enrichments'],
     properties: {
@@ -90,10 +87,16 @@ export const QUALITY_REPORT_TOOL: Anthropic.Tool = {
         },
       },
     },
-  },
+} as const
+
+export const QUALITY_REPORT_TOOL: Anthropic.Tool = {
+  name: 'quality_report',
+  description: 'Output a structured quality audit report for a website',
+  input_schema: QUALITY_REPORT_SCHEMA,
 }
 
 export function buildJudgePrompt(context: {
+  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
   url: string
   pageText: string
   metadata: {
@@ -148,7 +151,7 @@ ${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 10
 Deterministic findings already identified (enrich these — do not duplicate them as new findings):
 ${context.deterministicFindings.map((f) => `[${f.severity}] ${f.checkId}: ${f.problem}`).join('\n') || 'None'}
 
-You have been given two screenshots (desktop and mobile). Use them to:
+You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} to:
 1. Identify the page type and job
 2. Judge conversion quality (CTA placement, value prop clarity, trust signals)
 3. Judge content quality (specific vs generic copy, headline effectiveness)

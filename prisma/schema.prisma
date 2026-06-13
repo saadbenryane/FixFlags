@@ -133,6 +133,7 @@ model Account {
   accessToken          String?
   refreshToken         String?
   accessTokenExpiresAt DateTime?
+  password             String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -210,6 +211,7 @@ model Audit {
   areas       AuditArea[]
   screenshots Screenshot[]
   findings    Finding[]
+  runCost     AuditRunCost?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -221,6 +223,21 @@ model Audit {
   @@index([userId, status])
   @@index([parentId])
   @@map("audits")
+}
+
+model AuditRunCost {
+  auditId          String   @id
+  audit            Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  durationMs       Int
+  llmInputTokens   Int      @default(0)
+  llmOutputTokens  Int      @default(0)
+  llmModel         String?
+  llmCostUsd       Decimal  @db.Decimal(10, 6)
+  pagespeedCalls   Int      @default(0)
+  estimatedCostUsd Decimal  @db.Decimal(10, 6)
+  createdAt        DateTime @default(now())
+
+  @@map("audit_run_costs")
 }
 
 model AuditArea {

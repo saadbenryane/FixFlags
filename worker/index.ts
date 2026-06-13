@@ -1,4 +1,4 @@
-import 'dotenv/config'
+import './load-env'
 import { validateAuditEnv } from '../lib/env'
 import { startWorker } from '../lib/queue/worker'
 

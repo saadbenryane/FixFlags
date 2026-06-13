@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripe, planFromPriceId, PLAN_LIMITS } from '@/lib/stripe'
+import { getStripe, planFromPriceId } from '@/lib/stripe'
+import { applyPlanLimits } from '@/lib/billing/limits'
 import { prisma } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -31,14 +32,14 @@ export async function POST(req: NextRequest) {
           const resetUsage =
             u.stripeCurrentPeriodEnd && periodEnd > u.stripeCurrentPeriodEnd
 
+          await applyPlanLimits(u.id, plan)
+
           await prisma.user.update({
             where: { id: u.id },
             data: {
-              plan,
               stripeSubscriptionId: sub.id,
               stripePriceId: sub.items.data[0]?.price.id,
               stripeCurrentPeriodEnd: periodEnd,
-              auditsLimit: PLAN_LIMITS[plan].audits,
               ...(resetUsage ? { auditsUsed: 0 } : {}),
             },
           })
@@ -48,16 +49,23 @@ export async function POST(req: NextRequest) {
     }
     case 'customer.subscription.deleted': {
       const sub = event.data.object
+      const users = await prisma.user.findMany({
+        where: { stripeSubscriptionId: sub.id },
+        select: { id: true },
+      })
+
       await prisma.user.updateMany({
         where: { stripeSubscriptionId: sub.id },
         data: {
-          plan: 'FREE',
           stripeSubscriptionId: null,
           stripePriceId: null,
           stripeCurrentPeriodEnd: null,
-          auditsLimit: PLAN_LIMITS.FREE.audits,
         },
       })
+
+      for (const u of users) {
+        await applyPlanLimits(u.id, 'FREE')
+      }
       break
     }
     case 'checkout.session.completed': {

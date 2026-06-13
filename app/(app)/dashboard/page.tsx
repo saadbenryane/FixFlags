@@ -9,17 +9,21 @@ import { Plus, ExternalLink } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
-import { PLAN_LIMITS } from '@/lib/stripe'
-import { Plan } from '@prisma/client'
+import { getEffectiveScanLimit, getPendingScanCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 
 const AREA_ORDER = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE']
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() })
-  const user = await prisma.user.findUnique({ where: { id: session!.user.id } })
+  const userId = session!.user.id
+
+  await claimAnonymousAudits(userId)
+
+  const user = await prisma.user.findUnique({ where: { id: userId } })
 
   const audits = await prisma.audit.findMany({
-    where: { userId: session!.user.id, status: 'COMPLETED' },
+    where: { userId, status: 'COMPLETED' },
     include: {
       areas: {
         select: { name: true, grade: true },
@@ -29,8 +33,10 @@ export default async function DashboardPage() {
     take: 20,
   })
 
-  const limit = PLAN_LIMITS[user?.plan as Plan ?? 'FREE'].audits
   const used = user?.auditsUsed ?? 0
+  const isUnlimited = isDevUnlimitedScans() || (user ? isUnlimitedScanLimit(getEffectiveScanLimit(user)) : false)
+  const effectiveLimit = isUnlimited ? null : (user ? getEffectiveScanLimit(user) : 3)
+  const pending = user ? await getPendingScanCount(user.id) : 0
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -39,12 +45,13 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <UsageMeter
             used={used}
-            limit={limit === Infinity ? null : limit}
+            limit={isUnlimited ? null : effectiveLimit}
+            pending={pending}
             plan={user?.plan ?? 'FREE'}
           />
         </div>
         <div className="flex items-center gap-2">
-          {user?.plan === 'FREE' && (
+          {user?.plan === 'FREE' && !isUnlimited && (
             <UpgradeButton />
           )}
           <Button asChild>

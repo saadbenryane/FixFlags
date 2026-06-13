@@ -221,8 +221,8 @@ export const PRICING_FAQ = [
     answer: 'Yes. Run your first audit without an account. Create a free account for 3 audits total, then upgrade to Builder when you need full reports and re-checks.',
   },
   {
-    question: 'What happens when I hit my audit limit?',
-    answer: 'You\u2019ll see an upgrade prompt. Free accounts get 3 audits total (not monthly). Paid plans reset each billing cycle.',
+    question: 'What happens when I hit my token limit?',
+    answer: 'You\u2019ll see an upgrade prompt. Free accounts get 3 scan tokens total (not monthly). Paid plans reset each billing cycle.',
   },
   {
     question: 'Is the founding offer permanent?',
@@ -395,7 +395,7 @@ export const UPSELLS = {
     areaPrompt: 'Upgrade for area prompt',
     unlockReport: 'Unlock full report',
   },
-  atLimit: 'Audit limit reached. Upgrade to continue',
+  atLimit: 'Token limit reached. Upgrade to continue',
 } as const
 
 export const AUDIT_PROGRESS = {

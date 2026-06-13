@@ -7,16 +7,23 @@ import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/errors'
+import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 
 export function AuditInput() {
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [limitGate, setLimitGate] = useState<{
+    message: string
+    code?: string
+    action?: string
+  } | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setUrlError('')
+    setLimitGate(null)
 
     let normalized = url.trim()
     if (!normalized) return
@@ -46,8 +53,12 @@ export function AuditInput() {
       })
 
       if (!res.ok) {
-        const message = await parseApiErrorResponse(res)
-        toast.error(message)
+        const parsed = await parseApiErrorResponse(res)
+        if (res.status === 402) {
+          setLimitGate(parsed)
+        } else {
+          toast.error(parsed.message)
+        }
         return
       }
 
@@ -61,31 +72,41 @@ export function AuditInput() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 w-full max-w-2xl">
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          placeholder="https://yoursite.com"
-          value={url}
-          onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
-          className="h-12 text-base flex-1"
-          disabled={loading}
-          autoFocus
+    <div className="flex flex-col gap-3 w-full max-w-2xl">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="https://yoursite.com"
+            value={url}
+            onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
+            className="h-12 text-base flex-1"
+            disabled={loading}
+            autoFocus
+          />
+          <Button type="submit" size="lg" disabled={loading || !url.trim()} className="h-12 px-6 gap-2 shrink-0">
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                {HERO.primaryCta}
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+        {urlError && (
+          <p className="text-xs text-destructive">{urlError}</p>
+        )}
+      </form>
+      {limitGate && (
+        <AuditLimitGate
+          message={limitGate.message}
+          code={limitGate.code}
+          action={limitGate.action}
+          onDismiss={() => setLimitGate(null)}
         />
-        <Button type="submit" size="lg" disabled={loading || !url.trim()} className="h-12 px-6 gap-2 shrink-0">
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              {HERO.primaryCta}
-              <ArrowRight className="h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </div>
-      {urlError && (
-        <p className="text-xs text-destructive">{urlError}</p>
       )}
-    </form>
+    </div>
   )
 }

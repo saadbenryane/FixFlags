@@ -2,15 +2,21 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
-
-function isAdmin(userId: string): boolean {
-  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-  return adminIds.includes(userId)
-}
+import { prisma } from '@/lib/db'
+import { isAdminUser } from '@/lib/auth/permissions'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session?.user?.id || !isAdmin(session.user.id)) {
+  if (!session?.user?.id) {
+    redirect('/sign-in')
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, role: true },
+  })
+
+  if (!user || !isAdminUser(user)) {
     redirect('/')
   }
 
@@ -22,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center gap-4">
           <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">Metrics</Link>
           <Link href="/admin/users" className="text-sm text-muted-foreground hover:text-foreground">Users</Link>
+          <Link href="/admin/audits" className="text-sm text-muted-foreground hover:text-foreground">Audits</Link>
           <Link href="/admin/feedback" className="text-sm text-muted-foreground hover:text-foreground">Feedback</Link>
         </div>
       </nav>

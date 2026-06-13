@@ -8,7 +8,7 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import {
   checkAnonymousAuditAllowed,
   checkUserAuditAllowed,
-  markAnonymousAuditCreated,
+  trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 
@@ -37,10 +37,20 @@ export async function POST(req: NextRequest) {
       const user = await prisma.user.findUnique({ where: { id: session.user.id } })
       if (!user) return apiError('User not found', 404)
       const limitCheck = await checkUserAuditAllowed(user)
-      if (!limitCheck.allowed) return apiError(limitCheck.error!, 402)
+      if (!limitCheck.allowed) {
+        return apiError(limitCheck.error!, 402, {
+          code: limitCheck.code,
+          action: limitCheck.action,
+        })
+      }
     } else {
       const anonCheck = await checkAnonymousAuditAllowed()
-      if (!anonCheck.allowed) return apiError(anonCheck.error!, 402)
+      if (!anonCheck.allowed) {
+        return apiError(anonCheck.error!, 402, {
+          code: anonCheck.code,
+          action: anonCheck.action,
+        })
+      }
     }
 
     const { auditId, status } = await createAndEnqueueAudit({
@@ -49,7 +59,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!session?.user) {
-      await markAnonymousAuditCreated()
+      await trackAnonymousAuditId(auditId)
     }
 
     return NextResponse.json({ auditId, status }, { status: 201 })

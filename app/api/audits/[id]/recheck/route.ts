@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { checkUserAuditAllowed } from '@/lib/audit/usage'
+import { canAccessPaidFeatures } from '@/lib/auth/permissions'
 
 export async function POST(
   _req: NextRequest,
@@ -25,13 +26,19 @@ export async function POST(
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user || user.plan === 'FREE') {
-      return apiError('Upgrade to Builder to use re-check', 402)
+    if (!user || !canAccessPaidFeatures(user)) {
+      return apiError('Upgrade to Builder to use re-check', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'upgrade',
+      })
     }
 
     const limitCheck = await checkUserAuditAllowed(user)
     if (!limitCheck.allowed) {
-      return apiError(limitCheck.error!, 402)
+      return apiError(limitCheck.error!, 402, {
+        code: limitCheck.code,
+        action: limitCheck.action,
+      })
     }
 
     const { auditId, status } = await createAndEnqueueAudit({

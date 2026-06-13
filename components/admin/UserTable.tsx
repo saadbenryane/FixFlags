@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -10,9 +9,11 @@ interface User {
   email: string
   name: string | null
   plan: string
+  role: string
   auditsUsed: number
   auditsLimit: number
   createdAt: Date | string
+  totalCostLabel: string
 }
 
 const planColors: Record<string, string> = {
@@ -20,6 +21,10 @@ const planColors: Record<string, string> = {
   BUILDER: 'bg-blue-100 text-blue-800',
   TEAM: 'bg-purple-100 text-purple-800',
   STUDIO: 'bg-orange-100 text-orange-800',
+}
+
+function formatLimit(limit: number): string {
+  return limit === -1 ? 'Unlimited' : String(limit)
 }
 
 export function UserTable({ users }: { users: User[] }) {
@@ -51,7 +56,8 @@ export function UserTable({ users }: { users: User[] }) {
           <tr className="border-b bg-muted/50">
             <th className="text-left px-4 py-3 font-medium">Email</th>
             <th className="text-left px-4 py-3 font-medium">Plan</th>
-            <th className="text-left px-4 py-3 font-medium">Audits</th>
+            <th className="text-left px-4 py-3 font-medium">Tokens</th>
+            <th className="text-left px-4 py-3 font-medium">Est. cost</th>
             <th className="text-left px-4 py-3 font-medium">Joined</th>
             <th className="px-4 py-3" />
           </tr>
@@ -62,28 +68,34 @@ export function UserTable({ users }: { users: User[] }) {
               <td className="px-4 py-3">
                 <div className="font-medium truncate max-w-[200px]">{user.email}</div>
                 {user.name && <div className="text-xs text-muted-foreground">{user.name}</div>}
+                {user.role === 'admin' && (
+                  <Badge className="text-xs mt-1" variant="destructive">Admin</Badge>
+                )}
               </td>
               <td className="px-4 py-3">
                 <Badge className={cn('text-xs', planColors[user.plan] ?? '')}>{user.plan}</Badge>
               </td>
               <td className="px-4 py-3 text-muted-foreground">
-                {user.auditsUsed} / {user.auditsLimit}
+                {user.auditsUsed} / {formatLimit(user.auditsLimit)}
               </td>
+              <td className="px-4 py-3 text-muted-foreground">{user.totalCostLabel}</td>
               <td className="px-4 py-3 text-muted-foreground text-xs">
                 {new Date(user.createdAt).toLocaleDateString()}
               </td>
               <td className="px-4 py-3">
-                <select
-                  disabled={updating === user.id}
-                  defaultValue=""
-                  onChange={(e) => { if (e.target.value) changePlan(user.id, e.target.value) }}
-                  className="text-xs border rounded px-2 py-1 bg-background"
-                >
-                  <option value="" disabled>Change plan…</option>
-                  {['FREE', 'BUILDER', 'TEAM', 'STUDIO'].map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
+                {user.role !== 'admin' && (
+                  <select
+                    disabled={updating === user.id}
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) changePlan(user.id, e.target.value) }}
+                    className="text-xs border rounded px-2 py-1 bg-background"
+                  >
+                    <option value="" disabled>Change plan…</option>
+                    {['FREE', 'BUILDER', 'TEAM', 'STUDIO'].map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                )}
               </td>
             </tr>
           ))}

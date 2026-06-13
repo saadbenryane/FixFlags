@@ -6,14 +6,20 @@ import { runAllChecks, computeAreaScores } from './checks'
 import { runJudge, isRetryableJudgeError } from './judge'
 import { persistAuditResults } from './persist'
 import { diffFindingsAgainstParent } from './diff-findings'
-import { incrementUsageOnComplete } from './usage'
+import { incrementUsageOnComplete, markAnonymousAuditCompleted } from './usage'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
+import { persistAuditRunCost } from '@/lib/billing/costs'
+
+function sanitizeAuditErrorMessage(message: string): string {
+  return message.replace(/\s+/g, ' ').trim().slice(0, 500)
+}
 
 export async function runAudit(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({ where: { id: auditId } })
   if (!audit) throw new Error(`Audit ${auditId} not found`)
 
   const url = audit.url
+  const startedAt = new Date()
 
   // Clean partial results from a previous attempt
   await prisma.screenshot.deleteMany({ where: { auditId } })
@@ -23,7 +29,7 @@ export async function runAudit(auditId: string): Promise<void> {
     where: { id: auditId },
     data: {
       status: 'CAPTURING',
-      startedAt: new Date(),
+      startedAt,
       errorMsg: null,
       progress: AUDIT_PROGRESS.CAPTURING,
     },
@@ -41,6 +47,9 @@ export async function runAudit(auditId: string): Promise<void> {
   desktopBase64 = screenshots.desktopBase64
   mobileBase64 = screenshots.mobileBase64
   consoleErrors = screenshots.consoleErrors
+
+  const pagespeedCalls =
+    (pagespeed.desktop ? 1 : 0) + (pagespeed.mobile ? 1 : 0)
 
   try {
     if (screenshots.desktopUrl) {
@@ -125,9 +134,9 @@ export async function runAudit(auditId: string): Promise<void> {
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
   })
 
-  let judgeOutput
+  let judgeResult
   try {
-    judgeOutput = await runJudge(
+    judgeResult = await runJudge(
       url,
       metadata,
       pagespeed.desktop,
@@ -142,7 +151,7 @@ export async function runAudit(auditId: string): Promise<void> {
         where: { id: auditId },
         data: {
           status: 'FAILED',
-          errorMsg: `AI analysis unavailable: ${(firstErr as Error).message}`,
+          errorMsg: `AI analysis unavailable: ${sanitizeAuditErrorMessage((firstErr as Error).message)}`,
         },
       })
       throw firstErr
@@ -150,7 +159,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
     console.error('AI judge failed with retryable error, retrying once:', firstErr)
     try {
-      judgeOutput = await runJudge(
+      judgeResult = await runJudge(
         url,
         metadata,
         pagespeed.desktop,
@@ -164,14 +173,31 @@ export async function runAudit(auditId: string): Promise<void> {
         where: { id: auditId },
         data: {
           status: 'FAILED',
-          errorMsg: `AI analysis unavailable: ${(secondErr as Error).message}`,
+          errorMsg: `AI analysis unavailable: ${sanitizeAuditErrorMessage((secondErr as Error).message)}`,
         },
       })
       throw secondErr
     }
   }
 
-  await persistAuditResults(auditId, judgeOutput, deterministicFindings, areaScores)
+  await persistAuditResults(auditId, judgeResult.output, deterministicFindings, areaScores)
+
+  const finished = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { startedAt: true, completedAt: true },
+  })
+  const durationMs =
+    finished?.startedAt && finished?.completedAt
+      ? finished.completedAt.getTime() - finished.startedAt.getTime()
+      : 0
+
+  await persistAuditRunCost(auditId, {
+    durationMs,
+    llmInputTokens: judgeResult.usage.inputTokens,
+    llmOutputTokens: judgeResult.usage.outputTokens,
+    llmModel: judgeResult.usage.model,
+    pagespeedCalls,
+  })
 
   if (audit.parentId) {
     await diffFindingsAgainstParent(auditId, audit.parentId)
@@ -179,5 +205,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
   if (audit.userId) {
     await incrementUsageOnComplete(audit.userId)
+  } else {
+    await markAnonymousAuditCompleted()
   }
 }

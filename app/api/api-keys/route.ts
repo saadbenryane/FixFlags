@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { randomBytes } from 'crypto'
+import { canUseApiKeys } from '@/lib/auth/permissions'
 
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  if (!user || user.plan === 'FREE') {
+  if (!user || !canUseApiKeys(user)) {
     return NextResponse.json({ error: 'API keys require Builder plan or higher' }, { status: 402 })
   }
 

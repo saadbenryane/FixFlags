@@ -4,7 +4,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
-  ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
@@ -43,10 +44,13 @@ export function getEnv(): Env {
 
 /** Validate only the vars required for audit pipeline (worker + queue). */
 export function validateAuditEnv(): void {
-  const required = ['DATABASE_URL', 'REDIS_URL', 'ANTHROPIC_API_KEY'] as const
+  const required = ['DATABASE_URL', 'REDIS_URL'] as const
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
+  }
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    throw new Error('Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY')
   }
 }
 

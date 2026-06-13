@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
+import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/usage'
 
-export function apiError(message: string, status = 500) {
-  return NextResponse.json({ error: message }, { status })
+export interface ApiErrorBody {
+  error: string
+  code?: UsageLimitCode | string
+  action?: UsageLimitAction | string
+}
+
+export function apiError(
+  message: string,
+  status = 500,
+  extras?: Pick<ApiErrorBody, 'code' | 'action'>
+) {
+  return NextResponse.json({ error: message, ...extras }, { status })
 }
 
 export function handleRouteError(err: unknown, fallback = 'Something went wrong'): NextResponse {
@@ -31,16 +42,31 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
   return apiError(fallback, 500)
 }
 
+export interface ParsedApiError {
+  message: string
+  code?: string
+  action?: string
+}
+
 /** Safely parse JSON error body from a fetch Response. */
-export async function parseApiErrorResponse(res: Response): Promise<string> {
+export async function parseApiErrorResponse(res: Response): Promise<ParsedApiError> {
   try {
-    const data = await res.json()
-    if (data && typeof data.error === 'string') return data.error
+    const data = (await res.json()) as ApiErrorBody
+    if (data && typeof data.error === 'string') {
+      return {
+        message: data.error,
+        code: typeof data.code === 'string' ? data.code : undefined,
+        action: typeof data.action === 'string' ? data.action : undefined,
+      }
+    }
   } catch {
     // non-JSON body
   }
-  if (res.status === 503) return 'Service temporarily unavailable. Check server configuration.'
-  if (res.status === 402) return 'Audit limit reached. Upgrade to continue.'
-  if (res.status === 400) return 'Invalid request.'
-  return 'Something went wrong. Please try again.'
+
+  let message = 'Something went wrong. Please try again.'
+  if (res.status === 503) message = 'Service temporarily unavailable. Check server configuration.'
+  if (res.status === 402) message = 'Scan limit reached.'
+  if (res.status === 400) message = 'Invalid request.'
+
+  return { message }
 }

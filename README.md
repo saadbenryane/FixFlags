@@ -20,14 +20,17 @@ cp .env.example .env.local
 # 3. Start Postgres + Redis
 docker compose up -d
 
-# 4. Apply database schema
+# 4. Apply database schema and seed local admin
 npm run db:migrate
+npm run db:seed
 
 # 5. Run web app + audit worker together
 npm run dev:all
 ```
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
+
+**Local admin:** `saadbenryane@gmail.com` / `password123` (unlimited scans, `/admin` dashboard with run costs).
 
 ### Scripts
 
@@ -36,8 +39,9 @@ Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wai
 | `npm run dev` | Next.js only (audits stay queued without worker) |
 | `npm run worker` | Audit worker only |
 | `npm run dev:all` | Next.js + worker concurrently |
-| `npm run setup` | Docker up + migrate + generate |
+| `npm run setup` | Docker up + migrate + generate + seed |
 | `npm run db:migrate` | Apply Prisma migrations |
+| `npm run db:seed` | Seed local admin user |
 | `npm run db:studio` | Open Prisma Studio |
 
 ### Health check

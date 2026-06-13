@@ -2,7 +2,7 @@
 export const UPSELLS = {
   anon: {
     headline: 'Don\u2019t lose this report',
-    body: 'Create a free account to save history and run 3 audits total.',
+    body: 'Create a free account to save history and get 3 scan tokens total.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -21,7 +21,7 @@ export const UPSELLS = {
     areaPrompt: 'Upgrade for area prompt',
     unlockReport: 'Unlock full report',
   },
-  atLimit: 'Audit limit reached. Upgrade to continue',
+  atLimit: 'Token limit reached. Upgrade to continue',
 } as const
 
 export const AUDIT_PROGRESS = {

@@ -13,6 +13,19 @@ import { toast } from 'sonner'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy-client'
 import { parseApiErrorResponse } from '@/lib/api/errors'
 
+function formatAuditErrorMessage(errorMsg?: string | null): string {
+  if (!errorMsg) {
+    return "We couldn't complete this audit. The site may be unreachable or blocking bots."
+  }
+  if (errorMsg.includes('Invalid judge output')) {
+    return "We couldn't finish the AI review. Please try again in a moment."
+  }
+  if (errorMsg.startsWith('AI analysis unavailable:')) {
+    return errorMsg.replace('AI analysis unavailable:', 'We could not finish the AI review:').trim()
+  }
+  return errorMsg
+}
+
 interface Props {
   id: string
   initialAudit?: Record<string, unknown> | null
@@ -49,7 +62,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         body: JSON.stringify({ url: retryUrl }),
       })
       if (!res.ok) {
-        toast.error(await parseApiErrorResponse(res))
+        toast.error((await parseApiErrorResponse(res)).message)
         return
       }
       const data = await res.json()
@@ -101,7 +114,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
           <h2 className="text-xl font-semibold">Audit failed</h2>
           <p className="text-muted-foreground text-sm">
-            {errorMsg || "We couldn't complete this audit. The site may be unreachable or blocking bots."}
+            {formatAuditErrorMessage(errorMsg)}
           </p>
           <div className="flex justify-center gap-3">
             <Button variant="outline" onClick={handleRetry} disabled={retryLoading}>

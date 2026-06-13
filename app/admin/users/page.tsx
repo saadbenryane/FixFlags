@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { UserTable } from '@/components/admin/UserTable'
+import { formatUsd } from '@/lib/billing/costs'
 
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
@@ -8,18 +9,43 @@ export default async function AdminUsersPage() {
       email: true,
       name: true,
       plan: true,
+      role: true,
       auditsUsed: true,
       auditsLimit: true,
       createdAt: true,
+      audits: {
+        where: { status: 'COMPLETED' },
+        select: {
+          runCost: { select: { estimatedCostUsd: true } },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
     take: 200,
   })
 
+  const rows = users.map((user) => {
+    const totalCostUsd = user.audits.reduce(
+      (sum, audit) => sum + (audit.runCost?.estimatedCostUsd.toNumber() ?? 0),
+      0
+    )
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      plan: user.plan,
+      role: user.role,
+      auditsUsed: user.auditsUsed,
+      auditsLimit: user.auditsLimit,
+      createdAt: user.createdAt,
+      totalCostLabel: formatUsd(totalCostUsd),
+    }
+  })
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-bold">Users ({users.length})</h1>
-      <UserTable users={users} />
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <h1 className="text-2xl font-bold">Users ({rows.length})</h1>
+      <UserTable users={rows} />
     </div>
   )
 }

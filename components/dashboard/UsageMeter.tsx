@@ -7,11 +7,12 @@ import { UPSELLS } from '@/lib/marketing/copy'
 interface Props {
   used: number
   limit: number | null
+  pending?: number
   plan: string
 }
 
-export function UsageMeter({ used, limit, plan }: Props) {
-  const isUnlimited = limit === null || limit === Infinity || limit === 0
+export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
+  const isUnlimited = limit === null || limit === Infinity
   const pct = isUnlimited ? 0 : Math.min(100, Math.round((used / limit!) * 100))
   const atLimit = !isUnlimited && used >= limit!
   const nearLimit = !isUnlimited && pct >= 80
@@ -20,12 +21,18 @@ export function UsageMeter({ used, limit, plan }: Props) {
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">
-          {used}{isUnlimited ? '' : ` / ${limit}`} audits used
+          {isUnlimited ? `${used} tokens used (unlimited)` : `${used} / ${limit} tokens used`}
         </span>
-        {plan !== 'FREE' && (
+        {plan !== 'FREE' && !isUnlimited && (
           <span className="text-xs text-muted-foreground capitalize">{plan.toLowerCase()} plan</span>
         )}
       </div>
+
+      {pending > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {pending} scan{pending !== 1 ? 's' : ''} in progress
+        </p>
+      )}
 
       {!isUnlimited && (
         <Progress
