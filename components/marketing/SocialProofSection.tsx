@@ -1,29 +1,7 @@
 import { SOCIAL_PROOF } from '@/lib/marketing/copy'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-
-function LogoPlaceholder({ name }: { name: string }) {
-  const colors = [
-    'from-brand/20 to-brand/5',
-    'from-sky-500/20 to-sky-500/5',
-    'from-violet-500/20 to-violet-500/5',
-    'from-amber-500/20 to-amber-500/5',
-    'from-emerald-500/20 to-emerald-500/5',
-    'from-rose-500/20 to-rose-500/5',
-  ]
-  const hash = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  const gradient = colors[hash % colors.length]
-
-  return (
-    <div
-      className={`flex h-10 items-center justify-center rounded-md bg-gradient-to-br ${gradient} px-4`}
-    >
-      <span className="font-mono text-xs font-semibold tracking-tight text-muted-foreground">
-        {name}
-      </span>
-    </div>
-  )
-}
+import { Badge } from '@/components/ui/badge'
 
 export function SocialProofSection() {
   return (
@@ -32,10 +10,11 @@ export function SocialProofSection() {
         <div className="space-y-10">
           <div className="space-y-4 text-center">
             <p className="text-sm font-medium text-foreground">{SOCIAL_PROOF.headline}</p>
-            <p className="text-xs text-muted-foreground">{SOCIAL_PROOF.toolingLine}</p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {SOCIAL_PROOF.logos.map((logo) => (
-                <LogoPlaceholder key={logo.name} name={logo.name} />
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {SOCIAL_PROOF.tools.map((tool) => (
+                <Badge key={tool} variant="secondary" className="text-xs">
+                  {tool}
+                </Badge>
               ))}
             </div>
           </div>

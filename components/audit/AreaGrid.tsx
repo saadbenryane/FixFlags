@@ -16,9 +16,10 @@ interface Props {
   areas: Area[]
   activeArea?: string | null
   onAreaClick?: (name: string) => void
+  showScoreTypes?: boolean
 }
 
-export function AreaGrid({ areas, activeArea, onAreaClick }: Props) {
+export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Props) {
   const ordered = AREA_ORDER
     .map((n) => areas.find((a) => a.name === n))
     .filter(Boolean) as Area[]
@@ -35,6 +36,12 @@ export function AreaGrid({ areas, activeArea, onAreaClick }: Props) {
 
   return (
     <nav aria-label="Audit areas" className="-mx-1">
+      {showScoreTypes && (
+        <div className="flex gap-4 mb-3 text-[10px] text-muted-foreground px-1">
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-brand/30" /> Objective checks (0–100)</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500/30" /> Experience checks (A–F)</span>
+        </div>
+      )}
       <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-thin">
         {ordered.map((area) => {
           const issueCount = area.findings?.length ?? 0
@@ -54,7 +61,7 @@ export function AreaGrid({ areas, activeArea, onAreaClick }: Props) {
                 activeArea === area.name && 'ring-2 ring-brand ring-offset-2 ring-offset-background'
               )}
             >
-              <GradeBadge grade={area.grade} score={area.score} size="sm" />
+              <GradeBadge grade={area.grade} score={area.score} size="sm" areaName={area.name} />
               <span className="mt-1 text-[9px] text-center leading-tight font-medium max-w-[72px] text-muted-foreground">
                 {areaLabel(area.name)}
               </span>

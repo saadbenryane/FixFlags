@@ -11,9 +11,11 @@ import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
+import { CompletenessHeader } from '@/components/audit/CompletenessHeader'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
+import { ShareReportButton } from '@/components/audit/ShareReportButton'
 
 interface Finding {
   id: string
@@ -132,6 +134,22 @@ export function AuditReport({
         mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
       />
 
+      <div className="flex justify-end">
+        <ShareReportButton
+          url={isSample ? 'https://qualityos.com/samples' : (auditId ? `https://qualityos.com/audit/${auditId}` : 'https://qualityos.com')}
+          score={audit.score}
+          topIssue={worstArea ? `${worstArea} needs attention` : undefined}
+        />
+      </div>
+
+      <CompletenessHeader
+        hasScreenshots={(audit.screenshots?.length ?? 0) > 0}
+        areasGradedCount={audit.areas.filter((a) => a.grade !== null).length}
+        totalAreas={AREA_ORDER.length}
+        hasFixPrompts={audit.areas.some((a) => a.findings.length > 0 || a.areaPrompt.length > 0)}
+        canRecheck={viewerIsPaid || canUseFreeRecheck}
+      />
+
       {audit.reportCompleteness !== 'FULL' && (
         <div role="status" className="rounded-lg bg-grade-C/10 px-4 py-3 text-sm text-foreground">
           <p className="font-medium">Partial report</p>
@@ -154,7 +172,7 @@ export function AuditReport({
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold tracking-heading">All areas</h2>
-        <AreaGrid areas={audit.areas} />
+        <AreaGrid areas={audit.areas} showScoreTypes />
       </section>
 
       <div className="space-y-3">

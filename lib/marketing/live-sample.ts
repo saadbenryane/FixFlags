@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/db'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { HERO_FIX_PROMPT } from '@/lib/marketing/copy'
-import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
 const sampleInclude = {
   areas: {
@@ -17,6 +16,37 @@ const sampleInclude = {
 
 export type SampleSource = 'live' | 'archived' | 'static'
 
+export type LiveSampleAreaFinding = {
+  id: string
+  problem: string
+  evidence: string
+  whyItMatters: string
+  fix: string
+  severity: string
+  agentPrompt: string | null
+  cursorPrompt: string | null
+  claudePrompt?: string | null
+  lovablePrompt?: string | null
+  boltPrompt?: string | null
+  verificationRule?: string | null
+  pageUrl?: string | null
+}
+
+export type LiveSampleArea = {
+  id: string
+  name: string
+  grade: string | null
+  score: number | null
+  status: string | null
+  summary: string
+  areaPrompt: string
+  cursorPrompt?: string | null
+  claudePrompt?: string | null
+  lovablePrompt?: string | null
+  boltPrompt?: string | null
+  findings: LiveSampleAreaFinding[]
+}
+
 export type LiveSampleAudit = {
   id: string
   url: string
@@ -27,36 +57,22 @@ export type LiveSampleAudit = {
   completedAt: Date | null
   createdAt: Date
   pipelineVersion: string | null
-  areas: Array<{
-    id: string
-    name: string
-    grade: string | null
-    score: number | null
-    status: string | null
-    summary: string
-    areaPrompt: string
-    findings: Array<{
-      id: string
-      problem: string
-      evidence: string
-      whyItMatters: string
-      fix: string
-      severity: string
-      agentPrompt: string | null
-      cursorPrompt: string | null
-    }>
-  }>
+  reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
+  evidenceCoverage?: unknown
+  screenshotCapture?: ScreenshotCaptureStatus
+  parentId?: string | null
+  pageSpeedErrors?: { desktopError?: string; mobileError?: string; pageSpeedPartial?: boolean }
+  startedAt?: string | Date | null
+  areas: LiveSampleArea[]
   screenshots: AuditScreenshot[]
   launchReadiness: ReturnType<typeof parseLaunchReadiness>
-  [key: string]: unknown
 }
 
 export type SampleResult = {
-  audit: LiveSampleAudit | null
+  audit: LiveSampleAudit
   source: SampleSource
   pipelineVersion: string
   completedAt: Date | null
-  staticFixPrompt?: typeof HERO_FIX_PROMPT
 }
 
 export async function getLiveSampleAudit(): Promise<SampleResult> {
@@ -93,12 +109,12 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
   }
 
   if (!audit) {
+    const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
     return {
-      audit: null,
+      audit: getStaticSampleAudit() as unknown as LiveSampleAudit,
       source: 'static',
       pipelineVersion: PIPELINE_VERSION,
-      completedAt: null,
-      staticFixPrompt: HERO_FIX_PROMPT,
+      completedAt: new Date(),
     }
   }
 

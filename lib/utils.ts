@@ -63,3 +63,11 @@ export function areaLabel(name: string): string {
   }
   return map[name] ?? name
 }
+
+export function scoreTypeLabel(name: string): { label: string; badge: string } {
+  const objective = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE']
+  if (objective.includes(name)) {
+    return { label: '0–100', badge: 'Objective check' }
+  }
+  return { label: 'A–F', badge: 'Experience check' }
+}

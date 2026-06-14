@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
+import { QueuePosition } from '@/components/audit/QueuePosition'
 
 export function AuditInput() {
   const router = useRouter()
@@ -19,16 +20,18 @@ export function AuditInput() {
     code?: string
     action?: string
   } | null>(null)
+  const [queueState, setQueueState] = useState<{
+    estimatedWaitSeconds: number
+  } | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function submitUrl() {
     setUrlError('')
     setLimitGate(null)
+    setQueueState(null)
 
     let normalized = url.trim()
     if (!normalized) return
 
-    // Trim trailing slashes for cleaner URLs
     normalized = normalized.replace(/\/+$/, '')
 
     if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
@@ -55,6 +58,14 @@ export function AuditInput() {
         body: JSON.stringify({ url: normalized }),
       })
 
+      if (res.status === 429) {
+        const body = await res.json()
+        if (body.queued) {
+          setQueueState({ estimatedWaitSeconds: body.estimatedWaitSeconds })
+          return
+        }
+      }
+
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
         if (res.status === 402) {
@@ -72,6 +83,11 @@ export function AuditInput() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await submitUrl()
   }
 
   return (
@@ -115,6 +131,17 @@ export function AuditInput() {
           </p>
         )}
       </form>
+      {queueState && (
+        <QueuePosition
+          estimatedSeconds={queueState.estimatedWaitSeconds}
+          onRetry={() => {
+            setQueueState(null)
+            submitUrl()
+          }}
+          onDismiss={() => setQueueState(null)}
+        />
+      )}
+
       {limitGate && (
         <AuditLimitGate
           message={limitGate.message}

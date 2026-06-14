@@ -11,7 +11,8 @@ import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/u
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
-import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { enforceRateLimit, requestClientId, RateLimitError } from '@/lib/security/rate-limit'
+import { getAuditQueue } from '@/lib/queue/client'
 
 const createSchema = z.object({
   url: z.string().url('Invalid URL — please include https://'),
@@ -34,20 +35,41 @@ export async function POST(req: NextRequest) {
     const { url } = urlResult
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    await Promise.all([
-      enforceRateLimit({
-        scope: session?.user ? 'audit-user' : 'audit-client',
-        identifier: session?.user?.id ?? requestClientId(req.headers),
-        limit: session?.user ? 30 : 3,
-        windowSeconds: 3600,
-      }),
-      enforceRateLimit({
-        scope: 'audit-host',
-        identifier: new URL(url).hostname,
-        limit: 20,
-        windowSeconds: 3600,
-      }),
-    ])
+    try {
+      await Promise.all([
+        enforceRateLimit({
+          scope: session?.user ? 'audit-user' : 'audit-client',
+          identifier: session?.user?.id ?? requestClientId(req.headers),
+          limit: session?.user ? 30 : 3,
+          windowSeconds: 3600,
+        }),
+        enforceRateLimit({
+          scope: 'audit-host',
+          identifier: new URL(url).hostname,
+          limit: 20,
+          windowSeconds: 3600,
+        }),
+      ])
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        const queue = getAuditQueue()
+        const active = await queue.getActiveCount()
+        const waiting = await queue.getWaitingCount()
+        const totalAhead = active + waiting
+        const estimatedWait = Math.max(15, totalAhead * 30)
+
+        return NextResponse.json(
+          {
+            queued: true,
+            position: waiting + 1,
+            activeJobs: active,
+            estimatedWaitSeconds: estimatedWait,
+          },
+          { status: 429, headers: { 'Retry-After': String(estimatedWait) } }
+        )
+      }
+      throw err
+    }
 
     const criticalPath = parsed.data.mode === 'critical_path'
 

@@ -1,5 +1,6 @@
 export const MARKETING_NAV = [
-  { href: '/samples', label: 'Samples' },
+  { href: '/samples', label: 'Sample' },
+  { href: '/examples', label: 'Examples' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs/mcp', label: 'MCP' },
   { href: '/faq', label: 'FAQ' },
@@ -19,7 +20,8 @@ export const ADMIN_NAV = [
 ] as const
 
 export const FOOTER_LINKS = [
-  { href: '/samples', label: 'Samples' },
+  { href: '/samples', label: 'Sample' },
+  { href: '/examples', label: 'Examples' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs/mcp', label: 'MCP' },
   { href: '/faq', label: 'FAQ' },

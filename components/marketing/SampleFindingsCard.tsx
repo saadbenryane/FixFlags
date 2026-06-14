@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { GradeBadge } from '@/components/audit/GradeBadge'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
-import { HERO, HERO_FIX_PROMPT } from '@/lib/marketing/copy'
+
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { cn } from '@/lib/utils'
@@ -11,15 +11,6 @@ import { cn } from '@/lib/utils'
 function getTopFixPrompt(
   sample: SampleResult
 ): { label: string; prompt: string; finding?: string } | null {
-  if (!sample.audit) {
-    const staticPrompt = sample.staticFixPrompt ?? HERO_FIX_PROMPT
-    return {
-      label: staticPrompt.label,
-      prompt: staticPrompt.prompt,
-      finding: staticPrompt.finding,
-    }
-  }
-
   for (const area of sample.audit.areas) {
     for (const finding of area.findings) {
       const prompt = finding.cursorPrompt ?? finding.agentPrompt
@@ -43,41 +34,6 @@ export function SampleFindingsCard({
   sample: SampleResult
 }) {
   const fixPrompt = getTopFixPrompt(sample)
-
-  if (!sample.audit) {
-    return (
-      <div className={cn('rounded-card bg-card p-6 shadow-raised space-y-4', className)}>
-        <SampleStatusBadge
-          source={sample.source}
-          pipelineVersion={sample.pipelineVersion}
-        />
-        <p className="font-display text-2xl tracking-heading">Evidence, not a staged mockup.</p>
-        <p className="text-sm text-muted-foreground">
-          Samples publish after the pipeline completes a timestamped audit. Here is what a fix
-          prompt looks like.
-        </p>
-        {fixPrompt && (
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-            <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-              {fixPrompt.label}
-            </p>
-            {fixPrompt.finding && (
-              <p className="text-xs font-medium">{fixPrompt.finding}</p>
-            )}
-            <p className="text-sm text-muted-foreground leading-relaxed">{fixPrompt.prompt}</p>
-          </div>
-        )}
-        <Link
-          href="/samples"
-          className="inline-flex items-center gap-1 text-sm text-brand link-underline-grow"
-        >
-          View sample reports
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-    )
-  }
-
   const desktop = sample.audit.screenshots.find((item) => item.device === 'DESKTOP')
   const priority = sample.audit.areas
     .flatMap((area) => area.findings.map((finding) => ({ area, finding })))

@@ -25,68 +25,58 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
           subhead={PROOF_SECTION.subhead}
         />
 
-        {audit ? (
-          <div className="overflow-hidden rounded-card bg-card shadow-card">
-            <div className="grid lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]">
-              <div className="space-y-5 border-b border-border/15 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-                <SampleStatusBadge
-                  source={sample.source}
-                  completedAt={sample.completedAt}
-                  pipelineVersion={sample.pipelineVersion}
-                />
-                <div className="flex items-start gap-3">
-                  <div className="rounded-md border border-brand/25 bg-brand/[0.06] px-4 py-3 text-center">
-                    <div className="font-mono text-4xl font-bold tabular-nums text-brand leading-none">
-                      {audit.score ?? '—'}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">/100</div>
+        <div className="overflow-hidden rounded-card bg-card shadow-card">
+          <div className="grid lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]">
+            <div className="space-y-5 border-b border-border/15 p-6 sm:p-8 lg:border-b-0 lg:border-r">
+              <SampleStatusBadge
+                source={sample.source}
+                completedAt={sample.completedAt}
+                pipelineVersion={sample.pipelineVersion}
+              />
+              <div className="flex items-start gap-3">
+                <div className="rounded-md border border-brand/25 bg-brand/[0.06] px-4 py-3 text-center">
+                  <div className="font-mono text-4xl font-bold tabular-nums text-brand leading-none">
+                    {audit.score ?? '—'}
                   </div>
-                  <div className="min-w-0 pt-1">
-                    <p className="font-semibold">
-                      {sample.source === 'live' ? 'Live pipeline sample' : 'Last published sample'}
-                    </p>
-                    <p className="truncate font-mono text-[10px] text-muted-foreground">
-                      {new URL(audit.url).hostname}
-                    </p>
-                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">/100</div>
                 </div>
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-                  {audit.verdict}
-                </p>
+                <div className="min-w-0 pt-1">
+                  <p className="font-semibold">
+                    {sample.source === 'live' ? 'Live pipeline sample' : 'Sample report'}
+                  </p>
+                  <p className="truncate font-mono text-[10px] text-muted-foreground">
+                    {new URL(audit.url).hostname}
+                  </p>
+                </div>
               </div>
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                {audit.verdict}
+              </p>
+            </div>
 
-              <div className="p-6 sm:p-8">
-                <p className="mb-4 font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
-                  All seven areas
-                </p>
-                <ul className="grid gap-2 sm:grid-cols-2">
-                  {audit.areas.map((area) => (
-                    <li
-                      key={area.id}
-                      className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2.5"
-                    >
-                      <span className="text-sm font-medium">{formatAreaName(area.name)}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                          {area.score ?? '—'}
-                        </span>
-                        <GradeBadge grade={area.grade} size="sm" />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="p-6 sm:p-8">
+              <p className="mb-4 font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+                All seven areas
+              </p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {audit.areas.map((area) => (
+                  <li
+                    key={area.id}
+                    className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2.5"
+                  >
+                    <span className="text-sm font-medium">{formatAreaName(area.name)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {area.score ?? '—'}
+                      </span>
+                      <GradeBadge grade={area.grade} size="sm" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        ) : (
-          <div className="mx-auto max-w-2xl space-y-2 text-center">
-            <p className="font-medium">Sample reports refresh when the pipeline completes.</p>
-            <p className="text-sm text-muted-foreground">
-              QualityOS publishes real audits with timestamps and pipeline version — never staged
-              mocks. View the example fix prompt on the hero or run your own audit.
-            </p>
-          </div>
-        )}
+        </div>
 
         <div className="text-center">
           <Button variant="outline" asChild>

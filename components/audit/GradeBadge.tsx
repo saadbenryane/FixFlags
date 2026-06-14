@@ -1,18 +1,21 @@
-import { cn, gradeColor } from '@/lib/utils'
+import { cn, gradeColor, scoreTypeLabel } from '@/lib/utils'
 
 interface Props {
   grade: string | null
   score?: number | null
   size?: 'sm' | 'md' | 'lg'
+  areaName?: string
   className?: string
 }
 
-export function GradeBadge({ grade, score, size = 'md', className }: Props) {
+export function GradeBadge({ grade, score, size = 'md', areaName, className }: Props) {
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-sm',
     md: 'px-2.5 py-1 text-xl',
     lg: 'px-3 py-1.5 text-2xl',
   }
+
+  const typeInfo = areaName ? scoreTypeLabel(areaName) : null
 
   return (
     <div
@@ -26,6 +29,9 @@ export function GradeBadge({ grade, score, size = 'md', className }: Props) {
       <div>{grade ?? '—'}</div>
       {score != null && size !== 'sm' && (
         <div className="text-xs mt-0.5 font-medium tabular-nums">{score}</div>
+      )}
+      {typeInfo && size === 'sm' && (
+        <div className="text-[8px] mt-0.5 font-normal text-muted-foreground">{typeInfo.label}</div>
       )}
     </div>
   )

@@ -65,7 +65,7 @@ export function CaseStudyCard({ study, index }: { study: CaseStudy; index: numbe
           href={study.link}
           className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-brand transition-colors hover:text-brand/80"
         >
-          See full audit
+          See related example
           <ArrowUpRight className="h-3 w-3" />
         </Link>
       </div>

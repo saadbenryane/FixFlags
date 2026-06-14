@@ -106,7 +106,7 @@ function FindingRowContent({
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <PromptCopyButton prompt={bestPrompt} label="Copy" compact />
+          <PromptCopyButton prompt={bestPrompt} label="Copy prompt" compact />
           <button
             onClick={onToggle}
             className="text-muted-foreground hover:text-foreground transition-colors p-1"

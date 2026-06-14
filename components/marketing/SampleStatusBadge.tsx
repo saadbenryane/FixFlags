@@ -40,7 +40,8 @@ export function SampleStatusBadge({
 
   return (
     <Badge variant="outline" className="text-xs">
-      Example fix prompt · v{version}
+      Sample report · v{version}
+      {dateStr ? ` · ${dateStr}` : ''}
     </Badge>
   )
 }

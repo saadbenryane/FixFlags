@@ -156,7 +156,7 @@ async function runPage(
   const normalizedUrl = new URL(input.url).toString()
   assertDeadline(ctx, input.skipCapture ? 'checking' : 'capturing')
 
-  let page = await prisma.auditPage.create({
+  const page = await prisma.auditPage.create({
     data: {
       auditId: ctx.auditId,
       url: normalizedUrl,
