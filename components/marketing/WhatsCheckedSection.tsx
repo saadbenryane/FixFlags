@@ -6,25 +6,28 @@ import { QUALITY_AREAS, WHATS_CHECKED_SECTION } from '@/lib/marketing/copy'
 export function WhatsCheckedSection() {
   return (
     <Section spacing="default" className="bg-muted/35">
-      <Container className="space-y-12">
-        <SectionIntro
-          label={WHATS_CHECKED_SECTION.label}
-          headline={WHATS_CHECKED_SECTION.headline}
-          subhead={WHATS_CHECKED_SECTION.subhead}
-        />
+      <Container>
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.36fr)_minmax(0,0.64fr)] lg:gap-16">
+          <SectionIntro
+            align="left"
+            label={WHATS_CHECKED_SECTION.label}
+            headline={WHATS_CHECKED_SECTION.headline}
+            subhead={WHATS_CHECKED_SECTION.subhead}
+          />
 
-        <div className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-y-10">
-          {QUALITY_AREAS.map((area, i) => (
-            <div key={area.name} className="space-y-1.5">
-              <div className="flex items-baseline gap-3">
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground/60">
-                  {String(i + 1).padStart(2, '0')}
+          <ul className="divide-y divide-border/15 rounded-card border-0 bg-card shadow-card">
+            {QUALITY_AREAS.map((area) => (
+              <li
+                key={area.name}
+                className="flex flex-col gap-0.5 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
+              >
+                <span className="shrink-0 font-display text-base tracking-display">{area.name}</span>
+                <span className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-right">
+                  {area.impact}
                 </span>
-                <h3 className="font-display text-lg tracking-display">{area.name}</h3>
-              </div>
-              <p className="pl-7 text-sm leading-relaxed text-muted-foreground text-pretty">{area.impact}</p>
-            </div>
-          ))}
+              </li>
+            ))}
+          </ul>
         </div>
       </Container>
     </Section>

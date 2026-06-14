@@ -10,9 +10,9 @@ import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'AI reviews your site like a person would',
+  tagline: 'Find what your site is still missing',
   category: 'Automated checks + AI review with fix prompts',
-  oneLiner: 'Paste a URL. AI reviews it like a person would.',
+  oneLiner: 'Paste a URL. Get a report with fix prompts on every issue.',
   tribeBadge: 'AI + automated checks',
 } as const
 
@@ -20,24 +20,24 @@ export const BRAND = {
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
 export const HERO = {
-  headline: 'AI reviews your site like a person would',
-  headlineLine1: 'AI reviews your site',
-  headlineLine2: 'like a person would',
+  headline: 'Find what your site is still missing',
+  headlineLine1: 'Find what your site',
+  headlineLine2: 'is still missing',
   headlineAccent: true,
   subhead:
-    'Screenshots, automated checks, then an AI judge. Every issue includes a fix prompt.',
-  trustLine: 'Free. No account. Under 60 seconds.',
+    'Paste a URL. AI reviews screenshots and checks. Every issue includes a fix prompt.',
+  trustLine: 'Free · No account · Under 60 seconds',
   primaryCta: 'Audit my site',
   secondaryCta: 'See sample report',
 } as const
 
 export const HERO_MECHANISM_LINE =
-  'Capture screenshots · Run checks · AI judge reads the page' as const
+  'Screenshots · Automated checks · AI review · Fix prompts' as const
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'From URL to fix prompt',
-  subhead: 'Under 60 seconds. No account required.',
+  headline: 'Three steps to a fix list',
+  subhead: 'No account required for your first audit.',
   steps: [
     {
       step: 1,
@@ -46,18 +46,13 @@ export const HOW_IT_WORKS_SECTION = {
     },
     {
       step: 2,
-      title: 'Capture and check',
-      body: 'Desktop and mobile screenshots. Performance, SEO, accessibility, and more.',
+      title: 'AI reviews the page',
+      body: 'Screenshots plus seven checks across performance, SEO, mobile, and conversion.',
     },
     {
       step: 3,
-      title: 'AI reads the page',
-      body: 'Finds conversion gaps, trust issues, and unclear copy.',
-    },
-    {
-      step: 4,
-      title: 'Fix and re-check',
-      body: `Copy prompts into ${AI_TOOLS}. Compare before and after scores.`,
+      title: 'Copy fix prompts',
+      body: `Paste into ${AI_TOOLS}. Re-check to compare before and after.`,
     },
   ],
 } as const
@@ -68,7 +63,13 @@ export const SAMPLE_FINDINGS = [
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
-export const SAMPLE_FINDINGS_HEADER = 'AI review excerpt'
+export const HERO_SAMPLE = {
+  domain: 'stripe.com',
+  pageType: 'Marketing page',
+  score: 78,
+} as const
+
+export const SAMPLE_FINDINGS_HEADER = 'Sample report'
 export const SAMPLE_FINDINGS_VERDICT =
   'Hero copy is vague. Mobile CTA is buried. Fix prompt on each finding.'
 
@@ -120,7 +121,7 @@ export const PROBLEM_SECTION = {
 } as const
 
 export const DIFFERENTIATION = {
-  headline: 'AI review with fix prompts',
+  headline: 'What Lighthouse misses',
   rows: [
     { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
@@ -147,15 +148,14 @@ export const PROOF_SECTION = {
 
 export const WHATS_CHECKED_SECTION = {
   label: 'Coverage',
-  headline: 'Seven areas. One review.',
+  headline: 'Seven areas. One report.',
   subhead: 'Automated checks plus AI reading your screenshots.',
 } as const
 
 export const TRUST_STRIP = [
-  'Free first audit',
-  'No account',
   '7 areas checked',
   'Fix prompts included',
+  'Re-check after fixes',
 ] as const
 
 export const QUALITY_AREAS = [
@@ -197,13 +197,8 @@ export const PRICING_TEASER = {
   cta: 'See full pricing',
 } as const
 
-export const MID_CTA = {
-  headline: 'Run it on your URL',
-  trustLine: HERO.trustLine,
-} as const
-
 export const FINAL_CTA = {
-  headline: 'Paste your URL',
+  headline: 'Try it free on your site',
   trustLine: HERO.trustLine,
 } as const
 
@@ -527,9 +522,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'AI reviews your site like a person would',
+    title: 'Find what your site is still missing',
     description:
-      'Screenshots, automated checks, and an AI judge. Every issue includes a fix prompt. Free first audit.',
+      'Paste a URL. AI reviews screenshots and checks. Every issue includes a fix prompt. Free first audit.',
   },
   pricing: {
     title: 'Pricing',

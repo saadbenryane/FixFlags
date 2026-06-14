@@ -1,21 +1,12 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { GradeBadge } from '@/components/audit/GradeBadge'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { PROOF_SECTION } from '@/lib/marketing/copy'
 import { SAMPLE_STRIPE_AUDIT } from '@/lib/marketing/sample-audit'
-import { cn } from '@/lib/utils'
-
-const GRADE_STYLES: Record<string, string> = {
-  A: 'text-grade-A bg-grade-A/10',
-  B: 'text-grade-B bg-grade-B/10',
-  C: 'text-grade-C bg-grade-C/10',
-  D: 'text-grade-D bg-grade-D/10',
-  F: 'text-grade-F bg-grade-F/10',
-}
 
 function formatAreaName(name: string) {
   return name.charAt(0) + name.slice(1).toLowerCase()
@@ -23,10 +14,9 @@ function formatAreaName(name: string) {
 
 export function ProofSection() {
   const { sample } = PROOF_SECTION
-  const flaggedAreas = SAMPLE_STRIPE_AUDIT.areas.filter((a) => a.findings.some((f) => f.severity !== 'INFO'))
 
   return (
-    <Section spacing="default" className="bg-muted/35">
+    <Section spacing="default">
       <Container className="space-y-12">
         <SectionIntro
           label={PROOF_SECTION.label}
@@ -34,59 +24,51 @@ export function ProofSection() {
           subhead={PROOF_SECTION.subhead}
         />
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12">
-          <Card interactive className="overflow-hidden border-0 shadow-card">
-            <CardContent className="space-y-0 p-0">
-              <div className="flex items-center justify-between bg-muted/30 px-6 py-5">
-                <div className="space-y-0.5">
-                  <span className="font-semibold">{sample.name}</span>
-                  <span className="block font-mono text-[10px] text-muted-foreground">{sample.domain}</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-mono text-4xl font-bold tabular-nums text-brand">{sample.score}</span>
-                  <span className="text-xs text-muted-foreground">/100</span>
-                </div>
-              </div>
-              <div className="space-y-4 px-6 py-5">
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{sample.finding}</p>
-                <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
-                  {sample.areasFlagged} areas flagged · fix prompts included
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="marketing-panel overflow-hidden">
-            <div className="border-b border-border/30 px-5 py-3.5">
-              <span className="font-mono text-[11px] uppercase tracking-label text-muted-foreground/80">
-                Area scores
-              </span>
-            </div>
-            <div className="divide-y divide-border/30">
-              {SAMPLE_STRIPE_AUDIT.areas.map((area) => (
-                <div key={area.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                  <span className="text-sm font-medium">{formatAreaName(area.name)}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">{area.score}</span>
-                    <span
-                      className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded-md font-mono text-sm font-bold tabular-nums',
-                        GRADE_STYLES[area.grade] ?? 'text-muted-foreground bg-muted'
-                      )}
-                    >
-                      {area.grade}
-                    </span>
+        <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">
+          <div className="grid lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]">
+            {/* Score + finding */}
+            <div className="space-y-5 border-b border-border/15 p-6 sm:p-8 lg:border-b-0 lg:border-r">
+              <div className="flex items-start gap-4">
+                <div className="rounded-md border border-brand/25 bg-brand/[0.06] px-4 py-3 text-center">
+                  <div className="font-mono text-4xl font-bold tabular-nums text-brand leading-none">
+                    {sample.score}
                   </div>
+                  <div className="mt-1 text-xs text-muted-foreground">/100</div>
                 </div>
-              ))}
-            </div>
-            {flaggedAreas.length > 0 ? (
-              <div className="bg-muted/20 px-5 py-3">
-                <span className="text-xs leading-[1.45] text-muted-foreground">
-                  High scores still surface actionable findings with evidence and fix prompts.
-                </span>
+                <div className="min-w-0 pt-1">
+                  <p className="font-semibold">{sample.name}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">{sample.domain}</p>
+                </div>
               </div>
-            ) : null}
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{sample.finding}</p>
+              <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+                {sample.areasFlagged} areas flagged · fix prompts included
+              </p>
+            </div>
+
+            {/* Area scores grid */}
+            <div className="p-6 sm:p-8">
+              <p className="mb-4 font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+                All seven areas
+              </p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {SAMPLE_STRIPE_AUDIT.areas.map((area) => (
+                  <li
+                    key={area.id}
+                    className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2.5"
+                  >
+                    <span className="text-sm font-medium">{formatAreaName(area.name)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">{area.score}</span>
+                      <GradeBadge grade={area.grade} size="sm" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-xs leading-[1.45] text-muted-foreground text-pretty">
+                High scores still surface actionable findings with evidence and fix prompts.
+              </p>
+            </div>
           </div>
         </div>
 

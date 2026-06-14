@@ -13,15 +13,27 @@ export function HowItWorksSection() {
           subhead={HOW_IT_WORKS_SECTION.subhead}
         />
 
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+        <ol className="grid gap-4 md:grid-cols-3">
           {HOW_IT_WORKS_SECTION.steps.map((step) => (
-            <div key={step.step} className="space-y-2">
-              <span className="font-mono text-sm tabular-nums text-muted-foreground/70">{step.step}</span>
-              <div className="font-semibold">{step.title}</div>
-              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
-            </div>
+            <li
+              key={step.step}
+              className="rounded-card bg-card p-6 shadow-card transition-shadow duration-200 hover:shadow-card-hover"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+                  Step {step.step}
+                </span>
+                <span className="font-display text-2xl tabular-nums leading-none text-muted-foreground/20">
+                  {String(step.step).padStart(2, '0')}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <p className="font-semibold leading-snug">{step.title}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </Container>
     </Section>
   )

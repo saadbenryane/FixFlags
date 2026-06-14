@@ -18,7 +18,7 @@ function ComparisonCell({ value }: { value: string }) {
       </span>
     )
   }
-  return <span className="text-muted-foreground">{value}</span>
+  return <span className="text-sm text-muted-foreground">{value}</span>
 }
 
 export interface ComparisonRow {
@@ -37,7 +37,7 @@ export function ComparisonTable({ rows }: Props) {
     <div className="overflow-x-auto rounded-card bg-card shadow-card">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr>
+          <tr className="border-b border-border/20">
             <th className="p-4 text-left font-medium" scope="col" />
             <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
               Lighthouse
@@ -45,14 +45,14 @@ export function ComparisonTable({ rows }: Props) {
             <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
               Manual QA
             </th>
-            <th className="bg-brand/[0.04] p-4 text-center font-semibold text-foreground" scope="col">
+            <th className="p-4 text-center font-semibold text-foreground" scope="col">
               {BRAND.name}
             </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.feature} className="border-t border-border/30">
+            <tr key={row.feature} className="border-t border-border/20">
               <td className="p-4 font-medium">{row.feature}</td>
               <td className="p-4 text-center">
                 <ComparisonCell value={row.lighthouse} />
@@ -60,7 +60,7 @@ export function ComparisonTable({ rows }: Props) {
               <td className="p-4 text-center">
                 <ComparisonCell value={row.manual} />
               </td>
-              <td className="bg-brand/[0.04] p-4 text-center font-medium">
+              <td className="p-4 text-center font-medium">
                 <ComparisonCell value={row.qualityos} />
               </td>
             </tr>
