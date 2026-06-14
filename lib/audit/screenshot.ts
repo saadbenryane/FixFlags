@@ -2,6 +2,7 @@ import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
 import { uploadScreenshot } from '../storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
+import { assertPublicAuditUrl } from './url'
 
 let browser: Browser | null = null
 
@@ -47,6 +48,7 @@ async function captureViewport(
     isMobile?: boolean
     deviceScaleFactor?: number
     captureHtml?: boolean
+    pageKey?: string
   },
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
@@ -55,6 +57,17 @@ async function captureViewport(
 
   try {
     page = await b.newPage()
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const protocol = new URL(request.url()).protocol
+      if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
+        void request.continue()
+        return
+      }
+      void assertPublicAuditUrl(request.url())
+        .then(() => request.continue())
+        .catch(() => request.abort('blockedbyclient'))
+    })
     page.on('console', (msg: ConsoleMessage) => {
       if (msg.type() === 'error') {
         consoleErrors.push({ type: msg.type(), text: msg.text() })
@@ -68,10 +81,14 @@ async function captureViewport(
       deviceScaleFactor: options.deviceScaleFactor,
     })
 
-    await page.goto(targetUrl, {
+    const response = await page.goto(targetUrl, {
       waitUntil: 'domcontentloaded',
       timeout: TIMEOUT_MS,
     })
+    const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
+    if (!response?.ok() || (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml'))) {
+      throw new Error('Destination did not return a successful HTML document')
+    }
     await settlePage(page)
 
     if (options.captureHtml) {
@@ -85,7 +102,7 @@ async function captureViewport(
     })) as Buffer
 
     result.base64 = buffer.toString('base64')
-    result.url = await uploadScreenshot(auditId, options.device, buffer)
+    result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)
   } catch (err) {
     console.error(`${options.device} screenshot failed:`, err)
   } finally {
@@ -97,14 +114,17 @@ async function captureViewport(
   return result
 }
 
-async function settlePage(page: Page) {
+async function settlePage(_page: Page) {
+  void _page
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
 }
 
 export async function captureScreenshots(
   url: string,
-  auditId: string
+  auditId: string,
+  pageKey?: string
 ): Promise<ScreenshotResult> {
+  await assertPublicAuditUrl(url)
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
 
@@ -118,6 +138,7 @@ export async function captureScreenshots(
         height: DESKTOP_VIEWPORT.height,
         device: 'desktop',
         captureHtml: true,
+        pageKey,
       },
       consoleErrors
     ),
@@ -131,6 +152,7 @@ export async function captureScreenshots(
         device: 'mobile',
         isMobile: true,
         deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
+        pageKey,
       },
       consoleErrors
     ),

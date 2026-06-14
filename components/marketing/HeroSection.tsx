@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading, Muted } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
+import type { SampleResult } from '@/lib/marketing/live-sample'
 import { cn } from '@/lib/utils'
 
 const STAGGER = [
@@ -14,7 +15,7 @@ const STAGGER = [
   'animate-scale-in opacity-0 [animation-fill-mode:forwards] [animation-delay:320ms]',
 ]
 
-export function HeroSection() {
+export function HeroSection({ sample }: { sample: SampleResult }) {
   return (
     <Section spacing="loose" className="relative overflow-hidden">
       <MarketingBackdrop />
@@ -43,7 +44,7 @@ export function HeroSection() {
           </div>
 
           <div className={cn('lg:sticky lg:top-24', STAGGER[3])}>
-            <SampleFindingsCard />
+            <SampleFindingsCard sample={sample} />
           </div>
         </div>
       </Container>

@@ -25,9 +25,9 @@ interface Finding {
 interface Area {
   id: string
   name: string
-  grade: string
+  grade: string | null
   score: number | null
-  status: string
+  status: string | null
   summary: string
   areaPrompt: string
   cursorPrompt?: string | null
@@ -56,7 +56,9 @@ export function AreaCard({
       <CardHeader className="pb-3">
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-start justify-between gap-4 text-left w-full"
+          aria-expanded={open}
+          aria-controls={`area-panel-${area.name}`}
+          className="flex min-h-11 w-full items-start justify-between gap-4 text-left"
         >
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <GradeBadge grade={area.grade} score={area.score} size="md" />
@@ -83,7 +85,7 @@ export function AreaCard({
       </CardHeader>
 
       {open && (
-        <CardContent className="pt-0 space-y-3">
+        <CardContent id={`area-panel-${area.name}`} className="pt-0 space-y-3">
           {area.findings.length > 0 && (
             <div className="flex items-center justify-end flex-wrap gap-2">
               <AreaPromptButton
@@ -111,7 +113,13 @@ export function AreaCard({
             <p className="text-sm text-grade-A font-medium">✓ No issues found in this area</p>
           )}
 
-          {area.findings.length === 0 && area.grade !== 'A' && (
+          {area.findings.length === 0 && area.grade === null && (
+            <p className="text-sm text-muted-foreground">
+              This area could not be assessed from the available evidence.
+            </p>
+          )}
+
+          {area.findings.length === 0 && area.grade !== null && area.grade !== 'A' && (
             <p className="text-sm text-muted-foreground">
               No individual findings listed — see the area summary above for what to improve.
             </p>

@@ -10,12 +10,13 @@ interface FindingDiffItem {
 
 interface Props {
   fixed: FindingDiffItem[]
+  unchanged: FindingDiffItem[]
   regressed: FindingDiffItem[]
   newIssues: FindingDiffItem[]
 }
 
-export function FindingDiff({ fixed, regressed, newIssues }: Props) {
-  if (fixed.length === 0 && regressed.length === 0 && newIssues.length === 0) {
+export function FindingDiff({ fixed, unchanged, regressed, newIssues }: Props) {
+  if (fixed.length === 0 && unchanged.length === 0 && regressed.length === 0 && newIssues.length === 0) {
     return null
   }
 
@@ -25,6 +26,9 @@ export function FindingDiff({ fixed, regressed, newIssues }: Props) {
 
       {fixed.length > 0 && (
         <DiffSection title="Fixed" items={fixed} className="text-green-600 border-green-200" />
+      )}
+      {unchanged.length > 0 && (
+        <DiffSection title="Unchanged" items={unchanged} className="text-muted-foreground border-border" />
       )}
       {regressed.length > 0 && (
         <DiffSection title="Regressed" items={regressed} className="text-destructive border-destructive/30" />

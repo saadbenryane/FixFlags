@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 export function UpgradeButton() {
   const [loading, setLoading] = useState(false)
@@ -15,12 +16,18 @@ export function UpgradeButton() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: 'BUILDER' }),
       })
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message)
+        return
+      }
       const data = await res.json()
-      if (res.ok && data.url) {
+      if (data.url) {
         window.location.href = data.url
       } else {
-        toast.error(data.error || 'Failed to start checkout')
+        toast.error('Checkout did not return a destination.')
       }
+    } catch {
+      toast.error('Could not start checkout. Try again.')
     } finally {
       setLoading(false)
     }

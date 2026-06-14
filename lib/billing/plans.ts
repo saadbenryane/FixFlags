@@ -54,8 +54,8 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
   },
   BUILDER: {
     plan: 'BUILDER',
-    name: 'Builder',
-    label: 'Builder',
+    name: 'Pro',
+    label: 'Pro',
     price: '$49',
     period: '/mo',
     persona: 'Solo builders shipping weekly',
@@ -74,16 +74,16 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Audit history',
     ],
     highlight: true,
-    cta: 'Start Builder',
+    cta: 'Start Pro',
     href: '/sign-up?plan=BUILDER',
   },
   TEAM: {
     plan: 'TEAM',
-    name: 'Team',
-    label: 'Team',
+    name: 'Agency',
+    label: 'Agency',
     price: '$199',
     period: '/mo',
-    persona: 'Small teams with multiple sites',
+    persona: 'Independent agencies with multiple sites',
     outcome: 'Share proof with clients',
     auditLimit: 100,
     auditLimitKind: 'monthly',
@@ -91,13 +91,13 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: 5,
     features: [
-      'Everything in Builder',
+      'Everything in Pro',
       'Public share links',
       'Up to 5 projects',
       'Before/after compare (signed-in)',
     ],
     highlight: false,
-    cta: 'Start Team',
+    cta: 'Start Agency',
     href: '/sign-up?plan=TEAM',
   },
   STUDIO: {
@@ -116,7 +116,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     stripePriceId: envPriceId('STRIPE_STUDIO_PRICE_ID'),
     projectLimit: 20,
     features: [
-      'Everything in Team',
+      'Everything in Agency',
       'Up to 20 projects',
       'Agency use',
       '500 audits per month',
@@ -191,6 +191,7 @@ export function getMarketingPlans() {
       cta: def.cta,
       href: def.href,
       highlight: def.highlight,
+      accountModel: 'Single account. No seats or shared workspace.',
     }
   })
 }

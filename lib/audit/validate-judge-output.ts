@@ -1,89 +1,77 @@
-import type { JudgeOutput } from '@/lib/audit/judge'
 import type { DeterministicFinding } from '@/lib/audit/checks'
+import type { JudgeOutput } from '@/lib/audit/judge'
 import { AREA_ORDER } from '@/lib/audit/constants'
-import { verificationRuleForCheckId } from '@/lib/audit/verify-findings'
 
-const POOR_GRADES = new Set(['B', 'C', 'D', 'F'])
+const AREA_NAMES = new Set<string>(AREA_ORDER)
+const LAUNCH_CHECK_IDS = new Set([
+  'https',
+  'social-preview',
+  'mobile-cta',
+  'console-errors',
+  'privacy-contact',
+])
 
-function normalizeProblem(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim()
+export class JudgeContractError extends Error {
+  constructor(message: string) {
+    super(`Invalid AI assessment: ${message}`)
+    this.name = 'JudgeContractError'
+  }
 }
 
-function severityForGrade(grade: string): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
-  if (grade === 'F' || grade === 'D') return 'HIGH'
-  if (grade === 'C') return 'MEDIUM'
-  return 'LOW'
+function assertUnique(values: string[], label: string): void {
+  if (new Set(values).size !== values.length) {
+    throw new JudgeContractError(`${label} must be unique`)
+  }
 }
 
-export function validateAndRepairJudgeOutput(
+export function validateJudgeOutput(
   output: JudgeOutput,
   deterministicFindings: DeterministicFinding[]
 ): JudgeOutput {
-  const launchReadiness = output.launchReadiness ?? 'fix_first'
-  const launchChecklist = output.launchChecklist ?? []
+  if (output.areas.length !== AREA_ORDER.length) {
+    throw new JudgeContractError(`expected exactly ${AREA_ORDER.length} areas`)
+  }
 
-  const areas = [...output.areas]
-  const areaNames = new Set(areas.map((a) => a.name))
+  const areaNames = output.areas.map((area) => area.name)
+  assertUnique(areaNames, 'area names')
+  if (areaNames.some((name) => !AREA_NAMES.has(name))) {
+    throw new JudgeContractError('received an unsupported area')
+  }
+  if (AREA_ORDER.some((name) => !areaNames.includes(name))) {
+    throw new JudgeContractError('one or more required areas are missing')
+  }
 
-  for (const name of AREA_ORDER) {
-    if (!areaNames.has(name)) {
-      areas.push({
-        name,
-        grade: 'A',
-        status: 'EXCELLENT',
-        summary: 'No significant issues detected in this area.',
-        areaPrompt: `Review ${name} on this page and preserve current quality.`,
-        score: name === 'PERFORMANCE' || name === 'ACCESSIBILITY' || name === 'SEO' ? 90 : null,
-      })
+  for (const area of output.areas) {
+    if (area.assessmentState === 'ASSESSED' && area.score === null) {
+      throw new JudgeContractError(`${area.name} is assessed but has no score`)
+    }
+    if (area.assessmentState !== 'ASSESSED' && area.score !== null) {
+      throw new JudgeContractError(`${area.name} has a score without assessed evidence`)
     }
   }
 
-  const newFindings = [...output.newFindings]
-  const enrichments = [...output.enrichments]
-
-  for (const area of areas) {
-    const detInArea = deterministicFindings.filter((f) => f.area === area.name)
-    const aiInArea = newFindings.filter((f) => f.area === area.name)
-    const totalFindings = detInArea.length + aiInArea.length
-
-    if (POOR_GRADES.has(area.grade) && totalFindings === 0 && area.summary.trim()) {
-      newFindings.push({
-        area: area.name,
-        severity: severityForGrade(area.grade),
-        problem: area.summary.split('.')[0] ?? area.summary,
-        evidence: area.summary,
-        whyItMatters: `This ${area.name.toLowerCase()} issue affects how visitors experience your page.`,
-        fix: area.areaPrompt,
-        confidence: 0.75,
-        verificationRule: `Re-audit ${area.name.toLowerCase()} after applying fixes and confirm the grade improves.`,
-      })
-    }
+  if (output.launchChecklist.length !== 5) {
+    throw new JudgeContractError('launch checklist must contain exactly five checks')
+  }
+  const launchIds = output.launchChecklist.map((item) => item.id)
+  assertUnique(launchIds, 'launch checklist ids')
+  if (launchIds.some((id) => !LAUNCH_CHECK_IDS.has(id))) {
+    throw new JudgeContractError('launch checklist contains an unsupported check')
   }
 
-  for (const finding of deterministicFindings) {
-    const hasEnrichment = enrichments.some((e) => e.checkId === finding.checkId)
-    if (!hasEnrichment) {
-      enrichments.push({
-        checkId: finding.checkId,
-        whyItMatters: `This issue affects ${finding.area.toLowerCase()} quality and launch readiness.`,
-        agentPrompt: finding.fix,
-        verificationRule:
-          verificationRuleForCheckId(finding.checkId) ??
-          `Confirm ${finding.checkId} no longer applies after your fix.`,
-      })
-    }
+  const requiredEnrichments = deterministicFindings.map((finding) => finding.checkId)
+  const enrichmentIds = output.enrichments.map((item) => item.checkId)
+  assertUnique(enrichmentIds, 'enrichment check ids')
+  if (
+    enrichmentIds.length !== requiredEnrichments.length ||
+    requiredEnrichments.some((id) => !enrichmentIds.includes(id))
+  ) {
+    throw new JudgeContractError('expected exactly one enrichment per deterministic finding')
   }
 
-  return {
-    ...output,
-    launchReadiness,
-    launchChecklist,
-    areas,
-    newFindings,
-    enrichments,
-  }
+  return output
 }
 
 export function buildAiFindingMatchKey(problem: string, area: string): string {
-  return `${area}::${normalizeProblem(problem)}`
+  return `${area}::${problem.toLowerCase().replace(/\s+/g, ' ').trim()}`
 }

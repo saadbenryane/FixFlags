@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import { safeFetchHtml } from './url'
 
 export interface PageMetadata {
   title: string | null
@@ -221,23 +222,6 @@ export function trimMetadataForStorage(metadata: PageMetadata) {
 }
 
 export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10_000)
-
-  let html: string
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'QualityOS/1.0 (+https://qualityos.com)',
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    })
-    html = await res.text()
-  } finally {
-    clearTimeout(timeout)
-  }
-
-  return parseMetadataFromHtml(html, url)
+  const { html, finalUrl } = await safeFetchHtml(url)
+  return parseMetadataFromHtml(html, finalUrl)
 }
-

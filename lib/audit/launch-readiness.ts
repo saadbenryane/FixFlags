@@ -1,4 +1,4 @@
-export type LaunchReadinessValue = 'safe' | 'fix_first' | 'not_ready'
+export type LaunchReadinessValue = 'safe' | 'fix_first' | 'not_ready' | 'unknown'
 
 export interface LaunchChecklistItem {
   id: string
@@ -15,7 +15,12 @@ export function parseLaunchReadiness(raw: unknown): LaunchReadinessData | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Record<string, unknown>
   const readiness = obj.readiness
-  if (readiness !== 'safe' && readiness !== 'fix_first' && readiness !== 'not_ready') {
+  if (
+    readiness !== 'safe' &&
+    readiness !== 'fix_first' &&
+    readiness !== 'not_ready' &&
+    readiness !== 'unknown'
+  ) {
     return null
   }
   const checklistRaw = obj.checklist
@@ -41,6 +46,8 @@ export function launchReadinessLabel(readiness: LaunchReadinessValue): string {
       return 'Fix first'
     case 'not_ready':
       return 'Not ready'
+    case 'unknown':
+      return 'Not enough evidence'
   }
 }
 
@@ -52,5 +59,7 @@ export function launchReadinessTone(readiness: LaunchReadinessValue): string {
       return 'text-grade-C bg-grade-C/10 border-grade-C/25'
     case 'not_ready':
       return 'text-grade-F bg-grade-F/10 border-grade-F/25'
+    case 'unknown':
+      return 'text-muted-foreground bg-muted/50 border-border'
   }
 }

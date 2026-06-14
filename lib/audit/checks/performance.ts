@@ -5,6 +5,7 @@ export function runPerformanceChecks(
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null
 ): DeterministicFinding[] {
+  void mobile
   const findings: DeterministicFinding[] = []
   const ps = desktop
 

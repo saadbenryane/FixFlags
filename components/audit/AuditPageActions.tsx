@@ -10,6 +10,7 @@ import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
   auditId: string
@@ -29,7 +30,6 @@ export function AuditPageActions({
   isPaid,
   isLoggedIn,
   isPublic: initialIsPublic,
-  hasParent,
   compareAuditId,
   plan = 'FREE',
   projectId,
@@ -46,8 +46,8 @@ export function AuditPageActions({
   async function handleShare() {
     try {
       const res = await fetch(`/api/audits/${auditId}/toggle-public`, { method: 'PATCH' })
-      const data = await res.json()
       if (res.ok) {
+        const data = await res.json()
         setIsPublic(data.isPublic)
         if (data.isPublic) {
           await navigator.clipboard.writeText(window.location.href)
@@ -55,17 +55,20 @@ export function AuditPageActions({
         } else {
           toast.success('Report is now private.')
         }
-      } else if (res.status === 402 && data.code === 'UPGRADE_REQUIRED') {
+      } else {
+        const error = await parseApiErrorResponse(res)
+        if (res.status !== 402 || error.code !== 'UPGRADE_REQUIRED') {
+          toast.error(error.message)
+          return
+        }
         const content = getUpgradeMomentContent('share_blocked')
         toast.error(content.headline, {
           description: content.body,
           action: {
-            label: 'View Team plan',
+            label: 'View Agency plan',
             onClick: () => router.push('/pricing'),
           },
         })
-      } else {
-        toast.error(data.error || 'Failed to update sharing')
       }
     } catch {
       toast.error('Failed to update sharing')
@@ -76,11 +79,12 @@ export function AuditPageActions({
     setRecheckLoading(true)
     try {
       const res = await fetch(`/api/audits/${auditId}/recheck`, { method: 'POST' })
-      const data = await res.json()
       if (res.ok) {
+        const data = await res.json()
         router.push(`/audit/${data.auditId}`)
       } else if (res.status === 402) {
-        const moment = data.code === 'UPGRADE_REQUIRED' ? 'trial_exhausted' : 'free_default'
+        const error = await parseApiErrorResponse(res)
+        const moment = error.code === 'UPGRADE_REQUIRED' ? 'trial_exhausted' : 'free_default'
         const content = getUpgradeMomentContent(moment)
         toast.error(content.headline, {
           description: content.body,
@@ -90,8 +94,10 @@ export function AuditPageActions({
           },
         })
       } else {
-        toast.error(data.error || 'Failed to start re-check')
+        toast.error((await parseApiErrorResponse(res)).message)
       }
+    } catch {
+      toast.error('Could not start the re-check. Try again.')
     } finally {
       setRecheckLoading(false)
     }
@@ -121,7 +127,7 @@ export function AuditPageActions({
           onClick={handleShare}
           title={
             !canSharePublicly && !isPublic
-              ? 'Upgrade to Team to share client report links'
+              ? 'Upgrade to Agency to share client report links'
               : undefined
           }
         >

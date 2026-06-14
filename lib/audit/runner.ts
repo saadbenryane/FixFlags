@@ -1,301 +1,678 @@
+import type { AreaName } from '@prisma/client'
 import { prisma } from '../db'
 import { captureScreenshots } from './screenshot'
-import { fetchAndParseMetadata, parseMetadataFromHtml, trimMetadataForStorage } from './metadata'
-import { fetchPageSpeedData, toStoredPageSpeedResult } from './pagespeed'
-import { runAllChecks, computeAreaScores } from './checks'
-import { runJudge, isRetryableJudgeError } from './judge'
-import { persistAuditResults } from './persist'
-import { diffFindingsAgainstParent } from './diff-findings'
-import { incrementUsageOnCompleteForAudit } from './usage'
+import {
+  fetchAndParseMetadata,
+  parseMetadataFromHtml,
+  trimMetadataForStorage,
+  type PageMetadata,
+} from './metadata'
+import {
+  fetchPageSpeedData,
+  toStoredPageSpeedResult,
+  type PageSpeedResult,
+} from './pagespeed'
+import {
+  runAllChecks,
+  computeAreaScores,
+  type DeterministicFinding,
+} from './checks'
+import {
+  runJudge,
+  isRetryableJudgeError,
+  type JudgeResult,
+} from './judge'
+import {
+  persistAuditResults,
+  persistDeterministicFindings,
+} from './persist'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
-import { validateAndRepairJudgeOutput } from './validate-judge-output'
-import { persistAuditRunCost } from '@/lib/billing/costs'
+import { JudgeContractError, validateJudgeOutput } from './validate-judge-output'
 import { discoverCriticalPathUrls } from './critical-path'
-import { applyDeterministicVerification } from './verify-findings'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
+import {
+  finalizeAudit,
+  finalizePartialAudit,
+  persistFailedAuditCost,
+} from './finalize'
+import { AUDIT_DEADLINE_MS } from './pipeline-config'
+import { AuditDeadlineError, isNonRetryableAuditError } from './pipeline-errors'
+import { initPipelineLog, logPipelineEvent } from './pipeline-log'
+import {
+  copyParentArtifacts,
+  loadParentScreenshotBase64,
+} from './copy-parent-artifacts'
+
+interface PageRun {
+  pageId: string
+  url: string
+  metadata: PageMetadata
+  desktop: PageSpeedResult | null
+  mobile: PageSpeedResult | null
+  desktopError?: string
+  mobileError?: string
+  desktopScreenshot: boolean
+  mobileScreenshot: boolean
+  desktopBase64: string
+  mobileBase64: string | null
+  findings: DeterministicFinding[]
+  judge?: JudgeResult
+}
+
+interface PipelineContext {
+  auditId: string
+  deadline: number
+  startedAt: Date
+  pagespeedCalls: number
+  usage: { inputTokens: number; outputTokens: number; models: string[] }
+}
 
 function sanitizeAuditErrorMessage(message: string): string {
   return message.replace(/\s+/g, ' ').trim().slice(0, 500)
 }
 
-async function runPostCompletionSteps(
-  auditId: string,
-  audit: { userId: string | null; parentId: string | null; skipUsageCount?: boolean; trialRecheck?: boolean },
-  judgeResult: {
-    usage: { inputTokens: number; outputTokens: number; model: string }
-  },
-  durationMs: number,
-  pagespeedCalls: number
-): Promise<void> {
+function assertDeadline(ctx: PipelineContext, stage: string): void {
+  if (Date.now() > ctx.deadline) {
+    throw new AuditDeadlineError(stage)
+  }
+}
+
+function accumulateUsage(ctx: PipelineContext, judge: JudgeResult): void {
+  ctx.usage.inputTokens += judge.usage.inputTokens
+  ctx.usage.outputTokens += judge.usage.outputTokens
+  if (!ctx.usage.models.includes(judge.usage.model)) {
+    ctx.usage.models.push(judge.usage.model)
+  }
+}
+
+async function runValidatedJudge(
+  ctx: PipelineContext,
+  input: {
+    url: string
+    metadata: PageMetadata
+    desktop: PageSpeedResult | null
+    mobile: PageSpeedResult | null
+    findings: DeterministicFinding[]
+    desktopBase64: string
+    mobileBase64: string | null
+  }
+): Promise<JudgeResult> {
+  assertDeadline(ctx, 'judging')
+  const judgeStart = Date.now()
+  await logPipelineEvent(ctx.auditId, { stage: 'judging', event: 'judge_started' })
+
+  const execute = async () => {
+    assertDeadline(ctx, 'judging')
+    const result = await runJudge(
+      input.url,
+      input.metadata,
+      input.desktop,
+      input.mobile,
+      input.findings,
+      input.desktopBase64,
+      input.mobileBase64
+    )
+    result.output = validateJudgeOutput(result.output, input.findings)
+    return result
+  }
+
   try {
-    await persistAuditRunCost(auditId, {
-      durationMs,
-      llmInputTokens: judgeResult.usage.inputTokens,
-      llmOutputTokens: judgeResult.usage.outputTokens,
-      llmModel: judgeResult.usage.model,
-      pagespeedCalls,
+    const result = await execute()
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'judging',
+      event: 'judge_completed',
+      durationMs: Date.now() - judgeStart,
     })
-  } catch (err) {
-    console.error(`Post-completion cost persist failed for audit ${auditId}:`, err)
+    return result
+  } catch (firstError) {
+    const retryable =
+      isRetryableJudgeError(firstError) ||
+      firstError instanceof JudgeContractError ||
+      (firstError instanceof Error &&
+        firstError.message.startsWith('Invalid judge output:'))
+    if (!retryable) throw firstError
+    assertDeadline(ctx, 'judging')
+    const result = await execute()
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'judging',
+      event: 'judge_completed_retry',
+      durationMs: Date.now() - judgeStart,
+    })
+    return result
   }
+}
 
-  if (audit.parentId) {
-    try {
-      await diffFindingsAgainstParent(auditId, audit.parentId)
-    } catch (err) {
-      console.error(`Post-completion diff failed for audit ${auditId}:`, err)
+async function runPage(
+  ctx: PipelineContext,
+  input: {
+    url: string
+    position: number
+    role: string
+    primary: boolean
+    skipCapture?: boolean
+    parentId?: string
+  }
+): Promise<PageRun> {
+  const normalizedUrl = new URL(input.url).toString()
+  assertDeadline(ctx, input.skipCapture ? 'checking' : 'capturing')
+
+  let page = await prisma.auditPage.create({
+    data: {
+      auditId: ctx.auditId,
+      url: normalizedUrl,
+      normalizedUrl,
+      position: input.position,
+      role: input.role,
+      status: input.skipCapture ? 'CHECKING' : 'CAPTURING',
+    },
+  })
+
+  let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
+  let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
+  let desktopBase64 = ''
+  let mobileBase64: string | null = null
+
+  if (input.skipCapture && input.parentId) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'capturing',
+      event: 'skipped_reusing_parent',
+    })
+    const parentImages = await loadParentScreenshotBase64(input.parentId)
+    desktopBase64 = parentImages.desktopBase64 ?? ''
+    mobileBase64 = parentImages.mobileBase64
+    const parentPerf = await prisma.audit.findUnique({
+      where: { id: input.parentId },
+      select: { performanceData: true, htmlMetadata: true },
+    })
+    const perf = parentPerf?.performanceData as {
+      desktop?: PageSpeedResult
+      mobile?: PageSpeedResult
+    } | null
+    pagespeed = {
+      desktop: perf?.desktop ?? null,
+      mobile: perf?.mobile ?? null,
+      desktopError: undefined,
+      mobileError: undefined,
     }
-    try {
-      const parent = await prisma.audit.findUnique({
-        where: { id: audit.parentId },
-        select: { url: true },
+    const meta = parentPerf?.htmlMetadata as PageMetadata | null
+    if (!desktopBase64) {
+      throw new Error('Desktop screenshot capture failed — parent has no desktop image')
+    }
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: {
+        status: 'CHECKING',
+        title: meta?.title,
+        htmlMetadata: meta ? (trimMetadataForStorage(meta) as never) : undefined,
+      },
+    })
+  } else {
+    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
+    const captureStart = Date.now()
+
+    const [captured, speed] = await Promise.all([
+      captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`),
+      fetchPageSpeedData(normalizedUrl),
+    ])
+    screenshots = captured
+    pagespeed = speed
+    ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
+
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'capturing',
+      event: 'capture_completed',
+      durationMs: Date.now() - captureStart,
+    })
+
+    if (!screenshots.desktopUrl || !screenshots.desktopBase64) {
+      await prisma.auditPage.update({
+        where: { id: page.id },
+        data: {
+          status: 'FAILED',
+          failureCode: 'DESKTOP_CAPTURE_FAILED',
+          failureMessage: 'Desktop screenshot capture is required',
+        },
       })
-      if (parent?.url) {
-        await applyDeterministicVerification(auditId, audit.parentId, parent.url)
-      }
-    } catch (err) {
-      console.error(`Deterministic verification failed for audit ${auditId}:`, err)
+      throw new Error(`Desktop screenshot capture failed for ${normalizedUrl}`)
+    }
+
+    desktopBase64 = screenshots.desktopBase64
+    mobileBase64 = screenshots.mobileBase64
+
+    const metadataFromHtml = screenshots.desktopHtml
+      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+      : await fetchAndParseMetadata(normalizedUrl)
+    const storedPerformance = {
+      desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
+      mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
+      desktopError: pagespeed.desktopError ?? null,
+      mobileError: pagespeed.mobileError ?? null,
+      screenshots: screenshots.captureStatus,
+    }
+
+    await prisma.$transaction([
+      prisma.screenshot.create({
+        data: {
+          auditId: ctx.auditId,
+          pageId: page.id,
+          device: 'DESKTOP',
+          url: screenshots.desktopUrl,
+          width: DESKTOP_VIEWPORT.width,
+          height: DESKTOP_VIEWPORT.height,
+        },
+      }),
+      ...(screenshots.mobileUrl
+        ? [
+            prisma.screenshot.create({
+              data: {
+                auditId: ctx.auditId,
+                pageId: page.id,
+                device: 'MOBILE',
+                url: screenshots.mobileUrl,
+                width: MOBILE_VIEWPORT.width,
+                height: MOBILE_VIEWPORT.height,
+              },
+            }),
+          ]
+        : []),
+      prisma.auditPage.update({
+        where: { id: page.id },
+        data: {
+          status: 'CHECKING',
+          title: metadataFromHtml.title,
+          htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
+          performanceData: storedPerformance as never,
+          consoleErrors: screenshots.consoleErrors as never,
+        },
+      }),
+    ])
+
+    if (input.primary) {
+      await prisma.audit.update({
+        where: { id: ctx.auditId },
+        data: {
+          status: 'CHECKING',
+          progress: AUDIT_PROGRESS.CHECKING,
+          htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
+          performanceData: storedPerformance as never,
+          consoleErrors: screenshots.consoleErrors as never,
+        },
+      })
     }
   }
 
-  if (audit.userId) {
-    try {
-      await incrementUsageOnCompleteForAudit(auditId, audit.userId)
-    } catch (err) {
-      console.error(`Post-completion usage increment failed for audit ${auditId}:`, err)
-    }
+  const metadata =
+    screenshots?.desktopHtml
+      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+      : ((await prisma.auditPage.findUnique({
+          where: { id: page.id },
+          select: { htmlMetadata: true },
+        }))?.htmlMetadata as PageMetadata | null) ??
+        (await fetchAndParseMetadata(normalizedUrl))
+
+  assertDeadline(ctx, 'checking')
+  await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
+  const checksStart = Date.now()
+
+  const findings = (
+    await runAllChecks(
+      normalizedUrl,
+      metadata,
+      pagespeed?.desktop ?? null,
+      pagespeed?.mobile ?? null,
+      screenshots?.consoleErrors ?? [],
+      input.primary
+        ? (index) => {
+            void logPipelineEvent(ctx.auditId, {
+              stage: 'checking',
+              event: `check_${index + 1}`,
+            })
+          }
+        : undefined
+    )
+  ).map((finding) => ({
+    ...finding,
+    checkId:
+      input.position === 0
+        ? finding.checkId
+        : `${finding.checkId}::page:${input.position}`,
+    pageUrl: normalizedUrl,
+  }))
+
+  await logPipelineEvent(ctx.auditId, {
+    stage: 'checking',
+    event: 'checks_completed',
+    durationMs: Date.now() - checksStart,
+  })
+
+  const partialAreaScores = computeAreaScores(
+    findings,
+    pagespeed?.desktop ?? null,
+    pagespeed?.mobile ?? null
+  )
+  if (input.primary) {
+    await persistDeterministicFindings(ctx.auditId, findings, partialAreaScores)
   }
 
-  if (audit.trialRecheck && audit.parentId && audit.userId) {
-    try {
-      const { consumeTrialRecheckOnSuccess } = await import('@/lib/auth/entitlements')
-      await consumeTrialRecheckOnSuccess(audit.userId)
-    } catch (err) {
-      console.error(`Trial recheck consumption failed for audit ${auditId}:`, err)
-    }
+  await prisma.auditPage.update({
+    where: { id: page.id },
+    data: { status: 'JUDGING' },
+  })
+  await prisma.audit.update({
+    where: { id: ctx.auditId },
+    data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
+  })
+
+  const judge = await runValidatedJudge(ctx, {
+    url: normalizedUrl,
+    metadata,
+    desktop: pagespeed?.desktop ?? null,
+    mobile: pagespeed?.mobile ?? null,
+    findings,
+    desktopBase64,
+    mobileBase64,
+  })
+  accumulateUsage(ctx, judge)
+
+  judge.output.newFindings = judge.output.newFindings.map((finding) => ({
+    ...finding,
+    pageUrl: normalizedUrl,
+  }))
+
+  const completeness =
+    (screenshots?.mobileUrl || mobileBase64) &&
+    pagespeed?.desktop &&
+    pagespeed?.mobile
+      ? 'FULL'
+      : 'PARTIAL'
+  await prisma.auditPage.update({
+    where: { id: page.id },
+    data: {
+      status: completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL',
+      completeness,
+    },
+  })
+
+  return {
+    pageId: page.id,
+    url: normalizedUrl,
+    metadata,
+    desktop: pagespeed?.desktop ?? null,
+    mobile: pagespeed?.mobile ?? null,
+    desktopError: pagespeed?.desktopError,
+    mobileError: pagespeed?.mobileError,
+    desktopScreenshot: Boolean(desktopBase64),
+    mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
+    desktopBase64,
+    mobileBase64,
+    findings,
+    judge,
   }
+}
+
+function averageScores(pageRuns: PageRun[]): Partial<Record<AreaName, number | null>> {
+  const output: Partial<Record<AreaName, number | null>> = {}
+  for (const area of [
+    'PERFORMANCE',
+    'ACCESSIBILITY',
+    'SEO',
+    'CONVERSION',
+    'TRUST',
+    'CONTENT',
+    'MOBILE',
+  ] as AreaName[]) {
+    const values = pageRuns
+      .map((page) => {
+        const deterministic = computeAreaScores(
+          page.findings,
+          page.desktop,
+          page.mobile
+        )[area]
+        return (
+          deterministic ??
+          page.judge?.output.areas.find((item) => item.name === area)?.score ??
+          null
+        )
+      })
+      .filter((score): score is number => score !== null)
+    output[area] =
+      values.length === pageRuns.length
+        ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length)
+        : null
+  }
+  return output
+}
+
+async function tryPartialFinalize(
+  ctx: PipelineContext,
+  pageRuns: PageRun[],
+  error: unknown
+): Promise<boolean> {
+  if (pageRuns.length === 0) return false
+  const hasEvidence = pageRuns.every((p) => p.desktopScreenshot && p.findings.length >= 0)
+  if (!hasEvidence) return false
+
+  const errorMsg = sanitizeAuditErrorMessage(
+    error instanceof Error ? error.message : String(error)
+  )
+  const failureCode =
+    error instanceof AuditDeadlineError
+      ? 'AUDIT_TIMEOUT'
+      : error instanceof JudgeContractError
+        ? 'AI_CONTRACT_INVALID'
+        : 'AUDIT_PIPELINE_FAILED'
+  const failureStage =
+    error instanceof AuditDeadlineError
+      ? error.stage
+      : pageRuns.some((p) => p.judge)
+        ? 'judging'
+        : 'checking'
+
+  await finalizePartialAudit({
+    auditId: ctx.auditId,
+    durationMs: Date.now() - ctx.startedAt.getTime(),
+    pagespeedCalls: ctx.pagespeedCalls,
+    usage: {
+      inputTokens: ctx.usage.inputTokens,
+      outputTokens: ctx.usage.outputTokens,
+      model: ctx.usage.models.join(',') || 'none',
+    },
+    evidence: {
+      desktopScreenshot: pageRuns.every((p) => p.desktopScreenshot),
+      mobileScreenshot: pageRuns.every((p) => p.mobileScreenshot),
+      metadata: pageRuns.every((p) => Boolean(p.metadata)),
+      desktopPageSpeed: pageRuns.every((p) => Boolean(p.desktop)),
+      mobilePageSpeed: pageRuns.every((p) => Boolean(p.mobile)),
+    },
+    failureCode,
+    failureStage,
+    errorMsg,
+  })
+  return true
 }
 
 export async function runAudit(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({ where: { id: auditId } })
   if (!audit) throw new Error(`Audit ${auditId} not found`)
+  if (audit.status === 'COMPLETED') return
 
-  if (audit.status === 'COMPLETED') {
-    console.log(`Audit ${auditId} already completed — skipping worker retry`)
-    return
-  }
-
-  const url = audit.url
-
-  await prisma.screenshot.deleteMany({ where: { auditId } })
-
-  await prisma.audit.update({
-    where: { id: auditId },
-    data: {
-      status: 'CAPTURING',
-      startedAt: audit.startedAt ?? new Date(),
-      errorMsg: null,
-      progress: AUDIT_PROGRESS.CAPTURING,
-    },
-  })
-
-  let desktopBase64: string | null = null
-  let mobileBase64: string | null = null
-  let consoleErrors: Array<{ type: string; text: string }> = []
-
-  const [screenshots, pagespeed] = await Promise.all([
-    captureScreenshots(url, auditId),
-    fetchPageSpeedData(url),
-  ])
-
-  desktopBase64 = screenshots.desktopBase64
-  mobileBase64 = screenshots.mobileBase64
-  consoleErrors = screenshots.consoleErrors
-
-  const pagespeedCalls =
-    (pagespeed.desktop ? 1 : 0) + (pagespeed.mobile ? 1 : 0)
-
-  if (!screenshots.desktopUrl) {
-    const msg =
-      'Desktop screenshot capture failed. The site may be unreachable or blocking automated access.'
-    await prisma.audit.update({
-      where: { id: auditId },
-      data: { status: 'FAILED', errorMsg: msg },
-    })
-    throw new Error(msg)
-  }
-
-  if (!screenshots.mobileUrl && screenshots.captureStatus.mobile === 'failed') {
-    console.warn(`Audit ${auditId}: mobile screenshot capture failed — continuing with desktop only`)
-  }
-
-  await prisma.screenshot.create({
-    data: {
-      auditId,
-      device: 'DESKTOP',
-      url: screenshots.desktopUrl,
-      width: DESKTOP_VIEWPORT.width,
-      height: DESKTOP_VIEWPORT.height,
-    },
-  })
-  await setAuditProgress(auditId, AUDIT_PROGRESS.DESKTOP_SCREENSHOT)
-
-  if (screenshots.mobileUrl) {
-    await prisma.screenshot.create({
-      data: {
-        auditId,
-        device: 'MOBILE',
-        url: screenshots.mobileUrl,
-        width: MOBILE_VIEWPORT.width,
-        height: MOBILE_VIEWPORT.height,
-      },
-    })
-    await setAuditProgress(auditId, AUDIT_PROGRESS.MOBILE_SCREENSHOT)
-  }
-
-  let metadata
-  try {
-    metadata = screenshots.desktopHtml
-      ? parseMetadataFromHtml(screenshots.desktopHtml, url)
-      : await fetchAndParseMetadata(url)
-  } catch (err) {
-    await prisma.audit.update({
-      where: { id: auditId },
-      data: {
-        status: 'FAILED',
-        errorMsg: `Failed to fetch page: ${(err as Error).message}`,
-      },
-    })
-    throw err
-  }
-
-  const storedPerformance: Record<string, unknown> = {
-    desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
-    mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
-    desktopError: pagespeed.desktopError ?? null,
-    mobileError: pagespeed.mobileError ?? null,
-    screenshots: screenshots.captureStatus,
-  }
-
-  await prisma.audit.update({
-    where: { id: auditId },
-    data: {
-      status: 'CHECKING',
-      progress: AUDIT_PROGRESS.METADATA_FETCHED,
-      htmlMetadata: trimMetadataForStorage(metadata) as never,
-      performanceData: storedPerformance as never,
-      consoleErrors: consoleErrors as never,
-    },
-  })
-
-  let deterministicFindings = await runAllChecks(
-    url,
-    metadata,
-    pagespeed.desktop,
-    pagespeed.mobile,
-    consoleErrors,
-    (index) => {
-      const progress =
-        AUDIT_PROGRESS.METADATA_FETCHED +
-        (index + 1) * AUDIT_PROGRESS.CHECKING_STEP
-      void setAuditProgress(auditId, progress)
-    }
-  )
-
-  if (audit.auditMode === 'CRITICAL_PATH') {
-    const criticalUrls = discoverCriticalPathUrls(url, metadata)
-    for (const pageUrl of criticalUrls.slice(1)) {
-      try {
-        const pageMeta = await fetchAndParseMetadata(pageUrl)
-        const pageFindings = await runAllChecks(pageUrl, pageMeta, null, null, [])
-        for (const finding of pageFindings) {
-          deterministicFindings.push({ ...finding, pageUrl })
-        }
-      } catch (err) {
-        console.warn(`Critical path page ${pageUrl} failed:`, err)
-      }
-    }
-  }
-
-  const areaScores = computeAreaScores(deterministicFindings, pagespeed.desktop, pagespeed.mobile)
-
-  await prisma.audit.update({
-    where: { id: auditId },
-    data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
-  })
-
-  let judgeResult
-  try {
-    judgeResult = await runJudge(
-      url,
-      metadata,
-      pagespeed.desktop,
-      pagespeed.mobile,
-      deterministicFindings,
-      desktopBase64,
-      mobileBase64
-    )
-  } catch (firstErr) {
-    if (!isRetryableJudgeError(firstErr)) {
-      await prisma.audit.update({
-        where: { id: auditId },
-        data: {
-          status: 'FAILED',
-          errorMsg: `AI analysis unavailable: ${sanitizeAuditErrorMessage((firstErr as Error).message)}`,
-        },
-      })
-      throw firstErr
-    }
-
-    console.error('AI judge failed with retryable error, retrying once:', firstErr)
-    try {
-      judgeResult = await runJudge(
-        url,
-        metadata,
-        pagespeed.desktop,
-        pagespeed.mobile,
-        deterministicFindings,
-        desktopBase64,
-        mobileBase64
-      )
-    } catch (secondErr) {
-      await prisma.audit.update({
-        where: { id: auditId },
-        data: {
-          status: 'FAILED',
-          errorMsg: `AI analysis unavailable: ${sanitizeAuditErrorMessage((secondErr as Error).message)}`,
-        },
-      })
-      throw secondErr
-    }
-  }
-
-  judgeResult.output = validateAndRepairJudgeOutput(
-    judgeResult.output,
-    deterministicFindings
-  )
-
-  await persistAuditResults(auditId, judgeResult.output, deterministicFindings, areaScores)
-
-  const finished = await prisma.audit.findUnique({
-    where: { id: auditId },
-    select: { startedAt: true, completedAt: true },
-  })
-  const durationMs =
-    finished?.startedAt && finished?.completedAt
-      ? finished.completedAt.getTime() - finished.startedAt.getTime()
-      : 0
-
-  await runPostCompletionSteps(
+  const startedAt = audit.startedAt ?? new Date()
+  const ctx: PipelineContext = {
     auditId,
-    {
-      userId: audit.userId,
-      parentId: audit.parentId,
-      skipUsageCount: audit.skipUsageCount,
-      trialRecheck: audit.trialRecheck,
+    deadline: Date.now() + AUDIT_DEADLINE_MS,
+    startedAt,
+    pagespeedCalls: 0,
+    usage: { inputTokens: 0, outputTokens: 0, models: [] },
+  }
+
+  const isSummaryOnly = audit.recheckMode === 'SUMMARY_ONLY'
+  const summarySourceId =
+    isSummaryOnly ? (audit.parentId ?? auditId) : null
+
+  if (isSummaryOnly && summarySourceId) {
+    if (summarySourceId !== auditId) {
+      await prisma.$transaction([
+        prisma.screenshot.deleteMany({ where: { auditId } }),
+        prisma.auditPage.deleteMany({ where: { auditId } }),
+      ])
+      await copyParentArtifacts(auditId, summarySourceId)
+    } else {
+      await prisma.auditPage.deleteMany({ where: { auditId } })
+    }
+  } else {
+    await prisma.$transaction([
+      prisma.screenshot.deleteMany({ where: { auditId } }),
+      prisma.auditPage.deleteMany({ where: { auditId } }),
+    ])
+  }
+
+  await prisma.audit.update({
+    where: { id: auditId },
+    data: {
+      status: isSummaryOnly ? 'CHECKING' : 'CAPTURING',
+      startedAt,
+      completedAt: null,
+      finalizedAt: null,
+      errorMsg: null,
+      failureCode: null,
+      failureStage: null,
+      failureMetadata: undefined,
+      progress: isSummaryOnly ? AUDIT_PROGRESS.CHECKING : AUDIT_PROGRESS.CAPTURING,
     },
-    judgeResult,
-    durationMs,
-    pagespeedCalls
-  )
+  })
+
+  await initPipelineLog(auditId)
+
+  const pageRuns: PageRun[] = []
+
+  try {
+    const primary = await runPage(ctx, {
+      url: audit.url,
+      position: 0,
+      role: 'primary',
+      primary: true,
+      skipCapture: isSummaryOnly,
+      parentId: summarySourceId ?? undefined,
+    })
+    pageRuns.push(primary)
+
+    const urls =
+      audit.auditMode === 'CRITICAL_PATH' && !isSummaryOnly
+        ? discoverCriticalPathUrls(audit.url, primary.metadata)
+        : [audit.url]
+
+    for (const [index, pageUrl] of urls.slice(1).entries()) {
+      pageRuns.push(
+        await runPage(ctx, {
+          url: pageUrl,
+          position: index + 1,
+          role: index === 0 ? 'pricing-or-plan' : 'primary-cta',
+          primary: false,
+        })
+      )
+    }
+
+    const combined = primary.judge!
+    combined.output.newFindings = pageRuns.flatMap(
+      (page) => page.judge?.output.newFindings ?? []
+    )
+    combined.output.enrichments = pageRuns.flatMap(
+      (page) => page.judge?.output.enrichments ?? []
+    )
+    combined.output.areas = combined.output.areas.map((area) => {
+      const pageAreas = pageRuns
+        .map((page) => page.judge?.output.areas.find((item) => item.name === area.name))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      const scores = pageAreas
+        .map((item) => item.score)
+        .filter((score): score is number => score !== null)
+      return {
+        ...area,
+        score:
+          scores.length === pageRuns.length
+            ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+            : null,
+        assessmentState:
+          scores.length === pageRuns.length ? ('ASSESSED' as const) : ('PARTIAL' as const),
+        confidence:
+          pageAreas.reduce((sum, item) => sum + item.confidence, 0) / pageAreas.length,
+      }
+    })
+
+    const findings = pageRuns.flatMap((page) => page.findings)
+    const areaScores = averageScores(pageRuns)
+    await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
+    await persistAuditResults(auditId, combined.output, findings, areaScores)
+
+    await finalizeAudit({
+      auditId,
+      durationMs: Date.now() - startedAt.getTime(),
+      pagespeedCalls: ctx.pagespeedCalls,
+      usage: {
+        inputTokens: ctx.usage.inputTokens,
+        outputTokens: ctx.usage.outputTokens,
+        model: ctx.usage.models.join(','),
+      },
+      evidence: {
+        desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
+        mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
+        metadata: pageRuns.every((page) => Boolean(page.metadata)),
+        aiAssessment: pageRuns.every((page) => Boolean(page.judge)),
+        desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
+        mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+      },
+    })
+  } catch (error) {
+    const partialDone = await tryPartialFinalize(ctx, pageRuns, error)
+    if (partialDone) return
+
+    const current = await prisma.audit.findUnique({
+      where: { id: auditId },
+      select: { status: true },
+    })
+
+    if (current?.status !== 'FINALIZING' && current?.status !== 'COMPLETED') {
+      const failureCode =
+        error instanceof AuditDeadlineError
+          ? 'AUDIT_TIMEOUT'
+          : error instanceof JudgeContractError
+            ? 'AI_CONTRACT_INVALID'
+            : 'AUDIT_PIPELINE_FAILED'
+      const failureStage =
+        error instanceof AuditDeadlineError
+          ? error.stage
+          : (current?.status?.toLowerCase() ?? 'unknown')
+
+      await logPipelineEvent(auditId, {
+        stage: failureStage,
+        event: 'failed',
+        error: sanitizeAuditErrorMessage(
+          error instanceof Error ? error.message : String(error)
+        ),
+      })
+
+      await persistFailedAuditCost(auditId, Date.now() - startedAt.getTime(), ctx.pagespeedCalls, {
+        inputTokens: ctx.usage.inputTokens,
+        outputTokens: ctx.usage.outputTokens,
+        model: ctx.usage.models.join(','),
+      })
+
+      await prisma.audit.update({
+        where: { id: auditId },
+        data: {
+          status: 'FAILED',
+          errorMsg: sanitizeAuditErrorMessage(
+            error instanceof Error ? error.message : String(error)
+          ),
+          failureCode,
+          failureStage,
+          failureMetadata: { jobId: auditId },
+        },
+      })
+    }
+
+    if (!isNonRetryableAuditError(error) && !(error instanceof JudgeContractError)) {
+      throw error
+    }
+  }
 }

@@ -22,6 +22,7 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
   ADMIN_USER_IDS: z.string().optional(),
+  SAMPLE_AUDIT_URL: z.string().url().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -91,6 +92,7 @@ export function validateProductionEnv(): void {
     'CRON_SECRET',
     'RESEND_API_KEY',
     'RESEND_FROM_EMAIL',
+    'SAMPLE_AUDIT_URL',
   ] as const
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {

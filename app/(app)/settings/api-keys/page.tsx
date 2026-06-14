@@ -10,11 +10,13 @@ import { toast } from 'sonner'
 import { MCP_DOCS } from '@/lib/marketing/copy'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useMe } from '@/hooks/useMe'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface ApiKey {
   id: string
   name: string
-  key: string
+  prefix: string
+  lastFour: string
   lastUsed: string | null
   createdAt: string
 }
@@ -28,13 +30,15 @@ export default function ApiKeysPage() {
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const plan = user?.plan ?? 'FREE'
   const canUseKeys = user?.entitlements?.canUseMcp ?? false
 
   useEffect(() => {
     if (meLoading) return
     fetch('/api/api-keys')
-      .then((r) => (r.ok ? r.json() : []))
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await parseApiErrorResponse(r)).message)
+        return r.json()
+      })
       .then((keyList) => {
         if (Array.isArray(keyList)) setKeys(keyList)
       })
@@ -50,14 +54,23 @@ export default function ApiKeysPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newKeyName || 'Default' }),
       })
-      const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || 'Failed to create key')
+        toast.error((await parseApiErrorResponse(res)).message)
         return
       }
+      const data = await res.json()
       setNewKey(data.key)
-      setKeys((prev) => [...prev, { ...data, key: `qos_live_...${data.key.slice(-4)}` }])
+      setKeys((prev) => [{
+        id: data.id,
+        name: data.name,
+        prefix: data.prefix,
+        lastFour: data.lastFour,
+        lastUsed: null,
+        createdAt: new Date().toISOString(),
+      }, ...prev])
       setNewKeyName('')
+    } catch {
+      toast.error('Could not create the key. Try again.')
     } finally {
       setCreating(false)
     }
@@ -65,9 +78,17 @@ export default function ApiKeysPage() {
 
   async function deleteKey(id: string) {
     if (!window.confirm('Delete this API key? Any integrations using it will stop working.')) return
-    await fetch(`/api/api-keys?id=${id}`, { method: 'DELETE' })
-    setKeys((prev) => prev.filter((k) => k.id !== id))
-    toast.success('API key deleted')
+    try {
+      const response = await fetch(`/api/api-keys?id=${id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        toast.error((await parseApiErrorResponse(response)).message)
+        return
+      }
+      setKeys((prev) => prev.filter((k) => k.id !== id))
+      toast.success('API key revoked')
+    } catch {
+      toast.error('Could not revoke the API key. Try again.')
+    }
   }
 
   async function copyKey(key: string) {
@@ -92,10 +113,10 @@ export default function ApiKeysPage() {
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
             <p className="text-sm text-muted-foreground">
-              Upgrade to Builder to generate API keys and audit from your editor.
+              Upgrade to Pro to generate API keys and audit from your editor.
             </p>
             <Button asChild size="sm">
-              <Link href="/pricing">Upgrade to Builder</Link>
+              <Link href="/pricing">Upgrade to Pro</Link>
             </Button>
           </CardContent>
         </Card>
@@ -110,7 +131,7 @@ export default function ApiKeysPage() {
             <code className="flex-1 break-all rounded border bg-background px-3 py-2 font-mono text-xs">
               {newKey}
             </code>
-            <Button size="sm" variant="outline" onClick={() => copyKey(newKey)}>
+            <Button size="icon" variant="outline" onClick={() => copyKey(newKey)} aria-label="Copy API key">
               {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             </Button>
           </div>
@@ -129,6 +150,9 @@ export default function ApiKeysPage() {
           <CardContent>
             <div className="flex gap-2">
               <Input
+                aria-label="API key name"
+                name="api-key-name"
+                autoComplete="off"
                 placeholder="e.g. Claude Code"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
@@ -152,7 +176,9 @@ export default function ApiKeysPage() {
               <div key={key.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{key.name}</div>
-                  <code className="text-xs text-muted-foreground">{key.key}</code>
+                  <code className="text-xs text-muted-foreground">
+                    {key.prefix}…{key.lastFour}
+                  </code>
                 </div>
                 {key.lastUsed && (
                   <span className="shrink-0 text-xs text-muted-foreground">
@@ -164,6 +190,7 @@ export default function ApiKeysPage() {
                   size="icon"
                   onClick={() => deleteKey(key.id)}
                   className="shrink-0 text-destructive hover:text-destructive"
+                  aria-label={`Revoke ${key.name} API key`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

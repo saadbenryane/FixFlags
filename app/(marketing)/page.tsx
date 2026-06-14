@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
+import { CaseStudiesSection } from '@/components/marketing/CaseStudiesSection'
 import { ComparisonTable } from '@/components/marketing/ComparisonTable'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { HeroSection } from '@/components/marketing/HeroSection'
@@ -8,6 +9,7 @@ import { HowItWorksSection } from '@/components/marketing/HowItWorksSection'
 import { ProblemSection } from '@/components/marketing/ProblemSection'
 import { ProofSection } from '@/components/marketing/ProofSection'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
+import { SocialProofSection } from '@/components/marketing/SocialProofSection'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { WhatsCheckedSection } from '@/components/marketing/WhatsCheckedSection'
 import { Button } from '@/components/ui/button'
@@ -24,25 +26,47 @@ import {
 } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { cn } from '@/lib/utils'
+import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 
 export const metadata = buildPageMetadata('home', '/')
+export const dynamic = 'force-dynamic'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const sample = await getLiveSampleAudit()
   return (
     <>
-      <HeroSection />
+      <HeroSection sample={sample} />
 
-      <ProofSection />
+      <ProofSection sample={sample} />
+
+      <SocialProofSection />
 
       <ProblemSection />
 
       <HowItWorksSection />
 
+      <CaseStudiesSection />
+
       <WhatsCheckedSection />
 
       <Section spacing="default" className="bg-muted/35">
         <Container className="space-y-10">
-          <SectionIntro headline={DIFFERENTIATION.headline} />
+          <SectionIntro
+            headline={DIFFERENTIATION.headline}
+            subhead={DIFFERENTIATION.subhead}
+          />
+          <p className="text-center text-sm text-muted-foreground">
+            Compare with{' '}
+            <a
+              href="https://developer.chrome.com/docs/lighthouse"
+              className="text-brand underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Google Lighthouse
+            </a>
+            .
+          </p>
           <ComparisonTable rows={DIFFERENTIATION.rows} />
         </Container>
       </Section>
@@ -73,7 +97,7 @@ export default function HomePage() {
           <SectionIntro headline={PRICING_TEASER.headline} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {PRICING_TEASER.plans.map((plan) => {
-              const highlighted = plan.name === 'Builder'
+              const highlighted = plan.name === 'Pro'
               return (
                 <Card
                   key={plan.name}

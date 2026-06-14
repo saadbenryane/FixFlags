@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface ProjectOption {
   id: string
@@ -39,12 +40,14 @@ export function ProjectAssignSelect({ auditId, initialProjectId, enabled }: Prop
         body: JSON.stringify({ projectId: nextId || null }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        toast.error(data.error || 'Failed to assign project')
+        toast.error((await parseApiErrorResponse(res)).message)
         setProjectId(initialProjectId ?? '')
         return
       }
       toast.success(nextId ? 'Assigned to project' : 'Removed from project')
+    } catch {
+      toast.error('Could not update the project. Try again.')
+      setProjectId(initialProjectId ?? '')
     } finally {
       setSaving(false)
     }

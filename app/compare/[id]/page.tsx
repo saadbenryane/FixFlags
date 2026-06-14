@@ -158,6 +158,7 @@ export default async function ComparePage({ params }: Props) {
 
         <FindingDiff
           fixed={findingDiff.fixed}
+          unchanged={findingDiff.unchanged}
           regressed={findingDiff.regressed}
           newIssues={findingDiff.newIssues}
         />

@@ -17,7 +17,7 @@ export function buildPageMetadata(
       type: 'website',
       url,
       siteName: BRAND.name,
-      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: BRAND.tagline }],
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Your agent built it. QualityOS checks it.' }],
     },
     twitter: {
       card: 'summary_large_image',

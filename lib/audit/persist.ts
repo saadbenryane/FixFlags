@@ -1,29 +1,16 @@
 import { prisma } from '@/lib/db'
-import {
-  AreaName,
-  AreaGrade,
-  AreaStatus,
-  Severity,
-  FindingSource,
-} from '@prisma/client'
+import { AreaName, Severity, FindingSource } from '@prisma/client'
 import { DeterministicFinding } from './checks'
 import { JudgeOutput } from './judge'
 import { verificationRuleForCheckId } from './verify-findings'
-
-function aiGradeToEnum(grade: string): AreaGrade {
-  const map: Record<string, AreaGrade> = { A: 'A', B: 'B', C: 'C', D: 'D', F: 'F' }
-  return map[grade] ?? 'C'
-}
-
-function aiStatusToEnum(status: string): AreaStatus {
-  const map: Record<string, AreaStatus> = {
-    EXCELLENT: 'EXCELLENT',
-    GOOD: 'GOOD',
-    NEEDS_WORK: 'NEEDS_WORK',
-    CRITICAL: 'CRITICAL',
-  }
-  return map[status] ?? 'NEEDS_WORK'
-}
+import {
+  calculateOverallScore,
+  clampScore,
+  gradeFromScore,
+  statusFromScore,
+} from './scoring'
+import { AREA_ORDER } from './constants'
+import { deduplicateFindings, findingFingerprint } from './deduplicate'
 
 function aiSeverityToEnum(severity: string): Severity {
   const map: Record<string, Severity> = {
@@ -44,6 +31,102 @@ export async function clearAuditResults(auditId: string): Promise<void> {
   ])
 }
 
+/** Persist deterministic findings and partial area scores during the pipeline run. */
+export async function persistDeterministicFindings(
+  auditId: string,
+  deterministicFindings: DeterministicFinding[],
+  areaScores: Partial<Record<AreaName, number | null>>
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.finding.deleteMany({
+      where: { auditId, source: 'DETERMINISTIC' },
+    })
+
+    const pages = await tx.auditPage.findMany({
+      where: { auditId },
+      select: { id: true, normalizedUrl: true },
+    })
+    const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
+
+    const areaRecords = await Promise.all(
+      AREA_ORDER.map(async (areaName) => {
+        const score = areaScores[areaName]
+        const existing = await tx.auditArea.findFirst({
+          where: { auditId, name: areaName },
+        })
+        if (existing) {
+          return tx.auditArea.update({
+            where: { id: existing.id },
+            data: {
+              score: score !== null && score !== undefined ? clampScore(score) : null,
+              grade:
+                score !== null && score !== undefined ? gradeFromScore(clampScore(score)) : null,
+              status:
+                score !== null && score !== undefined
+                  ? statusFromScore(clampScore(score))
+                  : null,
+              assessmentState:
+                score !== null && score !== undefined ? 'ASSESSED' : 'PARTIAL',
+              summary:
+                existing.summary ||
+                `Partial ${areaName.toLowerCase()} assessment from automated checks.`,
+            },
+          })
+        }
+        return tx.auditArea.create({
+          data: {
+            auditId,
+            name: areaName,
+            score: score !== null && score !== undefined ? clampScore(score) : null,
+            grade:
+              score !== null && score !== undefined ? gradeFromScore(clampScore(score)) : null,
+            status:
+              score !== null && score !== undefined ? statusFromScore(clampScore(score)) : null,
+            assessmentState: score !== null && score !== undefined ? 'ASSESSED' : 'PARTIAL',
+            confidence: 0.7,
+            summary: `Partial ${areaName.toLowerCase()} assessment from automated checks.`,
+            areaPrompt: `Review ${areaName.toLowerCase()} findings and apply fixes.`,
+          },
+        })
+      })
+    )
+
+    const areaIdByName = new Map(areaRecords.map((record) => [record.name, record.id]))
+
+    const findingRows = deterministicFindings.map((f, i) => ({
+      auditId,
+      pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
+      areaId: areaIdByName.get(f.area as AreaName) ?? null,
+      source: 'DETERMINISTIC' as FindingSource,
+      area: f.area,
+      severity: f.severity as Severity,
+      problem: f.problem,
+      evidence: f.evidence,
+      whyItMatters: `This issue affects the ${f.area.toLowerCase()} quality of your page.`,
+      fix: f.fix,
+      confidence: f.confidence,
+      verificationRule: verificationRuleForCheckId(f.checkId) ?? null,
+      checkId: f.checkId,
+      pageUrl: f.pageUrl ?? null,
+      fingerprint: findingFingerprint(f),
+      position: i,
+    }))
+
+    if (findingRows.length > 0) {
+      await tx.finding.createMany({ data: findingRows })
+    }
+
+    const overallScore = calculateOverallScore(areaScores)
+    await tx.audit.update({
+      where: { id: auditId },
+      data: {
+        score: overallScore,
+        reportCompleteness: 'PARTIAL',
+      },
+    })
+  })
+}
+
 export async function persistAuditResults(
   auditId: string,
   judgeOutput: JudgeOutput,
@@ -53,19 +136,33 @@ export async function persistAuditResults(
   await clearAuditResults(auditId)
 
   await prisma.$transaction(async (tx) => {
+    const pages = await tx.auditPage.findMany({
+      where: { auditId },
+      select: { id: true, normalizedUrl: true },
+    })
+    const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
+    const resolvedScores: Partial<Record<AreaName, number | null>> = {}
     const areaRecords = await Promise.all(
       judgeOutput.areas.map((areaData) => {
         const areaName = areaData.name as AreaName
         const deterministicScore = areaScores[areaName]
-        const finalScore = areaData.score ?? deterministicScore ?? undefined
+        const finalScore =
+          deterministicScore !== null && deterministicScore !== undefined
+            ? clampScore(deterministicScore)
+            : areaData.score !== null
+              ? clampScore(areaData.score)
+              : null
+        resolvedScores[areaName] = finalScore
 
         return tx.auditArea.create({
           data: {
             auditId,
             name: areaName,
-            score: finalScore ?? null,
-            grade: aiGradeToEnum(areaData.grade),
-            status: aiStatusToEnum(areaData.status),
+            score: finalScore,
+            grade: finalScore === null ? null : gradeFromScore(finalScore),
+            status: finalScore === null ? null : statusFromScore(finalScore),
+            assessmentState: finalScore === null ? areaData.assessmentState : 'ASSESSED',
+            confidence: areaData.confidence,
             summary: areaData.summary,
             areaPrompt: areaData.areaPrompt,
             cursorPrompt: areaData.cursorPrompt ?? null,
@@ -79,12 +176,14 @@ export async function persistAuditResults(
 
     const areaIdByName = new Map(areaRecords.map((record) => [record.name, record.id]))
     const enrichmentMap = new Map(judgeOutput.enrichments.map((e) => [e.checkId, e]))
+    const aiFindings = deduplicateFindings(deterministicFindings, judgeOutput.newFindings)
 
     const findingRows = [
       ...deterministicFindings.map((f, i) => {
         const enrichment = enrichmentMap.get(f.checkId)
         return {
           auditId,
+          pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
           areaId: areaIdByName.get(f.area as AreaName) ?? null,
           source: 'DETERMINISTIC' as FindingSource,
           area: f.area,
@@ -107,11 +206,13 @@ export async function persistAuditResults(
             null,
           checkId: f.checkId,
           pageUrl: f.pageUrl ?? null,
+          fingerprint: findingFingerprint(f),
           position: i,
         }
       }),
-      ...judgeOutput.newFindings.map((f, i) => ({
+      ...aiFindings.map((f, i) => ({
         auditId,
+        pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
         areaId: areaIdByName.get(f.area as AreaName) ?? null,
         source: 'AI' as FindingSource,
         area: f.area,
@@ -128,6 +229,8 @@ export async function persistAuditResults(
         boltPrompt: f.boltPrompt ?? null,
         verificationRule: f.verificationRule ?? null,
         checkId: null,
+        pageUrl: f.pageUrl ?? null,
+        fingerprint: findingFingerprint(f),
         position: deterministicFindings.length + i,
       })),
     ]
@@ -136,20 +239,24 @@ export async function persistAuditResults(
       await tx.finding.createMany({ data: findingRows })
     }
 
+    const overallScore = calculateOverallScore(resolvedScores)
     await tx.audit.update({
       where: { id: auditId },
       data: {
-        status: 'COMPLETED',
-        progress: 100,
+        status: 'FINALIZING',
+        progress: 95,
         pageJob: judgeOutput.pageJob,
         pageType: judgeOutput.pageType,
         verdict: judgeOutput.verdict,
-        score: judgeOutput.score,
+        score: overallScore,
         launchReadiness: {
           readiness: judgeOutput.launchReadiness,
           checklist: judgeOutput.launchChecklist,
         },
-        completedAt: new Date(),
+        launchReadinessState: judgeOutput.launchReadiness.toUpperCase() as
+          | 'SAFE'
+          | 'FIX_FIRST'
+          | 'NOT_READY',
       },
     })
   })

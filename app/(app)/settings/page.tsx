@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Heading, Muted } from '@/components/ui/typography'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   const user = await prisma.user.findUnique({
     where: { id: session!.user.id },
-    select: { name: true, email: true, plan: true },
+    select: { name: true, email: true, emailVerified: true, plan: true },
   })
 
   if (!user) return null
@@ -27,22 +28,19 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
-          <CardDescription>Your account details</CardDescription>
+          <CardTitle className="text-base">Account</CardTitle>
+          <CardDescription>Profile, identity, password, and account lifecycle</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Name</span>
-            <span>{user.name || '—'}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Email</span>
-            <span>{user.email}</span>
-          </div>
+        <CardContent className="space-y-8">
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Plan</span>
             <span>{planDef.name}</span>
           </div>
+          <AccountSettingsForms
+            initialName={user.name ?? ''}
+            email={user.email}
+            emailVerified={user.emailVerified}
+          />
         </CardContent>
       </Card>
 

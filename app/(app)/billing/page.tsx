@@ -18,7 +18,9 @@ import { PageHeader } from '@/components/layout/PageHeader'
 
 const EXPERT_STATUS_LABELS = {
   PENDING: 'Pending payment',
-  PAID: 'In review — we respond within 48 hours',
+  PAID: 'Paid — queued for review',
+  IN_REVIEW: 'In review — we respond within 48 hours',
+  DELIVERED: 'Delivered',
   FULFILLED: 'Delivered',
 } as const
 
@@ -34,6 +36,7 @@ export default async function BillingPage() {
       auditsLimit: true,
       stripeCustomerId: true,
       stripeCurrentPeriodEnd: true,
+      subscriptionStatus: true,
     },
   })
 
@@ -43,7 +46,10 @@ export default async function BillingPage() {
     where: { userId: user.id },
     orderBy: { createdAt: 'desc' },
     take: 10,
-    include: { audit: { select: { id: true, url: true } } },
+    include: {
+      audit: { select: { id: true, url: true } },
+      deliverable: { select: { deliveredAt: true } },
+    },
   })
 
   const planDef = PLAN_DEFINITIONS[user.plan]
@@ -67,6 +73,9 @@ export default async function BillingPage() {
             {planDef.price}
             {planDef.period} · {planDef.auditLimitLabel}
           </Muted>
+          <p className="text-xs text-muted-foreground">
+            Subscription status: {user.subscriptionStatus.toLowerCase().replace('_', ' ')}
+          </p>
         </div>
         <UsageMeter
           used={user.auditsUsed}
@@ -119,6 +128,14 @@ export default async function BillingPage() {
                         className="text-brand hover:underline"
                       >
                         {order.audit.url}
+                      </Link>
+                    )}
+                    {order.deliverable?.deliveredAt && (
+                      <Link
+                        href={`/billing/reviews/${order.id}`}
+                        className="mt-2 block font-medium text-brand hover:underline"
+                      >
+                        Read your Expert Review
                       </Link>
                     )}
                   </div>

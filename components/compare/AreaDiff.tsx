@@ -3,7 +3,7 @@ import { AREA_ORDER } from '@/lib/audit/constants'
 
 interface AreaData {
   name: string
-  grade: string
+  grade: string | null
   score: number | null
 }
 
@@ -35,8 +35,14 @@ export function AreaDiff({ beforeAreas, afterAreas }: Props) {
       before,
       after,
       scoreDelta: after.score !== null && before.score !== null ? after.score - before.score : null,
-      gradeImproved: gradeValue[after.grade] > gradeValue[before.grade],
-      gradeRegressed: gradeValue[after.grade] < gradeValue[before.grade],
+      gradeImproved:
+        after.grade !== null &&
+        before.grade !== null &&
+        gradeValue[after.grade] > gradeValue[before.grade],
+      gradeRegressed:
+        after.grade !== null &&
+        before.grade !== null &&
+        gradeValue[after.grade] < gradeValue[before.grade],
       gradeUnchanged: after.grade === before.grade,
     })
   }
@@ -62,8 +68,8 @@ export function AreaDiff({ beforeAreas, afterAreas }: Props) {
             <div className="w-28 text-sm font-medium">{areaLabel(row.name)}</div>
 
             {/* Before grade */}
-            <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', gradeColor(row.before.grade))}>
-              {row.before.grade}
+            <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', row.before.grade ? gradeColor(row.before.grade) : 'text-muted-foreground border-border')}>
+              {row.before.grade ?? '—'}
               {row.before.score !== null && <span className="ml-1 text-xs font-normal opacity-70">{row.before.score}</span>}
             </div>
 
@@ -73,8 +79,8 @@ export function AreaDiff({ beforeAreas, afterAreas }: Props) {
             </div>
 
             {/* After grade */}
-            <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', gradeColor(row.after.grade))}>
-              {row.after.grade}
+            <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', row.after.grade ? gradeColor(row.after.grade) : 'text-muted-foreground border-border')}>
+              {row.after.grade ?? '—'}
               {row.after.score !== null && <span className="ml-1 text-xs font-normal opacity-70">{row.after.score}</span>}
             </div>
 

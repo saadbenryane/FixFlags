@@ -66,8 +66,8 @@ export default async function AdminPage() {
 
   const plans = [
     { label: 'Free', value: planMap['FREE'] ?? 0 },
-    { label: 'Builder', value: planMap['BUILDER'] ?? 0 },
-    { label: 'Team', value: planMap['TEAM'] ?? 0 },
+    { label: 'Pro', value: planMap['BUILDER'] ?? 0 },
+    { label: 'Agency', value: planMap['TEAM'] ?? 0 },
     { label: 'Studio', value: planMap['STUDIO'] ?? 0 },
   ]
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendNurtureEmail } from '@/lib/email/send'
+import { apiError } from '@/lib/api/errors'
 
 const CRON_SECRET = process.env.CRON_SECRET
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
   }
 
   const now = new Date()

@@ -1,7 +1,7 @@
 import { cn, gradeColor } from '@/lib/utils'
 
 interface Props {
-  grade: string
+  grade: string | null
   score?: number | null
   size?: 'sm' | 'md' | 'lg'
   className?: string
@@ -18,12 +18,12 @@ export function GradeBadge({ grade, score, size = 'md', className }: Props) {
     <div
       className={cn(
         'rounded-md border text-center shrink-0 font-bold leading-none',
-        gradeColor(grade),
+        grade ? gradeColor(grade) : 'text-muted-foreground bg-muted border-border',
         sizeClasses[size],
         className
       )}
     >
-      <div>{grade}</div>
+      <div>{grade ?? '—'}</div>
       {score != null && size !== 'sm' && (
         <div className="text-xs mt-0.5 font-medium tabular-nums">{score}</div>
       )}

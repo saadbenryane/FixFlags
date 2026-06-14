@@ -14,8 +14,16 @@ export default async function AdminAuditsPage() {
       url: true,
       status: true,
       createdAt: true,
+      pipelineVersion: true,
       user: { select: { email: true } },
-      runCost: { select: { estimatedCostUsd: true, llmInputTokens: true, llmOutputTokens: true } },
+      runCost: {
+        select: {
+          estimatedCostUsd: true,
+          llmInputTokens: true,
+          llmOutputTokens: true,
+          durationMs: true,
+        },
+      },
     },
   })
 
@@ -29,7 +37,7 @@ export default async function AdminAuditsPage() {
               <th className="text-left px-4 py-3 font-medium">URL</th>
               <th className="text-left px-4 py-3 font-medium">User</th>
               <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-left px-4 py-3 font-medium">Tokens</th>
+              <th className="text-left px-4 py-3 font-medium">LLM tokens</th>
               <th className="text-left px-4 py-3 font-medium">Est. cost</th>
               <th className="text-left px-4 py-3 font-medium">Created</th>
             </tr>
@@ -38,7 +46,7 @@ export default async function AdminAuditsPage() {
             {audits.map((audit, i) => (
               <tr key={audit.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/20')}>
                 <td className="px-4 py-3">
-                  <Link href={`/audit/${audit.id}`} className="text-primary hover:underline truncate block max-w-[240px]">
+                  <Link href={`/admin/audits/${audit.id}`} className="text-primary hover:underline truncate block max-w-[240px]">
                     {audit.url}
                   </Link>
                 </td>
@@ -48,12 +56,10 @@ export default async function AdminAuditsPage() {
                 <td className="px-4 py-3">
                   <Badge variant="outline" className="text-xs">{audit.status}</Badge>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
+                <td className="px-4 py-3 text-muted-foreground tabular-nums">
                   {audit.runCost
-                    ? `${audit.runCost.llmInputTokens + audit.runCost.llmOutputTokens}`
-                    : audit.status === 'COMPLETED'
-                      ? '–'
-                      : '–'}
+                    ? audit.runCost.llmInputTokens + audit.runCost.llmOutputTokens
+                    : '–'}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}

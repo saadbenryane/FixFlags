@@ -1,8 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
-const DEFAULT_LLM_MODEL = 'gpt-4o-mini'
-
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
   'claude-sonnet-4-6': { input: 3, output: 15 },
@@ -24,7 +22,7 @@ function getOutputRatePerMtok(model: string): number {
   return MODEL_RATES[model]?.output ?? DEFAULT_OUTPUT_RATE
 }
 
-export function estimateLlmCostUsd(
+function estimateSingleModelCostUsd(
   model: string,
   inputTokens: number,
   outputTokens: number
@@ -32,6 +30,23 @@ export function estimateLlmCostUsd(
   const inputCost = (inputTokens / 1_000_000) * getInputRatePerMtok(model)
   const outputCost = (outputTokens / 1_000_000) * getOutputRatePerMtok(model)
   return inputCost + outputCost
+}
+
+export function estimateLlmCostUsd(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const models = model.split(',').map((m) => m.trim()).filter(Boolean)
+  if (models.length <= 1) {
+    return estimateSingleModelCostUsd(model, inputTokens, outputTokens)
+  }
+  const perModelInput = inputTokens / models.length
+  const perModelOutput = outputTokens / models.length
+  return models.reduce(
+    (sum, m) => sum + estimateSingleModelCostUsd(m, perModelInput, perModelOutput),
+    0
+  )
 }
 
 export interface AuditRunCostMetrics {

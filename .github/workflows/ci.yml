@@ -8,6 +8,48 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qualityos
+          POSTGRES_PASSWORD: qualityos
+          POSTGRES_DB: qualityos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qualityos -d qualityos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://qualityos:qualityos@localhost:5432/qualityos
+      REDIS_URL: redis://localhost:6379
+      BETTER_AUTH_SECRET: ci-test-secret-minimum-32-characters
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OPENAI_API_KEY: sk-test
+      CRON_SECRET: ci-cron-secret
+      STRIPE_SECRET_KEY: sk_test_ci
+      STRIPE_WEBHOOK_SECRET: whsec_ci
+      RESEND_API_KEY: re_ci
+      RESEND_FROM_EMAIL: QualityOS <noreply@example.com>
+      SAMPLE_AUDIT_URL: https://example.com
+      R2_BUCKET_NAME: qualityos-ci
+      R2_ACCOUNT_ID: ci-account
+      R2_ACCESS_KEY_ID: ci-access
+      R2_SECRET_ACCESS_KEY: ci-secret
+      R2_PUBLIC_URL: https://assets.example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,14 +58,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:generate
-      - run: npx tsc --noEmit
+      - name: Apply migrations to existing database
+        run: npm run db:deploy
+      - name: Verify migration status
+        run: npm run db:check
+      - name: Verify migrations against a fresh database
+        run: |
+          PGPASSWORD=qualityos psql -h localhost -U qualityos -d postgres -c 'CREATE DATABASE qualityos_fresh'
+          DATABASE_URL=postgresql://qualityos:qualityos@localhost:5432/qualityos_fresh npm run db:deploy
+          PGPASSWORD=qualityos psql -h localhost -U qualityos -d postgres -c 'DROP DATABASE qualityos_fresh'
+      - name: Detect schema drift
+        run: npm run db:drift
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run build
-        env:
-          DATABASE_URL: postgresql://qualityos:qualityos@localhost:5432/qualityos
-          REDIS_URL: redis://localhost:6379
-          BETTER_AUTH_SECRET: ci-test-secret-minimum-32-chars
-          BETTER_AUTH_URL: http://localhost:3000
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          OPENAI_API_KEY: sk-test
+      - run: npm run worker:build

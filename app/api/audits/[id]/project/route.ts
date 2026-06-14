@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { projectLimitForPlan } from '@/lib/billing/plans'
+import { apiError, handleRouteError } from '@/lib/api/errors'
 
 const schema = z.object({
   projectId: z.string().nullable(),
@@ -14,8 +15,9 @@ interface RouteContext {
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Sign in to assign projects', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
   const { id } = await context.params
   const audit = await prisma.audit.findUnique({
@@ -23,18 +25,21 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     select: { userId: true },
   })
   if (!audit || audit.userId !== session.user.id) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return apiError('Audit not found', 404, { code: 'NOT_FOUND' })
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
   if (!user || projectLimitForPlan(user.plan) === 0) {
-    return NextResponse.json({ error: 'Projects require Team or Studio plan' }, { status: 402 })
+      return apiError('Projects require the Agency or Studio plan', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'view_pricing',
+      })
   }
 
   const body = await req.json().catch(() => ({}))
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 })
+      return apiError('Select a valid project', 400, { code: 'INVALID_PROJECT' })
   }
 
   if (parsed.data.projectId) {
@@ -42,7 +47,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       where: { id: parsed.data.projectId, userId: session.user.id },
     })
     if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+        return apiError('Project not found', 404, { code: 'NOT_FOUND' })
     }
   }
 
@@ -52,5 +57,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     select: { id: true, projectId: true },
   })
 
-  return NextResponse.json(updated)
+    return NextResponse.json(updated)
+  } catch (error) {
+    return handleRouteError(error, 'Could not assign project')
+  }
 }

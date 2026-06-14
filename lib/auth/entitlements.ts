@@ -1,4 +1,4 @@
-import { Plan, User } from '@prisma/client'
+import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
   isAdminUser,
@@ -99,6 +99,7 @@ export async function resolveReportTierForAudit(
   audit: { userId: string | null; isPublic: boolean },
   _sessionUser?: { id: string } | null
 ): Promise<ReportTier> {
+  void _sessionUser
   if (!audit.userId) return 'free'
 
   const owner = await prisma.user.findUnique({

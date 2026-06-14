@@ -49,7 +49,7 @@ export async function startRecheckAudit(
     return {
       ok: false,
       status: 402,
-      error: 'Upgrade to Builder to use re-check',
+      error: 'Upgrade to Pro to use re-check',
       code: 'UPGRADE_REQUIRED',
       action: 'upgrade',
     }
@@ -72,6 +72,7 @@ export async function startRecheckAudit(
       parentId,
       skipUsageCount: isTrialRecheck || isPaid,
       trialRecheck: isTrialRecheck,
+      recheckMode: 'SUMMARY_ONLY',
     })
 
     return {

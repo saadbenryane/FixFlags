@@ -4,28 +4,16 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuditPolling } from '@/hooks/useAuditPolling'
 import { AuditProgress } from '@/components/audit/AuditProgress'
+import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Container } from '@/components/ui/container'
-import { RefreshCw, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
-import { parseApiErrorResponse } from '@/lib/api/errors'
-
-function formatAuditErrorMessage(errorMsg?: string | null): string {
-  if (!errorMsg) {
-    return "We couldn't complete this audit. The site may be unreachable or blocking bots."
-  }
-  if (errorMsg.includes('Invalid judge output')) {
-    return "We couldn't finish the AI review. Please try again in a moment."
-  }
-  if (errorMsg.startsWith('AI analysis unavailable:')) {
-    return errorMsg.replace('AI analysis unavailable:', 'We could not finish the AI review:').trim()
-  }
-  return errorMsg
-}
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
   id: string
@@ -36,8 +24,20 @@ interface Props {
 
 export function AuditPageClient({ id, initialAudit, pollStatus = true, session }: Props) {
   const router = useRouter()
-  const { audit, isLoading, isComplete, isFailed, isNotFound, isForbidden, fetchError, status, progress, url, startedAt, statusPayload } =
-    useAuditPolling(id, { initialAudit, pollStatus })
+  const {
+    audit,
+    isLoading,
+    isComplete,
+    isFailed,
+    isNotFound,
+    isForbidden,
+    fetchError,
+    status,
+    progress,
+    url,
+    startedAt,
+    statusPayload,
+  } = useAuditPolling(id, { initialAudit, pollStatus })
   const [retryLoading, setRetryLoading] = useState(false)
   const [limitGate, setLimitGate] = useState<{
     message: string
@@ -53,24 +53,14 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     }
   }, [isComplete, router])
 
-  const desktopScreenshot = statusPayload?.screenshots?.find(
-    (s) => s.device === 'DESKTOP'
-  )
-  const mobileScreenshot = statusPayload?.screenshots?.find(
-    (s) => s.device === 'MOBILE'
-  )
+  const desktopScreenshot = statusPayload?.screenshots?.find((s) => s.device === 'DESKTOP')
+  const mobileScreenshot = statusPayload?.screenshots?.find((s) => s.device === 'MOBILE')
 
-  async function handleRetry() {
-    const retryUrl = url ?? (initialAudit?.url as string | undefined)
-    if (!retryUrl) return
+  async function handleRetrySameAudit() {
     setRetryLoading(true)
     setLimitGate(null)
     try {
-      const res = await fetch('/api/audits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: retryUrl }),
-      })
+      const res = await fetch(`/api/audits/${id}/retry`, { method: 'POST' })
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
         if (res.status === 402) {
@@ -80,8 +70,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         }
         return
       }
-      const data = await res.json()
-      router.push(`/audit/${data.auditId}`)
+      router.refresh()
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
@@ -121,37 +110,32 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     const errorMsg =
       (audit?.errorMsg as string | undefined) ??
       (initialAudit?.errorMsg as string | undefined) ??
-      (statusPayload?.errorMsg as string | undefined)
+      statusPayload?.errorMsg
 
     return (
       <AuditShell session={session}>
-        <Container className="py-24 text-center space-y-4 max-w-md mx-auto">
+        <Container className="py-24 text-center space-y-4 max-w-lg mx-auto">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
           <h2 className="text-xl font-semibold">Audit failed</h2>
-          <p className="text-muted-foreground text-sm">
-            {formatAuditErrorMessage(errorMsg)}
-          </p>
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex justify-center gap-3">
-              <Button variant="outline" onClick={handleRetry} disabled={retryLoading}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try again
-              </Button>
-              <Button asChild>
-                <Link href="/">New audit</Link>
-              </Button>
-            </div>
-            {limitGate && (
-              <div className="w-full max-w-md">
-                <AuditLimitGate
-                  message={limitGate.message}
-                  code={limitGate.code}
-                  action={limitGate.action}
-                  onDismiss={() => setLimitGate(null)}
-                />
-              </div>
-            )}
-          </div>
+          <AuditFailurePanel
+            auditId={id}
+            errorMsg={errorMsg}
+            failureCode={statusPayload?.failureCode}
+            failureStage={statusPayload?.failureStage}
+            onRetry={handleRetrySameAudit}
+            retryLoading={retryLoading}
+          />
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/">Start a new audit</Link>
+          </Button>
+          {limitGate && (
+            <AuditLimitGate
+              message={limitGate.message}
+              code={limitGate.code}
+              action={limitGate.action}
+              onDismiss={() => setLimitGate(null)}
+            />
+          )}
         </Container>
       </AuditShell>
     )

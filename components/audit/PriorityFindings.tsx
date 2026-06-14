@@ -17,7 +17,7 @@ interface Finding {
 
 interface Area {
   name: string
-  grade: string
+  grade: string | null
   findings: Finding[]
 }
 
@@ -27,7 +27,7 @@ interface Props {
   showFeedback?: boolean
 }
 
-export function PriorityFindings({ areas, limit = 8, showFeedback = true }: Props) {
+export function PriorityFindings({ areas, limit = 3, showFeedback = true }: Props) {
   const ranked = areas.flatMap((area) =>
     area.findings.map((finding) => ({
       finding,
@@ -39,7 +39,7 @@ export function PriorityFindings({ areas, limit = 8, showFeedback = true }: Prop
   ranked.sort((a, b) => {
     const severityDiff = severityRank(a.finding.severity) - severityRank(b.finding.severity)
     if (severityDiff !== 0) return severityDiff
-    return gradeRank(a.areaGrade) - gradeRank(b.areaGrade)
+    return gradeRank(a.areaGrade ?? '') - gradeRank(b.areaGrade ?? '')
   })
 
   const top = ranked.slice(0, limit)

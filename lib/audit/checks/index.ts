@@ -68,10 +68,7 @@ export function computeAreaScores(
   const a11yScore = computeA11yScore(
     findings.filter((f) => f.area === 'ACCESSIBILITY')
   )
-  const seoScore = computeSeoScore(
-    findings.filter((f) => f.area === 'SEO'),
-    desktop
-  )
+  const seoScore = computeSeoScore(findings.filter((f) => f.area === 'SEO'))
   const mobileScore = mobile?.score ?? null
 
   return {
@@ -96,11 +93,8 @@ function computeA11yScore(findings: DeterministicFinding[]): number {
   return Math.max(0, score)
 }
 
-function computeSeoScore(
-  findings: DeterministicFinding[],
-  desktop: PageSpeedResult | null
-): number {
-  let score = desktop?.score ? Math.round(desktop.score * 0.3) + 70 : 70
+function computeSeoScore(findings: DeterministicFinding[]): number {
+  let score = 100
   for (const f of findings) {
     if (f.severity === 'CRITICAL') score -= 20
     else if (f.severity === 'HIGH') score -= 12

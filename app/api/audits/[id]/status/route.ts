@@ -8,6 +8,8 @@ import {
   deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
+import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 
 export async function GET(
   _req: NextRequest,
@@ -23,6 +25,12 @@ export async function GET(
         status: true,
         progress: true,
         errorMsg: true,
+        failureCode: true,
+        failureStage: true,
+        failureMetadata: true,
+        pipelineVersion: true,
+        pipelineLog: true,
+        reportCompleteness: true,
         startedAt: true,
         completedAt: true,
         url: true,
@@ -36,6 +44,11 @@ export async function GET(
         areas: {
           select: { name: true, grade: true, score: true },
           orderBy: { name: 'asc' },
+        },
+        findings: {
+          select: { id: true, severity: true, problem: true, area: true },
+          orderBy: { position: 'asc' },
+          take: 20,
         },
       },
     })
@@ -59,11 +72,19 @@ export async function GET(
       storedCapture
     )
 
-    const { performanceData: _pd, ...rest } = audit
+    const pipelineLog = parsePipelineLog(audit.pipelineLog)
+    const findingsCount = await prisma.finding.count({ where: { auditId: id } })
+
+    const { performanceData: _pd, pipelineLog: _pl, findings: partialFindings, ...rest } = audit
 
     return NextResponse.json({
       ...rest,
       screenshotCapture,
+      pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
+      pipelineLog: pipelineLog.slice(-30),
+      findingsCount,
+      partialFindings:
+        audit.status === 'CHECKING' || audit.status === 'JUDGING' ? partialFindings : undefined,
     })
   } catch (err) {
     return handleRouteError(err)

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
-import { parseApiErrorResponse } from '@/lib/api/errors'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 
 export function AuditInput() {
@@ -27,6 +27,9 @@ export function AuditInput() {
 
     let normalized = url.trim()
     if (!normalized) return
+
+    // Trim trailing slashes for cleaner URLs
+    normalized = normalized.replace(/\/+$/, '')
 
     if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
       normalized = 'https://' + normalized
@@ -75,18 +78,29 @@ export function AuditInput() {
     <div className="flex flex-col gap-3 w-full max-w-2xl">
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <div className="flex gap-2">
+          <label htmlFor="audit-url" className="sr-only">
+            Public website URL
+          </label>
           <Input
+            id="audit-url"
+            name="url"
             type="text"
+            inputMode="url"
+            autoComplete="url"
             placeholder="https://yoursite.com"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
             className="h-12 text-base flex-1"
             disabled={loading}
-            autoFocus
+            aria-invalid={Boolean(urlError)}
+            aria-describedby={urlError ? 'audit-url-error' : undefined}
           />
           <Button type="submit" size="lg" disabled={loading || !url.trim()} className="h-12 px-6 gap-2 shrink-0">
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Auditing…
+              </>
             ) : (
               <>
                 {HERO.primaryCta}
@@ -96,7 +110,9 @@ export function AuditInput() {
           </Button>
         </div>
         {urlError && (
-          <p className="text-xs text-destructive">{urlError}</p>
+          <p id="audit-url-error" role="alert" className="text-xs text-destructive">
+            {urlError}
+          </p>
         )}
       </form>
       {limitGate && (

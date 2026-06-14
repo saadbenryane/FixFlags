@@ -5,6 +5,7 @@ import {
   parseScreenshotCaptureStatus,
   resolveScreenshotUx,
 } from '@/lib/audit/screenshot-types'
+import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
 describe('resolveScreenshotUx', () => {
   it('marks limited when desktop screenshot missing', () => {
@@ -47,7 +48,7 @@ describe('parseScreenshotCaptureStatus', () => {
 
 describe('deriveScreenshotCaptureStatus', () => {
   it('prefers stored status when present', () => {
-    const stored = { desktop: 'ok', mobile: 'pending' }
+    const stored: ScreenshotCaptureStatus = { desktop: 'ok', mobile: 'pending' }
     const derived = deriveScreenshotCaptureStatus('CAPTURING', [], stored)
     assert.deepEqual(derived, stored)
   })

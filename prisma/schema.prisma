@@ -19,13 +19,52 @@ enum AuditStatus {
   CAPTURING
   CHECKING
   JUDGING
+  FINALIZING
   COMPLETED
+  FAILED
+}
+
+enum AuditPageStatus {
+  QUEUED
+  CAPTURING
+  CHECKING
+  JUDGING
+  COMPLETED
+  PARTIAL
   FAILED
 }
 
 enum AuditMode {
   SINGLE
   CRITICAL_PATH
+}
+
+enum ReportCompleteness {
+  FULL
+  PARTIAL
+  UNKNOWN
+}
+
+enum AssessmentState {
+  ASSESSED
+  PARTIAL
+  UNKNOWN
+}
+
+enum LaunchReadinessState {
+  SAFE
+  FIX_FIRST
+  NOT_READY
+  UNKNOWN
+}
+
+enum SubscriptionStatus {
+  NONE
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  UNPAID
 }
 
 enum AreaName {
@@ -81,25 +120,34 @@ enum Device {
 enum ExpertReviewStatus {
   PENDING
   PAID
+  IN_REVIEW
+  DELIVERED
   FULFILLED
 }
 
+enum EmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model User {
-  id                     String    @id @default(cuid())
-  email                  String    @unique
+  id                     String              @id @default(cuid())
+  email                  String              @unique
   name                   String?
-  emailVerified          Boolean   @default(false)
-  role                   String    @default("user")
-  plan                   Plan      @default(FREE)
-  auditsUsed             Int       @default(0)
-  auditsLimit            Int       @default(3)
-  stripeCustomerId       String?   @unique
-  stripeSubscriptionId   String?   @unique
+  emailVerified          Boolean             @default(false)
+  role                   String              @default("user")
+  plan                   Plan                @default(FREE)
+  auditsUsed             Int                 @default(0)
+  auditsLimit            Int                 @default(3)
+  stripeCustomerId       String?             @unique
+  stripeSubscriptionId   String?             @unique
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
+  subscriptionStatus     SubscriptionStatus  @default(NONE)
   freeRecheckUsedAt      DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
   projects               Project[]
   audits                 Audit[]
   apiKeys                ApiKey[]
@@ -107,16 +155,20 @@ model User {
   accounts               Account[]
   emailLogs              EmailLog[]
   expertReviewOrders     ExpertReviewOrder[]
+  expertReviewEvents     ExpertReviewEvent[] @relation("ExpertReviewEventActor")
 
   @@map("users")
 }
 
 model EmailLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailType String
-  sentAt    DateTime @default(now())
+  id         String              @id @default(cuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailType  String
+  providerId String?
+  status     EmailDeliveryStatus @default(PENDING)
+  errorMsg   String?             @db.Text
+  sentAt     DateTime            @default(now())
 
   @@unique([userId, emailType])
   @@index([userId])
@@ -169,8 +221,11 @@ model ApiKey {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  key       String    @unique
+  keyHash   String    @unique
+  prefix    String
+  lastFour  String
   lastUsed  DateTime?
+  revokedAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId])
@@ -178,18 +233,22 @@ model ApiKey {
 }
 
 model Project {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  url               String
-  monitoringEnabled Boolean  @default(false)
-  audits            Audit[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  audits    Audit[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@map("projects")
+}
+
+enum RecheckMode {
+  FULL
+  SUMMARY_ONLY
 }
 
 model Audit {
@@ -201,6 +260,9 @@ model Audit {
   url       String
   status    AuditStatus @default(QUEUED)
   progress  Int         @default(0)
+  recheckMode          RecheckMode @default(FULL)
+  pipelineLog          Json?
+  pipelineVersion      String?
 
   pageJob  String?
   pageType String?
@@ -211,25 +273,33 @@ model Audit {
   parent   Audit?  @relation("Rechecks", fields: [parentId], references: [id])
   rechecks Audit[] @relation("Rechecks")
 
-  isPublic Boolean @default(false)
-  skipUsageCount Boolean @default(false)
-  trialRecheck Boolean @default(false)
-  auditMode AuditMode @default(SINGLE)
-  launchReadiness Json?
+  isPublic             Boolean              @default(false)
+  skipUsageCount       Boolean              @default(false)
+  trialRecheck         Boolean              @default(false)
+  auditMode            AuditMode            @default(SINGLE)
+  launchReadiness      Json?
+  launchReadinessState LaunchReadinessState @default(UNKNOWN)
+  reportCompleteness   ReportCompleteness   @default(UNKNOWN)
+  evidenceCoverage     Json?
 
-  startedAt   DateTime?
-  completedAt DateTime?
-  usageCountedAt DateTime?
-  errorMsg    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  usageCountedAt  DateTime?
+  finalizedAt     DateTime?
+  errorMsg        String?
+  failureCode     String?
+  failureStage    String?
+  failureMetadata Json?
 
   htmlMetadata    Json?
   performanceData Json?
   consoleErrors   Json?
 
-  areas       AuditArea[]
-  screenshots Screenshot[]
-  findings    Finding[]
-  runCost     AuditRunCost?
+  areas              AuditArea[]
+  screenshots        Screenshot[]
+  findings           Finding[]
+  pages              AuditPage[]
+  runCost            AuditRunCost?
   expertReviewOrders ExpertReviewOrder[]
 
   createdAt DateTime @default(now())
@@ -242,6 +312,33 @@ model Audit {
   @@index([userId, status])
   @@index([parentId])
   @@map("audits")
+}
+
+model AuditPage {
+  id              String             @id @default(cuid())
+  auditId         String
+  audit           Audit              @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  url             String
+  normalizedUrl   String
+  title           String?
+  role            String
+  position        Int
+  status          AuditPageStatus    @default(QUEUED)
+  completeness    ReportCompleteness @default(UNKNOWN)
+  htmlMetadata    Json?
+  performanceData Json?
+  consoleErrors   Json?
+  failureCode     String?
+  failureMessage  String?
+  screenshots     Screenshot[]
+  findings        Finding[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([auditId, normalizedUrl])
+  @@unique([auditId, position])
+  @@index([auditId, status])
+  @@map("audit_pages")
 }
 
 model AuditRunCost {
@@ -260,14 +357,16 @@ model AuditRunCost {
 }
 
 model AuditArea {
-  id      String     @id @default(cuid())
-  auditId String
-  audit   Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  name    AreaName
-  score   Int?
-  grade   AreaGrade
-  status  AreaStatus
-  summary String     @db.Text
+  id              String          @id @default(cuid())
+  auditId         String
+  audit           Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  name            AreaName
+  score           Int?
+  grade           AreaGrade?
+  status          AreaStatus?
+  assessmentState AssessmentState @default(UNKNOWN)
+  confidence      Float?
+  summary         String          @db.Text
 
   areaPrompt    String  @db.Text
   cursorPrompt  String? @db.Text
@@ -283,15 +382,18 @@ model AuditArea {
 }
 
 model Screenshot {
-  id      String @id @default(cuid())
+  id      String     @id @default(cuid())
   auditId String
-  audit   Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  audit   Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  pageId  String?
+  page    AuditPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
   device  Device
   url     String
   width   Int
   height  Int
 
   @@index([auditId])
+  @@index([pageId])
   @@map("screenshots")
 }
 
@@ -299,6 +401,8 @@ model Finding {
   id       String        @id @default(cuid())
   auditId  String
   audit    Audit         @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  pageId   String?
+  page     AuditPage?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
   areaId   String?
   area_rel AuditArea?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
   source   FindingSource
@@ -306,9 +410,9 @@ model Finding {
   area         String
   severity     Severity
   problem      String
-  evidence     String    @db.Text
-  whyItMatters String    @db.Text
-  fix          String    @db.Text
+  evidence     String   @db.Text
+  whyItMatters String   @db.Text
+  fix          String   @db.Text
   confidence   Float
 
   agentPrompt   String? @db.Text
@@ -321,6 +425,7 @@ model Finding {
 
   checkId      String?
   pageUrl      String?
+  fingerprint  String?
   position     Int
   status       FindingStatus @default(OPEN)
   resolvedInId String?
@@ -330,6 +435,8 @@ model Finding {
 
   @@index([auditId])
   @@index([auditId, checkId])
+  @@index([pageId])
+  @@index([auditId, fingerprint])
   @@map("findings")
 }
 
@@ -348,17 +455,58 @@ model FindingFeedback {
 }
 
 model ExpertReviewOrder {
-  id              String              @id @default(cuid())
+  id              String                   @id @default(cuid())
   userId          String?
-  user            User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user            User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
   email           String
   auditId         String?
-  audit           Audit?              @relation(fields: [auditId], references: [id], onDelete: SetNull)
-  stripeSessionId String              @unique
-  status          ExpertReviewStatus  @default(PENDING)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  audit           Audit?                   @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  stripeSessionId String                   @unique
+  status          ExpertReviewStatus       @default(PENDING)
+  deliverable     ExpertReviewDeliverable?
+  events          ExpertReviewEvent[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([userId])
   @@map("expert_review_orders")
+}
+
+model ExpertReviewDeliverable {
+  id          String            @id @default(cuid())
+  orderId     String            @unique
+  order       ExpertReviewOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  summary     String            @db.Text
+  priorities  Json
+  reportUrl   String?
+  authoredBy  String
+  deliveredAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("expert_review_deliverables")
+}
+
+model ExpertReviewEvent {
+  id        String            @id @default(cuid())
+  orderId   String
+  order     ExpertReviewOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?             @relation("ExpertReviewEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type      String
+  metadata  Json?
+  createdAt DateTime          @default(now())
+
+  @@index([orderId, createdAt])
+  @@unique([orderId, type])
+  @@map("expert_review_events")
+}
+
+model ProcessedStripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+  payloadHash String?
+
+  @@map("processed_stripe_events")
 }

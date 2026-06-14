@@ -116,11 +116,13 @@ export default async function DashboardPage() {
                             key={area.name}
                             className={cn(
                               'text-xs font-bold px-1.5 py-0.5 rounded border',
-                              gradeColor(area.grade)
+                              area.grade
+                                ? gradeColor(area.grade)
+                                : 'text-muted-foreground border-border'
                             )}
                             title={areaLabel(area.name)}
                           >
-                            {area.grade}
+                            {area.grade ?? '—'}
                           </div>
                         ))}
                         {audit.rechecks.length > 0 && (

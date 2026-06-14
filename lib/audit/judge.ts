@@ -18,27 +18,53 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
+const areaNameSchema = z.enum([
+  'PERFORMANCE',
+  'ACCESSIBILITY',
+  'SEO',
+  'CONVERSION',
+  'TRUST',
+  'CONTENT',
+  'MOBILE',
+])
+
 const judgeOutputSchema = z.object({
-  pageJob: z.string(),
-  pageType: z.string(),
-  verdict: z.string(),
-  score: z.number(),
+  pageJob: z.string().min(1),
+  pageType: z.enum([
+    'homepage',
+    'pricing',
+    'landing',
+    'dashboard',
+    'portfolio',
+    'article',
+    'other',
+  ]),
+  verdict: z.string().min(1),
+  score: z.number().min(0).max(100),
   launchReadiness: z.enum(['safe', 'fix_first', 'not_ready']),
   launchChecklist: z.array(
     z.object({
-      id: z.string(),
-      label: z.string(),
+      id: z.enum([
+        'https',
+        'social-preview',
+        'mobile-cta',
+        'console-errors',
+        'privacy-contact',
+      ]),
+      label: z.string().min(1),
       passed: z.boolean(),
     })
   ),
   areas: z.array(
     z.object({
-      name: z.string(),
-      score: z.number().nullable().optional(),
-      grade: z.string(),
-      status: z.string(),
-      summary: z.string(),
-      areaPrompt: z.string(),
+      name: areaNameSchema,
+      score: z.number().min(0).max(100).nullable(),
+      grade: z.enum(['A', 'B', 'C', 'D', 'F']),
+      status: z.enum(['EXCELLENT', 'GOOD', 'NEEDS_WORK', 'CRITICAL']),
+      assessmentState: z.enum(['ASSESSED', 'PARTIAL', 'UNKNOWN']),
+      confidence: z.number().min(0).max(1),
+      summary: z.string().min(1),
+      areaPrompt: z.string().min(1),
       cursorPrompt: z.string().optional(),
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
@@ -47,25 +73,26 @@ const judgeOutputSchema = z.object({
   ),
   newFindings: z.array(
     z.object({
-      area: z.string(),
-      severity: z.string(),
-      problem: z.string(),
-      evidence: z.string(),
-      whyItMatters: z.string(),
-      fix: z.string(),
-      confidence: z.number(),
+      area: areaNameSchema,
+      severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']),
+      problem: z.string().min(1),
+      evidence: z.string().min(1),
+      whyItMatters: z.string().min(1),
+      fix: z.string().min(1),
+      confidence: z.number().min(0).max(1),
       agentPrompt: z.string().optional(),
       cursorPrompt: z.string().optional(),
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
       verificationRule: z.string().optional(),
+      pageUrl: z.string().url().optional(),
     })
   ),
   enrichments: z.array(
     z.object({
-      checkId: z.string(),
-      whyItMatters: z.string(),
+      checkId: z.string().min(1),
+      whyItMatters: z.string().min(1),
       agentPrompt: z.string().optional(),
       cursorPrompt: z.string().optional(),
       claudePrompt: z.string().optional(),
@@ -146,25 +173,8 @@ function buildJudgeContext(
   }
 }
 
-function normalizeJudgeOutput(raw: unknown): unknown {
-  if (!raw || typeof raw !== 'object') return raw
-  const data = raw as Record<string, unknown>
-  if (!Array.isArray(data.areas)) return raw
-
-  return {
-    ...data,
-    newFindings: Array.isArray(data.newFindings) ? data.newFindings : [],
-    enrichments: Array.isArray(data.enrichments) ? data.enrichments : [],
-    areas: data.areas.map((area) => {
-      if (!area || typeof area !== 'object') return area
-      const row = area as Record<string, unknown>
-      return row.score === null ? { ...row, score: undefined } : row
-    }),
-  }
-}
-
 function parseJudgeOutput(raw: unknown): JudgeOutput {
-  const parsed = judgeOutputSchema.safeParse(normalizeJudgeOutput(raw))
+  const parsed = judgeOutputSchema.safeParse(raw)
   if (!parsed.success) {
     throw new Error(`Invalid judge output: ${parsed.error.message}`)
   }

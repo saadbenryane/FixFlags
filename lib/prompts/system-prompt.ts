@@ -32,7 +32,7 @@ export const QUALITY_REPORT_SCHEMA = {
           type: 'object',
           required: ['id', 'label', 'passed'],
           properties: {
-            id: { type: 'string' },
+            id: { type: 'string', enum: ['https', 'social-preview', 'mobile-cta', 'console-errors', 'privacy-contact'] },
             label: { type: 'string' },
             passed: { type: 'boolean' },
           },
@@ -42,15 +42,17 @@ export const QUALITY_REPORT_SCHEMA = {
         type: 'array',
         items: {
           type: 'object',
-          required: ['name', 'grade', 'status', 'summary', 'areaPrompt'],
+          required: ['name', 'score', 'grade', 'status', 'assessmentState', 'confidence', 'summary', 'areaPrompt'],
           properties: {
             name: {
               type: 'string',
               enum: ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'CONVERSION', 'TRUST', 'CONTENT', 'MOBILE'],
             },
-            score: { type: 'number', description: 'Score 0-100, null for CONVERSION/TRUST/CONTENT' },
+            score: { type: ['number', 'null'], minimum: 0, maximum: 100, description: 'Score 0-100 when assessed; null only when evidence is unavailable' },
             grade: { type: 'string', enum: ['A', 'B', 'C', 'D', 'F'] },
             status: { type: 'string', enum: ['EXCELLENT', 'GOOD', 'NEEDS_WORK', 'CRITICAL'] },
+            assessmentState: { type: 'string', enum: ['ASSESSED', 'PARTIAL', 'UNKNOWN'] },
+            confidence: { type: 'number', minimum: 0, maximum: 1 },
             summary: { type: 'string', description: '2-3 sentences describing issues and impact' },
             areaPrompt: {
               type: 'string',
@@ -83,6 +85,7 @@ export const QUALITY_REPORT_SCHEMA = {
             lovablePrompt: { type: 'string' },
             boltPrompt: { type: 'string' },
             verificationRule: { type: 'string' },
+            pageUrl: { type: 'string' },
           },
         },
       },
@@ -188,5 +191,7 @@ Every newFinding and every enrichment MUST include a verificationRule: a concret
 
 Set launchReadiness based on whether embarrassing or conversion-critical issues remain. launchChecklist must include exactly 5 items: HTTPS, social preview (og:image), mobile CTA visible, no critical console errors, privacy/contact link present — mark passed/failed from evidence.
 
-Return ALL 7 area entries. For areas with no issues, grade A with a positive summary.`
+Return ALL 7 unique area entries. Use the same score-to-grade thresholds for every area: A >=90, B >=75, C >=60, D >=40, F below 40. Mark assessmentState ASSESSED only when a score is supported by the supplied evidence; otherwise use PARTIAL or UNKNOWN with a null score. Never invent positive evidence.
+
+The launch checklist IDs must be exactly: https, social-preview, mobile-cta, console-errors, privacy-contact. Return exactly one enrichment for every deterministic checkId and no enrichment for any other ID.`
 }

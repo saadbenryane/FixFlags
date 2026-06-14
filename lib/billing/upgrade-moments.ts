@@ -8,6 +8,7 @@ export type UpgradeMoment =
   | 'trial_exhausted'
   | 'share_blocked'
   | 'free_default'
+  | 'report_completed'
 
 export interface UpgradeMomentContent {
   headline: string
@@ -43,6 +44,8 @@ export function getUpgradeMomentContent(
       return { ...UPGRADE_MOMENTS.trial_exhausted }
     case 'share_blocked':
       return { ...UPGRADE_MOMENTS.share_blocked }
+    case 'report_completed':
+      return { ...UPGRADE_MOMENTS.report_completed }
     case 'free_default':
     default:
       return { ...UPGRADE_MOMENTS.free_default }

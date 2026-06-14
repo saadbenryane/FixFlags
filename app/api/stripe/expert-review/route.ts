@@ -4,38 +4,32 @@ import { getStripe, getExpertReviewStripePriceId } from '@/lib/stripe'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { apiError, handleRouteError } from '@/lib/api/errors'
 
 const schema = z.object({
-  auditId: z.string().optional(),
+  auditId: z.string().min(1),
   email: z.string().email().optional(),
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Sign in to purchase Expert Review' }, { status: 401 })
-  }
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Sign in to purchase Expert Review', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
   const priceId = getExpertReviewStripePriceId()
-  if (!priceId) {
-    return NextResponse.json({ error: 'Expert Review is not configured' }, { status: 500 })
-  }
+    if (!priceId) return apiError('Expert Review is not configured', 503, { code: 'BILLING_NOT_CONFIGURED' })
 
   const body = await req.json().catch(() => ({}))
   const parsed = schema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
-  }
+    if (!parsed.success) return apiError('Select a completed audit for review', 400, { code: 'INVALID_REQUEST' })
 
   const email = parsed.data.email ?? session.user.email
-  if (parsed.data.auditId) {
-    const audit = await prisma.audit.findUnique({
-      where: { id: parsed.data.auditId },
-      select: { userId: true },
-    })
-    if (!audit || audit.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Audit not found' }, { status: 404 })
-    }
+  const audit = await prisma.audit.findUnique({
+    where: { id: parsed.data.auditId },
+    select: { userId: true, status: true },
+  })
+  if (!audit || audit.userId !== session.user.id || audit.status !== 'COMPLETED') {
+    return apiError('Select one of your completed audits', 400, { code: 'INVALID_AUDIT', action: 'select_audit' })
   }
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
@@ -61,11 +55,14 @@ export async function POST(req: NextRequest) {
     data: {
       userId: session.user.id,
       email,
-      auditId: parsed.data.auditId ?? null,
+      auditId: parsed.data.auditId,
       stripeSessionId: checkoutSession.id,
       status: 'PENDING',
     },
   })
 
-  return NextResponse.json({ url: checkoutSession.url })
+    return NextResponse.json({ url: checkoutSession.url })
+  } catch (error) {
+    return handleRouteError(error, 'Could not start Expert Review checkout')
+  }
 }

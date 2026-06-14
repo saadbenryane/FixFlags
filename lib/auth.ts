@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from './db'
 import { Resend } from 'resend'
+import { deleteUserProductData } from '@/lib/account/cleanup'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'QualityOS <hello@qualityos.com>'
@@ -22,7 +23,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       if (!resend) {
         throw new Error('Password reset email is not configured (RESEND_API_KEY missing)')
@@ -40,6 +41,23 @@ export const auth = betterAuth({
       })
     },
   },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      if (!resend) throw new Error('Email verification is not configured')
+      const { error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: user.email,
+        subject: 'Verify your QualityOS email',
+        html: `
+          <p>Verify your email to activate your QualityOS account.</p>
+          <p><a href="${url}">Verify email</a></p>
+        `,
+      })
+      if (error) throw new Error(error.message)
+    },
+  },
   socialProviders: {
     ...(hasGoogleOAuth() && {
       google: {
@@ -55,6 +73,28 @@ export const auth = betterAuth({
     }),
   },
   user: {
+    changeEmail: {
+      enabled: true,
+    },
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        await deleteUserProductData(user.id)
+      },
+      sendDeleteAccountVerification: async ({ user, url }) => {
+        if (!resend) throw new Error('Account deletion email is not configured')
+        const { error } = await resend.emails.send({
+          from: FROM_EMAIL,
+          to: user.email,
+          subject: 'Confirm QualityOS account deletion',
+          html: `
+            <p>This permanently deletes your QualityOS account, audits, screenshots, and API keys.</p>
+            <p><a href="${url}">Confirm account deletion</a></p>
+          `,
+        })
+        if (error) throw new Error(error.message)
+      },
+    },
     additionalFields: {
       plan: {
         type: 'string',

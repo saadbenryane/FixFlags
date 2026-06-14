@@ -28,7 +28,7 @@ export const NURTURE_EMAILS = {
     <li>Run an audit on your site</li>
     <li>Open any finding and copy the fix prompt</li>
     <li>Paste it into Cursor, Claude Code, Lovable, or Bolt</li>
-    <li>Re-check after fixes (Builder plan)</li>
+    <li>Re-check after fixes (Pro plan)</li>
   </ol>
   <p><a href="${SITE_URL}/dashboard" style="display: inline-block; background: #171717; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">Go to dashboard</a></p>
 `),
@@ -41,7 +41,7 @@ export const NURTURE_EMAILS = {
   <p>You ran a ${BRAND.name} audit a few days ago. Did your agent apply the fixes?</p>
   <p>Most AI-built sites look fixed in the editor but still fail on mobile, SEO previews, or performance. A re-check proves what actually changed.</p>
   <p>Registered free users get one free re-check to compare before/after scores. Paid plans include unlimited re-checks that do not count against your monthly new-URL audit limit.</p>
-  <p><a href="${SITE_URL}/pricing" style="display: inline-block; background: #171717; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">Upgrade to Builder</a></p>
+  <p><a href="${SITE_URL}/pricing" style="display: inline-block; background: #171717; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">Upgrade to Pro</a></p>
 `),
   },
   launchChecklist: {

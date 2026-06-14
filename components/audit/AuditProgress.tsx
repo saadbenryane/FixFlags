@@ -14,7 +14,7 @@ import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import {
   formatElapsed,
   getActivityMessage,
-  getProgressPercent,
+  getStageProgress,
   statusToStageIndex,
 } from '@/lib/audit/progress-ui'
 import { cn } from '@/lib/utils'
@@ -31,7 +31,6 @@ interface AuditProgressProps {
 
 export function AuditProgress({
   status,
-  progress,
   url,
   startedAt,
   desktopScreenshotUrl,
@@ -41,9 +40,10 @@ export function AuditProgress({
   const [tick, setTick] = useState(0)
   const [elapsed, setElapsed] = useState(0)
 
-  const percent = getProgressPercent(progress, status)
+  const stageProgress = getStageProgress(status)
   const stageIdx = statusToStageIndex(status)
-  const activityMessage = getActivityMessage(percent, tick)
+  const activeStage = AUDIT_PROGRESS.stages[stageIdx]?.status ?? status
+  const activityMessage = getActivityMessage(activeStage, tick)
   const isTerminal = status === 'COMPLETED' || status === 'FAILED'
   const showWorkerWarning =
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && elapsed >= 30
@@ -110,18 +110,20 @@ export function AuditProgress({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground tabular-nums">{percent}%</span>
+            <span className="font-medium tabular-nums">
+              Step {stageProgress.current} of {stageProgress.total}
+            </span>
             <span className="text-muted-foreground tabular-nums">
               {startedAt ? formatElapsed(elapsed) : AUDIT_PROGRESS.usuallyUnder}
             </span>
           </div>
           <Progress
-            value={percent}
-            className="h-2 transition-all duration-500"
-            aria-valuenow={percent}
+            value={stageProgress.percent}
+            className="h-2 transition-[width] duration-500"
+            aria-valuenow={stageProgress.percent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Audit progress"
+            aria-label={`Audit progress step ${stageProgress.current} of ${stageProgress.total}`}
           />
         </div>
 

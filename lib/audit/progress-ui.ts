@@ -2,9 +2,10 @@ import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 const STATUS_PROGRESS_FALLBACK: Record<string, number> = {
   QUEUED: 5,
-  CAPTURING: 12,
-  CHECKING: 50,
-  JUDGING: 85,
+  CAPTURING: 20,
+  CHECKING: 40,
+  JUDGING: 70,
+  FINALIZING: 90,
   COMPLETED: 100,
   FAILED: 0,
 }
@@ -21,14 +22,20 @@ export function getProgressPercent(progress: number | null | undefined, status: 
   return STATUS_PROGRESS_FALLBACK[status] ?? 5
 }
 
-/** Value-focused activity line — client-only, not tied to backend modules. */
-export function getActivityMessage(progress: number, tick: number): string {
-  const messages = AUDIT_PROGRESS.activity
-  const bandSize = 100 / messages.length
-  const bandIndex = Math.min(messages.length - 1, Math.floor(progress / bandSize))
-  const rotate = tick % 3
-  const index = (bandIndex + rotate) % messages.length
-  return messages[index]
+/** Stage-based progress for UI (step N of total). */
+export function getStageProgress(status: string): { current: number; total: number; percent: number } {
+  const total = AUDIT_PROGRESS.stages.length
+  const idx = statusToStageIndex(status)
+  const current = status === 'COMPLETED' ? total : Math.min(idx + 1, total)
+  const percent = Math.round((current / total) * 100)
+  return { current, total, percent }
+}
+
+export function getActivityMessage(status: string, tick: number): string {
+  const messages =
+    AUDIT_PROGRESS.stageActivity[status as keyof typeof AUDIT_PROGRESS.stageActivity] ??
+  AUDIT_PROGRESS.stageActivity.CHECKING
+  return messages[tick % messages.length]
 }
 
 export function formatElapsed(seconds: number): string {
@@ -48,4 +55,18 @@ export function truncateUrl(url: string, max = 48): string {
     if (url.length <= max) return url
     return url.slice(0, max - 1) + '…'
   }
+}
+
+export function formatFailureCode(code?: string | null, stage?: string | null): string | null {
+  if (!code) return null
+  const labels: Record<string, string> = {
+    AUDIT_TIMEOUT: 'Timed out',
+    DESKTOP_CAPTURE_FAILED: 'Screenshot capture failed',
+    AI_CONTRACT_INVALID: 'AI review failed',
+    AUDIT_PIPELINE_FAILED: 'Pipeline error',
+    AUDIT_JOB_FAILED: 'Worker error',
+    QUEUE_ENQUEUE_FAILED: 'Queue error',
+  }
+  const label = labels[code] ?? code.replace(/_/g, ' ').toLowerCase()
+  return stage ? `${label} (${stage})` : label
 }

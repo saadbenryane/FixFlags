@@ -9,7 +9,7 @@ import { getLocalScreenshotPath } from '@/lib/storage/screenshots'
 const VALID_DEVICES = new Set(['desktop', 'mobile'])
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ auditId: string; device: string }> }
 ) {
   try {
@@ -36,7 +36,11 @@ export async function GET(
       return apiError('You do not have access to this audit', 403)
     }
 
-    const filePath = getLocalScreenshotPath(auditId, device)
+    const pageKey = req.nextUrl.searchParams.get('page')
+    if (pageKey && !/^[a-zA-Z0-9_-]{1,80}$/.test(pageKey)) {
+      return apiError('Invalid page key', 400)
+    }
+    const filePath = getLocalScreenshotPath(auditId, device, pageKey)
     try {
       const buffer = await fs.readFile(filePath)
       return new NextResponse(buffer, {

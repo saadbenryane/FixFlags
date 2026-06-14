@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
+import { apiError, handleRouteError } from '@/lib/api/errors'
 
 const feedbackSchema = z.object({
   vote: z.number().min(-1).max(1),
@@ -13,12 +14,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: findingId } = await params
+  try {
+    const { id: findingId } = await params
 
   const body = await req.json().catch(() => ({}))
   const parsed = feedbackSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid feedback' }, { status: 400 })
+      return apiError('Choose a valid feedback value', 400, { code: 'INVALID_FEEDBACK' })
   }
 
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -36,5 +38,8 @@ export async function POST(
     })
   }
 
-  return NextResponse.json(feedback)
+    return NextResponse.json(feedback)
+  } catch (error) {
+    return handleRouteError(error, 'Could not save feedback')
+  }
 }

@@ -12,7 +12,7 @@ describe('screenshot storage', () => {
 
   it('uploadScreenshot writes local file in development', async () => {
     const prevEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    Reflect.set(process.env, 'NODE_ENV', 'development')
     process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
 
     const auditId = `test-upload-${Date.now()}`
@@ -27,6 +27,7 @@ describe('screenshot storage', () => {
 
     await fs.rm(path.dirname(filePath), { recursive: true, force: true })
 
-    process.env.NODE_ENV = prevEnv
+    if (prevEnv === undefined) Reflect.deleteProperty(process.env, 'NODE_ENV')
+    else Reflect.set(process.env, 'NODE_ENV', prevEnv)
   })
 })

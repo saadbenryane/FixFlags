@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM' | 'STUDIO'
@@ -38,12 +39,18 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, useFounding: true }),
       })
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message)
+        return
+      }
       const data = await res.json()
-      if (res.ok && data.url) {
+      if (data.url) {
         window.location.href = data.url
       } else {
-        toast.error(data.error || 'Failed to start checkout')
+        toast.error('Checkout did not return a destination.')
       }
+    } catch {
+      toast.error('Could not start checkout. Try again.')
     } finally {
       setLoading(false)
     }

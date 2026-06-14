@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 export function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false)
@@ -12,11 +13,15 @@ export function ManageSubscriptionButton() {
     setLoading(true)
     try {
       const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message)
+        return
+      }
       const data = await res.json()
-      if (res.ok && data.url) {
+      if (data.url) {
         window.location.href = data.url
       } else {
-        toast.error(data.error || 'Could not open billing portal')
+        toast.error('The billing portal did not return a destination.')
       }
     } catch {
       toast.error('Something went wrong')

@@ -1,72 +1,77 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/usage'
+import { randomUUID } from 'node:crypto'
+import { RateLimitError } from '@/lib/security/rate-limit'
 
 export interface ApiErrorBody {
-  error: string
-  code?: UsageLimitCode | string
+  code: UsageLimitCode | string
+  message: string
   action?: UsageLimitAction | string
+  requestId: string
 }
 
 export function apiError(
   message: string,
   status = 500,
-  extras?: Pick<ApiErrorBody, 'code' | 'action'>
+  extras?: Partial<Pick<ApiErrorBody, 'code' | 'action' | 'requestId'>>
 ) {
-  return NextResponse.json({ error: message, ...extras }, { status })
+  const requestId = extras?.requestId ?? randomUUID()
+  return NextResponse.json(
+    {
+      code: extras?.code ?? `HTTP_${status}`,
+      message,
+      action: extras?.action,
+      requestId,
+    },
+    { status }
+  )
 }
 
 export function handleRouteError(err: unknown, fallback = 'Something went wrong'): NextResponse {
-  console.error(err)
+  const requestId = randomUUID()
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'api.route.error',
+      requestId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  )
+
+  if (err instanceof RateLimitError) {
+    const response = apiError(err.message, 429, {
+      code: 'RATE_LIMITED',
+      action: 'retry',
+      requestId,
+    })
+    response.headers.set('Retry-After', String(err.retryAfter))
+    return response
+  }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') {
-      return apiError('A record with this value already exists', 409)
+      return apiError('A record with this value already exists', 409, { requestId })
     }
     if (err.code === 'P2025') {
-      return apiError('Record not found', 404)
+      return apiError('Record not found', 404, { requestId })
     }
   }
 
   if (err instanceof Prisma.PrismaClientInitializationError) {
-    return apiError('Database is not configured. Check DATABASE_URL and run migrations.', 503)
+    return apiError('Database is not configured. Check DATABASE_URL and run migrations.', 503, {
+      requestId,
+    })
   }
 
   if (err instanceof Error) {
     if (err.message.includes('REDIS_URL')) {
-      return apiError('Queue is not configured. Check REDIS_URL.', 503)
+      return apiError('Queue is not configured. Check REDIS_URL.', 503, { requestId })
     }
-    return apiError(err.message || fallback, 500)
+    return apiError(err.message || fallback, 500, { requestId })
   }
 
-  return apiError(fallback, 500)
+  return apiError(fallback, 500, { requestId })
 }
 
-export interface ParsedApiError {
-  message: string
-  code?: string
-  action?: string
-}
 
-/** Safely parse JSON error body from a fetch Response. */
-export async function parseApiErrorResponse(res: Response): Promise<ParsedApiError> {
-  try {
-    const data = (await res.json()) as ApiErrorBody
-    if (data && typeof data.error === 'string') {
-      return {
-        message: data.error,
-        code: typeof data.code === 'string' ? data.code : undefined,
-        action: typeof data.action === 'string' ? data.action : undefined,
-      }
-    }
-  } catch {
-    // non-JSON body
-  }
-
-  let message = 'Something went wrong. Please try again.'
-  if (res.status === 503) message = 'Service temporarily unavailable. Check server configuration.'
-  if (res.status === 402) message = 'Scan limit reached.'
-  if (res.status === 400) message = 'Invalid request.'
-
-  return { message }
-}

@@ -9,6 +9,7 @@ import { FolderPlus, Trash2, Tag, Globe, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface ProjectRow {
   id: string
@@ -26,15 +27,27 @@ export function ProjectsPanel({ plan }: Props) {
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [formError, setFormError] = useState('')
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
 
   async function loadProjects() {
-    const res = await fetch('/api/projects')
-    if (res.ok) {
+    setLoading(true)
+    setLoadError('')
+    try {
+      const res = await fetch('/api/projects')
+      if (!res.ok) {
+        const error = await parseApiErrorResponse(res)
+        throw new Error(error.message)
+      }
       setProjects(await res.json())
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load projects')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {
@@ -47,6 +60,7 @@ export function ProjectsPanel({ plan }: Props) {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
+    setFormError('')
     setCreating(true)
     try {
       const res = await fetch('/api/projects', {
@@ -54,28 +68,39 @@ export function ProjectsPanel({ plan }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, url }),
       })
-      const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || 'Failed to create project')
+        const error = await parseApiErrorResponse(res)
+        setFormError(error.message)
         return
       }
       setName('')
       setUrl('')
       await loadProjects()
       toast.success('Project created')
+    } catch {
+      setFormError('Could not create the project. Check your connection and try again.')
     } finally {
       setCreating(false)
     }
   }
 
-  async function handleDelete(id: string) {
-    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      toast.error('Failed to delete project')
-      return
+  async function handleDelete(project: ProjectRow) {
+    if (!window.confirm(`Delete “${project.name}”? Its audits will remain available.`)) return
+    setDeletingId(project.id)
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const error = await parseApiErrorResponse(res)
+        toast.error(error.message)
+        return
+      }
+      await loadProjects()
+      toast.success('Project deleted')
+    } catch {
+      toast.error('Could not delete the project. Try again.')
+    } finally {
+      setDeletingId(null)
     }
-    await loadProjects()
-    toast.success('Project deleted')
   }
 
   if (limit === 0) {
@@ -85,14 +110,14 @@ export function ProjectsPanel({ plan }: Props) {
           <div>
             <h2 className="text-sm font-medium">Projects</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Organize audits across sites on Team or Studio plans.
+              Organize audits across sites on Agency or Studio plans.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Team includes up to 5 projects. Studio includes up to 20.
+            Agency includes up to 5 projects. Studio includes up to 20.
           </p>
           <Button asChild size="sm" variant="outline">
-            <Link href="/pricing">See Team plans</Link>
+            <Link href="/pricing">See Agency plans</Link>
           </Button>
         </CardContent>
       </Card>
@@ -111,7 +136,21 @@ export function ProjectsPanel({ plan }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading projects...</div>
+        <div role="status" className="flex min-h-24 items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading projects…
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="space-y-3 rounded-lg bg-destructive/5 p-4">
+          <p className="text-sm text-destructive">{loadError}</p>
+          <Button type="button" size="sm" variant="outline" onClick={loadProjects}>
+            Try again
+          </Button>
+        </div>
+      ) : projects.length === 0 ? (
+        <p className="py-6 text-sm text-muted-foreground">
+          No projects yet. Create one to group audits for the same site.
+        </p>
       ) : (
         <div className="space-y-2">
           {projects.map((project) => (
@@ -127,10 +166,15 @@ export function ProjectsPanel({ plan }: Props) {
                   variant="ghost"
                   size="icon"
                   className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(project.id)}
+                  onClick={() => handleDelete(project)}
+                  disabled={deletingId === project.id}
                   aria-label={`Delete ${project.name}`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {deletingId === project.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -150,6 +194,7 @@ export function ProjectsPanel({ plan }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Marketing site"
+            autoComplete="organization"
             required
           />
           <IconInput
@@ -158,8 +203,16 @@ export function ProjectsPanel({ plan }: Props) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com"
+            type="url"
+            inputMode="url"
+            autoComplete="url"
             required
           />
+          {formError && (
+            <p role="alert" className="text-sm text-destructive">
+              {formError}
+            </p>
+          )}
           <Button type="submit" size="sm" disabled={creating}>
             {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Create project

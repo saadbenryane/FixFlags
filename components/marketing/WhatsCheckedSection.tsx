@@ -15,19 +15,34 @@ export function WhatsCheckedSection() {
             subhead={WHATS_CHECKED_SECTION.subhead}
           />
 
-          <ul className="divide-y divide-border/15 rounded-card border-0 bg-card shadow-card">
-            {QUALITY_AREAS.map((area) => (
-              <li
-                key={area.name}
-                className="flex flex-col gap-0.5 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
-              >
-                <span className="shrink-0 font-display text-base tracking-display">{area.name}</span>
-                <span className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-right">
-                  {area.impact}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/20">
+                  <th className="p-3 pl-5 text-left font-mono text-[10px] uppercase tracking-label text-muted-foreground/80" scope="col">Area</th>
+                  <th className="p-3 text-left font-mono text-[10px] uppercase tracking-label text-muted-foreground/80" scope="col">What we check</th>
+                  <th className="p-3 pr-5 text-right font-mono text-[10px] uppercase tracking-label text-muted-foreground/80" scope="col">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {QUALITY_AREAS.map((area) => (
+                  <tr key={area.name} className="border-t border-border/20 last:border-b-0">
+                    <td className="p-3 pl-5 align-top">
+                      <span className="font-display text-base tracking-display">{area.name}</span>
+                    </td>
+                    <td className="p-3 align-top">
+                      <p className="text-xs leading-relaxed text-muted-foreground text-pretty">{area.whatWeCheck}</p>
+                    </td>
+                    <td className="p-3 pr-5 align-top text-right">
+                      <span className="inline-block rounded-sm bg-muted/40 px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                        {area.scoreFormat}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </Container>
     </Section>

@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       userEmail={session.user.email}
       showAdmin={showAdmin}
     >
-      <main>{children}</main>
+      {children}
     </SiteShell>
   )
 }

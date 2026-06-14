@@ -17,7 +17,7 @@ export async function sendNurtureEmail(
   const existing = await prisma.emailLog.findUnique({
     where: { userId_emailType: { userId, emailType } },
   })
-  if (existing) {
+  if (existing && existing.status !== 'FAILED') {
     return { sent: false, reason: 'already_sent' }
   }
 
@@ -29,21 +29,38 @@ export async function sendNurtureEmail(
     return { sent: false, reason: 'user_not_found' }
   }
 
+  await prisma.emailLog.upsert({
+    where: { userId_emailType: { userId, emailType } },
+    create: { userId, emailType, status: 'PENDING' },
+    update: { status: 'PENDING', errorMsg: null },
+  })
+
   const template = NURTURE_EMAILS[emailType]
-  const { error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to: user.email,
-    subject: template.subject,
-    html: template.html(user.name ?? ''),
-  })
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: user.email,
+      subject: template.subject,
+      html: template.html(user.name ?? ''),
+    })
 
-  if (error) {
-    return { sent: false, reason: error.message }
+    if (error) throw new Error(error.message)
+
+    await prisma.emailLog.update({
+      where: { userId_emailType: { userId, emailType } },
+      data: {
+        status: 'SENT',
+        providerId: data?.id ?? null,
+        sentAt: new Date(),
+      },
+    })
+    return { sent: true }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    await prisma.emailLog.update({
+      where: { userId_emailType: { userId, emailType } },
+      data: { status: 'FAILED', errorMsg: reason },
+    })
+    return { sent: false, reason }
   }
-
-  await prisma.emailLog.create({
-    data: { userId, emailType },
-  })
-
-  return { sent: true }
 }

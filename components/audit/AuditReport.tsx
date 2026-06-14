@@ -10,6 +10,8 @@ import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCar
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
+import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
+import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
 
@@ -32,9 +34,9 @@ interface Finding {
 interface Area {
   id: string
   name: string
-  grade: string
+  grade: string | null
   score: number | null
-  status: string
+  status: string | null
   summary: string
   areaPrompt: string
   findings: Finding[]
@@ -50,6 +52,13 @@ interface AuditReportProps {
     screenshots?: AuditScreenshot[]
     screenshotCapture?: ScreenshotCaptureStatus
     launchReadiness?: LaunchReadinessData | null
+    reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
+    evidenceCoverage?: unknown
+    pipelineVersion?: string | null
+    pipelineLog?: PipelineLogEvent[] | null
+    startedAt?: string | Date | null
+    completedAt?: string | Date | null
+    parentId?: string | null
     pageSpeedErrors?: {
       desktopError?: string
       mobileError?: string
@@ -71,7 +80,9 @@ interface AuditReportProps {
 }
 
 function worstAreaName(areas: Area[]): string | null {
-  const ranked = [...areas].sort((a, b) => gradeRank(a.grade) - gradeRank(b.grade))
+  const ranked = areas
+    .filter((area): area is Area & { grade: string } => area.grade !== null)
+    .sort((a, b) => gradeRank(a.grade) - gradeRank(b.grade))
   const worst = ranked.find((a) => a.grade !== 'A')
   return worst?.name ?? null
 }
@@ -107,10 +118,10 @@ export function AuditReport({
   return (
     <Container className="max-w-4xl py-8 space-y-8">
       <AuditReportHero
-        pageJob={audit.pageJob!}
-        pageType={audit.pageType!}
-        verdict={audit.verdict!}
-        score={audit.score!}
+        pageJob={audit.pageJob}
+        pageType={audit.pageType}
+        verdict={audit.verdict}
+        score={audit.score}
         url={audit.url}
         screenshots={audit.screenshots}
         screenshotLimited={screenshotLimited}
@@ -120,6 +131,24 @@ export function AuditReport({
         desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
         mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
       />
+
+      {audit.reportCompleteness !== 'FULL' && (
+        <div role="status" className="rounded-lg bg-grade-C/10 px-4 py-3 text-sm text-foreground">
+          <p className="font-medium">Partial report</p>
+          <p className="mt-1 text-muted-foreground">
+            Some optional evidence was unavailable. Unassessed areas remain ungraded rather than
+            being inferred.
+          </p>
+        </div>
+      )}
+
+      {!isSample && isLoggedIn && !viewerIsPaid && (
+        <ContextualUpgradeCard
+          moment="report_completed"
+          isLoggedIn
+          currentPlan={viewerPlan}
+        />
+      )}
 
       <PriorityFindings areas={audit.areas} showFeedback={showFeedback} />
 
@@ -182,7 +211,7 @@ export function AuditReport({
         </div>
       )}
 
-      {upgradeMoment && (
+      {upgradeMoment && upgradeMoment !== 'free_default' && (
         <ContextualUpgradeCard
           moment={upgradeMoment}
           isLoggedIn
@@ -190,6 +219,13 @@ export function AuditReport({
           showCta={upgradeMoment !== 'trial_recheck_available'}
         />
       )}
+
+      <AuditPipelineProof
+        pipelineVersion={audit.pipelineVersion}
+        pipelineLog={audit.pipelineLog}
+        startedAt={audit.startedAt}
+        completedAt={audit.completedAt}
+      />
     </Container>
   )
 }

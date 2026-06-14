@@ -3,25 +3,22 @@ import { z } from 'zod'
 import { prisma } from '../db'
 import { User } from '@prisma/client'
 import { createAndEnqueueAudit } from '../audit/create-audit'
-import { reserveUserAuditSlot } from '../audit/usage'
 import { startRecheckAudit } from '../audit/recheck'
 import { getFindingDiffSummary } from '../audit/diff-findings'
 import { pollAuditUntilDone } from '../audit/poll-audit'
 import { AREA_ORDER } from '../audit/constants'
 import { canUseApiKeys } from '../auth/permissions'
 import { canAccessCompare, canAccessPaidFeatures } from '../auth/entitlements'
+import { hashApiKey } from '@/lib/security/api-keys'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { assertPublicAuditUrl } from '@/lib/audit/url'
 
 async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
   if (!fresh || !canUseApiKeys(fresh)) {
-    throw new Error('Upgrade to Builder to use MCP API access')
+    throw new Error('Upgrade to Pro to use MCP API access')
   }
   return fresh
-}
-
-async function assertUserCanAudit(user: User): Promise<void> {
-  const check = await reserveUserAuditSlot(user.id)
-  if (!check.allowed) throw new Error(check.error ?? 'Audit limit reached')
 }
 
 const areaEnum = z.enum([
@@ -45,19 +42,33 @@ export function registerAllTools(server: McpServer, user: User) {
       mode: z
         .enum(['single', 'critical_path'])
         .optional()
-        .describe('critical_path audits up to 3 same-origin URLs (Builder+)'),
+        .describe('critical_path audits up to 3 same-origin URLs (Pro+)'),
     },
     async ({ url, waitForCompletion, mode }) => {
       const freshUser = await assertMcpAccess(user)
-      await assertUserCanAudit(freshUser)
+      const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
+      await Promise.all([
+        enforceRateLimit({
+          scope: 'mcp-user',
+          identifier: freshUser.id,
+          limit: 60,
+          windowSeconds: 3600,
+        }),
+        enforceRateLimit({
+          scope: 'audit-host',
+          identifier: new URL(normalizedUrl).hostname,
+          limit: 20,
+          windowSeconds: 3600,
+        }),
+      ])
 
       const criticalPath = mode === 'critical_path'
       if (criticalPath && !canAccessPaidFeatures(freshUser)) {
-        throw new Error('Critical path audits require Builder plan or above')
+        throw new Error('Critical path audits require the Pro plan or above')
       }
 
       const { auditId } = await createAndEnqueueAudit({
-        url,
+        url: normalizedUrl,
         userId: freshUser.id,
         auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       })
@@ -304,7 +315,7 @@ export function registerAllTools(server: McpServer, user: User) {
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
       if (!canAccessCompare(freshUser, after)) {
-        throw new Error('Upgrade to Builder or complete your free re-check to compare audits')
+        throw new Error('Upgrade to Pro or complete your free re-check to compare audits')
       }
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)
@@ -336,6 +347,7 @@ export function registerAllTools(server: McpServer, user: User) {
                 newIssues: findingDiff.newIssues.length,
                 details: {
                   fixed: findingDiff.fixed,
+                  unchanged: findingDiff.unchanged,
                   regressed: findingDiff.regressed,
                   newIssues: findingDiff.newIssues,
                 },
@@ -351,10 +363,10 @@ export function registerAllTools(server: McpServer, user: User) {
 export async function validateApiKey(key: string | null): Promise<User | null> {
   if (!key) return null
   const apiKey = await prisma.apiKey.findUnique({
-    where: { key },
+    where: { keyHash: hashApiKey(key) },
     include: { user: true },
   })
-  if (!apiKey) return null
+  if (!apiKey || apiKey.revokedAt) return null
   if (!canUseApiKeys(apiKey.user)) return null
   await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsed: new Date() } })
   return apiKey.user

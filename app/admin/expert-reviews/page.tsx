@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ExpertReviewFulfillButton } from '@/components/admin/ExpertReviewFulfillButton'
 
 export default async function AdminExpertReviewsPage() {
   const orders = await prisma.expertReviewOrder.findMany({
@@ -11,11 +10,12 @@ export default async function AdminExpertReviewsPage() {
     include: {
       audit: { select: { id: true, url: true } },
       user: { select: { email: true } },
+      deliverable: { select: { id: true } },
     },
   })
 
-  const pending = orders.filter((o) => o.status === 'PAID')
-  const fulfilled = orders.filter((o) => o.status === 'FULFILLED')
+  const pending = orders.filter((o) => o.status === 'PAID' || o.status === 'IN_REVIEW')
+  const fulfilled = orders.filter((o) => o.status === 'DELIVERED' || o.status === 'FULFILLED')
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
@@ -49,7 +49,11 @@ export default async function AdminExpertReviewsPage() {
                       </Link>
                     </p>
                   )}
-                  <ExpertReviewFulfillButton orderId={order.id} />
+                  <Button size="sm" asChild>
+                    <Link href={`/admin/expert-reviews/${order.id}`}>
+                      {order.deliverable ? 'Continue review' : 'Author review'}
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}

@@ -29,7 +29,9 @@ export function SiteShell({
         userEmail={userEmail}
         showAdmin={showAdmin}
       />
-      <div className="flex-1">{children}</div>
+      <main id="main-content" className="flex-1" tabIndex={-1}>
+        {children}
+      </main>
       {showFooter && <Footer />}
     </div>
   )

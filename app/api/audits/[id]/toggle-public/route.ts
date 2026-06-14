@@ -28,7 +28,7 @@ export async function PATCH(
     if (enablingPublic && session?.user) {
       const user = await prisma.user.findUnique({ where: { id: session.user.id } })
       if (!user || !canSharePublicly(user)) {
-        return apiError('Upgrade to Team to share client report links', 402, {
+        return apiError('Upgrade to Agency to share client report links', 402, {
           code: 'UPGRADE_REQUIRED',
           action: 'upgrade',
         })

@@ -21,6 +21,10 @@ export function ExpertReviewButton({ auditId, isLoggedIn, label }: Props) {
       router.push('/sign-up')
       return
     }
+    if (!auditId) {
+      router.push('/dashboard?expert_review=select')
+      return
+    }
 
     setLoading(true)
     try {
@@ -33,7 +37,7 @@ export function ExpertReviewButton({ auditId, isLoggedIn, label }: Props) {
       if (res.ok && data.url) {
         window.location.href = data.url
       } else {
-        toast.error(data.error || 'Failed to start checkout')
+        toast.error(data.message || 'Failed to start checkout')
       }
     } finally {
       setLoading(false)

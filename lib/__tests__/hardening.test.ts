@@ -7,23 +7,70 @@ import {
   getReportTierForUser,
   hasUsedFreeRecheck,
 } from '@/lib/auth/entitlements'
-import { validateAndRepairJudgeOutput } from '@/lib/audit/validate-judge-output'
+import {
+  JudgeContractError,
+  validateJudgeOutput,
+} from '@/lib/audit/validate-judge-output'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
+import {
+  calculateOverallScore,
+  gradeFromScore,
+} from '@/lib/audit/scoring'
+import { findingFingerprint } from '@/lib/audit/deduplicate'
+import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
+import { isPublicIp, normalizeAuditUrl } from '@/lib/audit/url'
+import { statusToStageIndex, getStageProgress } from '@/lib/audit/progress-ui'
+import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
 
 const baseJudgeOutput = {
   pageJob: 'Sell',
-  pageType: 'marketing',
+  pageType: 'homepage' as const,
   verdict: 'ok',
   score: 80,
   launchReadiness: 'fix_first' as const,
   launchChecklist: [
     { id: 'https', label: 'HTTPS', passed: true },
-    { id: 'og-image', label: 'og:image', passed: false },
+    { id: 'social-preview', label: 'og:image', passed: false },
     { id: 'mobile-cta', label: 'Mobile CTA', passed: true },
-    { id: 'console', label: 'Console', passed: true },
-    { id: 'privacy', label: 'Privacy', passed: true },
-  ],
+    { id: 'console-errors', label: 'Console', passed: true },
+    { id: 'privacy-contact', label: 'Privacy', passed: true },
+  ] as Array<{
+    id:
+      | 'https'
+      | 'social-preview'
+      | 'mobile-cta'
+      | 'console-errors'
+      | 'privacy-contact'
+    label: string
+    passed: boolean
+  }>,
 }
+
+const validAreas = [
+  'PERFORMANCE',
+  'ACCESSIBILITY',
+  'SEO',
+  'CONVERSION',
+  'TRUST',
+  'CONTENT',
+  'MOBILE',
+].map((name) => ({
+  name: name as
+    | 'PERFORMANCE'
+    | 'ACCESSIBILITY'
+    | 'SEO'
+    | 'CONVERSION'
+    | 'TRUST'
+    | 'CONTENT'
+    | 'MOBILE',
+  score: 80,
+  grade: 'B' as const,
+  status: 'GOOD' as const,
+  assessmentState: 'ASSESSED' as const,
+  confidence: 0.9,
+  summary: `${name} summary`,
+  areaPrompt: `Improve ${name}`,
+}))
 
 describe('getReportTierForUser', () => {
   it('returns free for null user', () => {
@@ -162,110 +209,89 @@ describe('resolveFreeUserUpgradeMoment', () => {
   })
 })
 
-describe('validateAndRepairJudgeOutput', () => {
-  it('adds missing areas up to seven', () => {
-    const output = validateAndRepairJudgeOutput(
-      {
-        ...baseJudgeOutput,
-        areas: [
-          {
-            name: 'PERFORMANCE',
-            grade: 'B',
-            status: 'WARN',
-            summary: 'Slow',
-            areaPrompt: 'Fix perf',
-          },
-        ],
-        newFindings: [],
-        enrichments: [],
-      },
+describe('validateJudgeOutput', () => {
+  it('accepts a complete seven-area contract', () => {
+    const output = validateJudgeOutput(
+      { ...baseJudgeOutput, areas: validAreas, newFindings: [], enrichments: [] },
       []
     )
     assert.equal(output.areas.length, 7)
   })
 
-  it('preserves poor grade and injects synthetic finding when zero findings', () => {
-    const output = validateAndRepairJudgeOutput(
-      {
-        ...baseJudgeOutput,
-        areas: [
+  it('rejects missing areas instead of fabricating them', () => {
+    assert.throws(
+      () =>
+        validateJudgeOutput(
           {
-            name: 'SEO',
-            grade: 'B',
-            status: 'WARN',
-            summary: 'Meta tags need work. Description is missing.',
-            areaPrompt: 'Fix seo',
+            ...baseJudgeOutput,
+            areas: validAreas.slice(0, 6),
+            newFindings: [],
+            enrichments: [],
           },
-        ],
-        newFindings: [],
-        enrichments: [],
-      },
-      []
+          []
+        ),
+      JudgeContractError
     )
-    const seo = output.areas.find((a) => a.name === 'SEO')
-    assert.equal(seo?.grade, 'B')
-    const seoFinding = output.newFindings.find((f) => f.area === 'SEO')
-    assert.ok(seoFinding)
-    assert.match(seoFinding!.problem, /Meta tags/i)
-    assert.ok(seoFinding!.verificationRule)
   })
 
-  it('synthesizes enrichments for deterministic findings', () => {
-    const output = validateAndRepairJudgeOutput(
-      {
-        ...baseJudgeOutput,
-        areas: [
-          {
-            name: 'PERFORMANCE',
-            grade: 'C',
-            status: 'FAIL',
-            summary: 'Slow',
-            areaPrompt: 'Fix perf',
-          },
-        ],
-        newFindings: [],
-        enrichments: [],
-      },
-      [
-        {
-          checkId: 'perf-lcp',
-          area: 'PERFORMANCE',
-          severity: 'HIGH',
-          problem: 'Slow LCP',
-          evidence: '4.2s',
-          fix: 'Optimize hero image',
-          confidence: 1,
-          source: 'DETERMINISTIC',
-        },
-      ]
+  it('requires one enrichment for every deterministic finding', () => {
+    const finding = {
+      checkId: 'perf-lcp',
+      area: 'PERFORMANCE',
+      severity: 'HIGH' as const,
+      problem: 'Slow LCP',
+      evidence: '4.2s',
+      fix: 'Optimize hero image',
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    }
+    assert.throws(
+      () =>
+        validateJudgeOutput(
+          { ...baseJudgeOutput, areas: validAreas, newFindings: [], enrichments: [] },
+          [finding]
+        ),
+      JudgeContractError
     )
-    assert.equal(output.enrichments.length, 1)
-    assert.equal(output.enrichments[0].checkId, 'perf-lcp')
-    assert.match(output.enrichments[0].whyItMatters, /performance/i)
+  })
+})
+
+describe('production hardening primitives', () => {
+  it('uses the documented weighted score and grade thresholds', () => {
+    assert.equal(gradeFromScore(90), 'A')
+    assert.equal(gradeFromScore(75), 'B')
+    assert.equal(gradeFromScore(60), 'C')
+    assert.equal(gradeFromScore(40), 'D')
+    assert.equal(gradeFromScore(39), 'F')
+    assert.equal(
+      calculateOverallScore({
+        PERFORMANCE: 90,
+        ACCESSIBILITY: 80,
+        SEO: 70,
+        CONVERSION: 60,
+        TRUST: 50,
+        CONTENT: 40,
+        MOBILE: 30,
+      }),
+      63
+    )
   })
 
-  it('defaults launch readiness when missing', () => {
-    const output = validateAndRepairJudgeOutput(
-      {
-        ...baseJudgeOutput,
-        launchReadiness: undefined as unknown as 'fix_first',
-        launchChecklist: undefined as unknown as [],
-        areas: [
-          {
-            name: 'PERFORMANCE',
-            grade: 'A',
-            status: 'PASS',
-            summary: 'Good',
-            areaPrompt: 'Keep',
-          },
-        ],
-        newFindings: [],
-        enrichments: [],
-      },
-      []
+  it('rejects private protocols and addresses', () => {
+    assert.equal(normalizeAuditUrl('file:///etc/passwd').ok, false)
+    assert.equal(normalizeAuditUrl('http://127.0.0.1').ok, false)
+    assert.equal(isPublicIp('10.0.0.1'), false)
+    assert.equal(isPublicIp('8.8.8.8'), true)
+  })
+
+  it('hashes API keys and fingerprints evidence deterministically', () => {
+    const key = generateApiKey()
+    assert.notEqual(key.rawKey, key.keyHash)
+    assert.equal(hashApiKey(key.rawKey), key.keyHash)
+    assert.equal(
+      findingFingerprint({ area: 'SEO', problem: 'Missing title', checkId: 'seo-title' }),
+      findingFingerprint({ area: 'SEO', problem: 'Different wording', checkId: 'seo-title' })
     )
-    assert.equal(output.launchReadiness, 'fix_first')
-    assert.ok(Array.isArray(output.launchChecklist))
   })
 })
 
@@ -275,5 +301,28 @@ describe('trial recheck flag semantics', () => {
     const trialRecheck = { trialRecheck: true, skipUsageCount: true, parentId: 'p1' }
     assert.equal(paidRecheck.trialRecheck === true, false)
     assert.equal(trialRecheck.trialRecheck === true, true)
+  })
+})
+
+describe('progress UI stage mapping', () => {
+  it('maps FINALIZING to the preparing-report stage', () => {
+    assert.equal(statusToStageIndex('FINALIZING'), 4)
+    const progress = getStageProgress('FINALIZING')
+    assert.equal(progress.current, 5)
+    assert.equal(progress.total, 5)
+  })
+
+  it('marks completed audits as step 5 of 5', () => {
+    const progress = getStageProgress('COMPLETED')
+    assert.equal(progress.current, 5)
+    assert.equal(progress.percent, 100)
+  })
+})
+
+describe('AuditDeadlineError', () => {
+  it('carries stage for timeout failures', () => {
+    const err = new AuditDeadlineError('judging')
+    assert.equal(err.code, 'AUDIT_TIMEOUT')
+    assert.equal(err.stage, 'judging')
   })
 })

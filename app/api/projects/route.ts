@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { projectLimitForPlan } from '@/lib/billing/plans'
+import { apiError, handleRouteError } from '@/lib/api/errors'
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -11,8 +12,9 @@ const createSchema = z.object({
 })
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Sign in to view projects', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
   const projects = await prisma.project.findMany({
     where: { userId: session.user.id },
@@ -22,46 +24,49 @@ export async function GET() {
     },
   })
 
-  return NextResponse.json(
-    projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      url: p.url,
-      monitoringEnabled: p.monitoringEnabled,
-      auditCount: p._count.audits,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-    }))
-  )
+    return NextResponse.json(
+      projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        url: p.url,
+        auditCount: p._count.audits,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      }))
+    )
+  } catch (error) {
+    return handleRouteError(error, 'Could not load projects')
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Sign in to create a project', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!user) return apiError('Account not found', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
   const limit = projectLimitForPlan(user.plan)
   if (limit === 0) {
-    return NextResponse.json(
-      { error: 'Projects require Team or Studio plan' },
-      { status: 402 }
-    )
+      return apiError('Projects require the Agency or Studio plan', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'view_pricing',
+      })
   }
 
   const count = await prisma.project.count({ where: { userId: user.id } })
   if (count >= limit) {
-    return NextResponse.json(
-      { error: `Project limit reached (${limit} on ${user.plan})` },
-      { status: 402 }
-    )
+      return apiError(`Project limit reached (${limit})`, 402, {
+        code: 'PROJECT_LIMIT',
+        action: 'upgrade',
+      })
   }
 
   const body = await req.json().catch(() => ({}))
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid project data' }, { status: 400 })
+      return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
   }
 
   const project = await prisma.project.create({
@@ -72,5 +77,8 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json(project, { status: 201 })
+    return NextResponse.json(project, { status: 201 })
+  } catch (error) {
+    return handleRouteError(error, 'Could not create project')
+  }
 }

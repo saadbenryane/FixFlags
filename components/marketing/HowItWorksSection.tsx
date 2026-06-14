@@ -13,24 +13,19 @@ export function HowItWorksSection() {
           subhead={HOW_IT_WORKS_SECTION.subhead}
         />
 
-        <ol className="grid gap-4 md:grid-cols-3">
-          {HOW_IT_WORKS_SECTION.steps.map((step) => (
+        <ol className="divide-y divide-border/20">
+          {HOW_IT_WORKS_SECTION.steps.map((step, index) => (
             <li
               key={step.step}
-              className="rounded-card bg-card p-6 shadow-card transition-shadow duration-200 hover:shadow-card-hover"
+              className="grid gap-4 py-7 first:pt-0 last:pb-0 md:grid-cols-[5rem_minmax(0,0.35fr)_minmax(0,0.65fr)] md:items-baseline md:gap-8"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
-                  Step {step.step}
-                </span>
-                <span className="font-display text-2xl tabular-nums leading-none text-muted-foreground/20">
-                  {String(step.step).padStart(2, '0')}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <p className="font-semibold leading-snug">{step.title}</p>
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
-              </div>
+              <span className="font-mono text-xs tabular-nums text-brand/80">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <p className="font-display text-xl tracking-heading">{step.title}</p>
+              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground text-pretty">
+                {step.body}
+              </p>
             </li>
           ))}
         </ol>

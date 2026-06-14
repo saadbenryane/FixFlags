@@ -8,6 +8,7 @@ import {
   parseScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
+import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 
 function parsePageSpeedErrors(performanceData: unknown): {
   desktopError?: string
@@ -95,6 +96,7 @@ export async function getGatedAuditForRequest(id: string) {
     kind: 'ok' as const,
     audit: {
       ...stripped,
+      pipelineLog: parsePipelineLog(audit.pipelineLog),
       screenshotCapture,
       launchReadiness,
       pageSpeedErrors: pageSpeed,

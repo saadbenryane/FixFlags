@@ -97,6 +97,7 @@ export async function getFindingDiffSummary(
   recheckAuditId: string
 ): Promise<{
   fixed: FindingDiffSummaryItem[]
+  unchanged: FindingDiffSummaryItem[]
   regressed: FindingDiffSummaryItem[]
   newIssues: FindingDiffSummaryItem[]
 }> {
@@ -109,6 +110,7 @@ export async function getFindingDiffSummary(
   const parentKeys = new Set(parentFindings.map((f) => findingMatchKey(f)))
 
   const fixed: FindingDiffSummaryItem[] = []
+  const unchanged: FindingDiffSummaryItem[] = []
   const regressed: FindingDiffSummaryItem[] = []
   const newIssues: FindingDiffSummaryItem[] = []
 
@@ -138,6 +140,14 @@ export async function getFindingDiffSummary(
         severity: recheckFinding.severity,
         status: 'REGRESSED',
       })
+    } else {
+      unchanged.push({
+        checkId: recheckFinding.checkId,
+        problem: recheckFinding.problem,
+        area: recheckFinding.area,
+        severity: recheckFinding.severity,
+        status: 'UNCHANGED',
+      })
     }
   }
 
@@ -154,5 +164,5 @@ export async function getFindingDiffSummary(
     }
   }
 
-  return { fixed, regressed, newIssues }
+  return { fixed, unchanged, regressed, newIssues }
 }
