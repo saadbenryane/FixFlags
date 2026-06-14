@@ -72,7 +72,9 @@ export function ShareAuditButton({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
       toast.success(publicNow ? 'Public link copied' : 'Link copied', {
-        description: shareText,
+        description: publicNow
+          ? 'Anyone with this link can view the report.'
+          : shareText,
       })
     } catch {
       toast.error('Could not copy link')

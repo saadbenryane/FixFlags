@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { gradeFromScore } from '@/lib/audit/scoring'
+import { BRAND } from '@/lib/marketing/copy'
 
 export const runtime = 'nodejs'
 export const alt = 'QualityOS audit report'
@@ -14,6 +15,46 @@ function scoreColor(score: number): string {
   if (grade === 'C') return '#f59e0b'
   if (grade === 'D') return '#f97316'
   return '#ef4444'
+}
+
+function genericOgImage() {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#0a0a0a',
+          padding: '64px 72px',
+          gap: 24,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: '#22c55e',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            fontFamily: 'monospace',
+          }}
+        >
+          {BRAND.name}
+        </div>
+        <div style={{ fontSize: 42, fontWeight: 700, color: '#ffffff', textAlign: 'center' }}>
+          Automated quality audit
+        </div>
+        <div style={{ fontSize: 22, color: '#737373', textAlign: 'center' }}>
+          Performance · SEO · Conversion · Trust · Mobile
+        </div>
+      </div>
+    ),
+    { ...size }
+  )
 }
 
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +81,12 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     },
   })
 
-  const hostname = audit?.url
+  const isShareableOg = audit?.isPublic || audit?.userId === null
+  if (!audit || audit.status !== 'COMPLETED' || !isShareableOg) {
+    return genericOgImage()
+  }
+
+  const hostname = audit.url
     ? (() => {
         try {
           return new URL(audit.url).hostname
@@ -50,12 +96,12 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       })()
     : 'yoursite.com'
 
-  const score = audit?.score ?? null
+  const score = audit.score ?? null
   const topIssue =
-    audit?.areas
+    audit.areas
       ?.flatMap((a) => a.findings)
       .find((f) => f.severity === 'HIGH' || f.severity === 'CRITICAL')?.problem ??
-    audit?.verdict?.slice(0, 80) ??
+    audit.verdict?.slice(0, 80) ??
     'Automated quality audit'
 
   const color = score != null ? scoreColor(score) : '#737373'

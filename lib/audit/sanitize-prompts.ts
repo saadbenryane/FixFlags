@@ -5,7 +5,15 @@ const SPECULATION_PATTERNS = [
   /\bestimated CTR\b/i,
   /\bCTR loss\b/i,
   /\bCTR ~\d+/i,
+  /\bCTR (improved|increased|dropped)\b/i,
   /\b\d+-\d+% (CTR|conversion|drop)/i,
+  /\bconvert(s|ion)? \d+-\d+%/i,
+  /\b(increased?|improved?|dropped?) \d+%/i,
+  /\bconversion (rate )?(increased?|improved?) \d+%/i,
+  /\bLighthouse score ~\d+/i,
+  /\bscore ~\d+/i,
+  /\bform submissions by \d+%/i,
+  /\bbounce rate dropped \d+%/i,
 ]
 
 const UNSUPPORTED_FILE_GUESS = /\b(likely|probably|may be in)\b.*\b(_app\.tsx|layout\.tsx)\b/i
@@ -22,6 +30,7 @@ export function sanitizePromptText(text: string, fallback: string): string {
 }
 
 type SanitizableFinding = {
+  problem?: string
   evidence?: string
   whyItMatters?: string
   fix?: string
@@ -43,6 +52,15 @@ export function sanitizeFindingFields<T extends SanitizableFinding>(finding: T):
 
   return {
     ...finding,
+    problem: finding.problem
+      ? sanitizePromptText(
+          finding.problem,
+          'An issue was detected that should be addressed before launch.'
+        )
+      : finding.problem,
+    evidence: finding.evidence
+      ? sanitizePromptText(finding.evidence, fallback)
+      : finding.evidence,
     whyItMatters: finding.whyItMatters
       ? sanitizePromptText(
           finding.whyItMatters,

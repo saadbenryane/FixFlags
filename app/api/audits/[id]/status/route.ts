@@ -92,6 +92,7 @@ export async function GET(
       queuePosition: queueInfo?.queuePosition,
       estimatedWaitSeconds: queueInfo?.estimatedWaitSeconds,
       scheduledStartAt: queueInfo?.scheduledStartAt,
+      queueReason: queueInfo?.isDelayed ? 'rate_limit' : queueInfo ? 'backlog' : undefined,
       partialFindings:
         audit.status === 'CHECKING' || audit.status === 'JUDGING' ? partialFindings : undefined,
     })

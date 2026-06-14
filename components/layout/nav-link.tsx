@@ -27,7 +27,7 @@ export function NavLink({
 
   function handleClick() {
     onNavigate?.()
-    if (pathname === href || (href !== '/' && pathname.startsWith(href))) {
+    if (active) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }

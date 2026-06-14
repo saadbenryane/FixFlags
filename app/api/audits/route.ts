@@ -112,6 +112,8 @@ export async function POST(req: NextRequest) {
         estimatedWaitSeconds,
         queuePosition,
         queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
+        queueReason:
+          delayMs > 0 ? ('rate_limit' as const) : workerEstimate.waitingJobs > 0 ? ('backlog' as const) : undefined,
       },
       { status: 201 }
     )

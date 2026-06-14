@@ -14,6 +14,8 @@ function formatAreaName(name: string) {
   return name.charAt(0) + name.slice(1).toLowerCase()
 }
 
+const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
+
 export function ProofSection({ sample }: { sample: SampleResult }) {
   const audit = sample.audit
 
@@ -67,10 +69,12 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
                   >
                     <span className="text-sm font-medium">{formatAreaName(area.name)}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {area.score ?? '—'}
-                      </span>
-                      <GradeBadge grade={area.grade} size="sm" />
+                      {OBJECTIVE_AREAS.has(area.name) && (
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {area.score ?? '—'}
+                        </span>
+                      )}
+                      <GradeBadge grade={area.grade} size="sm" areaName={area.name} />
                     </div>
                   </li>
                 ))}

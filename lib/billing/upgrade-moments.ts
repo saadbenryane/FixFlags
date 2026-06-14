@@ -6,7 +6,6 @@ export type UpgradeMoment =
   | 'compare_improved'
   | 'compare_flat'
   | 'trial_exhausted'
-  | 'share_blocked'
   | 'free_default'
   | 'report_completed'
 
@@ -42,8 +41,6 @@ export function getUpgradeMomentContent(
       return { ...UPGRADE_MOMENTS.compare_flat }
     case 'trial_exhausted':
       return { ...UPGRADE_MOMENTS.trial_exhausted }
-    case 'share_blocked':
-      return { ...UPGRADE_MOMENTS.share_blocked }
     case 'report_completed':
       return { ...UPGRADE_MOMENTS.report_completed }
     case 'free_default':

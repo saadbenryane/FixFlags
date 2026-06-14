@@ -48,7 +48,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
         score: 82,
         status: 'GOOD',
         summary:
-          'Load time is acceptable but 3 third-party scripts add ~80ms render delay. Lighthouse score ~85.',
+          'Load time is acceptable but 3 third-party scripts add ~80ms render delay. Lighthouse performance score in the B range.',
         areaPrompt:
           'Optimize third-party script loading. Defer or async-load the 3 non-critical scripts identified in the audit. Consider self-hosting analytics if possible.',
         cursorPrompt: null,
@@ -186,7 +186,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
         id: 'area-conversion',
         name: 'CONVERSION',
         grade: 'B',
-        score: 76,
+        score: null,
         status: 'GOOD',
         summary:
           'CTA visible above fold on desktop. Value proposition clear but could target developers more directly.',
@@ -204,7 +204,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Desktop 1280x900: "Financial infrastructure for the internet" — tells what Stripe is, not what user achieves.',
             whyItMatters:
-              'Outcome-driven headlines convert 30-50% better.',
+              'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
             fix: 'Test headline: "Ship payment flows in days, not quarters."',
             agentPrompt:
               'In hero section, update H1 to: "Ship payment flows in days, not quarters." Keep it under 8 words at 1280px viewport. A/B test against current headline to measure conversion impact.',
@@ -222,7 +222,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Desktop 1280x900: CTA area lacks "trusted by" or customer count.',
             whyItMatters:
-              'Social proof near CTA increases conversion 10-15%.',
+              'Social proof near the CTA reassures visitors before they commit to an action.',
             fix: 'Add trust line below CTA: "Trusted by millions of businesses worldwide."',
             agentPrompt:
               'Below primary CTA button, add `<p className="text-xs text-muted-foreground mt-2">Trusted by millions of businesses worldwide</p>`. Keep font small and muted — this is supplementary, not primary messaging.',
@@ -239,7 +239,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
         id: 'area-trust',
         name: 'TRUST',
         grade: 'B',
-        score: 84,
+        score: null,
         status: 'GOOD',
         summary:
           'HTTPS enforced, privacy policy linked in footer. Security badges visible on checkout pages.',
@@ -257,7 +257,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Desktop 1280x900: No compliance badges in main content or footer.',
             whyItMatters:
-              'Security badges on marketing pages increase form submissions by 14% for B2B.',
+              'Security badges on marketing pages reinforce trust before visitors submit forms or sign up.',
             fix: 'Add compliance badge row in footer or near the CTA.',
             agentPrompt:
               'In footer component, add a row: SOC 2, PCI DSS Level 1, GDPR badges. Use small monochrome text labels (12px, muted). Keep compact — max 24px height, placed above copyright line.',
@@ -274,7 +274,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
         id: 'area-content',
         name: 'CONTENT',
         grade: 'B',
-        score: 80,
+        score: null,
         status: 'GOOD',
         summary:
           'Copy is concise but uses financial jargon without explanation in several sections.',

@@ -20,6 +20,7 @@ import {
   DIFFERENTIATION,
   MCP_SECTION,
   PRICING_TEASER,
+  BRAND,
   FINAL_CTA,
   HOME_FAQ,
   FAQ_SECTION,
@@ -49,7 +50,7 @@ export default async function HomePage() {
 
       <WhatsCheckedSection />
 
-      <Section spacing="default" className="bg-muted/35">
+      <Section spacing="default" className="bg-muted/35" id="lighthouse-comparison">
         <Container className="space-y-10">
           <SectionIntro
             headline={DIFFERENTIATION.headline}
@@ -68,6 +69,10 @@ export default async function HomePage() {
             .
           </p>
           <ComparisonTable rows={DIFFERENTIATION.rows} />
+          <p className="text-center text-xs text-muted-foreground max-w-2xl mx-auto">
+            Lighthouse SEO checks meta tags including og:image; {BRAND.name} adds screenshot-based
+            UX context and agent-ready fix prompts.
+          </p>
         </Container>
       </Section>
 

@@ -3,14 +3,14 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Lock, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { PasswordInput } from '@/components/auth/PasswordInput'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -19,14 +19,16 @@ function ResetPasswordForm() {
   const error = searchParams.get('error')
 
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [confirmError, setConfirmError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!token) return
-    if (password !== confirm) {
-      toast.error(AUTH.resetPassword.mismatch)
+    setConfirmError('')
+    if (password !== confirmPassword) {
+      setConfirmError('Passwords do not match')
       return
     }
     setLoading(true)
@@ -69,23 +71,17 @@ function ResetPasswordForm() {
   return (
     <AuthCard title={AUTH.resetPassword.title} subtitle={AUTH.resetPassword.subtitle}>
       <FormContainer onSubmit={handleSubmit}>
-        <IconInput
-          type="password"
+        <PasswordInput
           label="New password"
-          icon={<Lock className="h-4 w-4" />}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
+          onChange={setPassword}
+          showRequirements
         />
-        <IconInput
-          type="password"
+        <PasswordInput
           label="Confirm password"
-          icon={<Lock className="h-4 w-4" />}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          required
-          minLength={8}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          error={confirmError}
         />
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

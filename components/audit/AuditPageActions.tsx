@@ -7,6 +7,7 @@ import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ShareAuditButton } from '@/components/audit/ShareAuditButton'
+import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
@@ -15,8 +16,16 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
   auditId: string
+  url: string
   score: number | null
+  verdict?: string | null
   topIssue?: string
+  areas: Array<{
+    name: string
+    grade: string | null
+    score: number | null
+    findings?: Array<{ severity: string; problem: string }>
+  }>
   isPaid: boolean
   isLoggedIn: boolean
   isOwner: boolean
@@ -30,8 +39,11 @@ interface Props {
 
 export function AuditPageActions({
   auditId,
+  url,
   score,
+  verdict,
   topIssue,
+  areas,
   isPaid,
   isLoggedIn,
   isOwner,
@@ -103,6 +115,13 @@ export function AuditPageActions({
         isPublic={isPublic}
         isAnonymous={isAnonymous}
         onPublicChange={setIsPublic}
+      />
+      <ExportSummaryButton
+        auditId={auditId}
+        url={url}
+        score={score}
+        verdict={verdict}
+        areas={areas}
       />
       {showRecheck && (
         <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>

@@ -98,6 +98,10 @@ export function AuditReportHero({
           </div>
         </div>
         <div className="flex-1 min-w-0 space-y-3">
+          <p className="text-xs text-muted-foreground text-pretty">
+            Overall 0–100 from weighted areas. Performance, SEO, Mobile, and Accessibility are
+            objective checks; Conversion, Trust, and Content are experience grades.
+          </p>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="text-xs capitalize">
               {pageType ?? 'Page type unavailable'}

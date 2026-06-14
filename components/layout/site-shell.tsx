@@ -1,5 +1,7 @@
 import { Header, type HeaderVariant } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { MinimalFooter } from '@/components/layout/minimal-footer'
+import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 
 interface SiteShellProps {
   children: React.ReactNode
@@ -7,6 +9,7 @@ interface SiteShellProps {
   logoHref?: string
   headerRight?: React.ReactNode
   showFooter?: boolean
+  footer?: 'default' | 'minimal'
   userEmail?: string | null
   showAdmin?: boolean
 }
@@ -17,6 +20,7 @@ export function SiteShell({
   logoHref,
   headerRight,
   showFooter = true,
+  footer = 'default',
   userEmail,
   showAdmin,
 }: SiteShellProps) {
@@ -29,10 +33,12 @@ export function SiteShell({
         userEmail={userEmail}
         showAdmin={showAdmin}
       />
+      <ActiveAuditBanner />
       <main id="main-content" className="flex-1" tabIndex={-1}>
         {children}
       </main>
-      {showFooter && <Footer />}
+      {showFooter && footer === 'minimal' && <MinimalFooter />}
+      {showFooter && footer === 'default' && <Footer />}
     </div>
   )
 }

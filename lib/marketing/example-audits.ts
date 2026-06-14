@@ -122,7 +122,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-webdev-conv',
         name: 'CONVERSION',
         grade: 'B',
-        score: 82,
+        score: null,
         status: 'GOOD',
         summary:
           'Clear primary call-to-action above the fold. Secondary actions less prominent.',
@@ -148,7 +148,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-webdev-trust',
         name: 'TRUST',
         grade: 'A',
-        score: 88,
+        score: null,
         status: 'EXCELLENT',
         summary:
           'Google-hosted with valid HTTPS. Privacy policy clearly linked. No red flags.',
@@ -160,7 +160,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-webdev-content',
         name: 'CONTENT',
         grade: 'B',
-        score: 78,
+        score: null,
         status: 'GOOD',
         summary:
           'Well-written articles with clear section hierarchy. Some pages could benefit from more scannable subheadings.',
@@ -328,7 +328,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-vercel-conv',
         name: 'CONVERSION',
         grade: 'C',
-        score: 60,
+        score: null,
         status: 'NEEDS_WORK',
         summary:
           'Hero section prioritizes visual impact over conversion clarity. CTA is below the fold on mobile. Value proposition is implied but not explicit.',
@@ -355,7 +355,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: "Develop. Preview. Ship." — describes actions, not the benefit. No audience or outcome named.',
             whyItMatters:
-              'Outcome-driven headlines convert 30-50% better than feature-oriented ones.',
+              'Outcome-driven headlines help visitors understand the benefit, not just the product category.',
             fix: 'Test headline variation: "Deploy your frontend in seconds, not hours."',
             agentPrompt:
               'In the hero component, update the H1 to an outcome-driven variant targeting developers: "Deploy your frontend in seconds, not hours." A/B test against current headline using the existing analytics system.',
@@ -367,7 +367,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-vercel-trust',
         name: 'TRUST',
         grade: 'B',
-        score: 78,
+        score: null,
         status: 'GOOD',
         summary:
           'HTTPS and security certificates in order. Privacy policy and terms accessible from footer.',
@@ -381,7 +381,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: Notable customer logos (Under Armour, The Washington Post) appear mid-page but not near the primary CTA.',
             whyItMatters:
-              'Social proof near the CTA can increase conversion by 15% for B2B products.',
+              'Social proof near the CTA reassures B2B buyers before they take action.',
             fix: 'Add a compact "Trusted by" bar between the hero and the feature section.',
             agentPrompt:
               'Add a horizontal logo bar section between the hero and product features. Render customer logos as grayscale SVGs at 60px height. Include alt text for each. Keep it visually subtle — 0.5 opacity, centered, with a small "Trusted by" label above.',
@@ -393,7 +393,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-vercel-content',
         name: 'CONTENT',
         grade: 'B',
-        score: 80,
+        score: null,
         status: 'GOOD',
         summary:
           'Concise, developer-appropriate copy. Tagline is memorable. Documentation is thorough.',
@@ -574,7 +574,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-wiki-conv',
         name: 'CONVERSION',
         grade: 'D',
-        score: 45,
+        score: null,
         status: 'CRITICAL',
         summary:
           'Wikipedia is donation-funded but the CTA experience has issues: fundraiser banners are disruptive, and there is no persistent low-friction donation option.',
@@ -613,7 +613,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-wiki-trust',
         name: 'TRUST',
         grade: 'A',
-        score: 92,
+        score: null,
         status: 'EXCELLENT',
         summary:
           'Non-profit organization with transparent operations. Edits tracked with public history. Clear privacy and licensing policies.',
@@ -625,7 +625,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         id: 'ex-wiki-content',
         name: 'CONTENT',
         grade: 'B',
-        score: 82,
+        score: null,
         status: 'GOOD',
         summary:
           'Exceptional depth and breadth. Consistent article structure with clear section headings, citations, and cross-references.',

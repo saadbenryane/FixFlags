@@ -62,6 +62,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Audit report' }
   }
 
+  const isShareableOg = audit.isPublic || audit.userId === null
+
+  if (!isShareableOg) {
+    return {
+      title: 'Private audit report',
+      description: 'Sign in to view this QualityOS audit report.',
+      robots: { index: false, follow: false },
+    }
+  }
+
   if (!canAccessAudit(audit, session?.user) && !audit.isPublic && audit.userId) {
     return { title: 'Audit report' }
   }
@@ -200,8 +210,19 @@ export default async function AuditPage({ params }: Props) {
         actions={
           <AuditPageActions
             auditId={id}
+            url={audit.url}
             score={audit.score}
+            verdict={audit.verdict}
             topIssue={topIssue}
+            areas={audit.areas.map((a) => ({
+              name: a.name,
+              grade: a.grade,
+              score: a.score,
+              findings: a.findings?.map((f) => ({
+                severity: f.severity,
+                problem: f.problem,
+              })),
+            }))}
             isPaid={viewerIsPaid}
             isLoggedIn={isLoggedIn}
             isOwner={isOwner}

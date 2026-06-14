@@ -1,6 +1,7 @@
 import { AuditReport } from '@/components/audit/AuditReport'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
+import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { Container } from '@/components/ui/container'
 import { Body } from '@/components/ui/typography'
@@ -31,7 +32,12 @@ export default async function SamplesPage() {
             <Body className="text-muted-foreground text-sm">{SAMPLES_PAGE.subhead}</Body>
           </div>
           <Body className="text-muted-foreground text-xs">{disclaimer}</Body>
+          <Body className="text-muted-foreground text-xs">
+            Not affiliated with {new URL(sample.audit.url).hostname}. Automated audit for
+            illustration only.
+          </Body>
           <ThirdPartyAuditDisclaimer variant="compact" />
+          <LighthouseCallout className="text-xs text-muted-foreground" />
         </div>
       </Container>
 

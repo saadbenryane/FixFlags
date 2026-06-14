@@ -3,11 +3,17 @@ import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 
 interface MarketingShellProps {
   children: React.ReactNode
+  footer?: 'default' | 'minimal' | 'none'
 }
 
-export function MarketingShell({ children }: MarketingShellProps) {
+export function MarketingShell({ children, footer = 'default' }: MarketingShellProps) {
   return (
-    <SiteShell variant="marketing" headerRight={<MarketingHeaderAuth />}>
+    <SiteShell
+      variant="marketing"
+      headerRight={<MarketingHeaderAuth />}
+      showFooter={footer !== 'none'}
+      footer={footer === 'minimal' ? 'minimal' : 'default'}
+    >
       {children}
     </SiteShell>
   )

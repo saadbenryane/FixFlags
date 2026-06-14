@@ -2,6 +2,7 @@ import { SOCIAL_PROOF } from '@/lib/marketing/copy'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Badge } from '@/components/ui/badge'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 
 export function SocialProofSection() {
   return (
@@ -40,6 +41,8 @@ export function SocialProofSection() {
               </div>
             </div>
           </div>
+
+          <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-2xl text-center" />
         </div>
       </Container>
     </Section>

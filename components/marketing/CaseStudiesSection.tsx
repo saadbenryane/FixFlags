@@ -1,6 +1,7 @@
 import { CASE_STUDIES } from '@/lib/marketing/copy'
 import { CaseStudyCard } from '@/components/marketing/CaseStudyCard'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 
@@ -10,8 +11,8 @@ export function CaseStudiesSection() {
       <Container className="space-y-12">
         <SectionIntro
           label="Case studies"
-          headline="Real fixes, real outcomes"
-          subhead="Three pages that improved after a QualityOS audit and a re-check."
+          headline="Illustrative fixes, representative outcomes"
+          subhead="Three example pages that improved after applying audit findings and re-checking."
         />
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -19,6 +20,8 @@ export function CaseStudiesSection() {
             <CaseStudyCard key={study.id} study={study} index={i} />
           ))}
         </div>
+
+        <ThirdPartyAuditDisclaimer variant="compact" className="max-w-2xl" />
       </Container>
     </Section>
   )

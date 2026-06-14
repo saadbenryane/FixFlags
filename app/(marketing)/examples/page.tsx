@@ -13,6 +13,7 @@ import { AreaGrid } from '@/components/audit/AreaGrid'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
+import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('examples', '/examples')
@@ -48,6 +49,7 @@ export default function ExamplesPage() {
               Results are context-dependent — every site has unique constraints and tradeoffs. These
               are not endorsements or partnerships.
             </Body>
+            <LighthouseCallout className="text-sm text-muted-foreground max-w-2xl" />
           </div>
 
           <div className="space-y-10">
@@ -115,7 +117,7 @@ export default function ExamplesPage() {
                       <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
                         All areas
                       </p>
-                      <AreaGrid areas={audit.areas} />
+                      <AreaGrid areas={audit.areas} showScoreTypes />
                     </div>
 
                     <div className="rounded-lg border bg-muted/20 p-4 space-y-2">

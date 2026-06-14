@@ -40,6 +40,7 @@ export interface AuditStatusPayload {
   queuePosition?: number
   estimatedWaitSeconds?: number
   scheduledStartAt?: string | null
+  queueReason?: 'rate_limit' | 'backlog'
 }
 
 interface UseAuditPollingOptions {

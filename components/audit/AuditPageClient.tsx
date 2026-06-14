@@ -15,6 +15,13 @@ import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import {
+  getActiveAudit,
+  setActiveAudit,
+  clearActiveAudit,
+  auditHostname,
+  type ActiveAuditSnapshot,
+} from '@/lib/audit/active-audit'
 
 interface Props {
   id: string
@@ -46,13 +53,62 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     action?: string
   } | null>(null)
   const refreshedRef = useRef(false)
-
+  const [initialQueue] = useState<ActiveAuditSnapshot | null>(() => {
+    const snap = getActiveAudit()
+    return snap?.auditId === id ? snap : null
+  })
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
       router.refresh()
     }
   }, [isComplete, router])
+
+  const inProgress = !isComplete && !isFailed
+
+  useEffect(() => {
+    if (isComplete || isFailed) {
+      clearActiveAudit(id)
+      return
+    }
+    if (inProgress && url) {
+      setActiveAudit({
+        auditId: id,
+        url,
+        queuePosition: statusPayload?.queuePosition ?? initialQueue?.queuePosition,
+        estimatedWaitSeconds:
+          statusPayload?.estimatedWaitSeconds ?? initialQueue?.estimatedWaitSeconds,
+        scheduledStartAt: statusPayload?.scheduledStartAt ?? initialQueue?.scheduledStartAt,
+        queueReason: statusPayload?.queueReason ?? initialQueue?.queueReason,
+      })
+    }
+  }, [
+    id,
+    inProgress,
+    isComplete,
+    isFailed,
+    url,
+    statusPayload?.queuePosition,
+    statusPayload?.estimatedWaitSeconds,
+    statusPayload?.scheduledStartAt,
+    statusPayload?.queueReason,
+    initialQueue,
+  ])
+
+  useEffect(() => {
+    if (isComplete || isFailed) {
+      document.title = 'QualityOS'
+      return
+    }
+    if (status === 'QUEUED' && url) {
+      document.title = `Queued — ${auditHostname(url)} · QualityOS`
+    } else if (inProgress && url) {
+      document.title = `Auditing ${auditHostname(url)} · QualityOS`
+    }
+    return () => {
+      document.title = 'QualityOS'
+    }
+  }, [status, url, inProgress, isComplete, isFailed])
 
   const desktopScreenshot = statusPayload?.screenshots?.find((s) => s.device === 'DESKTOP')
   const mobileScreenshot = statusPayload?.screenshots?.find((s) => s.device === 'MOBILE')
@@ -142,8 +198,12 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     )
   }
 
-  const inProgress = !isComplete && !isFailed
   const finishing = isComplete && !isFailed
+
+  const queueEstimatedSeconds =
+    statusPayload?.estimatedWaitSeconds ?? initialQueue?.estimatedWaitSeconds ?? 0
+  const showQueue =
+    status === 'QUEUED' && queueEstimatedSeconds > 0
 
   return (
     <AuditShell session={session}>
@@ -153,11 +213,14 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             <h2 className="text-xl font-semibold text-center md:text-left">
               {AUDIT_PROGRESS.inProgress}
             </h2>
-            {status === 'QUEUED' &&
-              (statusPayload?.estimatedWaitSeconds ?? 0) > 0 && (
+            {showQueue && (
                 <QueuePosition
-                  queuePosition={statusPayload?.queuePosition}
-                  estimatedSeconds={statusPayload?.estimatedWaitSeconds ?? 15}
+                  queuePosition={statusPayload?.queuePosition ?? initialQueue?.queuePosition}
+                  estimatedSeconds={queueEstimatedSeconds}
+                  scheduledStartAt={
+                    statusPayload?.scheduledStartAt ?? initialQueue?.scheduledStartAt
+                  }
+                  queueReason={statusPayload?.queueReason ?? initialQueue?.queueReason}
                 />
               )}
             <AuditProgress

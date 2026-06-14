@@ -19,17 +19,23 @@ export function Footer() {
 
         <div className="flex flex-col gap-4 pt-6 border-t text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>© 2026 {BRAND.name}</span>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {FOOTER_LINKS.map((link) => (
-              <NavLink
-                key={link.href}
-                href={link.href}
-                className="link-underline-grow min-h-[44px] inline-flex items-center px-2 py-2 transition-colors duration-200 hover:text-foreground"
-                activeClassName="text-foreground font-medium"
-                inactiveClassName="text-muted-foreground"
-              >
-                {link.label}
-              </NavLink>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            {FOOTER_LINKS.map((link, index) => (
+              <span key={link.href} className="inline-flex items-center">
+                {index > 0 && (
+                  <span className="mx-1 text-muted-foreground/50 select-none" aria-hidden>
+                    ·
+                  </span>
+                )}
+                <NavLink
+                  href={link.href}
+                  className="link-underline-grow min-h-[44px] inline-flex items-center px-2 py-2 transition-colors duration-200 hover:text-foreground"
+                  activeClassName="text-foreground font-medium"
+                  inactiveClassName="text-muted-foreground"
+                >
+                  {link.label}
+                </NavLink>
+              </span>
             ))}
           </div>
         </div>

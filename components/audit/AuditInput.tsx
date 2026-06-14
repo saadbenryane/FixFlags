@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
+import { setActiveAudit } from '@/lib/audit/active-audit'
 
 export function AuditInput() {
   const router = useRouter()
@@ -67,6 +68,13 @@ export function AuditInput() {
       }
 
       const data = await res.json()
+      setActiveAudit({
+        auditId: data.auditId,
+        url: normalized,
+        queuePosition: data.queuePosition,
+        estimatedWaitSeconds: data.estimatedWaitSeconds,
+        queueReason: data.queueReason,
+      })
       router.push(`/audit/${data.auditId}`)
     } catch {
       toast.error('Something went wrong. Please try again.')
