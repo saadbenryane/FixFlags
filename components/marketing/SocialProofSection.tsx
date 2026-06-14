@@ -35,6 +35,9 @@ export function SocialProofSection() {
                   &ldquo;{SOCIAL_PROOF.testimonial.quote}&rdquo;
                 </p>
                 <div>
+                  <Badge variant="outline" className="mb-2 text-[10px] font-mono uppercase tracking-label">
+                    {SOCIAL_PROOF.testimonial.label}
+                  </Badge>
                   <p className="text-sm font-semibold">{SOCIAL_PROOF.testimonial.author}</p>
                   <p className="text-xs text-muted-foreground">{SOCIAL_PROOF.testimonial.company}</p>
                 </div>

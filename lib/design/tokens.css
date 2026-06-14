@@ -4,6 +4,13 @@
  * Palette: warm paper neutrals (60%), ink structure (30%), ochre accent (10%)
  * Depth: shadow-first — borders reserved for inputs and data tables only
  * Type: Fraunces display + Source Sans 3 body + IBM Plex Mono labels
+ *
+ * Brand grid (marketing + reports):
+ * - Links: text-brand + link-underline-grow
+ * - Cards: Card component, rounded-card, shadow-card, border-0
+ * - CTAs: Button default (pill) hero; outline secondary; size sm in nav
+ * - Copy prompt: PromptCopyButton everywhere
+ * - Sections: Section + SectionIntro; alternate bg-muted/35
  */
 
 :root {

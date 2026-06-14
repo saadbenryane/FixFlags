@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import {
   launchReadinessLabel,
@@ -98,10 +99,7 @@ export function AuditReportHero({
           </div>
         </div>
         <div className="flex-1 min-w-0 space-y-3">
-          <p className="text-xs text-muted-foreground text-pretty">
-            Overall 0–100 from weighted areas. Performance, SEO, Mobile, and Accessibility are
-            objective checks; Conversion, Trust, and Content are experience grades.
-          </p>
+          <ScoringLegend compact />
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="text-xs capitalize">
               {pageType ?? 'Page type unavailable'}

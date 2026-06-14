@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
     )
 
-    const { delayMs, estimatedWaitSeconds, queuePosition } = computeEnqueueDelay(
+    const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } = computeEnqueueDelay(
       rateLimitRetryAfter,
       workerEstimate
     )
@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
         status,
         estimatedWaitSeconds,
         queuePosition,
+        scheduledStartAt,
         queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
         queueReason:
           delayMs > 0 ? ('rate_limit' as const) : workerEstimate.waitingJobs > 0 ? ('backlog' as const) : undefined,

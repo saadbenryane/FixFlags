@@ -46,6 +46,27 @@ export default async function HomePage() {
 
       <HowItWorksSection />
 
+      <Section spacing="default" id="agent-workflow">
+        <Container>
+          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] lg:gap-14">
+            <div className="space-y-6">
+              <SectionIntro
+                align="left"
+                headline={MCP_SECTION.headline}
+                subhead={MCP_SECTION.body}
+              />
+              <Button variant="outline" asChild>
+                <Link href="/docs/mcp">
+                  {MCP_SECTION.cta}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+            <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
+          </div>
+        </Container>
+      </Section>
+
       <CaseStudiesSection />
 
       <WhatsCheckedSection />
@@ -76,27 +97,6 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section spacing="default">
-        <Container>
-          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] lg:gap-14">
-            <div className="space-y-6">
-              <SectionIntro
-                align="left"
-                headline={MCP_SECTION.headline}
-                subhead={MCP_SECTION.body}
-              />
-              <Button variant="outline" asChild>
-                <Link href="/docs/mcp">
-                  {MCP_SECTION.cta}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
-          </div>
-        </Container>
-      </Section>
-
       <Section spacing="default" className="bg-muted/35">
         <Container className="space-y-10">
           <SectionIntro headline={PRICING_TEASER.headline} />
@@ -117,10 +117,18 @@ export default async function HomePage() {
                       Popular
                     </span>
                   ) : null}
-                  <CardContent className="space-y-2 pt-8">
+                  <CardContent className="space-y-4 pt-8">
                     <div className="font-semibold">{plan.name}</div>
                     <div className="font-display text-3xl tabular-nums">{plan.price}</div>
                     <p className="text-sm text-muted-foreground text-pretty">{plan.outcome}</p>
+                    <Button
+                      variant={highlighted ? 'default' : 'outline'}
+                      size="sm"
+                      asChild
+                      className="w-full"
+                    >
+                      <Link href={plan.href}>{plan.cta}</Link>
+                    </Button>
                   </CardContent>
                 </Card>
               )

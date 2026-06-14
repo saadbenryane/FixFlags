@@ -6,6 +6,7 @@ const SPECULATION_PATTERNS = [
   /\bCTR loss\b/i,
   /\bCTR ~\d+/i,
   /\bCTR (improved|increased|dropped)\b/i,
+  /\bclick-through rate\b/i,
   /\b\d+-\d+% (CTR|conversion|drop)/i,
   /\bconvert(s|ion)? \d+-\d+%/i,
   /\b(increased?|improved?|dropped?) \d+%/i,
@@ -13,17 +14,34 @@ const SPECULATION_PATTERNS = [
   /\bLighthouse score ~\d+/i,
   /\bscore ~\d+/i,
   /\bform submissions by \d+%/i,
-  /\bbounce rate dropped \d+%/i,
+  /\bbounce rate (dropped|increased|improved?) \d+%/i,
+  /\b(increases?|reduces?) bounce rate\b/i,
+  /\b\d+% of traffic\b/i,
+  /\bup to \d+%/i,
+  /\b\d+% less engagement\b/i,
+  /\b\d+x more engagement\b/i,
+  /\btime-on-page by \d+%/i,
+  /\bCSS size reduced by \d+%/i,
+  /\bA\/B test\b/i,
+  /\b\+?\d+ pts on re-check\b/i,
 ]
 
-const UNSUPPORTED_FILE_GUESS = /\b(likely|probably|may be in)\b.*\b(_app\.tsx|layout\.tsx)\b/i
+const UNSUPPORTED_FILE_GUESS =
+  /\b(likely|probably|may be in)\b.*\b(_app\.tsx|layout\.tsx)\b/i
+
+const COMPONENT_GUESS =
+  /\bIn the (footer|hero|nav|mobile nav|article|layout|entry script|HTML head|showcase carousel|Vector skin|article header|article template|code block wrapper|article layout|hero section|footer component|hero component) (component|template|stylesheet|navigation|section|CSS|script|wrapper)\b/i
 
 export function containsSpeculation(text: string): boolean {
-  return SPECULATION_PATTERNS.some((pattern) => pattern.test(text))
+  return (
+    SPECULATION_PATTERNS.some((pattern) => pattern.test(text)) ||
+    UNSUPPORTED_FILE_GUESS.test(text) ||
+    COMPONENT_GUESS.test(text)
+  )
 }
 
 export function sanitizePromptText(text: string, fallback: string): string {
-  if (!text || containsSpeculation(text) || UNSUPPORTED_FILE_GUESS.test(text)) {
+  if (!text || containsSpeculation(text)) {
     return fallback
   }
   return text
@@ -50,6 +68,8 @@ export function sanitizeFindingFields<T extends SanitizableFinding>(finding: T):
   const sanitize = (value: string | null | undefined) =>
     value ? sanitizePromptText(value, fallback) : value
 
+  const defaultVerification = `Confirm the issue described in evidence is resolved: ${evidence.slice(0, 120)}`
+
   return {
     ...finding,
     problem: finding.problem
@@ -73,9 +93,33 @@ export function sanitizeFindingFields<T extends SanitizableFinding>(finding: T):
     claudePrompt: sanitize(finding.claudePrompt),
     lovablePrompt: sanitize(finding.lovablePrompt),
     boltPrompt: sanitize(finding.boltPrompt),
-    verificationRule:
-      finding.verificationRule ??
-      `Confirm the issue described in evidence is resolved: ${evidence.slice(0, 120)}`,
+    verificationRule: finding.verificationRule
+      ? sanitizePromptText(finding.verificationRule, defaultVerification)
+      : defaultVerification,
+  }
+}
+
+type SanitizableArea = {
+  areaPrompt?: string
+  cursorPrompt?: string | null
+  claudePrompt?: string | null
+  lovablePrompt?: string | null
+  boltPrompt?: string | null
+  summary: string
+}
+
+function sanitizeAreaPrompts<T extends SanitizableArea>(area: T): T {
+  const fallback = area.summary
+  const sanitize = (value: string | null | undefined) =>
+    value ? sanitizePromptText(value, area.areaPrompt ?? fallback) : value
+
+  return {
+    ...area,
+    areaPrompt: sanitizePromptText(area.areaPrompt ?? fallback, fallback),
+    cursorPrompt: sanitize(area.cursorPrompt),
+    claudePrompt: sanitize(area.claudePrompt),
+    lovablePrompt: sanitize(area.lovablePrompt),
+    boltPrompt: sanitize(area.boltPrompt),
   }
 }
 
@@ -83,7 +127,7 @@ export function sanitizeJudgeOutput<
   T extends {
     newFindings: SanitizableFinding[]
     enrichments: Array<SanitizableFinding & { checkId?: string; whyItMatters: string }>
-    areas: Array<{ areaPrompt?: string; cursorPrompt?: string | null; summary: string }>
+    areas: Array<SanitizableArea>
   },
 >(output: T): T {
   return {
@@ -96,15 +140,18 @@ export function sanitizeJudgeOutput<
         evidence: e.checkId ?? e.whyItMatters,
       })
     ),
-    areas: output.areas.map((area) => {
-      const fallback = area.summary
-      return {
-        ...area,
-        areaPrompt: sanitizePromptText(area.areaPrompt ?? fallback, fallback),
-        cursorPrompt: area.cursorPrompt
-          ? sanitizePromptText(area.cursorPrompt, area.areaPrompt ?? fallback)
-          : area.cursorPrompt,
-      }
-    }),
+    areas: output.areas.map((area) => sanitizeAreaPrompts(area)),
   }
+}
+
+/** Re-sanitize persisted finding fields before API/MCP responses. */
+export function sanitizeFindingForRead<
+  T extends SanitizableFinding & { fix: string; evidence: string },
+>(finding: T): T {
+  return sanitizeFindingFields(finding)
+}
+
+/** Re-sanitize persisted area prompts before API/MCP responses. */
+export function sanitizeAreaForRead<T extends SanitizableArea>(area: T): T {
+  return sanitizeAreaPrompts(area)
 }

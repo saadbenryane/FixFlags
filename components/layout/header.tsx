@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
 import { BRAND } from '@/lib/marketing/copy'
-import { ADMIN_NAV, APP_NAV, MARKETING_NAV } from '@/lib/site/nav'
+import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
 import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
@@ -42,6 +42,8 @@ export function Header({
 
   const navLinks =
     variant === 'app' ? APP_NAV : variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
+
+  const secondaryNavLinks = variant === 'app' ? SECONDARY_MARKETING_NAV : []
 
   const defaultLogoHref =
     variant === 'app' || variant === 'admin' ? '/dashboard' : '/'
@@ -104,6 +106,20 @@ export function Header({
               {link.label}
             </NavLink>
           ))}
+          {secondaryNavLinks.length > 0 && (
+            <span className="mx-1 h-4 w-px bg-border/50" aria-hidden />
+          )}
+          {secondaryNavLinks.map((link) => (
+            <NavLink
+              key={link.href}
+              href={link.href}
+              className={cn(linkClassName, 'text-xs')}
+              activeClassName={linkActiveClassName}
+              inactiveClassName={linkInactiveClassName}
+            >
+              {link.label}
+            </NavLink>
+          ))}
           <ThemeToggle />
           {resolvedRight}
         </div>
@@ -122,6 +138,17 @@ export function Header({
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1">
                 {navLinks.map((link) => (
+                  <NavLink
+                    key={link.href}
+                    href={link.href}
+                    onNavigate={() => setOpen(false)}
+                    className={mobileLinkClassName}
+                    activeClassName={mobileLinkActiveClassName}
+                  >
+                    {link.label}
+                  </NavLink>
+                ))}
+                {secondaryNavLinks.map((link) => (
                   <NavLink
                     key={link.href}
                     href={link.href}

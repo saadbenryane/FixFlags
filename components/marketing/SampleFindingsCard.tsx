@@ -7,7 +7,7 @@ import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { gradeFromScore } from '@/lib/audit/scoring'
-import { cn } from '@/lib/utils'
+import { areaLabel, cn } from '@/lib/utils'
 
 function getTopFixPrompt(
   sample: SampleResult
@@ -46,7 +46,7 @@ export function SampleFindingsCard({
       : gradeFromScore(sample.audit.score)
 
   return (
-    <div className={cn('overflow-hidden rounded-card bg-card shadow-raised', className)}>
+    <div className={cn('overflow-hidden rounded-card bg-card shadow-card', className)}>
       <div className="flex items-start justify-between gap-4 px-5 py-4">
         <div className="min-w-0 space-y-2">
           <SampleStatusBadge
@@ -95,7 +95,7 @@ export function SampleFindingsCard({
           <div key={finding.id} className="flex items-start gap-3 px-5 py-3.5">
             <GradeBadge grade={area.grade} size="sm" className="mt-0.5" />
             <div className="min-w-0 flex-1">
-              <span className="text-xs font-medium">{area.name.toLowerCase()}</span>
+              <span className="text-xs font-medium">{areaLabel(area.name)}</span>
               <p className="text-sm leading-snug text-muted-foreground">{finding.problem}</p>
             </div>
           </div>

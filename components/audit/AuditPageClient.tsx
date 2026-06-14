@@ -202,8 +202,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   const queueEstimatedSeconds =
     statusPayload?.estimatedWaitSeconds ?? initialQueue?.estimatedWaitSeconds ?? 0
-  const showQueue =
-    status === 'QUEUED' && queueEstimatedSeconds > 0
+  const showQueue = status === 'QUEUED'
 
   return (
     <AuditShell session={session}>
@@ -221,6 +220,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
                     statusPayload?.scheduledStartAt ?? initialQueue?.scheduledStartAt
                   }
                   queueReason={statusPayload?.queueReason ?? initialQueue?.queueReason}
+                  isLoggedIn={Boolean(session?.user)}
                 />
               )}
             <AuditProgress

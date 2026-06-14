@@ -46,7 +46,6 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'All fix prompts',
       '1 free re-check',
       '3 audits total',
-      'Save history',
     ],
     highlight: false,
     cta: 'Audit free',
@@ -70,8 +69,6 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Unlimited re-checks + before/after compare',
       'MCP in Cursor or Claude',
       '25 audits per month',
-      'Finding diff (fixed vs regressed)',
-      'Audit history',
     ],
     highlight: true,
     cta: 'Start Pro',
@@ -94,7 +91,6 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Everything in Pro',
       'Public share links',
       'Up to 5 projects',
-      'Before/after compare (signed-in)',
     ],
     highlight: false,
     cta: 'Start Agency',
@@ -149,6 +145,14 @@ export const STRIPE_FOUNDING_PRICE_IDS: Partial<Record<PaidPlan, string>> = Obje
 
 export function hasActiveFoundingOffer(): boolean {
   return Object.keys(STRIPE_FOUNDING_PRICE_IDS).length > 0
+}
+
+export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
+  const def = PLAN_DEFINITIONS.BUILDER
+  if (hasActiveFoundingOffer() && def.founding) {
+    return `${prefix} — ${def.founding.replace('/mo for 3 months', '/mo founding')}`
+  }
+  return `${prefix} — ${def.price}${def.period}`
 }
 
 export function scanLimitForPlan(plan: Plan): number {

@@ -1,6 +1,7 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
+import { Heading } from '@/components/ui/typography'
 import { HOW_IT_WORKS_SECTION } from '@/lib/marketing/copy'
 
 export function HowItWorksSection() {
@@ -22,7 +23,9 @@ export function HowItWorksSection() {
               <span className="font-mono text-xs tabular-nums text-brand/80">
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <p className="font-display text-xl tracking-heading">{step.title}</p>
+              <Heading as="h3" className="text-xl">
+                {step.title}
+              </Heading>
               <p className="max-w-xl text-sm leading-relaxed text-muted-foreground text-pretty">
                 {step.body}
               </p>

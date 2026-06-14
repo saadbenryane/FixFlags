@@ -119,7 +119,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Screen reader users cannot identify the action.',
             fix: 'Add aria-label attribute to each icon-only button.',
             agentPrompt:
-              'In the footer component, find social media icon buttons and add `aria-label="Follow us on {Platform name}"`. Viewport: 1280x900 desktop.',
+              'Find social media icon buttons in `footer` (1280x900 desktop) and add `aria-label="Follow us on {Platform name}"` to each icon-only button. Verify with axe DevTools.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -207,7 +207,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
             fix: 'Test headline: "Ship payment flows in days, not quarters."',
             agentPrompt:
-              'In hero section, update H1 to: "Ship payment flows in days, not quarters." Keep it under 8 words at 1280px viewport. A/B test against current headline to measure conversion impact.',
+              'In `.hero-section`, update H1 to: "Ship payment flows in days, not quarters." Keep under 8 words at 1280px viewport. Verify headline fits on one line at 1280x900.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -260,7 +260,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Security badges on marketing pages reinforce trust before visitors submit forms or sign up.',
             fix: 'Add compliance badge row in footer or near the CTA.',
             agentPrompt:
-              'In footer component, add a row: SOC 2, PCI DSS Level 1, GDPR badges. Use small monochrome text labels (12px, muted). Keep compact — max 24px height, placed above copyright line.',
+              'In `footer`, add a row with SOC 2, PCI DSS Level 1, and GDPR badge labels (12px, muted, max 24px height) above the copyright line. Verify at 1280x900 viewport.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -292,7 +292,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Desktop 1280x900: "Authorization", "settlement", "dispute lifecycle" appear without definitions.',
             whyItMatters:
-              'For startups evaluating Stripe, jargon creates confusion and increases bounce rate.',
+              'Terms like "authorization", "settlement", and "dispute lifecycle" appear without definitions — new visitors may not understand the product.',
             fix: 'Replace jargon with plain alternatives or add parenthetical explanations on first use.',
             agentPrompt:
               'In marketing copy, replace "authorization holds" with "payment holds", "settlement" with "funds transfer to your bank", "dispute lifecycle" with "how disputes work". Target Hemingway Grade 8 readability.',
@@ -327,7 +327,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Mobile viewport 375x812: hero image pushes CTA to 1,200px scroll depth. Button hidden below fold.',
             whyItMatters:
-              '60% of traffic is mobile. Hidden CTA causes visitors to leave.',
+              'At 375x812, the primary CTA starts at ~1,200px scroll depth — it is hidden below the fold on mobile.',
             fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within first 700px of page height.',
             agentPrompt:
               'Add media query for max-width: 375px. Set hero image to 40vh max-height. Stack headline, subhead, and CTA button vertically so CTA appears within first 700px. Use CSS `order` or restructure DOM if needed. Target: CTA selector `.primary-cta` visible at <700px scroll.',
@@ -345,7 +345,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Mobile 375x812: nav bar + announcement banner ~280px total before content starts.',
             whyItMatters:
-              'Less content visible = lower engagement and scroll completion.',
+              'Nav bar + announcement banner consume ~280px before content on a 812px viewport — less content is visible on first paint.',
             fix: 'Collapse announcement banner on mobile. Reduce nav padding. Use hamburger menu if nav links > 3.',
             agentPrompt:
               'At 375px breakpoint, hide secondary nav links behind hamburger toggle. Reduce announcement banner to 32px. Set nav wrapper max-height to 56px total. Selectors: `.announcement-banner`, `.primary-nav`, `.nav-links`.',

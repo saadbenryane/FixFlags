@@ -61,7 +61,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Earlier registration allows faster subsequent page loads and offline support activation.',
             fix: 'Move service worker registration to the document head with `{ type: "module" }`.',
             agentPrompt:
-              'In the layout or entry script, move service worker registration to the `<head>` with `<script type="module">` and check for `navigator.serviceWorker` support. Register immediately without waiting for load event.',
+              'Move service worker registration to `<head>` with `<script type="module">`. Check `navigator.serviceWorker` support and register immediately without waiting for load event. Verify registration within 500ms of page start.',
             verificationRule: 'Service worker registers within 500ms of page start.',
           },
         ],
@@ -87,7 +87,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Screen reader users may not distinguish code samples from surrounding text.',
             fix: 'Add `role="code"` and `aria-label="Code sample"` to code block containers.',
             agentPrompt:
-              'In the code block wrapper component used on article pages, add `role="code"` and `aria-label="Code example: {language}"` attributes to the `<pre>` element.',
+              'On article pages, add `role="code"` and `aria-label="Code example: {language}"` to `<pre>` elements wrapping syntax-highlighted code. Verify with VoiceOver at 1280x900.',
             verificationRule: 'VoiceOver correctly identifies code blocks as "Code example."',
           },
         ],
@@ -113,7 +113,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Article schema enables rich search results with author image, publish date, and headline above the fold.',
             fix: 'Add JSON-LD Article schema to each content page with author, date published, and headline.',
             agentPrompt:
-              'In the article layout component, add JSON-LD `<script type="application/ld+json">` with Article schema. Include `headline`, `datePublished`, `author`, `image` fields using page metadata.',
+              'Add JSON-LD `<script type="application/ld+json">` with Article schema to content pages. Include `headline`, `datePublished`, `author`, and `image` from page metadata. Verify with Google Rich Results Test.',
             verificationRule: 'Google Rich Results Test shows valid Article schema.',
           },
         ],
@@ -139,7 +139,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Engaged readers who finish articles are high-intent — missing CTA is a missed conversion opportunity.',
             fix: 'Add a content-end CTA: "Try the audit →" or "Read the guide →".',
             agentPrompt:
-              'In the article template, add a CTA section after the closing content, before the footer. Use existing button component: `<Button>Try the audit <ArrowRight /></Button>`. Keep it visually distinct from content.',
+              'Add a CTA section after `#article-body` content and before `footer`. Use existing button styling: "Try the audit →". Verify CTA renders within 200px of the last content block at 1280x900.',
             verificationRule: 'CTA renders within 200px of the last content block.',
           },
         ],
@@ -174,10 +174,10 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: Several articles over 2000 words have no in-page navigation beyond the browser scrollbar.',
             whyItMatters:
-              'Table of contents increases time-on-page by 25% for content-heavy pages.',
+              'Long articles without in-page navigation force readers to scroll blindly — a table of contents lets them jump to relevant sections.',
             fix: 'Generate a sticky table of contents from the article heading hierarchy.',
             agentPrompt:
-              'Create a sticky sidebar ToC component that parses h2/h3 elements from the article body. Render it at widths > 900px. Each item scrolls smoothly to its section. Use `IntersectionObserver` to highlight current section.',
+              'Add a sticky sidebar ToC that parses h2/h3 elements from `#article-body`. Render at widths > 900px. Each item scrolls smoothly to its section. Use `IntersectionObserver` to highlight the current section. Verify at 1280x900 desktop viewport.',
             verificationRule: 'ToC renders on article pages > 1500 words at desktop width.',
           },
         ],
@@ -203,7 +203,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Tap targets below 44px fail WCAG 2.5.5 and frustrate users on touch devices.',
             fix: 'Increase nav button tap targets to minimum 44x44px. Add padding or increase button area.',
             agentPrompt:
-              'In the mobile nav stylesheet, set `.nav-toggle, .nav-item a { min-height: 44px; min-width: 44px; display: flex; align-items: center; }`. Apply at max-width: 768px breakpoint.',
+              'Add `min-height: 44px; min-width: 44px; display: flex; align-items: center` to `.nav-toggle` and `.nav-item a` at max-width: 768px. Verify with Chrome DevTools tap target highlight at 375x812 viewport.',
             verificationRule: 'Chrome DevTools tap target highlight shows all buttons >= 44px.',
           },
         ],
@@ -238,10 +238,10 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812 viewport: page-level hero animations drop frames (15fps on Moto G4 simulation).',
             whyItMatters:
-              'Janky animations hurt perceived performance and can increase bounce rate on mobile.',
+              'Janky animations drop to ~15fps on Moto G4 simulation — users perceive the page as slow.',
             fix: 'Use `will-change: transform` on animated elements. Reduce animation complexity at mobile breakpoints.',
             agentPrompt:
-              'In the hero section CSS, add `@media (prefers-reduced-motion: reduce) { .hero-animation { animation: none; } }`. For mobile breakpoints (< 768px), simplify the hero animation to a single fade-in instead of the multi-element parallax.',
+              'Add `@media (prefers-reduced-motion: reduce) { .hero-animation { animation: none; } }`. At max-width: 768px, simplify hero animation to a single fade-in. Verify frame rate stays above 30fps on Moto G4 DevTools emulation.',
             verificationRule: 'Frame rate stays above 30fps on Moto G4 DevTools emulation.',
           },
           {
@@ -280,7 +280,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Keyboard-only users cannot access all content in the carousel.',
             fix: 'Add keyboard event listeners for left/right arrow navigation on the carousel.',
             agentPrompt:
-              'In the showcase carousel component, add `onKeyDown` handler that captures ArrowLeft/ArrowRight and navigates slides. Add `tabIndex={0}` and `role="region"` to the carousel container. Add `aria-roledescription="carousel"` and `aria-label="Framework showcase".',
+              'Add `onKeyDown` handler on `.showcase-carousel` for ArrowLeft/ArrowRight navigation. Set `tabIndex={0}`, `role="region"`, `aria-roledescription="carousel"`, and `aria-label="Framework showcase"`. Verify via Tab + Arrow keys at 1280x900.',
             verificationRule: 'Carousel navigable via Tab + Arrow keys.',
           },
         ],
@@ -303,10 +303,10 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: Every page uses the same Vercel logo og:image. No page-specific preview card.',
             whyItMatters:
-              'Generic og:image reduces click-through rate when shared on social media by up to 40% compared to a page-specific preview.',
+              'Generic og:image means every shared link shows the same preview — page-specific images help recipients recognize the content before clicking.',
             fix: 'Generate per-page og:images with page title and category overlay.',
             agentPrompt:
-              'Create an `/api/og` edge function that generates 1200x630 PNGs with page title, category badge, and brand colors. Use Next.js `ImageResponse` or Satori. For blog posts, include author avatar and publish date. Apply via `metadata.openGraph.images` in each layout.',
+              'Create an `/api/og` edge route using `ImageResponse` or Satori. Generate 1200x630 PNGs with page title, category badge, and brand colors. Apply via `metadata.openGraph.images` per route. Verify each page type returns a unique og:image URL.',
             verificationRule: 'Each page type returns unique og:image with relevant content.',
           },
           {
@@ -342,10 +342,10 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812: hero animation and tagline consume full viewport. "Deploy now" CTA starts at 950px from top.',
             whyItMatters:
-              '60%+ of traffic is mobile. A CTA below the fold means visitors must scroll to take any action.',
+              'On a 375x812 viewport, the CTA starts at 950px from top — visitors must scroll before they can take action.',
             fix: 'Restructure mobile hero so CTA appears within the first 600px. Reduce hero animation height.',
             agentPrompt:
-              'At mobile breakpoint (max-width: 768px), set hero section `min-height: 100dvh` but position CTA at bottom of the hero with `margin-top: auto`. Keep headline visible above fold. Reduce hero graphic height to 30vh. Selector: `.hero-section .cta-button`.',
+              'At max-width: 768px, set `.hero-section` to `min-height: 100dvh` and position `.cta-button` at the bottom with `margin-top: auto`. Reduce hero graphic height to 30vh. Verify CTA is visible without scrolling at 375x812 viewport.',
             verificationRule: 'CTA button visible at < 700px scroll depth on 375x812 viewport.',
           },
           {
@@ -358,8 +358,8 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Outcome-driven headlines help visitors understand the benefit, not just the product category.',
             fix: 'Test headline variation: "Deploy your frontend in seconds, not hours."',
             agentPrompt:
-              'In the hero component, update the H1 to an outcome-driven variant targeting developers: "Deploy your frontend in seconds, not hours." A/B test against current headline using the existing analytics system.',
-            verificationRule: 'New headline tested with at least 1,000 sessions for significance.',
+              'Update the H1 in `.hero-section` to an outcome-driven variant: "Deploy your frontend in seconds, not hours." Verify it fits on one line at 1280x900 viewport.',
+            verificationRule: 'H1 renders on a single line at 1280px viewport width.',
           },
         ],
       },
@@ -384,7 +384,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Social proof near the CTA reassures B2B buyers before they take action.',
             fix: 'Add a compact "Trusted by" bar between the hero and the feature section.',
             agentPrompt:
-              'Add a horizontal logo bar section between the hero and product features. Render customer logos as grayscale SVGs at 60px height. Include alt text for each. Keep it visually subtle — 0.5 opacity, centered, with a small "Trusted by" label above.',
+              'Add a horizontal logo bar between `.hero-section` and the first feature section. Render customer logos as grayscale SVGs at 60px height with alt text. Keep at 0.5 opacity with a "Trusted by" label above. Verify at 1280x900 viewport.',
             verificationRule: 'Logo bar renders below hero, above first feature section.',
           },
         ],
@@ -433,7 +433,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812: top nav + announcement banner = 178px out of 812px total.',
             whyItMatters:
-              'Wasted vertical space pushes content down, reducing engagement.',
+              'Nav + announcement banner consume 178px of 812px viewport height — content starts lower on screen.',
             fix: 'Collapse nav to hamburger menu on mobile. Remove or slim down announcement banner.',
             agentPrompt:
               'At breakpoint max-width: 768px, replace desktop nav with hamburger toggle. Set nav container height to 56px. Slide-out menu overlays content instead of pushing it. Move announcement banner to a dismissible toast or remove entirely.',
@@ -482,13 +482,13 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             severity: 'MEDIUM',
             problem: 'Main CSS bundle includes styles for rarely-used features',
             evidence:
-              'Desktop 1280x900: Core stylesheet (160KB) contains styles for legacy skins, experimental features, and print layouts — ~40% unused on a standard article page.',
+              'Desktop 1280x900: Core stylesheet (160KB) includes styles for legacy skins and print layouts not used on standard article pages.',
             whyItMatters:
-              'Extra CSS increases parse time and blocks rendering, especially on slower connections.',
+              'Extra CSS increases parse time and blocks rendering on slower connections.',
             fix: 'Split the stylesheet: critical rendering path CSS inlined, deferred CSS loaded asynchronously.',
             agentPrompt:
-              'Extract critical above-the-fold CSS for the article view and inline it in the document `<head>`. Load remaining stylesheet with `media="print" onload="this.media=\'all\'"` pattern. Remove unused rules for legacy skins.',
-            verificationRule: 'Lighthouse render-blocking resources audit passes. CSS size reduced by 40%.',
+              'Inline critical above-the-fold CSS for `#mw-content-text` in `<head>`. Load remaining stylesheet with `media="print" onload="this.media=\'all\'"`. Remove unused legacy skin rules. Verify with Lighthouse render-blocking audit at 1280x900.',
+            verificationRule: 'Lighthouse render-blocking resources audit passes for the article page.',
           },
           {
             id: 'ex-wiki-perf-2',
@@ -526,7 +526,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Dark mode reduces eye strain for night-time reading and saves battery on OLED screens.',
             fix: 'Implement prefers-color-scheme dark mode variant. Add manual toggle as fallback.',
             agentPrompt:
-              'Add `@media (prefers-color-scheme: dark)` overrides in the main stylesheet. Invert page background to `#1a1a1a`, text to `#e0e0e0`, links to `#8ab4f8`. Add a theme toggle in the sidebar that lets users override the OS preference.',
+              'Add `@media (prefers-color-scheme: dark)` overrides to the main CSS bundle. Invert `#mw-content-text` background to `#1a1a1a`, text to `#e0e0e0`, links to `#8ab4f8`. Add `#theme-toggle` in `#p-navigation` to override OS preference. Verify at 1280x900.',
             verificationRule: 'Dark mode triggers correctly via OS setting and manual toggle.',
           },
         ],
@@ -549,7 +549,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: HTML head has no og:image meta. When shared on social media, links render as text-only cards.',
             whyItMatters:
-              'Links without preview images receive 65% less engagement on social platforms.',
+              'HTML head has no og:image — shared links render as text-only cards on Slack, Twitter, and WhatsApp.',
             fix: 'Generate og:image dynamically showing the article title, topic category (via tags), and Wikipedia wordmark.',
             agentPrompt:
               'Create an edge function at `/api/og` that accepts page title and first category tag. Returns 1200x630 PNG with Wikipedia wordmark, article title in readable font, and category badge. Apply via the page `metadata.openGraph` export in the skin templates.',
@@ -562,10 +562,10 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'HTML head has `twitter:card` set to `summary` (small thumbnail) rather than `summary_large_image`.',
             whyItMatters:
-              'Summary large image cards get 2x more engagement on Twitter than small image cards.',
+              'Small thumbnail cards show less preview content than large image cards on Twitter/X.',
             fix: 'Change `twitter:card` to `summary_large_image` and provide a high-resolution og:image.',
             agentPrompt:
-              'In the HTML head template, change `<meta name="twitter:card" content="summary">` to `<meta name="twitter:card" content="summary_large_image">`. Ensure `og:image` is >= 1200x600px for large card rendering.',
+              'Change `<meta name="twitter:card" content="summary">` to `summary_large_image` in the HTML head. Ensure `og:image` is at least 1200x600px. Verify with Twitter Card Validator.',
             verificationRule: 'Twitter Card validator shows "Summary with large image" card type.',
           },
         ],
@@ -579,7 +579,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         summary:
           'Wikipedia is donation-funded but the CTA experience has issues: fundraiser banners are disruptive, and there is no persistent low-friction donation option.',
         areaPrompt:
-          'The fundraising banner should appear less intrusive. Add a small persistent "Support Wikipedia" link in the sidebar that stays across sessions.',
+          'Reduce fundraising banner height on mobile. Add a persistent "Support Wikipedia" link in `#p-navigation` that stays across sessions.',
         findings: [
           {
             id: 'ex-wiki-conv-1',
@@ -604,7 +604,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'A low-friction recurring donation option could increase funding from regular readers.',
             fix: 'Add a "Support Wikipedia" link in the left sidebar with a small heart icon.',
             agentPrompt:
-              'In the Vector skin sidebar navigation, add a "Donate" link item placed in a visually distinct section. Use a small heart SVG as icon. Link: `https://donate.wikimedia.org`. The link should be visible at all times, not just during fundraising campaigns.',
+              'Add a "Donate" link with heart icon in `#p-navigation` sidebar. Link to `https://donate.wikimedia.org`. Verify link is visible at 1280x900 regardless of campaign period.',
             verificationRule: '"Donate" link visible in sidebar regardless of campaign period.',
           },
         ],
@@ -642,7 +642,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Reading time estimates help users decide whether to read now or save for later.',
             fix: 'Add an estimated reading time badge below the article title, calculated from word count.',
             agentPrompt:
-              'In the article header template, compute reading time from article text word count (assuming 200 words/min). Display as: "12 min read" badge next to the title. Use the existing badge component styling.',
+              'In `#article-header`, compute reading time from word count (200 words/min). Display as "12 min read" badge next to the title. Verify on articles over 1000 words at 1280x900.',
             verificationRule: 'Reading time shows on articles over 1000 words.',
           },
         ],
@@ -668,7 +668,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Inaccessible table data means mobile readers miss key information and context.',
             fix: 'Add `overflow-x: auto` to table containers and reduce font size in tables at mobile widths.',
             agentPrompt:
-              'In the Vector mobile stylesheet, wrap all content tables in a `div.table-wrapper` with `overflow-x: auto; -webkit-overflow-scrolling: touch`. Set table font size to 13px on mobile. Add `white-space: nowrap` only where needed.',
+              'Wrap content tables in `div.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch }`. Set table font-size to 13px at max-width: 375px. Verify horizontal scroll at 375x812 viewport.',
             verificationRule: 'All tables horizontally scrollable at 375px viewport width.',
           },
           {

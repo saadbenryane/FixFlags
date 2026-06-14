@@ -73,6 +73,7 @@ export function AuditInput() {
         url: normalized,
         queuePosition: data.queuePosition,
         estimatedWaitSeconds: data.estimatedWaitSeconds,
+        scheduledStartAt: data.scheduledStartAt,
         queueReason: data.queueReason,
       })
       router.push(`/audit/${data.auditId}`)

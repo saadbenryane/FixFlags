@@ -13,6 +13,10 @@ import { hashApiKey } from '@/lib/security/api-keys'
 import { recordRateLimit } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
+import {
+  sanitizeAreaForRead,
+  sanitizeFindingForRead,
+} from '@/lib/audit/sanitize-prompts'
 
 async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
@@ -199,12 +203,17 @@ export function registerAllTools(server: McpServer, user: User) {
       })
       if (!auditArea) throw new Error(`Area ${area} not found for audit ${auditId}`)
 
+      const safeArea = sanitizeAreaForRead(auditArea)
+      const safeFindings = auditArea.findings.map((f) =>
+        sanitizeFindingForRead({ ...f, fix: f.fix, evidence: f.evidence })
+      )
+
       const promptMap: Record<string, string | null | undefined> = {
-        generic: auditArea.areaPrompt,
-        cursor: auditArea.cursorPrompt,
-        claude: auditArea.claudePrompt,
-        lovable: auditArea.lovablePrompt,
-        bolt: auditArea.boltPrompt,
+        generic: safeArea.areaPrompt,
+        cursor: safeArea.cursorPrompt,
+        claude: safeArea.claudePrompt,
+        lovable: safeArea.lovablePrompt,
+        bolt: safeArea.boltPrompt,
       }
 
       return {
@@ -212,13 +221,13 @@ export function registerAllTools(server: McpServer, user: User) {
           {
             type: 'text' as const,
             text: JSON.stringify({
-              area: auditArea.name,
-              grade: auditArea.grade,
-              score: auditArea.score,
-              status: auditArea.status,
-              summary: auditArea.summary,
-              prompt: promptMap[tool] ?? auditArea.areaPrompt,
-              findings: auditArea.findings.map((f) => ({
+              area: safeArea.name,
+              grade: safeArea.grade,
+              score: safeArea.score,
+              status: safeArea.status,
+              summary: safeArea.summary,
+              prompt: promptMap[tool] ?? safeArea.areaPrompt,
+              findings: safeFindings.map((f) => ({
                 id: f.id,
                 severity: f.severity,
                 problem: f.problem,
@@ -247,12 +256,18 @@ export function registerAllTools(server: McpServer, user: User) {
         throw new Error('Unauthorized')
       }
 
+      const safeFinding = sanitizeFindingForRead({
+        ...finding,
+        fix: finding.fix,
+        evidence: finding.evidence,
+      })
+
       const promptMap: Record<string, string | null | undefined> = {
-        generic: finding.agentPrompt,
-        cursor: finding.cursorPrompt,
-        claude: finding.claudePrompt,
-        lovable: finding.lovablePrompt,
-        bolt: finding.boltPrompt,
+        generic: safeFinding.agentPrompt,
+        cursor: safeFinding.cursorPrompt,
+        claude: safeFinding.claudePrompt,
+        lovable: safeFinding.lovablePrompt,
+        bolt: safeFinding.boltPrompt,
       }
 
       return {
@@ -260,14 +275,14 @@ export function registerAllTools(server: McpServer, user: User) {
           {
             type: 'text' as const,
             text: JSON.stringify({
-              id: finding.id,
-              severity: finding.severity,
-              problem: finding.problem,
-              evidence: finding.evidence,
-              whyItMatters: finding.whyItMatters,
-              fix: finding.fix,
-              prompt: promptMap[tool] ?? finding.agentPrompt ?? finding.fix,
-              verificationRule: finding.verificationRule,
+              id: safeFinding.id,
+              severity: safeFinding.severity,
+              problem: safeFinding.problem,
+              evidence: safeFinding.evidence,
+              whyItMatters: safeFinding.whyItMatters,
+              fix: safeFinding.fix,
+              prompt: promptMap[tool] ?? safeFinding.agentPrompt ?? safeFinding.fix,
+              verificationRule: safeFinding.verificationRule,
             }),
           },
         ],

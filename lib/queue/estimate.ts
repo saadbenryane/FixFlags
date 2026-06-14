@@ -89,13 +89,15 @@ export async function getAuditQueueInfo(auditId: string): Promise<AuditQueueInfo
 export function computeEnqueueDelay(
   rateLimitRetryAfterSeconds: number,
   workerEstimate: QueueEstimate
-): { delayMs: number; estimatedWaitSeconds: number; queuePosition: number } {
+): { delayMs: number; estimatedWaitSeconds: number; queuePosition: number; scheduledStartAt: string | null } {
   const workerWait = workerEstimate.estimatedWaitSeconds
   const rateWait = rateLimitRetryAfterSeconds
   const estimatedWaitSeconds = Math.max(rateWait, workerWait)
   const delayMs = rateWait > 0 ? rateWait * 1000 : 0
   const queuePosition =
     workerEstimate.waitingJobs + workerEstimate.delayedJobs + workerEstimate.activeJobs + 1
+  const scheduledStartAt =
+    delayMs > 0 ? new Date(Date.now() + delayMs).toISOString() : null
 
-  return { delayMs, estimatedWaitSeconds, queuePosition }
+  return { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt }
 }

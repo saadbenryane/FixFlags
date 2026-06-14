@@ -6,6 +6,7 @@ import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { PROOF_SECTION } from '@/lib/marketing/copy'
 import type { SampleResult } from '@/lib/marketing/live-sample'
@@ -27,6 +28,7 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
           headline={PROOF_SECTION.headline}
           subhead={PROOF_SECTION.subhead}
         />
+        <ScoringLegend compact className="max-w-2xl mx-auto text-center" />
 
         <div className="overflow-hidden rounded-card bg-card shadow-card">
           <div className="grid lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]">

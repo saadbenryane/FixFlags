@@ -32,7 +32,7 @@ export async function parseApiErrorResponse(res: Response): Promise<ParsedApiErr
     const retryAfter = res.headers.get('Retry-After')
     const seconds = retryAfter ? parseInt(retryAfter, 10) : 60
     const wait = Number.isFinite(seconds) && seconds > 0 ? seconds : 60
-    message = `Too many requests. Please wait ${wait < 60 ? `${wait} seconds` : `about ${Math.ceil(wait / 60)} minute${wait >= 120 ? 's' : ''}`} before trying again.`
+    message = `Your request is queued. Estimated wait: ${wait < 60 ? `${wait} seconds` : `about ${Math.ceil(wait / 60)} minute${wait >= 120 ? 's' : ''}`}. You can browse examples while you wait.`
   }
 
   return { message, code: res.status === 429 ? 'RATE_LIMITED' : undefined, action: res.status === 429 ? 'retry' : undefined }

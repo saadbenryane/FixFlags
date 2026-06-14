@@ -101,7 +101,8 @@ export default function ExamplesPage() {
                         {topIssues.map((item) => (
                           <li
                             key={item.finding.id}
-                            className="flex items-start gap-2 text-sm"
+                            id={item.finding.id}
+                            className="flex items-start gap-2 text-sm scroll-mt-24"
                           >
                             <span className="shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full bg-brand" />
                             <span className="text-foreground/90">{item.finding.problem}</span>

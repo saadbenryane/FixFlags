@@ -43,8 +43,9 @@ export function canUseFreeRecheck(
 }
 
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
-  void user
-  return true
+  if (!shouldEnforcePlanGates()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  return user.plan === 'TEAM' || user.plan === 'STUDIO'
 }
 
 export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {

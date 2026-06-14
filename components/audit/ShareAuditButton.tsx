@@ -45,7 +45,14 @@ export function ShareAuditButton({
       if (isLoggedIn && isOwner && !isAnonymous && !isPublic) {
         const res = await fetch(`/api/audits/${auditId}/toggle-public`, { method: 'PATCH' })
         if (!res.ok) {
-          toast.error('Could not make report public')
+          const parsed = await res.json().catch(() => null)
+          if (res.status === 402) {
+            toast.error('Agency plan required', {
+              description: 'Public share links are included on Agency and above.',
+            })
+          } else {
+            toast.error(parsed?.message ?? 'Could not make report public')
+          }
           return
         }
         const data = await res.json()

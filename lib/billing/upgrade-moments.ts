@@ -1,4 +1,5 @@
 import { UPGRADE_MOMENTS } from '@/lib/marketing/copy'
+import { proUpgradeCta } from '@/lib/billing/plans'
 
 export type UpgradeMoment =
   | 'audit_limit_reached'
@@ -17,6 +18,15 @@ export interface UpgradeMomentContent {
   signUpHref?: string
 }
 
+function proMoment(
+  base: Omit<UpgradeMomentContent, 'cta'> & { ctaPrefix?: string }
+): UpgradeMomentContent {
+  return {
+    ...base,
+    cta: proUpgradeCta(base.ctaPrefix ?? 'Upgrade to Pro'),
+  }
+}
+
 export function getUpgradeMomentContent(
   moment: UpgradeMoment,
   options?: {
@@ -27,25 +37,25 @@ export function getUpgradeMomentContent(
 
   switch (moment) {
     case 'audit_limit_reached':
-      return { ...UPGRADE_MOMENTS.audit_limit_reached }
+      return proMoment(UPGRADE_MOMENTS.audit_limit_reached)
     case 'trial_recheck_available':
       return { ...UPGRADE_MOMENTS.trial_recheck_available }
     case 'compare_improved':
-      return {
+      return proMoment({
         headline: UPGRADE_MOMENTS.compare_improved.headline(scoreDelta),
         body: UPGRADE_MOMENTS.compare_improved.body,
-        cta: UPGRADE_MOMENTS.compare_improved.cta,
         plan: UPGRADE_MOMENTS.compare_improved.plan,
-      }
+        ctaPrefix: 'Start Pro',
+      })
     case 'compare_flat':
-      return { ...UPGRADE_MOMENTS.compare_flat }
+      return proMoment(UPGRADE_MOMENTS.compare_flat)
     case 'trial_exhausted':
-      return { ...UPGRADE_MOMENTS.trial_exhausted }
+      return proMoment(UPGRADE_MOMENTS.trial_exhausted)
     case 'report_completed':
-      return { ...UPGRADE_MOMENTS.report_completed }
+      return proMoment(UPGRADE_MOMENTS.report_completed)
     case 'free_default':
     default:
-      return { ...UPGRADE_MOMENTS.free_default }
+      return proMoment(UPGRADE_MOMENTS.free_default)
   }
 }
 

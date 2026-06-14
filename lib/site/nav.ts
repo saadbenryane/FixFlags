@@ -6,6 +6,13 @@ export const MARKETING_LINKS = [
   { href: '/faq', label: 'FAQ' },
 ] as const
 
+/** Compact marketing links shown alongside app nav on audit/dashboard pages. */
+export const SECONDARY_MARKETING_NAV = [
+  { href: '/examples', label: 'Examples' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/docs/mcp', label: 'MCP' },
+] as const
+
 export const MARKETING_NAV = MARKETING_LINKS
 
 export const APP_NAV = [

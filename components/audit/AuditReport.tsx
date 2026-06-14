@@ -15,7 +15,7 @@ import { CompletenessHeader } from '@/components/audit/CompletenessHeader'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
-import { AuditInput } from '@/components/audit/AuditInput'
+import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
 
 interface Finding {
   id: string
@@ -109,6 +109,13 @@ export function AuditReport({
   const showFeedback = !isSample
   const signUpHref = auditId ? `/sign-up?next=/audit/${auditId}` : '/sign-up'
   const worstArea = worstAreaName(audit.areas)
+  const hostname = (() => {
+    try {
+      return new URL(audit.url).hostname
+    } catch {
+      return audit.url
+    }
+  })()
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -137,13 +144,7 @@ export function AuditReport({
       />
 
       {!isSample && !isViewerOwner && (
-        <div className="rounded-lg border bg-brand/5 p-4 space-y-3">
-          <p className="text-sm font-medium">Want your own audit?</p>
-          <p className="text-xs text-muted-foreground">
-            Paste your URL and get a full report with fix prompts in under 60 seconds.
-          </p>
-          <AuditInput />
-        </div>
+        <SharedReportBanner hostname={hostname} score={audit.score} />
       )}
 
       <CompletenessHeader

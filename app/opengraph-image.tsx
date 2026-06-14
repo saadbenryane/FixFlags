@@ -124,7 +124,7 @@ export default function Image() {
               border: '1px solid rgba(34, 197, 94, 0.2)',
             }}
           >
-            +14 pts on re-check
+            7 areas · fix prompts
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ export const HERO = {
   headlineAccent: true,
   subhead:
     'AI reviews desktop and mobile screenshots across 7 areas. Every issue includes a copy-ready fix prompt your agent can run.',
-  trustLine: 'Free · No account · Under 60 seconds',
+  trustLine: 'Free · No account · Usually under 90 seconds',
   primaryCta: 'Run audit',
   secondaryCta: 'See sample report',
 } as const
@@ -39,13 +39,6 @@ export const HERO_FIX_PROMPT = {
   finding: 'Mobile CTA below fold at 375px',
   prompt:
     'Move the primary CTA above the fold on 375px viewport. Current CTA starts at 1,200px from top. Hero should fit in first viewport with CTA visible without scrolling.',
-} as const
-
-export const RECHECK_IMPROVEMENT = {
-  label: 'Re-check',
-  delta: '+14',
-  unit: 'pts',
-  full: '+14 pts on re-check',
 } as const
 
 export const HOW_IT_WORKS_SECTION = {
@@ -66,7 +59,7 @@ export const HOW_IT_WORKS_SECTION = {
     {
       step: 3,
       title: 'Copy fix prompts',
-      body: `Paste into ${AI_TOOLS}. Re-check to compare before and after.`,
+      body: `Paste into ${AI_TOOLS}, or connect MCP to audit, fix, and re-check with before/after compare.`,
     },
   ],
 } as const
@@ -144,6 +137,7 @@ export const SOCIAL_PROOF = {
   toolingLine: 'Cursor · Claude Code · Lovable · Bolt',
   tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
   testimonial: {
+    label: 'Example feedback',
     quote: 'Fixed our og:image after the first audit. Link previews in Slack now show our branding instead of blank cards.',
     author: 'Founder',
     company: 'B2B SaaS, 3-person team',
@@ -155,57 +149,62 @@ export const CASE_STUDIES = [
     id: 'og-image',
     company: 'SaaS landing page',
     title: 'Illustrative: Fixed og:image',
-    issue: 'Product pages had no og:image tag. Link previews showed blank cards on Slack, Twitter, and WhatsApp.',
-    fix: 'Added og:image tag with a 1200x630 brand card to every page template.',
-    outcome: 'Link previews appeared with branding on Slack, Twitter, and WhatsApp. SEO area score moved from 65 to 92.',
+    issue: 'Every page used the same generic og:image. Link previews looked identical when shared.',
+    fix: 'Added per-page og:image via `/api/og` with title and category overlay.',
+    outcome: 'Each page type returns a unique preview card. Illustrative SEO area improvement after fix.',
     area: 'SEO',
-    scoreBefore: 65,
-    scoreAfter: 92,
-      link: '/examples#example-webdev',
-    },
-    {
-      id: 'mobile-cta',
-      company: 'E-commerce storefront',
-      title: 'Illustrative: Moved CTA up on mobile',
-      issue: 'Primary CTA button started 1,400px below top of page on 375px viewport. Mobile visitors had to scroll past hero image and nav to find the buy button.',
-      fix: 'Restructured mobile layout so the hero section with CTA fits in the first viewport.',
-      outcome: 'CTA visible without scrolling at 375px viewport. Mobile area score moved from 41 to 78.',
-      area: 'Mobile',
-      scoreBefore: 41,
-      scoreAfter: 78,
-      link: '/examples#example-vercel',
-    },
-    {
-      id: 'hero-clarity',
-      company: 'DevTools homepage',
-      title: 'Illustrative: Rewrote hero copy',
-      issue: 'Hero headline was vague: "The best way to build APIs." No specific outcome, audience, or differentiation.',
-      fix: 'Rewrote headline to name the audience and the outcome: "Ship REST APIs in minutes, not sprints."',
-      outcome: 'Headline names audience and outcome explicitly. Content area score moved from 44 to 82.',
-      area: 'Content',
-      scoreBefore: 44,
-      scoreAfter: 82,
-      link: '/examples#example-wikipedia',
-    },
+    scoreBefore: 64,
+    scoreAfter: 78,
+    link: '/examples#example-vercel',
+    proofLink: '/examples#ex-vercel-seo-1',
+    proofType: 'Sample audit' as const,
+  },
+  {
+    id: 'mobile-cta',
+    company: 'E-commerce storefront',
+    title: 'Illustrative: Moved CTA up on mobile',
+    issue: 'Primary CTA started at 950px on a 375x812 viewport — hidden below the fold.',
+    fix: 'Restructured mobile hero so CTA appears within the first viewport.',
+    outcome: 'CTA visible without scrolling at 375px. Illustrative Mobile area improvement after fix.',
+    area: 'Mobile',
+    scoreBefore: 58,
+    scoreAfter: 78,
+    link: '/examples#example-vercel',
+    proofLink: '/examples#ex-vercel-mobile-1',
+    proofType: 'Sample audit' as const,
+  },
+  {
+    id: 'hero-clarity',
+    company: 'DevTools homepage',
+    title: 'Illustrative: Rewrote hero copy',
+    issue: 'Headline described actions, not outcome: "Develop. Preview. Ship."',
+    fix: 'Rewrote to outcome-driven headline naming audience and benefit.',
+    outcome: 'Headline names audience and outcome explicitly. Illustrative Content area improvement after fix.',
+    area: 'Content',
+    scoreBefore: 44,
+    scoreAfter: 82,
+    link: '/examples#example-vercel',
+    proofLink: '/examples#ex-vercel-conv-2',
+    proofType: 'Sample audit' as const,
+  },
 ] as const
 
 export const PROOF_SECTION = {
   label: 'Sample report',
-  headline: 'Even 91/100 sites have gaps',
+  headline: 'Even high-scoring sites have gaps',
   subhead: 'See what automated scores miss on a site everyone trusts.',
   cta: 'Audit your site',
   sample: {
     name: 'Stripe',
     domain: 'stripe.com',
-    score: 91,
-    finding: '3 third-party scripts add ~80ms render delay',
+    finding: '3 third-party scripts add measurable render delay on desktop',
     areasFlagged: 4,
   },
 } as const
 
 export const WHATS_CHECKED_SECTION = {
   label: 'Rubric',
-  headline: 'Seven areas. Graded A–F with evidence.',
+  headline: 'Two score formats, one rubric',
   subhead: 'Each area includes score, what we check, and a fix prompt your agent can run.',
 } as const
 
@@ -250,6 +249,8 @@ export const PRICING_TEASER = {
       name: p.name,
       outcome: p.outcome,
       price: `${p.price}${p.period}`,
+      cta: p.cta,
+      href: p.href,
     })),
   cta: 'See full pricing',
 } as const
