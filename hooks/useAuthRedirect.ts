@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
 const PAID_PLANS = ['BUILDER', 'TEAM', 'STUDIO'] as const
 
@@ -50,6 +51,16 @@ export function useAuthRedirect() {
           return
         }
       }
+      const parsed = checkoutRes.ok
+        ? null
+        : await checkoutRes.json().catch(() => ({ error: 'Checkout failed' }))
+      toast.error('Could not start checkout', {
+        description: parsed?.error ?? 'Complete payment from the pricing page.',
+        action: {
+          label: 'View pricing',
+          onClick: () => router.push(`/pricing?plan=${plan}`),
+        },
+      })
       router.push('/pricing')
       return
     }

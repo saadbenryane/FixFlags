@@ -3,9 +3,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, Share2, ArrowLeftRight } from 'lucide-react'
+import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { ShareAuditButton } from '@/components/audit/ShareAuditButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
@@ -14,27 +15,32 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
   auditId: string
+  score: number | null
+  topIssue?: string
   isPaid: boolean
   isLoggedIn: boolean
+  isOwner: boolean
+  isAnonymous: boolean
   isPublic: boolean
-  hasParent: boolean
   compareAuditId?: string | null
   plan?: Plan
   projectId?: string | null
   canUseFreeRecheck?: boolean
-  canSharePublicly?: boolean
 }
 
 export function AuditPageActions({
   auditId,
+  score,
+  topIssue,
   isPaid,
   isLoggedIn,
+  isOwner,
+  isAnonymous,
   isPublic: initialIsPublic,
   compareAuditId,
   plan = 'FREE',
   projectId,
   canUseFreeRecheck = false,
-  canSharePublicly = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -42,38 +48,6 @@ export function AuditPageActions({
 
   const showRecheck = isPaid || canUseFreeRecheck
   const recheckLabel = canUseFreeRecheck && !isPaid ? 'Re-check free (1x)' : 'Re-check'
-
-  async function handleShare() {
-    try {
-      const res = await fetch(`/api/audits/${auditId}/toggle-public`, { method: 'PATCH' })
-      if (res.ok) {
-        const data = await res.json()
-        setIsPublic(data.isPublic)
-        if (data.isPublic) {
-          await navigator.clipboard.writeText(window.location.href)
-          toast.success('Report is now public. URL copied to clipboard.')
-        } else {
-          toast.success('Report is now private.')
-        }
-      } else {
-        const error = await parseApiErrorResponse(res)
-        if (res.status !== 402 || error.code !== 'UPGRADE_REQUIRED') {
-          toast.error(error.message)
-          return
-        }
-        const content = getUpgradeMomentContent('share_blocked')
-        toast.error(content.headline, {
-          description: content.body,
-          action: {
-            label: 'View Agency plan',
-            onClick: () => router.push('/pricing'),
-          },
-        })
-      }
-    } catch {
-      toast.error('Failed to update sharing')
-    }
-  }
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -120,21 +94,16 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      {isLoggedIn && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShare}
-          title={
-            !canSharePublicly && !isPublic
-              ? 'Upgrade to Agency to share client report links'
-              : undefined
-          }
-        >
-          <Share2 className="h-4 w-4 mr-2" />
-          {isPublic ? 'Make private' : 'Share'}
-        </Button>
-      )}
+      <ShareAuditButton
+        auditId={auditId}
+        score={score}
+        topIssue={topIssue}
+        isLoggedIn={isLoggedIn}
+        isOwner={isOwner}
+        isPublic={isPublic}
+        isAnonymous={isAnonymous}
+        onPublicChange={setIsPublic}
+      />
       {showRecheck && (
         <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />

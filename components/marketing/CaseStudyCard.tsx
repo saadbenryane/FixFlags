@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { GradeBadge } from '@/components/audit/GradeBadge'
+import { gradeFromScore } from '@/lib/audit/scoring'
 
 interface CaseStudy {
   id: string
@@ -60,7 +62,8 @@ export function CaseStudyCard({ study, index }: { study: CaseStudy; index: numbe
         </div>
       </div>
 
-      <div className="border-t border-border/15 px-5 py-3 sm:px-6">
+      <div className="border-t border-border/15 px-5 py-3 sm:px-6 space-y-2">
+        <ThirdPartyAuditDisclaimer variant="compact" />
         <Link
           href={study.link}
           className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-label text-brand transition-colors hover:text-brand/80"
@@ -71,12 +74,4 @@ export function CaseStudyCard({ study, index }: { study: CaseStudy; index: numbe
       </div>
     </div>
   )
-}
-
-function gradeFromScore(score: number): string {
-  if (score >= 90) return 'A'
-  if (score >= 80) return 'B'
-  if (score >= 70) return 'C'
-  if (score >= 60) return 'D'
-  return 'F'
 }

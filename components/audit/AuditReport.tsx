@@ -15,7 +15,7 @@ import { CompletenessHeader } from '@/components/audit/CompletenessHeader'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
-import { ShareReportButton } from '@/components/audit/ShareReportButton'
+import { AuditInput } from '@/components/audit/AuditInput'
 
 interface Finding {
   id: string
@@ -72,6 +72,7 @@ interface AuditReportProps {
   viewerIsPaid: boolean
   viewerPlan?: string
   isLoggedIn: boolean
+  isViewerOwner?: boolean
   variant?: 'default' | 'sample'
   showRecheckHint?: boolean
   canUseFreeRecheck?: boolean
@@ -95,6 +96,7 @@ export function AuditReport({
   viewerIsPaid,
   viewerPlan = 'FREE',
   isLoggedIn,
+  isViewerOwner = true,
   variant = 'default',
   showRecheckHint = false,
   canUseFreeRecheck = false,
@@ -134,13 +136,15 @@ export function AuditReport({
         mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
       />
 
-      <div className="flex justify-end">
-        <ShareReportButton
-          url={isSample ? 'https://qualityos.com/samples' : (auditId ? `https://qualityos.com/audit/${auditId}` : 'https://qualityos.com')}
-          score={audit.score}
-          topIssue={worstArea ? `${worstArea} needs attention` : undefined}
-        />
-      </div>
+      {!isSample && !isViewerOwner && (
+        <div className="rounded-lg border bg-brand/5 p-4 space-y-3">
+          <p className="text-sm font-medium">Want your own audit?</p>
+          <p className="text-xs text-muted-foreground">
+            Paste your URL and get a full report with fix prompts in under 60 seconds.
+          </p>
+          <AuditInput />
+        </div>
+      )}
 
       <CompletenessHeader
         hasScreenshots={(audit.screenshots?.length ?? 0) > 0}

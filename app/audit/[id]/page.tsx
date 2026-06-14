@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
@@ -12,9 +13,93 @@ import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { canAccessAudit } from '@/lib/audit/access'
+import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 
 interface Props {
   params: Promise<{ id: string }>
+}
+
+function topIssueFromAudit(audit: {
+  areas?: Array<{ findings?: Array<{ severity: string; problem: string }> }>
+}): string | undefined {
+  for (const area of audit.areas ?? []) {
+    const finding = area.findings?.find(
+      (f) => f.severity === 'HIGH' || f.severity === 'CRITICAL'
+    )
+    if (finding) return finding.problem
+  }
+  return undefined
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params
+  const session = await resolveSessionUser()
+
+  const audit = await prisma.audit.findUnique({
+    where: { id },
+    select: {
+      url: true,
+      score: true,
+      verdict: true,
+      status: true,
+      userId: true,
+      isPublic: true,
+      areas: {
+        select: {
+          findings: {
+            select: { severity: true, problem: true },
+            orderBy: { position: 'asc' },
+            take: 5,
+          },
+        },
+      },
+    },
+  })
+
+  if (!audit || audit.status !== 'COMPLETED') {
+    return { title: 'Audit report' }
+  }
+
+  if (!canAccessAudit(audit, session?.user) && !audit.isPublic && audit.userId) {
+    return { title: 'Audit report' }
+  }
+
+  const hostname = (() => {
+    try {
+      return new URL(audit.url).hostname
+    } catch {
+      return audit.url
+    }
+  })()
+
+  const topIssue = topIssueFromAudit(audit)
+  const title = audit.score != null
+    ? `${hostname} — ${audit.score}/100 · ${BRAND.name}`
+    : `${hostname} audit · ${BRAND.name}`
+  const description =
+    topIssue ??
+    audit.verdict?.slice(0, 160) ??
+    'Automated quality audit with fix prompts for every issue.'
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `${SITE_URL}/audit/${id}`,
+      siteName: BRAND.name,
+      images: [{ url: `/audit/${id}/opengraph-image`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function AuditPage({ params }: Props) {
@@ -40,6 +125,9 @@ export default async function AuditPage({ params }: Props) {
   }
 
   const { audit, isLoggedIn, session } = result
+  const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
+  const isAnonymous = audit.userId === null
+  const topIssue = topIssueFromAudit(audit)
 
   const user = session?.user
     ? await prisma.user.findUnique({
@@ -112,10 +200,13 @@ export default async function AuditPage({ params }: Props) {
         actions={
           <AuditPageActions
             auditId={id}
+            score={audit.score}
+            topIssue={topIssue}
             isPaid={viewerIsPaid}
             isLoggedIn={isLoggedIn}
+            isOwner={isOwner}
+            isAnonymous={isAnonymous}
             isPublic={audit.isPublic}
-            hasParent={!!audit.parentId}
             compareAuditId={
               canAccessCompareView
                 ? audit.parentId
@@ -126,7 +217,6 @@ export default async function AuditPage({ params }: Props) {
             plan={user?.plan ?? 'FREE'}
             projectId={audit.projectId}
             canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
-            canSharePublicly={entitlements?.canSharePublicly ?? false}
           />
         }
       >
@@ -136,6 +226,7 @@ export default async function AuditPage({ params }: Props) {
           viewerIsPaid={viewerIsPaid}
           viewerPlan={user?.plan ?? 'FREE'}
           isLoggedIn={isLoggedIn}
+          isViewerOwner={isOwner}
           showRecheckHint={viewerIsPaid || (entitlements?.canUseFreeRecheck ?? false)}
           canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
           hasUsedFreeRecheck={entitlements?.hasUsedFreeRecheck ?? false}

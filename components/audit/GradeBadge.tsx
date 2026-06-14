@@ -1,5 +1,7 @@
 import { cn, gradeColor, scoreTypeLabel } from '@/lib/utils'
 
+const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
+
 interface Props {
   grade: string | null
   score?: number | null
@@ -16,6 +18,7 @@ export function GradeBadge({ grade, score, size = 'md', areaName, className }: P
   }
 
   const typeInfo = areaName ? scoreTypeLabel(areaName) : null
+  const showNumericScore = score != null && size !== 'sm' && (!areaName || OBJECTIVE_AREAS.has(areaName))
 
   return (
     <div
@@ -27,7 +30,7 @@ export function GradeBadge({ grade, score, size = 'md', areaName, className }: P
       )}
     >
       <div>{grade ?? '—'}</div>
-      {score != null && size !== 'sm' && (
+      {showNumericScore && (
         <div className="text-xs mt-0.5 font-medium tabular-nums">{score}</div>
       )}
       {typeInfo && size === 'sm' && (

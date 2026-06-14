@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, User, Loader2 } from 'lucide-react'
+import { Mail, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -10,6 +10,8 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthValueProps } from '@/components/auth/AuthValueProps'
+import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
@@ -21,10 +23,19 @@ function SignUpForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [confirmError, setConfirmError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setConfirmError('')
+
+    if (password !== confirmPassword) {
+      setConfirmError('Passwords do not match')
+      return
+    }
+
     setLoading(true)
     try {
       const { error } = await authClient.signUp.email({ name, email, password })
@@ -47,6 +58,8 @@ function SignUpForm() {
       ? AUTH.signUp.planTitles[plan as keyof typeof AUTH.signUp.planTitles]
       : null
 
+  const showPlanSteps = plan && plan in AUTH.signUp.planTitles
+
   const subtitle = planTitle
     ? planTitle
     : hasOAuthEnabled()
@@ -66,7 +79,20 @@ function SignUpForm() {
         </p>
       }
     >
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <AuthValueProps />
+      </div>
       <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
+      {showPlanSteps && (
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+          <p className="text-xs font-medium">What happens next</p>
+          <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+            {AUTH.signUp.planSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      )}
       <FormContainer onSubmit={handleSubmit}>
         <IconInput
           label="Name"
@@ -84,15 +110,27 @@ function SignUpForm() {
           placeholder="you@example.com"
           required
         />
-        <IconInput
-          type="password"
+        <PasswordInput
           label="Password"
-          icon={<Lock className="h-4 w-4" />}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
+          onChange={setPassword}
+          showRequirements
         />
+        <PasswordInput
+          label="Confirm password"
+          value={confirmPassword}
+          onChange={(value) => {
+            setConfirmPassword(value)
+            setConfirmError('')
+          }}
+          error={confirmError}
+        />
+        <p className="text-xs text-muted-foreground text-center">
+          {AUTH.privacyNote}{' '}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+        </p>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {AUTH.signUp.cta}

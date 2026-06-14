@@ -77,17 +77,7 @@ export const SAMPLE_FINDINGS = [
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
-export const HERO_SAMPLE = {
-  domain: 'stripe.com',
-  pageType: 'Marketing page',
-  score: 78,
-} as const
-
 export const SAMPLE_FINDINGS_HEADER = 'Sample report'
-export const SAMPLE_FINDINGS_VERDICT =
-  'Score: 78/100 (Grade C+). Mobile CTA is hidden. og:image is missing. Fix prompts included for every finding.'
-
-export const SAMPLE_FINDINGS_FOOTER = 'Each finding includes a copy-ready fix prompt'
 
 export const WORKFLOW_SECTION = {
   headline: 'From review to fix',
@@ -358,6 +348,7 @@ export const PRICING = {
   headline: 'Pay when you\u2019re shipping, not when you\u2019re browsing',
   subhead: 'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
   foundingBadge: 'Founding offer active — lock in launch-week pricing',
+  upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   expertReview: {
     title: 'Expert Review — $500',
     body: 'A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.',
@@ -472,7 +463,18 @@ export const AUTH = {
       TEAM: 'You\u2019re signing up for Agency — organize audits across up to 5 projects',
       STUDIO: 'You\u2019re signing up for Studio — audit client sites at scale with up to 20 projects',
     },
+    planSteps: [
+      'Create your account',
+      'Complete payment in Stripe',
+      'Run your first audit from the dashboard',
+    ],
   },
+  valueProps: [
+    { icon: 'history' as const, text: 'Audit history saved to your account' },
+    { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
+    { icon: 'recheck' as const, text: 'Re-check after fixes to track improvement' },
+  ],
+  privacyNote: 'By creating an account, you agree to our',
   forgotPassword: {
     title: 'Reset your password',
     subtitle: 'Enter your email and we\u2019ll send a reset link',
@@ -610,6 +612,11 @@ export const SEO = {
     title: 'Sample Report',
     description:
       'See a real QualityOS audit of stripe.com — evidence-backed findings with copy-ready fix prompts.',
+  },
+  examples: {
+    title: 'Example Audits',
+    description:
+      'Automated QualityOS audits of recognizable sites like web.dev, Vercel, and Wikipedia. Illustrative, not endorsements.',
   },
   mcp: {
     title: 'MCP Integration',

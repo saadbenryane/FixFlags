@@ -1,10 +1,12 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { PRICING } from '@/lib/marketing/copy'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM' | 'STUDIO'
@@ -20,6 +22,7 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
   const [loading, setLoading] = useState(false)
 
   const isCurrent = isLoggedIn && currentPlan === plan
+  const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
     if (!isLoggedIn) {
@@ -40,14 +43,30 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
         body: JSON.stringify({ plan, useFounding: true }),
       })
       if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
+        const parsed = await parseApiErrorResponse(res)
+        if (res.status === 503) {
+          toast.error('Checkout is not configured yet.', {
+            description: 'Set Stripe price IDs or manage billing from your dashboard.',
+            action: {
+              label: 'Billing',
+              onClick: () => router.push('/billing'),
+            },
+          })
+        } else {
+          toast.error(parsed.message)
+        }
         return
       }
       const data = await res.json()
       if (data.url) {
         window.location.href = data.url
       } else {
-        toast.error('Checkout did not return a destination.')
+        toast.error('Checkout did not return a destination.', {
+          action: {
+            label: 'Try billing',
+            onClick: () => router.push('/billing'),
+          },
+        })
       }
     } catch {
       toast.error('Could not start checkout. Try again.')
@@ -57,14 +76,33 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
   }
 
   return (
-    <Button
-      className="w-full"
-      variant={highlight ? 'default' : 'outline'}
-      disabled={loading || isCurrent}
-      onClick={handleClick}
-    >
-      {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-      {isCurrent ? 'Current plan' : cta}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        className="w-full"
+        variant={highlight ? 'default' : 'outline'}
+        disabled={loading || isCurrent}
+        onClick={handleClick}
+      >
+        {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+        {loading && isPaidPlan
+          ? 'Redirecting to checkout…'
+          : isCurrent
+            ? 'Current plan'
+            : cta}
+      </Button>
+      {isPaidPlan && !isCurrent && (
+        <p className="text-[10px] text-center text-muted-foreground leading-snug">
+          {PRICING.upgradeSteps}
+        </p>
+      )}
+      {isPaidPlan && !isLoggedIn && (
+        <p className="text-[10px] text-center text-muted-foreground">
+          <Link href={signUpHref} className="underline hover:text-foreground">
+            Sign up first
+          </Link>{' '}
+          if you don&apos;t have an account.
+        </p>
+      )}
+    </div>
   )
 }

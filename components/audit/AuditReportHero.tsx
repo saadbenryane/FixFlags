@@ -94,7 +94,7 @@ export function AuditReportHero({
         >
           <div className="text-4xl font-bold tabular-nums">{score ?? '—'}</div>
           <div className="text-xs text-muted-foreground mt-1">
-            {score === null ? 'Unavailable' : '/ 100'}
+            {score === null ? 'Unavailable' : `/ 100 · Grade ${gradeFromScore(score)}`}
           </div>
         </div>
         <div className="flex-1 min-w-0 space-y-3">

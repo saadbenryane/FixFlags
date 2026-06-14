@@ -11,8 +11,8 @@ import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/u
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
-import { enforceRateLimit, requestClientId, RateLimitError } from '@/lib/security/rate-limit'
-import { getAuditQueue } from '@/lib/queue/client'
+import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 
 const createSchema = z.object({
   url: z.string().url('Invalid URL — please include https://'),
@@ -35,41 +35,7 @@ export async function POST(req: NextRequest) {
     const { url } = urlResult
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    try {
-      await Promise.all([
-        enforceRateLimit({
-          scope: session?.user ? 'audit-user' : 'audit-client',
-          identifier: session?.user?.id ?? requestClientId(req.headers),
-          limit: session?.user ? 30 : 3,
-          windowSeconds: 3600,
-        }),
-        enforceRateLimit({
-          scope: 'audit-host',
-          identifier: new URL(url).hostname,
-          limit: 20,
-          windowSeconds: 3600,
-        }),
-      ])
-    } catch (err) {
-      if (err instanceof RateLimitError) {
-        const queue = getAuditQueue()
-        const active = await queue.getActiveCount()
-        const waiting = await queue.getWaitingCount()
-        const totalAhead = active + waiting
-        const estimatedWait = Math.max(15, totalAhead * 30)
-
-        return NextResponse.json(
-          {
-            queued: true,
-            position: waiting + 1,
-            activeJobs: active,
-            estimatedWaitSeconds: estimatedWait,
-          },
-          { status: 429, headers: { 'Retry-After': String(estimatedWait) } }
-        )
-      }
-      throw err
-    }
+    const clientId = requestClientId(req.headers)
 
     const criticalPath = parsed.data.mode === 'critical_path'
 
@@ -102,17 +68,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const [userLimit, hostLimit, workerEstimate] = await Promise.all([
+      recordRateLimit({
+        scope: session?.user ? 'audit-user' : 'audit-client',
+        identifier: session?.user?.id ?? clientId,
+        limit: session?.user ? 30 : 3,
+        windowSeconds: 3600,
+      }),
+      recordRateLimit({
+        scope: 'audit-host',
+        identifier: new URL(url).hostname,
+        limit: 20,
+        windowSeconds: 3600,
+      }),
+      getWorkerQueueEstimate(),
+    ])
+
+    const rateLimitRetryAfter = Math.max(
+      userLimit.exceeded ? userLimit.retryAfterSeconds : 0,
+      hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
+    )
+
+    const { delayMs, estimatedWaitSeconds, queuePosition } = computeEnqueueDelay(
+      rateLimitRetryAfter,
+      workerEstimate
+    )
+
     const { auditId, status } = await createAndEnqueueAudit({
       url,
       userId: session?.user?.id ?? null,
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
+      delayMs,
     })
 
     if (!session?.user) {
       await trackAnonymousAuditId(auditId)
     }
 
-    return NextResponse.json({ auditId, status }, { status: 201 })
+    return NextResponse.json(
+      {
+        auditId,
+        status,
+        estimatedWaitSeconds,
+        queuePosition,
+        queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
+      },
+      { status: 201 }
+    )
   } catch (err) {
     if (err instanceof AuditLimitError) {
       return apiError(err.message, 402, { code: err.code, action: 'upgrade' })

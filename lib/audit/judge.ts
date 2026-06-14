@@ -9,6 +9,7 @@ import {
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFinding } from './checks'
+import { sanitizeJudgeOutput } from './sanitize-prompts'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -85,7 +86,7 @@ const judgeOutputSchema = z.object({
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
-      verificationRule: z.string().optional(),
+      verificationRule: z.string().min(1),
       pageUrl: z.string().url().optional(),
     })
   ),
@@ -98,7 +99,7 @@ const judgeOutputSchema = z.object({
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
-      verificationRule: z.string().optional(),
+      verificationRule: z.string().min(1),
     })
   ),
 })
@@ -178,7 +179,7 @@ function parseJudgeOutput(raw: unknown): JudgeOutput {
   if (!parsed.success) {
     throw new Error(`Invalid judge output: ${parsed.error.message}`)
   }
-  return parsed.data
+  return sanitizeJudgeOutput(parsed.data) as JudgeOutput
 }
 
 async function runAnthropicJudge(

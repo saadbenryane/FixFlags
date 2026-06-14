@@ -21,6 +21,7 @@ interface Finding {
   boltPrompt?: string | null
   verificationRule?: string | null
   pageUrl?: string | null
+  confidence?: number | null
 }
 
 interface Props {
@@ -101,6 +102,11 @@ function FindingRowContent({
             </span>
           )}
           <p className="text-sm font-medium leading-snug text-pretty">{finding.problem}</p>
+          {finding.confidence != null && finding.confidence < 0.8 && (
+            <p className="text-[10px] text-muted-foreground">
+              Lower confidence ({Math.round(finding.confidence * 100)}%) — verify before acting
+            </p>
+          )}
           {finding.pageUrl && (
             <p className="text-[10px] text-muted-foreground truncate">{finding.pageUrl}</p>
           )}

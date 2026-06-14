@@ -63,10 +63,10 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Scripts loaded from cdn.segment.com, js.stripe.com, and www.google-analytics.com. Combined blocking time ~80ms on desktop 1280x900 viewport.',
             whyItMatters:
-              'Every 100ms of delay drops conversion by ~7% on marketing pages.',
+              'Blocking scripts delay first paint and push interactive content later on marketing pages.',
             fix: 'Add async/defer to non-critical third-party scripts. Move analytics to load after onload.',
             agentPrompt:
-              'In the file loading third-party scripts (likely _app.tsx or layout.tsx), add `async` or `defer` to non-critical script tags. Keep Stripe.js synchronous. Analytics and Segment should load after `window.onload`. Viewport: 1280x900 desktop.',
+              'Find script tags loading cdn.segment.com, www.google-analytics.com, and js.stripe.com. Add `async` or `defer` to Segment and Google Analytics. Keep Stripe.js synchronous. Verify in DevTools Network tab at 1280x900 desktop viewport.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -151,10 +151,10 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'HTML head has no og:image meta tag. Desktop 1280x900: no preview card in social embeds.',
             whyItMatters:
-              'Shared content renders as blank cards on Slack, Twitter, WhatsApp. Estimated CTR loss: 40-60%.',
+              'Shared links show blank preview cards on Slack, Twitter, and WhatsApp without og:image.',
             fix: 'Add og:image meta tag pointing to a 1200x630 brand card.',
             agentPrompt:
-              'In `app/layout.tsx` metadata export, add `openGraph: { images: [{ url: \'/og-image.png\', width: 1200, height: 630 }] }`. Generate the image with brand logo + page title overlay at 1200x630px.',
+              'Add openGraph metadata with images: [{ url: \'/og-image.png\', width: 1200, height: 630 }]. Generate a 1200x630 brand card with logo + page title. Verify with Twitter Card Validator.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -169,7 +169,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'HTML head lacks meta description tag. Google shows auto-generated snippets.',
             whyItMatters:
-              'Missing meta description reduces organic CTR ~30%.',
+              'Missing meta description lets search engines generate snippets that may not match your value proposition.',
             fix: 'Add meta description (120-158 chars) with value proposition.',
             agentPrompt:
               'In metadata export, add `description: \'Accept payments, send payouts, and manage financial operations — Stripe powers online payment processing.\'` Keep under 160 characters.',

@@ -87,7 +87,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Screen reader users may not distinguish code samples from surrounding text.',
             fix: 'Add `role="code"` and `aria-label="Code sample"` to code block containers.',
             agentPrompt:
-              'In the code block wrapper component (likely used for all article code samples), add `role="code"` and `aria-label="Code example: {language}"` attributes to the `<pre>` element.',
+              'In the code block wrapper component used on article pages, add `role="code"` and `aria-label="Code example: {language}"` attributes to the `<pre>` element.',
             verificationRule: 'VoiceOver correctly identifies code blocks as "Code example."',
           },
         ],
@@ -294,7 +294,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         summary:
           'og:image is present but uses generic brand logo. Missing article-specific social previews for blog and changelog.',
         areaPrompt:
-          'Generate per-page og:images for blog posts and changelog. Current generic og:image reduces CTR when shared.',
+          'Generate per-page og:images for blog posts and changelog. Generic og:image produces identical previews for every page when shared.',
         findings: [
           {
             id: 'ex-vercel-seo-1',

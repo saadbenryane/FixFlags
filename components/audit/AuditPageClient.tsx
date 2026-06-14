@@ -13,6 +13,7 @@ import { AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
+import { QueuePosition } from '@/components/audit/QueuePosition'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
@@ -152,6 +153,13 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             <h2 className="text-xl font-semibold text-center md:text-left">
               {AUDIT_PROGRESS.inProgress}
             </h2>
+            {status === 'QUEUED' &&
+              (statusPayload?.estimatedWaitSeconds ?? 0) > 0 && (
+                <QueuePosition
+                  queuePosition={statusPayload?.queuePosition}
+                  estimatedSeconds={statusPayload?.estimatedWaitSeconds ?? 15}
+                />
+              )}
             <AuditProgress
               status={status}
               progress={progress}

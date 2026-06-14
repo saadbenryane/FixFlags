@@ -24,12 +24,18 @@ export class RateLimitError extends Error {
   }
 }
 
-export async function enforceRateLimit(input: {
+export interface RateLimitResult {
+  exceeded: boolean
+  retryAfterSeconds: number
+  currentCount: number
+}
+
+async function incrementRateLimit(input: {
   scope: string
   identifier: string
   limit: number
   windowSeconds: number
-}): Promise<void> {
+}): Promise<RateLimitResult> {
   const client = getRateLimitRedis()
   if (client.status === 'wait') await client.connect()
 
@@ -37,9 +43,39 @@ export async function enforceRateLimit(input: {
   const key = `qos:rate:${input.scope}:${input.identifier}:${window}`
   const count = await client.incr(key)
   if (count === 1) await client.expire(key, input.windowSeconds + 5)
+
   if (count > input.limit) {
     const ttl = await client.ttl(key)
-    throw new RateLimitError(Math.max(1, ttl))
+    return {
+      exceeded: true,
+      retryAfterSeconds: Math.max(1, ttl),
+      currentCount: count,
+    }
+  }
+
+  return { exceeded: false, retryAfterSeconds: 0, currentCount: count }
+}
+
+/** Record a hit and return whether the limit is exceeded (does not throw). */
+export async function recordRateLimit(input: {
+  scope: string
+  identifier: string
+  limit: number
+  windowSeconds: number
+}): Promise<RateLimitResult> {
+  return incrementRateLimit(input)
+}
+
+/** Hard gate for routes that must reject when over limit. */
+export async function enforceRateLimit(input: {
+  scope: string
+  identifier: string
+  limit: number
+  windowSeconds: number
+}): Promise<void> {
+  const result = await incrementRateLimit(input)
+  if (result.exceeded) {
+    throw new RateLimitError(result.retryAfterSeconds)
   }
 }
 

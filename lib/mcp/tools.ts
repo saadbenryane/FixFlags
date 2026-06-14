@@ -10,7 +10,8 @@ import { AREA_ORDER } from '../audit/constants'
 import { canUseApiKeys } from '../auth/permissions'
 import { canAccessCompare, canAccessPaidFeatures } from '../auth/entitlements'
 import { hashApiKey } from '@/lib/security/api-keys'
-import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { recordRateLimit } from '@/lib/security/rate-limit'
+import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 
 async function assertMcpAccess(user: User): Promise<User> {
@@ -47,20 +48,28 @@ export function registerAllTools(server: McpServer, user: User) {
     async ({ url, waitForCompletion, mode }) => {
       const freshUser = await assertMcpAccess(user)
       const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
-      await Promise.all([
-        enforceRateLimit({
+
+      const [userLimit, hostLimit, workerEstimate] = await Promise.all([
+        recordRateLimit({
           scope: 'mcp-user',
           identifier: freshUser.id,
           limit: 60,
           windowSeconds: 3600,
         }),
-        enforceRateLimit({
+        recordRateLimit({
           scope: 'audit-host',
           identifier: new URL(normalizedUrl).hostname,
           limit: 20,
           windowSeconds: 3600,
         }),
+        getWorkerQueueEstimate(),
       ])
+
+      const rateLimitRetryAfter = Math.max(
+        userLimit.exceeded ? userLimit.retryAfterSeconds : 0,
+        hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
+      )
+      const { delayMs } = computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
 
       const criticalPath = mode === 'critical_path'
       if (criticalPath && !canAccessPaidFeatures(freshUser)) {
@@ -71,6 +80,7 @@ export function registerAllTools(server: McpServer, user: User) {
         url: normalizedUrl,
         userId: freshUser.id,
         auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
+        delayMs,
       })
 
       let status = 'QUEUED'
@@ -79,7 +89,7 @@ export function registerAllTools(server: McpServer, user: User) {
         status = result.status
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://qualityos.com'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qualityos.com'
       return {
         content: [
           {

@@ -1,5 +1,7 @@
-import Link from 'next/link'
+'use client'
+
 import { AuditInput } from '@/components/audit/AuditInput'
+import { NavLink } from '@/components/layout/nav-link'
 import { BRAND, HERO } from '@/lib/marketing/copy'
 import { FOOTER_LINKS } from '@/lib/site/nav'
 import { Container } from '@/components/ui/container'
@@ -17,15 +19,17 @@ export function Footer() {
 
         <div className="flex flex-col gap-4 pt-6 border-t text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>© 2026 {BRAND.name}</span>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {FOOTER_LINKS.map((link) => (
-              <Link
+              <NavLink
                 key={link.href}
                 href={link.href}
-                className="link-underline-grow transition-colors duration-200 hover:text-foreground"
+                className="link-underline-grow min-h-[44px] inline-flex items-center px-2 py-2 transition-colors duration-200 hover:text-foreground"
+                activeClassName="text-foreground font-medium"
+                inactiveClassName="text-muted-foreground"
               >
                 {link.label}
-              </Link>
+              </NavLink>
             ))}
           </div>
         </div>

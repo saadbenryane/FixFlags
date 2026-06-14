@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
 import { BRAND } from '@/lib/marketing/copy'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV } from '@/lib/site/nav'
+import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -39,13 +39,9 @@ export function Header({
   showAdmin,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
-  const pathname = usePathname()
 
   const navLinks =
     variant === 'app' ? APP_NAV : variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
-
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === href : pathname.startsWith(href)
 
   const defaultLogoHref =
     variant === 'app' || variant === 'admin' ? '/dashboard' : '/'
@@ -68,6 +64,15 @@ export function Header({
 
   const resolvedRight = right ?? defaultRight
 
+  const linkClassName =
+    'rounded-full px-3 py-2 text-sm transition-colors duration-200 hover:bg-accent hover:text-foreground'
+  const linkActiveClassName = 'bg-accent text-foreground font-medium'
+  const linkInactiveClassName = 'text-muted-foreground'
+
+  const mobileLinkClassName =
+    'rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent'
+  const mobileLinkActiveClassName = 'bg-accent'
+
   return (
     <header
       className={cn(
@@ -89,19 +94,15 @@ export function Header({
 
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => (
-            <Link
+            <NavLink
               key={link.href}
               href={link.href}
-              aria-current={isActive(link.href) ? 'page' : undefined}
-              className={cn(
-                'rounded-full px-3 py-2 text-sm transition-colors duration-200 hover:bg-accent hover:text-foreground',
-                isActive(link.href)
-                  ? 'bg-accent text-foreground font-medium'
-                  : 'text-muted-foreground'
-              )}
+              className={linkClassName}
+              activeClassName={linkActiveClassName}
+              inactiveClassName={linkInactiveClassName}
             >
               {link.label}
-            </Link>
+            </NavLink>
           ))}
           <ThemeToggle />
           {resolvedRight}
@@ -121,18 +122,15 @@ export function Header({
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-1">
                 {navLinks.map((link) => (
-                  <Link
+                  <NavLink
                     key={link.href}
                     href={link.href}
-                    aria-current={isActive(link.href) ? 'page' : undefined}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      'rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent',
-                      isActive(link.href) && 'bg-accent'
-                    )}
+                    onNavigate={() => setOpen(false)}
+                    className={mobileLinkClassName}
+                    activeClassName={mobileLinkActiveClassName}
                   >
                     {link.label}
-                  </Link>
+                  </NavLink>
                 ))}
                 <div className="mt-4 border-t pt-4">{resolvedRight}</div>
               </nav>

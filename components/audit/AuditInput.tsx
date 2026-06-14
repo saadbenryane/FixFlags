@@ -8,7 +8,6 @@ import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
-import { QueuePosition } from '@/components/audit/QueuePosition'
 
 export function AuditInput() {
   const router = useRouter()
@@ -20,17 +19,16 @@ export function AuditInput() {
     code?: string
     action?: string
   } | null>(null)
-  const [queueState, setQueueState] = useState<{
-    estimatedWaitSeconds: number
-  } | null>(null)
 
   async function submitUrl() {
     setUrlError('')
     setLimitGate(null)
-    setQueueState(null)
 
     let normalized = url.trim()
-    if (!normalized) return
+    if (!normalized) {
+      setUrlError('Enter a URL like https://yoursite.com')
+      return
+    }
 
     normalized = normalized.replace(/\/+$/, '')
 
@@ -57,14 +55,6 @@ export function AuditInput() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
       })
-
-      if (res.status === 429) {
-        const body = await res.json()
-        if (body.queued) {
-          setQueueState({ estimatedWaitSeconds: body.estimatedWaitSeconds })
-          return
-        }
-      }
 
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
@@ -111,7 +101,7 @@ export function AuditInput() {
             aria-invalid={Boolean(urlError)}
             aria-describedby={urlError ? 'audit-url-error' : undefined}
           />
-          <Button type="submit" size="lg" disabled={loading || !url.trim()} className="h-12 px-6 gap-2 shrink-0">
+          <Button type="submit" size="lg" disabled={loading} className="h-12 px-6 gap-2 shrink-0">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -131,16 +121,6 @@ export function AuditInput() {
           </p>
         )}
       </form>
-      {queueState && (
-        <QueuePosition
-          estimatedSeconds={queueState.estimatedWaitSeconds}
-          onRetry={() => {
-            setQueueState(null)
-            submitUrl()
-          }}
-          onDismiss={() => setQueueState(null)}
-        />
-      )}
 
       {limitGate && (
         <AuditLimitGate

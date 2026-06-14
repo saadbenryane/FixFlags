@@ -37,6 +37,9 @@ export interface AuditStatusPayload {
   areas?: Array<{ name: string; grade: string; score: number | null }>
   findingsCount?: number
   partialFindings?: Array<{ id: string; severity: string; problem: string; area: string }>
+  queuePosition?: number
+  estimatedWaitSeconds?: number
+  scheduledStartAt?: string | null
 }
 
 interface UseAuditPollingOptions {

@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, Loader2 } from 'lucide-react'
+import { Mail, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
@@ -66,20 +67,16 @@ function SignInForm() {
           placeholder="you@example.com"
           required
         />
-        <IconInput
-          type="password"
-          label="Password"
-          icon={<Lock className="h-4 w-4" />}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <div className="flex justify-end">
+        <PasswordInput label="Password" value={password} onChange={setPassword} />
+        <div className="flex items-center justify-between gap-2">
           <Link
             href="/forgot-password"
             className="text-xs text-muted-foreground link-underline-grow hover:text-foreground"
           >
             {AUTH.signIn.forgotPassword}
+          </Link>
+          <Link href="/privacy" className="text-xs text-muted-foreground underline hover:text-foreground">
+            Privacy
           </Link>
         </div>
         <Button type="submit" className="w-full" disabled={loading}>

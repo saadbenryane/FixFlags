@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { AuditReport } from '@/components/audit/AuditReport'
+import { AuditInput } from '@/components/audit/AuditInput'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
-import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Body } from '@/components/ui/typography'
 import { SAMPLES_PAGE } from '@/lib/marketing/copy'
@@ -31,6 +31,7 @@ export default async function SamplesPage() {
             <Body className="text-muted-foreground text-sm">{SAMPLES_PAGE.subhead}</Body>
           </div>
           <Body className="text-muted-foreground text-xs">{disclaimer}</Body>
+          <ThirdPartyAuditDisclaimer variant="compact" />
         </div>
       </Container>
 
@@ -41,10 +42,11 @@ export default async function SamplesPage() {
         variant="sample"
       />
 
-      <Container className="max-w-4xl pb-12 text-center">
-        <Button asChild size="lg">
-          <Link href="/">{SAMPLES_PAGE.bottomCta}</Link>
-        </Button>
+      <Container className="max-w-4xl pb-12 text-center space-y-4">
+        <p className="font-display text-lg tracking-display">{SAMPLES_PAGE.bottomCta}</p>
+        <div className="mx-auto max-w-xl">
+          <AuditInput />
+        </div>
       </Container>
     </>
   )

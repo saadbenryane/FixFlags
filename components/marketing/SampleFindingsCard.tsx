@@ -4,6 +4,7 @@ import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { GradeBadge } from '@/components/audit/GradeBadge'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { cn } from '@/lib/utils'
@@ -101,7 +102,8 @@ export function SampleFindingsCard({
         ))}
       </div>
 
-      <div className="px-5 py-4 border-t border-border/15">
+      <div className="px-5 py-4 border-t border-border/15 space-y-2">
+        <ThirdPartyAuditDisclaimer variant="compact" />
         <Link
           href="/samples"
           className="inline-flex items-center gap-1 text-sm font-medium text-brand link-underline-grow"

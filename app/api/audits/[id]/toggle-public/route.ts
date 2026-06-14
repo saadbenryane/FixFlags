@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canManageAudit } from '@/lib/audit/access'
-import { canSharePublicly } from '@/lib/auth/permissions'
 
 export async function PATCH(
   _req: NextRequest,
@@ -16,7 +15,7 @@ export async function PATCH(
 
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, isPublic: true },
+      select: { userId: true, isPublic: true, status: true },
     })
     if (!audit) return apiError('Audit not found', 404)
 
@@ -24,15 +23,8 @@ export async function PATCH(
       return apiError('Sign in to manage sharing for this audit', 401)
     }
 
-    const enablingPublic = !audit.isPublic
-    if (enablingPublic && session?.user) {
-      const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-      if (!user || !canSharePublicly(user)) {
-        return apiError('Upgrade to Agency to share client report links', 402, {
-          code: 'UPGRADE_REQUIRED',
-          action: 'upgrade',
-        })
-      }
+    if (audit.status !== 'COMPLETED') {
+      return apiError('Only completed audits can be shared', 400)
     }
 
     const updated = await prisma.audit.update({

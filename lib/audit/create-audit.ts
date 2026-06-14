@@ -17,6 +17,7 @@ export interface CreateAuditOptions {
   trialRecheck?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   recheckMode?: 'FULL' | 'SUMMARY_ONLY'
+  delayMs?: number
 }
 
 export interface CreateAuditResult {
@@ -108,6 +109,7 @@ export async function createAndEnqueueAudit(
       { auditId: audit.id },
       {
         jobId: audit.id,
+        delay: options.delayMs ?? 0,
         attempts: 1,
         removeOnComplete: 100,
         removeOnFail: 500,

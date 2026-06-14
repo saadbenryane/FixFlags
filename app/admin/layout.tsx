@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SiteShell variant="admin" logoHref="/dashboard">
-      <main>{children}</main>
+      {children}
     </SiteShell>
   )
 }

@@ -5,12 +5,24 @@ import { Section } from '@/components/ui/section'
 import { Body, Heading } from '@/components/ui/typography'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { McpApiKeyLink } from '@/components/marketing/McpApiKeyLink'
-import { MCP_DOCS, MCP_SECTION } from '@/lib/marketing/copy'
+import { MCP_DOCS, MCP_SECTION, SITE_URL } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import {
+  MCP_TOOL_DEFINITIONS,
+  buildMcpConfigExample,
+  buildMcpTestCurl,
+  getMcpEndpoint,
+  MCP_LOCAL_BASE_URL,
+} from '@/lib/mcp/docs-content'
 
 export const metadata = buildPageMetadata('mcp', '/docs/mcp')
 
+const CONFIG_EDITORS = ['claudeCode', 'cursor', 'windsurf'] as const
+
 export default function McpDocsPage() {
+  const productionEndpoint = getMcpEndpoint(SITE_URL)
+  const localEndpoint = getMcpEndpoint(MCP_LOCAL_BASE_URL)
+
   return (
     <Section spacing="default">
       <Container className="max-w-3xl space-y-10">
@@ -18,6 +30,15 @@ export default function McpDocsPage() {
           <Heading as="h1">{MCP_DOCS.headline}</Heading>
           <Body className="text-muted-foreground">{MCP_DOCS.subhead}</Body>
           <McpApiKeyLink />
+        </div>
+
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+          <p className="text-sm font-medium">Security</p>
+          <ul className="text-xs text-muted-foreground space-y-1">
+            <li>• Never commit API keys to git or share them in screenshots.</li>
+            <li>• Store keys in environment variables or your editor&apos;s secret store.</li>
+            <li>• Rotate keys immediately if one is exposed.</li>
+          </ul>
         </div>
 
         <div className="marketing-panel space-y-3 p-6">
@@ -37,22 +58,36 @@ export default function McpDocsPage() {
         </div>
 
         <div className="space-y-4">
-          <Heading as="h2">Configuration</Heading>
+          <Heading as="h2">Base URL</Heading>
           <Body className="text-sm text-muted-foreground">
-            QualityOS exposes an HTTP MCP endpoint at <code>/api/mcp</code>. All editors use the same
-            pattern — point at the URL and pass your API key in the <code>x-api-key</code> header.
+            QualityOS exposes an HTTP MCP endpoint at <code>/api/mcp</code>. Pass your API key in
+            the <code>x-api-key</code> header.
           </Body>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs font-medium">Production</p>
+              <code className="text-xs break-all">{productionEndpoint}</code>
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs font-medium">Local development</p>
+              <code className="text-xs break-all">{localEndpoint}</code>
+            </div>
+          </div>
+        </div>
 
-          {Object.entries(MCP_DOCS.configExamples).map(([tool, config]) => (
+        <div className="space-y-4">
+          <Heading as="h2">Configuration</Heading>
+
+          {CONFIG_EDITORS.map((tool) => (
             <Card key={tool} className="overflow-hidden border-0 shadow-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  {MCP_DOCS.configLabels[tool as keyof typeof MCP_DOCS.configLabels]}
+                  {MCP_DOCS.configLabels[tool]}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <pre className="overflow-x-auto p-4 font-mono text-xs">
-                  <code>{config}</code>
+                  <code>{buildMcpConfigExample(tool, SITE_URL)}</code>
                 </pre>
               </CardContent>
             </Card>
@@ -62,9 +97,17 @@ export default function McpDocsPage() {
         </div>
 
         <div className="space-y-4">
+          <Heading as="h2">Test your connection</Heading>
+          <Body className="text-sm text-muted-foreground">
+            Replace <code>$QOS_API_KEY</code> with a key from Settings → API Keys.
+          </Body>
+          <TerminalBlock label="curl">{buildMcpTestCurl(SITE_URL)}</TerminalBlock>
+        </div>
+
+        <div className="space-y-4">
           <Heading as="h2">Available tools</Heading>
           <div className="space-y-2">
-            {MCP_DOCS.tools.map((t) => (
+            {MCP_TOOL_DEFINITIONS.map((t) => (
               <div key={t.name} className="flex gap-3 text-sm">
                 <code className="shrink-0 font-mono text-brand">{t.name}</code>
                 <span className="text-muted-foreground">{t.desc}</span>

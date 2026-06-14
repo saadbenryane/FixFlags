@@ -80,7 +80,7 @@
 
   .link-underline-grow::after {
     content: "";
-    @apply absolute bottom-0 left-0 h-px w-0 bg-current transition-[width] duration-200;
+    @apply pointer-events-none absolute bottom-0 left-0 h-px w-0 bg-current transition-[width] duration-200;
   }
 
   .link-underline-grow:hover::after {

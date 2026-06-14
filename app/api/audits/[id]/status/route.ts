@@ -10,6 +10,7 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+import { getAuditQueueInfo } from '@/lib/queue/estimate'
 
 export async function GET(
   _req: NextRequest,
@@ -75,6 +76,11 @@ export async function GET(
     const pipelineLog = parsePipelineLog(audit.pipelineLog)
     const findingsCount = await prisma.finding.count({ where: { auditId: id } })
 
+    let queueInfo = null
+    if (audit.status === 'QUEUED') {
+      queueInfo = await getAuditQueueInfo(id)
+    }
+
     const { performanceData: _pd, pipelineLog: _pl, findings: partialFindings, ...rest } = audit
 
     return NextResponse.json({
@@ -83,6 +89,9 @@ export async function GET(
       pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
       pipelineLog: pipelineLog.slice(-30),
       findingsCount,
+      queuePosition: queueInfo?.queuePosition,
+      estimatedWaitSeconds: queueInfo?.estimatedWaitSeconds,
+      scheduledStartAt: queueInfo?.scheduledStartAt,
       partialFindings:
         audit.status === 'CHECKING' || audit.status === 'JUDGING' ? partialFindings : undefined,
     })

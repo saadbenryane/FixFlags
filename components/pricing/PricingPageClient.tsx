@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { ExpertReviewButton } from '@/components/pricing/ExpertReviewButton'
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading, Muted } from '@/components/ui/typography'
 import { CheckCircle2 } from 'lucide-react'
-import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { PLANS, PRICING, PRICING_FAQ, FINAL_CTA } from '@/lib/marketing/copy'
 import { hasActiveFoundingOffer } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/hooks/useMe'
@@ -83,6 +84,8 @@ export function PricingPageClient() {
         </div>
 
         <Muted className="text-center text-sm">{PRICING.allPlansInclude}</Muted>
+
+        <AuditCtaBlock headline={FINAL_CTA.headline} trustLine={FINAL_CTA.trustLine} />
 
         <div className="marketing-panel space-y-4 p-8 text-center">
           <Heading as="h3">{PRICING.expertReview.title}</Heading>

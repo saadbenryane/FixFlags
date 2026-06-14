@@ -6,6 +6,7 @@ import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { PROOF_SECTION } from '@/lib/marketing/copy'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 
@@ -78,7 +79,8 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center space-y-4">
+          <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-lg text-left" />
           <Button variant="outline" asChild>
             <Link href="/samples">
               View full sample report
