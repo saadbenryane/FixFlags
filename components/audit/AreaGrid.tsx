@@ -1,6 +1,6 @@
 'use client'
 
-import { GradeBadge } from '@/components/audit/GradeBadge'
+import { ScoreCard } from '@/components/audit/ScoreCard'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { cn, areaLabel } from '@/lib/utils'
 
@@ -19,10 +19,10 @@ interface Props {
   showScoreTypes?: boolean
 }
 
+const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
+
 export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Props) {
-  const ordered = AREA_ORDER
-    .map((n) => areas.find((a) => a.name === n))
-    .filter(Boolean) as Area[]
+  const ordered = AREA_ORDER.map((n) => areas.find((a) => a.name === n)).filter(Boolean) as Area[]
 
   function handleClick(name: string) {
     if (onAreaClick) {
@@ -37,14 +37,20 @@ export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Pro
   return (
     <nav aria-label="Audit areas" className="-mx-1">
       {showScoreTypes && (
-        <div className="flex gap-4 mb-3 text-[10px] text-muted-foreground px-1">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-brand/30" /> Objective checks (0–100)</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500/30" /> Experience checks (A–F)</span>
+        <div className="mb-3 flex gap-4 px-1 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-brand/30" /> Objective checks (0–100)
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-muted-foreground/30" /> Experience checks (A–F)
+          </span>
         </div>
       )}
-      <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-thin">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {ordered.map((area) => {
           const issueCount = area.findings?.length ?? 0
+          const isObjective = OBJECTIVE_AREAS.has(area.name)
+
           return (
             <button
               key={area.name}
@@ -56,17 +62,22 @@ export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Pro
               }
               onClick={() => handleClick(area.name)}
               className={cn(
-                'flex min-h-11 min-w-[80px] shrink-0 flex-col items-center rounded-lg border px-3 py-2 transition-[box-shadow,transform] duration-200 hover:shadow-card motion-reduce:transition-none',
-                area.grade ? 'border-border' : 'text-muted-foreground border-border',
-                activeArea === area.name && 'ring-2 ring-brand ring-offset-2 ring-offset-background'
+                'min-h-[5.5rem] text-left transition-[box-shadow,background-color] duration-200 ease-out motion-reduce:transition-none',
+                activeArea === area.name && 'ring-2 ring-focus-ring ring-offset-2 rounded-card'
               )}
             >
-              <GradeBadge grade={area.grade} score={area.score} size="sm" areaName={area.name} />
-              <span className="mt-1 text-[9px] text-center leading-tight font-medium max-w-[72px] text-muted-foreground">
-                {areaLabel(area.name)}
-              </span>
+              <ScoreCard
+                areaName={area.name}
+                grade={area.grade}
+                score={isObjective ? area.score : null}
+                size="sm"
+                className={cn(
+                  'h-full w-full shadow-none hover:shadow-filterPill',
+                  activeArea === area.name && 'shadow-filterPill'
+                )}
+              />
               {issueCount > 0 && (
-                <span className="mt-0.5 text-[9px] tabular-nums text-muted-foreground">
+                <span className="mt-1 block px-1 text-[9px] tabular-nums text-muted-foreground">
                   {issueCount} issue{issueCount === 1 ? '' : 's'}
                 </span>
               )}

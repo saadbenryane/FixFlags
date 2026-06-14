@@ -16,14 +16,14 @@ export function SectionIntro({ label, headline, subhead, className, align = 'cen
     <div
       className={cn(
         'space-y-3',
-        isLeft ? 'max-w-lg text-left' : 'mx-auto max-w-2xl text-center',
+        isLeft ? 'max-w-prose text-left' : 'mx-auto max-w-prose text-center',
         className
       )}
     >
       {label ? <p className="section-label">{label}</p> : null}
       <Heading as="h2">{headline}</Heading>
       {subhead ? (
-        <Body className={cn('text-muted-foreground', isLeft && 'max-w-md')}>{subhead}</Body>
+        <Body className="text-muted-foreground">{subhead}</Body>
       ) : null}
     </div>
   )

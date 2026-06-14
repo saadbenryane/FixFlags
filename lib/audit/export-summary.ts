@@ -20,6 +20,7 @@ interface ExportAuditInput {
   url: string
   score: number | null
   verdict?: string | null
+  isPublic?: boolean
   areas: ExportArea[]
   findings: ExportFinding[]
 }
@@ -85,6 +86,7 @@ export function buildAuditExportSummary(audit: ExportAuditInput): string {
     '',
     scoreLine,
     verdict,
+    audit.isPublic ? `Share link: ${SITE_URL}/audit/${audit.auditId}` : '',
     '## Area scores',
     areaLines,
     '',

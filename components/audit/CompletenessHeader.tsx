@@ -23,7 +23,7 @@ export function CompletenessHeader({
   ]
 
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3" role="status" aria-label="Report completeness">
+    <div className="rounded-card border-0 bg-card p-4 space-y-3 shadow-card" role="status" aria-label="Report completeness">
       <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
         Report completeness
       </p>

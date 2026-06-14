@@ -74,19 +74,6 @@
     background: var(--overlay-pill-bg);
   }
 
-  .link-underline-grow {
-    @apply relative inline-block transition-colors duration-200;
-  }
-
-  .link-underline-grow::after {
-    content: "";
-    @apply pointer-events-none absolute bottom-0 left-0 h-px w-0 bg-current transition-[width] duration-200;
-  }
-
-  .link-underline-grow:hover::after {
-    @apply w-full;
-  }
-
   .section-label {
     @apply font-mono text-[11px] uppercase text-muted-foreground/80;
     letter-spacing: var(--tracking-label);

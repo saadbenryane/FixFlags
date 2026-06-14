@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { AreaName, Severity, FindingSource } from '@prisma/client'
+import { AreaName, Severity, FindingSource, AreaGrade } from '@prisma/client'
 import { DeterministicFinding } from './checks'
 import { JudgeOutput } from './judge'
 import { verificationRuleForCheckId } from './verify-findings'
@@ -7,6 +7,8 @@ import {
   calculateOverallScore,
   clampScore,
   gradeFromScore,
+  isSubjectiveArea,
+  statusFromGrade,
   statusFromScore,
 } from './scoring'
 import { AREA_ORDER } from './constants'
@@ -142,26 +144,45 @@ export async function persistAuditResults(
     })
     const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
     const resolvedScores: Partial<Record<AreaName, number | null>> = {}
+    const resolvedGrades: Partial<Record<AreaName, AreaGrade | null>> = {}
     const areaRecords = await Promise.all(
       judgeOutput.areas.map((areaData) => {
         const areaName = areaData.name as AreaName
+        const subjective = isSubjectiveArea(areaName)
         const deterministicScore = areaScores[areaName]
-        const finalScore =
-          deterministicScore !== null && deterministicScore !== undefined
-            ? clampScore(deterministicScore)
-            : areaData.score !== null
-              ? clampScore(areaData.score)
-              : null
+
+        let finalScore: number | null
+        let finalGrade: AreaGrade
+
+        if (subjective) {
+          finalScore = null
+          finalGrade = areaData.grade
+        } else {
+          finalScore =
+            deterministicScore !== null && deterministicScore !== undefined
+              ? clampScore(deterministicScore)
+              : areaData.score !== null
+                ? clampScore(areaData.score)
+                : null
+          finalGrade =
+            finalScore !== null ? gradeFromScore(finalScore) : areaData.grade
+        }
+
         resolvedScores[areaName] = finalScore
+        resolvedGrades[areaName] = finalGrade
 
         return tx.auditArea.create({
           data: {
             auditId,
             name: areaName,
             score: finalScore,
-            grade: finalScore === null ? null : gradeFromScore(finalScore),
-            status: finalScore === null ? null : statusFromScore(finalScore),
-            assessmentState: finalScore === null ? areaData.assessmentState : 'ASSESSED',
+            grade: finalGrade,
+            status: subjective
+              ? statusFromGrade(finalGrade)
+              : finalScore === null
+                ? null
+                : statusFromScore(finalScore),
+            assessmentState: finalScore === null && !subjective ? areaData.assessmentState : 'ASSESSED',
             confidence: areaData.confidence,
             summary: areaData.summary,
             areaPrompt: areaData.areaPrompt,
@@ -227,7 +248,7 @@ export async function persistAuditResults(
         claudePrompt: f.claudePrompt ?? null,
         lovablePrompt: f.lovablePrompt ?? null,
         boltPrompt: f.boltPrompt ?? null,
-        verificationRule: f.verificationRule ?? null,
+        verificationRule: f.verificationRule ?? 'Confirm the issue described in evidence on the live page.',
         checkId: null,
         pageUrl: f.pageUrl ?? null,
         fingerprint: findingFingerprint(f),
@@ -239,7 +260,7 @@ export async function persistAuditResults(
       await tx.finding.createMany({ data: findingRows })
     }
 
-    const overallScore = calculateOverallScore(resolvedScores)
+    const overallScore = calculateOverallScore(resolvedScores, resolvedGrades)
     await tx.audit.update({
       where: { id: auditId },
       data: {

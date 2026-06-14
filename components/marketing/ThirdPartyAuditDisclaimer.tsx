@@ -1,30 +1,33 @@
-import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+import { COMPACT_DISCLAIMER, formatPipelineVersion } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
 
 interface ThirdPartyAuditDisclaimerProps {
   variant?: 'full' | 'compact'
   className?: string
+  showPipeline?: boolean
 }
 
 export function ThirdPartyAuditDisclaimer({
   variant = 'full',
   className,
+  showPipeline = false,
 }: ThirdPartyAuditDisclaimerProps) {
   if (variant === 'compact') {
     return (
       <p className={cn('text-[10px] text-muted-foreground leading-relaxed', className)}>
-        Automated audit — illustrative, not an endorsement. Pipeline v{PIPELINE_VERSION}.
+        {COMPACT_DISCLAIMER}
+        {showPipeline ? ` ${formatPipelineVersion()}.` : null}
       </p>
     )
   }
 
   return (
-    <div className={cn('rounded-lg border bg-muted/30 p-5 space-y-3', className)}>
+    <div className={cn('rounded-card border-0 bg-muted/30 p-5 space-y-3 shadow-card', className)}>
       <p className="text-sm font-medium">About these audits</p>
-      <ul className="text-xs text-muted-foreground space-y-1.5">
+      <ul className="space-y-1.5 text-xs text-muted-foreground">
         <li>• All audits are automated and context-dependent — results may vary.</li>
         <li>
-          • Scores reflect the pipeline v{PIPELINE_VERSION} model: objective checks (0–100) and
+          • Scores reflect the {formatPipelineVersion()} model: objective checks (0–100) and
           experience grades (A–F).
         </li>
         <li>• These are not official audits or endorsements of the sites shown.</li>

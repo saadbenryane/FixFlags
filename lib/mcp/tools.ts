@@ -73,7 +73,8 @@ export function registerAllTools(server: McpServer, user: User) {
         userLimit.exceeded ? userLimit.retryAfterSeconds : 0,
         hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
       )
-      const { delayMs } = computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
+      const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
+        computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
 
       const criticalPath = mode === 'critical_path'
       if (criticalPath && !canAccessPaidFeatures(freshUser)) {
@@ -102,6 +103,16 @@ export function registerAllTools(server: McpServer, user: User) {
               auditId,
               status,
               reportUrl: `${appUrl}/audit/${auditId}`,
+              estimatedWaitSeconds,
+              queuePosition,
+              scheduledStartAt,
+              queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
+              queueReason:
+                delayMs > 0
+                  ? 'rate_limit'
+                  : workerEstimate.waitingJobs > 0
+                    ? 'backlog'
+                    : undefined,
             }),
           },
         ],

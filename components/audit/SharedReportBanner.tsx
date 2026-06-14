@@ -20,7 +20,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
   return (
     <div
       className={cn(
-        'sticky top-16 z-10 rounded-xl border border-brand/20 bg-brand/[0.06] p-4 sm:p-5 space-y-3 shadow-card',
+        'sticky top-[var(--header-offset)] z-10 rounded-card border-0 bg-brand/[0.06] p-4 sm:p-5 space-y-3 shadow-card',
         className
       )}
     >

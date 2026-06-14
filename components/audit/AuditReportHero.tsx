@@ -55,7 +55,7 @@ export function AuditReportHero({
   return (
     <div className="space-y-6">
       {launchReadiness && (
-        <div className="rounded-xl border bg-card p-4 space-y-3">
+        <div className="rounded-card border-0 bg-card p-4 space-y-3 shadow-card">
           <div className="flex items-center gap-3 flex-wrap">
             <span
               className={cn(

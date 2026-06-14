@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
+import { QueuePosition } from '@/components/audit/QueuePosition'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 
 export function AuditInput() {
@@ -20,10 +21,12 @@ export function AuditInput() {
     code?: string
     action?: string
   } | null>(null)
+  const [queueHold, setQueueHold] = useState<{ estimatedWaitSeconds: number } | null>(null)
 
   async function submitUrl() {
     setUrlError('')
     setLimitGate(null)
+    setQueueHold(null)
 
     let normalized = url.trim()
     if (!normalized) {
@@ -61,6 +64,10 @@ export function AuditInput() {
         const parsed = await parseApiErrorResponse(res)
         if (res.status === 402) {
           setLimitGate(parsed)
+        } else if (res.status === 429 || parsed.code === 'RATE_LIMITED') {
+          setQueueHold({
+            estimatedWaitSeconds: parsed.estimatedWaitSeconds ?? 60,
+          })
         } else {
           toast.error(parsed.message)
         }
@@ -90,9 +97,9 @@ export function AuditInput() {
   }
 
   return (
-    <div className="flex flex-col gap-3 w-full max-w-2xl">
+    <div className="flex w-full max-w-2xl flex-col gap-3">
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <label htmlFor="audit-url" className="sr-only">
             Public website URL
           </label>
@@ -104,13 +111,16 @@ export function AuditInput() {
             autoComplete="url"
             placeholder="https://yoursite.com"
             value={url}
-            onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
-            className="h-12 text-base flex-1"
+            onChange={(e) => {
+              setUrl(e.target.value)
+              setUrlError('')
+            }}
+            className="h-12 flex-1 text-base"
             disabled={loading}
             aria-invalid={Boolean(urlError)}
             aria-describedby={urlError ? 'audit-url-error' : undefined}
           />
-          <Button type="submit" size="lg" disabled={loading} className="h-12 px-6 gap-2 shrink-0">
+          <Button type="submit" size="lg" disabled={loading} className="h-12 shrink-0 gap-2 px-6 sm:w-auto w-full">
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -130,6 +140,13 @@ export function AuditInput() {
           </p>
         )}
       </form>
+
+      {queueHold && (
+        <QueuePosition
+          estimatedSeconds={queueHold.estimatedWaitSeconds}
+          queueReason="rate_limit"
+        />
+      )}
 
       {limitGate && (
         <AuditLimitGate

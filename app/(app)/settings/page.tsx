@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   const planDef = PLAN_DEFINITIONS[user.plan]
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-2xl px-4 py-16 space-y-6">
       <div className="space-y-1">
         <Heading as="h1">Settings</Heading>
         <Muted>Account and integrations</Muted>

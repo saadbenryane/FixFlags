@@ -1,9 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { Clock, BookOpen } from 'lucide-react'
 import { MARKETING_LINKS } from '@/lib/site/nav'
+import { NavLink } from '@/components/layout/nav-link'
+import { QUEUE_COPY } from '@/lib/marketing/copy'
+import {
+  NAV_LINK_ACTIVE,
+  NAV_LINK_BASE,
+  NAV_LINK_INACTIVE,
+} from '@/lib/site/nav-styles'
 
 interface QueuePositionProps {
   queuePosition?: number
@@ -76,7 +82,7 @@ export function QueuePosition({
         : '33%'
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-4" role="status">
+    <div className="space-y-4 rounded-card border-0 bg-card p-4 shadow-card" role="status">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10">
           <Clock className="h-4 w-4 text-brand" />
@@ -86,33 +92,41 @@ export function QueuePosition({
           <p className="text-xs text-muted-foreground">{waitLine}</p>
         </div>
       </div>
-      <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full bg-brand rounded-full transition-all duration-1000 ease-linear"
+          className="h-full rounded-full bg-brand transition-all duration-1000 ease-linear"
           style={{ width: progressWidth }}
         />
       </div>
       <div className="space-y-2">
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <BookOpen className="h-3.5 w-3.5 shrink-0" />
-          Browse while you wait — your audit will continue in the background.
+          {QUEUE_COPY.browseWhileWaiting}
         </p>
+        <p className="text-xs text-muted-foreground">{QUEUE_COPY.prepMcp}</p>
         <div className="flex flex-wrap gap-2">
           {browseLinks.map((link) => (
-            <Link
+            <NavLink
               key={link.href}
               href={link.href}
-              className="text-xs rounded-full border px-3 py-1.5 hover:bg-accent transition-colors"
+              className={`${NAV_LINK_BASE} text-xs`}
+              activeClassName={NAV_LINK_ACTIVE}
+              inactiveClassName={NAV_LINK_INACTIVE}
             >
               {link.label}
-            </Link>
+            </NavLink>
           ))}
         </div>
         {!isLoggedIn && (
           <p className="text-xs text-muted-foreground">
-            <Link href="/sign-in" className="text-brand link-underline-grow">
+            <NavLink
+              href="/sign-in"
+              className="text-brand transition-colors duration-200 hover:text-brand/80"
+              activeClassName="font-medium"
+              inactiveClassName=""
+            >
               Sign in
-            </Link>{' '}
+            </NavLink>{' '}
             for higher limits.
           </p>
         )}

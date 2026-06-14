@@ -7,6 +7,7 @@ export type UpgradeMoment =
   | 'compare_improved'
   | 'compare_flat'
   | 'trial_exhausted'
+  | 'share_public'
   | 'free_default'
   | 'report_completed'
 
@@ -51,6 +52,8 @@ export function getUpgradeMomentContent(
       return proMoment(UPGRADE_MOMENTS.compare_flat)
     case 'trial_exhausted':
       return proMoment(UPGRADE_MOMENTS.trial_exhausted)
+    case 'share_public':
+      return { ...UPGRADE_MOMENTS.share_public }
     case 'report_completed':
       return proMoment(UPGRADE_MOMENTS.report_completed)
     case 'free_default':

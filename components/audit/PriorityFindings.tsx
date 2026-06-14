@@ -1,48 +1,22 @@
+'use client'
+
 import { FindingCard } from '@/components/audit/FindingCard'
-import { gradeRank, severityRank } from '@/lib/utils'
-
-interface Finding {
-  id: string
-  severity: string
-  problem: string
-  evidence: string
-  whyItMatters: string
-  fix: string
-  agentPrompt?: string | null
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-}
-
-interface Area {
-  name: string
-  grade: string | null
-  findings: Finding[]
-}
+import { rankFindingsByPriority, type RankableArea } from '@/lib/audit/priority-findings'
 
 interface Props {
-  areas: Area[]
+  areas: RankableArea[]
   limit?: number
   showFeedback?: boolean
+  defaultCollapsed?: boolean
 }
 
-export function PriorityFindings({ areas, limit = 3, showFeedback = true }: Props) {
-  const ranked = areas.flatMap((area) =>
-    area.findings.map((finding) => ({
-      finding,
-      areaName: area.name,
-      areaGrade: area.grade,
-    }))
-  )
-
-  ranked.sort((a, b) => {
-    const severityDiff = severityRank(a.finding.severity) - severityRank(b.finding.severity)
-    if (severityDiff !== 0) return severityDiff
-    return gradeRank(a.areaGrade ?? '') - gradeRank(b.areaGrade ?? '')
-  })
-
-  const top = ranked.slice(0, limit)
+export function PriorityFindings({
+  areas,
+  limit = 3,
+  showFeedback = true,
+  defaultCollapsed = true,
+}: Props) {
+  const top = rankFindingsByPriority(areas, limit)
 
   if (top.length === 0) return null
 
@@ -51,10 +25,10 @@ export function PriorityFindings({ areas, limit = 3, showFeedback = true }: Prop
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-sm font-semibold tracking-heading">Priority fixes</h2>
         <span className="text-xs text-muted-foreground">
-          Top {top.length} issue{top.length !== 1 ? 's' : ''} across all areas
+          Top {top.length} issue{top.length !== 1 ? 's' : ''} — expand for evidence
         </span>
       </div>
-      <div className="rounded-card bg-card shadow-card overflow-hidden">
+      <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">
         {top.map(({ finding, areaName }) => (
           <FindingCard
             key={finding.id}
@@ -62,6 +36,7 @@ export function PriorityFindings({ areas, limit = 3, showFeedback = true }: Prop
             areaName={areaName}
             showFeedback={showFeedback}
             variant="row"
+            defaultExpanded={!defaultCollapsed}
           />
         ))}
       </div>

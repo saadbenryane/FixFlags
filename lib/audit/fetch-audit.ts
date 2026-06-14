@@ -9,6 +9,9 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import {
+  sanitizeAreaForRead,
+} from '@/lib/audit/sanitize-prompts'
 
 function parsePageSpeedErrors(performanceData: unknown): {
   desktopError?: string
@@ -81,7 +84,8 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit, session?.user)
-  const stripped = stripInternalAuditFields(audit)
+  const sanitizedAreas = audit.areas.map((area) => sanitizeAreaForRead(area))
+  const stripped = stripInternalAuditFields({ ...audit, areas: sanitizedAreas })
   const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
 

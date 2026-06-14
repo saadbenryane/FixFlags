@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
 import { CaseStudiesSection } from '@/components/marketing/CaseStudiesSection'
 import { ComparisonTable } from '@/components/marketing/ComparisonTable'
 import { FaqSection } from '@/components/marketing/FaqSection'
@@ -15,15 +14,16 @@ import { WhatsCheckedSection } from '@/components/marketing/WhatsCheckedSection'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
+import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
+import { TextLink } from '@/components/ui/text-link'
 import {
   DIFFERENTIATION,
   MCP_SECTION,
   PRICING_TEASER,
   BRAND,
-  FINAL_CTA,
-  HOME_FAQ,
   FAQ_SECTION,
+  HOME_FAQ,
 } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { cn } from '@/lib/utils'
@@ -48,8 +48,8 @@ export default async function HomePage() {
 
       <Section spacing="default" id="agent-workflow">
         <Container>
-          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] lg:gap-14">
-            <div className="space-y-6">
+          <PageGrid align="start">
+            <PageGridCol span="intro" className="space-y-6">
               <SectionIntro
                 align="left"
                 headline={MCP_SECTION.headline}
@@ -61,9 +61,11 @@ export default async function HomePage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-            </div>
-            <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
-          </div>
+            </PageGridCol>
+            <PageGridCol span="content">
+              <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
+            </PageGridCol>
+          </PageGrid>
         </Container>
       </Section>
 
@@ -73,15 +75,12 @@ export default async function HomePage() {
 
       <Section spacing="default" className="bg-muted/35" id="lighthouse-comparison">
         <Container className="space-y-10">
-          <SectionIntro
-            headline={DIFFERENTIATION.headline}
-            subhead={DIFFERENTIATION.subhead}
-          />
-          <p className="text-center text-sm text-muted-foreground">
+          <SectionIntro headline={DIFFERENTIATION.headline} subhead={DIFFERENTIATION.subhead} />
+          <p className="mx-auto max-w-prose text-center text-sm text-muted-foreground">
             Compare with{' '}
             <a
               href="https://developer.chrome.com/docs/lighthouse"
-              className="text-brand underline underline-offset-2"
+              className="text-link underline underline-offset-2 transition-colors duration-200 hover:text-link-hover"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -90,7 +89,7 @@ export default async function HomePage() {
             .
           </p>
           <ComparisonTable rows={DIFFERENTIATION.rows} />
-          <p className="text-center text-xs text-muted-foreground max-w-2xl mx-auto">
+          <p className="mx-auto max-w-prose text-center text-xs text-muted-foreground">
             Lighthouse SEO checks meta tags including og:image; {BRAND.name} adds screenshot-based
             UX context and agent-ready fix prompts.
           </p>
@@ -108,24 +107,24 @@ export default async function HomePage() {
                   key={plan.name}
                   interactive
                   className={cn(
-                    'relative border-0 text-center shadow-card',
-                    highlighted && 'shadow-card-hover bg-brand/[0.03]'
+                    'relative flex h-full flex-col border-0 text-center shadow-card',
+                    highlighted && 'bg-brand/[0.03] shadow-card-hover'
                   )}
                 >
                   {highlighted ? (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-label text-brand-foreground">
+                    <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-label text-brand-foreground">
                       Popular
                     </span>
                   ) : null}
-                  <CardContent className="space-y-4 pt-8">
+                  <CardContent className="flex flex-1 flex-col space-y-4 pt-8">
                     <div className="font-semibold">{plan.name}</div>
                     <div className="font-display text-3xl tabular-nums">{plan.price}</div>
-                    <p className="text-sm text-muted-foreground text-pretty">{plan.outcome}</p>
+                    <p className="flex-1 text-sm text-muted-foreground text-pretty">{plan.outcome}</p>
                     <Button
                       variant={highlighted ? 'default' : 'outline'}
-                      size="sm"
+                      size="default"
                       asChild
-                      className="w-full"
+                      className="mt-auto w-full"
                     >
                       <Link href={plan.href}>{plan.cta}</Link>
                     </Button>
@@ -146,19 +145,15 @@ export default async function HomePage() {
       </Section>
 
       <Section spacing="default">
-        <Container className="max-w-2xl">
-          <FaqSection items={HOME_FAQ} title={FAQ_SECTION.title} />
-          <div className="mt-6 text-center">
-            <Link href="/faq" className="text-sm text-brand link-underline-grow">
-              {FAQ_SECTION.viewAll}
-            </Link>
-          </div>
-        </Container>
-      </Section>
-
-      <Section spacing="loose" className="bg-muted/35">
         <Container>
-          <AuditCtaBlock headline={FINAL_CTA.headline} trustLine={FINAL_CTA.trustLine} />
+          <div className="mx-auto max-w-prose">
+            <FaqSection items={HOME_FAQ} title={FAQ_SECTION.title} />
+            <div className="mt-6 text-center">
+              <TextLink href="/faq" className="text-sm">
+                {FAQ_SECTION.viewAll}
+              </TextLink>
+            </div>
+          </div>
         </Container>
       </Section>
     </>

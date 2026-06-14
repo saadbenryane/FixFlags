@@ -73,18 +73,21 @@ function SignUpForm() {
       footer={
         <p className="text-center text-sm text-muted-foreground">
           {AUTH.signUp.footer}{' '}
-          <Link href={signInHref()} className="text-primary link-underline-grow">
+          <Link href={signInHref()} className="text-primary transition-colors duration-200 hover:text-primary/80">
             {AUTH.signUp.footerLink}
           </Link>
         </p>
       }
     >
-      <div className="rounded-lg border bg-muted/30 p-4">
+      <div className="rounded-card bg-muted/30 p-4 shadow-none">
         <AuthValueProps />
       </div>
       <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
+      {hasOAuthEnabled() && (
+        <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
+      )}
       {showPlanSteps && (
-        <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+        <div className="rounded-card bg-muted/30 p-4 space-y-2">
           <p className="text-xs font-medium">What happens next</p>
           <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
             {AUTH.signUp.planSteps.map((step) => (
@@ -125,11 +128,16 @@ function SignUpForm() {
           }}
           error={confirmError}
         />
-        <p className="text-xs text-muted-foreground text-center">
-          {AUTH.privacyNote}{' '}
+        <p className="text-center text-xs text-muted-foreground">
+          By creating an account, you agree to our{' '}
           <Link href="/privacy" className="underline hover:text-foreground">
             Privacy Policy
+          </Link>{' '}
+          and{' '}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms of Service
           </Link>
+          .
         </p>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

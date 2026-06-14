@@ -1,5 +1,4 @@
 import { AuditReport } from '@/components/audit/AuditReport'
-import { AuditInput } from '@/components/audit/AuditInput'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
@@ -21,7 +20,7 @@ export default async function SamplesPage() {
 
   return (
     <>
-      <Container className="max-w-4xl pt-8 pb-2">
+      <Container variant="report" className="pt-8 pb-2">
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
             <SampleStatusBadge
@@ -47,13 +46,6 @@ export default async function SamplesPage() {
         isLoggedIn={false}
         variant="sample"
       />
-
-      <Container className="max-w-4xl pb-12 text-center space-y-4">
-        <p className="font-display text-lg tracking-display">{SAMPLES_PAGE.bottomCta}</p>
-        <div className="mx-auto max-w-xl">
-          <AuditInput />
-        </div>
-      </Container>
     </>
   )
 }

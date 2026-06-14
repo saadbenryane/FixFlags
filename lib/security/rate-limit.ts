@@ -66,7 +66,7 @@ export async function recordRateLimit(input: {
   return incrementRateLimit(input)
 }
 
-/** Hard gate for routes that must reject when over limit. */
+/** Hard gate for routes that must reject when over limit (prefer recordRateLimit + queue). */
 export async function enforceRateLimit(input: {
   scope: string
   identifier: string

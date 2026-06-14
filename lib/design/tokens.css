@@ -6,7 +6,7 @@
  * Type: Fraunces display + Source Sans 3 body + IBM Plex Mono labels
  *
  * Brand grid (marketing + reports):
- * - Links: text-brand + link-underline-grow
+ * - Links: text-brand; nav uses pill active fill (nav-styles.ts)
  * - Cards: Card component, rounded-card, shadow-card, border-0
  * - CTAs: Button default (pill) hero; outline secondary; size sm in nav
  * - Copy prompt: PromptCopyButton everywhere
@@ -29,12 +29,20 @@
   --secondary: 38 14% 94%;
   --secondary-foreground: 25 10% 13%;
 
-  /* ── Color: 10% accent (refined ochre — not neon amber) ── */
-  --brand: 28 62% 37%;
+  /* ── Color: 10% accent (refined ochre — CTAs & scores only) ── */
+  --brand: 28 45% 38%;
   --brand-foreground: 42 26% 99%;
   --accent: 36 40% 95%;
   --accent-foreground: 25 10% 13%;
-  --ring: 28 62% 37%;
+
+  /* Links & focus — independent of brand (slate-blue, WCAG AA on paper) */
+  --link: 220 45% 38%;
+  --link-hover: 220 50% 32%;
+  --focus-ring: 220 55% 45%;
+  --ring: var(--focus-ring);
+
+  --surface-raised: 42 32% 99.5%;
+  --border-subtle: 36 10% 92%;
 
   --popover: 42 32% 99.5%;
   --popover-foreground: 25 10% 13%;
@@ -86,6 +94,16 @@
   --shadow-card-hover: 0 2px 6px rgb(25 10% 13% / 0.04), 0 16px 36px -6px rgb(25 10% 13% / 0.09);
   --shadow-raised: 0 12px 40px -12px rgb(25 10% 13% / 0.1);
 
+  /* ── Motion (Arc-like: 150–220ms, ease-out) ── */
+  --motion-fast: 200ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Layout ── */
+  --header-offset: 5.5rem;
+  --space-section-inner: 3rem;
+  --space-card: 1.25rem;
+  --space-section-y: 4rem;
+
   /* Screenshot frames (match Puppeteer capture viewports) */
   --screenshot-desktop-aspect: 1280 / 900;
   --screenshot-mobile-aspect: 375 / 812;
@@ -120,11 +138,18 @@
   --secondary: 25 6% 13%;
   --secondary-foreground: 40 16% 96%;
 
-  --brand: 32 70% 48%;
+  --brand: 32 48% 52%;
   --brand-foreground: 25 10% 8%;
   --accent: 28 20% 12%;
   --accent-foreground: 40 16% 96%;
-  --ring: 32 70% 48%;
+
+  --link: 215 55% 68%;
+  --link-hover: 215 60% 75%;
+  --focus-ring: 215 70% 72%;
+  --ring: var(--focus-ring);
+
+  --surface-raised: 25 8% 8%;
+  --border-subtle: 25 6% 16%;
 
   --popover: 25 8% 8%;
   --popover-foreground: 40 16% 96%;

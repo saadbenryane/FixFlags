@@ -30,6 +30,7 @@ const config: Config = {
       },
       colors: {
         border: 'hsl(var(--border))',
+        'border-subtle': 'hsl(var(--border-subtle))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
@@ -64,6 +65,11 @@ const config: Config = {
           DEFAULT: 'hsl(var(--brand))',
           foreground: 'hsl(var(--brand-foreground))',
         },
+        link: {
+          DEFAULT: 'hsl(var(--link))',
+          hover: 'hsl(var(--link-hover))',
+        },
+        'focus-ring': 'hsl(var(--focus-ring))',
         terminal: {
           DEFAULT: 'hsl(var(--terminal))',
           foreground: 'hsl(var(--terminal-foreground))',

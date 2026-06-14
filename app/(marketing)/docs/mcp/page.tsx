@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -14,10 +13,26 @@ import {
   getMcpEndpoint,
   MCP_LOCAL_BASE_URL,
 } from '@/lib/mcp/docs-content'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Surface } from '@/components/ui/surface'
 
 export const metadata = buildPageMetadata('mcp', '/docs/mcp')
 
-const CONFIG_EDITORS = ['claudeCode', 'cursor', 'windsurf'] as const
+const CONFIG_EDITORS = ['cursor', 'claudeCode', 'windsurf'] as const
+
+const MCP_SECURITY = [
+  'Never commit API keys to git — add .env to .gitignore and use env vars or your editor secret store.',
+  'Never share keys in screenshots, Slack, or client-side code.',
+  'Keys are stored hashed on the server; we cannot recover a lost key — rotate and create a new one.',
+  'Rotate immediately if a key is exposed.',
+] as const
+
+const MCP_LIMITATIONS = [
+  'Pro required',
+  'Rate limits queue with ETA',
+  'Editors: Cursor, Claude Code, Windsurf',
+  'Public URLs only',
+] as const
 
 export default function McpDocsPage() {
   const productionEndpoint = getMcpEndpoint(SITE_URL)
@@ -32,17 +47,8 @@ export default function McpDocsPage() {
           <McpApiKeyLink />
         </div>
 
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
-          <p className="text-sm font-medium">Security</p>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Never commit API keys to git or share them in screenshots.</li>
-            <li>• Store keys in environment variables or your editor&apos;s secret store.</li>
-            <li>• Rotate keys immediately if one is exposed.</li>
-          </ul>
-        </div>
-
-        <div className="marketing-panel space-y-3 p-6">
-          <div className="flex items-center gap-2">
+        <Surface variant="elevated" className="space-y-5">
+          <div className="flex flex-wrap items-center gap-2">
             <Heading as="h2" className="text-lg">
               Quick start
             </Heading>
@@ -51,10 +57,40 @@ export default function McpDocsPage() {
             </Badge>
           </div>
           <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-            {MCP_DOCS.quickStart.map((step, i) => (
-              <li key={i}>{step}</li>
+            {MCP_DOCS.quickStart.map((step) => (
+              <li key={step}>{step}</li>
             ))}
           </ol>
+          <div className="space-y-3">
+            <p className="text-xs font-medium">Cursor config (paste into .cursor/mcp.json)</p>
+            <pre className="overflow-x-auto rounded-nested-md bg-muted/40 p-4 font-mono text-xs">
+              <code>{buildMcpConfigExample('cursor', SITE_URL)}</code>
+            </pre>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Test with curl</p>
+            <TerminalBlock label="curl">{buildMcpTestCurl(SITE_URL)}</TerminalBlock>
+          </div>
+        </Surface>
+
+        <div className="flex flex-wrap gap-2">
+          {MCP_LIMITATIONS.map((item) => (
+            <span
+              key={item}
+              className="inline-flex min-h-9 items-center rounded-full bg-muted/50 px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-label text-muted-foreground shadow-filterPill"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+
+        <div className="rounded-card border-0 bg-brand/[0.06] p-5 shadow-card space-y-3">
+          <p className="text-sm font-medium">Security</p>
+          <ul className="space-y-2 text-xs text-muted-foreground">
+            {MCP_SECURITY.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
         </div>
 
         <div className="space-y-4">
@@ -64,12 +100,16 @@ export default function McpDocsPage() {
             the <code>x-api-key</code> header.
           </Body>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border p-4 space-y-1">
+            <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
               <p className="text-xs font-medium">Production</p>
+              <p className="text-xs text-muted-foreground">Use for live sites and deployed apps.</p>
               <code className="text-xs break-all">{productionEndpoint}</code>
             </div>
-            <div className="rounded-lg border p-4 space-y-1">
+            <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
               <p className="text-xs font-medium">Local development</p>
+              <p className="text-xs text-muted-foreground">
+                Use when running <code>npm run dev</code> on this machine.
+              </p>
               <code className="text-xs break-all">{localEndpoint}</code>
             </div>
           </div>
@@ -77,13 +117,12 @@ export default function McpDocsPage() {
 
         <div className="space-y-4">
           <Heading as="h2">Configuration</Heading>
+          <Body className="text-sm text-muted-foreground">{MCP_DOCS.lovableBoltNote}</Body>
 
           {CONFIG_EDITORS.map((tool) => (
             <Card key={tool} className="overflow-hidden border-0 shadow-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  {MCP_DOCS.configLabels[tool]}
-                </CardTitle>
+                <CardTitle className="text-base">{MCP_DOCS.configLabels[tool]}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <pre className="overflow-x-auto p-4 font-mono text-xs">
@@ -92,16 +131,6 @@ export default function McpDocsPage() {
               </CardContent>
             </Card>
           ))}
-
-          <p className="text-sm text-muted-foreground">{MCP_DOCS.lovableBoltNote}</p>
-        </div>
-
-        <div className="space-y-4">
-          <Heading as="h2">Test your connection</Heading>
-          <Body className="text-sm text-muted-foreground">
-            Replace <code>$QOS_API_KEY</code> with a key from Settings → API Keys.
-          </Body>
-          <TerminalBlock label="curl">{buildMcpTestCurl(SITE_URL)}</TerminalBlock>
         </div>
 
         <div className="space-y-4">
@@ -116,7 +145,7 @@ export default function McpDocsPage() {
           </div>
         </div>
 
-        <TerminalBlock label="Example workflow">{MCP_SECTION.workflow}</TerminalBlock>
+        <TerminalBlock label="Example ship loop">{MCP_SECTION.workflow}</TerminalBlock>
       </Container>
     </Section>
   )

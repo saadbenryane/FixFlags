@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     user?.plan === 'FREE' && !isUnlimited && effectiveLimit !== null && used >= effectiveLimit
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-4xl mx-auto px-4 py-16 space-y-8">
       <Suspense>
         <DashboardCheckoutToast />
       </Suspense>

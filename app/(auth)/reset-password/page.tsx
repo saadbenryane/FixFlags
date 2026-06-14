@@ -57,7 +57,7 @@ function ResetPasswordForm() {
         subtitle={AUTH.resetPassword.invalidSubtitle}
         footer={
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/forgot-password" className="text-primary link-underline-grow">
+            <Link href="/forgot-password" className="text-primary transition-colors duration-200 hover:text-primary/80">
               {AUTH.resetPassword.requestNewLink}
             </Link>
           </p>

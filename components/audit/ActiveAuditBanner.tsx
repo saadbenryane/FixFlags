@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Clock, Loader2 } from 'lucide-react'
+import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
 import { auditHostname } from '@/lib/audit/active-audit'
 
@@ -15,7 +16,8 @@ function formatWait(seconds: number): string {
   if (seconds <= 0) return 'starting soon'
   if (seconds < 60) return `~${seconds}s`
   const mins = Math.floor(seconds / 60)
-  return `~${mins}m`
+  const secs = seconds % 60
+  return secs > 0 ? `~${mins}m ${secs}s` : `~${mins}m`
 }
 
 export function ActiveAuditBanner() {
@@ -24,18 +26,25 @@ export function ActiveAuditBanner() {
   const [waitLabel, setWaitLabel] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!active?.scheduledStartAt) {
+    if (!active) {
       setWaitLabel(null)
       return
     }
-    const update = () => {
-      const secs = secondsUntil(active.scheduledStartAt!)
-      setWaitLabel(formatWait(secs))
+
+    if (active.scheduledStartAt) {
+      const update = () => setWaitLabel(formatWait(secondsUntil(active.scheduledStartAt!)))
+      update()
+      const interval = setInterval(update, 1000)
+      return () => clearInterval(interval)
     }
-    update()
-    const interval = setInterval(update, 1000)
-    return () => clearInterval(interval)
-  }, [active?.scheduledStartAt])
+
+    if (active.estimatedWaitSeconds && active.estimatedWaitSeconds > 0) {
+      setWaitLabel(formatWait(active.estimatedWaitSeconds))
+      return
+    }
+
+    setWaitLabel(null)
+  }, [active?.scheduledStartAt, active?.estimatedWaitSeconds, active])
 
   if (!active) return null
   if (pathname === `/audit/${active.auditId}`) return null
@@ -44,25 +53,27 @@ export function ActiveAuditBanner() {
   const isQueued = active.queueReason != null || (active.estimatedWaitSeconds ?? 0) > 0
 
   return (
-    <div className="border-b bg-brand/5">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 text-xs text-muted-foreground">
-        {isQueued ? (
-          <Clock className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
-        ) : (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />
-        )}
-        <span>
-          {isQueued ? 'Audit queued for' : 'Audit running for'}{' '}
-          <span className="font-medium text-foreground">{hostname}</span>
-          {waitLabel ? ` — ${waitLabel}` : null}
-        </span>
-        <Link
-          href={`/audit/${active.auditId}`}
-          className="font-medium text-brand link-underline-grow"
-        >
-          Return to audit
-        </Link>
-      </div>
+    <div className="pointer-events-none px-3 pb-2 pt-0">
+      <Container className="pointer-events-auto">
+        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full glass-surface-elevated px-4 py-2 text-xs text-muted-foreground shadow-raised">
+          {isQueued ? (
+            <Clock className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
+          ) : (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />
+          )}
+          <span>
+            {isQueued ? 'Audit queued for' : 'Audit running for'}{' '}
+            <span className="font-medium text-foreground">{hostname}</span>
+            {waitLabel ? ` — ${waitLabel}` : null}
+          </span>
+          <Link
+            href={`/audit/${active.auditId}`}
+            className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
+          >
+            Return to audit
+          </Link>
+        </div>
+      </Container>
     </div>
   )
 }

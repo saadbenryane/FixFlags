@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { AreaGrid } from '@/components/audit/AreaGrid'
+import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
+import { AreaSummaryGrid } from '@/components/audit/AreaSummaryGrid'
+import { ReportAreasNav } from '@/components/audit/ReportAreasNav'
 import { AreaCard } from '@/components/audit/AreaCard'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { PriorityFindings } from '@/components/audit/PriorityFindings'
@@ -16,6 +18,7 @@ import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
 import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 
 interface Finding {
   id: string
@@ -128,7 +131,8 @@ export function AuditReport({
 
   return (
     <Container className="max-w-4xl py-8 space-y-8">
-      <AuditReportHero
+      <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-8">
+        <AuditReportHero
         pageJob={audit.pageJob}
         pageType={audit.pageType}
         verdict={audit.verdict}
@@ -144,7 +148,10 @@ export function AuditReport({
       />
 
       {!isSample && !isViewerOwner && (
-        <SharedReportBanner hostname={hostname} score={audit.score} />
+        <>
+          <ThirdPartyAuditDisclaimer variant="compact" />
+          <SharedReportBanner hostname={hostname} score={audit.score} />
+        </>
       )}
 
       <CompletenessHeader
@@ -156,7 +163,10 @@ export function AuditReport({
       />
 
       {audit.reportCompleteness !== 'FULL' && (
-        <div role="status" className="rounded-lg bg-grade-C/10 px-4 py-3 text-sm text-foreground">
+        <div
+          role="status"
+          className="rounded-card border-0 bg-grade-C/10 px-4 py-3 text-sm text-foreground shadow-card"
+        >
           <p className="font-medium">Partial report</p>
           <p className="mt-1 text-muted-foreground">
             Some optional evidence was unavailable. Unassessed areas remain ungraded rather than
@@ -172,15 +182,26 @@ export function AuditReport({
           currentPlan={viewerPlan}
         />
       )}
+      </div>
 
-      <PriorityFindings areas={audit.areas} showFeedback={showFeedback} />
+      <ReportMiniNav />
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold tracking-heading">All areas</h2>
-        <AreaGrid areas={audit.areas} showScoreTypes />
+      <section id="report-priority" className="scroll-mt-[var(--header-offset)]">
+        <PriorityFindings areas={audit.areas} showFeedback={showFeedback} />
       </section>
 
-      <div className="space-y-3">
+      <section id="report-areas" className="scroll-mt-[var(--header-offset)] space-y-6">
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-heading">Summary by area</h2>
+          <AreaSummaryGrid areas={audit.areas} />
+        </div>
+
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-heading">All areas</h2>
+          <ReportAreasNav areas={audit.areas} />
+        </div>
+
+        <div className="space-y-3">
         {AREA_ORDER.map((areaName) => {
           const area = audit.areas.find((a) => a.name === areaName)
           if (!area) return null
@@ -194,9 +215,11 @@ export function AuditReport({
           )
         })}
       </div>
+      </section>
 
+      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
       {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
-        <div className="rounded-xl bg-muted/30 p-5 space-y-2">
+        <div className="rounded-card border-0 bg-muted/30 p-5 space-y-2 shadow-card">
           <h3 className="font-semibold text-sm">Next: prove your fixes worked</h3>
           <p className="text-sm text-muted-foreground text-pretty">
             Paste fix prompts into your editor, ship the changes, then hit{' '}
@@ -249,6 +272,7 @@ export function AuditReport({
         startedAt={audit.startedAt}
         completedAt={audit.completedAt}
       />
+      </div>
     </Container>
   )
 }

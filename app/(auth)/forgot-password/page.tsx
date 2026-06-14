@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
       subtitle={sent ? AUTH.forgotPassword.sentSubtitle : AUTH.forgotPassword.subtitle}
       footer={
         <p className="text-center text-sm text-muted-foreground">
-          <Link href="/sign-in" className="inline-flex items-center gap-1 text-primary link-underline-grow">
+          <Link href="/sign-in" className="inline-flex items-center gap-1 text-primary transition-colors duration-200 hover:text-primary/80">
             <ArrowLeft className="h-3 w-3" />
             {AUTH.forgotPassword.backToSignIn}
           </Link>

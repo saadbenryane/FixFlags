@@ -10,6 +10,21 @@ export const AREA_WEIGHTS: Record<AreaName, number> = {
   MOBILE: 0.1,
 }
 
+/** Experience areas scored A–F only in UI; mapped to numeric for overall score. */
+export const SUBJECTIVE_AREAS: readonly AreaName[] = ['CONVERSION', 'TRUST', 'CONTENT']
+
+const GRADE_NUMERIC: Record<AreaGrade, number> = {
+  A: 95,
+  B: 82,
+  C: 67,
+  D: 50,
+  F: 25,
+}
+
+export function isSubjectiveArea(area: AreaName): boolean {
+  return SUBJECTIVE_AREAS.includes(area)
+}
+
 export function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)))
 }
@@ -23,6 +38,10 @@ export function gradeFromScore(score: number): AreaGrade {
   return 'F'
 }
 
+export function numericFromGrade(grade: AreaGrade): number {
+  return GRADE_NUMERIC[grade]
+}
+
 export function statusFromScore(score: number): AreaStatus {
   const grade = gradeFromScore(score)
   if (grade === 'A') return 'EXCELLENT'
@@ -31,16 +50,47 @@ export function statusFromScore(score: number): AreaStatus {
   return 'CRITICAL'
 }
 
+export function statusFromGrade(grade: AreaGrade): AreaStatus {
+  return statusFromScore(numericFromGrade(grade))
+}
+
+export function areaNumericValue(input: {
+  score: number | null
+  grade: AreaGrade | null
+}): number | null {
+  if (input.score !== null && input.score !== undefined) {
+    return clampScore(input.score)
+  }
+  if (input.grade) {
+    return numericFromGrade(input.grade)
+  }
+  return null
+}
+
 export function calculateOverallScore(
-  scores: Partial<Record<AreaName, number | null>>
+  scores: Partial<Record<AreaName, number | null>>,
+  grades?: Partial<Record<AreaName, AreaGrade | null>>
 ): number | null {
+  const values: number[] = []
+
   for (const area of Object.keys(AREA_WEIGHTS) as AreaName[]) {
-    if (scores[area] === null || scores[area] === undefined) return null
+    const numeric = areaNumericValue({
+      score: scores[area] ?? null,
+      grade: grades?.[area] ?? null,
+    })
+    if (numeric === null) return null
+    values.push(numeric)
   }
 
   return clampScore(
     (Object.keys(AREA_WEIGHTS) as AreaName[]).reduce(
-      (total, area) => total + clampScore(scores[area]!) * AREA_WEIGHTS[area],
+      (total, area) =>
+        total +
+        areaNumericValue({
+          score: scores[area] ?? null,
+          grade: grades?.[area] ?? null,
+        })! *
+          AREA_WEIGHTS[area],
       0
     )
   )

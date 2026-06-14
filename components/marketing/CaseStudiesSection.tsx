@@ -8,7 +8,7 @@ import { Section } from '@/components/ui/section'
 export function CaseStudiesSection() {
   return (
     <Section spacing="default">
-      <Container className="space-y-12">
+      <Container className="space-y-10">
         <SectionIntro
           label="Case studies"
           headline="Illustrative fixes, representative outcomes"
@@ -21,7 +21,7 @@ export function CaseStudiesSection() {
           ))}
         </div>
 
-        <ThirdPartyAuditDisclaimer variant="compact" className="max-w-2xl" />
+        <ThirdPartyAuditDisclaimer variant="compact" className="max-w-prose" />
       </Container>
     </Section>
   )

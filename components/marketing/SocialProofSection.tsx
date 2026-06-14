@@ -6,7 +6,7 @@ import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAudi
 
 export function SocialProofSection() {
   return (
-    <Section spacing="tight">
+    <Section spacing="default">
       <Container>
         <div className="space-y-10">
           <div className="space-y-4 text-center">
@@ -20,8 +20,8 @@ export function SocialProofSection() {
             </div>
           </div>
 
-          <div className="mx-auto max-w-2xl">
-            <div className="relative rounded-card border border-border/20 bg-card p-6 shadow-card sm:p-8">
+          <div className="mx-auto max-w-prose">
+            <div className="relative rounded-card border-0 bg-card p-6 shadow-card sm:p-8">
               <svg
                 className="absolute top-4 left-4 h-8 w-8 text-brand/15"
                 viewBox="0 0 24 24"
@@ -45,7 +45,7 @@ export function SocialProofSection() {
             </div>
           </div>
 
-          <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-2xl text-center" />
+          <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-prose text-center" />
         </div>
       </Container>
     </Section>

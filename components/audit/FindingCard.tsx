@@ -11,9 +11,9 @@ interface Finding {
   id: string
   severity: string
   problem: string
-  evidence: string
-  whyItMatters: string
-  fix: string
+  evidence?: string
+  whyItMatters?: string
+  fix?: string
   agentPrompt?: string | null
   cursorPrompt?: string | null
   claudePrompt?: string | null
@@ -29,6 +29,7 @@ interface Props {
   areaName?: string
   showFeedback?: boolean
   variant?: 'card' | 'row'
+  defaultExpanded?: boolean
 }
 
 export function FindingCard({
@@ -36,8 +37,9 @@ export function FindingCard({
   areaName,
   showFeedback = true,
   variant = 'row',
+  defaultExpanded = false,
 }: Props) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
   const bestPrompt =
     finding.lovablePrompt ??
@@ -45,11 +47,12 @@ export function FindingCard({
     finding.cursorPrompt ??
     finding.claudePrompt ??
     finding.agentPrompt ??
-    finding.fix
+    finding.fix ??
+    finding.problem
 
   if (variant === 'card') {
     return (
-      <div className="rounded-lg border bg-card relative">
+      <div className="relative rounded-card border-0 bg-card shadow-card">
         <FindingRowContent
           finding={finding}
           areaName={areaName}
@@ -110,6 +113,15 @@ function FindingRowContent({
           {finding.pageUrl && (
             <p className="text-[10px] text-muted-foreground truncate">{finding.pageUrl}</p>
           )}
+          {(finding.severity === 'CRITICAL' || finding.severity === 'HIGH') &&
+            finding.verificationRule && (
+              <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                  How to verify
+                </p>
+                <p className="text-xs text-foreground/90">{finding.verificationRule}</p>
+              </div>
+            )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <PromptCopyButton prompt={bestPrompt} label="Copy prompt" compact />
@@ -127,9 +139,11 @@ function FindingRowContent({
       {expanded && (
         <div className="mt-3 ml-[calc(0.5rem+2px)] pl-3 border-l border-border/60 space-y-2">
           <p className="text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md leading-relaxed">
-            {finding.evidence}
+            {finding.evidence ?? 'No evidence captured.'}
           </p>
-          <p className="text-sm text-foreground/80 text-pretty">{finding.whyItMatters}</p>
+          {finding.whyItMatters && (
+            <p className="text-sm text-foreground/80 text-pretty">{finding.whyItMatters}</p>
+          )}
           {finding.verificationRule && (
             <div className="rounded-md bg-muted/40 px-3 py-2 space-y-1">
               <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">

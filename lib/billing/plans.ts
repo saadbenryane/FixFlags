@@ -180,7 +180,7 @@ export function resolveCheckoutPriceId(plan: PaidPlan, useFounding: boolean): st
 }
 
 export function getMarketingPlans() {
-  return (['FREE', 'BUILDER', 'TEAM', 'STUDIO'] as const).map((plan) => {
+  return (['FREE', 'BUILDER', 'TEAM'] as const).map((plan) => {
     const def = PLAN_DEFINITIONS[plan]
     return {
       name: def.name,
@@ -199,6 +199,25 @@ export function getMarketingPlans() {
     }
   })
 }
+
+export const CONTACT_PLAN = {
+  name: 'High volume',
+  plan: 'CONTACT' as const,
+  price: 'Custom',
+  period: '',
+  persona: 'Teams auditing at scale',
+  outcome: 'Volume pricing and dedicated support',
+  audits: '500+ / month',
+  features: [
+    'Everything in Agency',
+    'Custom audit volume',
+    'Dedicated onboarding',
+  ],
+  cta: 'Contact us',
+  href: 'mailto:hello@qualityos.com?subject=QualityOS%20high%20volume',
+  highlight: false,
+  accountModel: 'Talk to us about your workflow.',
+} as const
 
 export const EXPERT_REVIEW_PRICE_USD = 500
 

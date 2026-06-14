@@ -25,7 +25,7 @@ export type ExampleAudit = {
   score: number
   grade: string
   verdict: string
-  tag: 'best-practices' | 'marketing' | 'content-heavy'
+  tags: Array<'best-practices' | 'marketing' | 'content-heavy' | 'agency-ready'>
   areas: ExampleArea[]
 }
 
@@ -36,7 +36,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
     pageType: 'Documentation / Performance resource',
     score: 86,
     grade: 'B',
-    tag: 'best-practices',
+    tags: ['best-practices'],
     verdict:
       'Well-optimized performance resource with strong scores across most areas. Minor gaps in mobile tap target spacing and content headings could be tighter.',
     areas: [
@@ -216,7 +216,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
     pageType: 'Marketing / SaaS landing page',
     score: 72,
     grade: 'C',
-    tag: 'marketing',
+    tags: ['marketing', 'agency-ready'],
     verdict:
       'Strong brand presence but conversion path has friction. Mobile hero prioritizes visual over CTA visibility. Social sharing metadata needs improvement for organic reach.',
     areas: [
@@ -462,7 +462,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
     pageType: 'Content / Reference page',
     score: 68,
     grade: 'C',
-    tag: 'content-heavy',
+    tags: ['content-heavy'],
     verdict:
       'Exceptionally content-rich with deep information architecture. Social sharing metadata is minimal for such a widely-shared site. Mobile navigation handles depth well but text density is overwhelming at narrow widths.',
     areas: [

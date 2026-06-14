@@ -1,8 +1,24 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
-export type ContainerProps = React.HTMLAttributes<HTMLDivElement>
+const containerVariants = cva('container mx-auto w-full', {
+  variants: {
+    variant: {
+      default: 'max-w-7xl',
+      prose: 'max-w-[720px]',
+      report: 'max-w-4xl',
+    },
+  },
+  defaultVariants: {
+    variant: 'default',
+  },
+})
 
-export function Container({ className, ...props }: ContainerProps) {
-  return <div className={cn("container mx-auto max-w-screen-xl", className)} {...props} />
+export interface ContainerProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof containerVariants> {}
+
+export function Container({ className, variant, ...props }: ContainerProps) {
+  return <div className={cn(containerVariants({ variant }), className)} {...props} />
 }

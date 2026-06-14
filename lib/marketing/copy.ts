@@ -25,7 +25,7 @@ export const HERO = {
   headlineLine2: 'QualityOS checks it.',
   headlineAccent: true,
   subhead:
-    'AI reviews desktop and mobile screenshots across 7 areas. Every issue includes a copy-ready fix prompt your agent can run.',
+    'Run the ship loop: audit → fix prompts → re-check → before/after proof. AI reviews desktop and mobile screenshots across 7 areas.',
   trustLine: 'Free · No account · Usually under 90 seconds',
   primaryCta: 'Run audit',
   secondaryCta: 'See sample report',
@@ -43,7 +43,7 @@ export const HERO_FIX_PROMPT = {
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'Three steps to a fix list',
+  headline: 'Four steps in the ship loop',
   subhead: 'No account required for your first audit.',
   steps: [
     {
@@ -53,15 +53,25 @@ export const HOW_IT_WORKS_SECTION = {
     },
     {
       step: 2,
-      title: 'AI reviews the page',
-      body: 'Screenshots plus seven checks across performance, SEO, mobile, and conversion.',
+      title: 'Copy fix prompts',
+      body: `Every issue includes evidence and a prompt for ${AI_TOOLS}.`,
     },
     {
       step: 3,
-      title: 'Copy fix prompts',
-      body: `Paste into ${AI_TOOLS}, or connect MCP to audit, fix, and re-check with before/after compare.`,
+      title: 'Re-check after fixes',
+      body: 'Run a before/after compare to prove what improved.',
+    },
+    {
+      step: 4,
+      title: 'Share proof',
+      body: 'Export or share a permalink with scores and top issues (Agency).',
     },
   ],
+} as const
+
+export const QUEUE_COPY = {
+  browseWhileWaiting: 'Browse while you wait — your audit continues in the background.',
+  prepMcp: 'Prep MCP while you wait: read Examples, then set up Cursor or Claude integration.',
 } as const
 
 export const SAMPLE_FINDINGS = [
@@ -128,6 +138,7 @@ export const DIFFERENTIATION = {
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
     { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
     { feature: 'Re-check proof loop', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Pro)' },
+    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Agency)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
 } as const
@@ -181,8 +192,8 @@ export const CASE_STUDIES = [
     fix: 'Rewrote to outcome-driven headline naming audience and benefit.',
     outcome: 'Headline names audience and outcome explicitly. Illustrative Content area improvement after fix.',
     area: 'Content',
-    scoreBefore: 44,
-    scoreAfter: 82,
+    gradeBefore: 'D' as const,
+    gradeAfter: 'B' as const,
     link: '/examples#example-vercel',
     proofLink: '/examples#ex-vercel-conv-2',
     proofType: 'Sample audit' as const,
@@ -274,7 +285,7 @@ export const FAQ = [
   {
     question: 'Do I need an account for my first audit?',
     answer:
-      'No. Paste any public URL and get a full audit in under 60 seconds. No account, no credit card. Create a free account to save reports and run 3 audits total.',
+      'No. Paste any public URL and get a full audit in under 90 seconds. No account, no credit card. Create a free account to save reports and run 3 audits total.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
@@ -377,10 +388,9 @@ export const MCP_DOCS = {
   subhead:
     'Your agent can audit and fix your site without you copy-pasting URLs. Connect QualityOS to your AI coding tool.',
   quickStart: [
-    'Create a free account and upgrade to Pro',
-    'Go to Settings → API Keys and generate a key',
-    'Add the HTTP config below to your editor',
-    'Ask your AI agent to audit your site',
+    'Generate an API key in Settings → API Keys (Pro plan)',
+    'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
+    'Run audit_url — use the curl test below to verify your key',
   ],
   builderRequired: 'Requires Pro plan',
   lovableBoltNote:
@@ -447,15 +457,19 @@ export const AUTH = {
     title: 'Sign in to your account',
     subtitle: 'Use your email and password to continue',
     subtitleWithOAuth: 'Continue with Google or GitHub, or use email',
+    trustLine: 'Your audit history stays on your account.',
+    tryWithoutAccount: 'Try without an account',
     cta: 'Sign in',
     footer: 'Don\u2019t have an account?',
     footerLink: 'Sign up',
     forgotPassword: 'Forgot password?',
+    oauthNote: 'We never post or access your repositories.',
   },
   signUp: {
     title: 'Create your free account',
     subtitle: 'Save audit history · 3 free audits · Upgrade anytime',
     subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
+    oauthNote: 'We never post or access your repositories.',
     cta: 'Create account',
     footer: 'Already have an account?',
     footerLink: 'Sign in',
@@ -475,7 +489,7 @@ export const AUTH = {
     { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
     { icon: 'recheck' as const, text: 'Re-check after fixes to track improvement' },
   ],
-  privacyNote: 'By creating an account, you agree to our',
+  privacyNote: 'By creating an account, you agree to our Privacy Policy and Terms of Service.',
   forgotPassword: {
     title: 'Reset your password',
     subtitle: 'Enter your email and we\u2019ll send a reset link',
@@ -541,6 +555,12 @@ export const UPGRADE_MOMENTS = {
     body: 'Upgrade to Pro for unlimited re-checks and before/after comparisons on every ship.',
     cta: 'Upgrade to Pro — $29/mo founding',
     plan: 'BUILDER' as const,
+  },
+  share_public: {
+    headline: 'Share audit reports with clients',
+    body: 'Agency includes public share links with OG previews and a Run audit CTA for viewers.',
+    cta: 'Upgrade to Agency',
+    plan: 'TEAM' as const,
   },
   free_default: {
     headline: 'Ship weekly? Automate the loop',

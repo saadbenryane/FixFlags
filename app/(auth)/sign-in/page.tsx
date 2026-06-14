@@ -2,10 +2,11 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { Mail, Loader2 } from 'lucide-react'
+import { Mail, Loader2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
+import { Muted } from '@/components/ui/typography'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
@@ -47,17 +48,24 @@ function SignInForm() {
     <AuthCard
       title={AUTH.signIn.title}
       subtitle={subtitle}
+      trustLine={AUTH.signIn.trustLine}
       footer={
         <p className="text-center text-sm text-muted-foreground">
           {AUTH.signIn.footer}{' '}
-          <Link href={signUpHref()} className="text-primary link-underline-grow">
+          <Link
+            href={signUpHref()}
+            className="text-primary transition-colors duration-200 hover:text-primary/80"
+          >
             {AUTH.signIn.footerLink}
           </Link>
         </p>
       }
     >
       <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
-      <FormContainer onSubmit={handleSubmit}>
+      {hasOAuthEnabled() && (
+        <Muted className="text-center text-xs">{AUTH.signIn.oauthNote}</Muted>
+      )}
+      <FormContainer onSubmit={handleSubmit} className="space-y-5">
         <IconInput
           type="email"
           label="Email"
@@ -67,22 +75,41 @@ function SignInForm() {
           placeholder="you@example.com"
           required
         />
-        <PasswordInput label="Password" value={password} onChange={setPassword} />
-        <div className="flex items-center justify-between gap-2">
+        <PasswordInput
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          showRequirements
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <Link
             href="/forgot-password"
-            className="text-xs text-muted-foreground link-underline-grow hover:text-foreground"
+            className="transition-colors duration-200 hover:text-foreground"
           >
             {AUTH.signIn.forgotPassword}
           </Link>
-          <Link href="/privacy" className="text-xs text-muted-foreground underline hover:text-foreground">
-            Privacy
-          </Link>
+          <span className="inline-flex gap-2">
+            <Link href="/privacy" className="underline hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="underline hover:text-foreground">
+              Terms
+            </Link>
+          </span>
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {AUTH.signIn.cta}
         </Button>
+        <p className="text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
+          >
+            {AUTH.signIn.tryWithoutAccount}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </p>
       </FormContainer>
     </AuthCard>
   )

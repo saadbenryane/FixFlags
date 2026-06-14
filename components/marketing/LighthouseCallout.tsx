@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { DIFFERENTIATION } from '@/lib/marketing/copy'
+import { TextLink } from '@/components/ui/text-link'
 
 const LIGHTHOUSE_DOCS = 'https://developer.chrome.com/docs/lighthouse'
 
@@ -7,18 +7,10 @@ export function LighthouseCallout({ className }: { className?: string }) {
   return (
     <p className={className}>
       {DIFFERENTIATION.subhead}{' '}
-      <Link href="/#lighthouse-comparison" className="text-brand link-underline-grow">
-        See full comparison
-      </Link>{' '}
-      or{' '}
-      <a
-        href={LIGHTHOUSE_DOCS}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-brand link-underline-grow"
-      >
+      <TextLink href="/#lighthouse-comparison">See full comparison</TextLink> or{' '}
+      <TextLink href={LIGHTHOUSE_DOCS} target="_blank" rel="noopener noreferrer">
         Google Lighthouse docs
-      </a>
+      </TextLink>
       .
     </p>
   )

@@ -92,6 +92,26 @@ Apply `rounded-t-[var(--radius-nested-md)]` on full-bleed card headers when oute
 - **Cards:** `--radius-card`, shadow over heavy borders
 - **Grade badges:** `--radius-inner`, tabular nums
 
+## Dual-token accent (links vs brand)
+
+- **`--link` / `--focus-ring`**: slate-blue — text links, keyboard focus (never brand)
+- **`--brand`**: refined ochre (~45% sat) — CTAs, scores, badges only
+- Use `TextLink` for inline links; `Button` primary for CTAs
+
+## Layout grid
+
+- `Container` variants: `default` (1280px), `prose` (720px), `report` (896px)
+- `PageGrid` 12-col: `text` (7), `card` (5), `intro`/`content` splits
+- Section titles align to same container left edge — no orphan `max-w-2xl` on outer Container
+
+## Calm by default + progressive disclosure
+
+- **Above the fold:** one primary action + one proof block; hide detail behind expand/chevron
+- **Surfaces:** prefer `Surface` (`elevated` / `nested`) or `border-0 shadow-card` over bordered panels
+- **Motion:** `--motion-fast` (200ms) + `--ease-out` for hovers; match buttons, nav, cards
+- **Header offset:** use `top-[var(--header-offset)]` for sticky report nav, banners, scroll anchors
+- **Filter pills:** reuse `FilterPill` for examples, report mini-nav, FAQ anchors
+
 ## Pre-ship checklist
 
 - [ ] Headings use balance wrap; body uses pretty wrap

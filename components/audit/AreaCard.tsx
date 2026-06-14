@@ -52,7 +52,7 @@ export function AreaCard({
   const findingCount = area.findings.length
 
   return (
-    <Card id={`area-${area.name}`} className="scroll-mt-24">
+    <Card id={`area-${area.name}`} className="scroll-mt-[var(--header-offset)] border-0 shadow-card">
       <CardHeader className="pb-3">
         <button
           onClick={() => setOpen(!open)}
@@ -61,7 +61,7 @@ export function AreaCard({
           className="flex min-h-11 w-full items-start justify-between gap-4 text-left"
         >
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <GradeBadge grade={area.grade} score={area.score} size="md" areaName={area.name} />
+            <GradeBadge grade={area.grade} score={area.score} size="md" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold">{areaLabel(area.name)}</span>

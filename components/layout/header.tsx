@@ -5,6 +5,13 @@ import { Menu } from 'lucide-react'
 import { useState } from 'react'
 import { BRAND } from '@/lib/marketing/copy'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
+import {
+  NAV_LINK_ACTIVE,
+  NAV_LINK_BASE,
+  NAV_LINK_INACTIVE,
+  NAV_LINK_MOBILE_ACTIVE,
+  NAV_LINK_MOBILE_BASE,
+} from '@/lib/site/nav-styles'
 import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
@@ -54,115 +61,101 @@ export function Header({
     ) : variant === 'admin' ? (
       <AdminHeaderRight />
     ) : (
-      <Button
-        variant="default"
-        size="sm"
-        asChild
-        className="ml-2 bg-foreground text-background hover:bg-foreground/90"
-      >
+      <Button variant="outline" size="sm" asChild className="ml-2">
         <Link href="/sign-in">Sign in</Link>
       </Button>
     )
 
   const resolvedRight = right ?? defaultRight
 
-  const linkClassName =
-    'rounded-full px-3 py-2 text-sm transition-colors duration-200 hover:bg-accent hover:text-foreground'
-  const linkActiveClassName = 'bg-accent text-foreground font-medium'
-  const linkInactiveClassName = 'text-muted-foreground'
-
-  const mobileLinkClassName =
-    'rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent'
-  const mobileLinkActiveClassName = 'bg-accent'
-
   return (
-    <header
-      className={cn(
-        'sticky top-0 z-navbar h-16 border-b border-border/50 bg-background/80 glass-surface backdrop-blur-xl',
-        className
-      )}
-    >
-      <Container className="flex h-full items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href={logoHref ?? defaultLogoHref} className="font-display text-xl tracking-tight shrink-0">
-            {BRAND.name}
-          </Link>
-          {variant === 'admin' && (
-            <span className="hidden sm:inline rounded bg-destructive px-2 py-0.5 text-[10px] font-medium uppercase tracking-label text-destructive-foreground">
-              Admin
-            </span>
-          )}
-        </div>
-
-        <div className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.href}
-              href={link.href}
-              className={linkClassName}
-              activeClassName={linkActiveClassName}
-              inactiveClassName={linkInactiveClassName}
+    <header className={cn('sticky top-0 z-navbar pt-3 pb-2 pointer-events-none', className)}>
+      <Container className="pointer-events-auto">
+        <div className="flex h-14 items-center justify-between gap-4 rounded-full glass-surface-elevated px-3 shadow-raised sm:px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href={logoHref ?? defaultLogoHref}
+              className="shrink-0 font-display text-xl tracking-tight"
             >
-              {link.label}
-            </NavLink>
-          ))}
-          {secondaryNavLinks.length > 0 && (
-            <span className="mx-1 h-4 w-px bg-border/50" aria-hidden />
-          )}
-          {secondaryNavLinks.map((link) => (
-            <NavLink
-              key={link.href}
-              href={link.href}
-              className={cn(linkClassName, 'text-xs')}
-              activeClassName={linkActiveClassName}
-              inactiveClassName={linkInactiveClassName}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-          <ThemeToggle />
-          {resolvedRight}
-        </div>
+              {BRAND.name}
+            </Link>
+            {variant === 'admin' && (
+              <span className="hidden rounded-full bg-destructive px-2 py-0.5 text-[10px] font-medium uppercase tracking-label text-destructive-foreground sm:inline">
+                Admin
+              </span>
+            )}
+          </div>
 
-        <div className="flex md:hidden items-center gap-1">
-          <ThemeToggle />
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open menu">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[280px]">
-              <SheetHeader>
-                <SheetTitle>{BRAND.name}</SheetTitle>
-              </SheetHeader>
-              <nav className="mt-6 flex flex-col gap-1">
-                {navLinks.map((link) => (
-                  <NavLink
-                    key={link.href}
-                    href={link.href}
-                    onNavigate={() => setOpen(false)}
-                    className={mobileLinkClassName}
-                    activeClassName={mobileLinkActiveClassName}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-                {secondaryNavLinks.map((link) => (
-                  <NavLink
-                    key={link.href}
-                    href={link.href}
-                    onNavigate={() => setOpen(false)}
-                    className={mobileLinkClassName}
-                    activeClassName={mobileLinkActiveClassName}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-                <div className="mt-4 border-t pt-4">{resolvedRight}</div>
-              </nav>
-            </SheetContent>
-          </Sheet>
+          <div className="hidden items-center gap-0.5 md:flex">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.href}
+                href={link.href}
+                className={NAV_LINK_BASE}
+                activeClassName={NAV_LINK_ACTIVE}
+                inactiveClassName={NAV_LINK_INACTIVE}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            {secondaryNavLinks.length > 0 && <span className="w-2" aria-hidden />}
+            {secondaryNavLinks.map((link) => (
+              <NavLink
+                key={link.href}
+                href={link.href}
+                className={cn(NAV_LINK_BASE, 'text-xs')}
+                activeClassName={NAV_LINK_ACTIVE}
+                inactiveClassName={NAV_LINK_INACTIVE}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            <ThemeToggle />
+            {resolvedRight}
+          </div>
+
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px]">
+                <SheetHeader>
+                  <SheetTitle>{BRAND.name}</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col gap-1">
+                  {navLinks.map((link) => (
+                    <NavLink
+                      key={link.href}
+                      href={link.href}
+                      onNavigate={() => setOpen(false)}
+                      className={NAV_LINK_MOBILE_BASE}
+                      activeClassName={NAV_LINK_MOBILE_ACTIVE}
+                      inactiveClassName={NAV_LINK_INACTIVE}
+                    >
+                      {link.label}
+                    </NavLink>
+                  ))}
+                  {secondaryNavLinks.map((link) => (
+                    <NavLink
+                      key={link.href}
+                      href={link.href}
+                      onNavigate={() => setOpen(false)}
+                      className={NAV_LINK_MOBILE_BASE}
+                      activeClassName={NAV_LINK_MOBILE_ACTIVE}
+                      inactiveClassName={NAV_LINK_INACTIVE}
+                    >
+                      {link.label}
+                    </NavLink>
+                  ))}
+                  <div className="mt-4 border-t pt-4">{resolvedRight}</div>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </Container>
     </header>
