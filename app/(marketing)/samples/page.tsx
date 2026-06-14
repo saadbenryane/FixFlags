@@ -17,7 +17,7 @@ export default function SamplesPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="secondary">Sample report</Badge>
-            <Badge variant="outline">Free tier preview</Badge>
+            <Badge variant="outline">Full report</Badge>
             <Body className="text-muted-foreground text-sm">{SAMPLES_PAGE.subhead}</Body>
           </div>
           <Body className="text-muted-foreground text-xs">{SAMPLES_PAGE.tierNote}</Body>
@@ -26,7 +26,7 @@ export default function SamplesPage() {
 
       <AuditReport
         audit={SAMPLE_STRIPE_AUDIT}
-        isPaid={false}
+        viewerIsPaid={false}
         isLoggedIn={false}
         variant="sample"
       />

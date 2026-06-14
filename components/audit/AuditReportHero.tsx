@@ -1,7 +1,13 @@
 import { Badge } from '@/components/ui/badge'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
+import {
+  launchReadinessLabel,
+  launchReadinessTone,
+} from '@/lib/audit/launch-readiness'
 import { cn } from '@/lib/utils'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 interface Props {
   pageJob: string
@@ -12,6 +18,10 @@ interface Props {
   screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
   screenshotPartial?: boolean
+  launchReadiness?: LaunchReadinessData | null
+  pageSpeedPartial?: boolean
+  desktopPageSpeedError?: string
+  mobilePageSpeedError?: string
 }
 
 function scoreTone(score: number): string {
@@ -30,11 +40,47 @@ export function AuditReportHero({
   screenshots,
   screenshotLimited,
   screenshotPartial,
+  launchReadiness,
+  pageSpeedPartial,
+  desktopPageSpeedError,
+  mobilePageSpeedError,
 }: Props) {
   const hasScreenshots = screenshots && screenshots.length > 0
 
   return (
     <div className="space-y-6">
+      {launchReadiness && (
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                launchReadinessTone(launchReadiness.readiness)
+              )}
+            >
+              {launchReadinessLabel(launchReadiness.readiness)}
+            </span>
+            <span className="text-xs text-muted-foreground">Launch readiness</span>
+          </div>
+          {launchReadiness.checklist.length > 0 && (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {launchReadiness.checklist.map((item) => (
+                <li key={item.id} className="flex items-start gap-2 text-sm">
+                  {item.passed ? (
+                    <CheckCircle2 className="h-4 w-4 text-grade-A shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  )}
+                  <span className={item.passed ? 'text-foreground/90' : 'text-foreground'}>
+                    {item.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div
           className={cn(
@@ -70,6 +116,18 @@ export function AuditReportHero({
       {screenshotPartial && !screenshotLimited && (
         <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           Mobile screenshot could not be captured. Desktop viewport review is shown below.
+        </div>
+      )}
+
+      {pageSpeedPartial && (
+        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground space-y-1">
+          <p>PageSpeed data was partial for this audit.</p>
+          {desktopPageSpeedError && (
+            <p className="text-xs font-mono">Desktop: {desktopPageSpeedError}</p>
+          )}
+          {mobilePageSpeedError && (
+            <p className="text-xs font-mono">Mobile: {mobilePageSpeedError}</p>
+          )}
         </div>
       )}
 

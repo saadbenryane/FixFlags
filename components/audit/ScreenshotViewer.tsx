@@ -1,10 +1,16 @@
 'use client'
 
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
-import { MOBILE_FRAME_WIDTH_CLASS, MOBILE_VIEWPORT } from '@/lib/audit/viewports'
+import {
+  DESKTOP_FRAME_FLEX_CLASS,
+  MOBILE_FRAME_WIDTH_CLASS,
+  MOBILE_VIEWPORT,
+  SCREENSHOT_FRAMES_ROW_CLASS,
+} from '@/lib/audit/viewports'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Monitor, Smartphone } from 'lucide-react'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import { cn } from '@/lib/utils'
 
 interface Props {
   screenshots: AuditScreenshot[]
@@ -69,9 +75,9 @@ export function ScreenshotViewer({ screenshots, url }: Props) {
         </Tabs>
       </div>
 
-      <div className="hidden lg:flex gap-6 items-start w-full">
+      <div className={cn('hidden lg:flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
         {desktop && (
-          <div className="flex-1 min-w-0">
+          <div className={DESKTOP_FRAME_FLEX_CLASS}>
             <DesktopFrame url={url} imageUrl={desktop.url} />
           </div>
         )}

@@ -18,8 +18,10 @@ import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCar
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFindingDiffSummary } from '@/lib/audit/diff-findings'
 import { canAccessAudit } from '@/lib/audit/access'
-import { canAccessCompare, getEntitlements } from '@/lib/auth/entitlements'
+import { canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser } from '@/lib/auth/permissions'
+import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
+import { LaunchReadinessDiff } from '@/components/compare/LaunchReadinessDiff'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -105,6 +107,8 @@ export default async function ComparePage({ params }: Props) {
   const scoreDelta =
     before.score !== null && after.score !== null ? after.score - before.score : 0
   const compareMoment = resolveCompareUpgradeMoment(before.score, after.score)
+  const beforeLaunch = parseLaunchReadiness(before.launchReadiness)
+  const afterLaunch = parseLaunchReadiness(after.launchReadiness)
 
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
@@ -147,6 +151,8 @@ export default async function ComparePage({ params }: Props) {
             currentPlan={user.plan}
           />
         ) : null}
+
+        <LaunchReadinessDiff before={beforeLaunch} after={afterLaunch} />
 
         <AreaDiff beforeAreas={before.areas} afterAreas={after.areas} />
 

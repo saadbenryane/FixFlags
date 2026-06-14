@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
-import { getEntitlements } from '@/lib/auth/entitlements'
-import { isAdminUser } from '@/lib/auth/permissions'
+import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
+import { isAdminUser, getEffectiveScanLimit, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
@@ -39,14 +39,26 @@ export default async function AuditPage({ params }: Props) {
     )
   }
 
-  const { audit, isPaid, isLoggedIn, session } = result
+  const { audit, isLoggedIn, session } = result
 
   const user = session?.user
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { plan: true, role: true, freeRecheckUsedAt: true },
+        select: {
+          id: true,
+          plan: true,
+          role: true,
+          freeRecheckUsedAt: true,
+          auditsUsed: true,
+          auditsLimit: true,
+        },
       })
     : null
+
+  const atAuditLimit =
+    user?.plan === 'FREE' &&
+    !isUnlimitedScanLimit(getEffectiveScanLimit(user)) &&
+    user.auditsUsed >= getEffectiveScanLimit(user)
 
   const entitlements = user
     ? getEntitlements({
@@ -70,6 +82,19 @@ export default async function AuditPage({ params }: Props) {
         })
       : null
 
+  const compareRecheckAudit = audit.parentId
+    ? { parentId: audit.parentId, userId: session?.user?.id ?? null }
+    : latestRecheck
+      ? { parentId: id, userId: session?.user?.id ?? null }
+      : null
+
+  const canAccessCompareView =
+    user && compareRecheckAudit
+      ? canAccessCompare(user, compareRecheckAudit)
+      : false
+
+  const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
+
   if (audit.status === 'COMPLETED') {
     const screenshots = (audit.screenshots ?? []) as Array<{
       device: 'DESKTOP' | 'MOBILE'
@@ -87,28 +112,34 @@ export default async function AuditPage({ params }: Props) {
         actions={
           <AuditPageActions
             auditId={id}
-            isPaid={isPaid}
+            isPaid={viewerIsPaid}
             isLoggedIn={isLoggedIn}
             isPublic={audit.isPublic}
             hasParent={!!audit.parentId}
-            compareAuditId={audit.parentId ? id : latestRecheck?.id ?? null}
+            compareAuditId={
+              canAccessCompareView
+                ? audit.parentId
+                  ? id
+                  : latestRecheck?.id ?? null
+                : null
+            }
             plan={user?.plan ?? 'FREE'}
             projectId={audit.projectId}
             canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
             canSharePublicly={entitlements?.canSharePublicly ?? false}
-            hasUsedFreeRecheck={entitlements?.hasUsedFreeRecheck ?? false}
           />
         }
       >
         <AuditReport
           audit={audit}
           auditId={id}
-          isPaid={isPaid}
+          viewerIsPaid={viewerIsPaid}
+          viewerPlan={user?.plan ?? 'FREE'}
           isLoggedIn={isLoggedIn}
-          showRecheckHint={isPaid || (entitlements?.canUseFreeRecheck ?? false)}
+          showRecheckHint={viewerIsPaid || (entitlements?.canUseFreeRecheck ?? false)}
           canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
           hasUsedFreeRecheck={entitlements?.hasUsedFreeRecheck ?? false}
-          canSharePublicly={entitlements?.canSharePublicly ?? false}
+          atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}
         />

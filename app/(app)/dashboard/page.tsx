@@ -13,6 +13,7 @@ import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
 import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
+import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getEffectiveScanLimit, getPendingScanCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { AREA_ORDER } from '@/lib/audit/constants'
@@ -44,6 +45,8 @@ export default async function DashboardPage() {
   const isUnlimited = isDevUnlimitedScans() || (user ? isUnlimitedScanLimit(getEffectiveScanLimit(user)) : false)
   const effectiveLimit = isUnlimited ? null : (user ? getEffectiveScanLimit(user) : 3)
   const pending = user ? await getPendingScanCount(user.id) : 0
+  const atAuditLimit =
+    user?.plan === 'FREE' && !isUnlimited && effectiveLimit !== null && used >= effectiveLimit
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -70,6 +73,10 @@ export default async function DashboardPage() {
           plan={user?.plan ?? 'FREE'}
         />
       </div>
+
+      {atAuditLimit && (
+        <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
+      )}
 
       <div className="rounded-xl border p-4 bg-muted/20">
         <p className="text-sm font-medium mb-3">Audit a new URL</p>

@@ -15,7 +15,13 @@ export const SCREENSHOT_FRAME = {
   },
 } as const
 
+export const DESKTOP_FRAME_FLEX_CLASS = 'flex-1 min-w-0'
+
 export const MOBILE_FRAME_WIDTH_CLASS = 'w-[240px] max-w-full shrink-0'
+
+/** Side-by-side desktop + mobile frames; stacks on the narrowest viewports. */
+export const SCREENSHOT_FRAMES_ROW_CLASS =
+  'flex w-full min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6'
 
 export function viewportAspectStyle(device: 'desktop' | 'mobile'): CSSProperties {
   const vp = device === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT

@@ -9,6 +9,7 @@ import { getFindingDiffSummary } from '../audit/diff-findings'
 import { pollAuditUntilDone } from '../audit/poll-audit'
 import { AREA_ORDER } from '../audit/constants'
 import { canUseApiKeys } from '../auth/permissions'
+import { canAccessCompare, canAccessPaidFeatures } from '../auth/entitlements'
 
 async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
@@ -41,12 +42,25 @@ export function registerAllTools(server: McpServer, user: User) {
     {
       url: z.string().url(),
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
+      mode: z
+        .enum(['single', 'critical_path'])
+        .optional()
+        .describe('critical_path audits up to 3 same-origin URLs (Builder+)'),
     },
-    async ({ url, waitForCompletion }) => {
+    async ({ url, waitForCompletion, mode }) => {
       const freshUser = await assertMcpAccess(user)
       await assertUserCanAudit(freshUser)
 
-      const { auditId } = await createAndEnqueueAudit({ url, userId: freshUser.id })
+      const criticalPath = mode === 'critical_path'
+      if (criticalPath && !canAccessPaidFeatures(freshUser)) {
+        throw new Error('Critical path audits require Builder plan or above')
+      }
+
+      const { auditId } = await createAndEnqueueAudit({
+        url,
+        userId: freshUser.id,
+        auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
+      })
 
       let status = 'QUEUED'
       if (waitForCompletion) {
@@ -286,6 +300,12 @@ export function registerAllTools(server: McpServer, user: User) {
       if (!before || !after) throw new Error('One or both audits not found')
       if (before.userId && before.userId !== user.id && !before.isPublic) throw new Error('Unauthorized')
       if (after.userId && after.userId !== user.id && !after.isPublic) throw new Error('Unauthorized')
+
+      const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
+      if (!freshUser) throw new Error('User not found')
+      if (!canAccessCompare(freshUser, after)) {
+        throw new Error('Upgrade to Builder or complete your free re-check to compare audits')
+      }
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)
       const areaDeltas = before.areas.map((ba) => {

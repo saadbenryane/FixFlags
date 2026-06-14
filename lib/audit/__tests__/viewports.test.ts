@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import {
   DESKTOP_VIEWPORT,
   MOBILE_VIEWPORT,
+  DESKTOP_FRAME_FLEX_CLASS,
   SCREENSHOT_FRAME,
   MOBILE_FRAME_WIDTH_CLASS,
+  SCREENSHOT_FRAMES_ROW_CLASS,
   viewportAspectStyle,
 } from '@/lib/audit/viewports'
 
@@ -21,6 +23,11 @@ describe('viewports', () => {
   it('mobile display frame is 240px wide', () => {
     assert.equal(SCREENSHOT_FRAME.mobile.displayWidth, 240)
     assert.match(MOBILE_FRAME_WIDTH_CLASS, /240/)
+  })
+
+  it('screenshot frame layout classes', () => {
+    assert.match(DESKTOP_FRAME_FLEX_CLASS, /flex-1/)
+    assert.match(SCREENSHOT_FRAMES_ROW_CLASS, /sm:flex-row/)
   })
 
   it('viewportAspectStyle matches capture ratios', () => {

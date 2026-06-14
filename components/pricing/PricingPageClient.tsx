@@ -11,6 +11,7 @@ import { Section } from '@/components/ui/section'
 import { Body, Heading, Muted } from '@/components/ui/typography'
 import { CheckCircle2 } from 'lucide-react'
 import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
+import { hasActiveFoundingOffer } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/hooks/useMe'
 
@@ -25,9 +26,11 @@ export function PricingPageClient() {
         <div className="space-y-4 text-center">
           <Heading as="h1">{PRICING.headline}</Heading>
           <Body className="text-muted-foreground">{PRICING.subhead}</Body>
-          <div className="inline-block rounded-full bg-brand/10 px-4 py-1.5 text-sm font-medium text-brand">
-            {PRICING.foundingBadge}
-          </div>
+          {hasActiveFoundingOffer() && (
+            <div className="inline-block rounded-full bg-brand/10 px-4 py-1.5 text-sm font-medium text-brand">
+              {PRICING.foundingBadge}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

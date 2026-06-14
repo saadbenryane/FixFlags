@@ -1,7 +1,7 @@
 import { UPGRADE_MOMENTS } from '@/lib/marketing/copy'
 
 export type UpgradeMoment =
-  | 'hidden_findings'
+  | 'audit_limit_reached'
   | 'trial_recheck_available'
   | 'compare_improved'
   | 'compare_flat'
@@ -20,21 +20,14 @@ export interface UpgradeMomentContent {
 export function getUpgradeMomentContent(
   moment: UpgradeMoment,
   options?: {
-    hiddenCount?: number
     scoreDelta?: number
   }
 ): UpgradeMomentContent {
-  const hiddenCount = options?.hiddenCount ?? 0
   const scoreDelta = options?.scoreDelta ?? 0
 
   switch (moment) {
-    case 'hidden_findings':
-      return {
-        headline: UPGRADE_MOMENTS.hidden_findings.headline(hiddenCount),
-        body: UPGRADE_MOMENTS.hidden_findings.body,
-        cta: UPGRADE_MOMENTS.hidden_findings.cta,
-        plan: UPGRADE_MOMENTS.hidden_findings.plan,
-      }
+    case 'audit_limit_reached':
+      return { ...UPGRADE_MOMENTS.audit_limit_reached }
     case 'trial_recheck_available':
       return { ...UPGRADE_MOMENTS.trial_recheck_available }
     case 'compare_improved':
@@ -57,11 +50,11 @@ export function getUpgradeMomentContent(
 }
 
 export function resolveFreeUserUpgradeMoment(options: {
-  hiddenCount: number
+  atAuditLimit: boolean
   canUseFreeRecheck: boolean
   hasUsedFreeRecheck?: boolean
 }): UpgradeMoment {
-  if (options.hiddenCount > 0) return 'hidden_findings'
+  if (options.atAuditLimit) return 'audit_limit_reached'
   if (options.canUseFreeRecheck) return 'trial_recheck_available'
   if (options.hasUsedFreeRecheck) return 'trial_exhausted'
   return 'free_default'

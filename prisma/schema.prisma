@@ -23,6 +23,11 @@ enum AuditStatus {
   FAILED
 }
 
+enum AuditMode {
+  SINGLE
+  CRITICAL_PATH
+}
+
 enum AreaName {
   PERFORMANCE
   ACCESSIBILITY
@@ -208,6 +213,9 @@ model Audit {
 
   isPublic Boolean @default(false)
   skipUsageCount Boolean @default(false)
+  trialRecheck Boolean @default(false)
+  auditMode AuditMode @default(SINGLE)
+  launchReadiness Json?
 
   startedAt   DateTime?
   completedAt DateTime?
@@ -312,6 +320,7 @@ model Finding {
   verificationRule String? @db.Text
 
   checkId      String?
+  pageUrl      String?
   position     Int
   status       FindingStatus @default(OPEN)
   resolvedInId String?

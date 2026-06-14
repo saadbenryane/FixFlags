@@ -68,6 +68,22 @@ async function runPageSpeed(
       }
     }
 
+    if (strategy === 'mobile') {
+      const tapTargetIds = ['target-size', 'tap-targets', 'tap-targets-too-small']
+      for (const id of tapTargetIds) {
+        const audit = audits[id]
+        if (audit && audit.score !== null && (audit.score as number) < 1) {
+          if (!opportunities.some((o) => o.id === id)) {
+            opportunities.push({
+              id,
+              title: (audit.title as string) ?? 'Tap targets are too small',
+              savings: 0,
+            })
+          }
+        }
+      }
+    }
+
     return {
       strategy,
       score: perfScore !== null ? Math.round(perfScore * 100) : null,
@@ -84,9 +100,16 @@ async function runPageSpeed(
   }
 }
 
+function formatPageSpeedError(reason: unknown): string {
+  if (reason instanceof Error) return reason.message
+  return String(reason)
+}
+
 export async function fetchPageSpeedData(url: string): Promise<{
   desktop: PageSpeedResult | null
   mobile: PageSpeedResult | null
+  desktopError?: string
+  mobileError?: string
 }> {
   const [desktop, mobile] = await Promise.allSettled([
     runPageSpeed(url, 'desktop'),
@@ -96,5 +119,9 @@ export async function fetchPageSpeedData(url: string): Promise<{
   return {
     desktop: desktop.status === 'fulfilled' ? desktop.value : null,
     mobile: mobile.status === 'fulfilled' ? mobile.value : null,
+    desktopError:
+      desktop.status === 'rejected' ? formatPageSpeedError(desktop.reason) : undefined,
+    mobileError:
+      mobile.status === 'rejected' ? formatPageSpeedError(mobile.reason) : undefined,
   }
 }

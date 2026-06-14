@@ -34,27 +34,6 @@ export const HERO = {
 export const HERO_MECHANISM_LINE =
   'Capture screenshots · Run checks · AI judge reads the page' as const
 
-/** @deprecated Use HOW_IT_WORKS_SECTION — kept for backwards compatibility */
-export const AI_REVIEW_SECTION = {
-  label: 'How it works',
-  headline: 'A review, not a dashboard',
-  subhead: 'Lighthouse checks metrics. We read your screenshots.',
-  steps: [
-    {
-      title: 'Capture',
-      body: 'Desktop and mobile screenshots of your live page.',
-    },
-    {
-      title: 'Check',
-      body: 'Core Web Vitals, SEO tags, accessibility, console errors.',
-    },
-    {
-      title: 'Judge',
-      body: 'AI finds conversion gaps, trust issues, and unclear copy.',
-    },
-  ],
-} as const
-
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
   headline: 'From URL to fix prompt',
@@ -147,6 +126,7 @@ export const DIFFERENTIATION = {
     { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
     { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
+    { feature: 'Unlimited re-check proof loop', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Builder)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
 } as const
@@ -165,26 +145,10 @@ export const PROOF_SECTION = {
   },
 } as const
 
-/** @deprecated Use PROOF_SECTION */
-export const SOCIAL_PROOF = {
-  headline: PROOF_SECTION.headline,
-  cta: PROOF_SECTION.cta,
-  sample: {
-    name: PROOF_SECTION.sample.name,
-    score: PROOF_SECTION.sample.score,
-    finding: PROOF_SECTION.sample.finding,
-  },
-} as const
-
 export const WHATS_CHECKED_SECTION = {
   label: 'Coverage',
   headline: 'Seven areas. One review.',
   subhead: 'Automated checks plus AI reading your screenshots.',
-} as const
-
-/** @deprecated Use WHATS_CHECKED_SECTION */
-export const QUALITY_AREAS_SECTION = {
-  headline: WHATS_CHECKED_SECTION.headline,
 } as const
 
 export const TRUST_STRIP = [
@@ -262,7 +226,7 @@ export const FAQ = [
   {
     question: 'What\u2019s included in the free plan vs Builder?',
     answer:
-      'Free: top 3 findings per area, copyable fix prompts for visible findings, 3 audits total. Builder: full reports with all findings, all area prompts, re-check after fixes, audit history, and MCP API access.',
+      'Free: full report with all findings and fix prompts, 3 audits total, and one free re-check. Builder: unlimited re-checks with before/after compare, MCP in Cursor or Claude, and 25 audits per month.',
   },
   {
     question: 'Can it audit sites built with Lovable/Bolt/v0?',
@@ -308,11 +272,11 @@ export const HOME_FAQ = [
 export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
-    answer: 'Yes. Run your first audit without an account. Create a free account for 3 audits total, then upgrade to Builder when you need full reports and re-checks.',
+    answer: 'Yes. Run your first audit without an account. Create a free account for 3 audits total, then upgrade to Builder when you need unlimited re-checks and MCP.',
   },
   {
-    question: 'What happens when I hit my token limit?',
-    answer: 'You\u2019ll see an upgrade prompt. Free accounts get 3 scan tokens total (not monthly). Paid plans reset each billing cycle.',
+    question: 'What happens when I hit my audit limit?',
+    answer: 'You\u2019ll see an upgrade prompt. Free accounts get 3 audits total (not monthly). Paid plans reset each billing cycle.',
   },
   {
     question: 'Is the founding offer permanent?',
@@ -324,13 +288,13 @@ export const PRICING_FAQ = [
   },
   {
     question: 'What\u2019s included in every plan?',
-    answer: 'All plans include evidence-backed findings and agent-ready fix prompts. Paid plans unlock full reports, re-check, and additional features per tier.',
+    answer: 'Every plan includes the full report and copy-ready fix prompts. Paid plans add unlimited re-checks, MCP, higher audit volume, and team features.',
   },
 ] as const
 
 export const PRICING = {
   headline: 'Pay when you\u2019re shipping, not when you\u2019re browsing',
-  subhead: 'Start free. Upgrade when you need full reports, re-checks, and in-editor audits via MCP.',
+  subhead: 'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
   foundingBadge: 'Founding offer active — lock in launch-week pricing',
   expertReview: {
     title: 'Expert Review — $500',
@@ -343,14 +307,14 @@ export const PRICING = {
     cta: 'Get Expert Review',
   },
   allPlansInclude:
-    'All plans include evidence-backed findings. Free shows human fix text for top findings; Builder+ unlocks full agent-ready prompts.',
+    'Every audit includes evidence, fix prompts, and area summaries. Builder adds the ship loop: re-check, compare, and audit from your editor.',
 } as const
 
 export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
-  subhead: 'This is what a completed QualityOS audit looks like on the free tier.',
-  tierNote: 'Free shows top 3 findings per area. Builder unlocks every finding, area prompts, and re-check.',
+  subhead: 'This is what a completed QualityOS audit looks like — full report, all findings.',
+  tierNote: 'Free includes the full report. Builder adds unlimited re-checks and MCP in your editor.',
   bottomCta: 'Audit your site',
 } as const
 
@@ -442,7 +406,7 @@ export const AUTH = {
     footer: 'Already have an account?',
     footerLink: 'Sign in',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Builder — full reports from day one',
+      BUILDER: 'You\u2019re signing up for Builder — unlimited re-checks and MCP from day one',
       TEAM: 'You\u2019re signing up for Team — organize audits across up to 5 projects',
       STUDIO: 'You\u2019re signing up for Studio — audit client sites at scale with up to 20 projects',
     },
@@ -478,21 +442,13 @@ export const UPSELLS = {
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
-  areaGate: {
-    hiddenFindings: (count: number) =>
-      `+${count} more issue${count !== 1 ? 's' : ''} your agent could fix right now`,
-    upgradeBody: 'Upgrade to Builder to see all findings and the full area prompt',
-    areaPrompt: 'Upgrade for area prompt',
-    unlockReport: 'Unlock full report',
-  },
   atLimit: 'Token limit reached. Upgrade to continue',
 } as const
 
 export const UPGRADE_MOMENTS = {
-  hidden_findings: {
-    headline: (hiddenCount: number) =>
-      `+${hiddenCount} more issue${hiddenCount !== 1 ? 's' : ''} your agent could fix`,
-    body: 'Upgrade to Builder to see every finding, full area prompts, and unlimited re-checks.',
+  audit_limit_reached: {
+    headline: 'You\u2019ve used your 3 free audits',
+    body: 'Upgrade to Builder for 25 audits per month, unlimited re-checks, and MCP in Cursor or Claude.',
     cta: 'Upgrade to Builder — $29/mo founding',
     plan: 'BUILDER' as const,
   },
@@ -505,13 +461,13 @@ export const UPGRADE_MOMENTS = {
   compare_improved: {
     headline: (scoreDelta: number) =>
       `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
-    body: 'Keep proving every ship with unlimited re-checks, full reports, and MCP in Cursor.',
+    body: 'Keep proving every ship with unlimited re-checks and MCP in Cursor.',
     cta: 'Start Builder — $29/mo founding',
     plan: 'BUILDER' as const,
   },
   compare_flat: {
-    headline: 'Unlock full prompts to fix what remains',
-    body: 'Builder shows every issue and agent-ready area prompts so your editor can close the gaps.',
+    headline: 'Still gaps after your re-check',
+    body: 'Builder gives unlimited re-checks and MCP so your agent can close what remains without copy-pasting URLs.',
     cta: 'Upgrade to Builder — $29/mo founding',
     plan: 'BUILDER' as const,
   },
@@ -528,8 +484,8 @@ export const UPGRADE_MOMENTS = {
     plan: 'TEAM' as const,
   },
   free_default: {
-    headline: 'Unlock full reports + re-check',
-    body: 'Upgrade to see all findings and re-check after fixes.',
+    headline: 'Ship weekly? Automate the loop',
+    body: 'Builder adds unlimited re-checks, before/after compare, and MCP so audits run inside Cursor or Claude.',
     cta: 'Upgrade to Builder — $29/mo founding',
     plan: 'BUILDER' as const,
   },
@@ -578,7 +534,7 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with 3 audits total. Upgrade to Builder for full reports, re-checks, and MCP integration. Founding offer active.',
+      'Start free with the full report and 3 audits. Upgrade to Builder for unlimited re-checks and MCP. Founding offer active.',
   },
   samples: {
     title: 'Sample Report',

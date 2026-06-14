@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const QUALITY_REPORT_SCHEMA = {
     type: 'object' as const,
-    required: ['pageJob', 'pageType', 'verdict', 'score', 'areas', 'newFindings', 'enrichments'],
+    required: ['pageJob', 'pageType', 'verdict', 'score', 'launchReadiness', 'launchChecklist', 'areas', 'newFindings', 'enrichments'],
     properties: {
       pageJob: {
         type: 'string',
@@ -19,6 +19,24 @@ export const QUALITY_REPORT_SCHEMA = {
       score: {
         type: 'number',
         description: 'Overall quality score 0-100',
+      },
+      launchReadiness: {
+        type: 'string',
+        enum: ['safe', 'fix_first', 'not_ready'],
+        description: 'Is this page safe to share publicly? safe = ship it, fix_first = fix top issues first, not_ready = do not post yet',
+      },
+      launchChecklist: {
+        type: 'array',
+        description: 'Five binary launch checks',
+        items: {
+          type: 'object',
+          required: ['id', 'label', 'passed'],
+          properties: {
+            id: { type: 'string' },
+            label: { type: 'string' },
+            passed: { type: 'boolean' },
+          },
+        },
       },
       areas: {
         type: 'array',
@@ -165,6 +183,10 @@ Grade benchmarks:
 - CONVERSION/TRUST/CONTENT: grade by what you see in screenshots and page text
 
 IMPORTANT: If you grade an area B or below, you MUST include at least one finding in newFindings for that area (or rely on deterministic findings). Never give a poor grade with zero findings — the summary alone is not enough for builders to act.
+
+Every newFinding and every enrichment MUST include a verificationRule: a concrete, testable check to confirm the fix (e.g. "og:image returns 200 and preview shows image in Slack").
+
+Set launchReadiness based on whether embarrassing or conversion-critical issues remain. launchChecklist must include exactly 5 items: HTTPS, social preview (og:image), mobile CTA visible, no critical console errors, privacy/contact link present — mark passed/failed from evidence.
 
 Return ALL 7 area entries. For areas with no issues, grade A with a positive summary.`
 }

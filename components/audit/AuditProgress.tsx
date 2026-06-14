@@ -5,7 +5,11 @@ import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
-import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
+import {
+  DESKTOP_FRAME_FLEX_CLASS,
+  MOBILE_FRAME_WIDTH_CLASS,
+  SCREENSHOT_FRAMES_ROW_CLASS,
+} from '@/lib/audit/viewports'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import {
   formatElapsed,
@@ -69,24 +73,24 @@ export function AuditProgress({
   }, [startedAt])
 
   return (
-    <div className="grid w-full gap-8 md:grid-cols-[1.15fr_1fr] md:items-start">
-      <div className="space-y-3">
-        <BrowserFrame
-          device="desktop"
-          url={url}
-          imageUrl={desktopScreenshotUrl}
-          state={frameState}
-        />
+    <div className="grid w-full gap-8 md:grid-cols-[minmax(0,1.75fr)_minmax(260px,1fr)] md:items-start">
+      <div className={SCREENSHOT_FRAMES_ROW_CLASS}>
+        <div className={DESKTOP_FRAME_FLEX_CLASS}>
+          <BrowserFrame
+            device="desktop"
+            url={url}
+            imageUrl={desktopScreenshotUrl}
+            state={frameState}
+          />
+        </div>
         {showMobileFrame && (
-          <div className="flex justify-end">
-            <div className={MOBILE_FRAME_WIDTH_CLASS}>
-              <BrowserFrame
-                device="mobile"
-                url={url}
-                imageUrl={mobileScreenshotUrl}
-                state={mobileScreenshotUrl ? 'loaded' : 'loading'}
-              />
-            </div>
+          <div className={MOBILE_FRAME_WIDTH_CLASS}>
+            <BrowserFrame
+              device="mobile"
+              url={url}
+              imageUrl={mobileScreenshotUrl}
+              state={mobileScreenshotUrl ? 'loaded' : 'loading'}
+            />
           </div>
         )}
       </div>

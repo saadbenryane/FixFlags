@@ -7,6 +7,16 @@ export const SAMPLE_STRIPE_AUDIT = {
   pageJob: 'Convert developers and businesses into Stripe payment platform customers',
   verdict:
     'Strong across all seven areas. A useful benchmark for developer-focused SaaS — minor performance and navigation polish opportunities remain.',
+  launchReadiness: {
+    readiness: 'safe' as const,
+    checklist: [
+      { id: 'https', label: 'HTTPS enabled', passed: true },
+      { id: 'og-image', label: 'Social preview (og:image)', passed: true },
+      { id: 'mobile-cta', label: 'Mobile CTA visible', passed: true },
+      { id: 'console', label: 'No critical console errors', passed: true },
+      { id: 'privacy', label: 'Privacy or contact link present', passed: true },
+    ],
+  },
   screenshots: [
     {
       device: 'DESKTOP' as const,

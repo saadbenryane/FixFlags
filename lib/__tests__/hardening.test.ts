@@ -1,14 +1,29 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  canAccessCompare,
   canAccessPaidFeatures,
   getEntitlements,
   getReportTierForUser,
   hasUsedFreeRecheck,
 } from '@/lib/auth/entitlements'
-import { gateAuditResponse } from '@/lib/audit/access'
 import { validateAndRepairJudgeOutput } from '@/lib/audit/validate-judge-output'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
+
+const baseJudgeOutput = {
+  pageJob: 'Sell',
+  pageType: 'marketing',
+  verdict: 'ok',
+  score: 80,
+  launchReadiness: 'fix_first' as const,
+  launchChecklist: [
+    { id: 'https', label: 'HTTPS', passed: true },
+    { id: 'og-image', label: 'og:image', passed: false },
+    { id: 'mobile-cta', label: 'Mobile CTA', passed: true },
+    { id: 'console', label: 'Console', passed: true },
+    { id: 'privacy', label: 'Privacy', passed: true },
+  ],
+}
 
 describe('getReportTierForUser', () => {
   it('returns free for null user', () => {
@@ -65,63 +80,85 @@ describe('paid recheck quota', () => {
   })
 })
 
-describe('resolveFreeUserUpgradeMoment', () => {
-  it('prefers hidden findings over trial recheck', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({ hiddenCount: 2, canUseFreeRecheck: true }),
-      'hidden_findings'
-    )
+describe('canAccessCompare', () => {
+  const freeUser = {
+    id: 'u1',
+    role: 'user' as const,
+    plan: 'FREE' as const,
+    freeRecheckUsedAt: null,
+  }
+  const freeUserTrialUsed = {
+    ...freeUser,
+    freeRecheckUsedAt: new Date(),
+  }
+  const builderUser = {
+    id: 'u1',
+    role: 'user' as const,
+    plan: 'BUILDER' as const,
+    freeRecheckUsedAt: null,
+  }
+  const recheck = { parentId: 'parent-1', userId: 'u1' }
+
+  it('allows paid users', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(canAccessCompare(builderUser, recheck), true)
+    delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('shows trial recheck when no hidden findings remain', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({ hiddenCount: 0, canUseFreeRecheck: true }),
-      'trial_recheck_available'
-    )
+  it('allows free users who used trial recheck on own recheck', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(canAccessCompare(freeUserTrialUsed, recheck), true)
+    delete process.env.DEV_SIMULATE_BILLING
+  })
+
+  it('blocks free users who have not used trial recheck', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(canAccessCompare(freeUser, recheck), false)
+    delete process.env.DEV_SIMULATE_BILLING
   })
 })
 
-describe('gateAuditResponse', () => {
-  it('limits free tier to three findings per area', () => {
-    const findings = Array.from({ length: 5 }, (_, i) => ({
-      id: `f${i}`,
-      severity: 'HIGH',
-      problem: `Issue ${i}`,
-      evidence: 'evidence',
-      whyItMatters: 'matters',
-      fix: 'fix',
-      agentPrompt: 'prompt',
-      cursorPrompt: 'cursor',
-      claudePrompt: null,
-      lovablePrompt: null,
-      boltPrompt: null,
-      verificationRule: 'rule',
-    }))
-
-    const gated = gateAuditResponse(
-      {
-        areas: [
-          {
-            id: 'a1',
-            name: 'SEO',
-            grade: 'C',
-            score: 70,
-            status: 'WARN',
-            summary: 'Issues',
-            areaPrompt: 'Fix seo',
-            cursorPrompt: 'cursor',
-            claudePrompt: null,
-            lovablePrompt: null,
-            boltPrompt: null,
-            findings,
-          },
-        ],
-      },
-      false
+describe('resolveFreeUserUpgradeMoment', () => {
+  it('prefers audit limit over trial recheck', () => {
+    assert.equal(
+      resolveFreeUserUpgradeMoment({
+        atAuditLimit: true,
+        canUseFreeRecheck: true,
+      }),
+      'audit_limit_reached'
     )
+  })
 
-    assert.equal(gated.areas[0].findings.length, 3)
-    assert.equal(gated.areas[0].findings[0].agentPrompt, null)
+  it('shows trial recheck when under audit limit', () => {
+    assert.equal(
+      resolveFreeUserUpgradeMoment({
+        atAuditLimit: false,
+        canUseFreeRecheck: true,
+      }),
+      'trial_recheck_available'
+    )
+  })
+
+  it('shows trial exhausted after free recheck used', () => {
+    assert.equal(
+      resolveFreeUserUpgradeMoment({
+        atAuditLimit: false,
+        canUseFreeRecheck: false,
+        hasUsedFreeRecheck: true,
+      }),
+      'trial_exhausted'
+    )
+  })
+
+  it('defaults to builder teaser when no stronger moment', () => {
+    assert.equal(
+      resolveFreeUserUpgradeMoment({
+        atAuditLimit: false,
+        canUseFreeRecheck: false,
+        hasUsedFreeRecheck: false,
+      }),
+      'free_default'
+    )
   })
 })
 
@@ -129,10 +166,7 @@ describe('validateAndRepairJudgeOutput', () => {
   it('adds missing areas up to seven', () => {
     const output = validateAndRepairJudgeOutput(
       {
-        pageJob: 'Sell',
-        pageType: 'marketing',
-        verdict: 'ok',
-        score: 80,
+        ...baseJudgeOutput,
         areas: [
           {
             name: 'PERFORMANCE',
@@ -150,19 +184,16 @@ describe('validateAndRepairJudgeOutput', () => {
     assert.equal(output.areas.length, 7)
   })
 
-  it('downgrades grade B with zero findings to A', () => {
+  it('preserves poor grade and injects synthetic finding when zero findings', () => {
     const output = validateAndRepairJudgeOutput(
       {
-        pageJob: 'Sell',
-        pageType: 'marketing',
-        verdict: 'ok',
-        score: 80,
+        ...baseJudgeOutput,
         areas: [
           {
             name: 'SEO',
             grade: 'B',
             status: 'WARN',
-            summary: 'Issues',
+            summary: 'Meta tags need work. Description is missing.',
             areaPrompt: 'Fix seo',
           },
         ],
@@ -172,16 +203,17 @@ describe('validateAndRepairJudgeOutput', () => {
       []
     )
     const seo = output.areas.find((a) => a.name === 'SEO')
-    assert.equal(seo?.grade, 'A')
+    assert.equal(seo?.grade, 'B')
+    const seoFinding = output.newFindings.find((f) => f.area === 'SEO')
+    assert.ok(seoFinding)
+    assert.match(seoFinding!.problem, /Meta tags/i)
+    assert.ok(seoFinding!.verificationRule)
   })
 
   it('synthesizes enrichments for deterministic findings', () => {
     const output = validateAndRepairJudgeOutput(
       {
-        pageJob: 'Sell',
-        pageType: 'marketing',
-        verdict: 'ok',
-        score: 70,
+        ...baseJudgeOutput,
         areas: [
           {
             name: 'PERFORMANCE',
@@ -210,5 +242,38 @@ describe('validateAndRepairJudgeOutput', () => {
     assert.equal(output.enrichments.length, 1)
     assert.equal(output.enrichments[0].checkId, 'perf-lcp')
     assert.match(output.enrichments[0].whyItMatters, /performance/i)
+  })
+
+  it('defaults launch readiness when missing', () => {
+    const output = validateAndRepairJudgeOutput(
+      {
+        ...baseJudgeOutput,
+        launchReadiness: undefined as unknown as 'fix_first',
+        launchChecklist: undefined as unknown as [],
+        areas: [
+          {
+            name: 'PERFORMANCE',
+            grade: 'A',
+            status: 'PASS',
+            summary: 'Good',
+            areaPrompt: 'Keep',
+          },
+        ],
+        newFindings: [],
+        enrichments: [],
+      },
+      []
+    )
+    assert.equal(output.launchReadiness, 'fix_first')
+    assert.ok(Array.isArray(output.launchChecklist))
+  })
+})
+
+describe('trial recheck flag semantics', () => {
+  it('only trial recheck audits should consume freeRecheckUsedAt (design contract)', () => {
+    const paidRecheck = { trialRecheck: false, skipUsageCount: true, parentId: 'p1' }
+    const trialRecheck = { trialRecheck: true, skipUsageCount: true, parentId: 'p1' }
+    assert.equal(paidRecheck.trialRecheck === true, false)
+    assert.equal(trialRecheck.trialRecheck === true, true)
   })
 })

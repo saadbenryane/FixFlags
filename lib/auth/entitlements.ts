@@ -114,7 +114,7 @@ export async function hasPendingTrialRecheck(userId: string): Promise<boolean> {
   const count = await prisma.audit.count({
     where: {
       userId,
-      skipUsageCount: true,
+      trialRecheck: true,
       parentId: { not: null },
       status: { notIn: ['COMPLETED', 'FAILED'] },
     },

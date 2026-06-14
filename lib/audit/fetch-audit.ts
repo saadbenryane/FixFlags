@@ -1,12 +1,31 @@
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { canAccessAudit, gateAuditResponse } from '@/lib/audit/access'
+import { canAccessAudit } from '@/lib/audit/access'
 import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
 import {
   deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
+import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
+
+function parsePageSpeedErrors(performanceData: unknown): {
+  desktopError?: string
+  mobileError?: string
+  pageSpeedPartial?: boolean
+} {
+  if (!performanceData || typeof performanceData !== 'object') return {}
+  const data = performanceData as Record<string, unknown>
+  const desktopError =
+    typeof data.desktopError === 'string' ? data.desktopError : undefined
+  const mobileError =
+    typeof data.mobileError === 'string' ? data.mobileError : undefined
+  const pageSpeedPartial =
+    Boolean(desktopError || mobileError) ||
+    data.desktop === null ||
+    data.mobile === null
+  return { desktopError, mobileError, pageSpeedPartial }
+}
 
 export const auditFullInclude = {
   areas: {
@@ -61,7 +80,9 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit, session?.user)
-  const gated = gateAuditResponse(stripInternalAuditFields(audit), isPaid)
+  const stripped = stripInternalAuditFields(audit)
+  const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
+  const pageSpeed = parsePageSpeedErrors(audit.performanceData)
 
   const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
   const screenshotCapture = deriveScreenshotCaptureStatus(
@@ -72,7 +93,12 @@ export async function getGatedAuditForRequest(id: string) {
 
   return {
     kind: 'ok' as const,
-    audit: { ...gated, screenshotCapture },
+    audit: {
+      ...stripped,
+      screenshotCapture,
+      launchReadiness,
+      pageSpeedErrors: pageSpeed,
+    },
     isPaid,
     isLoggedIn: !!session?.user,
     session,

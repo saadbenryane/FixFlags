@@ -23,6 +23,14 @@ const judgeOutputSchema = z.object({
   pageType: z.string(),
   verdict: z.string(),
   score: z.number(),
+  launchReadiness: z.enum(['safe', 'fix_first', 'not_ready']),
+  launchChecklist: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      passed: z.boolean(),
+    })
+  ),
   areas: z.array(
     z.object({
       name: z.string(),

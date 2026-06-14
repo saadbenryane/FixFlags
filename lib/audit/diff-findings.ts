@@ -38,7 +38,10 @@ export async function diffFindingsAgainstParent(
   ])
 
   const recheckByKey = new Map(recheckFindings.map((f) => [findingMatchKey(f), f]))
-  const updates: Array<{ id: string; data: { status: FindingStatus; resolvedInId?: string } }> = []
+  const updates: Array<{
+    id: string
+    data: { status: FindingStatus; resolvedInId?: string }
+  }> = []
 
   for (const parentFinding of parentFindings) {
     const key = findingMatchKey(parentFinding)
@@ -63,6 +66,13 @@ export async function diffFindingsAgainstParent(
       id: recheckFinding.id,
       data: { status },
     })
+    updates.push({
+      id: parentFinding.id,
+      data: {
+        status,
+        resolvedInId: status === 'FIXED' ? recheckAuditId : undefined,
+      },
+    })
   }
 
   if (updates.length > 0) {
@@ -74,44 +84,75 @@ export async function diffFindingsAgainstParent(
   }
 }
 
-export async function getFindingDiffSummary(beforeId: string, afterId: string) {
-  const [afterFindings, parentFindings] = await Promise.all([
-    prisma.finding.findMany({
-      where: { auditId: afterId },
-      select: { checkId: true, status: true, problem: true, area: true, severity: true },
-    }),
-    prisma.finding.findMany({
-      where: { auditId: beforeId },
-      select: { checkId: true, status: true, problem: true, area: true, severity: true },
-    }),
+export interface FindingDiffSummaryItem {
+  checkId: string | null
+  problem: string
+  area: string
+  severity: string
+  status?: string
+}
+
+export async function getFindingDiffSummary(
+  parentAuditId: string,
+  recheckAuditId: string
+): Promise<{
+  fixed: FindingDiffSummaryItem[]
+  regressed: FindingDiffSummaryItem[]
+  newIssues: FindingDiffSummaryItem[]
+}> {
+  const [parentFindings, recheckFindings] = await Promise.all([
+    prisma.finding.findMany({ where: { auditId: parentAuditId } }),
+    prisma.finding.findMany({ where: { auditId: recheckAuditId } }),
   ])
 
-  const afterByKey = new Map(afterFindings.map((f) => [findingMatchKey(f), f]))
-  const parentByKey = new Map(parentFindings.map((f) => [findingMatchKey(f), f]))
+  const recheckByKey = new Map(recheckFindings.map((f) => [findingMatchKey(f), f]))
+  const parentKeys = new Set(parentFindings.map((f) => findingMatchKey(f)))
 
-  const fixed: typeof afterFindings = []
-  const unchanged: typeof afterFindings = []
-  const regressed: typeof afterFindings = []
-  const newIssues: typeof afterFindings = []
+  const fixed: FindingDiffSummaryItem[] = []
+  const regressed: FindingDiffSummaryItem[] = []
+  const newIssues: FindingDiffSummaryItem[] = []
 
-  for (const pf of parentFindings) {
-    const af = afterByKey.get(findingMatchKey(pf))
-    if (!af) {
-      fixed.push({ ...pf, status: 'FIXED' })
-    } else if (af.status === 'REGRESSED') {
-      regressed.push(af)
-    } else if (af.status === 'UNCHANGED') {
-      unchanged.push(af)
-    } else {
-      fixed.push(af)
+  for (const parentFinding of parentFindings) {
+    const key = findingMatchKey(parentFinding)
+    const recheckFinding = recheckByKey.get(key)
+    const item: FindingDiffSummaryItem = {
+      checkId: parentFinding.checkId,
+      problem: parentFinding.problem,
+      area: parentFinding.area,
+      severity: parentFinding.severity,
+      status: parentFinding.status,
+    }
+
+    if (!recheckFinding) {
+      fixed.push(item)
+      continue
+    }
+
+    if (parentFinding.status === 'FIXED' || recheckFinding.status === 'FIXED') {
+      fixed.push({ ...item, status: 'FIXED' })
+    } else if (parentFinding.status === 'REGRESSED' || recheckFinding.status === 'REGRESSED') {
+      regressed.push({
+        checkId: recheckFinding.checkId,
+        problem: recheckFinding.problem,
+        area: recheckFinding.area,
+        severity: recheckFinding.severity,
+        status: 'REGRESSED',
+      })
     }
   }
 
-  for (const af of afterFindings) {
-    if (!parentByKey.has(findingMatchKey(af))) {
-      newIssues.push(af)
+  for (const recheckFinding of recheckFindings) {
+    const key = findingMatchKey(recheckFinding)
+    if (!parentKeys.has(key)) {
+      newIssues.push({
+        checkId: recheckFinding.checkId,
+        problem: recheckFinding.problem,
+        area: recheckFinding.area,
+        severity: recheckFinding.severity,
+        status: recheckFinding.status,
+      })
     }
   }
 
-  return { fixed, unchanged, regressed, newIssues }
+  return { fixed, regressed, newIssues }
 }

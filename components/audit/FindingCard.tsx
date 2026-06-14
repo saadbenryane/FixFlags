@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { SeverityBadge } from './SeverityBadge'
 import { PromptCopyButton } from './PromptCopyButton'
 import { FindingFeedback } from './FindingFeedback'
-import { cn, areaLabel } from '@/lib/utils'
+import { areaLabel } from '@/lib/utils'
 
 interface Finding {
   id: string
@@ -19,6 +19,8 @@ interface Finding {
   claudePrompt?: string | null
   lovablePrompt?: string | null
   boltPrompt?: string | null
+  verificationRule?: string | null
+  pageUrl?: string | null
 }
 
 interface Props {
@@ -40,6 +42,7 @@ export function FindingCard({
     finding.lovablePrompt ??
     finding.boltPrompt ??
     finding.cursorPrompt ??
+    finding.claudePrompt ??
     finding.agentPrompt ??
     finding.fix
 
@@ -98,6 +101,9 @@ function FindingRowContent({
             </span>
           )}
           <p className="text-sm font-medium leading-snug text-pretty">{finding.problem}</p>
+          {finding.pageUrl && (
+            <p className="text-[10px] text-muted-foreground truncate">{finding.pageUrl}</p>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <PromptCopyButton prompt={bestPrompt} label="Copy" compact />
@@ -118,6 +124,14 @@ function FindingRowContent({
             {finding.evidence}
           </p>
           <p className="text-sm text-foreground/80 text-pretty">{finding.whyItMatters}</p>
+          {finding.verificationRule && (
+            <div className="rounded-md bg-muted/40 px-3 py-2 space-y-1">
+              <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                How to verify
+              </p>
+              <p className="text-sm text-foreground/90">{finding.verificationRule}</p>
+            </div>
+          )}
           {showFeedback && <FindingFeedback findingId={finding.id} />}
         </div>
       )}

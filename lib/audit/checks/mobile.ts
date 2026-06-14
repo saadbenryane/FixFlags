@@ -30,14 +30,19 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFi
     })
   }
 
-  const tapTargets = mobile.opportunities.find((o) => o.id === 'tap-targets-too-small' || o.id === 'tap-targets')
+  const tapTargets = mobile.opportunities.find(
+    (o) =>
+      o.id === 'tap-targets-too-small' ||
+      o.id === 'tap-targets' ||
+      o.id === 'target-size'
+  )
   if (tapTargets) {
     findings.push({
       checkId: 'tap-targets-small',
       area: 'MOBILE',
       severity: 'HIGH',
       problem: 'Tap targets are too small for mobile users',
-      evidence: 'Buttons or links found with tap area smaller than 48×48px',
+      evidence: `Lighthouse: ${tapTargets.title}`,
       fix: 'Ensure all interactive elements have at least 48×48px touch area. Add padding to small buttons.',
       confidence: 1.0,
       source: 'DETERMINISTIC',

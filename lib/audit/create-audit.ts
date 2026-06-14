@@ -7,6 +7,8 @@ export interface CreateAuditOptions {
   userId?: string | null
   parentId?: string
   skipUsageCount?: boolean
+  trialRecheck?: boolean
+  auditMode?: 'SINGLE' | 'CRITICAL_PATH'
 }
 
 export interface CreateAuditResult {
@@ -23,6 +25,8 @@ export async function createAndEnqueueAudit(
       userId: options.userId ?? null,
       parentId: options.parentId ?? null,
       skipUsageCount: options.skipUsageCount ?? false,
+      trialRecheck: options.trialRecheck ?? false,
+      auditMode: options.auditMode ?? 'SINGLE',
       status: 'QUEUED',
       progress: 5,
     },

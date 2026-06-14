@@ -10,7 +10,6 @@ import {
 
 interface Props {
   moment: UpgradeMoment
-  hiddenCount?: number
   scoreDelta?: number
   isLoggedIn?: boolean
   currentPlan?: string
@@ -23,7 +22,6 @@ interface Props {
 
 export function ContextualUpgradeCard({
   moment,
-  hiddenCount,
   scoreDelta,
   isLoggedIn = true,
   currentPlan = 'FREE',
@@ -31,7 +29,7 @@ export function ContextualUpgradeCard({
   showCta = true,
   className,
 }: Props) {
-  const content = getUpgradeMomentContent(moment, { hiddenCount, scoreDelta })
+  const content = getUpgradeMomentContent(moment, { scoreDelta })
   const signUpHref =
     content.plan === 'TEAM' ? '/sign-up?plan=TEAM' : '/sign-up?plan=BUILDER'
 

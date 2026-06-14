@@ -18,7 +18,7 @@ export function AuditLimitGate({ code, action, message, onDismiss }: Props) {
     <Card className="border-destructive/30 bg-destructive/5">
       <CardContent className="py-4 px-5 space-y-3">
         <p className="text-sm font-medium">
-          {isAnonLimit ? 'Free scan used' : 'Token limit reached'}
+          {isAnonLimit ? 'Free audit used' : 'Audit limit reached'}
         </p>
         <p className="text-sm text-muted-foreground">{message}</p>
         <div className="flex flex-wrap gap-2">

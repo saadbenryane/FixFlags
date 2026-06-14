@@ -8,6 +8,7 @@ import {
 } from '@prisma/client'
 import { DeterministicFinding } from './checks'
 import { JudgeOutput } from './judge'
+import { verificationRuleForCheckId } from './verify-findings'
 
 function aiGradeToEnum(grade: string): AreaGrade {
   const map: Record<string, AreaGrade> = { A: 'A', B: 'B', C: 'C', D: 'D', F: 'F' }
@@ -100,8 +101,12 @@ export async function persistAuditResults(
           claudePrompt: enrichment?.claudePrompt ?? null,
           lovablePrompt: enrichment?.lovablePrompt ?? null,
           boltPrompt: enrichment?.boltPrompt ?? null,
-          verificationRule: enrichment?.verificationRule ?? null,
+          verificationRule:
+            enrichment?.verificationRule ??
+            verificationRuleForCheckId(f.checkId) ??
+            null,
           checkId: f.checkId,
+          pageUrl: f.pageUrl ?? null,
           position: i,
         }
       }),
@@ -140,6 +145,10 @@ export async function persistAuditResults(
         pageType: judgeOutput.pageType,
         verdict: judgeOutput.verdict,
         score: judgeOutput.score,
+        launchReadiness: {
+          readiness: judgeOutput.launchReadiness,
+          checklist: judgeOutput.launchChecklist,
+        },
         completedAt: new Date(),
       },
     })

@@ -6,11 +6,10 @@ import { PriorityFindings } from '@/components/audit/PriorityFindings'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { UPSELLS } from '@/lib/marketing/copy'
-import { FREE_FINDING_LIMIT } from '@/lib/audit/access'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
+import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
 
@@ -26,6 +25,8 @@ interface Finding {
   claudePrompt?: string | null
   lovablePrompt?: string | null
   boltPrompt?: string | null
+  verificationRule?: string | null
+  pageUrl?: string | null
 }
 
 interface Area {
@@ -48,16 +49,23 @@ interface AuditReportProps {
     url: string
     screenshots?: AuditScreenshot[]
     screenshotCapture?: ScreenshotCaptureStatus
+    launchReadiness?: LaunchReadinessData | null
+    pageSpeedErrors?: {
+      desktopError?: string
+      mobileError?: string
+      pageSpeedPartial?: boolean
+    }
     areas: Area[]
   }
   auditId?: string
-  isPaid: boolean
+  viewerIsPaid: boolean
+  viewerPlan?: string
   isLoggedIn: boolean
   variant?: 'default' | 'sample'
   showRecheckHint?: boolean
   canUseFreeRecheck?: boolean
   hasUsedFreeRecheck?: boolean
-  canSharePublicly?: boolean
+  atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
 }
@@ -71,13 +79,14 @@ function worstAreaName(areas: Area[]): string | null {
 export function AuditReport({
   audit,
   auditId,
-  isPaid,
+  viewerIsPaid,
+  viewerPlan = 'FREE',
   isLoggedIn,
   variant = 'default',
   showRecheckHint = false,
   canUseFreeRecheck = false,
   hasUsedFreeRecheck = false,
-  canSharePublicly = false,
+  atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
 }: AuditReportProps) {
@@ -86,21 +95,14 @@ export function AuditReport({
   const signUpHref = auditId ? `/sign-up?next=/audit/${auditId}` : '/sign-up'
   const worstArea = worstAreaName(audit.areas)
 
-  const hiddenCount = audit.areas.reduce((sum, area) => {
-    const hidden = Math.max(0, (area.findings?.length ?? 0) - FREE_FINDING_LIMIT)
-    return sum + hidden
-  }, 0)
-
   const upgradeMoment =
-    !isSample && isLoggedIn && !isPaid
+    !isSample && isLoggedIn && !viewerIsPaid
       ? resolveFreeUserUpgradeMoment({
-          hiddenCount,
+          atAuditLimit,
           canUseFreeRecheck,
           hasUsedFreeRecheck,
         })
       : null
-
-  const showShareBlocked = !isSample && isLoggedIn && !isPaid && !canSharePublicly
 
   return (
     <Container className="max-w-4xl py-8 space-y-8">
@@ -113,6 +115,10 @@ export function AuditReport({
         screenshots={audit.screenshots}
         screenshotLimited={screenshotLimited}
         screenshotPartial={screenshotPartial}
+        launchReadiness={audit.launchReadiness}
+        pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+        desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
+        mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
       />
 
       <PriorityFindings areas={audit.areas} showFeedback={showFeedback} />
@@ -130,7 +136,6 @@ export function AuditReport({
             <AreaCard
               key={area.id}
               area={area}
-              isPaid={isPaid}
               defaultOpen={area.name === worstArea}
               showFeedback={showFeedback}
             />
@@ -138,19 +143,15 @@ export function AuditReport({
         })}
       </div>
 
-      {showRecheckHint && (isPaid || canUseFreeRecheck) && (
+      {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
         <div className="rounded-xl bg-muted/30 p-5 space-y-2">
           <h3 className="font-semibold text-sm">Next: prove your fixes worked</h3>
           <p className="text-sm text-muted-foreground text-pretty">
             Paste fix prompts into your editor, ship the changes, then hit{' '}
-            <strong>{canUseFreeRecheck && !isPaid ? 'Re-check free (1x)' : 'Re-check'}</strong> above
+            <strong>{canUseFreeRecheck && !viewerIsPaid ? 'Re-check free (1x)' : 'Re-check'}</strong> above
             to compare before/after scores.
           </p>
         </div>
-      )}
-
-      {showShareBlocked && (
-        <ContextualUpgradeCard moment="share_blocked" isLoggedIn currentPlan="FREE" />
       )}
 
       {isSample && (
@@ -181,12 +182,11 @@ export function AuditReport({
         </div>
       )}
 
-      {upgradeMoment && upgradeMoment !== 'share_blocked' && (
+      {upgradeMoment && (
         <ContextualUpgradeCard
           moment={upgradeMoment}
-          hiddenCount={hiddenCount}
           isLoggedIn
-          currentPlan="FREE"
+          currentPlan={viewerPlan}
           showCta={upgradeMoment !== 'trial_recheck_available'}
         />
       )}

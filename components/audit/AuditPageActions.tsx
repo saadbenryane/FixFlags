@@ -22,7 +22,6 @@ interface Props {
   projectId?: string | null
   canUseFreeRecheck?: boolean
   canSharePublicly?: boolean
-  hasUsedFreeRecheck?: boolean
 }
 
 export function AuditPageActions({
@@ -36,7 +35,6 @@ export function AuditPageActions({
   projectId,
   canUseFreeRecheck = false,
   canSharePublicly = false,
-  hasUsedFreeRecheck = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -108,15 +106,15 @@ export function AuditPageActions({
           enabled={isLoggedIn}
         />
       )}
-      {(hasParent || compareAuditId) && (
+      {compareAuditId && (
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/compare/${compareAuditId ?? auditId}`}>
+          <Link href={`/compare/${compareAuditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
             View comparison
           </Link>
         </Button>
       )}
-      {isLoggedIn && (canSharePublicly || isPublic) && (
+      {isLoggedIn && (
         <Button
           variant="outline"
           size="sm"

@@ -71,6 +71,7 @@ export async function startRecheckAudit(
       userId: user.id,
       parentId,
       skipUsageCount: isTrialRecheck || isPaid,
+      trialRecheck: isTrialRecheck,
     })
 
     return {

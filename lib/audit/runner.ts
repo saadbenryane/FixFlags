@@ -1,5 +1,5 @@
 import { prisma } from '../db'
-import { captureScreenshots, closeBrowser } from './screenshot'
+import { captureScreenshots } from './screenshot'
 import { fetchAndParseMetadata, parseMetadataFromHtml, trimMetadataForStorage } from './metadata'
 import { fetchPageSpeedData, toStoredPageSpeedResult } from './pagespeed'
 import { runAllChecks, computeAreaScores } from './checks'
@@ -10,6 +10,8 @@ import { incrementUsageOnCompleteForAudit } from './usage'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
 import { validateAndRepairJudgeOutput } from './validate-judge-output'
 import { persistAuditRunCost } from '@/lib/billing/costs'
+import { discoverCriticalPathUrls } from './critical-path'
+import { applyDeterministicVerification } from './verify-findings'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 
 function sanitizeAuditErrorMessage(message: string): string {
@@ -18,7 +20,7 @@ function sanitizeAuditErrorMessage(message: string): string {
 
 async function runPostCompletionSteps(
   auditId: string,
-  audit: { userId: string | null; parentId: string | null; skipUsageCount?: boolean },
+  audit: { userId: string | null; parentId: string | null; skipUsageCount?: boolean; trialRecheck?: boolean },
   judgeResult: {
     usage: { inputTokens: number; outputTokens: number; model: string }
   },
@@ -43,6 +45,17 @@ async function runPostCompletionSteps(
     } catch (err) {
       console.error(`Post-completion diff failed for audit ${auditId}:`, err)
     }
+    try {
+      const parent = await prisma.audit.findUnique({
+        where: { id: audit.parentId },
+        select: { url: true },
+      })
+      if (parent?.url) {
+        await applyDeterministicVerification(auditId, audit.parentId, parent.url)
+      }
+    } catch (err) {
+      console.error(`Deterministic verification failed for audit ${auditId}:`, err)
+    }
   }
 
   if (audit.userId) {
@@ -53,7 +66,7 @@ async function runPostCompletionSteps(
     }
   }
 
-  if (audit.skipUsageCount && audit.parentId && audit.userId) {
+  if (audit.trialRecheck && audit.parentId && audit.userId) {
     try {
       const { consumeTrialRecheckOnSuccess } = await import('@/lib/auth/entitlements')
       await consumeTrialRecheckOnSuccess(audit.userId)
@@ -159,6 +172,8 @@ export async function runAudit(auditId: string): Promise<void> {
   const storedPerformance: Record<string, unknown> = {
     desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
     mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
+    desktopError: pagespeed.desktopError ?? null,
+    mobileError: pagespeed.mobileError ?? null,
     screenshots: screenshots.captureStatus,
   }
 
@@ -173,7 +188,7 @@ export async function runAudit(auditId: string): Promise<void> {
     },
   })
 
-  const deterministicFindings = await runAllChecks(
+  let deterministicFindings = await runAllChecks(
     url,
     metadata,
     pagespeed.desktop,
@@ -186,6 +201,21 @@ export async function runAudit(auditId: string): Promise<void> {
       void setAuditProgress(auditId, progress)
     }
   )
+
+  if (audit.auditMode === 'CRITICAL_PATH') {
+    const criticalUrls = discoverCriticalPathUrls(url, metadata)
+    for (const pageUrl of criticalUrls.slice(1)) {
+      try {
+        const pageMeta = await fetchAndParseMetadata(pageUrl)
+        const pageFindings = await runAllChecks(pageUrl, pageMeta, null, null, [])
+        for (const finding of pageFindings) {
+          deterministicFindings.push({ ...finding, pageUrl })
+        }
+      } catch (err) {
+        console.warn(`Critical path page ${pageUrl} failed:`, err)
+      }
+    }
+  }
 
   const areaScores = computeAreaScores(deterministicFindings, pagespeed.desktop, pagespeed.mobile)
 
@@ -262,6 +292,7 @@ export async function runAudit(auditId: string): Promise<void> {
       userId: audit.userId,
       parentId: audit.parentId,
       skipUsageCount: audit.skipUsageCount,
+      trialRecheck: audit.trialRecheck,
     },
     judgeResult,
     durationMs,

@@ -96,8 +96,8 @@ export async function checkUserAuditAllowed(
     return {
       allowed: false,
       error: isFree
-        ? 'Token limit reached. Upgrade to continue scanning.'
-        : 'Token limit reached. Upgrade your plan to continue.',
+        ? 'Audit limit reached. Upgrade to continue.'
+        : 'Audit limit reached. Upgrade your plan to continue.',
       code: isFree ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
       action: 'upgrade',
     }

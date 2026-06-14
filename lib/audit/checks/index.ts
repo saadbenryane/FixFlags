@@ -17,6 +17,7 @@ export interface DeterministicFinding {
   fix: string
   confidence: number
   source: 'DETERMINISTIC'
+  pageUrl?: string
 }
 
 export async function runAllChecks(

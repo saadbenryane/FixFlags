@@ -37,14 +37,16 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     price: '$0',
     period: '',
     persona: 'Try before launch',
-    outcome: 'See what\u2019s broken',
+    outcome: 'See everything on one page',
     auditLimit: 3,
     auditLimitKind: 'lifetime',
     auditLimitLabel: '3 audits total',
     features: [
-      'Top 3 findings per area',
-      'Human-readable fix text for top findings',
-      'No credit card',
+      'Full report on every audit',
+      'All fix prompts',
+      '1 free re-check',
+      '3 audits total',
+      'Save history',
     ],
     highlight: false,
     cta: 'Audit free',
@@ -57,7 +59,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     price: '$49',
     period: '/mo',
     persona: 'Solo builders shipping weekly',
-    outcome: 'Fix everything, re-check everything',
+    outcome: 'Prove every fix, audit from your editor',
     auditLimit: 25,
     auditLimitKind: 'monthly',
     auditLimitLabel: '25 / month',
@@ -65,11 +67,11 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     foundingPriceId: envPriceId('STRIPE_BUILDER_FOUNDING_PRICE_ID'),
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      'See every issue, not just the top 3',
-      'Full agent-ready prompts on Builder+',
-      'Prove your agent actually fixed it',
+      'Unlimited re-checks + before/after compare',
+      'MCP in Cursor or Claude',
+      '25 audits per month',
+      'Finding diff (fixed vs regressed)',
       'Audit history',
-      'Audit from Cursor without switching tabs',
     ],
     highlight: true,
     cta: 'Start Builder',
@@ -82,7 +84,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     price: '$199',
     period: '/mo',
     persona: 'Small teams with multiple sites',
-    outcome: 'Organize audits across projects',
+    outcome: 'Share proof with clients',
     auditLimit: 100,
     auditLimitKind: 'monthly',
     auditLimitLabel: '100 / month',
@@ -90,10 +92,9 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     projectLimit: 5,
     features: [
       'Everything in Builder',
+      'Public share links',
       'Up to 5 projects',
-      'Assign audits to projects',
-      'Shareable client report links',
-      'Show stakeholders what improved',
+      'Before/after compare (signed-in)',
     ],
     highlight: false,
     cta: 'Start Team',
@@ -145,6 +146,10 @@ export const STRIPE_FOUNDING_PRICE_IDS: Partial<Record<PaidPlan, string>> = Obje
     .map((plan) => [plan, PLAN_DEFINITIONS[plan].foundingPriceId])
     .filter(([, id]) => id)
 ) as Partial<Record<PaidPlan, string>>
+
+export function hasActiveFoundingOffer(): boolean {
+  return Object.keys(STRIPE_FOUNDING_PRICE_IDS).length > 0
+}
 
 export function scanLimitForPlan(plan: Plan): number {
   return PLAN_DEFINITIONS[plan].auditLimit
