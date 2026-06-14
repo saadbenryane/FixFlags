@@ -4,8 +4,8 @@ import { BRAND } from '@/lib/marketing/copy'
 function ComparisonCell({ value }: { value: string }) {
   if (value === 'Yes') {
     return (
-      <span className="inline-flex items-center justify-center gap-1 text-emerald-700 dark:text-emerald-400">
-        <Check className="h-4 w-4" aria-hidden />
+      <span className="inline-flex items-center justify-center gap-1 text-foreground">
+        <Check className="h-4 w-4 text-brand" aria-hidden />
         <span className="sr-only">Yes</span>
       </span>
     )

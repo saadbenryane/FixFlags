@@ -1,3 +1,5 @@
+import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '@/lib/audit/viewports'
+
 export const SAMPLE_STRIPE_AUDIT = {
   url: 'https://stripe.com',
   score: 91,
@@ -8,11 +10,15 @@ export const SAMPLE_STRIPE_AUDIT = {
   screenshots: [
     {
       device: 'DESKTOP' as const,
-      url: 'https://image.thum.io/get/width/1200/crop/800/https://stripe.com',
+      url: '/samples/stripe-desktop.webp',
+      width: DESKTOP_VIEWPORT.width,
+      height: DESKTOP_VIEWPORT.height,
     },
     {
       device: 'MOBILE' as const,
-      url: 'https://image.thum.io/get/width/375/noanimate/https://stripe.com',
+      url: '/samples/stripe-mobile.webp',
+      width: MOBILE_VIEWPORT.width,
+      height: MOBILE_VIEWPORT.height,
     },
   ],
   areas: [

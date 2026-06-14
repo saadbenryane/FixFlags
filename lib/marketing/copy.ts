@@ -34,6 +34,7 @@ export const HERO = {
 export const HERO_MECHANISM_LINE =
   'Capture screenshots · Run checks · AI judge reads the page' as const
 
+/** @deprecated Use HOW_IT_WORKS_SECTION — kept for backwards compatibility */
 export const AI_REVIEW_SECTION = {
   label: 'How it works',
   headline: 'A review, not a dashboard',
@@ -50,6 +51,34 @@ export const AI_REVIEW_SECTION = {
     {
       title: 'Judge',
       body: 'AI finds conversion gaps, trust issues, and unclear copy.',
+    },
+  ],
+} as const
+
+export const HOW_IT_WORKS_SECTION = {
+  label: 'How it works',
+  headline: 'From URL to fix prompt',
+  subhead: 'Under 60 seconds. No account required.',
+  steps: [
+    {
+      step: 1,
+      title: 'Paste your URL',
+      body: 'Any public page — new launch or live site.',
+    },
+    {
+      step: 2,
+      title: 'Capture and check',
+      body: 'Desktop and mobile screenshots. Performance, SEO, accessibility, and more.',
+    },
+    {
+      step: 3,
+      title: 'AI reads the page',
+      body: 'Finds conversion gaps, trust issues, and unclear copy.',
+    },
+    {
+      step: 4,
+      title: 'Fix and re-check',
+      body: `Copy prompts into ${AI_TOOLS}. Compare before and after scores.`,
     },
   ],
 } as const
@@ -122,19 +151,48 @@ export const DIFFERENTIATION = {
   ],
 } as const
 
-export const SOCIAL_PROOF = {
-  headline: 'What the score missed',
-  cta: 'See sample report',
+export const PROOF_SECTION = {
+  label: 'Sample report',
+  headline: 'Even 91/100 sites have gaps',
+  subhead: 'See what automated scores miss on a site everyone trusts.',
+  cta: 'See full sample report',
   sample: {
     name: 'Stripe',
+    domain: 'stripe.com',
     score: 91,
     finding: '3 third-party scripts add ~80ms render delay',
+    areasFlagged: 4,
   },
 } as const
 
-export const QUALITY_AREAS_SECTION = {
-  headline: 'Seven areas. One review.',
+/** @deprecated Use PROOF_SECTION */
+export const SOCIAL_PROOF = {
+  headline: PROOF_SECTION.headline,
+  cta: PROOF_SECTION.cta,
+  sample: {
+    name: PROOF_SECTION.sample.name,
+    score: PROOF_SECTION.sample.score,
+    finding: PROOF_SECTION.sample.finding,
+  },
 } as const
+
+export const WHATS_CHECKED_SECTION = {
+  label: 'Coverage',
+  headline: 'Seven areas. One review.',
+  subhead: 'Automated checks plus AI reading your screenshots.',
+} as const
+
+/** @deprecated Use WHATS_CHECKED_SECTION */
+export const QUALITY_AREAS_SECTION = {
+  headline: WHATS_CHECKED_SECTION.headline,
+} as const
+
+export const TRUST_STRIP = [
+  'Free first audit',
+  'No account',
+  '7 areas checked',
+  'Fix prompts included',
+] as const
 
 export const QUALITY_AREAS = [
   { name: 'Performance', impact: 'Slow pages lose visitors early' },

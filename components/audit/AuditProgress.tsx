@@ -5,6 +5,8 @@ import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
+import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import {
   formatElapsed,
   getActivityMessage,
@@ -20,6 +22,7 @@ interface AuditProgressProps {
   startedAt?: string | null
   desktopScreenshotUrl?: string | null
   mobileScreenshotUrl?: string | null
+  screenshotCapture?: ScreenshotCaptureStatus
 }
 
 export function AuditProgress({
@@ -29,6 +32,7 @@ export function AuditProgress({
   startedAt,
   desktopScreenshotUrl,
   mobileScreenshotUrl,
+  screenshotCapture,
 }: AuditProgressProps) {
   const [tick, setTick] = useState(0)
   const [elapsed, setElapsed] = useState(0)
@@ -44,6 +48,10 @@ export function AuditProgress({
     : status === 'FAILED'
       ? 'failed'
       : 'loading'
+
+  const mobilePending =
+    screenshotCapture?.mobile === 'pending' && !mobileScreenshotUrl
+  const showMobileFrame = mobileScreenshotUrl || mobilePending
 
   useEffect(() => {
     if (isTerminal) return
@@ -69,14 +77,14 @@ export function AuditProgress({
           imageUrl={desktopScreenshotUrl}
           state={frameState}
         />
-        {mobileScreenshotUrl && (
+        {showMobileFrame && (
           <div className="flex justify-end">
-            <div className="w-[120px] shrink-0">
+            <div className={MOBILE_FRAME_WIDTH_CLASS}>
               <BrowserFrame
                 device="mobile"
                 url={url}
                 imageUrl={mobileScreenshotUrl}
-                state="loaded"
+                state={mobileScreenshotUrl ? 'loaded' : 'loading'}
               />
             </div>
           </div>

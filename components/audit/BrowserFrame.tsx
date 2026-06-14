@@ -2,8 +2,7 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  DESKTOP_VIEWPORT,
-  MOBILE_VIEWPORT,
+  viewportAspectStyle,
   SCREENSHOT_FRAME,
 } from '@/lib/audit/viewports'
 import { truncateUrl } from '@/lib/audit/progress-ui'
@@ -21,11 +20,6 @@ interface Props {
   label?: string
   /** desktop = 1280×900, mobile = 375×812 (matches Puppeteer capture) */
   device?: Device
-}
-
-function viewportAspectStyle(device: Device): { aspectRatio: string } {
-  const vp = device === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT
-  return { aspectRatio: `${vp.width} / ${vp.height}` }
 }
 
 export function BrowserFrame({

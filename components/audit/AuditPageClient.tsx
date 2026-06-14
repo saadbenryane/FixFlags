@@ -175,6 +175,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}
               mobileScreenshotUrl={mobileScreenshot?.url}
+              screenshotCapture={statusPayload?.screenshotCapture}
             />
           </div>
         )}

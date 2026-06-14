@@ -1,6 +1,7 @@
 import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
-import { uploadScreenshot } from '../storage/r2'
+import { uploadScreenshot } from '../storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
+import type { ScreenshotCaptureStatus } from './screenshot-types'
 
 let browser: Browser | null = null
 
@@ -26,6 +27,7 @@ export interface ScreenshotResult {
   mobileBase64: string | null
   desktopHtml: string | null
   consoleErrors: Array<{ type: string; text: string }>
+  captureStatus: ScreenshotCaptureStatus
 }
 
 interface ViewportCapture {
@@ -49,9 +51,10 @@ async function captureViewport(
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, html: null }
+  let page: Page | null = null
 
   try {
-    const page = await b.newPage()
+    page = await b.newPage()
     page.on('console', (msg: ConsoleMessage) => {
       if (msg.type() === 'error') {
         consoleErrors.push({ type: msg.type(), text: msg.text() })
@@ -82,14 +85,13 @@ async function captureViewport(
     })) as Buffer
 
     result.base64 = buffer.toString('base64')
-
-    if (process.env.R2_BUCKET_NAME) {
-      result.url = await uploadScreenshot(auditId, options.device, buffer)
-    }
-
-    await page.close()
+    result.url = await uploadScreenshot(auditId, options.device, buffer)
   } catch (err) {
     console.error(`${options.device} screenshot failed:`, err)
+  } finally {
+    if (page) {
+      await page.close().catch(() => {})
+    }
   }
 
   return result
@@ -111,14 +113,25 @@ export async function captureScreenshots(
       b,
       url,
       auditId,
-      { width: DESKTOP_VIEWPORT.width, height: DESKTOP_VIEWPORT.height, device: 'desktop', captureHtml: true },
+      {
+        width: DESKTOP_VIEWPORT.width,
+        height: DESKTOP_VIEWPORT.height,
+        device: 'desktop',
+        captureHtml: true,
+      },
       consoleErrors
     ),
     captureViewport(
       b,
       url,
       auditId,
-      { width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height, device: 'mobile', isMobile: true, deviceScaleFactor: 2 },
+      {
+        width: MOBILE_VIEWPORT.width,
+        height: MOBILE_VIEWPORT.height,
+        device: 'mobile',
+        isMobile: true,
+        deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
+      },
       consoleErrors
     ),
   ])
@@ -130,6 +143,10 @@ export async function captureScreenshots(
     mobileBase64: mobile.base64,
     desktopHtml: desktop.html,
     consoleErrors,
+    captureStatus: {
+      desktop: desktop.url ? 'ok' : 'failed',
+      mobile: mobile.url ? 'ok' : 'failed',
+    },
   }
 }
 

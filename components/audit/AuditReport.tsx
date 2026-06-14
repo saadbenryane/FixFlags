@@ -9,6 +9,8 @@ import { UPSELLS } from '@/lib/marketing/copy'
 import { FREE_FINDING_LIMIT } from '@/lib/audit/access'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
+import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import { AREA_ORDER } from '@/lib/audit/constants'
 import { gradeRank } from '@/lib/utils'
 
@@ -44,7 +46,8 @@ interface AuditReportProps {
     verdict: string | null
     score: number | null
     url: string
-    screenshots?: Array<{ device: 'DESKTOP' | 'MOBILE'; url: string }>
+    screenshots?: AuditScreenshot[]
+    screenshotCapture?: ScreenshotCaptureStatus
     areas: Area[]
   }
   auditId?: string
@@ -56,6 +59,7 @@ interface AuditReportProps {
   hasUsedFreeRecheck?: boolean
   canSharePublicly?: boolean
   screenshotLimited?: boolean
+  screenshotPartial?: boolean
 }
 
 function worstAreaName(areas: Area[]): string | null {
@@ -75,6 +79,7 @@ export function AuditReport({
   hasUsedFreeRecheck = false,
   canSharePublicly = false,
   screenshotLimited = false,
+  screenshotPartial = false,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -107,6 +112,7 @@ export function AuditReport({
         url={audit.url}
         screenshots={audit.screenshots}
         screenshotLimited={screenshotLimited}
+        screenshotPartial={screenshotPartial}
       />
 
       <PriorityFindings areas={audit.areas} showFeedback={showFeedback} />

@@ -67,6 +67,13 @@ export function validateAuditEnv(): void {
     if (missingR2.length > 0) {
       throw new Error(`Missing required R2 env vars in production: ${missingR2.join(', ')}`)
     }
+  } else {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL
+    if (!appUrl) {
+      throw new Error(
+        'Missing NEXT_PUBLIC_APP_URL (or BETTER_AUTH_URL) — required for local screenshot URLs'
+      )
+    }
   }
 }
 

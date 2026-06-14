@@ -10,6 +10,8 @@ import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
 import { getEntitlements } from '@/lib/auth/entitlements'
 import { isAdminUser } from '@/lib/auth/permissions'
+import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
+import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -69,6 +71,15 @@ export default async function AuditPage({ params }: Props) {
       : null
 
   if (audit.status === 'COMPLETED') {
+    const screenshots = (audit.screenshots ?? []) as Array<{
+      device: 'DESKTOP' | 'MOBILE'
+      url: string
+      width: number
+      height: number
+    }>
+    const captureStatus = (audit as { screenshotCapture?: ScreenshotCaptureStatus }).screenshotCapture
+    const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
+
     return (
       <AuditShell
         session={session}
@@ -98,9 +109,8 @@ export default async function AuditPage({ params }: Props) {
           canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
           hasUsedFreeRecheck={entitlements?.hasUsedFreeRecheck ?? false}
           canSharePublicly={entitlements?.canSharePublicly ?? false}
-          screenshotLimited={
-            audit.status === 'COMPLETED' && (audit.screenshots?.length ?? 0) === 0
-          }
+          screenshotLimited={limited}
+          screenshotPartial={partial}
         />
       </AuditShell>
     )

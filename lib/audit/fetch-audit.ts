@@ -3,6 +3,10 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { canAccessAudit, gateAuditResponse } from '@/lib/audit/access'
 import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
+import {
+  deriveScreenshotCaptureStatus,
+  parseScreenshotCaptureStatus,
+} from '@/lib/audit/screenshot-types'
 
 export const auditFullInclude = {
   areas: {
@@ -59,9 +63,16 @@ export async function getGatedAuditForRequest(id: string) {
   const isPaid = await resolveIsPaidForAudit(audit, session?.user)
   const gated = gateAuditResponse(stripInternalAuditFields(audit), isPaid)
 
+  const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
+  const screenshotCapture = deriveScreenshotCaptureStatus(
+    audit.status,
+    audit.screenshots,
+    storedCapture
+  )
+
   return {
     kind: 'ok' as const,
-    audit: gated,
+    audit: { ...gated, screenshotCapture },
     isPaid,
     isLoggedIn: !!session?.user,
     session,

@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { SampleFindingsCard } from '@/components/marketing/SampleFindingsCard'
 import { MarketingBackdrop } from '@/components/marketing/MarketingBackdrop'
+import { TrustStrip } from '@/components/marketing/TrustStrip'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -48,7 +49,10 @@ export function HeroSection() {
               <AuditInput />
             </div>
 
-            <Muted className={cn('mt-3', STAGGER[4])}>{HERO.trustLine}</Muted>
+            <div className={cn('mt-3 space-y-4', STAGGER[4])}>
+              <Muted>{HERO.trustLine}</Muted>
+              <TrustStrip />
+            </div>
 
             <div className={cn('mt-5', STAGGER[5])}>
               <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">

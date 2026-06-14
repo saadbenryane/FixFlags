@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:unit": "tsx --test lib/__tests__/hardening.test.ts",
+    "test:unit": "tsx --test lib/__tests__/hardening.test.ts lib/audit/__tests__/viewports.test.ts lib/audit/__tests__/screenshot-types.test.ts lib/storage/__tests__/screenshots.test.ts",
     "worker": "tsx watch worker/index.ts",
     "worker:build": "tsc --project tsconfig.worker.json",
     "worker:start": "node dist/worker/index.js",

@@ -234,7 +234,8 @@ async function runAnthropicJudge(
 
 async function runOpenAIJudge(
   context: ReturnType<typeof buildJudgeContext>,
-  desktopBase64: string | null
+  desktopBase64: string | null,
+  mobileBase64: string | null
 ): Promise<JudgeResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
 
@@ -248,9 +249,21 @@ async function runOpenAIJudge(
       },
     })
   }
+  // Mobile capture is intentional when both OpenAI and mobile screenshot exist.
+  if (mobileBase64) {
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:image/webp;base64,${mobileBase64}`,
+        detail: 'low',
+      },
+    })
+  }
+  const screenshotHint =
+    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
   content.push({
     type: 'text',
-    text: buildJudgePrompt({ ...context, screenshotHint: 'desktop-only' }),
+    text: buildJudgePrompt({ ...context, screenshotHint }),
   })
 
   const controller = new AbortController()
@@ -308,7 +321,7 @@ export async function runJudge(
   const context = buildJudgeContext(url, metadata, desktop, mobile, findings)
 
   if (openai) {
-    return runOpenAIJudge(context, desktopBase64)
+    return runOpenAIJudge(context, desktopBase64, mobileBase64)
   }
   if (anthropic) {
     return runAnthropicJudge(context, desktopBase64, mobileBase64)

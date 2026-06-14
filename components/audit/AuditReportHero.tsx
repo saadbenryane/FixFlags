@@ -1,11 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
+import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
-
-interface Screenshot {
-  device: 'DESKTOP' | 'MOBILE'
-  url: string
-}
 
 interface Props {
   pageJob: string
@@ -13,8 +9,9 @@ interface Props {
   verdict: string
   score: number
   url: string
-  screenshots?: Screenshot[]
+  screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
+  screenshotPartial?: boolean
 }
 
 function scoreTone(score: number): string {
@@ -32,6 +29,7 @@ export function AuditReportHero({
   url,
   screenshots,
   screenshotLimited,
+  screenshotPartial,
 }: Props) {
   const hasScreenshots = screenshots && screenshots.length > 0
 
@@ -65,14 +63,17 @@ export function AuditReportHero({
 
       {screenshotLimited && (
         <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          Visual review limited — text-only analysis. Screenshots could not be captured for this
-          audit.
+          Visual review limited — desktop screenshot could not be captured for this audit.
         </div>
       )}
 
-      {hasScreenshots && (
-        <ScreenshotViewer screenshots={screenshots!} url={url} layout="responsive" />
+      {screenshotPartial && !screenshotLimited && (
+        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Mobile screenshot could not be captured. Desktop viewport review is shown below.
+        </div>
       )}
+
+      {hasScreenshots && <ScreenshotViewer screenshots={screenshots!} url={url} />}
     </div>
   )
 }

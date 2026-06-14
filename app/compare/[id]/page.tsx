@@ -6,7 +6,9 @@ import { auth } from '@/lib/auth'
 import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
 import { AreaDiff } from '@/components/compare/AreaDiff'
 import { FindingDiff } from '@/components/compare/FindingDiff'
-import { BeforeAfterSlider } from '@/components/compare/BeforeAfterSlider'
+import { BeforeAfterComparison } from '@/components/audit/BeforeAfterComparison'
+import { BrowserFrame } from '@/components/audit/BrowserFrame'
+import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
@@ -96,6 +98,9 @@ export default async function ComparePage({ params }: Props) {
 
   const beforeDesktop = before.screenshots.find((s) => s.device === 'DESKTOP')
   const afterDesktop = after.screenshots.find((s) => s.device === 'DESKTOP')
+  const beforeMobile = before.screenshots.find((s) => s.device === 'MOBILE')
+  const afterMobile = after.screenshots.find((s) => s.device === 'MOBILE')
+  const hasMobileCompare = beforeMobile && afterMobile
 
   const scoreDelta =
     before.score !== null && after.score !== null ? after.score - before.score : 0
@@ -153,8 +158,34 @@ export default async function ComparePage({ params }: Props) {
 
         {beforeDesktop && afterDesktop && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold">Screenshot comparison</h2>
-            <BeforeAfterSlider beforeUrl={beforeDesktop.url} afterUrl={afterDesktop.url} />
+            <h2 className="text-sm font-semibold">Desktop screenshot comparison</h2>
+            <BeforeAfterComparison beforeUrl={beforeDesktop.url} afterUrl={afterDesktop.url} />
+          </div>
+        )}
+
+        {hasMobileCompare && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold">Mobile screenshot comparison</h2>
+            <div className="flex flex-wrap gap-6 justify-center">
+              <div className={MOBILE_FRAME_WIDTH_CLASS}>
+                <p className="text-xs text-muted-foreground mb-2 text-center">Before</p>
+                <BrowserFrame
+                  device="mobile"
+                  imageUrl={beforeMobile!.url}
+                  state="loaded"
+                  url={before.url}
+                />
+              </div>
+              <div className={MOBILE_FRAME_WIDTH_CLASS}>
+                <p className="text-xs text-muted-foreground mb-2 text-center">After</p>
+                <BrowserFrame
+                  device="mobile"
+                  imageUrl={afterMobile!.url}
+                  state="loaded"
+                  url={after.url}
+                />
+              </div>
+            </div>
           </div>
         )}
 

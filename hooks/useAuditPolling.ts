@@ -1,5 +1,6 @@
 'use client'
 import useSWR from 'swr'
+import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
@@ -23,7 +24,8 @@ export interface AuditStatusPayload {
   url: string
   isPublic?: boolean
   parentId?: string | null
-  screenshots?: Array<{ device: string; url: string }>
+  screenshots?: AuditScreenshot[]
+  screenshotCapture?: ScreenshotCaptureStatus
   areas?: Array<{ name: string; grade: string; score: number | null }>
 }
 

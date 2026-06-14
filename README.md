@@ -30,6 +30,14 @@ npm run dev:all
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
 
+**Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
+
+**Sample report assets:** Regenerate static sample WebPs with:
+
+```bash
+npx tsx scripts/capture-sample-screenshots.ts
+```
+
 **Local admin:** `saadbenryane@gmail.com` / `password123` (unlimited scans, `/admin` dashboard with run costs).
 
 **Development note:** When `NODE_ENV=development`, scan limits are disabled so you can iterate without hitting billing caps.
@@ -90,7 +98,7 @@ Both services need:
 - `DATABASE_URL`, `REDIS_URL`
 - `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 - `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`
-- **R2** (screenshots): `R2_BUCKET_NAME`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_URL`
+- **R2** (screenshots in production): `R2_BUCKET_NAME`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_URL`
 - **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price IDs (see `.env.example`)
 - **Cron**: `CRON_SECRET`
 - **Email**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`

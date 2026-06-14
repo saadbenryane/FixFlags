@@ -4,6 +4,10 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { markAnonymousAuditCompletedOnce } from '@/lib/audit/usage'
+import {
+  deriveScreenshotCaptureStatus,
+  parseScreenshotCaptureStatus,
+} from '@/lib/audit/screenshot-types'
 
 export async function GET(
   _req: NextRequest,
@@ -25,6 +29,7 @@ export async function GET(
         userId: true,
         isPublic: true,
         parentId: true,
+        performanceData: true,
         screenshots: {
           select: { device: true, url: true, width: true, height: true },
         },
@@ -47,7 +52,19 @@ export async function GET(
       await markAnonymousAuditCompletedOnce(id)
     }
 
-    return NextResponse.json(audit)
+    const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
+    const screenshotCapture = deriveScreenshotCaptureStatus(
+      audit.status,
+      audit.screenshots,
+      storedCapture
+    )
+
+    const { performanceData: _pd, ...rest } = audit
+
+    return NextResponse.json({
+      ...rest,
+      screenshotCapture,
+    })
   } catch (err) {
     return handleRouteError(err)
   }

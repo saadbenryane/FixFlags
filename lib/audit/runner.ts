@@ -1,5 +1,5 @@
 import { prisma } from '../db'
-import { captureScreenshots } from './screenshot'
+import { captureScreenshots, closeBrowser } from './screenshot'
 import { fetchAndParseMetadata, parseMetadataFromHtml, trimMetadataForStorage } from './metadata'
 import { fetchPageSpeedData, toStoredPageSpeedResult } from './pagespeed'
 import { runAllChecks, computeAreaScores } from './checks'
@@ -10,7 +10,7 @@ import { incrementUsageOnCompleteForAudit } from './usage'
 import { AUDIT_PROGRESS, setAuditProgress } from './progress'
 import { validateAndRepairJudgeOutput } from './validate-judge-output'
 import { persistAuditRunCost } from '@/lib/billing/costs'
-import { isR2Configured } from '@/lib/storage/r2'
+import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 
 function sanitizeAuditErrorMessage(message: string): string {
   return message.replace(/\s+/g, ' ').trim().slice(0, 500)
@@ -74,7 +74,6 @@ export async function runAudit(auditId: string): Promise<void> {
 
   const url = audit.url
 
-  // Clean partial results from a previous attempt
   await prisma.screenshot.deleteMany({ where: { auditId } })
 
   await prisma.audit.update({
@@ -103,40 +102,42 @@ export async function runAudit(auditId: string): Promise<void> {
   const pagespeedCalls =
     (pagespeed.desktop ? 1 : 0) + (pagespeed.mobile ? 1 : 0)
 
-  if (isR2Configured()) {
-    if (!screenshots.desktopUrl || !screenshots.mobileUrl) {
-      const msg =
-        'Screenshot storage failed. Check R2 configuration (R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT).'
-      await prisma.audit.update({
-        where: { id: auditId },
-        data: { status: 'FAILED', errorMsg: msg },
-      })
-      throw new Error(msg)
-    }
+  if (!screenshots.desktopUrl) {
+    const msg =
+      'Desktop screenshot capture failed. The site may be unreachable or blocking automated access.'
+    await prisma.audit.update({
+      where: { id: auditId },
+      data: { status: 'FAILED', errorMsg: msg },
+    })
+    throw new Error(msg)
   }
 
-  if (screenshots.desktopUrl) {
-    await prisma.screenshot.create({
-      data: {
-        auditId,
-        device: 'DESKTOP',
-        url: screenshots.desktopUrl,
-        width: 1280,
-        height: 900,
-      },
-    })
-    await setAuditProgress(auditId, AUDIT_PROGRESS.DESKTOP_SCREENSHOT)
+  if (!screenshots.mobileUrl && screenshots.captureStatus.mobile === 'failed') {
+    console.warn(`Audit ${auditId}: mobile screenshot capture failed — continuing with desktop only`)
   }
+
+  await prisma.screenshot.create({
+    data: {
+      auditId,
+      device: 'DESKTOP',
+      url: screenshots.desktopUrl,
+      width: DESKTOP_VIEWPORT.width,
+      height: DESKTOP_VIEWPORT.height,
+    },
+  })
+  await setAuditProgress(auditId, AUDIT_PROGRESS.DESKTOP_SCREENSHOT)
+
   if (screenshots.mobileUrl) {
     await prisma.screenshot.create({
       data: {
         auditId,
         device: 'MOBILE',
         url: screenshots.mobileUrl,
-        width: 375,
-        height: 812,
+        width: MOBILE_VIEWPORT.width,
+        height: MOBILE_VIEWPORT.height,
       },
     })
+    await setAuditProgress(auditId, AUDIT_PROGRESS.MOBILE_SCREENSHOT)
   }
 
   let metadata
@@ -158,8 +159,7 @@ export async function runAudit(auditId: string): Promise<void> {
   const storedPerformance: Record<string, unknown> = {
     desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
     mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
-    screenshotStatus:
-      screenshots.desktopUrl || screenshots.mobileUrl ? 'ok' : 'failed',
+    screenshots: screenshots.captureStatus,
   }
 
   await prisma.audit.update({
