@@ -34,39 +34,57 @@ interface Props {
 
 export function ComparisonTable({ rows }: Props) {
   return (
-    <div className="overflow-x-auto rounded-card bg-card shadow-card">
-      <table className="w-full min-w-[640px] text-sm">
-        <thead>
-          <tr className="border-b border-border/20">
-            <th className="p-4 text-left font-medium" scope="col" />
-            <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
-              Lighthouse
-            </th>
-            <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
-              Manual QA
-            </th>
-            <th className="p-4 text-center font-semibold text-foreground" scope="col">
-              {BRAND.name}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.feature} className="border-t border-border/20">
-              <td className="p-4 font-medium">{row.feature}</td>
-              <td className="p-4 text-center">
-                <ComparisonCell value={row.lighthouse} />
-              </td>
-              <td className="p-4 text-center">
-                <ComparisonCell value={row.manual} />
-              </td>
-              <td className="p-4 text-center font-medium">
-                <ComparisonCell value={row.qualityos} />
-              </td>
+    <div className="space-y-2">
+      <p className="text-center text-xs text-muted-foreground md:hidden">
+        Scroll horizontally to compare columns
+      </p>
+      <div
+        className="overflow-x-auto rounded-card bg-card shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        tabIndex={0}
+        role="region"
+        aria-label="Feature comparison table"
+      >
+        <table className="w-full min-w-[640px] text-sm">
+          <caption className="sr-only">
+            Comparison of QualityOS, Google Lighthouse, and manual QA across key audit
+            capabilities
+          </caption>
+          <thead>
+            <tr className="border-b border-border/20">
+              <th className="p-4 text-left font-medium" scope="col">
+                Feature
+              </th>
+              <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
+                Lighthouse
+              </th>
+              <th className="p-4 text-center font-medium text-muted-foreground" scope="col">
+                Manual QA
+              </th>
+              <th className="p-4 text-center font-semibold text-foreground" scope="col">
+                {BRAND.name}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.feature} className="border-t border-border/20">
+                <th className="p-4 text-left font-medium" scope="row">
+                  {row.feature}
+                </th>
+                <td className="p-4 text-center">
+                  <ComparisonCell value={row.lighthouse} />
+                </td>
+                <td className="p-4 text-center">
+                  <ComparisonCell value={row.manual} />
+                </td>
+                <td className="p-4 text-center font-medium">
+                  <ComparisonCell value={row.qualityos} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

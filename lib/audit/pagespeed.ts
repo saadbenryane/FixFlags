@@ -1,3 +1,9 @@
+export interface LighthouseAuditSummary {
+  id: string
+  title: string
+  score: number | null
+}
+
 export interface PageSpeedResult {
   strategy: 'desktop' | 'mobile'
   score: number | null
@@ -5,10 +11,19 @@ export interface PageSpeedResult {
   cls: number | null
   fcp: number | null
   tbt: number | null
+  inp: number | null
   opportunities: Array<{ id: string; title: string; savings: number }>
+  failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
 }
+
+const ACCESSIBILITY_AUDIT_IDS = [
+  'color-contrast',
+  'bypass',
+  'focus-traps',
+  'focus-visible',
+] as const
 
 export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeedResult, 'raw'> {
   const { raw: _raw, ...stored } = result
@@ -25,6 +40,7 @@ async function runPageSpeed(
   apiUrl.searchParams.set('url', url)
   apiUrl.searchParams.set('strategy', strategy)
   apiUrl.searchParams.set('category', 'performance')
+  apiUrl.searchParams.append('category', 'accessibility')
   if (apiKey) apiUrl.searchParams.set('key', apiKey)
 
   const controller = new AbortController()
@@ -44,6 +60,19 @@ async function runPageSpeed(
     const cls = (audits['cumulative-layout-shift']?.numericValue as number) || null
     const fcp = (audits['first-contentful-paint']?.numericValue as number) || null
     const tbt = (audits['total-blocking-time']?.numericValue as number) || null
+    const inp = (audits['interaction-to-next-paint']?.numericValue as number) || null
+
+    const failedAccessibilityAudits: LighthouseAuditSummary[] = []
+    for (const id of ACCESSIBILITY_AUDIT_IDS) {
+      const audit = audits[id]
+      if (audit && audit.score !== null && (audit.score as number) < 1) {
+        failedAccessibilityAudits.push({
+          id,
+          title: (audit.title as string) ?? id,
+          score: audit.score as number,
+        })
+      }
+    }
 
     const opportunities: Array<{ id: string; title: string; savings: number }> = []
     const opportunityIds = [
@@ -91,7 +120,9 @@ async function runPageSpeed(
       cls: cls !== null ? Math.round(cls * 1000) / 1000 : null,
       fcp: fcp ? Math.round(fcp) : null,
       tbt: tbt ? Math.round(tbt) : null,
+      inp: inp !== null ? Math.round(inp) : null,
       opportunities: opportunities.slice(0, 5),
+      failedAccessibilityAudits,
       diagnostics: {},
       raw: data,
     }

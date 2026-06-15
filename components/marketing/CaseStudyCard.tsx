@@ -2,7 +2,6 @@
 
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { TextLink } from '@/components/ui/text-link'
-import { GradeBadge } from '@/components/audit/GradeBadge'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import type { AreaGrade } from '@prisma/client'
 import { Badge } from '@/components/ui/badge'
@@ -25,12 +24,12 @@ interface CaseStudy {
 
 const GRADE_ONLY_AREAS = new Set(['Conversion', 'Trust', 'Content'])
 
-function formatDelta(study: CaseStudy): string | null {
-  if (GRADE_ONLY_AREAS.has(study.area) && study.gradeBefore && study.gradeAfter) {
-    return `${study.gradeBefore} → ${study.gradeAfter}`
+function beforeGrade(study: CaseStudy): AreaGrade | null {
+  if (GRADE_ONLY_AREAS.has(study.area) && study.gradeBefore) {
+    return study.gradeBefore
   }
-  if (study.scoreBefore != null && study.scoreAfter != null) {
-    return `${study.scoreBefore} → ${study.scoreAfter}`
+  if (study.scoreBefore != null) {
+    return gradeFromScore(study.scoreBefore)
   }
   return null
 }
@@ -40,6 +39,11 @@ function afterGrade(study: CaseStudy): AreaGrade {
     return study.gradeAfter
   }
   return gradeFromScore(study.scoreAfter ?? 0)
+}
+
+function formatMetric(value: string | number, grade: AreaGrade | null): string {
+  if (grade) return `${value} (${grade})`
+  return String(value)
 }
 
 function beforeValue(study: CaseStudy): string {
@@ -56,15 +60,29 @@ function afterValue(study: CaseStudy): string {
   return String(study.scoreAfter ?? 0)
 }
 
+function scoreDelta(study: CaseStudy): number | null {
+  if (
+    study.scoreBefore != null &&
+    study.scoreAfter != null &&
+    !GRADE_ONLY_AREAS.has(study.area)
+  ) {
+    return study.scoreAfter - study.scoreBefore
+  }
+  return null
+}
+
 export function CaseStudyCard({ study }: { study: CaseStudy }) {
   const proofHref = study.proofLink ?? study.link
-  const delta = formatDelta(study)
   const before = beforeValue(study)
   const after = afterValue(study)
+  const beforeG = beforeGrade(study)
+  const afterG = afterGrade(study)
+  const delta = scoreDelta(study)
+  const hasMetrics = before !== after || beforeG || afterG
 
   return (
-    <Card interactive className="overflow-hidden border-0 shadow-card">
-      <CardContent className="space-y-4 p-5 sm:p-6">
+    <Card interactive className="flex h-full flex-col overflow-hidden border-0 shadow-card">
+      <CardContent className="flex flex-1 flex-col space-y-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-label">
             {study.area}
@@ -78,20 +96,26 @@ export function CaseStudyCard({ study }: { study: CaseStudy }) {
 
         <h3 className="font-display text-lg leading-snug tracking-display">{study.title}</h3>
 
-        {delta ? (
-          <div className="flex items-center justify-center gap-3 rounded-md bg-muted/30 px-4 py-3">
-            <span className="font-mono text-xl font-bold tabular-nums text-muted-foreground">
-              {before}
+        {hasMetrics ? (
+          <div className="flex flex-wrap items-center justify-center gap-2 rounded-md bg-muted/30 px-4 py-3">
+            <span className="font-mono text-lg font-bold tabular-nums text-muted-foreground sm:text-xl">
+              {formatMetric(before, beforeG)}
             </span>
             <ArrowRight className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-            <span className="font-mono text-xl font-bold tabular-nums text-brand">
-              {after}
+            <span className="font-mono text-lg font-bold tabular-nums text-brand sm:text-xl">
+              {formatMetric(after, afterG)}
             </span>
-            <GradeBadge grade={afterGrade(study)} size="sm" className="ml-1" />
+            {delta != null && delta > 0 ? (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                +{delta}
+              </span>
+            ) : null}
           </div>
         ) : null}
 
-        <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{study.outcome}</p>
+        <p className="flex-1 text-sm leading-relaxed text-muted-foreground text-pretty">
+          {study.outcome}
+        </p>
       </CardContent>
 
       <div className="px-5 py-3 sm:px-6">

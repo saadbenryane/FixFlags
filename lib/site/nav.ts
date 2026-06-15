@@ -34,7 +34,12 @@ export const LEGAL_LINKS = [
   { href: '/terms', label: 'Terms' },
 ] as const
 
-export const FOOTER_LINKS = [...MARKETING_LINKS, ...LEGAL_LINKS] as const
+export const SUPPORT_LINK = {
+  href: 'mailto:hello@qualityos.com',
+  label: 'Support',
+} as const
+
+export const FOOTER_LINKS = [...MARKETING_LINKS, SUPPORT_LINK, ...LEGAL_LINKS] as const
 
 export const SETTINGS_NAV = [
   { href: '/settings', label: 'Settings' },

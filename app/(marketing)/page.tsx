@@ -1,22 +1,22 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { AgentWorkflowSection } from '@/components/marketing/AgentWorkflowSection'
 import { CaseStudiesSection } from '@/components/marketing/CaseStudiesSection'
 import { DifferentiationSection } from '@/components/marketing/DifferentiationSection'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { HeroSection } from '@/components/marketing/HeroSection'
 import { HowItWorksSection } from '@/components/marketing/HowItWorksSection'
-import { ProofSection } from '@/components/marketing/ProofSection'
-import { SegmentProofSection } from '@/components/marketing/SegmentProofSection'
+import { ProblemSection } from '@/components/marketing/ProblemSection'
+import { SampleOutputSection } from '@/components/marketing/SampleOutputSection'
+import { SocialProofSection } from '@/components/marketing/SocialProofSection'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
-import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
-import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
+import { Muted } from '@/components/ui/typography'
 import {
-  MCP_SECTION,
   PRICING_TEASER,
   FAQ_SECTION,
   HOME_FAQ,
@@ -32,40 +32,21 @@ export default async function HomePage() {
   const sample = await getLiveSampleAudit()
   return (
     <>
-      <HeroSection sample={sample} />
+      <HeroSection />
 
-      <ProofSection sample={sample} />
+      <ProblemSection />
 
-      <SegmentProofSection />
-
-      <HowItWorksSection />
-
-      <DifferentiationSection />
+      <SampleOutputSection sample={sample} />
 
       <CaseStudiesSection />
 
-      <Section spacing="default" className="bg-muted/35" id="agent-workflow">
-        <Container>
-          <PageGrid align="start">
-            <PageGridCol span="intro" className="space-y-6">
-              <SectionIntro
-                align="left"
-                headline={MCP_SECTION.headline}
-                subhead={MCP_SECTION.body}
-              />
-              <Button variant="outline" asChild>
-                <Link href="/docs/mcp">
-                  {MCP_SECTION.cta}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </PageGridCol>
-            <PageGridCol span="content">
-              <TerminalBlock label="Agent workflow">{MCP_SECTION.workflow}</TerminalBlock>
-            </PageGridCol>
-          </PageGrid>
-        </Container>
-      </Section>
+      <HowItWorksSection />
+
+      <SocialProofSection />
+
+      <DifferentiationSection />
+
+      <AgentWorkflowSection />
 
       <Section spacing="default">
         <Container className="space-y-10">
@@ -90,7 +71,17 @@ export default async function HomePage() {
                   <CardContent className="flex flex-1 flex-col space-y-4 pt-8">
                     <div className="font-semibold">{plan.name}</div>
                     <div className="font-display text-3xl tabular-nums">{plan.price}</div>
-                    <p className="flex-1 text-sm text-muted-foreground text-pretty">{plan.outcome}</p>
+                    <p className="text-sm text-muted-foreground text-pretty">{plan.outcome}</p>
+                    <ul className="flex-1 space-y-1.5 text-left text-sm text-muted-foreground">
+                      {plan.features.map((feature) => (
+                        <li key={feature} className="flex gap-2">
+                          <span className="text-brand" aria-hidden>
+                            ·
+                          </span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
                     <Button
                       variant={highlighted ? 'default' : 'outline'}
                       size="default"
@@ -104,6 +95,7 @@ export default async function HomePage() {
               )
             })}
           </div>
+          <Muted className="text-center text-sm">{PRICING_TEASER.trustLine}</Muted>
           <div className="text-center">
             <Button variant="outline" asChild>
               <Link href="/pricing">

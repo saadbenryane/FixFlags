@@ -1,6 +1,7 @@
 'use client'
 
 import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { NavLink } from '@/components/layout/nav-link'
 import { BRAND, FINAL_CTA } from '@/lib/marketing/copy'
 import { FOOTER_LINKS } from '@/lib/site/nav'
@@ -16,6 +17,11 @@ export function Footer() {
     <footer className="bg-muted/35">
       <Container className="space-y-10 py-12">
         <AuditCtaBlock headline={FINAL_CTA.headline} trustLine={FINAL_CTA.trustLine} />
+
+        <ThirdPartyAuditDisclaimer
+          variant="compact"
+          className="mx-auto max-w-prose text-center text-[10px] text-muted-foreground/70"
+        />
 
         <div className="flex flex-col gap-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>© 2026 {BRAND.name}</span>

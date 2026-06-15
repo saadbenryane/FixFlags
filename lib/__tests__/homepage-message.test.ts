@@ -7,7 +7,9 @@ import {
   DIFFERENTIATION,
   HERO,
   HOW_IT_WORKS_SECTION,
+  MCP_SECTION,
   OUTPUT_LABELS,
+  PROBLEM_SECTION,
   PROOF_SECTION,
   SEGMENT_PROOF_SECTION,
   SEO,
@@ -47,6 +49,11 @@ describe('homepage message guardrails', () => {
     }
   })
 
+  it('audience line names who it is for', () => {
+    assert.match(HERO.audienceLine, /shipping weekly/i)
+    assert.match(HERO.audienceLine, /live sites/i)
+  })
+
   it('AI tools named once in segment proof, not repeated in hero', () => {
     assert.ok(!HERO.subhead.includes(AI_TOOLS.split(',')[0]))
     assert.ok(SEGMENT_PROOF_SECTION.tiles.some((t) => t.proof.includes('Cursor')))
@@ -57,8 +64,26 @@ describe('homepage message guardrails', () => {
     assert.deepEqual(ids, ['ai-shipper', 'live-site'])
   })
 
-  it('OUTPUT_LABELS fix prompt label is used consistently', () => {
+  it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
     assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt (copy-ready)')
+    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → re-check.')
+  })
+
+  it('sample output section uses merged label', () => {
+    assert.equal(OUTPUT_LABELS.whatYouGet, 'Sample output')
+    assert.equal(PROOF_SECTION.label, OUTPUT_LABELS.whatYouGet)
+  })
+
+  it('problem section uses review-focused label and fix prompt tie-backs', () => {
+    assert.equal(PROBLEM_SECTION.label, 'Why you miss this in reviews')
+    for (const pain of PROBLEM_SECTION.pains) {
+      assert.ok('fixPrompt' in pain && pain.fixPrompt.length > 0)
+    }
+  })
+
+  it('agent workflow has intro and closing lines', () => {
+    assert.ok(MCP_SECTION.intro.length > 0)
+    assert.ok(MCP_SECTION.closing.length > 0)
   })
 
   it('primary CTA is verb-first Run audit', () => {
@@ -70,6 +95,11 @@ describe('homepage message guardrails', () => {
     assert.ok(DIFFERENTIATION.bullets.length <= 3)
     assert.ok(DIFFERENTIATION.bullets.length >= 1)
     assert.equal(DIFFERENTIATION.comparisonRows.length, 5)
+  })
+
+  it('differentiation lighthouse link text is descriptive', () => {
+    assert.match(DIFFERENTIATION.lighthouseLinkText, /Lighthouse/i)
+    assert.ok(!/^Google Lighthouse docs$/i.test(DIFFERENTIATION.lighthouseLinkText))
   })
 
   it('how-it-works and case studies avoid duplicate before/after phrasing', () => {

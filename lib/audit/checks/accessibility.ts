@@ -1,7 +1,11 @@
 import { PageMetadata } from '../metadata'
+import { PageSpeedResult } from '../pagespeed'
 import { DeterministicFinding } from './index'
 
-export function runAccessibilityChecks(meta: PageMetadata): DeterministicFinding[] {
+export function runAccessibilityChecks(
+  meta: PageMetadata,
+  pagespeed: PageSpeedResult | null
+): DeterministicFinding[] {
   const findings: DeterministicFinding[] = []
 
   if (meta.imagesWithoutAlt > 0) {
@@ -90,6 +94,65 @@ export function runAccessibilityChecks(meta: PageMetadata): DeterministicFinding
       problem: `${meta.positiveTabindex} element${meta.positiveTabindex > 1 ? 's' : ''} with positive tabindex`,
       evidence: `Positive tabindex values found (tabindex="1" or higher)`,
       fix: 'Remove positive tabindex values. Use tabindex="0" to add elements to natural tab order, and tabindex="-1" to remove them.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (pagespeed?.failedAccessibilityAudits.some((a) => a.id === 'color-contrast')) {
+    const audit = pagespeed.failedAccessibilityAudits.find((a) => a.id === 'color-contrast')
+    findings.push({
+      checkId: 'color-contrast-poor',
+      area: 'ACCESSIBILITY',
+      severity: 'HIGH',
+      problem: 'Text color contrast fails WCAG requirements',
+      evidence: `Lighthouse: ${audit?.title ?? 'color-contrast audit failed'}`,
+      fix: 'Increase contrast between text and background to at least 4.5:1 for body text and 3:1 for large text.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  const bypassFailed =
+    pagespeed?.failedAccessibilityAudits.some((a) => a.id === 'bypass') ?? false
+  if ((meta.navLandmarkCount > 0 && !meta.hasSkipLink) || bypassFailed) {
+    findings.push({
+      checkId: 'skip-link-missing',
+      area: 'ACCESSIBILITY',
+      severity: 'MEDIUM',
+      problem: 'No skip-to-content link for keyboard users',
+      evidence: bypassFailed
+        ? `Lighthouse bypass audit failed; nav landmarks: ${meta.navLandmarkCount}`
+        : `Page has ${meta.navLandmarkCount} navigation landmark(s) but no skip link`,
+      fix: 'Add a visible-on-focus skip link as the first focusable element: <a href="#main" class="skip-link">Skip to content</a>.',
+      confidence: bypassFailed ? 1.0 : 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (pagespeed?.failedAccessibilityAudits.some((a) => a.id === 'focus-traps')) {
+    const audit = pagespeed.failedAccessibilityAudits.find((a) => a.id === 'focus-traps')
+    findings.push({
+      checkId: 'keyboard-nav-trap',
+      area: 'ACCESSIBILITY',
+      severity: 'HIGH',
+      problem: 'Keyboard focus may be trapped in a modal or overlay',
+      evidence: `Lighthouse: ${audit?.title ?? 'focus-traps audit failed'}`,
+      fix: 'Ensure modals trap focus correctly with Escape to close and restore focus to the trigger element.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (pagespeed?.failedAccessibilityAudits.some((a) => a.id === 'focus-visible')) {
+    const audit = pagespeed.failedAccessibilityAudits.find((a) => a.id === 'focus-visible')
+    findings.push({
+      checkId: 'focus-visible-missing',
+      area: 'ACCESSIBILITY',
+      severity: 'MEDIUM',
+      problem: 'Focus indicators are missing or insufficient',
+      evidence: `Lighthouse: ${audit?.title ?? 'focus-visible audit failed'}`,
+      fix: 'Add visible :focus-visible styles to all interactive elements. Do not remove outline without a replacement.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

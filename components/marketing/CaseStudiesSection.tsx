@@ -1,7 +1,6 @@
 import { CASE_STUDIES, CASE_STUDIES_SECTION } from '@/lib/marketing/copy'
 import { CaseStudyCard } from '@/components/marketing/CaseStudyCard'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 
@@ -20,8 +19,6 @@ export function CaseStudiesSection() {
             <CaseStudyCard key={study.id} study={study} />
           ))}
         </div>
-
-        <ThirdPartyAuditDisclaimer variant="compact" className="max-w-prose" />
       </Container>
     </Section>
   )

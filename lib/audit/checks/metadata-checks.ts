@@ -165,5 +165,18 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFinding[] {
     })
   }
 
+  if (!meta.hasFavicon) {
+    findings.push({
+      checkId: 'favicon-missing',
+      area: 'SEO',
+      severity: 'LOW',
+      problem: 'Favicon is missing',
+      evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
+      fix: 'Add a favicon (32x32 PNG or ICO) and apple-touch-icon in the page head.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }

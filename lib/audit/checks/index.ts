@@ -33,7 +33,7 @@ export async function runAllChecks(
   const checkers = [
     () => runMetadataChecks(metadata),
     () => runPerformanceChecks(desktop, mobile),
-    () => runAccessibilityChecks(metadata),
+    () => runAccessibilityChecks(metadata, desktop ?? mobile),
     () => runSeoChecks(url, metadata),
     () => runTrustChecks(url, metadata, consoleErrors),
     () => runMobileChecks(mobile),

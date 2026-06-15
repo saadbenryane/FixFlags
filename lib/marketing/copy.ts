@@ -20,22 +20,25 @@ export const BRAND = {
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
 export const OUTPUT_LABELS = {
-  whatYouGet: 'What you get',
+  whatYouGet: 'Sample output',
   fixPrompt: 'Fix prompt (copy-ready)',
   seeFullSample: 'See full sample report',
+  nextStep: 'Paste into editor → run → re-check.',
 } as const
 
 export const HERO = {
   headline: 'Paste a URL. Get fix prompts.',
   headlineLine1: 'Paste a URL.',
   headlineLine2: 'Get fix prompts.',
-  audienceLine: 'New launch or live site with a public URL',
+  audienceLine:
+    'For teams shipping weekly, live sites, product marketers, and growth + eng',
   headlineAccent: false,
   subhead:
-    'Scored report with desktop and mobile screenshots. Every issue includes a copy-ready prompt.',
+    'Fast to ship, easy to miss what costs signups. Scored report with screenshots and a copy-ready fix prompt on every issue.',
   trustLine: 'Free · No account · Usually under 90 seconds',
   primaryCta: 'Run audit',
   secondaryCta: 'See sample report',
+  trySampleCta: 'Try sample URL',
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
@@ -129,21 +132,24 @@ export const WORKFLOW_STEPS = [
 ] as const
 
 export const PROBLEM_SECTION = {
-  label: 'Why it matters',
+  label: 'Why you miss this in reviews',
   headline: 'Fast to ship. Easy to miss what costs signups.',
   subhead: 'Performance scores look fine. Layout, sharing, and conversion gaps hide until someone shares the link.',
   pains: [
     {
       title: 'Off on mobile',
       body: 'CTA below the fold. Tap targets too small.',
+      fixPrompt: 'Fix prompt for layout + tap targets',
     },
     {
       title: 'Blank when shared',
       body: 'Missing og:image. Empty link cards on Slack and X.',
+      fixPrompt: 'Fix prompt for og:image',
     },
     {
       title: 'Unclear next step',
       body: 'Visitors leave without knowing what to do. Weak trust at the pay step.',
+      fixPrompt: 'Fix prompt for CTA + trust',
     },
   ],
 } as const
@@ -152,6 +158,7 @@ export const DIFFERENTIATION = {
   label: 'Why QualityOS',
   headline: 'More than a Lighthouse score',
   subhead: 'Automated checks miss what a human or AI sees in a screenshot.',
+  lighthouseLinkText: 'Compare QualityOS checks with Google Lighthouse',
   bullets: [
     'AI reads screenshots for conversion, trust, and mobile UX gaps',
     'Every finding ships with a copy-ready fix prompt',
@@ -179,6 +186,7 @@ export const DIFFERENTIATION = {
 
 export const SOCIAL_PROOF = {
   headline: 'Even strong sites fail these checks',
+  worksWithHeading: 'Works with',
   toolingLine: 'Cursor · Claude Code · Lovable · Bolt',
   tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
   testimonial: {
@@ -237,7 +245,9 @@ export const CASE_STUDIES_SECTION = {
 export const PROOF_SECTION = {
   label: OUTPUT_LABELS.whatYouGet,
   headline: 'Scores, screenshots, and fix prompts',
-  subhead: 'Real output from a public URL. Evidence on every finding.',
+  subhead:
+    'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
+  nextStep: OUTPUT_LABELS.nextStep,
   cta: 'Run audit',
   sample: {
     name: 'QualityOS',
@@ -260,9 +270,9 @@ export const TRUST_STRIP = [
 ] as const
 
 export const QUALITY_AREAS = [
-  { name: 'Performance', impact: 'Slow pages lose visitors early', scoreFormat: '0–100', whatWeCheck: 'Core Web Vitals, bundle sizes, render blocking, image optimization' },
-  { name: 'Accessibility', impact: 'Users cannot complete key actions', scoreFormat: '0–100', whatWeCheck: 'Contrast ratios, keyboard nav, screen reader support, focus order' },
-  { name: 'SEO', impact: 'Bad previews hide you on Google and Slack', scoreFormat: '0–100', whatWeCheck: 'Meta tags, og:image, structured data, heading hierarchy' },
+  { name: 'Performance', impact: 'Slow pages lose visitors early', scoreFormat: '0–100', whatWeCheck: 'Core Web Vitals (LCP, CLS, INP), bundle sizes, render blocking, image optimization' },
+  { name: 'Accessibility', impact: 'Users cannot complete key actions', scoreFormat: '0–100', whatWeCheck: 'Alt text, labels, color contrast, skip links, keyboard focus, tap targets' },
+  { name: 'SEO', impact: 'Bad previews hide you on Google and Slack', scoreFormat: '0–100', whatWeCheck: 'Meta tags, og:image, favicon, structured data, heading hierarchy, broken links' },
   { name: 'Conversion', impact: 'Does the page say what to do next?', scoreFormat: 'A–F', whatWeCheck: 'CTA placement, value prop clarity, signup friction' },
   { name: 'Trust', impact: 'Do you look safe to pay or sign up?', scoreFormat: 'A–F', whatWeCheck: 'Privacy links, security badges, social proof, brand consistency' },
   { name: 'Content', impact: 'Does the copy match what you sell?', scoreFormat: 'A–F', whatWeCheck: 'Headline clarity, feature communication, readability' },
@@ -272,6 +282,8 @@ export const QUALITY_AREAS = [
 export const MCP_SECTION = {
   headline: 'Run audits from your editor',
   body: 'Connect via MCP so your agent audits, fixes, and re-checks without copy-pasting URLs.',
+  intro: 'A typical prompt sequence looks like this:',
+  closing: 'Then re-check to prove the improvement.',
   cta: 'See MCP setup',
   workflow: `User: "Audit https://myapp.com and fix the Mobile issues"
 
@@ -286,15 +298,23 @@ Claude: calls qos_recheck
 Claude: "Mobile improved from 41 → 78 (D → B). 3 issues fixed."`,
 } as const
 
+const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
+  FREE: ['Limited re-checks', 'No share links', 'No export'],
+  BUILDER: ['Re-check loop', 'Before/after compare', 'Editor integration (MCP)'],
+  TEAM: ['Client share links', 'Proof exports', 'Everything in Pro'],
+}
+
 export const PRICING_TEASER = {
   headline: 'Start free. Upgrade when you ship weekly.',
   subhead: 'Full report on every plan. Pro adds unlimited re-checks and MCP in your editor.',
+  trustLine: 'Cancel anytime · No account for first audit · Recurring monthly',
   plans: getMarketingPlans()
     .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
     .map((p) => ({
       name: p.name,
       outcome: p.outcome,
       price: `${p.price}${p.period}`,
+      features: PRICING_TEASER_BULLETS[p.plan as 'FREE' | 'BUILDER' | 'TEAM'],
       cta: p.cta,
       href: p.href,
     })),

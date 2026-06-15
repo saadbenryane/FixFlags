@@ -1,0 +1,83 @@
+import type { PageMetadata } from '@/lib/audit/metadata'
+import type { PageSpeedResult } from '@/lib/audit/pagespeed'
+
+export { ALL_CHECK_IDS, CHECK_ID_COUNT, type CheckId } from '@/lib/audit/check-ids'
+
+/** Healthy baseline metadata - individual tests override one field at a time. */
+export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata {
+  return {
+    title: 'QualityOS - Website quality audits in 60 seconds',
+    description:
+      'Paste any public URL and get graded scores, evidence-backed findings, and copy-ready fix prompts for your AI coding agent.',
+    ogTitle: 'QualityOS',
+    ogDescription: 'Website quality audits in 60 seconds',
+    ogImage: 'https://example.com/og.png',
+    canonical: 'https://example.com/',
+    lang: 'en',
+    viewport: 'width=device-width, initial-scale=1',
+    robots: 'index, follow',
+    h1s: ['Website quality audits in 60 seconds'],
+    h2s: ['How it works'],
+    images: [{ src: '/hero.png', alt: 'Product screenshot' }],
+    imagesWithoutAlt: 0,
+    imagesWithEmptyAlt: 0,
+    links: [
+      { href: 'https://external.com', text: 'Partner', rel: 'noopener noreferrer' },
+      { href: '/pricing', text: 'Pricing', rel: null },
+    ],
+    externalLinksWithoutNoopener: 0,
+    forms: 1,
+    inputsWithoutLabel: 0,
+    buttonsWithoutText: 0,
+    linksWithoutText: 0,
+    iframesWithoutTitle: 0,
+    positiveTabindex: 0,
+    ctaTexts: ['Get started free'],
+    hasStructuredData: true,
+    structuredDataTypes: ['WebSite'],
+    hasAnalytics: false,
+    hasCookieConsent: false,
+    hasPrivacyPolicy: true,
+    hasContactInfo: true,
+    hasFavicon: true,
+    hasSkipLink: true,
+    navLandmarkCount: 0,
+    pageText: 'Website quality audits in 60 seconds.',
+    jsonLd: [{ '@type': 'WebSite' }],
+    ...overrides,
+  }
+}
+
+export function healthyDesktopPs(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult {
+  return {
+    strategy: 'desktop',
+    score: 90,
+    lcp: 2000,
+    cls: 0.05,
+    fcp: 1200,
+    tbt: 100,
+    inp: 150,
+    opportunities: [],
+    failedAccessibilityAudits: [],
+    diagnostics: {},
+    raw: {},
+    ...overrides,
+  }
+}
+
+export function healthyMobilePs(overrides: Partial<PageSpeedResult> = {}): PageSpeedResult {
+  return {
+    strategy: 'mobile',
+    score: 85,
+    lcp: 2500,
+    cls: 0.05,
+    fcp: 1500,
+    tbt: 150,
+    inp: 150,
+    opportunities: [],
+    failedAccessibilityAudits: [],
+    diagnostics: {},
+    raw: {},
+    ...overrides,
+  }
+}

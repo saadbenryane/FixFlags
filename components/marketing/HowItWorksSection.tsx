@@ -1,5 +1,7 @@
 import { ClipboardCopy, RefreshCw, Search } from 'lucide-react'
+import { MarketingIllustration } from '@/components/marketing/MarketingIllustration'
 import { Container } from '@/components/ui/container'
+import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { Heading } from '@/components/ui/typography'
@@ -17,30 +19,39 @@ export function HowItWorksSection() {
           subhead={HOW_IT_WORKS_SECTION.subhead}
         />
 
-        <ol className="grid gap-6 md:grid-cols-3">
-          {HOW_IT_WORKS_SECTION.steps.map((step, index) => {
-            const Icon = STEP_ICONS[index] ?? Search
-            return (
-              <li
-                key={step.step}
-                className="rounded-card bg-card p-6 shadow-card"
-              >
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand/10 text-brand">
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </span>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                <Heading as="h3" className="mb-2 text-xl">
-                  {step.title}
-                </Heading>
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
-              </li>
-            )
-          })}
-        </ol>
+        <PageGrid align="start">
+          <PageGridCol span="main">
+            <ol className="grid gap-6 md:grid-cols-3">
+              {HOW_IT_WORKS_SECTION.steps.map((step, index) => {
+                const Icon = STEP_ICONS[index] ?? Search
+                return (
+                  <li
+                    key={step.step}
+                    className="flex h-full flex-col rounded-card bg-card p-6 shadow-card"
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand/10 text-brand">
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <Heading as="h3" className="mb-2 text-xl">
+                      {step.title}
+                    </Heading>
+                    <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                      {step.body}
+                    </p>
+                  </li>
+                )
+              })}
+            </ol>
+          </PageGridCol>
+          <PageGridCol span="sidebar">
+            <MarketingIllustration variant="steps" alt="" className="sticky top-24" />
+          </PageGridCol>
+        </PageGrid>
       </Container>
     </Section>
   )

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
 
 export const QUALITY_REPORT_SCHEMA = {
     type: 'object' as const,
@@ -184,6 +185,9 @@ Grade benchmarks (use same thresholds for every area):
 - ACCESSIBILITY nuance: A = zero violations, B = 1-2 minor, C = missing alts/labels, D/F = critical failures
 - SEO nuance: A = all tags + structured data, B = 1-2 missing, C = missing desc or multiple H1, D/F = no title or noindex
 - CONVERSION/TRUST/CONTENT: grade by what you see in screenshots and page text
+
+Area rubric (use explicitly when grading):
+${formatRubricForJudgePrompt()}
 
 IMPORTANT: If you grade an area B or below, you MUST include at least one finding in newFindings for that area (or rely on deterministic findings). Never give a poor grade with zero findings, the summary alone is not enough for builders to act.
 

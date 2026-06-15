@@ -31,6 +31,9 @@ export interface PageMetadata {
   hasCookieConsent: boolean
   hasPrivacyPolicy: boolean
   hasContactInfo: boolean
+  hasFavicon: boolean
+  hasSkipLink: boolean
+  navLandmarkCount: number
   pageText: string
   jsonLd: unknown[]
 }
@@ -161,6 +164,22 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     htmlStr.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/)
   )
 
+  const hasFavicon = $(
+    'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+  ).length > 0
+
+  const navLandmarkCount = $('nav, [role="navigation"]').length
+
+  let hasSkipLink = false
+  $('a[href^="#"]').each((_, el) => {
+    const text = $(el).text().toLowerCase()
+    const cls = ($(el).attr('class') || '').toLowerCase()
+    const id = ($(el).attr('id') || '').toLowerCase()
+    if (text.includes('skip') || cls.includes('skip') || id.includes('skip')) {
+      hasSkipLink = true
+    }
+  })
+
   // Page text (stripped)
   $('script, style, noscript').remove()
   const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 3000)
@@ -203,6 +222,9 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     hasCookieConsent,
     hasPrivacyPolicy,
     hasContactInfo,
+    hasFavicon,
+    hasSkipLink,
+    navLandmarkCount,
     pageText,
     jsonLd,
   }

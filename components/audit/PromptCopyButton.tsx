@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ export function PromptCopyButton({ prompt, label = 'Copy prompt', className, com
   async function handleCopy() {
     await navigator.clipboard.writeText(prompt)
     setCopied(true)
+    toast.success('Prompt copied')
     setTimeout(() => setCopied(false), 2000)
   }
 

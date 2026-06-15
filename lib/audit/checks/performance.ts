@@ -5,11 +5,14 @@ export function runPerformanceChecks(
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null
 ): DeterministicFinding[] {
-  void mobile
   const findings: DeterministicFinding[] = []
   const ps = desktop
 
-  if (!ps) return findings
+  if (!ps) {
+    // Still evaluate INP from mobile when desktop PageSpeed is unavailable.
+    if (mobile) findings.push(...runInpChecks(mobile))
+    return findings
+  }
 
   if (ps.score !== null && ps.score < 50) {
     findings.push({
@@ -141,6 +144,39 @@ export function runPerformanceChecks(
       problem: `Images are not optimized (${Math.round(unoptImages.savings / 1024)}KB savings)`,
       evidence: `Image optimization could save ~${Math.round(unoptImages.savings / 1024)}KB`,
       fix: 'Convert images to WebP/AVIF format, compress them, and use Next.js <Image> for automatic optimization.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (mobile) findings.push(...runInpChecks(mobile))
+
+  return findings
+}
+
+function runInpChecks(mobile: PageSpeedResult): DeterministicFinding[] {
+  const findings: DeterministicFinding[] = []
+  if (mobile.inp === null) return findings
+
+  if (mobile.inp > 500) {
+    findings.push({
+      checkId: 'inp-critical',
+      area: 'PERFORMANCE',
+      severity: 'CRITICAL',
+      problem: `Interaction to Next Paint is critically slow (${mobile.inp}ms, target <= 200ms)`,
+      evidence: `INP: ${mobile.inp}ms on mobile`,
+      fix: 'Reduce main-thread work on interaction: defer non-critical JS, split long tasks, and optimize event handlers.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  } else if (mobile.inp > 200) {
+    findings.push({
+      checkId: 'inp-poor',
+      area: 'PERFORMANCE',
+      severity: 'HIGH',
+      problem: `Interaction to Next Paint needs improvement (${mobile.inp}ms, target <= 200ms)`,
+      evidence: `INP: ${mobile.inp}ms on mobile`,
+      fix: 'Profile interactions in Chrome DevTools Performance panel and reduce JavaScript execution during input.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

@@ -5,16 +5,17 @@ import { Badge } from '@/components/ui/badge'
 
 export function SocialProofSection() {
   return (
-    <Section spacing="default" className="bg-muted/35">
+    <Section spacing="default">
       <Container>
         <div className="space-y-8">
-          <div className="space-y-3 text-center">
+          <div className="space-y-4 text-center">
             <p className="font-display text-xl tracking-display text-balance sm:text-2xl">
               {SOCIAL_PROOF.headline}
             </p>
-            <p className="font-mono text-xs uppercase tracking-label text-muted-foreground">
-              {SOCIAL_PROOF.toolingLine}
-            </p>
+            <div className="space-y-2">
+              <p className="section-label">{SOCIAL_PROOF.worksWithHeading}</p>
+              <p className="text-sm text-muted-foreground">{SOCIAL_PROOF.toolingLine}</p>
+            </div>
           </div>
 
           <div className="mx-auto max-w-prose">

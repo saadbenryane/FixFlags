@@ -5,7 +5,7 @@ import { PROBLEM_SECTION } from '@/lib/marketing/copy'
 
 export function ProblemSection() {
   return (
-    <Section spacing="default">
+    <Section spacing="tight" className="bg-muted/25 pt-0">
       <Container className="space-y-10">
         <SectionIntro
           label={PROBLEM_SECTION.label}
@@ -24,6 +24,7 @@ export function ProblemSection() {
                 <p className="max-w-prose text-sm leading-relaxed text-muted-foreground text-pretty">
                   {pain.body}
                 </p>
+                <p className="text-xs font-medium text-brand/90">{pain.fixPrompt}</p>
               </div>
             </div>
           ))}

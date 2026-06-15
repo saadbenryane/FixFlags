@@ -1,10 +1,11 @@
+'use client'
+
 import { ArrowRight } from 'lucide-react'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { GradeBadge } from '@/components/audit/GradeBadge'
 import { ScoreCard } from '@/components/audit/ScoreCard'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { TextLink } from '@/components/ui/text-link'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { gradeFromScore } from '@/lib/audit/scoring'
@@ -12,10 +13,9 @@ import {
   getTopFixPromptFromAreas,
   rankFindingsByPriority,
 } from '@/lib/audit/priority-findings'
-import { OUTPUT_LABELS, SAMPLE_FINDINGS_HEADER } from '@/lib/marketing/copy'
+import { OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { areaLabel, cn } from '@/lib/utils'
-import { LabelCaps } from '@/components/ui/typography'
 
 export function SampleFindingsCard({
   className,
@@ -38,8 +38,12 @@ export function SampleFindingsCard({
       <div className={cn('overflow-hidden rounded-card border-0 bg-card shadow-card', className)}>
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
           <div className="min-w-0 space-y-1">
-            <LabelCaps>{SAMPLE_FINDINGS_HEADER}</LabelCaps>
-            <p className="truncate font-medium">{site.displayHost}</p>
+            <SampleStatusBadge
+              source={sample.source}
+              completedAt={sample.completedAt}
+              isDogfood={site.isDogfood}
+              marketing
+            />
           </div>
           {scoreGrade && sample.audit.score != null ? (
             <div className="shrink-0 text-right">
@@ -57,7 +61,6 @@ export function SampleFindingsCard({
             url={site.browserUrl}
             imageUrl={desktop?.url}
             state={desktop ? 'loaded' : 'failed'}
-            label="Captured"
             className="shadow-none ring-1 ring-inset ring-border/40"
           />
         </div>
@@ -93,14 +96,13 @@ export function SampleFindingsCard({
   return (
     <div className={cn('overflow-hidden rounded-card border-0 bg-card shadow-card', className)}>
       <div className="space-y-3 px-5 py-4">
-        <div className="min-w-0 space-y-2">
-          <SampleStatusBadge
-            source={sample.source}
-            completedAt={sample.completedAt}
-            pipelineVersion={sample.pipelineVersion}
-          />
-          <p className="truncate font-medium">{site.displayHost}</p>
-        </div>
+        <SampleStatusBadge
+          source={sample.source}
+          completedAt={sample.completedAt}
+          pipelineVersion={sample.pipelineVersion}
+          isDogfood={site.isDogfood}
+          marketing
+        />
         <ScoreCard grade={scoreGrade} score={sample.audit.score} label="Overall score" size="sm" />
       </div>
 
@@ -110,7 +112,6 @@ export function SampleFindingsCard({
           url={site.browserUrl}
           imageUrl={desktop?.url}
           state={desktop ? 'loaded' : 'failed'}
-          label="Captured"
         />
       </div>
 
@@ -121,15 +122,13 @@ export function SampleFindingsCard({
             finding={fixPrompt.finding}
             rows={4}
             clamp={false}
+            showNextStep
           />
         </div>
       ) : null}
 
       {sample.audit.verdict ? (
         <div className="space-y-1.5 border-t border-border/15 px-5 py-4">
-          <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-            Verdict
-          </p>
           <p className="text-sm leading-relaxed text-pretty">{sample.audit.verdict}</p>
         </div>
       ) : null}
@@ -152,8 +151,7 @@ export function SampleFindingsCard({
         ))}
       </div>
 
-      <div className="space-y-2 border-t border-border/15 px-5 py-4">
-        <ThirdPartyAuditDisclaimer variant="compact" showPipeline />
+      <div className="border-t border-border/15 px-5 py-4">
         <TextLink href="/samples" className="text-sm font-medium">
           {OUTPUT_LABELS.seeFullSample}
           <ArrowRight className="h-3.5 w-3.5" />

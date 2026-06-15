@@ -97,5 +97,59 @@ export async function runSeoChecks(
     }
   } catch {}
 
+  const brokenLinks = await findBrokenInternalLinks(url, meta)
+  if (brokenLinks.length > 0) {
+    findings.push({
+      checkId: 'broken-internal-links',
+      area: 'SEO',
+      severity: 'HIGH',
+      problem: `${brokenLinks.length} internal link${brokenLinks.length > 1 ? 's' : ''} return errors`,
+      evidence: brokenLinks.slice(0, 3).join('; '),
+      fix: 'Fix or remove broken internal links. Update hrefs to valid routes or add redirects.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
+}
+
+const MAX_LINK_CHECKS = 8
+
+async function findBrokenInternalLinks(
+  pageUrl: string,
+  meta: PageMetadata
+): Promise<string[]> {
+  const origin = new URL(pageUrl).origin
+  const seen = new Set<string>()
+  const broken: string[] = []
+
+  for (const link of meta.links) {
+    if (broken.length >= 3) break
+    if (!link.href || link.href.startsWith('#') || link.href.startsWith('mailto:')) continue
+
+    let absolute: string
+    try {
+      absolute = new URL(link.href, pageUrl).toString()
+    } catch {
+      continue
+    }
+
+    if (!absolute.startsWith(origin) || seen.has(absolute)) continue
+    seen.add(absolute)
+    if (seen.size > MAX_LINK_CHECKS) break
+
+    try {
+      const controller = new AbortController()
+      setTimeout(() => controller.abort(), 4000)
+      const res = await fetch(absolute, { method: 'HEAD', signal: controller.signal })
+      if (res.status === 404 || res.status >= 500) {
+        broken.push(`${absolute} (${res.status})`)
+      }
+    } catch {
+      broken.push(`${absolute} (unreachable)`)
+    }
+  }
+
+  return broken
 }

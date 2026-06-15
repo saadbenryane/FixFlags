@@ -1,4 +1,5 @@
 import { cn, areaLabel, gradeColor } from '@/lib/utils'
+import { GradeBadge } from '@/components/audit/GradeBadge'
 
 const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
 
@@ -43,48 +44,42 @@ export function ScoreCard({
   return (
     <div
       className={cn(
-        'flex min-h-[4.5rem] items-center gap-4 rounded-card border-0 bg-card p-4 shadow-card',
+        'flex h-full min-h-[4.5rem] items-center gap-4 rounded-card border-0 bg-card p-4 shadow-card',
         size === 'sm' && 'min-h-[3.75rem] gap-3 p-3',
         className
       )}
     >
-      <div className="shrink-0 text-left">
+      <div className="flex shrink-0 flex-col items-start gap-1">
         {showNumeric ? (
-          <div className="tabular-nums">
+          <>
             <div
               className={cn(
-                'font-mono font-bold leading-none text-brand',
+                'font-mono font-bold tabular-nums leading-none text-brand',
                 size === 'sm' ? 'text-2xl' : 'text-3xl'
               )}
             >
               {score}
             </div>
-            <div className="mt-0.5 font-mono text-xs text-muted-foreground">/ 100</div>
-          </div>
+            <div className="font-mono text-xs text-muted-foreground">/100</div>
+          </>
         ) : (
-          <div
-            className={cn(
-              'inline-flex min-w-[2.5rem] items-center justify-center rounded-md border px-2 py-1 font-bold leading-none',
-              grade ? gradeColor(grade) : 'border-border bg-muted text-muted-foreground',
-              size === 'sm' ? 'text-xl' : 'text-2xl'
-            )}
-          >
-            {grade ?? '-'}
-          </div>
+          grade && (
+            <GradeBadge grade={grade} size={size === 'sm' ? 'sm' : 'md'} />
+          )
         )}
+        {showNumeric && grade ? (
+          <GradeBadge grade={grade} size="sm" className="mt-0.5" />
+        ) : null}
       </div>
       <div className="min-w-0 flex-1">
         <p className={cn('font-medium leading-snug', size === 'sm' ? 'text-xs' : 'text-sm')}>
           {displayLabel}
         </p>
-        {grade && showNumeric && (
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">Grade {grade}</p>
-        )}
-        {!showNumeric && grade && (
+        {!showNumeric && grade ? (
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
             Experience grade
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   )

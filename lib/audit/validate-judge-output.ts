@@ -1,15 +1,10 @@
 import type { DeterministicFinding } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge'
 import { AREA_ORDER } from '@/lib/audit/constants'
+import { LAUNCH_CHECKLIST_IDS } from '@/lib/audit/rubric'
 
 const AREA_NAMES = new Set<string>(AREA_ORDER)
-const LAUNCH_CHECK_IDS = new Set([
-  'https',
-  'social-preview',
-  'mobile-cta',
-  'console-errors',
-  'privacy-contact',
-])
+const LAUNCH_CHECK_IDS = new Set<string>(LAUNCH_CHECKLIST_IDS)
 
 export class JudgeContractError extends Error {
   constructor(message: string) {

@@ -11,6 +11,7 @@ interface FixPromptBlockProps {
   className?: string
   rows?: number
   clamp?: boolean
+  showNextStep?: boolean
 }
 
 export function FixPromptBlock({
@@ -20,6 +21,7 @@ export function FixPromptBlock({
   className,
   rows = 4,
   clamp = true,
+  showNextStep = false,
 }: FixPromptBlockProps) {
   return (
     <div className={cn('space-y-2', className)}>
@@ -54,6 +56,9 @@ export function FixPromptBlock({
           )}
         />
       </div>
+      {showNextStep ? (
+        <p className="text-xs text-muted-foreground">{OUTPUT_LABELS.nextStep}</p>
+      ) : null}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
+import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
@@ -23,12 +24,12 @@ export function AuditInput() {
   } | null>(null)
   const [queueHold, setQueueHold] = useState<{ estimatedWaitSeconds: number } | null>(null)
 
-  async function submitUrl() {
+  async function submitUrl(inputUrl?: string) {
     setUrlError('')
     setLimitGate(null)
     setQueueHold(null)
 
-    let normalized = url.trim()
+    let normalized = (inputUrl ?? url).trim()
     if (!normalized) {
       setUrlError('Enter a URL like https://yoursite.com')
       return
@@ -96,6 +97,11 @@ export function AuditInput() {
     await submitUrl()
   }
 
+  async function handleTrySample() {
+    setUrl(SAMPLE_AUDIT_URL)
+    await submitUrl(SAMPLE_AUDIT_URL)
+  }
+
   return (
     <div className="flex w-full max-w-2xl flex-col gap-3">
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
@@ -140,6 +146,18 @@ export function AuditInput() {
           </p>
         )}
       </form>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={loading}
+        onClick={handleTrySample}
+        className="self-start px-0 text-sm text-muted-foreground hover:text-foreground"
+      >
+        {HERO.trySampleCta}
+        <ArrowRight className="ml-1 h-3.5 w-3.5" />
+      </Button>
 
       {queueHold && (
         <QueuePosition
