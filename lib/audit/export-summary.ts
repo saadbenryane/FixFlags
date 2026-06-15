@@ -1,4 +1,5 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
+import { isObjectiveArea } from '@/lib/audit/score-display'
 import { areaLabel } from '@/lib/utils'
 import { SITE_URL } from '@/lib/marketing/copy'
 import { AREA_ORDER } from '@/lib/audit/constants'
@@ -25,8 +26,6 @@ interface ExportAuditInput {
   findings: ExportFinding[]
 }
 
-const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
-
 const SEVERITY_ORDER: Record<string, number> = {
   CRITICAL: 0,
   HIGH: 1,
@@ -36,7 +35,7 @@ const SEVERITY_ORDER: Record<string, number> = {
 }
 
 function formatAreaScore(area: ExportArea): string {
-  if (OBJECTIVE_AREAS.has(area.name) && area.score != null) {
+  if (isObjectiveArea(area.name) && area.score != null) {
     return `${area.score}/100 (${area.grade ?? '-'})`
   }
   return area.grade ?? '-'

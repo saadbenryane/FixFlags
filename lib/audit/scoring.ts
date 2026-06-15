@@ -13,16 +13,18 @@ export const AREA_WEIGHTS: Record<AreaName, number> = {
 /** Experience areas scored A–F only in UI; mapped to numeric for overall score. */
 export const SUBJECTIVE_AREAS: readonly AreaName[] = ['CONVERSION', 'TRUST', 'CONTENT']
 
+export { isObjectiveArea, OBJECTIVE_AREAS } from '@/lib/audit/score-display'
+
+export function isSubjectiveArea(area: AreaName): boolean {
+  return SUBJECTIVE_AREAS.includes(area)
+}
+
 const GRADE_NUMERIC: Record<AreaGrade, number> = {
   A: 95,
   B: 82,
   C: 67,
   D: 50,
   F: 25,
-}
-
-export function isSubjectiveArea(area: AreaName): boolean {
-  return SUBJECTIVE_AREAS.includes(area)
 }
 
 export function clampScore(score: number): number {

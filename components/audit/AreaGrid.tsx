@@ -19,8 +19,6 @@ interface Props {
   showScoreTypes?: boolean
 }
 
-const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
-
 export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Props) {
   const ordered = AREA_ORDER.map((n) => areas.find((a) => a.name === n)).filter(Boolean) as Area[]
 
@@ -49,7 +47,6 @@ export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Pro
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {ordered.map((area) => {
           const issueCount = area.findings?.length ?? 0
-          const isObjective = OBJECTIVE_AREAS.has(area.name)
 
           return (
             <button
@@ -69,7 +66,7 @@ export function AreaGrid({ areas, activeArea, onAreaClick, showScoreTypes }: Pro
               <ScoreCard
                 areaName={area.name}
                 grade={area.grade}
-                score={isObjective ? area.score : null}
+                score={area.score}
                 size="sm"
                 className={cn(
                   'h-full w-full shadow-none hover:shadow-filterPill',
