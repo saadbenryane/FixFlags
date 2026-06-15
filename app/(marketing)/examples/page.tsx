@@ -8,7 +8,6 @@ import { Body, Heading } from '@/components/ui/typography'
 import { ExamplesFilterBar, type ExampleTagId } from '@/components/marketing/ExamplesFilterBar'
 import { ExampleAuditCard } from '@/components/marketing/ExampleAuditCard'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
-import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { Badge } from '@/components/ui/badge'
@@ -46,9 +45,8 @@ export default async function ExamplesPage({
           <Badge variant="secondary">Example audits</Badge>
           <Heading as="h1">Example audits from recognizable sites</Heading>
           <Body className="max-w-2xl text-muted-foreground">
-            Representative audits illustrating QualityOS pipeline v{PIPELINE_VERSION} output.
-            Results are context-dependent, every site has unique constraints and tradeoffs. These
-            are not endorsements or partnerships.
+            Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix
+            prompt. Illustrative only, not endorsements.
           </Body>
           <LighthouseCallout className="max-w-2xl text-sm text-muted-foreground" />
         </div>

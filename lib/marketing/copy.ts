@@ -10,9 +10,9 @@ import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'Audit your site. Ship fix prompts.',
+  tagline: 'Paste a URL. Get fix prompts.',
   category: 'Automated checks + AI review with fix prompts',
-  oneLiner: 'Paste a URL. Get a report with fix prompts on every issue.',
+  oneLiner: 'Paste a URL. Scored report with fix prompts on every issue.',
   tribeBadge: 'AI checks for agents',
 } as const
 
@@ -26,25 +26,37 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  headline: 'Audit your site. Ship fix prompts.',
-  headlineLine1: 'Audit your site.',
-  headlineLine2: 'Ship fix prompts.',
+  headline: 'Paste a URL. Get fix prompts.',
+  headlineLine1: 'Paste a URL.',
+  headlineLine2: 'Get fix prompts.',
+  audienceLine: 'New launch or live site with a public URL',
   headlineAccent: false,
   subhead:
-    'Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts.',
+    'Scored report with desktop and mobile screenshots. Every issue includes a copy-ready prompt.',
   trustLine: 'Free · No account · Usually under 90 seconds',
   primaryCta: 'Run audit',
   secondaryCta: 'See sample report',
-  benefits: [
-    'Better SEO (found by search and AI).',
-    'Faster app (lighter, quicker loads).',
-    'Cleaner flows (buttons and CTAs that make sense).',
-    'Accessibility and mobile touch targets that work.',
-  ],
 } as const
 
-export const HERO_MECHANISM_LINE =
-  'Screenshots · Automated checks · AI review · Fix prompts' as const
+export const SEGMENT_PROOF_SECTION = {
+  label: 'Who it\u2019s for',
+  headline: 'Pre-launch or live site',
+  subhead: 'Same pipeline. Different jobs.',
+  tiles: [
+    {
+      id: 'ai-shipper',
+      title: 'About to share a link',
+      job: 'Catch embarrassing gaps before the launch post.',
+      proof: `Scored report and fix prompts for ${AI_TOOLS}.`,
+    },
+    {
+      id: 'live-site',
+      title: 'Traffic but weak conversion',
+      job: 'See what the live site is still costing you.',
+      proof: 'Scores on conversion, trust, mobile, and sharing.',
+    },
+  ],
+} as const
 
 export const HERO_FIX_PROMPT = {
   label: OUTPUT_LABELS.fixPrompt,
@@ -56,12 +68,12 @@ export const HERO_FIX_PROMPT = {
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
   headline: 'Audit, fix, prove',
-  subhead: 'Three steps from URL to before/after proof.',
+  subhead: 'Three steps: audit, fix, re-check.',
   steps: [
     {
       step: 1,
       title: 'Audit',
-      body: 'Paste a URL. Get a scored report with desktop and mobile screenshots across 7 areas.',
+      body: 'Paste a URL. Get a scored report with desktop and mobile screenshots across performance, SEO, mobile, conversion, and more.',
     },
     {
       step: 2,
@@ -71,7 +83,7 @@ export const HOW_IT_WORKS_SECTION = {
     {
       step: 3,
       title: 'Re-check',
-      body: 'Run a before/after compare to prove scores improved.',
+      body: 'Re-check the same URL to confirm scores moved.',
     },
   ],
 } as const
@@ -117,8 +129,9 @@ export const WORKFLOW_STEPS = [
 ] as const
 
 export const PROBLEM_SECTION = {
-  headline: 'Screenshot + AI review catches what checks miss',
-  subhead: 'Automated scores alone miss layout, sharing, and conversion gaps visible in screenshots.',
+  label: 'Why it matters',
+  headline: 'Fast to ship. Easy to miss what costs signups.',
+  subhead: 'Performance scores look fine. Layout, sharing, and conversion gaps hide until someone shares the link.',
   pains: [
     {
       title: 'Off on mobile',
@@ -126,18 +139,24 @@ export const PROBLEM_SECTION = {
     },
     {
       title: 'Blank when shared',
-      body: 'Missing og:image. Empty link cards.',
+      body: 'Missing og:image. Empty link cards on Slack and X.',
     },
     {
       title: 'Unclear next step',
-      body: 'Visitors leave. Weak trust signals.',
+      body: 'Visitors leave without knowing what to do. Weak trust at the pay step.',
     },
   ],
 } as const
 
 export const DIFFERENTIATION = {
-  headline: 'Lighthouse vs QualityOS',
+  label: 'Why QualityOS',
+  headline: 'More than a Lighthouse score',
   subhead: 'Automated checks miss what a human or AI sees in a screenshot.',
+  bullets: [
+    'AI reads screenshots for conversion, trust, and mobile UX gaps',
+    'Every finding ships with a copy-ready fix prompt',
+    'Re-check proves fixes landed (Pro)',
+  ],
   rows: [
     { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
@@ -149,10 +168,17 @@ export const DIFFERENTIATION = {
     { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Agency)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
+  comparisonRows: [
+    { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
+  ],
 } as const
 
 export const SOCIAL_PROOF = {
-  headline: 'Built for agent-first builders',
+  headline: 'Even strong sites fail these checks',
   toolingLine: 'Cursor · Claude Code · Lovable · Bolt',
   tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
   testimonial: {
@@ -167,10 +193,8 @@ export const CASE_STUDIES = [
   {
     id: 'og-image',
     company: 'SaaS landing page',
-    title: 'Illustrative: Fixed og:image',
-    issue: 'Every page used the same generic og:image. Link previews looked identical when shared.',
-    fix: 'Added per-page og:image via `/api/og` with title and category overlay.',
-    outcome: 'Each page type returns a unique preview card. Illustrative SEO area improvement after fix.',
+    title: 'Fixed og:image',
+    outcome: 'Added per-page og:image. Each page type returns a unique preview card.',
     area: 'SEO',
     scoreBefore: 64,
     scoreAfter: 78,
@@ -181,10 +205,8 @@ export const CASE_STUDIES = [
   {
     id: 'mobile-cta',
     company: 'E-commerce storefront',
-    title: 'Illustrative: Moved CTA up on mobile',
-    issue: 'Primary CTA started at 950px on a 375x812 viewport, hidden below the fold.',
-    fix: 'Restructured mobile hero so CTA appears within the first viewport.',
-    outcome: 'CTA visible without scrolling at 375px. Illustrative Mobile area improvement after fix.',
+    title: 'Moved CTA up on mobile',
+    outcome: 'Restructured mobile hero. CTA visible without scrolling at 375px.',
     area: 'Mobile',
     scoreBefore: 58,
     scoreAfter: 78,
@@ -195,10 +217,8 @@ export const CASE_STUDIES = [
   {
     id: 'hero-clarity',
     company: 'DevTools homepage',
-    title: 'Illustrative: Rewrote hero copy',
-    issue: 'Headline described actions, not outcome: "Develop. Preview. Ship."',
-    fix: 'Rewrote to outcome-driven headline naming audience and benefit.',
-    outcome: 'Headline names audience and outcome explicitly. Illustrative Content area improvement after fix.',
+    title: 'Rewrote hero copy',
+    outcome: 'Headline now names audience and outcome. Content grade improved.',
     area: 'Content',
     gradeBefore: 'D' as const,
     gradeAfter: 'B' as const,
@@ -209,20 +229,20 @@ export const CASE_STUDIES = [
 ] as const
 
 export const CASE_STUDIES_SECTION = {
-  label: 'Before/after',
-  headline: 'Before/after improvements',
-  subhead: 'Illustrative outcomes after applying audit fix prompts and re-checking.',
+  label: 'Re-check',
+  headline: 'Fixes that move scores',
+  subhead: 'Illustrative re-checks after applying audit fix prompts.',
 } as const
 
 export const PROOF_SECTION = {
   label: OUTPUT_LABELS.whatYouGet,
-  headline: 'Score, screenshot, and copy-ready fix prompts',
-  subhead: 'Screenshot + AI review catches what automated checks miss.',
-  cta: 'Audit your site',
+  headline: 'Scores, screenshots, and fix prompts',
+  subhead: 'Real output from a public URL. Evidence on every finding.',
+  cta: 'Run audit',
   sample: {
-    name: 'Stripe',
-    domain: 'stripe.com',
-    finding: '3 third-party scripts add measurable render delay on desktop',
+    name: 'QualityOS',
+    domain: 'qualityos.com',
+    finding: 'Hero teaser card missing screenshot on first paint',
     areasFlagged: 4,
   },
 } as const
@@ -234,7 +254,7 @@ export const WHATS_CHECKED_SECTION = {
 } as const
 
 export const TRUST_STRIP = [
-  '7 areas checked',
+  'Full launch surfaces checked',
   'Fix prompts included',
   'Re-check after fixes',
 ] as const
@@ -267,7 +287,8 @@ Claude: "Mobile improved from 41 → 78 (D → B). 3 issues fixed."`,
 } as const
 
 export const PRICING_TEASER = {
-  headline: 'Start free. Pay when you need more.',
+  headline: 'Start free. Upgrade when you ship weekly.',
+  subhead: 'Full report on every plan. Pro adds unlimited re-checks and MCP in your editor.',
   plans: getMarketingPlans()
     .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
     .map((p) => ({
@@ -281,7 +302,7 @@ export const PRICING_TEASER = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Audit your site',
+  headline: 'Paste your URL. See what to fix first.',
   trustLine: HERO.trustLine,
 } as const
 
@@ -412,7 +433,7 @@ export const MCP_DOCS = {
   tools: [
     { name: 'qos_audit_url', desc: 'Start a quality audit on any URL. Returns auditId.' },
     { name: 'qos_get_audit_status', desc: 'Check if an audit is complete.' },
-    { name: 'qos_get_report', desc: 'Get the full report with all 7 area grades and scores.' },
+    { name: 'qos_get_report', desc: 'Get the full report with all area grades and scores.' },
     {
       name: 'qos_get_area',
       desc: 'Get detailed findings + fix prompt for one area (Performance, SEO, Mobile, etc.)',
@@ -584,7 +605,7 @@ export const UPGRADE_MOMENTS = {
   },
   report_completed: {
     headline: 'Unlock full audit history and automation',
-    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report report history, not just more checks.',
+    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report history, not just more checks.',
     cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
@@ -628,9 +649,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'QualityOS - Audit your site. Ship fix prompts.',
+    title: 'QualityOS - Paste a URL. Get fix prompts.',
     description:
-      'Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts. Free first audit.',
+      'Scored report with desktop and mobile screenshots. Every issue includes a copy-ready fix prompt. Free first audit.',
   },
   pricing: {
     title: 'Pricing',
@@ -640,7 +661,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real QualityOS audit of stripe.com: evidence-backed findings with copy-ready fix prompts.',
+      'See a real QualityOS audit of our own homepage: evidence-backed findings with copy-ready fix prompts.',
   },
   examples: {
     title: 'Example Audits',

@@ -1,5 +1,5 @@
 ---
-description: QualityOS UI craft — tokens, color theory, anti-slop. Load skills before editing UI.
+description: QualityOS UI craft, tokens, color theory, anti-slop. Load skills before editing UI.
 globs: "**/*.{tsx,css}"
 alwaysApply: false
 ---
@@ -10,7 +10,7 @@ Before editing UI, read `.ui-craft/brief.md`, `lib/design/tokens.css`, and `.cur
 
 ## Stack
 
-Tailwind + shadcn. Use semantic tokens (`bg-card`, `text-brand`, `shadow-card`, `rounded-card`) — never raw hex except `grade.*`.
+Tailwind + shadcn. Use semantic tokens (`bg-card`, `text-brand`, `shadow-card`, `rounded-card`), never raw hex except `grade.*`.
 
 ## Color
 

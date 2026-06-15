@@ -5,6 +5,7 @@ import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { Container } from '@/components/ui/container'
 import { Body } from '@/components/ui/typography'
 import { SAMPLES_PAGE } from '@/lib/marketing/copy'
+import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 
@@ -12,29 +13,31 @@ export const metadata = buildPageMetadata('samples', '/samples')
 
 export default async function SamplesPage() {
   const sample = await getLiveSampleAudit()
+  const site = getSampleSiteDisplay(sample.audit.url)
 
-  const disclaimer =
+  const statusNote =
     sample.source === 'archived'
-      ? 'This is the last published sample, a newer live sample may be regenerating.'
+      ? 'Last published sample. A newer live sample may be regenerating.'
       : SAMPLES_PAGE.tierNote
+
+  const affiliationNote = site.isDogfood
+    ? 'Audit of qualityos.com. Automated and illustrative.'
+    : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
 
   return (
     <>
       <Container variant="report" className="pt-8 pb-2">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
             <SampleStatusBadge
               source={sample.source}
               completedAt={sample.completedAt}
               pipelineVersion={sample.pipelineVersion}
             />
-            <Body className="text-muted-foreground text-sm">{SAMPLES_PAGE.subhead}</Body>
           </div>
-          <Body className="text-muted-foreground text-xs">{disclaimer}</Body>
-          <Body className="text-muted-foreground text-xs">
-            Not affiliated with {new URL(sample.audit.url).hostname}. Automated audit for
-            illustration only.
-          </Body>
+          <Body className="text-sm text-muted-foreground">{SAMPLES_PAGE.subhead}</Body>
+          <Body className="text-xs text-muted-foreground">{statusNote}</Body>
+          <Body className="text-xs text-muted-foreground">{affiliationNote}</Body>
           <ThirdPartyAuditDisclaimer variant="compact" />
           <LighthouseCallout className="text-xs text-muted-foreground" />
         </div>

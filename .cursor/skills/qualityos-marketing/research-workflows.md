@@ -6,24 +6,24 @@ Use when validating a new segment, rewriting positioning, or auditing competitor
 
 Adapted from homepage messaging audit practice. No rebuild required.
 
-**Step 1 — Baseline (5 min)**  
+**Step 1, Baseline (5 min)**  
 Open `lib/marketing/copy.ts` + live page. Note primary CTA, headline, first proof block.
 
-**Step 2 — 5-second test (5 min)**  
+**Step 2, 5-second test (5 min)**  
 Hide everything below hero. Answer: Who is this for? What outcome? What happens on click?  
 Fail → positioning problem, not design problem.
 
-**Step 3 — Claim vs proof map (10 min)**  
+**Step 3, Claim vs proof map (10 min)**  
 For hero + first body + first CTA, tag each sentence:
-- **Claim** — asserts value
-- **Proof** — evidence (sample, grade, finding, number, mechanism)
+- **Claim**, asserts value
+- **Proof**, evidence (sample, grade, finding, number, mechanism)
 
 Every claim needs proof within one scroll. Gap → draft bridge sentence or move proof up.
 
-**Step 4 — Audience focus (5 min)**  
+**Step 4, Audience focus (5 min)**  
 Count "you/your" vs "we/our". High-converting copy is visitor-problem led.
 
-**Step 5 — CTA audit (5 min)**  
+**Step 5, CTA audit (5 min)**  
 - One primary action visible?
 - CTA reads as promise ("Audit my site") not label ("Submit")?
 - Secondary CTA builds confidence (sample) without competing?
@@ -38,10 +38,10 @@ Run 3–5 interviews with recent audit users or upgrade candidates.
 
 Use questions in [jtbd-research.md](jtbd-research.md). Output:
 
-1. **Trigger timeline** — what happened the day they searched
-2. **Verbatim phrase bank** — 10+ customer words for headlines/FAQ
-3. **Force map** — push/pull/anxiety/habit with copy placement
-4. **Alternatives tried** — update competitive scan (section 4)
+1. **Trigger timeline**, what happened the day they searched
+2. **Verbatim phrase bank**, 10+ customer words for headlines/FAQ
+3. **Force map**, push/pull/anxiety/habit with copy placement
+4. **Alternatives tried**, update competitive scan (section 4)
 
 If interviews aren't available, use the proxy method in jtbd-research.md (5 public audits).
 
@@ -128,11 +128,11 @@ Target **ICP queries**, not vanity volume.
 
 When testing Segment B on homepage:
 
-1. **Hypothesis** — one headline + subhead change
-2. **Primary metric** — audit starts (not vanity traffic)
-3. **Secondary** — signup, re-check, upgrade moment views
-4. **Duration** — enough for meaningful sample (product decision)
-5. **Document** — segment experiment brief in SKILL.md
+1. **Hypothesis**, one headline + subhead change
+2. **Primary metric**, audit starts (not vanity traffic)
+3. **Secondary**, signup, re-check, upgrade moment views
+4. **Duration**, enough for meaningful sample (product decision)
+5. **Document**, segment experiment brief in SKILL.md
 
 Don't stack multiple message changes in one experiment.
 

@@ -1,4 +1,5 @@
 import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
+import fs from 'fs'
 import { uploadScreenshot } from '../storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
@@ -9,11 +10,24 @@ let browser: Browser | null = null
 const SETTLE_MS = 1500
 const TIMEOUT_MS = 30_000
 
+function getChromePath(): string | undefined {
+  const paths = [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+  ]
+  for (const p of paths) {
+    if (p && fs.existsSync(p)) return p
+  }
+  return undefined
+}
+
 async function getBrowser(): Promise<Browser> {
   if (browser && browser.connected) return browser
   browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: true,
+    executablePath: getChromePath(),
   })
   browser.on('disconnected', () => {
     browser = null
@@ -95,11 +109,7 @@ async function captureViewport(
       result.html = await page.content()
     }
 
-    const buffer = (await page.screenshot({
-      type: 'webp',
-      quality: 80,
-      fullPage: false,
-    })) as Buffer
+    const buffer = await page.screenshot({ type: 'png', fullPage: false }) as Buffer
 
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)

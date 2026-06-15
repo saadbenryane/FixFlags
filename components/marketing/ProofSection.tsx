@@ -1,10 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { ScoreCard } from '@/components/audit/ScoreCard'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
-import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
-import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
@@ -12,19 +9,19 @@ import { Section } from '@/components/ui/section'
 import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { PROOF_SECTION, OUTPUT_LABELS } from '@/lib/marketing/copy'
+import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import type { SampleResult } from '@/lib/marketing/live-sample'
-import { areaLabel } from '@/lib/utils'
 import { gradeFromScore } from '@/lib/audit/scoring'
 
 const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
 
 export function ProofSection({ sample }: { sample: SampleResult }) {
   const audit = sample.audit
-  const desktop = audit.screenshots?.find((item) => item.device === 'DESKTOP')
   const scoreGrade = audit.score === null ? null : gradeFromScore(audit.score)
+  const site = getSampleSiteDisplay(audit.url)
 
   return (
-    <Section spacing="default">
+    <Section spacing="default" className="bg-muted/35">
       <Container className="space-y-10">
         <SectionIntro
           label={PROOF_SECTION.label}
@@ -35,11 +32,7 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
 
         <PageGrid align="stretch">
           <PageGridCol span="intro" className="space-y-5">
-            <SampleStatusBadge
-              source={sample.source}
-              completedAt={sample.completedAt}
-              pipelineVersion={sample.pipelineVersion}
-            />
+            <p className="font-medium">{site.displayHost}</p>
             <ScoreCard
               grade={scoreGrade}
               score={audit.score}
@@ -49,22 +42,11 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
             <p className="max-w-prose text-sm leading-relaxed text-muted-foreground text-pretty">
               {audit.verdict}
             </p>
-            {desktop && (
-              <div className="rounded-nested-md bg-muted/25 p-2">
-                <BrowserFrame
-                  device="desktop"
-                  url={audit.url}
-                  imageUrl={desktop.url}
-                  state="loaded"
-                  label="Captured"
-                />
-              </div>
-            )}
           </PageGridCol>
 
           <PageGridCol span="content">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
-              All seven areas
+              Launch surfaces
             </p>
             <ul className="grid gap-2 sm:grid-cols-2">
               {audit.areas.map((area) => (

@@ -15,7 +15,7 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Edit .env.local — at minimum set OPENAI_API_KEY or ANTHROPIC_API_KEY and BETTER_AUTH_SECRET
+# Edit .env.local, at minimum set OPENAI_API_KEY or ANTHROPIC_API_KEY and BETTER_AUTH_SECRET
 
 # 3. Start Postgres + Redis
 docker compose up -d
@@ -88,8 +88,8 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 Deploy **two services** from this repo:
 
-1. **Web** — `npm run build && npm start` (default)
-2. **Worker** — `npm run worker:build && npm run worker:start`
+1. **Web**, `npm run build && npm start` (default)
+2. **Worker**, `npm run worker:build && npm run worker:start`
 
 ### Required production env vars
 

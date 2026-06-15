@@ -2,11 +2,9 @@
 
 import { ArrowRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
-import { HeroBenefits } from '@/components/marketing/HeroBenefits'
 import { SampleFindingsCard } from '@/components/marketing/SampleFindingsCard'
 import { MarketingBackdrop } from '@/components/marketing/MarketingBackdrop'
 import { Container } from '@/components/ui/container'
-import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
 import { Heading, Lead, Muted } from '@/components/ui/typography'
@@ -16,48 +14,43 @@ import type { SampleResult } from '@/lib/marketing/live-sample'
 import { cn } from '@/lib/utils'
 
 const STAGGER = [
-  'animate-fade-in-up opacity-0 [animation-fill-mode:forwards]',
-  'animate-fade-in-up opacity-0 [animation-fill-mode:forwards] [animation-delay:120ms]',
-  'animate-fade-in-up opacity-0 [animation-fill-mode:forwards] [animation-delay:220ms]',
-  'animate-scale-in opacity-0 [animation-fill-mode:forwards] [animation-delay:280ms]',
+  'motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-fill-mode:forwards]',
+  'motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-fill-mode:forwards] motion-safe:[animation-delay:120ms]',
+  'motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-fill-mode:forwards] motion-safe:[animation-delay:220ms]',
+  'motion-safe:animate-scale-in motion-safe:opacity-0 motion-safe:[animation-fill-mode:forwards] motion-safe:[animation-delay:320ms]',
 ]
 
 export function HeroSection({ sample }: { sample: SampleResult }) {
   return (
-    <Section spacing="default" className="relative overflow-hidden bg-muted/25">
+    <Section spacing="loose" className="relative overflow-hidden bg-muted/25">
       <MarketingBackdrop />
-      <Container>
-        <PageGrid align="center">
-          <PageGridCol span="text" className="flex flex-col">
-            <div className={cn('space-y-5', STAGGER[0])}>
-              <Heading as="h1" className="space-y-2">
-                <span className="block">{HERO.headlineLine1}</span>
-                <span className="block">{HERO.headlineLine2}</span>
-              </Heading>
-              <Lead>{HERO.subhead}</Lead>
-            </div>
+      <Container className="flex flex-col gap-8 lg:gap-10">
+        <div className="mx-auto w-full max-w-prose space-y-8">
+          <div className={cn('space-y-4', STAGGER[0])}>
+            <p className="section-label">{HERO.audienceLine}</p>
+            <Heading as="h1" className="space-y-1 text-balance">
+              <span className="block">{HERO.headlineLine1}</span>
+              <span className="block text-foreground">{HERO.headlineLine2}</span>
+            </Heading>
+            <Lead>{HERO.subhead}</Lead>
+          </div>
 
-            <div className={cn('mt-8 w-full max-w-prose', STAGGER[1])}>
-              <AuditInput />
-            </div>
+          <div id="audit" className={cn('scroll-mt-[calc(var(--header-offset)+1rem)]', STAGGER[1])}>
+            <AuditInput />
+          </div>
 
-            <Muted className={cn('mt-4', STAGGER[2])}>{TRUST_LINE}</Muted>
-
-            <HeroBenefits className={cn('mt-6', STAGGER[2])} />
-
-            <TextLink href="/samples" className={cn('mt-6 text-sm', STAGGER[3])}>
+          <div className={cn('space-y-6', STAGGER[2])}>
+            <Muted>{TRUST_LINE}</Muted>
+            <TextLink href="/samples" className="text-sm">
               {HERO.secondaryCta}
               <ArrowRight className="h-3.5 w-3.5" />
             </TextLink>
-          </PageGridCol>
+          </div>
+        </div>
 
-          <PageGridCol
-            span="card"
-            className={cn('mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none lg:sticky lg:top-[var(--header-offset)]', STAGGER[3])}
-          >
-            <SampleFindingsCard sample={sample} variant="teaser" />
-          </PageGridCol>
-        </PageGrid>
+        <div className={cn('mx-auto w-full max-w-lg', STAGGER[3])}>
+          <SampleFindingsCard sample={sample} variant="teaser" />
+        </div>
       </Container>
     </Section>
   )

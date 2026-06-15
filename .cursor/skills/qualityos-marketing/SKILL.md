@@ -1,6 +1,6 @@
 ---
 name: qualityos-marketing
-description: QualityOS go-to-market — ICP segmentation, message research, copy frameworks, and channel targeting. Use when writing or revising marketing copy, positioning, landing pages, ads, SEO, FAQs, upgrade moments, audience expansion, or GTM strategy for QualityOS. Triggers on marketing, copy, ICP, targeting, positioning, messaging audit, existing website owners, or ship-ready messaging.
+description: QualityOS go-to-market, ICP segmentation, message research, copy frameworks, and channel targeting. Use when writing or revising marketing copy, positioning, landing pages, ads, SEO, FAQs, upgrade moments, audience expansion, or GTM strategy for QualityOS. Triggers on marketing, copy, ICP, targeting, positioning, messaging audit, existing website owners, or ship-ready messaging.
 ---
 
 # QualityOS Marketing
@@ -32,15 +32,15 @@ See [audiences.md](audiences.md) for pains, objections, channels, and disqualifi
 
 Use this order when drafting or auditing any page:
 
-1. **Audience** — who this is for *today* (named role + situation)
-2. **Job** — what problem they have when they land
-3. **Promise** — outcome in plain language (not category fluff)
-4. **Proof** — sample output, grades, evidence line, or concrete finding
-5. **Path** — primary CTA as a promise of what happens next
+1. **Audience**, who this is for *today* (named role + situation)
+2. **Job**, what problem they have when they land
+3. **Promise**, outcome in plain language (not category fluff)
+4. **Proof**, sample output, grades, evidence line, or concrete finding
+5. **Path**, primary CTA as a promise of what happens next
 
 Run the **5-second test**: hide the page. Can you state audience, outcome, and mechanism? If not, fix positioning before polish.
 
-## Jobs-to-be-Done (JTBD) — pick segment first
+## Jobs-to-be-Done (JTBD), pick segment first
 
 Each segment hires QualityOS for a different job. Write the job, not the product.
 
@@ -51,10 +51,10 @@ Each segment hires QualityOS for a different job. Write the job, not the product
 
 **Four Forces of Progress** (address in copy order):
 
-1. **Push** — pain of the status quo (blank previews, flat conversion, client call tomorrow)
-2. **Pull** — appeal of the new outcome (graded fixes, re-check proof, 60 seconds)
-3. **Anxiety** — fear of switching (another tool, hype, wasted time) → reduce with free audit, sample report, boundaries
-4. **Habit** — inertia ("Lighthouse is enough", "we'll fix it later") → name what habit misses
+1. **Push**, pain of the status quo (blank previews, flat conversion, client call tomorrow)
+2. **Pull**, appeal of the new outcome (graded fixes, re-check proof, 60 seconds)
+3. **Anxiety**, fear of switching (another tool, hype, wasted time) → reduce with free audit, sample report, boundaries
+4. **Habit**, inertia ("Lighthouse is enough", "we'll fix it later") → name what habit misses
 
 Use customer verbs, not adjectives. "See what's costing signups" beats "comprehensive audit platform."
 
@@ -112,7 +112,7 @@ Research progress:
 | Trigger | Launch this week, redesign shipped, ad spend live, client demo scheduled |
 
 Tier A (prioritize): trigger + technographic fit + ran free audit.
-Tier B (nurture): fit but no trigger yet — sample report, SEO content.
+Tier B (nurture): fit but no trigger yet, sample report, SEO content.
 Tier C (deprioritize): enterprise QA teams, password-protected-only workflows, no public URL.
 
 Full research methods: [research-workflows.md](research-workflows.md).
@@ -121,7 +121,7 @@ Full research methods: [research-workflows.md](research-workflows.md).
 
 | Channel | AI shipper angle | Existing site owner angle |
 |---------|------------------|---------------------------|
-| **Homepage hero** | Check before you ship | Your site is live — see what's still broken |
+| **Homepage hero** | Check before you ship | Your site is live, see what's still broken |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, full report) |
@@ -135,17 +135,17 @@ Full research methods: [research-workflows.md](research-workflows.md).
 3. Draft using message stack + one framework
 4. Score against voice checklist in `docs/voice-and-copy.md`
 5. Check visual/copy alignment with design system skill
-6. Update `copy.ts` only — pages import from there
+6. Update `copy.ts` only, pages import from there
 7. For FAQ/objections, add question in visitor language, answer with evidence + boundary
 
 ## Anti-patterns
 
-- **Tribe badge overload** — name AI tools once per page, not every section
-- **Category copy** — "comprehensive quality platform" → paste URL, get grades
-- **Dual headline** — one outcome per hero
-- **Proof decoration** — Stripe sample must support a claim, not fill space
-- **False urgency** — no countdown fake scarcity
-- **Everyone ICP** — if FAQ says "for everyone with a website," rewrite with boundaries
+- **Tribe badge overload**, name AI tools once per page, not every section
+- **Category copy**, "comprehensive quality platform" → paste URL, get grades
+- **Dual headline**, one outcome per hero
+- **Proof decoration**, Stripe sample must support a claim, not fill space
+- **False urgency**, no countdown fake scarcity
+- **Everyone ICP**, if FAQ says "for everyone with a website," rewrite with boundaries
 
 ## Output templates
 
@@ -159,7 +159,7 @@ Unlike [alternative], we [differentiator with evidence].
 ### Messaging diagnosis (after auditing a page)
 
 ```markdown
-## Messaging diagnosis — [page]
+## Messaging diagnosis, [page]
 
 **Implied audience:** …
 **Should commit to:** …

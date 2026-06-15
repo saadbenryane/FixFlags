@@ -1,16 +1,14 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { CaseStudiesSection } from '@/components/marketing/CaseStudiesSection'
-import { ComparisonTable } from '@/components/marketing/ComparisonTable'
+import { DifferentiationSection } from '@/components/marketing/DifferentiationSection'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { HeroSection } from '@/components/marketing/HeroSection'
 import { HowItWorksSection } from '@/components/marketing/HowItWorksSection'
-import { ProblemSection } from '@/components/marketing/ProblemSection'
 import { ProofSection } from '@/components/marketing/ProofSection'
+import { SegmentProofSection } from '@/components/marketing/SegmentProofSection'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
-import { SocialProofSection } from '@/components/marketing/SocialProofSection'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
-import { WhatsCheckedSection } from '@/components/marketing/WhatsCheckedSection'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -18,10 +16,8 @@ import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
 import {
-  DIFFERENTIATION,
   MCP_SECTION,
   PRICING_TEASER,
-  BRAND,
   FAQ_SECTION,
   HOME_FAQ,
 } from '@/lib/marketing/copy'
@@ -40,15 +36,15 @@ export default async function HomePage() {
 
       <ProofSection sample={sample} />
 
-      <CaseStudiesSection />
-
-      <ProblemSection />
-
-      <SocialProofSection />
+      <SegmentProofSection />
 
       <HowItWorksSection />
 
-      <Section spacing="default" id="agent-workflow">
+      <DifferentiationSection />
+
+      <CaseStudiesSection />
+
+      <Section spacing="default" className="bg-muted/35" id="agent-workflow">
         <Container>
           <PageGrid align="start">
             <PageGridCol span="intro" className="space-y-6">
@@ -71,34 +67,9 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <WhatsCheckedSection />
-
-      <Section spacing="default" className="bg-muted/35" id="lighthouse-comparison">
+      <Section spacing="default">
         <Container className="space-y-10">
-          <SectionIntro headline={DIFFERENTIATION.headline} subhead={DIFFERENTIATION.subhead} />
-          <p className="mx-auto max-w-prose text-center text-sm text-muted-foreground">
-            Compare with{' '}
-            <a
-              href="https://developer.chrome.com/docs/lighthouse"
-              className="text-link underline underline-offset-2 transition-colors duration-200 hover:text-link-hover"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Google Lighthouse
-            </a>
-            .
-          </p>
-          <ComparisonTable rows={DIFFERENTIATION.rows} />
-          <p className="mx-auto max-w-prose text-center text-xs text-muted-foreground">
-            Lighthouse SEO checks meta tags including og:image; {BRAND.name} adds screenshot-based
-            UX context and agent-ready fix prompts.
-          </p>
-        </Container>
-      </Section>
-
-      <Section spacing="default" className="bg-muted/35">
-        <Container className="space-y-10">
-          <SectionIntro headline={PRICING_TEASER.headline} />
+          <SectionIntro headline={PRICING_TEASER.headline} subhead={PRICING_TEASER.subhead} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {PRICING_TEASER.plans.map((plan) => {
               const highlighted = plan.name === 'Pro'
@@ -144,14 +115,19 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section spacing="default">
+      <Section spacing="default" className="bg-muted/35">
         <Container>
           <div className="mx-auto max-w-prose">
             <FaqSection items={HOME_FAQ} title={FAQ_SECTION.title} />
-            <div className="mt-6 text-center">
-              <TextLink href="/faq" className="text-sm">
-                {FAQ_SECTION.viewAll}
+            <div className="mt-6 space-y-3 text-center">
+              <TextLink href="/faq#rubric" className="text-sm">
+                See scoring rubric
               </TextLink>
+              <div>
+                <TextLink href="/faq" className="text-sm">
+                  {FAQ_SECTION.viewAll}
+                </TextLink>
+              </div>
             </div>
           </div>
         </Container>

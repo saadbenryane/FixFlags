@@ -10,7 +10,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "eslint . --max-warnings=0",
-    "test:unit": "tsx --test lib/__tests__/hardening.test.ts lib/__tests__/marketing-trust.test.ts lib/__tests__/no-em-dash.test.ts lib/__tests__/sanitize-prompts.test.ts lib/__tests__/nav-active.test.ts lib/audit/__tests__/viewports.test.ts lib/audit/__tests__/screenshot-types.test.ts lib/storage/__tests__/screenshots.test.ts",
+    "test:unit": "tsx --test lib/__tests__/hardening.test.ts lib/__tests__/homepage-message.test.ts lib/__tests__/marketing-trust.test.ts lib/__tests__/no-em-dash.test.ts lib/__tests__/sanitize-prompts.test.ts lib/__tests__/nav-active.test.ts lib/audit/__tests__/viewports.test.ts lib/audit/__tests__/screenshot-types.test.ts lib/storage/__tests__/screenshots.test.ts",
     "worker": "tsx watch worker/index.ts",
     "worker:build": "tsc --project tsconfig.worker.json",
     "preworker:start": "npm run db:deploy && npm run db:check",

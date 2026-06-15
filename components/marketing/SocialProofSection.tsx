@@ -2,22 +2,19 @@ import { SOCIAL_PROOF } from '@/lib/marketing/copy'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Badge } from '@/components/ui/badge'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 
 export function SocialProofSection() {
   return (
-    <Section spacing="default">
+    <Section spacing="default" className="bg-muted/35">
       <Container>
-        <div className="space-y-10">
-          <div className="space-y-4 text-center">
-            <p className="text-sm font-medium text-foreground">{SOCIAL_PROOF.headline}</p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {SOCIAL_PROOF.tools.map((tool) => (
-                <Badge key={tool} variant="secondary" className="text-xs">
-                  {tool}
-                </Badge>
-              ))}
-            </div>
+        <div className="space-y-8">
+          <div className="space-y-3 text-center">
+            <p className="font-display text-xl tracking-display text-balance sm:text-2xl">
+              {SOCIAL_PROOF.headline}
+            </p>
+            <p className="font-mono text-xs uppercase tracking-label text-muted-foreground">
+              {SOCIAL_PROOF.toolingLine}
+            </p>
           </div>
 
           <div className="mx-auto max-w-prose">
@@ -44,8 +41,6 @@ export function SocialProofSection() {
               </div>
             </div>
           </div>
-
-          <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-prose text-center" />
         </div>
       </Container>
     </Section>

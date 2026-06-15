@@ -1,10 +1,13 @@
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading } from '@/components/ui/typography'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { McpApiKeyLink } from '@/components/marketing/McpApiKeyLink'
-import { MCP_DOCS, MCP_SECTION, SITE_URL } from '@/lib/marketing/copy'
+import { HERO, MCP_DOCS, MCP_SECTION, SITE_URL } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import {
   MCP_TOOL_DEFINITIONS,
@@ -45,6 +48,12 @@ export default function McpDocsPage() {
           <Heading as="h1">{MCP_DOCS.headline}</Heading>
           <Body className="text-muted-foreground">{MCP_DOCS.subhead}</Body>
           <McpApiKeyLink />
+          <Button size="sm" asChild>
+            <Link href="/#audit">
+              {HERO.primaryCta}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
 
         <Surface variant="elevated" className="space-y-5">

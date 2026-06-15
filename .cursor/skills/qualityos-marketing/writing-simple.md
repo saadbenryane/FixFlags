@@ -51,11 +51,11 @@ Pick exactly one of each. If you need two, split into two blocks.
 
 ## Rewrite pass (run on every draft)
 
-1. **Cut** — Remove half the adjectives.
-2. **Split** — One idea per sentence.
-3. **So what?** — Every sentence earns its place or goes.
-4. **You test** — Can a stranger explain what happens after paste URL?
-5. **Read aloud** — If you stumble, simplify.
+1. **Cut**, Remove half the adjectives.
+2. **Split**, One idea per sentence.
+3. **So what?**, Every sentence earns its place or goes.
+4. **You test**, Can a stranger explain what happens after paste URL?
+5. **Read aloud**, If you stumble, simplify.
 
 ## Good vs bad (homepage)
 

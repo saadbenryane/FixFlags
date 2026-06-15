@@ -7,7 +7,7 @@ import { getLocalScreenshotPath, uploadScreenshot } from '@/lib/storage/screensh
 describe('screenshot storage', () => {
   it('getLocalScreenshotPath uses audit and device', () => {
     const p = getLocalScreenshotPath('audit-abc', 'desktop')
-    assert.match(p, /audit-abc[\\/]desktop\.webp$/)
+    assert.match(p, /audit-abc[\\/]desktop\.png$/)
   })
 
   it('uploadScreenshot writes local file in development', async () => {

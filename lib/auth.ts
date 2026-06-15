@@ -23,7 +23,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
       if (!resend) {
         throw new Error('Password reset email is not configured (RESEND_API_KEY missing)')

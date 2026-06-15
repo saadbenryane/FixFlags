@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { GradeBadge } from '@/components/audit/GradeBadge'
 import { AreaGrid } from '@/components/audit/AreaGrid'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
+import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { GradeBadge } from '@/components/audit/GradeBadge'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -70,12 +70,8 @@ export function ExampleAuditCard({ audit }: Props) {
         </div>
 
         {topPrompt && (
-          <div className="rounded-nested-md bg-muted/20 p-4 space-y-2">
-            <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-              Sample fix prompt
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{topPrompt}</p>
-            <PromptCopyButton prompt={topPrompt} compact />
+          <div className="rounded-nested-md bg-muted/20 p-4">
+            <FixPromptBlock prompt={topPrompt} rows={3} clamp />
           </div>
         )}
 

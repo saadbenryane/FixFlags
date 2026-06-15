@@ -76,12 +76,15 @@ export type SampleResult = {
 }
 
 export async function getLiveSampleAudit(): Promise<SampleResult> {
-  const configuredUrl = process.env.SAMPLE_AUDIT_URL
+  const defaultSampleUrl =
+    process.env.SAMPLE_AUDIT_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    'https://qualityos.com'
   let audit = null
   let source: SampleSource = 'static'
 
-  if (configuredUrl) {
-    const normalized = new URL(configuredUrl).toString()
+  try {
+    const normalized = new URL(defaultSampleUrl).toString()
     audit = await prisma.audit.findFirst({
       where: {
         url: normalized,
@@ -93,6 +96,8 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
       include: sampleInclude,
     })
     if (audit) source = 'live'
+  } catch {
+    // Invalid SAMPLE_AUDIT_URL; fall through to archived/static sample.
   }
 
   if (!audit) {

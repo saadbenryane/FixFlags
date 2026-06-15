@@ -4,9 +4,9 @@ import { Section } from '@/components/ui/section'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { QUALITY_AREAS, WHATS_CHECKED_SECTION } from '@/lib/marketing/copy'
 
-export function WhatsCheckedSection() {
+export function WhatsCheckedSection({ id }: { id?: string }) {
   return (
-    <Section spacing="default" className="bg-muted/35">
+    <Section spacing="default" className="scroll-mt-[var(--header-offset)] bg-muted/35" id={id}>
       <Container>
         <PageGrid align="start">
           <PageGridCol span="intro">

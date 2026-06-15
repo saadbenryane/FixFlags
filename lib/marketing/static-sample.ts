@@ -1,17 +1,19 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+import { SITE_URL } from '@/lib/marketing/copy'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 
 const SCREENSHOT_BASE = '/samples'
+const SAMPLE_URL = `${SITE_URL.replace(/\/$/, '')}/`
 
 export function getStaticSampleAudit(): LiveSampleAudit {
   return {
     id: 'static-sample',
-    url: 'https://stripe.com',
-    pageJob: 'Marketing page',
-    pageType: 'Marketing page',
+    url: SAMPLE_URL,
+    pageJob: 'Marketing homepage',
+    pageType: 'Marketing homepage',
     score: 78,
     verdict:
-      'Solid foundation with clear gaps in mobile layout and social sharing metadata. Three third-party scripts add measurable render delay.',
+      'Solid foundation with gaps in mobile hero layout and social preview metadata.',
     completedAt: new Date('2026-06-10T14:30:00Z'),
     createdAt: new Date('2026-06-10T14:29:00Z'),
     pipelineVersion: PIPELINE_VERSION,
@@ -29,13 +31,13 @@ export function getStaticSampleAudit(): LiveSampleAudit {
     screenshots: [
       {
         device: 'DESKTOP',
-        url: `${SCREENSHOT_BASE}/stripe-desktop.webp`,
+        url: `${SCREENSHOT_BASE}/qualityos-desktop.webp`,
         width: 1280,
         height: 900,
       },
       {
         device: 'MOBILE',
-        url: `${SCREENSHOT_BASE}/stripe-mobile.webp`,
+        url: `${SCREENSHOT_BASE}/qualityos-mobile.webp`,
         width: 375,
         height: 812,
       },
@@ -59,14 +61,14 @@ export function getStaticSampleAudit(): LiveSampleAudit {
           {
             id: 'finding-perf-1',
             severity: 'MEDIUM',
-            problem: '3 third-party scripts add ~80ms render delay',
+            problem: 'Third-party analytics adds measurable render delay',
             evidence:
-              'Scripts loaded from cdn.segment.com, js.stripe.com, and www.google-analytics.com. Combined blocking time ~80ms on desktop 1280x900 viewport.',
+              'Scripts loaded from analytics and font providers. Combined blocking time ~80ms on desktop 1280x900 viewport.',
             whyItMatters:
               'Blocking scripts delay first paint and push interactive content later on marketing pages.',
-            fix: 'Add async/defer to non-critical third-party scripts. Move analytics to load after onload.',
+            fix: 'Defer or async-load non-critical third-party scripts.',
             agentPrompt:
-              'Find script tags loading cdn.segment.com, www.google-analytics.com, and js.stripe.com. Add `async` or `defer` to Segment and Google Analytics. Keep Stripe.js synchronous. Verify in DevTools Network tab at 1280x900 desktop viewport.',
+              'Find script tags loading analytics and font providers on the marketing homepage. Add `async` or `defer` to non-critical scripts. Verify in DevTools Network tab at 1280x900 desktop viewport.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -172,7 +174,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Missing meta description lets search engines generate snippets that may not match your value proposition.',
             fix: 'Add meta description (120-158 chars) with value proposition.',
             agentPrompt:
-              'In metadata export, add `description: \'Accept payments, send payouts, and manage financial operations, Stripe powers online payment processing.\'` Keep under 160 characters.',
+              'In metadata export, add `description: \'Paste a URL. Get fix prompts on every issue. AI reads screenshots across seven areas.\'` Keep under 160 characters.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -200,14 +202,14 @@ export function getStaticSampleAudit(): LiveSampleAudit {
           {
             id: 'finding-conv-1',
             severity: 'MEDIUM',
-            problem: 'Hero headline describes product features, not user outcome',
+            problem: 'Hero headline repeats the product category instead of the outcome',
             evidence:
-              'Desktop 1280x900: "Financial infrastructure for the internet", tells what Stripe is, not what user achieves.',
+              'Desktop 1280x900: headline describes the tool, not what the visitor gets after pasting a URL.',
             whyItMatters:
               'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
-            fix: 'Test headline: "Ship payment flows in days, not quarters."',
+            fix: 'Lead with the report output: scores, screenshots, and fix prompts.',
             agentPrompt:
-              'In `.hero-section`, update H1 to: "Ship payment flows in days, not quarters." Keep under 8 words at 1280px viewport. Verify headline fits on one line at 1280x900.',
+              'In `HeroSection`, update the H1 to lead with outcome: "Paste a URL. Get fix prompts." Keep under 10 words at 1280px viewport. Verify headline fits on one line at 1280x900.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -223,9 +225,9 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Desktop 1280x900: CTA area lacks "trusted by" or customer count.',
             whyItMatters:
               'Social proof near the CTA reassures visitors before they commit to an action.',
-            fix: 'Add trust line below CTA: "Trusted by millions of businesses worldwide."',
+            fix: 'Add trust line below CTA: "Free first audit. No account required."',
             agentPrompt:
-              'Below primary CTA button, add `<p className="text-xs text-muted-foreground mt-2">Trusted by millions of businesses worldwide</p>`. Keep font small and muted, this is supplementary, not primary messaging.',
+              'Below the audit input, ensure the trust line reads "Free · No account · Usually under 90 seconds". Keep font small and muted.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,

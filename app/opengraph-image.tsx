@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'QualityOS - Audit your site. Ship fix prompts.'
+export const alt = 'QualityOS - Paste a URL. Get fix prompts.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -52,7 +52,7 @@ export default function Image() {
               marginBottom: 20,
             }}
           >
-            Audit your site.
+            Paste a URL.
           </div>
           <div
             style={{
@@ -63,7 +63,7 @@ export default function Image() {
               marginBottom: 32,
             }}
           >
-            Ship fix prompts.
+            Get fix prompts.
           </div>
           <div
             style={{
@@ -73,7 +73,7 @@ export default function Image() {
               maxWidth: 420,
             }}
           >
-            Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts.
+            Scored report with screenshots. Every issue includes a copy-ready prompt.
           </div>
         </div>
 
@@ -123,7 +123,7 @@ export default function Image() {
               border: '1px solid rgba(34, 197, 94, 0.2)',
             }}
           >
-            7 areas · fix prompts
+            fix prompts included
           </div>
         </div>
       </div>

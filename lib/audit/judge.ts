@@ -106,7 +106,7 @@ const judgeOutputSchema = z.object({
 
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>
 
-const ANTHROPIC_JUDGE_MODEL = 'claude-sonnet-4-6'
+const ANTHROPIC_JUDGE_MODEL = 'claude-sonnet-4-20250514'
 const OPENAI_JUDGE_MODEL = 'gpt-4o-mini'
 const ANTHROPIC_MAX_TOKENS = 8192
 const OPENAI_MAX_TOKENS = 4096
@@ -193,13 +193,13 @@ async function runAnthropicJudge(
   if (desktopBase64) {
     imageContent.push({
       type: 'image',
-      source: { type: 'base64', media_type: 'image/webp', data: desktopBase64 },
+      source: { type: 'base64', media_type: 'image/png', data: desktopBase64 },
     })
   }
   if (mobileBase64) {
     imageContent.push({
       type: 'image',
-      source: { type: 'base64', media_type: 'image/webp', data: mobileBase64 },
+      source: { type: 'base64', media_type: 'image/png', data: mobileBase64 },
     })
   }
 
@@ -263,7 +263,7 @@ async function runOpenAIJudge(
     content.push({
       type: 'image_url',
       image_url: {
-        url: `data:image/webp;base64,${desktopBase64}`,
+        url: `data:image/png;base64,${desktopBase64}`,
         detail: 'low',
       },
     })
@@ -273,7 +273,7 @@ async function runOpenAIJudge(
     content.push({
       type: 'image_url',
       image_url: {
-        url: `data:image/webp;base64,${mobileBase64}`,
+        url: `data:image/png;base64,${mobileBase64}`,
         detail: 'low',
       },
     })

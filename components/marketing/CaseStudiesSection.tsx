@@ -16,8 +16,8 @@ export function CaseStudiesSection() {
         />
 
         <div className="grid gap-6 md:grid-cols-3">
-          {CASE_STUDIES.map((study, i) => (
-            <CaseStudyCard key={study.id} study={study} index={i} />
+          {CASE_STUDIES.map((study) => (
+            <CaseStudyCard key={study.id} study={study} />
           ))}
         </div>
 

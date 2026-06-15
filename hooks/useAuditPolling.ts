@@ -101,7 +101,7 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     ? {
         ...(statusData as AuditStatusPayload),
         status: 'FAILED',
-        errorMsg: 'Audit timed out — please try again',
+        errorMsg: 'Audit timed out, please try again',
         failureCode: 'AUDIT_TIMEOUT',
         failureStage: currentStatus.toLowerCase(),
       }

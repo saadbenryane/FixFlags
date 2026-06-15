@@ -49,7 +49,7 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 
 **Trigger moments:**
 - Paid ads live but conversion weak
-- Redesign or rebrand just shipped — "did we break something?"
+- Redesign or rebrand just shipped, "did we break something?"
 - Client/agency needs a prioritized fix list before a call
 - SEO or social previews look wrong in the wild
 - Quarterly "website health" review without budget for a full agency audit
@@ -68,8 +68,8 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 **Copy angles (test one at a time):**
 - "Your site is live. See what's still costing you signups."
 - "Paste your homepage. Get a prioritized fix list in 60 seconds."
-- "Not another Lighthouse score — conversion and trust, with fix prompts."
-- "Prove the redesign worked — re-check before/after."
+- "Not another Lighthouse score, conversion and trust, with fix prompts."
+- "Prove the redesign worked, re-check before/after."
 
 **Mechanism emphasis:** Web UI first (paste URL). Fix prompts work in any AI editor or handoff to dev. MCP optional.
 
@@ -77,9 +77,9 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 | Objection | Honest answer |
 |-----------|---------------|
 | We already ran Lighthouse | Scores performance/SEO/a11y, not whether the page converts or looks trustworthy |
-| We have an agency | QualityOS is a fast first pass — prioritized evidence before you pay for hours |
+| We have an agency | QualityOS is a fast first pass, prioritized evidence before you pay for hours |
 | Our site is custom/WordPress/Webflow | Any public URL; prompts describe fixes, not stack-specific patches |
-| Staging only | Public URLs only today — use production or a public preview URL |
+| Staging only | Public URLs only today, use production or a public preview URL |
 
 **Disqualifiers:** No public URL, password-protected staging only, need legal/compliance certification, want fully managed implementation.
 
@@ -106,9 +106,9 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 | Page | Primary | Secondary |
 |------|---------|-----------|
 | Home hero | A or B (pick one experiment) | Other segment in workflow/examples only |
-| Samples | Both (proof for all) | — |
+| Samples | Both (proof for all) |, |
 | Pricing | A (ship cadence) | B (ROI / re-check proof) |
-| MCP docs | A | — |
+| MCP docs | A |, |
 | FAQ "Who is it for?" | Name both with boundaries | Disqualify enterprise QA |
 
 ---

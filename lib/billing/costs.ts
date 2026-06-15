@@ -3,10 +3,10 @@ import { prisma } from '@/lib/db'
 
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
-  'claude-sonnet-4-6': { input: 3, output: 15 },
+  'claude-sonnet-4-20250514': { input: 3, output: 15 },
 }
 
-// Claude Sonnet 4.6 approximate rates (USD per million tokens), fallback
+// Claude Sonnet 4 approximate rates (USD per million tokens), fallback
 const DEFAULT_INPUT_RATE = 3
 const DEFAULT_OUTPUT_RATE = 15
 

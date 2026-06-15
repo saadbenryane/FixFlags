@@ -20,7 +20,7 @@ export function getLocalScreenshotPath(
   device: string,
   pageKey?: string | null
 ): string {
-  const filename = pageKey ? `${pageKey}-${device}.webp` : `${device}.webp`
+  const filename = pageKey ? `${pageKey}-${device}.png` : `${device}.png`
   return path.join(LOCAL_SCREENSHOTS_DIR, auditId, filename)
 }
 

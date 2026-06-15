@@ -2,7 +2,7 @@
  * QualityOS design tokens
  *
  * Palette: warm paper neutrals (60%), ink structure (30%), ochre accent (10%)
- * Depth: shadow-first — borders reserved for inputs and data tables only
+ * Depth: shadow-first - borders reserved for inputs and data tables only
  * Type: Fraunces display + Source Sans 3 body + IBM Plex Mono labels
  *
  * Brand grid (marketing + reports):
@@ -29,13 +29,13 @@
   --secondary: 38 14% 94%;
   --secondary-foreground: 25 10% 13%;
 
-  /* ── Color: 10% accent (refined ochre — CTAs & scores only) ── */
+  /* ── Color: 10% accent (refined ochre - CTAs & scores only) ── */
   --brand: 28 45% 38%;
   --brand-foreground: 42 26% 99%;
   --accent: 36 40% 95%;
   --accent-foreground: 25 10% 13%;
 
-  /* Links & focus — independent of brand (slate-blue, WCAG AA on paper) */
+  /* Links & focus - independent of brand (slate-blue, WCAG AA on paper) */
   --link: 220 45% 38%;
   --link-hover: 220 50% 32%;
   --focus-ring: 220 55% 45%;

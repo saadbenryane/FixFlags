@@ -20,7 +20,7 @@ Use with `qualityos-design-system` and `writing-simple.md`.
 | `--background` | Warm paper white (42° hue) |
 | `--foreground` | Warm ink |
 | `--muted` | Section wash, not gray slab |
-| `--brand` | Refined ochre (28° 62% 37%) — not neon amber |
+| `--brand` | Refined ochre (28° 62% 37%), not neon amber |
 | `--accent` | Soft wash for hero radial only |
 
 Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
@@ -29,16 +29,16 @@ Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
 
 - Display serif for headlines only
 - Body stays Source Sans, never tightened
-- Section labels optional — drop when headline is enough
+- Section labels optional, drop when headline is enough
 - Pain/workflow blocks: title + one line. No icons unless semantic.
 
 ## Marketing page structure (lean)
 
-1. Hero — pitch + input + proof card
-2. Mechanism — 3 steps, no cards
-3. Problem — 3 columns, no boxes
-4. Workflow — numbered, no connector line
-5. Proof / pricing / FAQ — shadow cards only where needed
+1. Hero, pitch + input + proof card
+2. Mechanism, 3 steps, no cards
+3. Problem, 3 columns, no boxes
+4. Workflow, numbered, no connector line
+5. Proof / pricing / FAQ, shadow cards only where needed
 
 Cut any section that repeats the hero promise.
 

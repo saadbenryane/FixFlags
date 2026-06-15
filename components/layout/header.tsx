@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND, HERO } from '@/lib/marketing/copy'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
@@ -61,9 +61,14 @@ export function Header({
     ) : variant === 'admin' ? (
       <AdminHeaderRight />
     ) : (
-      <Button variant="outline" size="sm" asChild className="ml-2">
-        <Link href="/sign-in">Sign in</Link>
-      </Button>
+      <div className="ml-2 flex items-center gap-2">
+        <Button size="sm" asChild>
+          <Link href="/#audit">{HERO.primaryCta}</Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/sign-in">Sign in</Link>
+        </Button>
+      </div>
     )
 
   const resolvedRight = right ?? defaultRight

@@ -16,7 +16,7 @@ This document preserves the operator voice principles from the design system spe
 
 ---
 
-# PART 2 — VOICE & LANGUAGE STYLE
+# PART 2, VOICE & LANGUAGE STYLE
 
 ## Core voice
 

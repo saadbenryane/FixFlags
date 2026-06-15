@@ -2,7 +2,7 @@
 
 Reference when drafting or rewriting `lib/marketing/copy.ts`. All examples follow `docs/voice-and-copy.md`.
 
-## Hero — Segment A (AI shipper) ✓ current default
+## Hero, Segment A (AI shipper) ✓ current default
 
 ```
 Headline: Check your site before you ship
@@ -11,7 +11,7 @@ Trust: Free. No account. Under 60 seconds.
 CTA: Audit my site | See sample report
 ```
 
-## Hero — Segment B (existing site owner) — test variant
+## Hero, Segment B (existing site owner), test variant
 
 ```
 Headline: Your site is live. See what's still costing you signups.
@@ -55,7 +55,7 @@ A: Copy fix prompts from the report, or upgrade to Team for read-only share link
 
 ---
 
-## Upgrade moments — Segment B tone
+## Upgrade moments, Segment B tone
 
 | Moment | AI shipper headline | Existing site owner headline |
 |--------|---------------------|------------------------------|
@@ -68,10 +68,10 @@ Implementation lives in `lib/billing/upgrade-moments.ts`. Match voice, adjust no
 
 ---
 
-## SEO title/description — Segment B page (future)
+## SEO title/description, Segment B page (future)
 
 ```
-Title: Homepage conversion audit — graded in 60 seconds
+Title: Homepage conversion audit, graded in 60 seconds
 Description: Paste your live URL. See conversion, trust, and mobile grades with evidence and fix prompts. Free first audit.
 ```
 

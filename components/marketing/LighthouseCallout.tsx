@@ -7,7 +7,7 @@ export function LighthouseCallout({ className }: { className?: string }) {
   return (
     <p className={className}>
       {DIFFERENTIATION.subhead}{' '}
-      <TextLink href="/#lighthouse-comparison">See full comparison</TextLink> or{' '}
+      <TextLink href="/faq">See FAQ</TextLink> or{' '}
       <TextLink href={LIGHTHOUSE_DOCS} target="_blank" rel="noopener noreferrer">
         Google Lighthouse docs
       </TextLink>

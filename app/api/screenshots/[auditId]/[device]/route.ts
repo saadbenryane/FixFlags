@@ -45,7 +45,7 @@ export async function GET(
       const buffer = await fs.readFile(filePath)
       return new NextResponse(buffer, {
         headers: {
-          'Content-Type': 'image/webp',
+          'Content-Type': 'image/png',
           'Cache-Control': 'private, max-age=3600',
         },
       })

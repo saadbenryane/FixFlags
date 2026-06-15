@@ -44,7 +44,7 @@ export async function uploadScreenshot(
     throw new Error('R2 storage is not configured')
   }
 
-  const key = `screenshots/${auditId}/${pageKey ? `${pageKey}-` : ''}${device}.webp`
+  const key = `screenshots/${auditId}/${pageKey ? `${pageKey}-` : ''}${device}.png`
   const r2 = getR2Client()
 
   await r2.send(
@@ -52,7 +52,7 @@ export async function uploadScreenshot(
       Bucket: process.env.R2_BUCKET_NAME!,
       Key: key,
       Body: imageBuffer,
-      ContentType: 'image/webp',
+      ContentType: 'image/png',
       CacheControl: 'public, max-age=31536000',
     })
   )
