@@ -14,8 +14,6 @@ interface Props {
   areas: Area[]
 }
 
-const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
-
 export function AreaSummaryGrid({ areas }: Props) {
   const ordered = AREA_ORDER.map((name) => areas.find((a) => a.name === name)).filter(Boolean) as Area[]
 
@@ -29,14 +27,13 @@ export function AreaSummaryGrid({ areas }: Props) {
     <div className="grid gap-2 sm:grid-cols-2">
       {ordered.map((area) => {
         const issueCount = area.findings?.length ?? 0
-        const showScore = OBJECTIVE_AREAS.has(area.name)
 
         return (
           <div key={area.name} className="relative">
             <ScoreCard
               areaName={area.name}
               grade={area.grade}
-              score={showScore ? area.score : null}
+              score={area.score}
               size="sm"
             />
             <div className="mt-2 flex items-center justify-between px-1 text-xs text-muted-foreground">

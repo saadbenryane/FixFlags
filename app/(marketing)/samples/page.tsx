@@ -3,6 +3,7 @@ import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAudi
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { Container } from '@/components/ui/container'
+import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
 import { SAMPLES_PAGE } from '@/lib/marketing/copy'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
@@ -25,7 +26,7 @@ export default async function SamplesPage() {
     : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
 
   return (
-    <>
+    <Section spacing="default">
       <Container variant="report" className="pt-8 pb-2">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -49,6 +50,6 @@ export default async function SamplesPage() {
         isLoggedIn={false}
         variant="sample"
       />
-    </>
+    </Section>
   )
 }

@@ -27,6 +27,8 @@ interface AuditProgressProps {
   desktopScreenshotUrl?: string | null
   mobileScreenshotUrl?: string | null
   screenshotCapture?: ScreenshotCaptureStatus
+  /** When true, skip inline worker warning (parent shows banner). */
+  hideWorkerWarning?: boolean
 }
 
 export function AuditProgress({
@@ -36,9 +38,11 @@ export function AuditProgress({
   desktopScreenshotUrl,
   mobileScreenshotUrl,
   screenshotCapture,
+  hideWorkerWarning = false,
 }: AuditProgressProps) {
   const [tick, setTick] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
+  const [queuedElapsed, setQueuedElapsed] = useState(0)
+  const [runElapsed, setRunElapsed] = useState(0)
 
   const stageProgress = getStageProgress(status)
   const stageIdx = statusToStageIndex(status)
@@ -46,7 +50,11 @@ export function AuditProgress({
   const activityMessage = getActivityMessage(activeStage, tick)
   const isTerminal = status === 'COMPLETED' || status === 'FAILED'
   const showWorkerWarning =
-    process.env.NODE_ENV === 'development' && status === 'QUEUED' && elapsed >= 30
+    !hideWorkerWarning &&
+    process.env.NODE_ENV === 'development' &&
+    status === 'QUEUED' &&
+    queuedElapsed >= 30
+  const displayElapsed = startedAt ? runElapsed : queuedElapsed
   const frameState = desktopScreenshotUrl
     ? 'loaded'
     : status === 'FAILED'
@@ -64,9 +72,18 @@ export function AuditProgress({
   }, [isTerminal])
 
   useEffect(() => {
+    if (isTerminal || status !== 'QUEUED') return
+    const start = Date.now()
+    const update = () => setQueuedElapsed(Math.floor((Date.now() - start) / 1000))
+    update()
+    const interval = setInterval(update, 1000)
+    return () => clearInterval(interval)
+  }, [isTerminal, status])
+
+  useEffect(() => {
     if (!startedAt) return
     const start = new Date(startedAt).getTime()
-    const update = () => setElapsed(Math.floor((Date.now() - start) / 1000))
+    const update = () => setRunElapsed(Math.floor((Date.now() - start) / 1000))
     update()
     const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
@@ -114,7 +131,9 @@ export function AuditProgress({
               Step {stageProgress.current} of {stageProgress.total}
             </span>
             <span className="text-muted-foreground tabular-nums">
-              {startedAt ? formatElapsed(elapsed) : AUDIT_PROGRESS.usuallyUnder}
+              {startedAt || status === 'QUEUED'
+                ? formatElapsed(displayElapsed)
+                : AUDIT_PROGRESS.usuallyUnder}
             </span>
           </div>
           <Progress

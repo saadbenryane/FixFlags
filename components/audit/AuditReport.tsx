@@ -7,7 +7,7 @@ import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { PriorityFindings } from '@/components/audit/PriorityFindings'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
-import { UPSELLS } from '@/lib/marketing/copy'
+import { UPSELLS, AUDIT_REPORT, HERO } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
@@ -219,31 +219,28 @@ export function AuditReport({
 
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
       {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
-        <div className="rounded-card border-0 bg-muted/30 p-5 space-y-2 shadow-card">
-          <h3 className="font-semibold text-sm">Next: prove your fixes worked</h3>
+        <div className="surface-raised rounded-xl p-5 space-y-2 shadow-card">
+          <h3 className="font-semibold text-sm">{AUDIT_REPORT.recheckHint.title}</h3>
           <p className="text-sm text-muted-foreground text-pretty">
-            Paste fix prompts into your editor, ship the changes, then hit{' '}
-            <strong>{canUseFreeRecheck && !viewerIsPaid ? 'Re-check free (1x)' : 'Re-check'}</strong> above
-            to compare before/after scores.
+            {AUDIT_REPORT.recheckHint.bodyPrefix}{' '}
+            <strong>{canUseFreeRecheck && !viewerIsPaid ? 'Re-check free (1x)' : 'Re-check'}</strong>{' '}
+            {AUDIT_REPORT.recheckHint.bodySuffix}
           </p>
         </div>
       )}
 
       {isSample && (
-        <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
-          <h3 className="font-semibold">Run the same audit on your site</h3>
-          <p className="text-sm text-muted-foreground text-pretty">
-            Paste a URL. Get graded findings across seven areas and copy-ready fix prompts for your
-            agent.
-          </p>
+        <div className="surface-raised rounded-xl p-6 text-center space-y-3 shadow-card">
+          <h3 className="font-semibold">{AUDIT_REPORT.sampleCta.title}</h3>
+          <p className="text-sm text-muted-foreground text-pretty">{AUDIT_REPORT.sampleCta.body}</p>
           <Button asChild>
-            <Link href="/">Audit your site</Link>
+            <Link href="/">{HERO.primaryCta}</Link>
           </Button>
         </div>
       )}
 
       {!isSample && !isLoggedIn && (
-        <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-3">
+        <div className="surface-raised rounded-xl p-6 text-center space-y-3 shadow-card">
           <h3 className="font-semibold">{UPSELLS.anon.headline}</h3>
           <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
           <div className="flex justify-center gap-3">

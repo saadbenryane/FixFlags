@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { UserTable } from '@/components/admin/UserTable'
 import { formatUsd } from '@/lib/billing/costs'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
@@ -44,7 +45,7 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-bold">Users ({rows.length})</h1>
+      <PageHeader title={`Users (${rows.length})`} />
       <UserTable users={rows} />
     </div>
   )

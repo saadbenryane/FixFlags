@@ -37,7 +37,7 @@ const ABOVE_FOLD_COPY = [
 ]
 
 describe('homepage message guardrails', () => {
-  it('hero headline is one clear outcome (≤8 words per line)', () => {
+  it('hero headline is one clear outcome (≤4 words per line)', () => {
     assert.ok(HERO.headlineLine1.split(/\s+/).length <= 4)
     assert.ok(HERO.headlineLine2.split(/\s+/).length <= 4)
     assert.equal(HERO.headline, `${HERO.headlineLine1} ${HERO.headlineLine2}`)
@@ -49,9 +49,16 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience line names who it is for', () => {
+  it('audience line names a single tight audience', () => {
     assert.match(HERO.audienceLine, /shipping weekly/i)
-    assert.match(HERO.audienceLine, /live sites/i)
+    assert.ok(!/live sites/i.test(HERO.audienceLine))
+  })
+
+  it('hero subhead adds mechanism and deliverables, not headline echo', () => {
+    assert.match(HERO.subhead, /paste a url/i)
+    assert.match(HERO.subhead, /screenshots/i)
+    assert.ok(!HERO.subhead.toLowerCase().includes(HERO.headlineLine1.toLowerCase()))
+    assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 
   it('AI tools named once in segment proof, not repeated in hero', () => {
@@ -86,9 +93,9 @@ describe('homepage message guardrails', () => {
     assert.ok(MCP_SECTION.closing.length > 0)
   })
 
-  it('primary CTA is verb-first Run audit', () => {
-    assert.equal(HERO.primaryCta, 'Run audit')
-    assert.equal(PROOF_SECTION.cta, 'Run audit')
+  it('primary CTA is a delivery promise', () => {
+    assert.equal(HERO.primaryCta, 'Get my report')
+    assert.equal(PROOF_SECTION.cta, 'Get my report')
   })
 
   it('DIFFERENTIATION has at most 3 bullets and 5 comparison rows', () => {

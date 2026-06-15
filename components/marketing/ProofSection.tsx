@@ -13,8 +13,6 @@ import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
-
 export function ProofSection({ sample }: { sample: SampleResult }) {
   const audit = sample.audit
   const scoreGrade = audit.score === null ? null : gradeFromScore(audit.score)
@@ -54,7 +52,7 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
                   <ScoreCard
                     areaName={area.name}
                     grade={area.grade}
-                    score={OBJECTIVE_AREAS.has(area.name) ? area.score : null}
+                    score={area.score}
                     size="sm"
                   />
                 </li>

@@ -14,6 +14,18 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
   as?: HeadingLevel
 }
 
+export function PageTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h1
+      className={cn(
+        'font-display text-[1.625rem] font-normal leading-heading tracking-heading text-balance sm:text-[1.875rem]',
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 export function Heading({ as: Tag = 'h2', className, ...props }: HeadingProps) {
   const isDisplay = Tag === 'h1' || Tag === 'h2'
   return (

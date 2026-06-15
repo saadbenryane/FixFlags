@@ -85,8 +85,19 @@ Tighter inside groups; generous between sections. Hero gets the most air.
 
 Apply `rounded-t-[var(--radius-nested-md)]` on full-bleed card headers when outer is `--radius-card`.
 
+## App shell (dashboard, billing, settings)
+
+- Wrap pages in `Container` + `PageHeader`
+- Raised panels: `surface-raised rounded-xl p-6 shadow-card` — not `rounded-xl border`
+- Settings nav: `SETTINGS_NAV` in `lib/site/nav.ts`
+
+## Shared constants
+
+- Audit area order: `AREA_ORDER` from `lib/audit/constants.ts` (UI, judge repair, MCP)
+
 ## Component defaults
 
+- **Upsells / upgrade cards:** `surface-raised` or `shadow-card`, not `border-2 border-primary/20`
 - **Buttons:** pill (`rounded-full`), primary = ink, outline = border
 - **Inputs (audit):** pill, exception to 6px rule (signature pattern)
 - **Cards:** `--radius-card`, shadow over heavy borders

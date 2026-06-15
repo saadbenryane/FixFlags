@@ -11,6 +11,7 @@ import {
 import { FilterPill } from '@/components/ui/filter-pill'
 import { IconInput } from '@/components/ui/icon-input'
 import { Heading } from '@/components/ui/typography'
+import { FAQ_SECTION } from '@/lib/marketing/copy'
 
 export interface FaqItem {
   question: string
@@ -20,6 +21,8 @@ export interface FaqItem {
 interface Props {
   items: readonly FaqItem[]
   title?: string
+  /** Uppercase label above title (hidden when title is empty) */
+  sectionLabel?: string
   /** First item open on load (e.g. /faq page) */
   defaultOpenFirst?: boolean
   /** Show search input */
@@ -46,6 +49,7 @@ function highlightMatch(text: string, query: string) {
 export function FaqSection({
   items,
   title = 'Frequently asked questions',
+  sectionLabel = FAQ_SECTION.label,
   defaultOpenFirst = false,
   searchable = false,
   anchorPills = 0,
@@ -67,7 +71,9 @@ export function FaqSection({
     <section className="space-y-8">
       {title && (
         <div className="space-y-3 text-center">
-          <p className="section-label">FAQ</p>
+          {title !== '' && sectionLabel && (
+            <p className="section-label">{sectionLabel}</p>
+          )}
           <Heading as="h2">{title}</Heading>
         </div>
       )}

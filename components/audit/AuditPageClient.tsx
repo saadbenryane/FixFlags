@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuditPolling } from '@/hooks/useAuditPolling'
+import { useWorkerIdleDetection } from '@/hooks/useWorkerIdleDetection'
 import { AuditProgress } from '@/components/audit/AuditProgress'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { AuditShell } from '@/components/layout/audit-shell'
@@ -46,6 +47,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     startedAt,
     statusPayload,
   } = useAuditPolling(id, { initialAudit, pollStatus })
+  const workerIdle = useWorkerIdleDetection(status)
   const [retryLoading, setRetryLoading] = useState(false)
   const [limitGate, setLimitGate] = useState<{
     message: string
@@ -212,6 +214,11 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             <h2 className="text-xl font-semibold text-center md:text-left">
               {AUDIT_PROGRESS.inProgress}
             </h2>
+            {showQueue && workerIdle && (
+              <p className="rounded-lg border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-brand">
+                {AUDIT_PROGRESS.workerQueuedWarning}
+              </p>
+            )}
             {showQueue && (
                 <QueuePosition
                   queuePosition={statusPayload?.queuePosition ?? initialQueue?.queuePosition}
@@ -221,6 +228,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
                   }
                   queueReason={statusPayload?.queueReason ?? initialQueue?.queueReason}
                   isLoggedIn={Boolean(session?.user)}
+                  workerIdle={workerIdle}
                 />
               )}
             <AuditProgress
@@ -231,6 +239,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
               desktopScreenshotUrl={desktopScreenshot?.url}
               mobileScreenshotUrl={mobileScreenshot?.url}
               screenshotCapture={statusPayload?.screenshotCapture}
+              hideWorkerWarning={workerIdle}
             />
           </div>
         )}

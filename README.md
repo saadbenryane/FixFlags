@@ -49,6 +49,7 @@ npx tsx scripts/capture-sample-screenshots.ts
 | `npm run dev` | Next.js only (audits stay queued without worker) |
 | `npm run worker` | Audit worker only |
 | `npm run dev:all` | Next.js + worker concurrently |
+| `npm run dev:full` | Alias for `dev:all` |
 | `npm run setup` | Docker up + migrate + generate + seed |
 | `npm run db:migrate` | Apply Prisma migrations |
 | `npm run db:seed` | Seed local admin user |

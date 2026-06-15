@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminExpertReviewsPage() {
   const orders = await prisma.expertReviewOrder.findMany({
@@ -19,12 +20,10 @@ export default async function AdminExpertReviewsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold">Expert Review orders</h1>
-        <p className="text-sm text-muted-foreground">
-          Mark orders fulfilled after you deliver the review.
-        </p>
-      </div>
+      <PageHeader
+        title="Expert Review orders"
+        description="Mark orders fulfilled after you deliver the review."
+      />
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Awaiting fulfillment ({pending.length})</h2>

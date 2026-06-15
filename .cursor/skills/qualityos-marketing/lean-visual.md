@@ -13,6 +13,12 @@ Use with `qualityos-design-system` and `writing-simple.md`.
 
 **Borders reserved for:** form inputs, data table row separators (30% opacity max), focus rings.
 
+## App surfaces (dashboard, billing, settings)
+
+- `Container` + `PageHeader` for page chrome
+- `surface-raised shadow-card` for panels — not bordered card wrappers
+- Upsells: shadow-first (`ContextualUpgradeCard`), never `border-2 border-primary/20`
+
 ## Palette (2026 lean)
 
 | Token | Role |

@@ -34,17 +34,17 @@ export default async function HomePage() {
     <>
       <HeroSection />
 
-      <ProblemSection />
-
       <SampleOutputSection sample={sample} />
+
+      <DifferentiationSection />
 
       <CaseStudiesSection />
 
-      <HowItWorksSection />
-
       <SocialProofSection />
 
-      <DifferentiationSection />
+      <ProblemSection />
+
+      <HowItWorksSection />
 
       <AgentWorkflowSection />
 

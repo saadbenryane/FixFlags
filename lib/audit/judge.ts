@@ -110,6 +110,8 @@ const ANTHROPIC_JUDGE_MODEL = 'claude-sonnet-4-20250514'
 const OPENAI_JUDGE_MODEL = 'gpt-4o-mini'
 const ANTHROPIC_MAX_TOKENS = 8192
 const OPENAI_MAX_TOKENS = 4096
+const OPENAI_JUDGE_TIMEOUT_MS = 60_000
+const ANTHROPIC_JUDGE_TIMEOUT_MS = 45_000
 
 export interface JudgeUsage {
   inputTokens: number
@@ -130,6 +132,7 @@ export function isRetryableJudgeError(err: unknown): boolean {
     message.includes('overloaded') ||
     message.includes('rate limit') ||
     message.includes('timeout') ||
+    message.includes('aborted') ||
     message.includes('503') ||
     message.includes('529') ||
     message.includes('429')
@@ -204,7 +207,7 @@ async function runAnthropicJudge(
   }
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 45_000)
+  const timeout = setTimeout(() => controller.abort(), ANTHROPIC_JUDGE_TIMEOUT_MS)
 
   try {
     const response = await anthropic.messages.create(
@@ -286,7 +289,7 @@ async function runOpenAIJudge(
   })
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 45_000)
+  const timeout = setTimeout(() => controller.abort(), OPENAI_JUDGE_TIMEOUT_MS)
 
   try {
     const response = await openai.chat.completions.create(

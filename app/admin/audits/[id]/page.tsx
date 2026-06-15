@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
@@ -28,12 +29,8 @@ export default async function AdminAuditDetailPage({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Audit detail</h1>
-          <p className="text-sm text-muted-foreground truncate max-w-xl">{audit.url}</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader title="Audit detail" description={audit.url}>
+        <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/audit/${audit.id}`}>View report</Link>
           </Button>
@@ -41,7 +38,7 @@ export default async function AdminAuditDetailPage({
             <a href={`/api/audits/${audit.id}/logs`} download>Download logs</a>
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline">{audit.status}</Badge>

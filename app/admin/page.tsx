@@ -2,7 +2,14 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd, sumEstimatedCost } from '@/lib/billing/costs'
+
+function StatValue({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="font-mono text-2xl font-medium tabular-nums tracking-tight">{children}</div>
+  )
+}
 
 function startOf(daysAgo: number): Date {
   const d = new Date()
@@ -73,16 +80,16 @@ export default async function AdminPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      <h1 className="text-2xl font-bold">Admin metrics</h1>
+      <PageHeader title="Admin metrics" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((s) => (
-          <Card key={s.label}>
+          <Card key={s.label} className="border-0 shadow-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{s.value}</div>
+              <StatValue>{s.value}</StatValue>
             </CardContent>
           </Card>
         ))}
@@ -92,12 +99,12 @@ export default async function AdminPage() {
         <h2 className="text-sm font-semibold mb-3">Estimated run costs</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {costStats.map((s) => (
-            <Card key={s.label}>
+            <Card key={s.label} className="border-0 shadow-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{s.value}</div>
+                <StatValue>{s.value}</StatValue>
               </CardContent>
             </Card>
           ))}
@@ -115,12 +122,12 @@ export default async function AdminPage() {
         <h2 className="text-sm font-semibold mb-3">Plan breakdown</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {plans.map((p) => (
-            <Card key={p.label}>
+            <Card key={p.label} className="border-0 shadow-card">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{p.label}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{p.value.toLocaleString()}</div>
+                <StatValue>{p.value.toLocaleString()}</StatValue>
               </CardContent>
             </Card>
           ))}

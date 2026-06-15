@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { FeedbackList } from '@/components/admin/FeedbackList'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminFeedbackPage() {
   const feedback = await prisma.findingFeedback.findMany({
@@ -45,12 +46,10 @@ export default async function AdminFeedbackPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Downvoted findings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {feedback.length} downvotes across {items.length} unique findings
-        </p>
-      </div>
+      <PageHeader
+        title="Downvoted findings"
+        description={`${feedback.length} downvotes across ${items.length} unique findings`}
+      />
       <FeedbackList items={items} />
     </div>
   )

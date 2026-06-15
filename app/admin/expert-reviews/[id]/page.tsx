@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { ExpertReviewEditor } from '@/components/admin/ExpertReviewEditor'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { TextLink } from '@/components/ui/text-link'
 
 export default async function AdminExpertReviewPage({
   params,
@@ -30,15 +32,13 @@ export default async function AdminExpertReviewPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">{order.email}</p>
-        <h1 className="text-2xl font-bold">Author Expert Review</h1>
+      <PageHeader title="Author Expert Review" description={order.email}>
         {order.audit && (
-          <Link href={`/audit/${order.audit.id}`} className="text-sm text-brand hover:underline">
+          <TextLink href={`/audit/${order.audit.id}`} className="text-sm shrink-0 max-w-xs truncate">
             {order.audit.url}
-          </Link>
+          </TextLink>
         )}
-      </div>
+      </PageHeader>
       <ExpertReviewEditor
         orderId={order.id}
         initialSummary={order.deliverable?.summary ?? ''}

@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import {
@@ -11,29 +12,19 @@ import { cn } from '@/lib/utils'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-interface Props {
+type Props = {
   pageJob: string | null
   pageType: string | null
   verdict: string | null
   score: number | null
   url: string
-  screenshots?: AuditScreenshot[]
+  screenshots?: AuditScreenshot[] | null
   screenshotLimited?: boolean
   screenshotPartial?: boolean
   launchReadiness?: LaunchReadinessData | null
   pageSpeedPartial?: boolean
-  desktopPageSpeedError?: string
-  mobilePageSpeedError?: string
-}
-
-function scoreTone(score: number | null): string {
-  if (score === null) return 'text-muted-foreground bg-muted/50 border-border'
-  const grade = gradeFromScore(score)
-  if (grade === 'A') return 'text-grade-A bg-grade-A/10 border-grade-A/25'
-  if (grade === 'B') return 'text-grade-B bg-grade-B/10 border-grade-B/25'
-  if (grade === 'C') return 'text-grade-C bg-grade-C/10 border-grade-C/25'
-  if (grade === 'D') return 'text-grade-D bg-grade-D/10 border-grade-D/25'
-  return 'text-grade-F bg-grade-F/10 border-grade-F/25'
+  desktopPageSpeedError?: string | null
+  mobilePageSpeedError?: string | null
 }
 
 export function AuditReportHero({
@@ -51,6 +42,7 @@ export function AuditReportHero({
   mobilePageSpeedError,
 }: Props) {
   const hasScreenshots = screenshots && screenshots.length > 0
+  const scoreGrade = score === null ? null : gradeFromScore(score)
 
   return (
     <div className="space-y-6">
@@ -87,17 +79,7 @@ export function AuditReportHero({
       )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div
-          className={cn(
-            'rounded-xl border p-4 text-center min-w-[88px] shrink-0',
-            scoreTone(score)
-          )}
-        >
-          <div className="text-4xl font-bold tabular-nums">{score ?? '-'}</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {score === null ? 'Unavailable' : `/ 100 · Grade ${gradeFromScore(score)}`}
-          </div>
-        </div>
+        <ScoreDisplay grade={scoreGrade} score={score} variant="hero" />
         <div className="flex-1 min-w-0 space-y-3">
           <ScoringLegend compact />
           <div className="flex items-center gap-2 flex-wrap">

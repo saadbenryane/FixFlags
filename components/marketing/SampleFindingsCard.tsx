@@ -3,7 +3,7 @@
 import { ArrowRight } from 'lucide-react'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
-import { GradeBadge } from '@/components/audit/GradeBadge'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ScoreCard } from '@/components/audit/ScoreCard'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { TextLink } from '@/components/ui/text-link'
@@ -46,12 +46,11 @@ export function SampleFindingsCard({
             />
           </div>
           {scoreGrade && sample.audit.score != null ? (
-            <div className="shrink-0 text-right">
-              <p className="font-mono text-2xl font-bold tabular-nums leading-none text-brand">
-                {sample.audit.score}
-              </p>
-              <GradeBadge grade={scoreGrade} size="sm" className="mt-1 justify-end" />
-            </div>
+            <ScoreDisplay
+              grade={scoreGrade}
+              score={sample.audit.score}
+              variant="inline"
+            />
           ) : null}
         </div>
 

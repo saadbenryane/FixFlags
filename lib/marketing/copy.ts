@@ -10,7 +10,7 @@ import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'Paste a URL. Get fix prompts.',
+  tagline: 'Fix what\u2019s killing signups, fast.',
   category: 'Automated checks + AI review with fix prompts',
   oneLiner: 'Paste a URL. Scored report with fix prompts on every issue.',
   tribeBadge: 'AI checks for agents',
@@ -27,16 +27,15 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  headline: 'Paste a URL. Get fix prompts.',
-  headlineLine1: 'Paste a URL.',
-  headlineLine2: 'Get fix prompts.',
-  audienceLine:
-    'For teams shipping weekly, live sites, product marketers, and growth + eng',
+  headline: 'Fix what\u2019s killing signups fast.',
+  headlineLine1: 'Fix what\u2019s killing signups',
+  headlineLine2: 'fast.',
+  audienceLine: 'For teams shipping weekly',
   headlineAccent: false,
   subhead:
-    'Fast to ship, easy to miss what costs signups. Scored report with screenshots and a copy-ready fix prompt on every issue.',
-  trustLine: 'Free · No account · Usually under 90 seconds',
-  primaryCta: 'Run audit',
+    'Paste a URL to get a scored report with screenshots and copy-ready prompts for mobile, trust, SEO, and conversion issues.',
+  trustLine: 'Free audit. No account required. Usually under 90 seconds.',
+  primaryCta: 'Get my report',
   secondaryCta: 'See sample report',
   trySampleCta: 'Try sample URL',
 } as const
@@ -63,9 +62,9 @@ export const SEGMENT_PROOF_SECTION = {
 
 export const HERO_FIX_PROMPT = {
   label: OUTPUT_LABELS.fixPrompt,
-  finding: 'Mobile CTA below fold at 375px',
+  finding: 'Primary button below fold at 375px',
   prompt:
-    'Move the primary CTA above the fold on 375px viewport. Current CTA starts at 1,200px from top. Hero should fit in first viewport with CTA visible without scrolling.',
+    'Move the primary button above the fold on 375px viewport. Current button starts at 1,200px from top. Hero should fit in first viewport with the main action visible without scrolling.',
 } as const
 
 export const HOW_IT_WORKS_SECTION = {
@@ -97,8 +96,8 @@ export const QUEUE_COPY = {
 } as const
 
 export const SAMPLE_FINDINGS = [
-  { area: 'Mobile', grade: 'C', issue: 'Primary CTA below fold at 375px' },
-  { area: 'SEO', grade: 'D', issue: 'og:image missing. Link previews show blank.' },
+  { area: 'Mobile', grade: 'C', issue: 'Primary button below fold at 375px' },
+  { area: 'SEO', grade: 'D', issue: 'Social preview image missing. Link previews show blank.' },
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
@@ -133,23 +132,23 @@ export const WORKFLOW_STEPS = [
 
 export const PROBLEM_SECTION = {
   label: 'Why you miss this in reviews',
-  headline: 'Fast to ship. Easy to miss what costs signups.',
-  subhead: 'Performance scores look fine. Layout, sharing, and conversion gaps hide until someone shares the link.',
+  headline: 'Performance scores look fine. Conversion gaps hide until someone shares the link.',
+  subhead: 'Layout, sharing, and trust issues slip past quick reviews until a link goes public.',
   pains: [
     {
       title: 'Off on mobile',
-      body: 'CTA below the fold. Tap targets too small.',
-      fixPrompt: 'Fix prompt for layout + tap targets',
+      body: 'Main action below the fold. Buttons too small to tap on mobile.',
+      fixPrompt: 'Fix prompt for layout + button sizing',
     },
     {
       title: 'Blank when shared',
-      body: 'Missing og:image. Empty link cards on Slack and X.',
-      fixPrompt: 'Fix prompt for og:image',
+      body: 'Missing social preview image. Empty link cards on Slack and X.',
+      fixPrompt: 'Fix prompt for social preview image',
     },
     {
       title: 'Unclear next step',
       body: 'Visitors leave without knowing what to do. Weak trust at the pay step.',
-      fixPrompt: 'Fix prompt for CTA + trust',
+      fixPrompt: 'Fix prompt for main action + trust',
     },
   ],
 } as const
@@ -178,8 +177,8 @@ export const DIFFERENTIATION = {
   comparisonRows: [
     { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Identifies missing social preview image', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
+    { feature: 'Checks mobile button placement', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
   ],
 } as const
@@ -191,7 +190,7 @@ export const SOCIAL_PROOF = {
   tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
   testimonial: {
     label: 'Example feedback',
-    quote: 'Fixed our og:image after the first audit. Link previews in Slack now show our branding instead of blank cards.',
+    quote: 'Fixed our social preview image after the first audit. Link previews in Slack now show our branding instead of blank cards.',
     author: 'Founder',
     company: 'B2B SaaS, 3-person team',
   },
@@ -201,8 +200,8 @@ export const CASE_STUDIES = [
   {
     id: 'og-image',
     company: 'SaaS landing page',
-    title: 'Fixed og:image',
-    outcome: 'Added per-page og:image. Each page type returns a unique preview card.',
+    title: 'Fixed social preview image',
+    outcome: 'Added per-page social preview images. Each page type returns a unique preview card.',
     area: 'SEO',
     scoreBefore: 64,
     scoreAfter: 78,
@@ -213,8 +212,8 @@ export const CASE_STUDIES = [
   {
     id: 'mobile-cta',
     company: 'E-commerce storefront',
-    title: 'Moved CTA up on mobile',
-    outcome: 'Restructured mobile hero. CTA visible without scrolling at 375px.',
+    title: 'Moved primary button up on mobile',
+    outcome: 'Restructured mobile hero. Main action visible without scrolling at 375px.',
     area: 'Mobile',
     scoreBefore: 58,
     scoreAfter: 78,
@@ -248,7 +247,7 @@ export const PROOF_SECTION = {
   subhead:
     'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
   nextStep: OUTPUT_LABELS.nextStep,
-  cta: 'Run audit',
+  cta: 'Get my report',
   sample: {
     name: 'QualityOS',
     domain: 'qualityos.com',
@@ -322,13 +321,19 @@ export const PRICING_TEASER = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Paste your URL. See what to fix first.',
+  headline: 'Get your report. See what to fix first.',
   trustLine: HERO.trustLine,
 } as const
 
 export const FAQ_SECTION = {
   title: 'Common questions',
   viewAll: 'View all questions',
+  label: 'FAQ',
+} as const
+
+export const FAQ_PAGE = {
+  title: 'Frequently asked questions',
+  subhead: 'Everything you need to know about QualityOS audits, fix prompts, and plans.',
 } as const
 
 export const FAQ = [
@@ -435,7 +440,19 @@ export const PLANS = getMarketingPlans()
 export const SAMPLES_PAGE = {
   subhead: 'This is what a completed QualityOS audit looks like: full report, all findings.',
   tierNote: 'Free includes the full report. Pro adds unlimited re-checks and MCP in your editor.',
-  bottomCta: 'Audit your site',
+  bottomCta: 'Get my report',
+} as const
+
+export const AUDIT_REPORT = {
+  recheckHint: {
+    title: 'Next: prove your fixes worked',
+    bodyPrefix: 'Paste fix prompts into your editor, ship the changes, then hit',
+    bodySuffix: 'above to compare before/after scores.',
+  },
+  sampleCta: {
+    title: 'Run the same audit on your site',
+    body: 'Paste a URL. See findings across seven areas and copy-ready fix prompts for your agent.',
+  },
 } as const
 
 export const MCP_DOCS = {
@@ -669,9 +686,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'QualityOS - Paste a URL. Get fix prompts.',
+    title: 'QualityOS - Fix what\u2019s killing signups, fast.',
     description:
-      'Scored report with desktop and mobile screenshots. Every issue includes a copy-ready fix prompt. Free first audit.',
+      'Paste a URL to get a scored report with screenshots and copy-ready fix prompts for mobile, trust, SEO, and conversion issues. Free first audit.',
   },
   pricing: {
     title: 'Pricing',

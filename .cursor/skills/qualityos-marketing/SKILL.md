@@ -8,9 +8,10 @@ description: QualityOS go-to-market, ICP segmentation, message research, copy fr
 Read before changing marketing copy, positioning, or GTM.
 
 **Canonical sources (always check first):**
-- Copy constants: `lib/marketing/copy.ts`
+- Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`)
+- Product behavior (entitlements, billing, dev): `.cursor/skills/qualityos-product/SKILL.md`
 - Voice rules: `docs/voice-and-copy.md`
-- Upgrade moments: `lib/billing/upgrade-moments.ts`
+- Upgrade moment resolver: `lib/billing/upgrade-moments.ts` (strings live in `copy.ts`)
 - Design polish: `.cursor/skills/qualityos-design-system/SKILL.md`
 
 ## Two audiences (do not collapse them)
@@ -82,7 +83,8 @@ From `docs/voice-and-copy.md` plus [writing-simple.md](writing-simple.md):
 - Operator clarity: short sentences, verb-first CTAs, name tools when relevant
 - Prefer: ship, fix, evidence, report, outcome, proof, check
 - Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes
-- CTAs are **promises**: "Audit my site" not "Get started"
+- CTAs are **promises**: `HERO.primaryCta` is **"Run audit"** — verb-first, not "Get started"
+- Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM), Studio — never promise unbuilt Agency/Studio bullets
 - One contextual CTA angle per page; never paste the same block everywhere
 - **Rule of one** per block: one reader, one pain, one outcome, one action
 
@@ -121,12 +123,12 @@ Full research methods: [research-workflows.md](research-workflows.md).
 
 | Channel | AI shipper angle | Existing site owner angle |
 |---------|------------------|---------------------------|
-| **Homepage hero** | Check before you ship | Your site is live, see what's still broken |
+| **Homepage hero** | Check before you ship | Live site — see what to fix first |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
-| **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, full report) |
-| **Upgrade moments** | Hidden findings, re-check loop | Score flat after fixes, share report with client |
-| **MCP docs** | Primary path | Secondary; note Lovable/Bolt copy-paste path |
+| **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
+| **Upgrade moments** | Hidden findings, re-check loop | Score flat after fixes, share report with client (Agency+) |
+| **MCP docs** | HTTP `/api/mcp` + API key (Pro+) | Secondary; note Lovable/Bolt copy-paste path |
 
 ## Editing marketing copy (workflow)
 
@@ -137,6 +139,16 @@ Full research methods: [research-workflows.md](research-workflows.md).
 5. Check visual/copy alignment with design system skill
 6. Update `copy.ts` only, pages import from there
 7. For FAQ/objections, add question in visitor language, answer with evidence + boundary
+
+## Product–copy alignment
+
+Before shipping marketing changes, verify against `qualityos-product` skill:
+
+- Re-check: paid = unlimited, no quota; free = 1 trial compare
+- Share links: Agency (TEAM)+ only
+- MCP: Pro+ only, HTTP config in docs
+- Prices/teaser: from `getMarketingPlans()`, not hardcoded
+- Local dev: document `npm run dev:all` when mentioning audit speed
 
 ## Anti-patterns
 

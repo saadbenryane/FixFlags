@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Clock, BookOpen } from 'lucide-react'
 import { MARKETING_LINKS } from '@/lib/site/nav'
 import { NavLink } from '@/components/layout/nav-link'
-import { QUEUE_COPY } from '@/lib/marketing/copy'
+import { QUEUE_COPY, AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import {
   NAV_LINK_ACTIVE,
   NAV_LINK_BASE,
@@ -17,6 +17,7 @@ interface QueuePositionProps {
   scheduledStartAt?: string | null
   queueReason?: 'rate_limit' | 'backlog'
   isLoggedIn?: boolean
+  workerIdle?: boolean
 }
 
 function formatWait(seconds: number): string {
@@ -42,6 +43,7 @@ export function QueuePosition({
   scheduledStartAt,
   queueReason,
   isLoggedIn,
+  workerIdle = false,
 }: QueuePositionProps) {
   const [remaining, setRemaining] = useState(() =>
     scheduledStartAt ? secondsUntil(scheduledStartAt) : estimatedSeconds
@@ -60,6 +62,18 @@ export function QueuePosition({
 
   const displaySeconds = scheduledStartAt ? remaining : estimatedSeconds
   const isRateLimited = queueReason === 'rate_limit'
+
+  if (workerIdle) {
+    return (
+      <div
+        className="space-y-3 rounded-card border border-dashed border-muted-foreground/30 bg-muted/30 p-4"
+        role="status"
+      >
+        <p className="text-sm font-medium">Waiting for worker</p>
+        <p className="text-sm text-muted-foreground">{AUDIT_PROGRESS.workerQueuedWarning}</p>
+      </div>
+    )
+  }
 
   const statusLine = isRateLimited
     ? 'Your audit is queued'

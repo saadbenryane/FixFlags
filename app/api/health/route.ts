@@ -23,9 +23,12 @@ export async function GET() {
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
       ])
       checks.redis = 'ok'
-      checks.queueWaiting = String((counts as Record<string, number>).waiting ?? 0)
-      checks.queueActive = String((counts as Record<string, number>).active ?? 0)
+      const waiting = (counts as Record<string, number>).waiting ?? 0
+      const active = (counts as Record<string, number>).active ?? 0
+      checks.queueWaiting = String(waiting)
+      checks.queueActive = String(active)
       checks.queueDelayed = String((counts as Record<string, number>).delayed ?? 0)
+      checks.workerLikelyIdle = String(waiting > 0 && active === 0)
     } catch {
       checks.redis = 'error'
     }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AreaGrid } from '@/components/audit/AreaGrid'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
-import { GradeBadge } from '@/components/audit/GradeBadge'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -47,7 +47,7 @@ export function ExampleAuditCard({ audit }: Props) {
               <span className="line-clamp-1 italic">&ldquo;{audit.verdict}&rdquo;</span>
             </div>
           </div>
-          <GradeBadge grade={audit.grade} score={audit.score} />
+          <ScoreDisplay grade={audit.grade} score={audit.score} variant="inline" />
         </div>
       </CardHeader>
 

@@ -11,7 +11,7 @@ Pick exactly one of each. If you need two, split into two blocks.
 | **Who** | One reader situation | Has a public URL (new or live) |
 | **Problem** | One pain | Issues on the page cost signups |
 | **Outcome** | One result | Clear report + fix prompts |
-| **Action** | One CTA | Audit my site |
+| **Action** | One CTA | Run audit |
 
 ## Writing models to steal from
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatUsd } from '@/lib/billing/costs'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { cn } from '@/lib/utils'
 
 export default async function AdminAuditsPage() {
@@ -29,7 +30,7 @@ export default async function AdminAuditsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      <h1 className="text-2xl font-bold">Recent audits</h1>
+      <PageHeader title="Recent audits" />
       <div className="rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
           <thead>

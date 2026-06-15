@@ -34,6 +34,7 @@ export function HeroSection() {
                 <span className="block text-foreground">{HERO.headlineLine2}</span>
               </Heading>
               <Lead>{HERO.subhead}</Lead>
+              <Muted>{TRUST_LINE}</Muted>
             </div>
 
             <div
@@ -44,7 +45,6 @@ export function HeroSection() {
             </div>
 
             <div className={cn('space-y-6', STAGGER[2])}>
-              <Muted>{TRUST_LINE}</Muted>
               <TextLink href="/samples" className="text-sm">
                 {HERO.secondaryCta}
                 <ArrowRight className="h-3.5 w-3.5" />
