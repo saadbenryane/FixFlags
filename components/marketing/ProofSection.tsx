@@ -11,7 +11,7 @@ import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
-import { PROOF_SECTION } from '@/lib/marketing/copy'
+import { PROOF_SECTION, OUTPUT_LABELS } from '@/lib/marketing/copy'
 import type { SampleResult } from '@/lib/marketing/live-sample'
 import { areaLabel } from '@/lib/utils'
 import { gradeFromScore } from '@/lib/audit/scoring'
@@ -85,7 +85,7 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
           <ThirdPartyAuditDisclaimer variant="compact" className="mx-auto max-w-prose text-left" />
           <Button variant="outline" asChild>
             <Link href="/samples">
-              View full sample report
+              {OUTPUT_LABELS.seeFullSample}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

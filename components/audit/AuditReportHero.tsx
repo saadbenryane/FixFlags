@@ -93,7 +93,7 @@ export function AuditReportHero({
             scoreTone(score)
           )}
         >
-          <div className="text-4xl font-bold tabular-nums">{score ?? '—'}</div>
+          <div className="text-4xl font-bold tabular-nums">{score ?? '-'}</div>
           <div className="text-xs text-muted-foreground mt-1">
             {score === null ? 'Unavailable' : `/ 100 · Grade ${gradeFromScore(score)}`}
           </div>
@@ -120,7 +120,7 @@ export function AuditReportHero({
 
       {screenshotLimited && (
         <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          Visual review limited — desktop screenshot could not be captured for this audit.
+          Visual review limited, desktop screenshot could not be captured for this audit.
         </div>
       )}
 

@@ -130,7 +130,7 @@ export function ProjectsPanel({ plan }: Props) {
         <div>
           <h2 className="text-sm font-medium">Projects</h2>
           <p className="text-xs text-muted-foreground">
-            {projects.length} / {limit} used — assign audits from report pages
+            {projects.length} / {limit} used, assign audits from report pages
           </p>
         </div>
       </div>

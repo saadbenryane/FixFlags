@@ -107,7 +107,7 @@ function FindingRowContent({
           <p className="text-sm font-medium leading-snug text-pretty">{finding.problem}</p>
           {finding.confidence != null && finding.confidence < 0.8 && (
             <p className="text-[10px] text-muted-foreground">
-              Lower confidence ({Math.round(finding.confidence * 100)}%) — verify before acting
+              Lower confidence ({Math.round(finding.confidence * 100)}%), verify before acting
             </p>
           )}
           {finding.pageUrl && (

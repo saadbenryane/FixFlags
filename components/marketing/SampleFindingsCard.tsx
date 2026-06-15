@@ -11,7 +11,9 @@ import {
   getTopFixPromptFromAreas,
   rankFindingsByPriority,
 } from '@/lib/audit/priority-findings'
+import { HERO_FIX_PROMPT, OUTPUT_LABELS, SAMPLE_FINDINGS_HEADER } from '@/lib/marketing/copy'
 import { areaLabel, cn } from '@/lib/utils'
+import { LabelCaps } from '@/components/ui/typography'
 
 export function SampleFindingsCard({
   className,
@@ -31,6 +33,7 @@ export function SampleFindingsCard({
     return (
       <div className={cn('overflow-hidden rounded-card border-0 bg-card shadow-card', className)}>
         <div className="space-y-3 px-5 py-4">
+          <LabelCaps>{SAMPLE_FINDINGS_HEADER}</LabelCaps>
           <div className="min-w-0 space-y-2">
             <SampleStatusBadge
               source={sample.source}
@@ -65,7 +68,7 @@ export function SampleFindingsCard({
         {fixPrompt && (
           <div className="space-y-2 border-t border-border/15 px-5 py-4">
             <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-              Example fix prompt
+              {HERO_FIX_PROMPT.label}
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
               {fixPrompt.prompt}
@@ -74,10 +77,9 @@ export function SampleFindingsCard({
           </div>
         )}
 
-        <div className="space-y-2 border-t border-border/15 px-5 py-4">
-          <ThirdPartyAuditDisclaimer variant="compact" />
+        <div className="border-t border-border/15 px-5 py-4">
           <TextLink href="/samples" className="text-sm font-medium">
-            View full sample report
+            {OUTPUT_LABELS.seeFullSample}
             <ArrowRight className="h-3.5 w-3.5" />
           </TextLink>
         </div>
@@ -112,7 +114,7 @@ export function SampleFindingsCard({
       {fixPrompt && (
         <div className="space-y-2 border-t border-border/15 px-5 py-4">
           <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-            Agent fix prompt
+            {HERO_FIX_PROMPT.label}
           </p>
           {fixPrompt.finding && <p className="text-xs font-medium">{fixPrompt.finding}</p>}
           <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
@@ -151,7 +153,7 @@ export function SampleFindingsCard({
       <div className="space-y-2 border-t border-border/15 px-5 py-4">
         <ThirdPartyAuditDisclaimer variant="compact" showPipeline />
         <TextLink href="/samples" className="text-sm font-medium">
-          View full sample report
+          {OUTPUT_LABELS.seeFullSample}
           <ArrowRight className="h-3.5 w-3.5" />
         </TextLink>
       </div>

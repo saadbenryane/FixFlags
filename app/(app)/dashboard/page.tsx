@@ -122,7 +122,7 @@ export default async function DashboardPage() {
                             )}
                             title={areaLabel(area.name)}
                           >
-                            {area.grade ?? '—'}
+                            {area.grade ?? '-'}
                           </div>
                         ))}
                         {audit.rechecks.length > 0 && (

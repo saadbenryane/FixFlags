@@ -67,7 +67,7 @@ export async function notifyExpertReviewPaid(params: {
     userId: params.userId,
     emailType: `expert-review-paid:${params.orderId}`,
     to: params.email,
-    subject: 'Expert Review confirmed — we will respond within 48 hours',
+    subject: 'Expert Review confirmed, we will respond within 48 hours',
     html: `
       <p>Thanks for requesting an Expert Review from QualityOS.</p>
       <p>We received your payment and will respond within <strong>48 hours</strong> with a written review and prioritized fix list.</p>
@@ -81,7 +81,7 @@ export async function notifyExpertReviewPaid(params: {
       userId: params.userId,
       emailType: `expert-review-admin:${params.orderId}`,
       to: ADMIN_EMAIL,
-      subject: `Expert Review paid — ${params.email}`,
+      subject: `Expert Review paid - ${params.email}`,
       html: `
         <p>New Expert Review order <strong>${params.orderId}</strong></p>
         <p>Customer: ${params.email}</p>

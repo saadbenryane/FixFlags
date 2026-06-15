@@ -20,7 +20,7 @@ function collectMarketingFiles(dir: string): string[] {
   return files
 }
 
-describe('marketing trust — no speculative copy', () => {
+describe('marketing trust - no speculative copy', () => {
   for (const file of collectMarketingFiles(MARKETING_DIR)) {
     const rel = file.replace(process.cwd() + '/', '')
     it(`${rel} has no speculation patterns`, () => {

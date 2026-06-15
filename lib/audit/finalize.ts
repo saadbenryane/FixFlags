@@ -164,7 +164,7 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
 
   const stubVerdict =
     audit.verdict ??
-    'AI summary unavailable — deterministic checks and screenshots are shown below.'
+    'AI summary unavailable, deterministic checks and screenshots are shown below.'
 
   await logPipelineEvent(input.auditId, {
     stage: input.failureStage,

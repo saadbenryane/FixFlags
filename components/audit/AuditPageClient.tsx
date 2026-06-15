@@ -101,7 +101,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       return
     }
     if (status === 'QUEUED' && url) {
-      document.title = `Queued — ${auditHostname(url)} · QualityOS`
+      document.title = `Queued - ${auditHostname(url)} · QualityOS`
     } else if (inProgress && url) {
       document.title = `Auditing ${auditHostname(url)} · QualityOS`
     }

@@ -29,7 +29,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: `${BRAND.name} — ${HERO.headline}`,
+  title: `${BRAND.name} - ${HERO.headline}`,
   description: HERO.subhead,
   openGraph: {
     title: BRAND.name,

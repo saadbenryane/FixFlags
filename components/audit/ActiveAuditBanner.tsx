@@ -64,7 +64,7 @@ export function ActiveAuditBanner() {
           <span>
             {isQueued ? 'Audit queued for' : 'Audit running for'}{' '}
             <span className="font-medium text-foreground">{hostname}</span>
-            {waitLabel ? ` — ${waitLabel}` : null}
+            {waitLabel ? ` - ${waitLabel}` : null}
           </span>
           <Link
             href={`/audit/${active.auditId}`}

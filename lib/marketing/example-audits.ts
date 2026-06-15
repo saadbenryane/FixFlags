@@ -136,7 +136,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: After scrolling through a 2000px+ article, there is no "next step" CTA near the content end.',
             whyItMatters:
-              'Engaged readers who finish articles are high-intent — missing CTA is a missed conversion opportunity.',
+              'Engaged readers who finish articles are high-intent, missing CTA is a missed conversion opportunity.',
             fix: 'Add a content-end CTA: "Try the audit →" or "Read the guide →".',
             agentPrompt:
               'Add a CTA section after `#article-body` content and before `footer`. Use existing button styling: "Try the audit →". Verify CTA renders within 200px of the last content block at 1280x900.',
@@ -174,7 +174,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: Several articles over 2000 words have no in-page navigation beyond the browser scrollbar.',
             whyItMatters:
-              'Long articles without in-page navigation force readers to scroll blindly — a table of contents lets them jump to relevant sections.',
+              'Long articles without in-page navigation force readers to scroll blindly, a table of contents lets them jump to relevant sections.',
             fix: 'Generate a sticky table of contents from the article heading hierarchy.',
             agentPrompt:
               'Add a sticky sidebar ToC that parses h2/h3 elements from `#article-body`. Render at widths > 900px. Each item scrolls smoothly to its section. Use `IntersectionObserver` to highlight the current section. Verify at 1280x900 desktop viewport.',
@@ -238,7 +238,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812 viewport: page-level hero animations drop frames (15fps on Moto G4 simulation).',
             whyItMatters:
-              'Janky animations drop to ~15fps on Moto G4 simulation — users perceive the page as slow.',
+              'Janky animations drop to ~15fps on Moto G4 simulation, users perceive the page as slow.',
             fix: 'Use `will-change: transform` on animated elements. Reduce animation complexity at mobile breakpoints.',
             agentPrompt:
               'Add `@media (prefers-reduced-motion: reduce) { .hero-animation { animation: none; } }`. At max-width: 768px, simplify hero animation to a single fade-in. Verify frame rate stays above 30fps on Moto G4 DevTools emulation.',
@@ -303,7 +303,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Desktop 1280x900: Every page uses the same Vercel logo og:image. No page-specific preview card.',
             whyItMatters:
-              'Generic og:image means every shared link shows the same preview — page-specific images help recipients recognize the content before clicking.',
+              'Generic og:image means every shared link shows the same preview, page-specific images help recipients recognize the content before clicking.',
             fix: 'Generate per-page og:images with page title and category overlay.',
             agentPrompt:
               'Create an `/api/og` edge route using `ImageResponse` or Satori. Generate 1200x630 PNGs with page title, category badge, and brand colors. Apply via `metadata.openGraph.images` per route. Verify each page type returns a unique og:image URL.',
@@ -342,7 +342,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812: hero animation and tagline consume full viewport. "Deploy now" CTA starts at 950px from top.',
             whyItMatters:
-              'On a 375x812 viewport, the CTA starts at 950px from top — visitors must scroll before they can take action.',
+              'On a 375x812 viewport, the CTA starts at 950px from top, visitors must scroll before they can take action.',
             fix: 'Restructure mobile hero so CTA appears within the first 600px. Reduce hero animation height.',
             agentPrompt:
               'At max-width: 768px, set `.hero-section` to `min-height: 100dvh` and position `.cta-button` at the bottom with `margin-top: auto`. Reduce hero graphic height to 30vh. Verify CTA is visible without scrolling at 375x812 viewport.',
@@ -353,7 +353,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             severity: 'MEDIUM',
             problem: 'Headline is brand-forward, not outcome-forward',
             evidence:
-              'Desktop 1280x900: "Develop. Preview. Ship." — describes actions, not the benefit. No audience or outcome named.',
+              'Desktop 1280x900: "Develop. Preview. Ship.", describes actions, not the benefit. No audience or outcome named.',
             whyItMatters:
               'Outcome-driven headlines help visitors understand the benefit, not just the product category.',
             fix: 'Test headline variation: "Deploy your frontend in seconds, not hours."',
@@ -408,9 +408,9 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
               'Sections like "Automatic SSL" and "Edge Functions" use developer terminology without framing the business benefit.',
             whyItMatters:
               'Non-technical stakeholders need to understand the value. Purely technical language can slow enterprise buying decisions.',
-            fix: 'Pair each feature with a one-line business benefit. Example: "Automatic SSL — ship securely without ops overhead."',
+            fix: 'Pair each feature with a one-line business benefit. Example: "Automatic SSL, ship securely without ops overhead."',
             agentPrompt:
-              'For each feature heading in the benefits section, add a subtitle that frames the business outcome. Pattern: "{Feature name} — {business benefit in under 12 words}". Keep technical details in the body copy below.',
+              'For each feature heading in the benefits section, add a subtitle that frames the business outcome. Pattern: "{Feature name}, {business benefit in under 12 words}". Keep technical details in the body copy below.',
             verificationRule: 'Each feature section has a benefit subtitle visible at 1280px viewport.',
           },
         ],
@@ -433,7 +433,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
             evidence:
               'Mobile 375x812: top nav + announcement banner = 178px out of 812px total.',
             whyItMatters:
-              'Nav + announcement banner consume 178px of 812px viewport height — content starts lower on screen.',
+              'Nav + announcement banner consume 178px of 812px viewport height, content starts lower on screen.',
             fix: 'Collapse nav to hamburger menu on mobile. Remove or slim down announcement banner.',
             agentPrompt:
               'At breakpoint max-width: 768px, replace desktop nav with hamburger toggle. Set nav container height to 56px. Slide-out menu overlays content instead of pushing it. Move announcement banner to a dismissible toast or remove entirely.',
@@ -545,11 +545,11 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
           {
             id: 'ex-wiki-seo-1',
             severity: 'HIGH',
-            problem: 'No og:image tag — shared Wikipedia links show no preview image',
+            problem: 'No og:image tag, shared Wikipedia links show no preview image',
             evidence:
               'Desktop 1280x900: HTML head has no og:image meta. When shared on social media, links render as text-only cards.',
             whyItMatters:
-              'HTML head has no og:image — shared links render as text-only cards on Slack, Twitter, and WhatsApp.',
+              'HTML head has no og:image, shared links render as text-only cards on Slack, Twitter, and WhatsApp.',
             fix: 'Generate og:image dynamically showing the article title, topic category (via tags), and Wikipedia wordmark.',
             agentPrompt:
               'Create an edge function at `/api/og` that accepts page title and first category tag. Returns 1200x630 PNG with Wikipedia wordmark, article title in readable font, and category badge. Apply via the page `metadata.openGraph` export in the skin templates.',

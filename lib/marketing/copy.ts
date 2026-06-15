@@ -1,5 +1,5 @@
 /**
- * QualityOS marketing copy — single source of truth.
+ * QualityOS marketing copy - single source of truth.
  *
  * Voice: operator clarity (see docs/voice-and-copy.md).
  * Do: short sentences, verb-first CTAs, name tools, lead with launch outcomes.
@@ -10,32 +10,44 @@ import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'QualityOS',
-  tagline: 'Your agent built it. QualityOS checks it.',
+  tagline: 'Audit your site. Ship fix prompts.',
   category: 'Automated checks + AI review with fix prompts',
   oneLiner: 'Paste a URL. Get a report with fix prompts on every issue.',
   tribeBadge: 'AI checks for agents',
 } as const
 
-/** Named once on the page — do not repeat in every section */
+/** Named once on the page - do not repeat in every section */
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
+export const OUTPUT_LABELS = {
+  whatYouGet: 'What you get',
+  fixPrompt: 'Fix prompt (copy-ready)',
+  seeFullSample: 'See full sample report',
+} as const
+
 export const HERO = {
-  headline: 'Your agent built it. QualityOS checks it.',
-  headlineLine1: 'Your agent built it.',
-  headlineLine2: 'QualityOS checks it.',
-  headlineAccent: true,
+  headline: 'Audit your site. Ship fix prompts.',
+  headlineLine1: 'Audit your site.',
+  headlineLine2: 'Ship fix prompts.',
+  headlineAccent: false,
   subhead:
-    'Run the ship loop: audit → fix prompts → re-check → before/after proof. AI reviews desktop and mobile screenshots across 7 areas.',
+    'Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts.',
   trustLine: 'Free · No account · Usually under 90 seconds',
   primaryCta: 'Run audit',
   secondaryCta: 'See sample report',
+  benefits: [
+    'Better SEO (found by search and AI).',
+    'Faster app (lighter, quicker loads).',
+    'Cleaner flows (buttons and CTAs that make sense).',
+    'Accessibility and mobile touch targets that work.',
+  ],
 } as const
 
 export const HERO_MECHANISM_LINE =
   'Screenshots · Automated checks · AI review · Fix prompts' as const
 
 export const HERO_FIX_PROMPT = {
-  label: 'Example fix prompt',
+  label: OUTPUT_LABELS.fixPrompt,
   finding: 'Mobile CTA below fold at 375px',
   prompt:
     'Move the primary CTA above the fold on 375px viewport. Current CTA starts at 1,200px from top. Hero should fit in first viewport with CTA visible without scrolling.',
@@ -43,34 +55,29 @@ export const HERO_FIX_PROMPT = {
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'Four steps in the ship loop',
-  subhead: 'No account required for your first audit.',
+  headline: 'Audit, fix, prove',
+  subhead: 'Three steps from URL to before/after proof.',
   steps: [
     {
       step: 1,
-      title: 'Paste your URL',
-      body: 'Any public page — new launch or live site.',
+      title: 'Audit',
+      body: 'Paste a URL. Get a scored report with desktop and mobile screenshots across 7 areas.',
     },
     {
       step: 2,
-      title: 'Copy fix prompts',
-      body: `Every issue includes evidence and a prompt for ${AI_TOOLS}.`,
+      title: 'Fix prompts',
+      body: `Copy-ready prompts for ${AI_TOOLS}. Paste into your editor and ship fixes.`,
     },
     {
       step: 3,
-      title: 'Re-check after fixes',
-      body: 'Run a before/after compare to prove what improved.',
-    },
-    {
-      step: 4,
-      title: 'Share proof',
-      body: 'Export or share a permalink with scores and top issues (Agency).',
+      title: 'Re-check',
+      body: 'Run a before/after compare to prove scores improved.',
     },
   ],
 } as const
 
 export const QUEUE_COPY = {
-  browseWhileWaiting: 'Browse while you wait — your audit continues in the background.',
+  browseWhileWaiting: 'Browse while you wait. Your audit continues in the background.',
   prepMcp: 'Prep MCP while you wait: read Examples, then set up Cursor or Claude integration.',
 } as const
 
@@ -80,7 +87,7 @@ export const SAMPLE_FINDINGS = [
   { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
-export const SAMPLE_FINDINGS_HEADER = 'Sample report'
+export const SAMPLE_FINDINGS_HEADER = OUTPUT_LABELS.whatYouGet
 
 export const WORKFLOW_SECTION = {
   headline: 'From review to fix',
@@ -110,7 +117,8 @@ export const WORKFLOW_STEPS = [
 ] as const
 
 export const PROBLEM_SECTION = {
-  headline: 'Tools miss what people notice.',
+  headline: 'Screenshot + AI review catches what checks miss',
+  subhead: 'Automated scores alone miss layout, sharing, and conversion gaps visible in screenshots.',
   pains: [
     {
       title: 'Off on mobile',
@@ -129,7 +137,7 @@ export const PROBLEM_SECTION = {
 
 export const DIFFERENTIATION = {
   headline: 'Lighthouse vs QualityOS',
-  subhead: 'Automated checks don\'t catch what a human — or AI — sees in a screenshot.',
+  subhead: 'Automated checks miss what a human or AI sees in a screenshot.',
   rows: [
     { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
     { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
@@ -174,7 +182,7 @@ export const CASE_STUDIES = [
     id: 'mobile-cta',
     company: 'E-commerce storefront',
     title: 'Illustrative: Moved CTA up on mobile',
-    issue: 'Primary CTA started at 950px on a 375x812 viewport — hidden below the fold.',
+    issue: 'Primary CTA started at 950px on a 375x812 viewport, hidden below the fold.',
     fix: 'Restructured mobile hero so CTA appears within the first viewport.',
     outcome: 'CTA visible without scrolling at 375px. Illustrative Mobile area improvement after fix.',
     area: 'Mobile',
@@ -200,10 +208,16 @@ export const CASE_STUDIES = [
   },
 ] as const
 
+export const CASE_STUDIES_SECTION = {
+  label: 'Before/after',
+  headline: 'Before/after improvements',
+  subhead: 'Illustrative outcomes after applying audit fix prompts and re-checking.',
+} as const
+
 export const PROOF_SECTION = {
-  label: 'Sample report',
-  headline: 'Even high-scoring sites have gaps',
-  subhead: 'See what automated scores miss on a site everyone trusts.',
+  label: OUTPUT_LABELS.whatYouGet,
+  headline: 'Score, screenshot, and copy-ready fix prompts',
+  subhead: 'Screenshot + AI review catches what automated checks miss.',
   cta: 'Audit your site',
   sample: {
     name: 'Stripe',
@@ -237,7 +251,7 @@ export const QUALITY_AREAS = [
 
 export const MCP_SECTION = {
   headline: 'Run audits from your editor',
-  body: `Connect via MCP. Your agent in Cursor or Claude audits, fixes, and re-checks without you copy-pasting URLs.`,
+  body: 'Connect via MCP so your agent audits, fixes, and re-checks without copy-pasting URLs.',
   cta: 'See MCP setup',
   workflow: `User: "Audit https://myapp.com and fix the Mobile issues"
 
@@ -324,7 +338,7 @@ export const FAQ = [
   },
 ] as const
 
-/** Top objections for the home page — full list lives on /faq */
+/** Top objections for the home page: full list lives on /faq */
 export const HOME_FAQ = [
   FAQ[0],
   FAQ[1],
@@ -359,10 +373,10 @@ export const PRICING_FAQ = [
 export const PRICING = {
   headline: 'Pay when you\u2019re shipping, not when you\u2019re browsing',
   subhead: 'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
-  foundingBadge: 'Founding offer active — lock in launch-week pricing',
+  foundingBadge: 'Founding offer active: lock in launch-week pricing',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   expertReview: {
-    title: 'Expert Review — $500',
+    title: 'Expert Review - $500',
     body: 'A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.',
     steps: [
       'Submit your latest audit report',
@@ -378,7 +392,7 @@ export const PRICING = {
 export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
-  subhead: 'This is what a completed QualityOS audit looks like — full report, all findings.',
+  subhead: 'This is what a completed QualityOS audit looks like: full report, all findings.',
   tierNote: 'Free includes the full report. Pro adds unlimited re-checks and MCP in your editor.',
   bottomCta: 'Audit your site',
 } as const
@@ -390,7 +404,7 @@ export const MCP_DOCS = {
   quickStart: [
     'Generate an API key in Settings → API Keys (Pro plan)',
     'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
-    'Run audit_url — use the curl test below to verify your key',
+    'Run audit_url: use the curl test below to verify your key',
   ],
   builderRequired: 'Requires Pro plan',
   lovableBoltNote:
@@ -407,7 +421,7 @@ export const MCP_DOCS = {
     { name: 'qos_recheck', desc: 'Run a new audit on the same URL to verify fixes.' },
     {
       name: 'qos_compare',
-      desc: 'Compare two audits — see what improved, stayed the same, or regressed.',
+      desc: 'Compare two audits: see what improved, stayed the same, or regressed.',
     },
   ],
   configExamples: {
@@ -474,9 +488,9 @@ export const AUTH = {
     footer: 'Already have an account?',
     footerLink: 'Sign in',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro — unlimited re-checks and MCP from day one',
-      TEAM: 'You\u2019re signing up for Agency — organize audits across up to 5 projects',
-      STUDIO: 'You\u2019re signing up for Studio — audit client sites at scale with up to 20 projects',
+      BUILDER: 'You\u2019re signing up for Pro, unlimited re-checks and MCP from day one',
+      TEAM: 'You\u2019re signing up for Agency, organize audits across up to 5 projects',
+      STUDIO: 'You\u2019re signing up for Studio, audit client sites at scale with up to 20 projects',
     },
     planSteps: [
       'Create your account',
@@ -528,7 +542,7 @@ export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your 3 free audits',
     body: 'Upgrade to Pro for 25 audits per month, unlimited re-checks, and MCP in Cursor or Claude.',
-    cta: 'Upgrade to Pro — $29/mo founding',
+    cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   trial_recheck_available: {
@@ -541,19 +555,19 @@ export const UPGRADE_MOMENTS = {
     headline: (scoreDelta: number) =>
       `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
     body: 'Keep proving every ship with unlimited re-checks and MCP in Cursor.',
-    cta: 'Start Pro — $29/mo founding',
+    cta: 'Start Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   compare_flat: {
     headline: 'Still gaps after your re-check',
     body: 'Pro gives unlimited re-checks and MCP so your agent can close what remains without copy-pasting URLs.',
-    cta: 'Upgrade to Pro — $29/mo founding',
+    cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   trial_exhausted: {
     headline: "You've used your free re-check",
     body: 'Upgrade to Pro for unlimited re-checks and before/after comparisons on every ship.',
-    cta: 'Upgrade to Pro — $29/mo founding',
+    cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   share_public: {
@@ -565,13 +579,13 @@ export const UPGRADE_MOMENTS = {
   free_default: {
     headline: 'Ship weekly? Automate the loop',
     body: 'Pro adds unlimited re-checks, before/after compare, and MCP so audits run inside Cursor or Claude.',
-    cta: 'Upgrade to Pro — $29/mo founding',
+    cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   report_completed: {
     headline: 'Unlock full audit history and automation',
-    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report history — not just more checks.',
-    cta: 'Upgrade to Pro — $29/mo founding',
+    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report report history, not just more checks.',
+    cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
 } as const
@@ -614,9 +628,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'QualityOS — Your agent built it. QualityOS checks it.',
+    title: 'QualityOS - Audit your site. Ship fix prompts.',
     description:
-      'AI reviews desktop and mobile screenshots across 7 areas. Every issue includes a copy-ready fix prompt your agent can run. Free first audit.',
+      'Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts. Free first audit.',
   },
   pricing: {
     title: 'Pricing',
@@ -626,7 +640,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real QualityOS audit of stripe.com — evidence-backed findings with copy-ready fix prompts.',
+      'See a real QualityOS audit of stripe.com: evidence-backed findings with copy-ready fix prompts.',
   },
   examples: {
     title: 'Example Audits',
@@ -651,6 +665,12 @@ export const SEO = {
     title: 'Terms of Service',
     description: 'Terms for using QualityOS.',
   },
+} as const
+
+export const MARKETING_ILLUSTRATION_PROMPTS = {
+  hero: 'Minimal editorial SaaS hero: browser window with audit score card and fix prompt snippet, warm neutral palette, no text labels.',
+  steps: 'Three-step horizontal flow: URL audit, clipboard fix prompt, before/after score refresh, flat vector, muted ochre accent.',
+  proof: 'Split panel: website screenshot with highlighted issues and copy-ready prompt card, calm dark UI, product marketing style.',
 } as const
 
 export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qualityos.com'

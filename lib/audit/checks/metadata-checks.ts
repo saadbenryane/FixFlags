@@ -79,7 +79,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFinding[] {
       checkId: 'og-image-missing',
       area: 'SEO',
       severity: 'HIGH',
-      problem: 'og:image is missing — link previews show blank',
+      problem: 'og:image is missing, link previews show blank',
       evidence: 'No <meta property="og:image"> tag found in <head>',
       fix: 'Add a 1200×630px og:image. For Next.js, add it to the metadata export in your page.tsx.',
       confidence: 1.0,
@@ -107,7 +107,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFinding[] {
       severity: 'LOW',
       problem: 'og:description is missing',
       evidence: 'No <meta property="og:description"> tag found',
-      fix: 'Add <meta property="og:description"> — usually the same as the meta description.',
+      fix: 'Add <meta property="og:description">, usually the same as the meta description.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

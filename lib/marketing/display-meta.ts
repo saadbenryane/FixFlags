@@ -35,4 +35,4 @@ export function sampleStatusLabel(
 }
 
 export const COMPACT_DISCLAIMER =
-  'Automated audit — illustrative, not an endorsement.' as const
+  'Automated audit, illustrative, not an endorsement.' as const

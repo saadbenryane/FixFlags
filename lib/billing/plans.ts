@@ -150,9 +150,9 @@ export function hasActiveFoundingOffer(): boolean {
 export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
   const def = PLAN_DEFINITIONS.BUILDER
   if (hasActiveFoundingOffer() && def.founding) {
-    return `${prefix} — ${def.founding.replace('/mo for 3 months', '/mo founding')}`
+    return `${prefix} - ${def.founding.replace('/mo for 3 months', '/mo founding')}`
   }
-  return `${prefix} — ${def.price}${def.period}`
+  return `${prefix} - ${def.price}${def.period}`
 }
 
 export function scanLimitForPlan(plan: Plan): number {

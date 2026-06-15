@@ -4,16 +4,16 @@ import { fetchAndParseMetadata } from './metadata'
 import { fetchPageSpeedData } from './pagespeed'
 
 const CHECK_ID_TO_RULE: Record<string, string> = {
-  'title-missing': 'View page source or DevTools Elements — confirm a non-empty <title> tag.',
-  'description-missing': 'View page source — confirm meta name="description" with content.',
+  'title-missing': 'View page source or DevTools Elements, confirm a non-empty <title> tag.',
+  'description-missing': 'View page source, confirm meta name="description" with content.',
   'og-image-missing': 'View page source for og:image; open the image URL in a new tab (should return 200).',
-  'h1-missing': 'DevTools Elements — confirm exactly one visible H1 on the page.',
-  'no-https': 'Open the site URL — address bar should show HTTPS with a valid certificate.',
+  'h1-missing': 'DevTools Elements, confirm exactly one visible H1 on the page.',
+  'no-https': 'Open the site URL, address bar should show HTTPS with a valid certificate.',
   'no-privacy-policy': 'Footer or legal links should include a privacy policy reachable in one click.',
-  'lcp-critical': 'Chrome DevTools → Lighthouse or PageSpeed Insights — LCP should be under 2.5s on mobile.',
-  'lcp-poor': 'Chrome DevTools → Lighthouse or PageSpeed Insights — check LCP on mobile viewport.',
-  'unused-js-large': 'Chrome DevTools → Coverage tab — unused JavaScript should be under 200KB.',
-  'render-blocking': 'Chrome DevTools → Network — filter JS/CSS; blocking resources delay first paint.',
+  'lcp-critical': 'Chrome DevTools → Lighthouse or PageSpeed Insights, LCP should be under 2.5s on mobile.',
+  'lcp-poor': 'Chrome DevTools → Lighthouse or PageSpeed Insights, check LCP on mobile viewport.',
+  'unused-js-large': 'Chrome DevTools → Coverage tab, unused JavaScript should be under 200KB.',
+  'render-blocking': 'Chrome DevTools → Network, filter JS/CSS; blocking resources delay first paint.',
 }
 
 const VERIFIABLE_CHECK_IDS = new Set(Object.keys(CHECK_ID_TO_RULE))

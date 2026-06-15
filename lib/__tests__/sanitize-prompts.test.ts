@@ -48,7 +48,7 @@ describe('sanitize-prompts', () => {
     const finding = sanitizeFindingFields({
       evidence: 'CTA at y=1200px on 375px viewport',
       fix: 'Move CTA above fold',
-      agentPrompt: '60% of traffic is mobile — move CTA',
+      agentPrompt: '60% of traffic is mobile, move CTA',
       cursorPrompt: 'In the hero component, update H1',
     })
     assert.equal(finding.agentPrompt, 'Move CTA above fold')

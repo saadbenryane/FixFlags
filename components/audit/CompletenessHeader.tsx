@@ -43,7 +43,7 @@ export function CompletenessHeader({
       </div>
       <p className="text-xs text-muted-foreground text-pretty border-t border-border/15 pt-3">
         <span className="font-medium text-foreground/80">Prompt quality guarantee: </span>
-        Evidence-backed selectors only — no guessed file paths. Every prompt includes viewport
+        Evidence-backed selectors only, no guessed file paths. Every prompt includes viewport
         context and verification steps.
       </p>
     </div>

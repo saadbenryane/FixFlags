@@ -6,7 +6,7 @@ const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'claude-sonnet-4-6': { input: 3, output: 15 },
 }
 
-// Claude Sonnet 4.6 approximate rates (USD per million tokens) — fallback
+// Claude Sonnet 4.6 approximate rates (USD per million tokens), fallback
 const DEFAULT_INPUT_RATE = 3
 const DEFAULT_OUTPUT_RATE = 15
 

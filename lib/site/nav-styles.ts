@@ -1,4 +1,4 @@
-/** Shared nav link styling — pill active fill, no underline. */
+/** Shared nav link styling, pill active fill, no underline. */
 
 export const NAV_LINK_BASE =
   'rounded-full px-3 py-2 text-sm transition-colors duration-200 hover:bg-accent hover:text-foreground'

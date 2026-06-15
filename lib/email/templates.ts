@@ -9,7 +9,7 @@ function layout(content: string): string {
   ${content}
   <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;" />
   <p style="font-size: 12px; color: #737373;">
-    ${BRAND.name} — ${BRAND.category}<br />
+    ${BRAND.name} - ${BRAND.category}<br />
     <a href="${SITE_URL}" style="color: #737373;">${SITE_URL}</a>
   </p>
 </body>
@@ -18,7 +18,7 @@ function layout(content: string): string {
 
 export const NURTURE_EMAILS = {
   welcome: {
-    subject: 'Your audit found issues — here\u2019s how to fix them in one prompt',
+    subject: 'Your audit found issues, here\u2019s how to fix them in one prompt',
     html: (name: string) =>
       layout(`
   <p>Hi ${name || 'there'},</p>

@@ -25,7 +25,7 @@ export function PriorityFindings({
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-sm font-semibold tracking-heading">Priority fixes</h2>
         <span className="text-xs text-muted-foreground">
-          Top {top.length} issue{top.length !== 1 ? 's' : ''} — expand for evidence
+          Top {top.length} issue{top.length !== 1 ? 's' : ''}, expand for evidence
         </span>
       </div>
       <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">

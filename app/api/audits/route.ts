@@ -15,7 +15,7 @@ import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 
 const createSchema = z.object({
-  url: z.string().url('Invalid URL — please include https://'),
+  url: z.string().url('Invalid URL, please include https://'),
   mode: z.enum(['single', 'critical_path']).optional(),
 })
 

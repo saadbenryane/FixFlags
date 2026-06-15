@@ -40,9 +40,11 @@ export default async function HomePage() {
 
       <ProofSection sample={sample} />
 
-      <SocialProofSection />
+      <CaseStudiesSection />
 
       <ProblemSection />
+
+      <SocialProofSection />
 
       <HowItWorksSection />
 
@@ -68,8 +70,6 @@ export default async function HomePage() {
           </PageGrid>
         </Container>
       </Section>
-
-      <CaseStudiesSection />
 
       <WhatsCheckedSection />
 

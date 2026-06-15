@@ -1,16 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
-import { MechanismChips } from '@/components/marketing/MechanismChips'
+import { HeroBenefits } from '@/components/marketing/HeroBenefits'
 import { SampleFindingsCard } from '@/components/marketing/SampleFindingsCard'
 import { MarketingBackdrop } from '@/components/marketing/MarketingBackdrop'
 import { Container } from '@/components/ui/container'
 import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
-import { Body, Heading, Lead, Muted } from '@/components/ui/typography'
+import { Heading, Lead, Muted } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
 import { TRUST_LINE } from '@/lib/marketing/display-meta'
 import type { SampleResult } from '@/lib/marketing/live-sample'
@@ -33,13 +32,7 @@ export function HeroSection({ sample }: { sample: SampleResult }) {
             <div className={cn('space-y-5', STAGGER[0])}>
               <Heading as="h1" className="space-y-2">
                 <span className="block">{HERO.headlineLine1}</span>
-                <span className="relative inline-block italic text-foreground/90">
-                  {HERO.headlineLine2}
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-1 left-0 h-[3px] w-full rounded-full bg-brand/35"
-                  />
-                </span>
+                <span className="block">{HERO.headlineLine2}</span>
               </Heading>
               <Lead>{HERO.subhead}</Lead>
             </div>
@@ -50,10 +43,10 @@ export function HeroSection({ sample }: { sample: SampleResult }) {
 
             <Muted className={cn('mt-4', STAGGER[2])}>{TRUST_LINE}</Muted>
 
-            <MechanismChips className={cn('mt-6', STAGGER[2])} />
+            <HeroBenefits className={cn('mt-6', STAGGER[2])} />
 
-            <TextLink href="/#agent-workflow" className={cn('mt-6 text-sm', STAGGER[3])}>
-              See full agent workflow
+            <TextLink href="/samples" className={cn('mt-6 text-sm', STAGGER[3])}>
+              {HERO.secondaryCta}
               <ArrowRight className="h-3.5 w-3.5" />
             </TextLink>
           </PageGridCol>

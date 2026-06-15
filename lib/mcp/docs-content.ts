@@ -12,7 +12,7 @@ export const MCP_TOOL_DEFINITIONS = [
   { name: 'qos_recheck', desc: 'Run a new audit on the same URL to verify fixes.' },
   {
     name: 'qos_compare',
-    desc: 'Compare two audits — see what improved, stayed the same, or regressed.',
+    desc: 'Compare two audits: see what improved, stayed the same, or regressed.',
   },
 ] as const
 

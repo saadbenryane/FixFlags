@@ -1,4 +1,4 @@
-/** Pipeline version — bump when audit logic changes materially. */
+/** Pipeline version, bump when audit logic changes materially. */
 export const PIPELINE_VERSION = '2.0.0'
 
 /** Hard end-to-end deadline for a single audit run (ms). */

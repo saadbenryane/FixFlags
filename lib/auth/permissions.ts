@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 
 export const UNLIMITED_SCAN_LIMIT = -1
 
-/** Local `npm run dev` — disables scan usage limits only (not plan feature gates). */
+/** Local `npm run dev`, disables scan usage limits only (not plan feature gates). */
 export function isDevUnlimitedScans(): boolean {
   return process.env.NODE_ENV === 'development' && process.env.DEV_SIMULATE_BILLING !== 'true'
 }

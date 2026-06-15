@@ -15,7 +15,7 @@ export default async function SamplesPage() {
 
   const disclaimer =
     sample.source === 'archived'
-      ? 'This is the last published sample — a newer live sample may be regenerating.'
+      ? 'This is the last published sample, a newer live sample may be regenerating.'
       : SAMPLES_PAGE.tierNote
 
   return (

@@ -208,7 +208,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   }
 }
 
-/** Persist only summary fields — large arrays are only needed during checks. */
+/** Persist only summary fields, large arrays are only needed during checks. */
 export function trimMetadataForStorage(metadata: PageMetadata) {
   const { images, links, jsonLd, pageText, h2s, ...compact } = metadata
   void images

@@ -8,7 +8,7 @@ export function ProblemSection() {
   return (
     <Section spacing="default" className="bg-muted/35">
       <Container className="space-y-10">
-        <SectionIntro headline={PROBLEM_SECTION.headline} />
+        <SectionIntro headline={PROBLEM_SECTION.headline} subhead={PROBLEM_SECTION.subhead} />
 
         <div className="grid gap-8 md:grid-cols-3">
           {PROBLEM_SECTION.pains.map((pain, i) => (

@@ -38,7 +38,7 @@ export function AuditFailurePanel({
       await navigator.clipboard.writeText(auditId)
       toast.success('Audit ID copied')
     } catch {
-      toast.error('Could not copy — ID: ' + auditId)
+      toast.error('Could not copy, ID: ' + auditId)
     } finally {
       setCopying(false)
     }

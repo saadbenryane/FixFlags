@@ -32,20 +32,20 @@ export async function GET(req: Request) {
 
       if (existingJob && jobState === 'active') {
         await existingJob.moveToFailed(
-          new Error('Audit timed out — force failed by recovery cron'),
+          new Error('Audit timed out, force failed by recovery cron'),
           '0',
           true
         )
         await logPipelineEvent(audit.id, {
           stage: audit.status.toLowerCase(),
           event: 'cron_force_failed',
-          error: 'Audit timed out — please try again',
+          error: 'Audit timed out, please try again',
         })
         await prisma.audit.update({
           where: { id: audit.id },
           data: {
             status: 'FAILED',
-            errorMsg: 'Audit timed out — please try again',
+            errorMsg: 'Audit timed out, please try again',
             failureCode: 'AUDIT_TIMEOUT',
             failureStage: audit.status.toLowerCase(),
             failureMetadata: { jobId: audit.id, source: 'cron' },
@@ -66,13 +66,13 @@ export async function GET(req: Request) {
         await logPipelineEvent(audit.id, {
           stage: audit.status.toLowerCase(),
           event: 'cron_force_failed',
-          error: 'Audit timed out — please try again',
+          error: 'Audit timed out, please try again',
         })
         await prisma.audit.update({
           where: { id: audit.id },
           data: {
             status: 'FAILED',
-            errorMsg: 'Audit timed out — please try again',
+            errorMsg: 'Audit timed out, please try again',
             failureCode: 'AUDIT_TIMEOUT',
             failureStage: audit.status.toLowerCase(),
             failureMetadata: { jobId: audit.id, source: 'cron' },

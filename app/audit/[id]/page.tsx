@@ -86,10 +86,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const topIssue = topIssueFromAudit(audit)
   const title = audit.score != null
-    ? `${hostname} — ${audit.score}/100 · ${BRAND.name}`
+    ? `${hostname} - ${audit.score}/100 · ${BRAND.name}`
     : `${hostname} audit · ${BRAND.name}`
   const description = topIssue
-    ? `${topIssue} — Run your own audit at ${BRAND.name}.`
+    ? `${topIssue}, Run your own audit at ${BRAND.name}.`
     : audit.verdict?.slice(0, 140) ??
       `Automated quality audit with fix prompts. Run your own audit at ${BRAND.name}.`
 

@@ -20,7 +20,7 @@ export function FindingFeedback({ findingId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vote: v }),
       })
-      toast.success(v === 1 ? 'Thanks for the feedback!' : 'Got it — we\'ll improve this.')
+      toast.success(v === 1 ? 'Thanks for the feedback!' : 'Got it, we\'ll improve this.')
     } catch {
       toast.error('Failed to save feedback')
     }

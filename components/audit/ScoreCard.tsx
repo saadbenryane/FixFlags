@@ -35,7 +35,7 @@ export function ScoreCard({
           className
         )}
       >
-        <span>{grade ?? '—'}</span>
+        <span>{grade ?? '-'}</span>
       </div>
     )
   }
@@ -69,7 +69,7 @@ export function ScoreCard({
               size === 'sm' ? 'text-xl' : 'text-2xl'
             )}
           >
-            {grade ?? '—'}
+            {grade ?? '-'}
           </div>
         )}
       </div>

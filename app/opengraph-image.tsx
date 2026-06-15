@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'QualityOS — AI checks every issue. Fix prompts included.'
+export const alt = 'QualityOS - Audit your site. Ship fix prompts.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -52,19 +52,18 @@ export default function Image() {
               marginBottom: 20,
             }}
           >
-            Your agent built it.
+            Audit your site.
           </div>
           <div
             style={{
               fontSize: 42,
               fontWeight: 700,
-              color: '#a3a3a3',
-              fontStyle: 'italic',
+              color: '#ffffff',
               lineHeight: 1.2,
               marginBottom: 32,
             }}
           >
-            QualityOS checks it.
+            Ship fix prompts.
           </div>
           <div
             style={{
@@ -74,7 +73,7 @@ export default function Image() {
               maxWidth: 420,
             }}
           >
-            AI reviews screenshots across 7 areas. Every issue includes a fix prompt your agent can run.
+            Improve SEO, performance, mobile flow, accessibility, and conversion with AI-ready fix prompts.
           </div>
         </div>
 

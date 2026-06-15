@@ -1,4 +1,4 @@
-import { CASE_STUDIES } from '@/lib/marketing/copy'
+import { CASE_STUDIES, CASE_STUDIES_SECTION } from '@/lib/marketing/copy'
 import { CaseStudyCard } from '@/components/marketing/CaseStudyCard'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
@@ -10,9 +10,9 @@ export function CaseStudiesSection() {
     <Section spacing="default">
       <Container className="space-y-10">
         <SectionIntro
-          label="Case studies"
-          headline="Illustrative fixes, representative outcomes"
-          subhead="Three example pages that improved after applying audit findings and re-checking."
+          label={CASE_STUDIES_SECTION.label}
+          headline={CASE_STUDIES_SECTION.headline}
+          subhead={CASE_STUDIES_SECTION.subhead}
         />
 
         <div className="grid gap-6 md:grid-cols-3">

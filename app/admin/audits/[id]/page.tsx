@@ -62,7 +62,7 @@ export default async function AdminAuditDetailPage({
                   {audit.runCost.llmInputTokens.toLocaleString()} in /{' '}
                   {audit.runCost.llmOutputTokens.toLocaleString()} out tokens
                 </p>
-                <p className="text-muted-foreground">Model: {audit.runCost.llmModel ?? '—'}</p>
+                <p className="text-muted-foreground">Model: {audit.runCost.llmModel ?? '-'}</p>
                 <p className="text-muted-foreground">
                   Duration: {(audit.runCost.durationMs / 1000).toFixed(1)}s · PageSpeed calls:{' '}
                   {audit.runCost.pagespeedCalls}
@@ -81,7 +81,7 @@ export default async function AdminAuditDetailPage({
           <CardContent className="space-y-1 text-sm">
             <p className="font-mono text-xs break-all">{audit.id}</p>
             <p className="text-muted-foreground">User: {audit.user?.email ?? 'Anonymous'}</p>
-            <p className="text-muted-foreground">Plan: {audit.user?.plan ?? '—'}</p>
+            <p className="text-muted-foreground">Plan: {audit.user?.plan ?? '-'}</p>
             {audit.errorMsg && (
               <p className="text-destructive text-xs mt-2">{audit.errorMsg}</p>
             )}
@@ -100,7 +100,7 @@ export default async function AdminAuditDetailPage({
                 <li key={i} className="text-muted-foreground">
                   {e.ts} · {e.stage} · {e.event}
                   {e.durationMs ? ` (${e.durationMs}ms)` : ''}
-                  {e.error ? ` — ${e.error}` : ''}
+                  {e.error ? ` - ${e.error}` : ''}
                 </li>
               ))}
             </ul>

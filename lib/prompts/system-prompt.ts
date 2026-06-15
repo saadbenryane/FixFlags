@@ -91,7 +91,7 @@ export const QUALITY_REPORT_SCHEMA = {
       },
       enrichments: {
         type: 'array',
-        description: 'One enrichment per deterministic finding checkId — adds whyItMatters and agent-specific prompts',
+        description: 'One enrichment per deterministic finding checkId, adds whyItMatters and agent-specific prompts',
         items: {
           type: 'object',
           required: ['checkId', 'whyItMatters'],
@@ -169,7 +169,7 @@ Performance scores:
 Top optimization opportunities:
 ${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 1000)}KB or ${o.savings}ms savings`).join('\n') || 'None'}
 
-Deterministic findings already identified (enrich these — do not duplicate them as new findings):
+Deterministic findings already identified (enrich these, do not duplicate them as new findings):
 ${context.deterministicFindings.map((f) => `[${f.severity}] ${f.checkId}: ${f.problem}`).join('\n') || 'None'}
 
 You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} to:
@@ -185,17 +185,17 @@ Grade benchmarks (use same thresholds for every area):
 - SEO nuance: A = all tags + structured data, B = 1-2 missing, C = missing desc or multiple H1, D/F = no title or noindex
 - CONVERSION/TRUST/CONTENT: grade by what you see in screenshots and page text
 
-IMPORTANT: If you grade an area B or below, you MUST include at least one finding in newFindings for that area (or rely on deterministic findings). Never give a poor grade with zero findings — the summary alone is not enough for builders to act.
+IMPORTANT: If you grade an area B or below, you MUST include at least one finding in newFindings for that area (or rely on deterministic findings). Never give a poor grade with zero findings, the summary alone is not enough for builders to act.
 
 Every newFinding and every enrichment MUST include a verificationRule: a concrete, testable check to confirm the fix (e.g. "og:image returns 200 and preview shows image in Slack").
 
-PROMPT RULES — no speculation:
+PROMPT RULES, no speculation:
 - Never use "likely", "probably", or guess file paths (_app.tsx, layout.tsx) unless deterministic evidence names the file.
 - Never invent CTR, conversion, or revenue impact ranges unless supplied in the evidence above.
 - Reference only DOM elements, Lighthouse audit IDs, or content visible in screenshots/page text.
 - Every fix prompt must state how to verify the change worked.
 
-Set launchReadiness based on whether embarrassing or conversion-critical issues remain. launchChecklist must include exactly 5 items: HTTPS, social preview (og:image), mobile CTA visible, no critical console errors, privacy/contact link present — mark passed/failed from evidence.
+Set launchReadiness based on whether embarrassing or conversion-critical issues remain. launchChecklist must include exactly 5 items: HTTPS, social preview (og:image), mobile CTA visible, no critical console errors, privacy/contact link present, mark passed/failed from evidence.
 
 Return ALL 7 unique area entries. Use the same score-to-grade thresholds for every area: A >=90, B >=75, C >=60, D >=40, F below 40. Mark assessmentState ASSESSED only when a score is supported by the supplied evidence; otherwise use PARTIAL or UNKNOWN with a null score. Never invent positive evidence.
 

@@ -63,7 +63,7 @@ export function runAccessibilityChecks(meta: PageMetadata): DeterministicFinding
       severity: 'HIGH',
       problem: `${meta.linksWithoutText} link${meta.linksWithoutText > 1 ? 's' : ''} without accessible text`,
       evidence: `${meta.linksWithoutText} <a> element${meta.linksWithoutText > 1 ? 's' : ''} found without text, aria-label, or title`,
-      fix: 'Add aria-label or visible text to all links. "Click here" is not sufficient — describe the destination.',
+      fix: 'Add aria-label or visible text to all links. "Click here" is not sufficient, describe the destination.',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

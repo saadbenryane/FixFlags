@@ -47,7 +47,7 @@ export default async function ExamplesPage({
           <Heading as="h1">Example audits from recognizable sites</Heading>
           <Body className="max-w-2xl text-muted-foreground">
             Representative audits illustrating QualityOS pipeline v{PIPELINE_VERSION} output.
-            Results are context-dependent — every site has unique constraints and tradeoffs. These
+            Results are context-dependent, every site has unique constraints and tradeoffs. These
             are not endorsements or partnerships.
           </Body>
           <LighthouseCallout className="max-w-2xl text-sm text-muted-foreground" />

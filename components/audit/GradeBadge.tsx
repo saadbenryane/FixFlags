@@ -8,7 +8,7 @@ interface Props {
   className?: string
 }
 
-/** Compact inline grade pill — use ScoreCard for marketing/report score layouts. */
+/** Compact inline grade pill, use ScoreCard for marketing/report score layouts. */
 export function GradeBadge({ grade, score, size = 'md', className }: Props) {
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-sm min-w-[2rem]',
@@ -25,7 +25,7 @@ export function GradeBadge({ grade, score, size = 'md', className }: Props) {
         className
       )}
     >
-      <span>{grade ?? '—'}</span>
+      <span>{grade ?? '-'}</span>
       {score != null && size !== 'sm' && (
         <span className="mt-0.5 text-xs font-medium tabular-nums">{score}</span>
       )}

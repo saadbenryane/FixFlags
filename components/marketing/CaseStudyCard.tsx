@@ -28,6 +28,16 @@ interface CaseStudy {
 
 const GRADE_ONLY_AREAS = new Set(['Conversion', 'Trust', 'Content'])
 
+function formatDelta(study: CaseStudy): string | null {
+  if (GRADE_ONLY_AREAS.has(study.area) && study.gradeBefore && study.gradeAfter) {
+    return `${study.gradeBefore} → ${study.gradeAfter}`
+  }
+  if (study.scoreBefore != null && study.scoreAfter != null) {
+    return `${study.scoreBefore} → ${study.scoreAfter}`
+  }
+  return null
+}
+
 function beforeDisplay(study: CaseStudy): { primary: string; grade: AreaGrade } {
   if (GRADE_ONLY_AREAS.has(study.area) && study.gradeBefore) {
     return { primary: study.gradeBefore, grade: study.gradeBefore }
@@ -49,6 +59,7 @@ export function CaseStudyCard({ study, index }: { study: CaseStudy; index: numbe
   const before = beforeDisplay(study)
   const after = afterDisplay(study)
   const gradeOnly = GRADE_ONLY_AREAS.has(study.area)
+  const delta = formatDelta(study)
 
   return (
     <Card interactive className="overflow-hidden border-0 shadow-card">
@@ -90,6 +101,12 @@ export function CaseStudyCard({ study, index }: { study: CaseStudy; index: numbe
             <GradeBadge grade={after.grade} size="sm" className="mt-0.5 justify-center" />
           </div>
         </div>
+
+        {delta ? (
+          <p className="mb-4 text-center font-mono text-sm font-semibold tabular-nums text-brand">
+            {delta}
+          </p>
+        ) : null}
 
         <div className="space-y-2">
           <div>

@@ -147,7 +147,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
           {
             id: 'finding-seo-1',
             severity: 'HIGH',
-            problem: 'Missing og:image — link previews show blank cards',
+            problem: 'Missing og:image, link previews show blank cards',
             evidence:
               'HTML head has no og:image meta tag. Desktop 1280x900: no preview card in social embeds.',
             whyItMatters:
@@ -172,7 +172,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Missing meta description lets search engines generate snippets that may not match your value proposition.',
             fix: 'Add meta description (120-158 chars) with value proposition.',
             agentPrompt:
-              'In metadata export, add `description: \'Accept payments, send payouts, and manage financial operations — Stripe powers online payment processing.\'` Keep under 160 characters.',
+              'In metadata export, add `description: \'Accept payments, send payouts, and manage financial operations, Stripe powers online payment processing.\'` Keep under 160 characters.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -202,7 +202,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             severity: 'MEDIUM',
             problem: 'Hero headline describes product features, not user outcome',
             evidence:
-              'Desktop 1280x900: "Financial infrastructure for the internet" — tells what Stripe is, not what user achieves.',
+              'Desktop 1280x900: "Financial infrastructure for the internet", tells what Stripe is, not what user achieves.',
             whyItMatters:
               'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
             fix: 'Test headline: "Ship payment flows in days, not quarters."',
@@ -225,7 +225,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
               'Social proof near the CTA reassures visitors before they commit to an action.',
             fix: 'Add trust line below CTA: "Trusted by millions of businesses worldwide."',
             agentPrompt:
-              'Below primary CTA button, add `<p className="text-xs text-muted-foreground mt-2">Trusted by millions of businesses worldwide</p>`. Keep font small and muted — this is supplementary, not primary messaging.',
+              'Below primary CTA button, add `<p className="text-xs text-muted-foreground mt-2">Trusted by millions of businesses worldwide</p>`. Keep font small and muted, this is supplementary, not primary messaging.',
             cursorPrompt: null,
             claudePrompt: null,
             lovablePrompt: null,
@@ -292,7 +292,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Desktop 1280x900: "Authorization", "settlement", "dispute lifecycle" appear without definitions.',
             whyItMatters:
-              'Terms like "authorization", "settlement", and "dispute lifecycle" appear without definitions — new visitors may not understand the product.',
+              'Terms like "authorization", "settlement", and "dispute lifecycle" appear without definitions, new visitors may not understand the product.',
             fix: 'Replace jargon with plain alternatives or add parenthetical explanations on first use.',
             agentPrompt:
               'In marketing copy, replace "authorization holds" with "payment holds", "settlement" with "funds transfer to your bank", "dispute lifecycle" with "how disputes work". Target Hemingway Grade 8 readability.',
@@ -327,7 +327,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Mobile viewport 375x812: hero image pushes CTA to 1,200px scroll depth. Button hidden below fold.',
             whyItMatters:
-              'At 375x812, the primary CTA starts at ~1,200px scroll depth — it is hidden below the fold on mobile.',
+              'At 375x812, the primary CTA starts at ~1,200px scroll depth, it is hidden below the fold on mobile.',
             fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within first 700px of page height.',
             agentPrompt:
               'Add media query for max-width: 375px. Set hero image to 40vh max-height. Stack headline, subhead, and CTA button vertically so CTA appears within first 700px. Use CSS `order` or restructure DOM if needed. Target: CTA selector `.primary-cta` visible at <700px scroll.',
@@ -345,7 +345,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
             evidence:
               'Mobile 375x812: nav bar + announcement banner ~280px total before content starts.',
             whyItMatters:
-              'Nav bar + announcement banner consume ~280px before content on a 812px viewport — less content is visible on first paint.',
+              'Nav bar + announcement banner consume ~280px before content on a 812px viewport, less content is visible on first paint.',
             fix: 'Collapse announcement banner on mobile. Reduce nav padding. Use hamburger menu if nav links > 3.',
             agentPrompt:
               'At 375px breakpoint, hide secondary nav links behind hamburger toggle. Reduce announcement banner to 32px. Set nav wrapper max-height to 56px total. Selectors: `.announcement-banner`, `.primary-nav`, `.nav-links`.',

@@ -10,7 +10,7 @@ export function getRedisConnectionOptions() {
   }
 }
 
-/** Worker connection — no lazy connect so jobs process immediately. */
+/** Worker connection, no lazy connect so jobs process immediately. */
 export function getWorkerRedisConnectionOptions() {
   const url = getRedisUrl()
   return {

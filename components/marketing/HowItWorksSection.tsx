@@ -1,11 +1,11 @@
+import { ClipboardCopy, RefreshCw, Search } from 'lucide-react'
 import { Container } from '@/components/ui/container'
-import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { Heading } from '@/components/ui/typography'
 import { HOW_IT_WORKS_SECTION } from '@/lib/marketing/copy'
 
-const STEP_NUMBER_COL = 'col-span-12 sm:col-span-1 sm:max-w-[5rem]'
+const STEP_ICONS = [Search, ClipboardCopy, RefreshCw] as const
 
 export function HowItWorksSection() {
   return (
@@ -17,28 +17,26 @@ export function HowItWorksSection() {
           subhead={HOW_IT_WORKS_SECTION.subhead}
         />
 
-        <ol className="space-y-6">
-          {HOW_IT_WORKS_SECTION.steps.map((step, index) => (
-            <li key={step.step}>
-              <PageGrid align="baseline" className="gap-y-3">
-                <PageGridCol className={STEP_NUMBER_COL}>
+        <ol className="grid gap-8 md:grid-cols-3">
+          {HOW_IT_WORKS_SECTION.steps.map((step, index) => {
+            const Icon = STEP_ICONS[index] ?? Search
+            return (
+              <li key={step.step} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand/10 text-brand">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
                   <span className="font-mono text-xs tabular-nums text-brand/80">
                     {String(index + 1).padStart(2, '0')}
                   </span>
-                </PageGridCol>
-                <PageGridCol className="col-span-12 sm:col-span-4">
-                  <Heading as="h3" className="text-xl">
-                    {step.title}
-                  </Heading>
-                </PageGridCol>
-                <PageGridCol className="col-span-12 sm:col-span-7">
-                  <p className="max-w-prose text-sm leading-relaxed text-muted-foreground text-pretty">
-                    {step.body}
-                  </p>
-                </PageGridCol>
-              </PageGrid>
-            </li>
-          ))}
+                </div>
+                <Heading as="h3" className="text-xl">
+                  {step.title}
+                </Heading>
+                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
+              </li>
+            )
+          })}
         </ol>
       </Container>
     </Section>

@@ -69,7 +69,7 @@ export function AreaDiff({ beforeAreas, afterAreas }: Props) {
 
             {/* Before grade */}
             <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', row.before.grade ? gradeColor(row.before.grade) : 'text-muted-foreground border-border')}>
-              {row.before.grade ?? '—'}
+              {row.before.grade ?? '-'}
               {row.before.score !== null && <span className="ml-1 text-xs font-normal opacity-70">{row.before.score}</span>}
             </div>
 
@@ -80,7 +80,7 @@ export function AreaDiff({ beforeAreas, afterAreas }: Props) {
 
             {/* After grade */}
             <div className={cn('text-sm font-bold px-2 py-0.5 rounded border', row.after.grade ? gradeColor(row.after.grade) : 'text-muted-foreground border-border')}>
-              {row.after.grade ?? '—'}
+              {row.after.grade ?? '-'}
               {row.after.score !== null && <span className="ml-1 text-xs font-normal opacity-70">{row.after.score}</span>}
             </div>
 

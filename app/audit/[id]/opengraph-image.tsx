@@ -159,7 +159,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 lineHeight: 1,
               }}
             >
-              {score ?? '—'}
+              {score ?? '-'}
             </div>
             <div style={{ fontSize: 18, color: '#525252', fontFamily: 'monospace' }}>/ 100</div>
           </div>

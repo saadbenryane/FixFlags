@@ -18,8 +18,8 @@ import { PageHeader } from '@/components/layout/PageHeader'
 
 const EXPERT_STATUS_LABELS = {
   PENDING: 'Pending payment',
-  PAID: 'Paid — queued for review',
-  IN_REVIEW: 'In review — we respond within 48 hours',
+  PAID: 'Paid, queued for review',
+  IN_REVIEW: 'In review, we respond within 48 hours',
   DELIVERED: 'Delivered',
   FULFILLED: 'Delivered',
 } as const

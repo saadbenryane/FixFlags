@@ -121,7 +121,7 @@ export function AreaCard({
 
           {area.findings.length === 0 && area.grade !== null && area.grade !== 'A' && (
             <p className="text-sm text-muted-foreground">
-              No individual findings listed — see the area summary above for what to improve.
+              No individual findings listed, see the area summary above for what to improve.
             </p>
           )}
         </CardContent>

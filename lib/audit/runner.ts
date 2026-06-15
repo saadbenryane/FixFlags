@@ -196,7 +196,7 @@ async function runPage(
     }
     const meta = parentPerf?.htmlMetadata as PageMetadata | null
     if (!desktopBase64) {
-      throw new Error('Desktop screenshot capture failed — parent has no desktop image')
+      throw new Error('Desktop screenshot capture failed, parent has no desktop image')
     }
     await prisma.auditPage.update({
       where: { id: page.id },

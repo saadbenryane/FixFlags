@@ -21,9 +21,9 @@ export const metadata = buildPageMetadata('mcp', '/docs/mcp')
 const CONFIG_EDITORS = ['cursor', 'claudeCode', 'windsurf'] as const
 
 const MCP_SECURITY = [
-  'Never commit API keys to git — add .env to .gitignore and use env vars or your editor secret store.',
+  'Never commit API keys to git, add .env to .gitignore and use env vars or your editor secret store.',
   'Never share keys in screenshots, Slack, or client-side code.',
-  'Keys are stored hashed on the server; we cannot recover a lost key — rotate and create a new one.',
+  'Keys are stored hashed on the server; we cannot recover a lost key, rotate and create a new one.',
   'Rotate immediately if a key is exposed.',
 ] as const
 

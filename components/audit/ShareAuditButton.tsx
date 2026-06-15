@@ -74,7 +74,7 @@ export function ShareAuditButton({
       const url = shareUrl
       const shareText =
         score != null
-          ? `QualityOS report: ${score}/100${topIssue ? ` — ${topIssue}` : ''}`
+          ? `QualityOS report: ${score}/100${topIssue ? ` - ${topIssue}` : ''}`
           : 'QualityOS audit report'
 
       if (typeof navigator.share === 'function') {

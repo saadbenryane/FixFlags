@@ -40,7 +40,7 @@ function parseEnv(): Env {
   return result.data
 }
 
-/** Validated env — call after dotenv/config in worker, or rely on Next.js env loading in app. */
+/** Validated env, call after dotenv/config in worker, or rely on Next.js env loading in app. */
 export function getEnv(): Env {
   if (!_env) _env = parseEnv()
   return _env
@@ -72,7 +72,7 @@ export function validateAuditEnv(): void {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL
     if (!appUrl) {
       throw new Error(
-        'Missing NEXT_PUBLIC_APP_URL (or BETTER_AUTH_URL) — required for local screenshot URLs'
+        'Missing NEXT_PUBLIC_APP_URL (or BETTER_AUTH_URL), required for local screenshot URLs'
       )
     }
   }
