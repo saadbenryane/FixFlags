@@ -26,7 +26,7 @@ Shadow-first. Cards: `border-0 shadow-card`. Sections: `bg-muted/35`, not `borde
 
 ## Radius
 
-Concentric: inner = outer − padding. Scale: 6px input → 10px badge → 14px modal → 20px card.
+Concentric: inner = outer − padding. Scale: 6px input → 10px badge → 12px card → 14px modal.
 
 ## Anti-slop
 

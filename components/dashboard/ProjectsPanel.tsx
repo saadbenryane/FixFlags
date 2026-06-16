@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Callout } from '@/components/ui/callout'
 import { Surface } from '@/components/ui/surface'
+import { EmptyState } from '@/components/ui/empty-state'
 import { SectionTitle } from '@/components/ui/typography'
 import { IconInput } from '@/components/ui/icon-input'
 import { FolderPlus, Trash2, Tag, Globe, Loader2 } from 'lucide-react'
@@ -151,9 +152,10 @@ export function ProjectsPanel({ plan }: Props) {
           </Button>
         </Callout>
       ) : projects.length === 0 ? (
-        <p className="py-6 text-sm text-muted-foreground">
-          No projects yet. Create one to group audits for the same site.
-        </p>
+        <EmptyState
+          title="No projects yet"
+          description="Create one to group audits for the same site."
+        />
       ) : (
         <div className="space-y-2">
           {projects.map((project) => (

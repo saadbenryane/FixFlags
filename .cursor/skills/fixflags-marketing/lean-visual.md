@@ -40,11 +40,13 @@ Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
 
 ## Marketing page structure (lean)
 
-1. Hero, pitch + input + proof card
-2. Mechanism, 3 steps, no cards
-3. Problem, 3 columns, no boxes
-4. Workflow, numbered, no connector line
-5. Proof / pricing / FAQ, shadow cards only where needed
+1. Hero — pitch, URL input, product preview (flag card on mobile)
+2. Logo cloud — “Trusted by vibecoders shipping with” + tool names + compatibility disclaimer (not partner endorsements)
+3. Three dimensions — Message, Experience (includes trust/credibility), Reach — not four cards
+4. How it works — scan → flag → fix → verify loop
+5. Live sample report — real audit when available; “Illustrative” fallback only when static
+6. FAQ + pricing teaser — compact conversion blocks before final CTA
+7. Final CTA — scroll to `#audit`
 
 Cut any section that repeats the hero promise.
 

@@ -1,11 +1,13 @@
 'use client'
 
+import { ArrowRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
 import { MarketingBackdrop } from '@/components/marketing/MarketingBackdrop'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { TextLink } from '@/components/ui/text-link'
 import { Heading, Lead } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
@@ -18,8 +20,8 @@ export function LandingHeroSection() {
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <p className="font-mono text-[11px] uppercase tracking-label text-brand">{HERO.badge}</p>
 
-          <Heading as="h1" className="mt-5 max-w-[14ch] sm:max-w-none">
-            Ship AI-built products people can{' '}
+          <Heading as="h1" className="mt-5 text-balance">
+            {HERO.headlineLine1}{' '}
             <span className="text-brand">{HERO.headlineAccent}</span>.
           </Heading>
 
@@ -31,6 +33,11 @@ export function LandingHeroSection() {
           >
             <AuditInput variant="landing" />
           </div>
+
+          <TextLink href="/samples" className="mt-4 text-sm">
+            {HERO.secondaryCta}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </TextLink>
 
           <LandingTrustBadges className="mt-6" />
         </div>

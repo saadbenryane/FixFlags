@@ -34,7 +34,7 @@ function ImpactCard({
       </ul>
       <div className="mt-auto pt-6">
         <p className="font-mono text-[10px] uppercase tracking-label text-terminal-muted">
-          Performance
+          Overall score
         </p>
         <p className="mt-1 font-mono text-4xl font-medium tabular-nums">{score}</p>
       </div>

@@ -15,6 +15,7 @@ import {
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Card } from '@/components/ui/card'
+import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
@@ -114,7 +115,7 @@ export default async function BillingPage() {
           <SectionTitle>Expert Review orders</SectionTitle>
           <div className="space-y-3">
             {expertOrders.map((order) => (
-              <div key={order.id} className="rounded-lg bg-muted/40 px-4 py-3 text-sm">
+              <Surface key={order.id} variant="flat" className="px-4 py-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">
@@ -135,7 +136,7 @@ export default async function BillingPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Surface>
             ))}
           </div>
         </Card>

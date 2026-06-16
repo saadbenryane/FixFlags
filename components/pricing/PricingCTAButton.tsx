@@ -40,7 +40,7 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, useFounding: true }),
+        body: JSON.stringify({ plan, useFounding: false }),
       })
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)

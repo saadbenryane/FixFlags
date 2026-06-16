@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return apiError('Select a valid plan', 400, { code: 'INVALID_PLAN' })
 
     const plan = parsed.data.plan
-    const useFounding = parsed.data.useFounding !== false
+    const useFounding = parsed.data.useFounding === true
     const priceId = resolveCheckoutPriceId(plan, useFounding)
     if (!priceId) return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
 

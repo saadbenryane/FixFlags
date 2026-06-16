@@ -36,7 +36,7 @@ const ABOVE_FOLD_COPY = [
   SEO.home.description,
   BRAND.tagline,
   BRAND.oneLiner,
-  LANDING_PAGE.fourPlaces.headline,
+  LANDING_PAGE.threePlaces.headline,
   LANDING_PAGE.howItWorks.headline,
 ]
 
@@ -124,10 +124,11 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('landing page exposes four-place rubric story', () => {
-    assert.equal(LANDING_PAGE.fourPlaces.cards.length, 4)
-    assert.match(LANDING_PAGE.fourPlaces.cards[0].question, /understand and care/i)
+  it('landing page exposes three-place rubric story', () => {
+    assert.equal(LANDING_PAGE.threePlaces.cards.length, 3)
+    assert.match(LANDING_PAGE.threePlaces.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
     assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
+    assert.equal(LANDING_PAGE.sampleReport.scores.rubrics.length, 3)
   })
 })

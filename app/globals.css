@@ -62,10 +62,6 @@
     -webkit-backdrop-filter: blur(40px);
   }
 
-  .surface-card {
-    @apply rounded-card bg-card shadow-card;
-  }
-
   .overlay-pill-glass {
     background: var(--overlay-pill-bg);
   }
@@ -73,10 +69,6 @@
   .section-label {
     @apply font-mono text-[11px] uppercase text-muted-foreground/80;
     letter-spacing: var(--tracking-label);
-  }
-
-  .marketing-panel {
-    @apply rounded-card bg-card shadow-card;
   }
 
   .rounded-nested-md {

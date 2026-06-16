@@ -116,6 +116,7 @@ export function AuditPageActions({
         isOwner={isOwner}
         isPublic={isPublic}
         isAnonymous={isAnonymous}
+        canPublicShare={canExportSummary}
         onPublicChange={setIsPublic}
       />
       <ExportSummaryButton

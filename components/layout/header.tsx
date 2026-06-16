@@ -17,6 +17,7 @@ import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { HERO } from '@/lib/marketing/copy'
 import {
   Sheet,
   SheetContent,
@@ -137,6 +138,11 @@ export function Header({
             </div>
 
             <div className="flex items-center gap-1 md:hidden">
+              {isMarketing && (
+                <Button variant="ink" size="sm" className="h-8 px-3 text-xs" asChild>
+                  <Link href="/#audit">{HERO.primaryCta}</Link>
+                </Button>
+              )}
               <ThemeToggle />
               <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>

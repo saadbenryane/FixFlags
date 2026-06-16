@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Callout } from '@/components/ui/callout'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Surface } from '@/components/ui/surface'
 import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCP_DOCS, BRAND } from '@/lib/marketing/copy'
@@ -102,10 +104,10 @@ export default function ApiKeysPage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 w-32 rounded bg-muted" />
-        <div className="h-24 rounded-card bg-muted" />
+        <Surface variant="flat" className="h-24" />
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-14 rounded-lg bg-muted" />
+            <Surface key={i} variant="flat" className="h-14" />
           ))}
         </div>
       </div>
@@ -134,10 +136,7 @@ export default function ApiKeysPage() {
       )}
 
       {canUseKeys && newKey && (
-        <div className="space-y-3 rounded-lg border border-success-border bg-success-muted p-4">
-          <p className="text-sm font-medium text-success">
-            API key created, copy it now, you won&apos;t see it again
-          </p>
+        <Callout variant="success" title="API key created, copy it now, you won't see it again">
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all rounded border bg-background px-3 py-2 font-mono text-xs">
               {newKey}
@@ -149,7 +148,7 @@ export default function ApiKeysPage() {
           <Button size="sm" variant="outline" onClick={() => setNewKey(null)}>
             Done
           </Button>
-        </div>
+        </Callout>
       )}
 
       {canUseKeys && (
@@ -187,7 +186,7 @@ export default function ApiKeysPage() {
             />
           ) : (
             keys.map((key) => (
-              <div key={key.id} className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3 shadow-sm">
+              <Surface key={key.id} variant="flat" className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{key.name}</div>
                   <code className="text-xs text-muted-foreground">
@@ -208,7 +207,7 @@ export default function ApiKeysPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </div>
+              </Surface>
             ))
           )}
         </div>

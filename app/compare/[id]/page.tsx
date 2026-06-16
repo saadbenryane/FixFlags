@@ -12,7 +12,9 @@ import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
-import { Heading, Muted } from '@/components/ui/typography'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Muted, SectionTitle } from '@/components/ui/typography'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
@@ -66,11 +68,11 @@ export default async function ComparePage({ params }: Props) {
   if (!canAccessCompare(user, recheckAudit)) {
     return (
       <AuditShell session={session} showAdmin={showAdmin}>
-        <Container variant="report" className="space-y-6 py-8">
-            <div className="space-y-1">
-              <Heading as="h1">Before vs After</Heading>
-              <Muted>Re-check is required to compare scores.</Muted>
-            </div>
+        <Container variant="report" className="space-y-8 py-8">
+          <PageHeader
+            title="Before vs After"
+            description="Re-check is required to compare scores."
+          />
             <ContextualUpgradeCard
               moment="trial_exhausted"
               isLoggedIn
@@ -122,29 +124,28 @@ export default async function ComparePage({ params }: Props) {
       <Container variant="report" className="space-y-8 py-8">
           <div className="space-y-1">
             <Muted className="truncate text-xs">{after.url}</Muted>
-            {flagDiff.fixed.length > 0 ? (
-              <Heading as="h1">
-                {flagDiff.fixed.length === 1
-                  ? '1 flag cleared.'
-                  : `${flagDiff.fixed.length} flags cleared.`}
-                {flagDiff.unchanged.length === 0 && flagDiff.regressed.length === 0
-                  ? ' Clean pass.'
-                  : ''}
-              </Heading>
-            ) : (
-              <Heading as="h1">Before vs After</Heading>
-            )}
+            <PageHeader
+              title={
+                flagDiff.fixed.length > 0
+                  ? `${flagDiff.fixed.length === 1 ? '1 flag cleared' : `${flagDiff.fixed.length} flags cleared`}${
+                      flagDiff.unchanged.length === 0 && flagDiff.regressed.length === 0
+                        ? '. Clean pass.'
+                        : '.'
+                    }`
+                  : 'Before vs After'
+              }
+            />
           </div>
 
-        <Card className="flex items-center gap-6 p-5 sm:p-6">
+        <Card className="flex items-center gap-6 border-0 p-5 shadow-card sm:p-6">
           <div className="text-center">
-            <div className="font-display text-3xl font-normal tabular-nums">{before.score ?? '–'}</div>
+            <div className="font-mono text-3xl font-medium tabular-nums">{before.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">Before</div>
           </div>
           <div className="flex-1 text-center">
             {before.score !== null && after.score !== null ? (
               <div
-                className={`font-display text-2xl font-normal tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
+                className={`font-mono text-2xl font-medium tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
               >
                 {after.score > before.score ? '+' : ''}
                 {after.score - before.score}
@@ -155,7 +156,7 @@ export default async function ComparePage({ params }: Props) {
             <div className="text-xs text-muted-foreground mt-1">Score change</div>
           </div>
           <div className="text-center">
-            <div className="font-display text-3xl font-normal tabular-nums">{after.score ?? '–'}</div>
+            <div className="font-mono text-3xl font-medium tabular-nums">{after.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
         </Card>
@@ -180,9 +181,10 @@ export default async function ComparePage({ params }: Props) {
         flagDiff.unchanged.length === 0 &&
         flagDiff.regressed.length === 0 &&
         flagDiff.newIssues.length === 0 ? (
-          <div className="rounded-card border border-border bg-muted/30 px-5 py-8 text-center sm:px-6">
-            <p className="text-sm text-muted-foreground">No changes detected between the two audits.</p>
-          </div>
+          <EmptyState
+            title="No changes detected"
+            description="Nothing changed between the two audits."
+          />
         ) : (
           <FlagDiff
             fixed={flagDiff.fixed}
@@ -194,14 +196,14 @@ export default async function ComparePage({ params }: Props) {
 
         {beforeDesktop && afterDesktop && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold">Desktop screenshot comparison</h2>
+            <SectionTitle>Desktop screenshot comparison</SectionTitle>
             <BeforeAfterComparison beforeUrl={beforeDesktop.url} afterUrl={afterDesktop.url} />
           </div>
         )}
 
         {hasMobileCompare && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold">Mobile screenshot comparison</h2>
+            <SectionTitle>Mobile screenshot comparison</SectionTitle>
             <div className="flex flex-wrap gap-6 justify-center">
               <div className={MOBILE_FRAME_WIDTH_CLASS}>
                 <p className="text-xs text-muted-foreground mb-2 text-center">Before</p>

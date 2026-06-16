@@ -46,7 +46,7 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={afterUrl} alt="After" className="absolute inset-0 h-full w-full object-cover object-top" />
-        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+        <div className="absolute bottom-2 right-2 rounded-md bg-[hsl(var(--terminal))]/80 px-2 py-0.5 text-xs text-[hsl(var(--terminal-foreground))]">
           After
         </div>
       </div>
@@ -60,7 +60,7 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         />
         <div
-          className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded"
+          className="absolute bottom-2 left-2 rounded-md bg-[hsl(var(--terminal))]/80 px-2 py-0.5 text-xs text-[hsl(var(--terminal-foreground))]"
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         >
           Before
@@ -68,10 +68,10 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
       </div>
 
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none"
+        className="absolute top-0 bottom-0 w-0.5 bg-background shadow-lg pointer-events-none"
         style={{ left: `${position}%` }}
       >
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white shadow-lg border flex items-center justify-center">
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-lg">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path
               d="M4 2L1 6L4 10M8 2L11 6L8 10"

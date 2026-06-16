@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Callout } from '@/components/ui/callout'
+import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 
 export function AccountSettingsForms({
@@ -114,11 +116,12 @@ export function AccountSettingsForms({
   return (
     <div className="space-y-8">
       {error && (
-        <p role="alert" aria-live="polite" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+        <Callout variant="danger" title="Could not update account">
           {error}
-        </p>
+        </Callout>
       )}
 
+      <Card className="border-0 p-5 shadow-card">
       <form onSubmit={saveProfile} className="space-y-4">
         <h2 className="text-base font-semibold">Profile</h2>
         <div className="space-y-2">
@@ -135,7 +138,9 @@ export function AccountSettingsForms({
           {busy === 'profile' ? 'Saving…' : 'Save profile'}
         </Button>
       </form>
+      </Card>
 
+      <Card className="border-0 p-5 shadow-card">
       <form onSubmit={changeEmail} className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-base font-semibold">Email</h2>
@@ -165,7 +170,9 @@ export function AccountSettingsForms({
           )}
         </div>
       </form>
+      </Card>
 
+      <Card className="border-0 p-5 shadow-card">
       <form onSubmit={changePassword} className="space-y-4">
         <h2 className="text-base font-semibold">Password</h2>
         <div className="space-y-2">
@@ -197,8 +204,10 @@ export function AccountSettingsForms({
           {busy === 'password' ? 'Changing…' : 'Change password'}
         </Button>
       </form>
+      </Card>
 
-      <form onSubmit={deleteAccount} className="space-y-4 rounded-xl bg-destructive/5 p-5">
+      <Card className="border-0 border-destructive/20 bg-destructive/5 p-5 shadow-card">
+      <form onSubmit={deleteAccount} className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-base font-semibold text-destructive">Delete account</h2>
           <p className="text-sm text-muted-foreground">
@@ -219,6 +228,7 @@ export function AccountSettingsForms({
           {busy === 'delete' ? 'Sending confirmation…' : 'Delete account'}
         </Button>
       </form>
+      </Card>
     </div>
   )
 }

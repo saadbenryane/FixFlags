@@ -6,7 +6,7 @@
  * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
  */
 
-import { getMarketingPlans } from '@/lib/billing/plans'
+import { getMarketingPlans, proUpgradeCta } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'FixFlags',
@@ -33,12 +33,12 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  badge: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  badge: '\u2726 AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
   headline: 'Ship AI-built products people can trust.',
   headlineLine1: 'Ship AI-built products people can',
   headlineLine2: 'trust.',
   headlineAccent: 'trust',
-  audienceLine: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  audienceLine: '\u2726 AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
   headlineAccentLegacy: false,
   subhead:
     'Paste a URL. FixFlags scans your product like a senior QA, product, and growth reviewer. It finds the issues hurting trust, conversion, speed, and reach, then gives your AI agent the fix.',
@@ -464,46 +464,43 @@ export const FINAL_CTA = {
   headline: 'Before you ship it,',
   headlineAccent: 'flag',
   headlineSuffix: ' it.',
-  body: 'Paste a URL and get a full QA report with agent-ready fix prompts. No sign-up required.',
+  body: 'Run a free check on any live or preview URL. Get the issues that matter and the fixes your agent can apply.',
   trustLine: HERO.trustLine,
 } as const
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Trusted by builders at',
-    logos: ['Vercel', 'Supabase', 'Linear', 'Lovable', 'Cursor', 'Bolt'] as const,
+    label: 'Trusted by vibecoders shipping with',
+    disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
+    logos: ['Cursor', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf', 'and more'] as const,
   },
-  fourPlaces: {
-    label: 'What it checks',
-    headline: 'Every product breaks in four places.',
+  threePlaces: {
+    label: 'What FixFlags checks',
+    headline: 'Every product breaks in three places.',
     cards: [
       {
         id: 'message',
         title: 'Message',
+        question: 'Can people understand and care?',
         icon: 'message',
         tint: 'brand',
-        body: 'Clarity, positioning, and copy.',
+        body: 'Clarity, positioning, copy, and the story you tell.',
       },
       {
         id: 'experience',
         title: 'Experience',
+        question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
-        body: 'UX, speed, mobile, and technical polish.',
-      },
-      {
-        id: 'trust',
-        title: 'Trust',
-        icon: 'trust',
-        tint: 'trust',
-        body: 'Credibility, proof, and security signals.',
+        body: 'UX, speed, mobile, flows, technical polish, credibility, proof, and security signals.',
       },
       {
         id: 'reach',
         title: 'Reach',
+        question: 'Can people find and share it?',
         icon: 'reach',
         tint: 'info',
-        body: 'SEO, metadata, and social previews.',
+        body: 'SEO, metadata, social previews, and discoverability.',
       },
     ] as const,
   },
@@ -538,58 +535,58 @@ export const LANDING_PAGE = {
     ] as const,
   },
   realImpact: {
-    label: 'Proof',
+    label: 'See what changed',
     headline: 'Real impact. Not opinions.',
     before: {
       label: 'Before',
-      items: ['Vague hero', 'Slow load', 'Missing social preview'],
+      items: ['Vague hero', 'Slow mobile', 'Missing social preview'],
       score: 62,
     },
     after: {
       label: 'After',
-      items: ['Clear value prop', 'Faster load', 'Branded link previews'],
+      items: ['Clear value in first viewport', 'Faster and smoother', 'Branded link previews'],
       score: 92,
     },
   },
   testimonials: {
-    label: 'Social proof',
+    label: 'Loved by builders',
     headline: 'Built for developers shipping fast.',
-    footer: 'Join 2,000+ builders who ship with confidence.',
+    disclaimer: 'Representative feedback from builders like you.',
     items: [
       {
         quote:
-          'Caught three things our AI builder missed before we posted the launch thread. The fix prompts saved an afternoon.',
-        name: 'Theo Browne',
-        handle: '@t3dotgg',
+          'FixFlags catches the stuff I always miss before a launch. The fix prompts go straight into Cursor.',
+        name: 'Alex R.',
+        handle: 'Indie SaaS founder',
         network: 'x',
       },
       {
         quote:
-          'We run FixFlags on every preview URL before merge. It is part of our deployment checklist now.',
-        name: 'Sarah Chen',
-        handle: 'Head of Product',
+          'We run FixFlags before every release. It is the fastest way to see what still looks off.',
+        name: 'Jordan M.',
+        handle: 'Product lead',
         network: 'linkedin',
       },
       {
         quote:
-          'The agent-ready fixes are the killer feature. Paste, run, re-check. Hours of manual QA gone.',
-        name: 'Kevin Lu',
-        handle: '@kevinlu',
+          'The agent-ready fixes save hours. Paste the prompt, ship the change, re-check.',
+        name: 'Sam K.',
+        handle: 'Full-stack builder',
         network: 'github',
       },
     ] as const,
   },
   sampleReport: {
-    label: 'Sample output',
+    label: 'Sample report',
     headline: 'A report your AI agent can act on.',
-    body: 'Scores, evidence, and copy-ready fix prompts in one view. Share with your team or paste straight into Cursor.',
+    body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
     cta: 'View full sample report',
+    illustrativeLabel: 'Illustrative scores',
     scores: {
       total: 72,
       rubrics: [
         { name: 'Message', score: 61 },
         { name: 'Experience', score: 74 },
-        { name: 'Trust', score: 68 },
         { name: 'Reach', score: 78 },
       ] as const,
     },
@@ -597,11 +594,14 @@ export const LANDING_PAGE = {
   heroPreview: {
     siteUrl: 'yourproduct.com',
     siteHeadline: 'Build something amazing with AI',
+    siteCta: 'Get started',
     pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Report ready'] as const,
     flag: {
       severity: 'High impact',
       rubric: 'Message',
       title: 'Hero value is unclear',
+      description:
+        'Visitors can\u2019t understand what you do or why it matters in 5 seconds.',
       evidence: '"Build something amazing with AI"',
       impact: 'High',
       affects: ['Conversion', 'Trust'] as const,
@@ -610,26 +610,25 @@ export const LANDING_PAGE = {
   },
   footer: {
     tagline: 'The QA layer for AI-built websites and apps.',
-    newsletter: {
-      title: 'Stay in the loop',
-      placeholder: 'you@company.com',
-      cta: 'Subscribe',
-    },
-    madeWith: 'Made with love by the FixFlags team',
+    madeWith: 'Made with \u2764\ufe0f by the FixFlags team',
     columns: {
       product: [
         { href: '/#how-it-works', label: 'How it works' },
         { href: '/#what-it-checks', label: 'What it checks' },
         { href: '/pricing', label: 'Pricing' },
-        { href: '/examples', label: 'Changelog' },
+        { href: '/examples', label: 'Examples' },
       ],
       resources: [
-        { href: '/docs/mcp', label: 'Docs' },
+        { href: '/docs/mcp', label: 'Documentation' },
         { href: '/faq', label: 'Guides' },
+        { href: '/examples', label: 'Blog' },
+        { href: '/faq', label: 'Help Center' },
       ],
       company: [
         { href: '/faq', label: 'About' },
-        { href: `mailto:${BRAND.supportEmail}`, label: 'Careers' },
+        { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
+        { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
+        { href: '/privacy', label: 'Privacy Policy' },
       ],
     } as const,
   },
@@ -650,7 +649,7 @@ export const FAQ = [
   {
     question: 'What does FixFlags check that Lighthouse doesn\u2019t?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps. Every Flag includes evidence and a fix prompt. Results are grouped into three rubrics (Message, Experience, and Reach) with a clear Pass / Needs Attention / Blocked status.',
+      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps, including trust and credibility signals checked under Experience and Reach impact tags. Every Flag includes evidence and a fix prompt. Results are grouped into three rubrics (Message, Experience, and Reach) with a clear Pass / Needs Attention / Blocked status.',
   },
   {
     question: 'Do I need an account for my first check?',
@@ -713,11 +712,6 @@ export const PRICING_FAQ = [
     question: 'What happens when I hit my check limit?',
     answer:
       'You\u2019ll see an upgrade prompt. Free accounts get 3 checks total (not monthly). Paid plans reset each billing cycle.',
-  },
-  {
-    question: 'Is the founding offer permanent?',
-    answer:
-      'Founding pricing locks in for your first 3 months on Pro and Studio. After that, standard pricing applies unless you cancel.',
   },
   {
     question: 'Do I need Pro for MCP?',
@@ -789,7 +783,7 @@ export const MCP_DOCS = {
   tools: [
     { name: 'ff_check_url', desc: 'Start a check on any URL. Returns reportId.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
-    { name: 'ff_get_report', desc: 'Get the full report with rubric statuses and shareStatus.' },
+    { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
     {
       name: 'ff_get_rubric',
       desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
@@ -919,7 +913,7 @@ export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your 3 free checks',
     body: 'Upgrade to Pro for 25 checks per month, unlimited re-checks, and MCP in Cursor or Claude.',
-    cta: 'Upgrade to Pro - $29/mo founding',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   trial_recheck_available: {
@@ -932,19 +926,19 @@ export const UPGRADE_MOMENTS = {
     headline: (scoreDelta: number) =>
       `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
     body: 'Keep proving every ship with unlimited re-checks and MCP in Cursor.',
-    cta: 'Start Pro - $29/mo founding',
+    cta: proUpgradeCta('Start Pro'),
     plan: 'BUILDER' as const,
   },
   compare_flat: {
     headline: 'Still Flags after your re-check',
     body: 'Pro gives unlimited re-checks and MCP so your agent can close what remains without copy-pasting URLs.',
-    cta: 'Upgrade to Pro - $29/mo founding',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   trial_exhausted: {
     headline: "You've used your free re-check",
     body: 'Upgrade to Pro for unlimited re-checks and before/after comparisons on every ship.',
-    cta: 'Upgrade to Pro - $29/mo founding',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   share_public: {
@@ -962,13 +956,13 @@ export const UPGRADE_MOMENTS = {
   free_default: {
     headline: 'Ship weekly? Automate the loop',
     body: 'Pro adds unlimited re-checks, before/after compare, and MCP so checks run inside Cursor or Claude.',
-    cta: 'Upgrade to Pro - $29/mo founding',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   report_completed: {
     headline: 'Unlock full report history and automation',
     body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report history.',
-    cta: 'Upgrade to Pro - $29/mo founding',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
 } as const

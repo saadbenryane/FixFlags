@@ -1,4 +1,4 @@
-import { Globe2, MessageSquare, ShieldCheck, Sparkles } from 'lucide-react'
+import { Globe2, MessageSquare, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -9,26 +9,24 @@ import { cn } from '@/lib/utils'
 const ICONS = {
   message: MessageSquare,
   experience: Sparkles,
-  trust: ShieldCheck,
   reach: Globe2,
 } as const
 
 const TINTS = {
   brand: 'bg-brand/10 text-brand',
   success: 'bg-success/10 text-success',
-  trust: 'bg-[hsl(270_60%_55%/0.12)] text-[hsl(270_55%_45%)] dark:text-[hsl(270_60%_72%)]',
   info: 'bg-info/10 text-info',
 } as const
 
-export function FourPlacesSection() {
-  const { label, headline, cards } = LANDING_PAGE.fourPlaces
+export function ThreePlacesSection() {
+  const { label, headline, cards } = LANDING_PAGE.threePlaces
 
   return (
     <Section spacing="marketing" id="what-it-checks" className="scroll-mt-[var(--header-offset)]">
       <Container className="space-y-12 sm:space-y-14">
         <LandingSectionHeader label={label} headline={headline} />
 
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
           {cards.map((card) => {
             const Icon = ICONS[card.icon as keyof typeof ICONS]
             return (
@@ -41,7 +39,10 @@ export function FourPlacesSection() {
                 >
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
-                <p className="text-base font-semibold leading-snug text-balance">{card.title}</p>
+                <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+                  {card.title}
+                </p>
+                <p className="mt-2 text-base font-semibold leading-snug text-balance">{card.question}</p>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
                   {card.body}
                 </p>

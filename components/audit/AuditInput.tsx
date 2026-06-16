@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Surface } from '@/components/ui/surface'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
@@ -110,57 +111,90 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <div
-          className={cn(
-            'flex flex-col gap-2',
-            isLanding
-              ? 'rounded-card border border-border/60 bg-card p-1.5 shadow-sm sm:flex-row sm:items-center'
-              : 'sm:flex-row'
-          )}
-        >
-          <label htmlFor="audit-url" className="sr-only">
-            Public website URL
-          </label>
-          <Input
-            id="audit-url"
-            name="url"
-            type="text"
-            inputMode="url"
-            autoComplete="url"
-            placeholder={isLanding ? HERO.urlPlaceholder : 'https://yoursite.com'}
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value)
-              setUrlError('')
-            }}
-            className={cn(
-              'h-12 flex-1 text-base',
-              isLanding && 'border-0 bg-transparent shadow-none focus-visible:ring-0'
-            )}
-            disabled={loading}
-            aria-invalid={Boolean(urlError)}
-            aria-describedby={urlError ? 'audit-url-error' : undefined}
-          />
-          <Button
-            type="submit"
-            size="lg"
-            variant={useBrandCta ? 'default' : isLanding ? 'ink' : 'default'}
-            disabled={loading}
-            className={cn('h-12 shrink-0 gap-2 px-6', isLanding ? 'w-full sm:w-auto' : 'sm:w-auto w-full')}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking…
-              </>
-            ) : (
-              <>
-                {HERO.primaryCta}
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </div>
+        {isLanding ? (
+          <Surface variant="elevated" className="flex flex-col gap-2 p-1.5 sm:flex-row sm:items-center">
+            <label htmlFor="audit-url" className="sr-only">
+              Public website URL
+            </label>
+            <Input
+              id="audit-url"
+              name="url"
+              type="text"
+              inputMode="url"
+              autoComplete="url"
+              placeholder={HERO.urlPlaceholder}
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value)
+                setUrlError('')
+              }}
+              className="h-12 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+              disabled={loading}
+              aria-invalid={Boolean(urlError)}
+              aria-describedby={urlError ? 'audit-url-error' : undefined}
+            />
+            <Button
+              type="submit"
+              size="lg"
+              variant={useBrandCta ? 'default' : 'ink'}
+              disabled={loading}
+              className="h-12 w-full shrink-0 gap-2 px-6 sm:w-auto"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking…
+                </>
+              ) : (
+                <>
+                  {HERO.primaryCta}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </Surface>
+        ) : (
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label htmlFor="audit-url" className="sr-only">
+              Public website URL
+            </label>
+            <Input
+              id="audit-url"
+              name="url"
+              type="text"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://yoursite.com"
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value)
+                setUrlError('')
+              }}
+              className="h-12 flex-1 text-base"
+              disabled={loading}
+              aria-invalid={Boolean(urlError)}
+              aria-describedby={urlError ? 'audit-url-error' : undefined}
+            />
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loading}
+              className="h-12 w-full shrink-0 gap-2 px-6 sm:w-auto"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking…
+                </>
+              ) : (
+                <>
+                  {HERO.primaryCta}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
         {urlError && (
           <p id="audit-url-error" role="alert" className="text-xs text-destructive">
             {urlError}

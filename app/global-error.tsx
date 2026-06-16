@@ -2,6 +2,7 @@
 
 import './globals.css'
 import { fontVariables } from '@/lib/design/fonts'
+import { PageTitle } from '@/components/ui/typography'
 
 export default function GlobalError({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -16,7 +17,7 @@ export default function GlobalError({
       <body
         className={`${fontVariables} flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center text-foreground font-sans antialiased`}
       >
-        <h1 className="font-display text-2xl tracking-heading">Something went wrong</h1>
+        <PageTitle className="text-2xl">Something went wrong</PageTitle>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           A critical error occurred. Please try again or refresh the page.
         </p>

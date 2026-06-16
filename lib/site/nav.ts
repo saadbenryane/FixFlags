@@ -4,7 +4,7 @@ export const MARKETING_LINKS = [
   { href: '/#how-it-works', label: 'How it works' },
   { href: '/#what-it-checks', label: 'What it checks' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/examples', label: 'Changelog' },
+  { href: '/examples', label: 'Examples' },
 ] as const
 
 const SECONDARY_MARKETING_HREFS = new Set(['/pricing', '/examples'])

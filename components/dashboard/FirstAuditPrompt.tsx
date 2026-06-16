@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 
 const EXAMPLE_URLS = [
   { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
@@ -9,7 +10,7 @@ const EXAMPLE_URLS = [
 
 export function FirstAuditPrompt() {
   return (
-    <div className="rounded-card border-0 bg-card shadow-card p-6 sm:p-8 space-y-6">
+    <Card className="border-0 p-6 shadow-card sm:p-8 space-y-6">
       <div className="space-y-2">
         <p className="text-base font-semibold">Paste the URL you are about to share.</p>
         <p className="text-sm text-muted-foreground">
@@ -43,6 +44,6 @@ export function FirstAuditPrompt() {
           to know what you will get.
         </p>
       </div>
-    </div>
+    </Card>
   )
 }

@@ -42,7 +42,7 @@ export function useAuthRedirect() {
       const checkoutRes = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, useFounding: true }),
+        body: JSON.stringify({ plan, useFounding: false }),
       })
       if (checkoutRes.ok) {
         const { url } = await checkoutRes.json()

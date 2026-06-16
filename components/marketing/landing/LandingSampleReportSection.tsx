@@ -6,7 +6,10 @@ import { TextLink } from '@/components/ui/text-link'
 import { Body, Muted } from '@/components/ui/typography'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
+import type { SampleSource } from '@/lib/marketing/live-sample'
 import { cn } from '@/lib/utils'
+
+type RubricScore = { name: string; score: number }
 
 function ScoreGauge({ score }: { score: number }) {
   const radius = 42
@@ -44,8 +47,23 @@ function ScoreGauge({ score }: { score: number }) {
   )
 }
 
-export function LandingSampleReportSection() {
-  const { label, headline, body, cta, scores } = LANDING_PAGE.sampleReport
+interface LandingSampleReportSectionProps {
+  totalScore?: number | null
+  rubrics?: readonly RubricScore[]
+  sampleHref?: string
+  source?: SampleSource
+}
+
+export function LandingSampleReportSection({
+  totalScore,
+  rubrics,
+  sampleHref = '/samples',
+  source = 'static',
+}: LandingSampleReportSectionProps) {
+  const { label, headline, body, cta, scores, illustrativeLabel } = LANDING_PAGE.sampleReport
+  const resolvedTotal = totalScore ?? scores.total
+  const resolvedRubrics = rubrics ?? scores.rubrics
+  const badgeLabel = source === 'static' ? illustrativeLabel : 'Live sample'
 
   return (
     <Section
@@ -58,7 +76,7 @@ export function LandingSampleReportSection() {
           <div className="space-y-5">
             <LandingSectionHeader label={label} headline={headline} align="left" />
             <Body className="max-w-prose text-muted-foreground">{body}</Body>
-            <TextLink href="/samples" className="inline-flex items-center text-sm font-medium">
+            <TextLink href={sampleHref} className="inline-flex items-center text-sm font-medium">
               {cta}
               <ArrowRight className="h-3.5 w-3.5" />
             </TextLink>
@@ -68,7 +86,7 @@ export function LandingSampleReportSection() {
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/30 pb-4">
               <Muted className="font-mono text-[10px] uppercase tracking-label">FixFlags report</Muted>
               <span className="rounded-md bg-muted/50 px-2 py-1 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-                Sample
+                {badgeLabel}
               </span>
             </div>
             <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start">
@@ -76,11 +94,11 @@ export function LandingSampleReportSection() {
                 <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
                   Total score
                 </p>
-                <ScoreGauge score={scores.total} />
+                <ScoreGauge score={resolvedTotal} />
               </div>
 
               <div className="w-full flex-1 space-y-4">
-                {scores.rubrics.map((rubric) => (
+                {resolvedRubrics.map((rubric) => (
                   <div key={rubric.name} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{rubric.name}</span>

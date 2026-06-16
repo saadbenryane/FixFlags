@@ -18,6 +18,7 @@ interface ShareAuditButtonProps {
   isOwner: boolean
   isPublic: boolean
   isAnonymous: boolean
+  canPublicShare?: boolean
   onPublicChange?: (isPublic: boolean) => void
   size?: 'sm' | 'default'
 }
@@ -30,6 +31,7 @@ export function ShareAuditButton({
   isOwner,
   isPublic,
   isAnonymous,
+  canPublicShare = true,
   onPublicChange,
   size = 'sm',
 }: ShareAuditButtonProps) {
@@ -101,6 +103,11 @@ export function ShareAuditButton({
     }
   }
 
+  const shareLabel =
+    isOwner && !isAnonymous && !canPublicShare && !isPublic
+      ? 'Share (Agency)'
+      : 'Share report'
+
   return (
     <div className="flex items-center gap-2">
       {isOwner && !isAnonymous && (
@@ -116,14 +123,25 @@ export function ShareAuditButton({
           )}
         </Badge>
       )}
-      <Button variant="outline" size={size} onClick={handleShare} disabled={loading} className="gap-2">
+      <Button
+        variant="outline"
+        size={size}
+        onClick={handleShare}
+        disabled={loading}
+        className="gap-2"
+        title={
+          isOwner && !canPublicShare && !isPublic
+            ? 'Public OG share links require an Agency plan'
+            : undefined
+        }
+      >
         {copied ? (
           <>
             <Check className="h-4 w-4" /> Copied
           </>
         ) : (
           <>
-            <Share2 className="h-4 w-4" /> Share report
+            <Share2 className="h-4 w-4" /> {shareLabel}
           </>
         )}
       </Button>

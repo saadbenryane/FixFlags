@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { LabelCaps } from '@/components/ui/typography'
+import { LabelCaps, SectionTitle } from '@/components/ui/typography'
 import { TextLink } from '@/components/ui/text-link'
 
 export default async function ExpertReviewDetailPage({
@@ -45,14 +45,14 @@ export default async function ExpertReviewDetailPage({
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-display text-2xl tracking-heading">Executive summary</h2>
+        <SectionTitle>Executive summary</SectionTitle>
         <div className="max-w-prose whitespace-pre-wrap text-base leading-relaxed">
           {order.deliverable.summary}
         </div>
       </section>
 
       <section className="space-y-6">
-        <h2 className="font-display text-2xl tracking-heading">Prioritized actions</h2>
+        <SectionTitle>Prioritized actions</SectionTitle>
         <ol className="space-y-8">
           {priorities.map((priority, index) => (
             <li key={`${priority.title}-${index}`} className="grid gap-3 sm:grid-cols-[3rem_1fr]">

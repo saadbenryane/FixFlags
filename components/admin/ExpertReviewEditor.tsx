@@ -102,7 +102,7 @@ export function ExpertReviewEditor({
           value={summary}
           onChange={(event) => setSummary(event.target.value)}
           rows={8}
-          className="w-full rounded-lg border bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-md border bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
       <div className="space-y-2">
@@ -115,7 +115,7 @@ export function ExpertReviewEditor({
           value={prioritiesText}
           onChange={(event) => setPrioritiesText(event.target.value)}
           rows={14}
-          className="w-full rounded-lg border bg-background p-3 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-md border bg-background p-3 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
       <div className="space-y-2">

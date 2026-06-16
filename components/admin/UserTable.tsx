@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface User {
@@ -58,7 +59,7 @@ export function UserTable({ users }: { users: User[] }) {
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden">
+    <Card className="overflow-hidden border-0 p-0 shadow-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/50">
@@ -109,6 +110,6 @@ export function UserTable({ users }: { users: User[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   )
 }

@@ -17,7 +17,7 @@ function NetworkIcon({ network }: { network: string }) {
 }
 
 export function TestimonialsSection() {
-  const { label, headline, footer, items } = LANDING_PAGE.testimonials
+  const { label, headline, disclaimer, items } = LANDING_PAGE.testimonials
 
   return (
     <Section
@@ -45,7 +45,7 @@ export function TestimonialsSection() {
                   <p className="text-sm font-semibold">{item.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{item.handle}</p>
                 </div>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground/60" aria-hidden>
                   <NetworkIcon network={item.network} />
                 </span>
               </div>
@@ -53,7 +53,7 @@ export function TestimonialsSection() {
           ))}
         </div>
 
-        <Muted className="text-center text-sm">{footer}</Muted>
+        <Muted className="text-center text-xs">{disclaimer}</Muted>
       </Container>
     </Section>
   )

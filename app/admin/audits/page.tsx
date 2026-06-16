@@ -32,7 +32,7 @@ export default async function AdminAuditsPage() {
   return (
     <Container variant="wide" className="space-y-6 py-8">
       <PageHeader title="Recent audits" />
-      <div className="rounded-xl border overflow-hidden">
+      <Card className="overflow-hidden border-0 p-0 shadow-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
@@ -73,7 +73,7 @@ export default async function AdminAuditsPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
       {audits.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">No audits yet.</CardContent>

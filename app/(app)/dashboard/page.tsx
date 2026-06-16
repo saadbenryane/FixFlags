@@ -13,6 +13,7 @@ import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
 import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
+import { ExpertReviewSelectDialog } from '@/components/dashboard/ExpertReviewSelectDialog'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
 import { Container } from '@/components/ui/container'
@@ -64,6 +65,14 @@ export default async function DashboardPage() {
     <Container variant="report" className="py-8 space-y-8">
       <Suspense>
         <DashboardCheckoutToast />
+        <ExpertReviewSelectDialog
+          audits={audits.map((audit) => ({
+            id: audit.id,
+            url: audit.url,
+            score: audit.score,
+            createdAt: audit.createdAt,
+          }))}
+        />
       </Suspense>
       <ClaimAnonymousAudits />
       <div className="space-y-6">

@@ -1,4 +1,6 @@
-import { Copy, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { Sparkles } from 'lucide-react'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,7 +18,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
       )}
     >
       <div className="grid gap-3 lg:grid-cols-[1.05fr_0.75fr_1.1fr] lg:gap-4">
-        <Card className="overflow-hidden border-0 bg-background shadow-sm">
+        <Card className="hidden overflow-hidden border-0 bg-background shadow-card lg:block">
           <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
             <div className="flex gap-1" aria-hidden>
               <span className="h-2 w-2 rounded-full bg-destructive/70" />
@@ -34,11 +36,13 @@ export function HeroProductPreview({ className }: { className?: string }) {
             <p className="max-w-[16rem] text-lg font-medium leading-snug text-balance sm:text-xl">
               {heroPreview.siteHeadline}
             </p>
-            <div className="h-9 w-28 rounded-md bg-muted/60" />
+            <Button size="sm" variant="secondary" className="pointer-events-none h-9 px-4">
+              {heroPreview.siteCta}
+            </Button>
           </div>
         </Card>
 
-        <Card className="border-0 bg-muted/20 p-4 shadow-sm">
+        <Card className="hidden border-0 bg-muted/20 p-4 shadow-card lg:block">
           <ol className="space-y-3">
             {heroPreview.pipeline.map((step, index) => {
               const active = index === 2
@@ -64,7 +68,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
           </ol>
         </Card>
 
-        <Card className="border-0 bg-background p-4 shadow-sm sm:p-5">
+        <Card className="border-0 bg-background p-4 shadow-card sm:p-5">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="bg-brand/10 text-brand hover:bg-brand/10">{heroPreview.flag.severity}</Badge>
@@ -73,6 +77,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
               </span>
             </div>
             <p className="text-base font-semibold">{heroPreview.flag.title}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{heroPreview.flag.description}</p>
 
             <div className="space-y-1.5">
               <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">Evidence</p>
@@ -98,14 +103,13 @@ export function HeroProductPreview({ className }: { className?: string }) {
             </div>
 
             <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-              <Button size="sm" className="gap-2">
-                Send to Cursor
-                <Sparkles className="h-3.5 w-3.5" />
+              <Button size="sm" className="gap-2" asChild>
+                <Link href="/docs/mcp">
+                  Send to Cursor
+                  <Sparkles className="h-3.5 w-3.5" />
+                </Link>
               </Button>
-              <Button size="sm" variant="outline" className="gap-2">
-                Copy prompt
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
+              <PromptCopyButton prompt={heroPreview.flag.fix} compact />
             </div>
           </div>
         </Card>

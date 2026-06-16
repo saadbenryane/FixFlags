@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit --incremental false",
     "lint": "eslint . --max-warnings=0",
     "brand:hex-guard": "node scripts/brand-hex-guard.mjs",
+    "ui:drift-guard": "node scripts/ui-drift-guard.mjs",
     "brand:icons": "node scripts/generate-brand-icons.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",
     "test:unit": "tsx --test lib/__tests__/hardening.test.ts lib/__tests__/homepage-message.test.ts lib/__tests__/marketing-trust.test.ts lib/__tests__/no-em-dash.test.ts lib/__tests__/sanitize-prompts.test.ts lib/__tests__/score-display.test.ts lib/__tests__/nav-active.test.ts lib/audit/__tests__/checks.test.ts lib/audit/__tests__/flow-discover.test.ts lib/audit/__tests__/verify-flags.test.ts lib/audit/__tests__/metadata.test.ts lib/audit/__tests__/judge-rubric.test.ts lib/audit/__tests__/rubric.test.ts lib/audit/__tests__/export-summary.test.ts lib/audit/__tests__/launch-readiness.test.ts lib/audit/__tests__/viewports.test.ts lib/audit/__tests__/screenshot-types.test.ts lib/audit/__tests__/phase1-scans.test.ts lib/storage/__tests__/screenshots.test.ts",
@@ -29,7 +30,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config prisma/seed.ts",
-    "verify": "npm run db:validate && npm run db:check && npm run db:drift && npm run typecheck && npm run lint && npm run brand:hex-guard && npm run seo:guard && npm run test:unit && npm run build && npm run worker:build",
+    "verify": "npm run db:validate && npm run db:check && npm run db:drift && npm run typecheck && npm run lint && npm run brand:hex-guard && npm run ui:drift-guard && npm run seo:guard && npm run test:unit && npm run build && npm run worker:build",
     "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
