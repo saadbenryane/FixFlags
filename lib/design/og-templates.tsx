@@ -151,7 +151,10 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
 }
 
 /** Favicon / app icon - white mark on orange square */
-export function IconOgImage() {
+export function IconOgImage({ size = 32 }: { size?: number }) {
+  const borderRadius = Math.round((size / 32) * 8)
+  const markSize = Math.round((size / 32) * 24)
+
   return (
     <div
       style={{
@@ -161,10 +164,15 @@ export function IconOgImage() {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: BRAND_HEX.primary,
-        borderRadius: 8,
+        borderRadius,
       }}
     >
-      <LogoMarkSvg barColor={brandLight.background} flagColor={brandLight.background} width={24} height={24} />
+      <LogoMarkSvg
+        barColor={brandLight.background}
+        flagColor={brandLight.background}
+        width={markSize}
+        height={markSize}
+      />
     </div>
   )
 }

@@ -3,20 +3,38 @@ import { GoogleAnalytics } from '@next/third-parties/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'
+import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
+
+const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: `${BRAND.name} - ${HERO.headline}`,
   description: HERO.subhead,
+  ...(googleSiteVerification
+    ? { verification: { google: googleSiteVerification } }
+    : {}),
   openGraph: {
     title: BRAND.name,
     description: HERO.subhead,
     type: 'website',
+    url: SITE_URL,
+    siteName: BRAND.name,
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: BRAND.name,
+    description: HERO.subhead,
+    images: [DEFAULT_OG_IMAGE.url],
   },
   icons: {
-    icon: '/icon',
-    apple: '/icon',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: '/apple-icon',
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',

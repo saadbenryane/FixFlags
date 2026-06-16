@@ -41,10 +41,7 @@ export function FourPlacesSection() {
                 >
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
-                <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-                  {card.title}
-                </p>
-                <p className="mt-2 text-base font-semibold leading-snug text-balance">{card.question}</p>
+                <p className="text-base font-semibold leading-snug text-balance">{card.title}</p>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground text-pretty">
                   {card.body}
                 </p>

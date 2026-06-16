@@ -9,6 +9,7 @@ const sectionVariants = cva("", {
       tight: "py-12 sm:py-16 lg:py-20",
       compact: "py-8 sm:py-12",
       loose: "py-24 sm:py-28 lg:py-32",
+      marketing: "py-20 sm:py-28 lg:py-36",
     },
   },
   defaultVariants: {

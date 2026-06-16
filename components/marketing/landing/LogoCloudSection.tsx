@@ -1,7 +1,6 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
-import { cn } from '@/lib/utils'
 
 export function LogoCloudSection() {
   const { label, logos } = LANDING_PAGE.logoCloud
@@ -16,12 +15,7 @@ export function LogoCloudSection() {
           {logos.map((name) => (
             <li
               key={name}
-              className={cn(
-                'font-sans text-sm font-semibold tracking-tight sm:text-base',
-                name === 'and more'
-                  ? 'font-normal text-muted-foreground/60'
-                  : 'text-muted-foreground/70'
-              )}
+              className="font-sans text-sm font-semibold tracking-tight text-muted-foreground/70 sm:text-base"
             >
               {name}
             </li>

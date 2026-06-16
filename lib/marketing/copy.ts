@@ -474,6 +474,7 @@ export const LANDING_PAGE = {
     logos: ['Vercel', 'Supabase', 'Linear', 'Lovable', 'Cursor', 'Bolt'] as const,
   },
   fourPlaces: {
+    label: 'What it checks',
     headline: 'Every product breaks in four places.',
     cards: [
       {
@@ -507,6 +508,7 @@ export const LANDING_PAGE = {
     ] as const,
   },
   howItWorks: {
+    label: 'How it works',
     headline: 'From scan to ship. In one loop.',
     steps: [
       {
@@ -536,6 +538,7 @@ export const LANDING_PAGE = {
     ] as const,
   },
   realImpact: {
+    label: 'Proof',
     headline: 'Real impact. Not opinions.',
     before: {
       label: 'Before',
@@ -549,6 +552,7 @@ export const LANDING_PAGE = {
     },
   },
   testimonials: {
+    label: 'Social proof',
     headline: 'Built for developers shipping fast.',
     footer: 'Join 2,000+ builders who ship with confidence.',
     items: [
@@ -576,6 +580,7 @@ export const LANDING_PAGE = {
     ] as const,
   },
   sampleReport: {
+    label: 'Sample output',
     headline: 'A report your AI agent can act on.',
     body: 'Scores, evidence, and copy-ready fix prompts in one view. Share with your team or paste straight into Cursor.',
     cta: 'View full sample report',

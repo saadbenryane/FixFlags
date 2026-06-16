@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import { MarketingShell } from '@/components/layout/marketing-shell'
+import { BRAND } from '@/lib/marketing/copy'
+
+export const metadata: Metadata = {
+  title: BRAND.name,
+  robots: { index: false, follow: false },
+}
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

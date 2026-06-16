@@ -5,12 +5,19 @@ import { Section } from '@/components/ui/section'
 import { Heading, Body } from '@/components/ui/typography'
 import { FAQ, FAQ_PAGE } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { faqPageSchema } from '@/lib/marketing/structured-data'
 
 export const metadata = buildPageMetadata('faq', '/faq')
+
+const faqJsonLd = faqPageSchema(FAQ)
 
 export default function FaqPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Section spacing="default">
         <Container>
           <div className="mx-auto max-w-prose space-y-10">
