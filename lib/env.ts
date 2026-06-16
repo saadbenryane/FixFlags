@@ -66,7 +66,13 @@ export function validateAuditEnv(): void {
     ] as const
     const missingR2 = r2Required.filter((k) => !process.env[k])
     if (missingR2.length > 0) {
-      throw new Error(`Missing required R2 env vars in production: ${missingR2.join(', ')}`)
+      // R2 is optional for boot: the app and auth come up fine without it, but
+      // audits cannot persist screenshots until all R2 vars are set. Warn loudly
+      // instead of crashing so the site can run while storage is being enabled.
+      console.warn(
+        `[env] R2 storage not configured (missing: ${missingR2.join(', ')}). ` +
+          'Audits will fail at the screenshot step until R2 is set.'
+      )
     }
   } else {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL
