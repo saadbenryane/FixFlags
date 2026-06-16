@@ -1,4 +1,5 @@
 export { HowItWorksLoopSection } from './HowItWorksLoopSection'
+export { LandingFaqSection } from './LandingFaqSection'
 export { LandingFinalCtaSection } from './LandingFinalCtaSection'
 export { LandingHeroSection } from './LandingHeroSection'
 export { LandingSampleReportSection } from './LandingSampleReportSection'

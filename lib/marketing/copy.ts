@@ -33,12 +33,12 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  badge: '\u2726 AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  badge: 'AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
   headline: 'Ship AI-built products people can trust.',
   headlineLine1: 'Ship AI-built products people can',
   headlineLine2: 'trust.',
   headlineAccent: 'trust',
-  audienceLine: '\u2726 AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  audienceLine: 'AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
   headlineAccentLegacy: false,
   subhead:
     'Paste a URL. FixFlags scans your product like a senior QA, product, and growth reviewer. It finds the issues hurting trust, conversion, speed, and reach, then gives your AI agent the fix.',
@@ -475,7 +475,7 @@ export const LANDING_PAGE = {
     logos: ['Cursor', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf', 'and more'] as const,
   },
   threePlaces: {
-    label: 'What FixFlags checks',
+    label: 'What it checks',
     headline: 'Every product breaks in three places.',
     cards: [
       {

@@ -1,8 +1,9 @@
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { WhatsCheckedSection } from '@/components/marketing/WhatsCheckedSection'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Heading, Body } from '@/components/ui/typography'
+import { Body } from '@/components/ui/typography'
 import { FAQ, FAQ_PAGE } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { faqPageSchema } from '@/lib/marketing/structured-data'
@@ -18,12 +19,12 @@ export default function FaqPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <Section spacing="default">
+      <Section spacing="marketing">
         <Container>
-          <div className="mx-auto max-w-prose space-y-10">
-            <div className="space-y-3 text-center">
-              <Heading as="h1">{FAQ_PAGE.title}</Heading>
-              <Body className="text-muted-foreground">{FAQ_PAGE.subhead}</Body>
+          <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
+            <div className="text-center">
+              <LandingSectionHeader label="FAQ" headline={FAQ_PAGE.title} />
+              <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
             </div>
 
             <FaqSection

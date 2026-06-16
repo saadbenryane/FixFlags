@@ -14,7 +14,15 @@ import { QueuePosition } from '@/components/audit/QueuePosition'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
 
-export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'landing' | 'landing-final' }) {
+export function AuditInput({
+  variant = 'default',
+  idSuffix = '',
+}: {
+  variant?: 'default' | 'landing' | 'landing-final'
+  idSuffix?: string
+}) {
+  const inputId = `audit-url${idSuffix}`
+  const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -113,11 +121,11 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
           <Surface variant="elevated" className="flex flex-col gap-2 p-1.5 sm:flex-row sm:items-center">
-            <label htmlFor="audit-url" className="sr-only">
+            <label htmlFor={inputId} className="sr-only">
               Public website URL
             </label>
             <Input
-              id="audit-url"
+              id={inputId}
               name="url"
               type="text"
               inputMode="url"
@@ -131,7 +139,7 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
               className="h-12 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
-              aria-describedby={urlError ? 'audit-url-error' : undefined}
+              aria-describedby={urlError ? errorId : undefined}
             />
             <Button
               type="submit"
@@ -155,11 +163,11 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
           </Surface>
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row">
-            <label htmlFor="audit-url" className="sr-only">
+            <label htmlFor={inputId} className="sr-only">
               Public website URL
             </label>
             <Input
-              id="audit-url"
+              id={inputId}
               name="url"
               type="text"
               inputMode="url"
@@ -173,7 +181,7 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
               className="h-12 flex-1 text-base"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
-              aria-describedby={urlError ? 'audit-url-error' : undefined}
+              aria-describedby={urlError ? errorId : undefined}
             />
             <Button
               type="submit"
@@ -196,7 +204,7 @@ export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'lan
           </div>
         )}
         {urlError && (
-          <p id="audit-url-error" role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="text-xs text-destructive">
             {urlError}
           </p>
         )}

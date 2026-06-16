@@ -4,13 +4,13 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body, Heading } from '@/components/ui/typography'
+import { Body } from '@/components/ui/typography'
 import { ExamplesFilterBar, type ExampleTagId } from '@/components/marketing/ExamplesFilterBar'
 import { ExampleAuditCard } from '@/components/marketing/ExampleAuditCard'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
-import { Badge } from '@/components/ui/badge'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('examples', '/examples')
@@ -39,16 +39,18 @@ export default async function ExamplesPage({
   const audits = filterAudits(tag)
 
   return (
-    <Section spacing="default">
-      <Container variant="report" className="space-y-8">
-        <div className="space-y-3">
-          <Badge variant="secondary">Example audits</Badge>
-          <Heading as="h1">Example audits from recognizable sites</Heading>
-          <Body className="max-w-2xl text-muted-foreground">
+    <Section spacing="marketing">
+      <Container variant="report" className="space-y-10 sm:space-y-12">
+        <div className="mx-auto max-w-3xl space-y-4">
+          <LandingSectionHeader
+            label="Examples"
+            headline="Example audits from recognizable sites"
+          />
+          <Body className="text-muted-foreground text-pretty">
             Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix
             prompt. Illustrative only, not endorsements.
           </Body>
-          <LighthouseCallout className="max-w-2xl text-sm text-muted-foreground" />
+          <LighthouseCallout className="text-sm text-muted-foreground" />
         </div>
 
         <Suspense fallback={null}>

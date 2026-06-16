@@ -5,10 +5,11 @@ import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { ExpertReviewButton } from '@/components/pricing/ExpertReviewButton'
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Surface } from '@/components/ui/surface'
-import { Body, Heading, Muted } from '@/components/ui/typography'
+import { Body, Muted } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2 } from 'lucide-react'
 import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
@@ -22,13 +23,13 @@ export function PricingPageClient() {
   const isLoggedIn = !!user
 
   return (
-    <Section spacing="default">
-      <Container className="space-y-12">
-        <div className="mx-auto max-w-prose space-y-4 text-center">
-          <Heading as="h1">{PRICING.headline}</Heading>
-          <Body className="text-muted-foreground">{PRICING.subhead}</Body>
+    <Section spacing="marketing">
+      <Container className="space-y-12 sm:space-y-14">
+        <div className="mx-auto max-w-2xl text-center">
+          <LandingSectionHeader label="Pricing" headline={PRICING.headline} />
+          <Body className="mt-4 text-muted-foreground text-pretty">{PRICING.subhead}</Body>
           {hasActiveFoundingOffer() && (
-            <div className="inline-block rounded-full bg-brand/10 px-4 py-1.5 text-sm font-medium text-brand">
+            <div className="mt-4 inline-block rounded-full bg-brand/10 px-4 py-1.5 text-sm font-medium text-brand">
               {PRICING.foundingBadge}
             </div>
           )}
@@ -54,7 +55,7 @@ export function PricingPageClient() {
                   <p className="mt-1 text-xs text-muted-foreground">{plan.persona}</p>
                   <p className="mt-2 text-sm font-medium text-pretty">{plan.outcome}</p>
                   <div className="mt-2">
-                    <span className="font-display text-3xl">{plan.price}</span>
+                    <span className="font-mono text-3xl tabular-nums">{plan.price}</span>
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
                   {plan.founding && (
@@ -92,7 +93,7 @@ export function PricingPageClient() {
               <p className="mt-1 text-xs text-muted-foreground">{CONTACT_PLAN.persona}</p>
               <p className="mt-2 text-sm font-medium text-pretty">{CONTACT_PLAN.outcome}</p>
               <div className="mt-2">
-                <span className="font-display text-3xl">{CONTACT_PLAN.price}</span>
+                <span className="font-mono text-3xl tabular-nums">{CONTACT_PLAN.price}</span>
               </div>
               <CardDescription className="mt-1 text-xs font-medium">{CONTACT_PLAN.audits}</CardDescription>
             </CardHeader>
@@ -116,8 +117,9 @@ export function PricingPageClient() {
 
         <Muted className="text-center text-sm">{PRICING.allPlansInclude}</Muted>
 
-        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-4 text-center">
-          <Heading as="h3">{PRICING.expertReview.title}</Heading>
+        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-4 border-0 text-center shadow-card">
+          <p className="section-label">Expert review</p>
+          <h2 className="font-sans text-2xl font-semibold tracking-heading">{PRICING.expertReview.title}</h2>
           <Body className="text-muted-foreground">{PRICING.expertReview.body}</Body>
           <ol className="mx-auto max-w-md list-inside list-decimal space-y-2 text-left text-sm text-muted-foreground">
             {PRICING.expertReview.steps.map((step) => (
@@ -127,8 +129,8 @@ export function PricingPageClient() {
           <ExpertReviewButton isLoggedIn={isLoggedIn} label={PRICING.expertReview.cta} />
         </Surface>
 
-        <div className="mx-auto max-w-prose">
-          <FaqSection items={PRICING_FAQ} title="Pricing questions" />
+        <div className="mx-auto max-w-3xl">
+          <FaqSection items={PRICING_FAQ} title="Pricing questions" sectionLabel="FAQ" />
         </div>
       </Container>
     </Section>

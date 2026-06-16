@@ -1,4 +1,4 @@
-import { FaqSection } from '@/components/marketing/FaqSection'
+import { LandingFaqSection } from '@/components/marketing/landing/LandingFaqSection'
 import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
@@ -37,7 +37,7 @@ export default async function HomePage() {
         sampleHref={sampleHref}
         source={sample.source}
       />
-      <FaqSection items={HOME_FAQ} title="Questions before you ship" sectionLabel="FAQ" />
+      <LandingFaqSection items={HOME_FAQ} />
       <PricingTeaserSection />
       <LandingFinalCtaSection />
     </>

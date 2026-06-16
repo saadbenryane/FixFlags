@@ -139,7 +139,7 @@ export function Header({
 
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
-                <Button variant="ink" size="sm" className="h-8 px-3 text-xs" asChild>
+                <Button variant="ink" size="sm" className="h-8 shrink-0 px-3 text-xs" asChild>
                   <Link href="/#audit">{HERO.primaryCta}</Link>
                 </Button>
               )}
@@ -181,7 +181,7 @@ export function Header({
                       {link.label}
                     </NavLink>
                   ))}
-                  <div className="mt-4 space-y-3 border-t pt-4">
+                  <div className="mt-4 border-t pt-4">
                     <Link
                       href="/sign-in"
                       onClick={() => setOpen(false)}
@@ -189,7 +189,7 @@ export function Header({
                     >
                       Log in
                     </Link>
-                    {resolvedRight}
+                    {!isMarketing && <div className="mt-3">{resolvedRight}</div>}
                   </div>
                 </nav>
               </SheetContent>
