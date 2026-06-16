@@ -126,6 +126,8 @@ describe('homepage message guardrails', () => {
 
   it('landing page exposes four-place rubric story', () => {
     assert.equal(LANDING_PAGE.fourPlaces.cards.length, 4)
+    assert.match(LANDING_PAGE.fourPlaces.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
   })
 })

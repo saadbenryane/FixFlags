@@ -2,20 +2,22 @@ import { ArrowRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Heading } from '@/components/ui/typography'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 export function HowItWorksLoopSection() {
-  const { headline, steps } = LANDING_PAGE.howItWorks
+  const { label, headline, steps } = LANDING_PAGE.howItWorks
 
   return (
-    <Section spacing="loose" id="how-it-works" className="scroll-mt-[var(--header-offset)] bg-muted/20">
-      <Container className="space-y-10 sm:space-y-12">
-        <Heading as="h2" className="mx-auto max-w-2xl text-center">
-          {headline}
-        </Heading>
+    <Section
+      spacing="marketing"
+      id="how-it-works"
+      className="scroll-mt-[var(--header-offset)] bg-muted/20"
+    >
+      <Container className="space-y-12 sm:space-y-14">
+        <LandingSectionHeader label={label} headline={headline} />
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
           {steps.map((step, index) => (
             <div key={step.step} className="relative">
               <Card className="flex h-full flex-col border-0 p-5 shadow-card sm:p-6">

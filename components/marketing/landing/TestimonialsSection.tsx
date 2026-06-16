@@ -2,7 +2,8 @@ import { Github, Linkedin } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Heading, Muted } from '@/components/ui/typography'
+import { Muted } from '@/components/ui/typography'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 function NetworkIcon({ network }: { network: string }) {
@@ -16,14 +17,16 @@ function NetworkIcon({ network }: { network: string }) {
 }
 
 export function TestimonialsSection() {
-  const { headline, footer, items } = LANDING_PAGE.testimonials
+  const { label, headline, footer, items } = LANDING_PAGE.testimonials
 
   return (
-    <Section spacing="loose" id="testimonials" className="scroll-mt-[var(--header-offset)] bg-muted/20">
-      <Container className="space-y-10 sm:space-y-12">
-        <Heading as="h2" className="mx-auto max-w-2xl text-center">
-          {headline}
-        </Heading>
+    <Section
+      spacing="marketing"
+      id="testimonials"
+      className="scroll-mt-[var(--header-offset)] bg-muted/20"
+    >
+      <Container className="space-y-12 sm:space-y-14">
+        <LandingSectionHeader label={label} headline={headline} />
 
         <div className="grid gap-4 md:grid-cols-3 md:gap-5 lg:gap-6">
           {items.map((item) => (
