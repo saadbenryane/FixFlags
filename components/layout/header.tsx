@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
-import { HERO } from '@/lib/marketing/copy'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
@@ -61,23 +60,20 @@ export function Header({
       <AppHeaderRight userEmail={userEmail} showAdmin={showAdmin} />
     ) : variant === 'admin' ? (
       <AdminHeaderRight />
-    ) : (
-      <div className="ml-2 flex items-center gap-2">
-        <Button size="sm" asChild>
-          <Link href="/#audit">{HERO.primaryCta}</Link>
-        </Button>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/sign-in">Sign in</Link>
-        </Button>
-      </div>
-    )
+    ) : null
 
   const resolvedRight = right ?? defaultRight
+  const isMarketing = variant === 'marketing'
 
   return (
     <header className={cn('sticky top-0 z-navbar border-b border-border bg-background/95 backdrop-blur-md', className)}>
       <Container>
-        <div className="flex h-14 items-center justify-between gap-4">
+        <div
+          className={cn(
+            'grid h-14 items-center gap-3',
+            isMarketing ? 'grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr]' : 'grid-cols-[auto_1fr_auto]'
+          )}
+        >
           <div className="flex min-w-0 items-center gap-3">
             <Logo
               variant="lockup"
@@ -91,7 +87,12 @@ export function Header({
             )}
           </div>
 
-          <div className="hidden items-center gap-0.5 md:flex">
+          <nav
+            className={cn(
+              'items-center gap-0.5',
+              isMarketing ? 'hidden justify-center md:flex' : 'hidden md:flex'
+            )}
+          >
             {navLinks.map((link) => (
               <NavLink
                 key={link.href}
@@ -103,25 +104,41 @@ export function Header({
                 {link.label}
               </NavLink>
             ))}
-            {secondaryNavLinks.length > 0 && <span className="w-2" aria-hidden />}
-            {secondaryNavLinks.map((link) => (
-              <NavLink
-                key={link.href}
-                href={link.href}
-                className={cn(NAV_LINK_BASE, 'text-xs')}
-                activeClassName={NAV_LINK_ACTIVE}
-                inactiveClassName={NAV_LINK_INACTIVE}
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            <ThemeToggle />
-            {resolvedRight}
-          </div>
+            {!isMarketing &&
+              secondaryNavLinks.map((link) => (
+                <NavLink
+                  key={link.href}
+                  href={link.href}
+                  className={cn(NAV_LINK_BASE, 'text-xs')}
+                  activeClassName={NAV_LINK_ACTIVE}
+                  inactiveClassName={NAV_LINK_INACTIVE}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+          </nav>
 
-          <div className="flex items-center gap-1 md:hidden">
-            <ThemeToggle />
-            <Sheet open={open} onOpenChange={setOpen}>
+          <div className="flex items-center justify-end gap-1">
+            <div className="hidden items-center gap-0.5 md:flex">
+              {!isMarketing &&
+                secondaryNavLinks.map((link) => (
+                  <NavLink
+                    key={link.href}
+                    href={link.href}
+                    className={cn(NAV_LINK_BASE, 'text-xs')}
+                    activeClassName={NAV_LINK_ACTIVE}
+                    inactiveClassName={NAV_LINK_INACTIVE}
+                  >
+                    {link.label}
+                  </NavLink>
+                ))}
+              <ThemeToggle />
+              {resolvedRight}
+            </div>
+
+            <div className="flex items-center gap-1 md:hidden">
+              <ThemeToggle />
+              <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
                   <Menu className="h-5 w-5" />
@@ -158,10 +175,20 @@ export function Header({
                       {link.label}
                     </NavLink>
                   ))}
-                  <div className="mt-4 border-t pt-4">{resolvedRight}</div>
+                  <div className="mt-4 space-y-3 border-t pt-4">
+                    <Link
+                      href="/sign-in"
+                      onClick={() => setOpen(false)}
+                      className="block text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Log in
+                    </Link>
+                    {resolvedRight}
+                  </div>
                 </nav>
               </SheetContent>
             </Sheet>
+            </div>
           </div>
         </div>
       </Container>

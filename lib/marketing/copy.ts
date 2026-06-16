@@ -33,18 +33,26 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  headline: 'Your AI built it. FixFlags shows what to fix.',
-  headlineLine1: 'Your AI built it.',
-  headlineLine2: 'FixFlags shows what to fix.',
-  audienceLine: 'QA for AI-built products',
-  headlineAccent: false,
+  badge: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  headline: 'Ship AI-built products people can trust.',
+  headlineLine1: 'Ship AI-built products people can',
+  headlineLine2: 'trust.',
+  headlineAccent: 'trust',
+  audienceLine: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  headlineAccentLegacy: false,
   subhead:
-    'Paste a URL. Get clear Flags across message, experience, and reach. Each Flag shows where it happens, why it matters, and the fix prompt or repo change to resolve it.',
+    'Paste a URL. FixFlags scans your product like a senior QA, product, and growth reviewer. It finds the issues hurting trust, conversion, speed, and reach, then gives your AI agent the fix.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
-  primaryCta: 'Check my site',
-  secondaryCta: 'See sample report',
+  primaryCta: 'Run free check',
+  secondaryCta: 'View full sample report',
   trySampleCta: 'Try sample URL',
+  urlPlaceholder: 'Paste your website or preview URL',
+  trustBadges: [
+    'No sign-up required',
+    'Results in seconds',
+    'Live or preview URLs',
+  ] as const,
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
@@ -282,11 +290,7 @@ export const WHATS_CHECKED_SECTION = {
     'Message, Experience, and Reach. Each rubric includes status, what we check, and fix prompts your agent can run.',
 } as const
 
-export const TRUST_STRIP = [
-  'Slop & dead CTA detection',
-  'Automated CTA flow test',
-  'Live search & social previews',
-] as const
+export const TRUST_STRIP = HERO.trustBadges
 
 export const FLOW_SCAN_STATUS = {
   success: {
@@ -457,8 +461,173 @@ export const PRICING_TEASER = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Check your site. See what to fix first.',
+  headline: 'Before you ship it,',
+  headlineAccent: 'flag',
+  headlineSuffix: ' it.',
+  body: 'Paste a URL and get a full QA report with agent-ready fix prompts. No sign-up required.',
   trustLine: HERO.trustLine,
+} as const
+
+export const LANDING_PAGE = {
+  logoCloud: {
+    label: 'Trusted by builders at',
+    logos: ['Vercel', 'Supabase', 'Linear', 'Lovable', 'Cursor', 'Bolt'] as const,
+  },
+  fourPlaces: {
+    headline: 'Every product breaks in four places.',
+    cards: [
+      {
+        id: 'message',
+        title: 'Message',
+        icon: 'message',
+        tint: 'brand',
+        body: 'Clarity, positioning, and copy.',
+      },
+      {
+        id: 'experience',
+        title: 'Experience',
+        icon: 'experience',
+        tint: 'success',
+        body: 'UX, speed, mobile, and technical polish.',
+      },
+      {
+        id: 'trust',
+        title: 'Trust',
+        icon: 'trust',
+        tint: 'trust',
+        body: 'Credibility, proof, and security signals.',
+      },
+      {
+        id: 'reach',
+        title: 'Reach',
+        icon: 'reach',
+        tint: 'info',
+        body: 'SEO, metadata, and social previews.',
+      },
+    ] as const,
+  },
+  howItWorks: {
+    headline: 'From scan to ship. In one loop.',
+    steps: [
+      {
+        step: 1,
+        title: 'Scan',
+        body: 'We scan your live site in seconds.',
+        preview: 'yourproduct.com',
+      },
+      {
+        step: 2,
+        title: 'Flag',
+        body: 'We surface the issues that actually matter.',
+        preview: '7 high-impact flags',
+      },
+      {
+        step: 3,
+        title: 'Fix',
+        body: 'Your AI agent gets exact prompts and context.',
+        preview: 'Agent-ready fix',
+      },
+      {
+        step: 4,
+        title: 'Verify',
+        body: 'We re-check and show what improved.',
+        preview: 'Score improved +32%',
+      },
+    ] as const,
+  },
+  realImpact: {
+    headline: 'Real impact. Not opinions.',
+    before: {
+      label: 'Before',
+      items: ['Vague hero', 'Slow load', 'Missing social preview'],
+      score: 62,
+    },
+    after: {
+      label: 'After',
+      items: ['Clear value prop', 'Faster load', 'Branded link previews'],
+      score: 92,
+    },
+  },
+  testimonials: {
+    headline: 'Built for developers shipping fast.',
+    footer: 'Join 2,000+ builders who ship with confidence.',
+    items: [
+      {
+        quote:
+          'Caught three things our AI builder missed before we posted the launch thread. The fix prompts saved an afternoon.',
+        name: 'Theo Browne',
+        handle: '@t3dotgg',
+        network: 'x',
+      },
+      {
+        quote:
+          'We run FixFlags on every preview URL before merge. It is part of our deployment checklist now.',
+        name: 'Sarah Chen',
+        handle: 'Head of Product',
+        network: 'linkedin',
+      },
+      {
+        quote:
+          'The agent-ready fixes are the killer feature. Paste, run, re-check. Hours of manual QA gone.',
+        name: 'Kevin Lu',
+        handle: '@kevinlu',
+        network: 'github',
+      },
+    ] as const,
+  },
+  sampleReport: {
+    headline: 'A report your AI agent can act on.',
+    body: 'Scores, evidence, and copy-ready fix prompts in one view. Share with your team or paste straight into Cursor.',
+    cta: 'View full sample report',
+    scores: {
+      total: 72,
+      rubrics: [
+        { name: 'Message', score: 61 },
+        { name: 'Experience', score: 74 },
+        { name: 'Trust', score: 68 },
+        { name: 'Reach', score: 78 },
+      ] as const,
+    },
+  },
+  heroPreview: {
+    siteUrl: 'yourproduct.com',
+    siteHeadline: 'Build something amazing with AI',
+    pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Report ready'] as const,
+    flag: {
+      severity: 'High impact',
+      rubric: 'Message',
+      title: 'Hero value is unclear',
+      evidence: '"Build something amazing with AI"',
+      impact: 'High',
+      affects: ['Conversion', 'Trust'] as const,
+      fix: 'Rewrite the hero headline to name the audience and outcome in one sentence. Replace generic AI copy with a specific value prop and a single primary CTA above the fold.',
+    },
+  },
+  footer: {
+    tagline: 'The QA layer for AI-built websites and apps.',
+    newsletter: {
+      title: 'Stay in the loop',
+      placeholder: 'you@company.com',
+      cta: 'Subscribe',
+    },
+    madeWith: 'Made with love by the FixFlags team',
+    columns: {
+      product: [
+        { href: '/#how-it-works', label: 'How it works' },
+        { href: '/#what-it-checks', label: 'What it checks' },
+        { href: '/pricing', label: 'Pricing' },
+        { href: '/examples', label: 'Changelog' },
+      ],
+      resources: [
+        { href: '/docs/mcp', label: 'Docs' },
+        { href: '/faq', label: 'Guides' },
+      ],
+      company: [
+        { href: '/faq', label: 'About' },
+        { href: `mailto:${BRAND.supportEmail}`, label: 'Careers' },
+      ],
+    } as const,
+  },
 } as const
 
 export const FAQ_SECTION = {
@@ -844,9 +1013,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'FixFlags - Your AI built it. FixFlags shows what to fix.',
+    title: 'FixFlags - Ship AI-built products people can trust.',
     description:
-      'Paste a URL. Get clear Flags across message, experience, and reach with copy-ready fix prompts. Free first check.',
+      'Paste a URL. FixFlags scans your product like a senior QA reviewer and gives your AI agent copy-ready fixes. Free first check.',
   },
   pricing: {
     title: 'Pricing',

@@ -75,7 +75,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
           style={{
             fontSize: 48,
             fontWeight: 500,
-            color: p.foreground,
+            color: p.brand,
             lineHeight: 1.15,
             marginBottom: 28,
             fontFamily: ogFontFamilies.sans,

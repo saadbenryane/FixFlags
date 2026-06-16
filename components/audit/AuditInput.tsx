@@ -11,8 +11,9 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
 import { setActiveAudit } from '@/lib/audit/active-audit'
+import { cn } from '@/lib/utils'
 
-export function AuditInput() {
+export function AuditInput({ variant = 'default' }: { variant?: 'default' | 'landing' | 'landing-final' }) {
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -103,10 +104,20 @@ export function AuditInput() {
     await submitUrl(SAMPLE_AUDIT_URL)
   }
 
+  const isLanding = variant === 'landing' || variant === 'landing-final'
+  const useBrandCta = variant === 'landing-final'
+
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-3">
+    <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div
+          className={cn(
+            'flex flex-col gap-2',
+            isLanding
+              ? 'rounded-card border border-border/60 bg-card p-1.5 shadow-sm sm:flex-row sm:items-center'
+              : 'sm:flex-row'
+          )}
+        >
           <label htmlFor="audit-url" className="sr-only">
             Public website URL
           </label>
@@ -116,18 +127,27 @@ export function AuditInput() {
             type="text"
             inputMode="url"
             autoComplete="url"
-            placeholder="https://yoursite.com"
+            placeholder={isLanding ? HERO.urlPlaceholder : 'https://yoursite.com'}
             value={url}
             onChange={(e) => {
               setUrl(e.target.value)
               setUrlError('')
             }}
-            className="h-12 flex-1 text-base"
+            className={cn(
+              'h-12 flex-1 text-base',
+              isLanding && 'border-0 bg-transparent shadow-none focus-visible:ring-0'
+            )}
             disabled={loading}
             aria-invalid={Boolean(urlError)}
             aria-describedby={urlError ? 'audit-url-error' : undefined}
           />
-          <Button type="submit" size="lg" disabled={loading} className="h-12 shrink-0 gap-2 px-6 sm:w-auto w-full">
+          <Button
+            type="submit"
+            size="lg"
+            variant={useBrandCta ? 'default' : isLanding ? 'ink' : 'default'}
+            disabled={loading}
+            className={cn('h-12 shrink-0 gap-2 px-6', isLanding ? 'w-full sm:w-auto' : 'sm:w-auto w-full')}
+          >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -148,17 +168,19 @@ export function AuditInput() {
         )}
       </form>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={loading}
-        onClick={handleTrySample}
-        className="self-start px-0 text-sm text-muted-foreground hover:text-foreground"
-      >
-        {HERO.trySampleCta}
-        <ArrowRight className="ml-1 h-3.5 w-3.5" />
-      </Button>
+      {!isLanding ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={loading}
+          onClick={handleTrySample}
+          className="self-start px-0 text-sm text-muted-foreground hover:text-foreground"
+        >
+          {HERO.trySampleCta}
+          <ArrowRight className="ml-1 h-3.5 w-3.5" />
+        </Button>
+      ) : null}
 
       {queueHold && (
         <QueuePosition

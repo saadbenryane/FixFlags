@@ -5,8 +5,10 @@ import {
   BRAND,
   CASE_STUDIES_SECTION,
   DIFFERENTIATION,
+  FINAL_CTA,
   HERO,
   HOW_IT_WORKS_SECTION,
+  LANDING_PAGE,
   MCP_SECTION,
   OUTPUT_LABELS,
   PROBLEM_SECTION,
@@ -24,7 +26,7 @@ const ABOVE_FOLD_COPY = [
   HERO.headlineLine2,
   HERO.subhead,
   HERO.audienceLine,
-  HERO.trustLine,
+  ...HERO.trustBadges,
   ...TRUST_STRIP,
   PROOF_SECTION.headline,
   PROOF_SECTION.subhead,
@@ -34,12 +36,14 @@ const ABOVE_FOLD_COPY = [
   SEO.home.description,
   BRAND.tagline,
   BRAND.oneLiner,
+  LANDING_PAGE.fourPlaces.headline,
+  LANDING_PAGE.howItWorks.headline,
 ]
 
 describe('homepage message guardrails', () => {
-  it('hero headline is one clear outcome (≤5 words per line)', () => {
-    assert.ok(HERO.headlineLine1.split(/\s+/).length <= 5)
-    assert.ok(HERO.headlineLine2.split(/\s+/).length <= 5)
+  it('hero headline names trust outcome', () => {
+    assert.match(HERO.headline, /trust/i)
+    assert.equal(HERO.headlineAccent, 'trust')
     assert.equal(HERO.headline, `${HERO.headlineLine1} ${HERO.headlineLine2}`)
   })
 
@@ -49,15 +53,15 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience line names the FixFlags tribe', () => {
-    assert.match(HERO.audienceLine, /QA for AI-built products/i)
-    assert.ok(!/live sites/i.test(HERO.audienceLine))
+  it('audience badge states the shipping promise', () => {
+    assert.match(HERO.audienceLine, /fixflags makes it shippable/i)
+    assert.match(HERO.badge, /ai builds fast/i)
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
     assert.match(HERO.subhead, /paste a url/i)
-    assert.match(HERO.subhead, /flags/i)
-    assert.ok(!HERO.subhead.toLowerCase().includes(HERO.headlineLine1.toLowerCase()))
+    assert.match(HERO.subhead, /ai agent/i)
+    assert.ok(!HERO.subhead.toLowerCase().includes('ship ai-built products'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 
@@ -94,8 +98,8 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA is a delivery promise', () => {
-    assert.equal(HERO.primaryCta, 'Check my site')
-    assert.equal(PROOF_SECTION.cta, 'Check my site')
+    assert.equal(HERO.primaryCta, 'Run free check')
+    assert.match(FINAL_CTA.headlineAccent, /flag/i)
   })
 
   it('DIFFERENTIATION has at most 3 bullets and 5 comparison rows', () => {
@@ -118,5 +122,10 @@ describe('homepage message guardrails', () => {
     for (const tile of SEGMENT_PROOF_SECTION.tiles) {
       assert.ok(!/\bgraded\b/i.test(tile.proof), `Graded leak: ${tile.proof}`)
     }
+  })
+
+  it('landing page exposes four-place rubric story', () => {
+    assert.equal(LANDING_PAGE.fourPlaces.cards.length, 4)
+    assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
   })
 })

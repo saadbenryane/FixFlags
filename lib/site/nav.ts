@@ -1,14 +1,13 @@
 import { BRAND } from '@/lib/marketing/copy'
 
 export const MARKETING_LINKS = [
-  { href: '/samples', label: 'Live sample' },
-  { href: '/examples', label: 'Examples' },
+  { href: '/#how-it-works', label: 'How it works' },
+  { href: '/#what-it-checks', label: 'What it checks' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/docs/mcp', label: 'MCP' },
-  { href: '/faq', label: 'FAQ' },
+  { href: '/examples', label: 'Changelog' },
 ] as const
 
-const SECONDARY_MARKETING_HREFS = new Set(['/examples', '/pricing', '/docs/mcp'])
+const SECONDARY_MARKETING_HREFS = new Set(['/pricing', '/examples'])
 
 /** Compact marketing links shown alongside app nav on audit/dashboard pages. */
 export const SECONDARY_MARKETING_NAV = MARKETING_LINKS.filter((link) =>
