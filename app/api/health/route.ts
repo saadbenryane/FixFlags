@@ -36,16 +36,22 @@ export async function GET() {
     }
 
     if (process.env.NODE_ENV === 'production') {
-      try {
-        await Promise.race([
-          checkR2Connection(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 3000)
-          ),
-        ])
-        checks.storage = 'ok'
-      } catch {
-        checks.storage = 'error'
+      if (!isR2Configured()) {
+        // R2 is optional: screenshots are disabled until it is configured, but
+        // that must not make the whole service report unhealthy.
+        checks.storage = 'unconfigured'
+      } else {
+        try {
+          await Promise.race([
+            checkR2Connection(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('timeout')), 3000)
+            ),
+          ])
+          checks.storage = 'ok'
+        } catch {
+          checks.storage = 'error'
+        }
       }
     } else {
       checks.storage = isR2Configured() ? 'configured' : 'local'
