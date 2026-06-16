@@ -68,4 +68,14 @@ export const NURTURE_EMAILS = {
   },
 } as const
 
+export const NEWSLETTER_EMAIL = {
+  subject: 'You\u2019re on the FixFlags list',
+  html: () =>
+    layout(`
+  <p>Thanks for subscribing.</p>
+  <p>We send product updates and practical shipping tips. No spam.</p>
+  <p><a href="${SITE_URL}/changelog" style="${ctaStyle}">See what shipped recently</a></p>
+`),
+} as const
+
 export type NurtureEmailType = keyof typeof NURTURE_EMAILS

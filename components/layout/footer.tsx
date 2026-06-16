@@ -5,7 +5,7 @@ import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
-import { LEGAL_LINKS } from '@/lib/site/nav'
+import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
   NAV_LINK_FOOTER_BASE,
@@ -13,7 +13,7 @@ import {
 } from '@/lib/site/nav-styles'
 
 export function Footer() {
-  const { tagline, madeWith, columns, social } = LANDING_PAGE.footer
+  const { tagline, madeWith, social } = LANDING_PAGE.footer
 
   return (
     <footer className="border-t border-border/40 bg-muted/25">
@@ -35,9 +35,9 @@ export function Footer() {
             </div>
           </div>
 
-          <FooterColumn title="Product" links={columns.product} />
-          <FooterColumn title="Resources" links={columns.resources} />
-          <FooterColumn title="Company" links={columns.company} />
+          <FooterColumn title="Product" links={FOOTER_COLUMNS.product} />
+          <FooterColumn title="Resources" links={FOOTER_COLUMNS.resources} />
+          <FooterColumn title="Company" links={FOOTER_COLUMNS.company} />
           <FooterNewsletter />
         </div>
 

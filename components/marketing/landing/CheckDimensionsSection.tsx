@@ -1,4 +1,4 @@
-import { Globe2, MessageSquare, ShieldCheck, Sparkles } from 'lucide-react'
+import { Globe2, MessageSquare, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -9,26 +9,24 @@ import { cn } from '@/lib/utils'
 const ICONS = {
   message: MessageSquare,
   experience: Sparkles,
-  trust: ShieldCheck,
   reach: Globe2,
 } as const
 
 const TINTS = {
   brand: 'bg-brand/10 text-brand',
   success: 'bg-success/10 text-success',
-  trust: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   info: 'bg-info/10 text-info',
 } as const
 
-export function ThreePlacesSection() {
-  const { label, headline, cards } = LANDING_PAGE.threePlaces
+export function CheckDimensionsSection() {
+  const { label, headline, cards } = LANDING_PAGE.checkDimensions
 
   return (
     <Section spacing="marketing" id="what-it-checks" className="scroll-mt-[var(--header-offset)]">
       <Container className="space-y-12 sm:space-y-14">
         <LandingSectionHeader label={label} headline={headline} />
 
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
           {cards.map((card) => {
             const Icon = ICONS[card.icon as keyof typeof ICONS]
             return (

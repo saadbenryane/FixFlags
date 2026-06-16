@@ -1,24 +1,15 @@
-import Image from 'next/image'
-import { Github, Linkedin } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Muted } from '@/components/ui/typography'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
-
-function NetworkIcon({ network }: { network: string }) {
-  if (network === 'github') return <Github className="h-4 w-4" aria-hidden />
-  if (network === 'linkedin') return <Linkedin className="h-4 w-4" aria-hidden />
-  return (
-    <span className="font-sans text-sm font-bold" aria-hidden>
-      X
-    </span>
-  )
-}
+import { LANDING_PAGE, SOCIAL_PROOF } from '@/lib/marketing/copy'
 
 export function TestimonialsSection() {
-  const { label, headline, disclaimer, items } = LANDING_PAGE.testimonials
+  const { label, headline, disclaimer } = LANDING_PAGE.testimonials
+  const { testimonial } = SOCIAL_PROOF
 
   return (
     <Section
@@ -29,31 +20,24 @@ export function TestimonialsSection() {
       <Container className="space-y-12 sm:space-y-14">
         <LandingSectionHeader label={label} headline={headline} />
 
-        <div className="grid gap-4 md:grid-cols-3 md:gap-5 lg:gap-6">
-          {items.map((item) => (
-            <Card key={item.name} className="flex h-full flex-col border-0 p-6 shadow-card">
-              <blockquote className="flex-1 border-l-2 border-brand/35 pl-4 text-sm leading-relaxed text-foreground/90">
-                {item.quote}
-              </blockquote>
-              <div className="mt-6 flex items-center gap-3">
-                <Image
-                  src={item.avatar}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{item.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{item.handle}</p>
-                </div>
-                <span className="text-muted-foreground/60" aria-hidden>
-                  <NetworkIcon network={item.network} />
-                </span>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <Card className="mx-auto max-w-2xl border-0 p-6 shadow-card sm:p-8">
+          <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+            {testimonial.label}
+          </p>
+          <blockquote className="mt-4 text-base leading-relaxed text-foreground/90">
+            {testimonial.quote}
+          </blockquote>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {testimonial.author} · {testimonial.company}
+          </p>
+          <Link
+            href="/examples"
+            className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-link transition-colors hover:text-link-hover"
+          >
+            See example reports
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Card>
 
         <Muted className="text-center text-sm">{disclaimer}</Muted>
       </Container>

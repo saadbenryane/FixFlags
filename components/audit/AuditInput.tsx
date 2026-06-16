@@ -18,7 +18,7 @@ export function AuditInput({
   variant = 'default',
   idSuffix = '',
 }: {
-  variant?: 'default' | 'landing' | 'landing-final'
+  variant?: 'default' | 'landing'
   idSuffix?: string
 }) {
   const inputId = `audit-url${idSuffix}`
@@ -113,8 +113,7 @@ export function AuditInput({
     await submitUrl(SAMPLE_AUDIT_URL)
   }
 
-  const isLanding = variant === 'landing' || variant === 'landing-final'
-  const useBrandCta = variant === 'landing-final'
+  const isLanding = variant === 'landing'
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
@@ -144,7 +143,7 @@ export function AuditInput({
             <Button
               type="submit"
               size="lg"
-              variant={useBrandCta ? 'default' : 'ink'}
+              variant="ink"
               disabled={loading}
               className="h-12 w-full shrink-0 gap-2 px-6 sm:w-auto"
             >

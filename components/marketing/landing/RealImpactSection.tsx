@@ -2,8 +2,10 @@ import { ArrowRight, Check, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { TextLink } from '@/components/ui/text-link'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
+import { CASE_STUDIES, CASE_STUDIES_SECTION } from '@/lib/marketing/copy'
 
 function ImpactCard({
   label,
@@ -13,7 +15,7 @@ function ImpactCard({
 }: {
   label: string
   items: readonly string[]
-  score: number
+  score: number | null
   positive: boolean
 }) {
   return (
@@ -32,29 +34,33 @@ function ImpactCard({
           </li>
         ))}
       </ul>
-      <div className="mt-auto pt-6">
-        <p className="font-mono text-[10px] uppercase tracking-label text-terminal-muted">
-          Overall score
-        </p>
-        <p className="mt-1 font-mono text-4xl font-medium tabular-nums">{score}</p>
-      </div>
+      {score != null ? (
+        <div className="mt-auto pt-6">
+          <p className="font-mono text-[10px] uppercase tracking-label text-terminal-muted">
+            Overall score
+          </p>
+          <p className="mt-1 font-mono text-4xl font-medium tabular-nums">{score}</p>
+        </div>
+      ) : null}
     </Card>
   )
 }
 
 export function RealImpactSection() {
-  const { label, headline, before, after } = LANDING_PAGE.realImpact
+  const study = CASE_STUDIES[0]
+  const beforeItems = [`Missing ${study.area.toLowerCase()} signal`, study.title]
+  const afterItems = [study.outcome]
 
   return (
     <Section spacing="marketing" id="real-impact" className="scroll-mt-[var(--header-offset)]">
       <Container className="space-y-12 sm:space-y-14">
-        <LandingSectionHeader label={label} headline={headline} />
+        <LandingSectionHeader label={CASE_STUDIES_SECTION.label} headline={CASE_STUDIES_SECTION.headline} />
 
         <div className="grid items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8">
           <ImpactCard
-            label={before.label}
-            items={before.items}
-            score={before.score}
+            label="Before"
+            items={beforeItems}
+            score={study.scoreBefore ?? null}
             positive={false}
           />
           <div className="flex items-center justify-center">
@@ -62,7 +68,19 @@ export function RealImpactSection() {
               <ArrowRight className="h-5 w-5 rotate-90 lg:rotate-0" aria-hidden />
             </span>
           </div>
-          <ImpactCard label={after.label} items={after.items} score={after.score} positive />
+          <ImpactCard
+            label="After"
+            items={afterItems}
+            score={study.scoreAfter ?? null}
+            positive
+          />
+        </div>
+
+        <div className="flex flex-col items-center gap-4 text-center">
+          <TextLink href={study.proofLink} className="text-sm font-medium">
+            View sample report
+          </TextLink>
+          <ThirdPartyAuditDisclaimer variant="compact" className="max-w-lg" />
         </div>
       </Container>
     </Section>

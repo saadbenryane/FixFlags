@@ -33,7 +33,7 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  badge: 'AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  badge: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
   headline: 'Ship AI-built products people can trust.',
   headlineLine1: 'Ship AI-built products people can',
   headlineLine2: 'trust.',
@@ -45,7 +45,6 @@ export const HERO = {
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
   primaryCta: 'Run free check',
-  secondaryCta: 'View full sample report',
   trySampleCta: 'Try sample URL',
   urlPlaceholder: 'Paste your website or preview URL',
   trustBadges: [
@@ -465,17 +464,45 @@ export const FINAL_CTA = {
   headlineAccent: 'flag',
   headlineSuffix: ' it.',
   body: 'Run a free check on any live or preview URL. Get the issues that matter and the fixes your agent can apply.',
-  trustLine: HERO.trustLine,
 } as const
+
+export const CHANGELOG_ENTRIES = [
+  {
+    date: '2026-06-15',
+    title: 'FixFlags rebrand and 3-rubric report model',
+    items: [
+      'Message, Experience, and Reach rubrics with Pass / Needs Attention / Blocked status',
+      'Trust checks run as scan modules with Trust impact tags on flags',
+      'Updated marketing site, report UI, and MCP tools',
+    ],
+  },
+  {
+    date: '2026-06-01',
+    title: 'MCP integration for Cursor and Claude Code',
+    items: [
+      'Check URLs and fetch rubric fix prompts from your editor',
+      'Re-check loop to verify fixes landed',
+    ],
+  },
+  {
+    date: '2026-05-15',
+    title: 'Agent-ready fix prompts on every Flag',
+    items: [
+      'Copy-ready prompts with evidence and verification rules',
+      'Desktop and mobile screenshots on every check',
+    ],
+  },
+] as const
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Trusted by builders at',
-    logos: ['Vercel', 'Supabase', 'Linear', 'Lovable', 'Cursor', 'bolt'] as const,
+    label: 'Trusted by vibecoders shipping with',
+    disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
+    logos: ['Cursor', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf', 'and more'] as const,
   },
-  threePlaces: {
+  checkDimensions: {
     label: 'What it checks',
-    headline: 'Every product breaks in four places.',
+    headline: 'Every product breaks in three places.',
     cards: [
       {
         id: 'message',
@@ -491,15 +518,7 @@ export const LANDING_PAGE = {
         question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
-        body: 'UX, speed, mobile, flows, and technical polish.',
-      },
-      {
-        id: 'trust',
-        title: 'Trust',
-        question: 'Do people believe you?',
-        icon: 'trust',
-        tint: 'trust',
-        body: 'Credibility, proof, security, and brand signals.',
+        body: 'UX, speed, mobile, flows, technical polish, and trust signals like HTTPS and privacy links.',
       },
       {
         id: 'reach',
@@ -541,50 +560,10 @@ export const LANDING_PAGE = {
       },
     ] as const,
   },
-  realImpact: {
-    label: 'See what changed',
-    headline: 'Real impact. Not opinions.',
-    before: {
-      label: 'Before',
-      items: ['Vague hero', 'Slow mobile', 'Missing social preview'],
-      score: 62,
-    },
-    after: {
-      label: 'After',
-      items: ['Clear value in 5 seconds', 'Faster and smoother', 'Branded link previews'],
-      score: 92,
-    },
-  },
   testimonials: {
-    label: 'Loved by builders',
+    label: 'Example feedback',
     headline: 'Built for developers shipping fast.',
-    disclaimer: 'Join 2,000+ builders who ship with confidence.',
-    items: [
-      {
-        quote:
-          'FixFlags catches the stuff I always miss before a launch. The fix prompts go straight into Cursor.',
-        name: 'Alex R.',
-        handle: 'Indie SaaS founder',
-        network: 'x',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
-      },
-      {
-        quote:
-          'We run FixFlags before every release. It is the fastest way to see what still looks off.',
-        name: 'Jordan M.',
-        handle: 'Product lead',
-        network: 'linkedin',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
-      },
-      {
-        quote:
-          'The agent-ready fixes save hours. Paste the prompt, ship the change, re-check.',
-        name: 'Sam K.',
-        handle: 'Full-stack builder',
-        network: 'github',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face',
-      },
-    ] as const,
+    disclaimer: 'Representative feedback from builders like you.',
   },
   sampleReport: {
     label: 'Sample report',
@@ -597,7 +576,6 @@ export const LANDING_PAGE = {
       rubrics: [
         { name: 'Message', score: 61 },
         { name: 'Experience', score: 74 },
-        { name: 'Trust', score: 68 },
         { name: 'Reach', score: 78 },
       ] as const,
     },
@@ -633,26 +611,6 @@ export const LANDING_PAGE = {
       linkedin: 'https://linkedin.com/company/fixflags',
       github: 'https://github.com/fixflags',
     },
-    columns: {
-      product: [
-        { href: '/#how-it-works', label: 'How it works' },
-        { href: '/#what-it-checks', label: 'What it checks' },
-        { href: '/pricing', label: 'Pricing' },
-        { href: '/examples', label: 'Changelog' },
-      ],
-      resources: [
-        { href: '/docs/mcp', label: 'Documentation' },
-        { href: '/faq', label: 'Guides' },
-        { href: '/examples', label: 'Blog' },
-        { href: '/faq', label: 'Help Center' },
-      ],
-      company: [
-        { href: '/faq', label: 'About' },
-        { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
-        { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
-        { href: '/privacy', label: 'Privacy Policy' },
-      ],
-    } as const,
   },
 } as const
 
@@ -1062,6 +1020,10 @@ export const SEO = {
     title: 'FAQ',
     description:
       'Answers about FixFlags checks, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+  },
+  changelog: {
+    title: 'Changelog',
+    description: 'Product updates, new checks, and shipping improvements for FixFlags.',
   },
   privacy: {
     title: 'Privacy Policy',

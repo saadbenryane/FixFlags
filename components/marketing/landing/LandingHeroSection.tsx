@@ -17,7 +17,7 @@ export function LandingHeroSection() {
       <Container className="relative space-y-12 lg:space-y-16">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <p className="font-mono text-[11px] uppercase tracking-label text-brand">
-            + {HERO.badge}
+            {HERO.badge}
           </p>
 
           <Heading as="h1" className="mt-5 max-w-[20ch] text-balance sm:max-w-none">

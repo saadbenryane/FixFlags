@@ -27,7 +27,7 @@ export default async function SamplesPage() {
     : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
 
   return (
-    <Section spacing="default">
+    <Section spacing="marketing">
       <Container variant="report" className="pt-8 pb-2">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">

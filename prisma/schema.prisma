@@ -135,6 +135,12 @@ enum EmailDeliveryStatus {
   FAILED
 }
 
+enum NewsletterStatus {
+  PENDING
+  CONFIRMED
+  UNSUBSCRIBED
+}
+
 model User {
   id                     String              @id @default(cuid())
   email                  String              @unique
@@ -177,6 +183,18 @@ model EmailLog {
   @@unique([userId, emailType])
   @@index([userId])
   @@map("email_logs")
+}
+
+model NewsletterSubscriber {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  status       NewsletterStatus @default(PENDING)
+  source       String           @default("footer")
+  subscribedAt DateTime         @default(now())
+  confirmedAt  DateTime?
+  updatedAt    DateTime         @updatedAt
+
+  @@map("newsletter_subscribers")
 }
 
 model Session {

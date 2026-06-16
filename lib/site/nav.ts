@@ -4,7 +4,7 @@ export const MARKETING_LINKS = [
   { href: '/#how-it-works', label: 'How it works' },
   { href: '/#what-it-checks', label: 'What it checks' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/examples', label: 'Changelog' },
+  { href: '/changelog', label: 'Changelog' },
 ] as const
 
 const SECONDARY_MARKETING_HREFS = new Set(['/pricing', '/examples'])
@@ -15,6 +15,21 @@ export const SECONDARY_MARKETING_NAV = MARKETING_LINKS.filter((link) =>
 )
 
 export const MARKETING_NAV = MARKETING_LINKS
+
+export const FOOTER_COLUMNS = {
+  product: [...MARKETING_LINKS],
+  resources: [
+    { href: '/docs/mcp', label: 'Documentation' },
+    { href: '/examples', label: 'Examples' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/samples', label: 'Sample report' },
+  ],
+  company: [
+    { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
+    { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
+    { href: '/privacy', label: 'Privacy Policy' },
+  ],
+} as const
 
 export const APP_NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -39,8 +54,6 @@ export const SUPPORT_LINK = {
   href: `mailto:${BRAND.supportEmail}`,
   label: 'Support',
 } as const
-
-export const FOOTER_LINKS = [...MARKETING_LINKS, SUPPORT_LINK, ...LEGAL_LINKS] as const
 
 export const SETTINGS_NAV = [
   { href: '/settings', label: 'Settings' },

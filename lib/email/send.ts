@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
-import { NURTURE_EMAILS, type NurtureEmailType } from './templates'
+import { NURTURE_EMAILS, NEWSLETTER_EMAIL, type NurtureEmailType } from './templates'
 import { BRAND } from '@/lib/marketing/copy'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -63,5 +63,30 @@ export async function sendNurtureEmail(
       data: { status: 'FAILED', errorMsg: reason },
     })
     return { sent: false, reason }
+  }
+}
+
+export async function sendNewsletterConfirmation(
+  email: string
+): Promise<{ sent: boolean; reason?: string }> {
+  if (!resend) {
+    return { sent: false, reason: 'RESEND_API_KEY not configured' }
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: NEWSLETTER_EMAIL.subject,
+      html: NEWSLETTER_EMAIL.html(),
+    })
+
+    if (error) throw new Error(error.message)
+    return { sent: true }
+  } catch (error) {
+    return {
+      sent: false,
+      reason: error instanceof Error ? error.message : String(error),
+    }
   }
 }
