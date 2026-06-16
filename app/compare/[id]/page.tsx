@@ -121,8 +121,19 @@ export default async function ComparePage({ params }: Props) {
     <AuditShell session={session} showAdmin={showAdmin}>
       <Container variant="report" className="space-y-8 py-8">
           <div className="space-y-1">
-            <Heading as="h1">Before vs After</Heading>
-            <Muted className="truncate">{after.url}</Muted>
+            <Muted className="truncate text-xs">{after.url}</Muted>
+            {flagDiff.fixed.length > 0 ? (
+              <Heading as="h1">
+                {flagDiff.fixed.length === 1
+                  ? '1 flag cleared.'
+                  : `${flagDiff.fixed.length} flags cleared.`}
+                {flagDiff.unchanged.length === 0 && flagDiff.regressed.length === 0
+                  ? ' Clean pass.'
+                  : ''}
+              </Heading>
+            ) : (
+              <Heading as="h1">Before vs After</Heading>
+            )}
           </div>
 
         <Card className="flex items-center gap-6 p-5 sm:p-6">
@@ -141,7 +152,7 @@ export default async function ComparePage({ params }: Props) {
             ) : (
               <div className="text-2xl text-muted-foreground">–</div>
             )}
-            <div className="text-xs text-muted-foreground mt-1">Overall change</div>
+            <div className="text-xs text-muted-foreground mt-1">Score change</div>
           </div>
           <div className="text-center">
             <div className="font-display text-3xl font-normal tabular-nums">{after.score ?? '–'}</div>
@@ -214,12 +225,26 @@ export default async function ComparePage({ params }: Props) {
           </div>
         )}
 
-        <div className="flex gap-3">
+        {flagDiff.fixed.length > 0 && (
+          <div className="rounded-card border-0 bg-grade-A/5 p-5 shadow-card space-y-2">
+            <p className="text-sm font-semibold text-success">
+              {flagDiff.fixed.length === 1 ? '1 flag fixed.' : `${flagDiff.fixed.length} flags fixed.`} Share the proof.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This comparison is shareable. Send it to your client, team, or post it with your launch.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3 flex-wrap">
           <Button asChild variant="outline">
             <Link href={`/report/${before.id}`}>View original report</Link>
           </Button>
           <Button asChild>
             <Link href={`/report/${after.id}`}>View latest report</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/">Check another URL</Link>
           </Button>
         </div>
       </Container>
