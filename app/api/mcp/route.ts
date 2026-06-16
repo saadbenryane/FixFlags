@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { registerAllTools, validateApiKey } from '@/lib/mcp/tools'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -22,10 +23,10 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
   }
 
   const server = new McpServer(
-    { name: 'qualityos', version: '2.0.0' },
+    { name: 'fixflags', version: '3.0.0' },
     { capabilities: { tools: {} } }
   )
-  registerAllTools(server, user)
+  registerAllTools(server, user, { signal: req.signal })
 
   const host = req.headers.get('host') ?? new URL(req.url).host
   const transport = new WebStandardStreamableHTTPServerTransport({
@@ -39,14 +40,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
   try {
     return await transport.handleRequest(req)
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'mcp.request.failed',
-        userId: user.id,
-        error: error instanceof Error ? error.message : String(error),
-      })
-    )
+    logger.error('MCP request failed', { userId: user.id, error })
     return Response.json(
       {
         jsonrpc: '2.0',

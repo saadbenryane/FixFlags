@@ -80,7 +80,7 @@ export function Header({
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href={logoHref ?? defaultLogoHref}
-              className="shrink-0 font-display text-xl tracking-tight"
+              className="shrink-0 font-display text-xl"
             >
               {BRAND.name}
             </Link>

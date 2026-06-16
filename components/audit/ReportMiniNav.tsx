@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils'
 
 const SECTIONS = [
   { id: 'report-overview', label: 'Overview' },
-  { id: 'report-priority', label: 'Priority fixes' },
-  { id: 'report-areas', label: 'Areas' },
+  { id: 'report-flags', label: 'Flags' },
+  { id: 'report-rubrics', label: 'Rubrics' },
   { id: 'report-recheck', label: 'Re-check' },
 ] as const
 

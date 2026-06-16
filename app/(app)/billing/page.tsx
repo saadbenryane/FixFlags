@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
@@ -7,14 +8,15 @@ import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import {
   getEffectiveScanLimit,
-  getPendingScanCount,
+  getPendingCheckCount,
   isDevUnlimitedScans,
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
-import { Heading, Muted } from '@/components/ui/typography'
+import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { TextLink } from '@/components/ui/text-link'
 
 const EXPERT_STATUS_LABELS = {
   PENDING: 'Pending payment',
@@ -40,7 +42,7 @@ export default async function BillingPage() {
     },
   })
 
-  if (!user) return null
+  if (!user) notFound()
 
   const expertOrders = await prisma.expertReviewOrder.findMany({
     where: { userId: user.id },
@@ -56,15 +58,15 @@ export default async function BillingPage() {
   const isUnlimited =
     isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
   const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
-  const pending = await getPendingScanCount(session!.user.id)
+  const pending = await getPendingCheckCount(session!.user.id)
   const isPaid = user.plan !== 'FREE'
   const isActivating = isPaid && !user.stripeCustomerId
 
   return (
-    <Container className="max-w-2xl space-y-6 py-8">
+    <Container variant="narrow" className="space-y-8 py-8">
       <PageHeader title="Billing" description="Manage your plan and subscription" />
 
-      <div className="surface-raised space-y-4 rounded-xl p-6 shadow-card">
+      <div className="surface-raised space-y-4 rounded-card p-6 shadow-card">
         <div className="space-y-1">
           <Heading as="h2" className="text-base">
             {planDef.name} plan
@@ -107,10 +109,8 @@ export default async function BillingPage() {
       </div>
 
       {expertOrders.length > 0 && (
-        <div className="surface-raised space-y-4 rounded-xl p-6 shadow-card">
-          <Heading as="h2" className="text-base">
-            Expert Review orders
-          </Heading>
+        <div className="surface-raised space-y-4 rounded-card p-6 shadow-card">
+          <SectionTitle>Expert Review orders</SectionTitle>
           <div className="space-y-3">
             {expertOrders.map((order) => (
               <div key={order.id} className="rounded-lg bg-muted/40 px-4 py-3 text-sm">
@@ -123,20 +123,14 @@ export default async function BillingPage() {
                       Ordered {new Date(order.createdAt).toLocaleDateString()}
                     </p>
                     {order.audit && (
-                      <Link
-                        href={`/audit/${order.audit.id}`}
-                        className="text-brand hover:underline"
-                      >
+                      <TextLink href={`/report/${order.audit.id}`}>
                         {order.audit.url}
-                      </Link>
+                      </TextLink>
                     )}
                     {order.deliverable?.deliveredAt && (
-                      <Link
-                        href={`/billing/reviews/${order.id}`}
-                        className="mt-2 block font-medium text-brand hover:underline"
-                      >
+                      <TextLink href={`/billing/reviews/${order.id}`} className="mt-2 block font-medium">
                         Read your Expert Review
-                      </Link>
+                      </TextLink>
                     )}
                   </div>
                 </div>

@@ -1,38 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
-import { handleRouteError, apiError } from '@/lib/api/errors'
-import { startRecheckAudit } from '@/lib/audit/recheck'
-import { prisma } from '@/lib/db'
+import { NextRequest } from 'next/server'
+import { redirectLegacyAuditApi } from '@/lib/api/redirect-legacy-audit'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id: parentId } = await params
-
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-
-    if (!session?.user) {
-      return apiError('Sign in to re-check audits', 401)
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user) {
-      return apiError('User not found', 404)
-    }
-
-    const outcome = await startRecheckAudit(parentId, user)
-    if (!outcome.ok) {
-      return apiError(outcome.error, outcome.status, {
-        code: outcome.code,
-        action: outcome.action,
-      })
-    }
-
-    return NextResponse.json(outcome.result, { status: 201 })
-  } catch (err) {
-    return handleRouteError(err)
-  }
+  const { id } = await params
+  return redirectLegacyAuditApi(req, `/api/reports/${id}/recheck`)
 }

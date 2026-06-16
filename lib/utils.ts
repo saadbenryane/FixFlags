@@ -19,20 +19,16 @@ export function gradeColor(grade: string): string {
 export function severityColor(severity: string): string {
   const map: Record<string, string> = {
     CRITICAL: 'text-destructive bg-destructive/12',
-    HIGH: 'text-grade-D bg-grade-D/12',
-    MEDIUM: 'text-grade-C bg-grade-C/12',
-    LOW: 'text-blue-600 bg-blue-500/12 dark:text-blue-400',
-    INFO: 'text-muted-foreground bg-muted',
+    IMPORTANT: 'text-grade-D bg-grade-D/12',
+    POLISH: 'text-grade-C bg-grade-C/12',
   }
   return map[severity] ?? 'text-muted-foreground bg-muted'
 }
 
 const SEVERITY_ORDER: Record<string, number> = {
   CRITICAL: 0,
-  HIGH: 1,
-  MEDIUM: 2,
-  LOW: 3,
-  INFO: 4,
+  IMPORTANT: 1,
+  POLISH: 2,
 }
 
 const GRADE_ORDER: Record<string, number> = {
@@ -51,23 +47,81 @@ export function gradeRank(grade: string): number {
   return GRADE_ORDER[grade] ?? 99
 }
 
-export function areaLabel(name: string): string {
+export function rubricLabel(name: string): string {
   const map: Record<string, string> = {
-    PERFORMANCE: 'Performance',
-    ACCESSIBILITY: 'Accessibility',
-    SEO: 'SEO',
-    CONVERSION: 'Conversion',
-    TRUST: 'Trust',
-    CONTENT: 'Content',
-    MOBILE: 'Mobile',
+    MESSAGE: 'Message',
+    EXPERIENCE: 'Experience',
+    REACH: 'Reach',
   }
   return map[name] ?? name
 }
 
-export function scoreTypeLabel(name: string): { label: string; badge: string } {
-  const objective = ['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE']
-  if (objective.includes(name)) {
-    return { label: '0–100', badge: 'Objective check' }
+export function rubricDescription(name: string): string {
+  const map: Record<string, string> = {
+    MESSAGE:
+      'Does the page make sense and feel credible? Copy, headline, positioning, audience, benefits, social proof, and trust signals.',
+    EXPERIENCE:
+      'Does the page work well for users? Design, layout, mobile, accessibility, speed, polish, and broken interactions.',
+    REACH:
+      'Can people find, share, and measure it? SEO, metadata, share previews, analytics, and conversion tracking.',
   }
-  return { label: 'A–F', badge: 'Experience check' }
+  return map[name] ?? ''
+}
+
+export function severityLabel(severity: string): string {
+  const map: Record<string, string> = {
+    CRITICAL: 'Critical',
+    IMPORTANT: 'Important',
+    POLISH: 'Polish',
+  }
+  return map[severity] ?? severity
+}
+
+export function impactTagLabel(tag: string | null | undefined): string | null {
+  if (!tag) return null
+  const map: Record<string, string> = {
+    CONVERSION: 'Conversion',
+    REVENUE: 'Revenue',
+    TRUST: 'Trust',
+    MEASUREMENT: 'Measurement',
+    SHARING: 'Sharing',
+    SEO: 'SEO',
+    ACCESSIBILITY: 'Accessibility',
+  }
+  return map[tag] ?? tag
+}
+
+export function flagStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    OPEN: 'Open',
+    FIXED: 'Fixed',
+    IGNORED: 'Ignored',
+    REGRESSED: 'Regressed',
+  }
+  return map[status] ?? status
+}
+
+export function rubricStatusColor(status: string): string {
+  const map: Record<string, string> = {
+    PASS: 'text-grade-A bg-grade-A/10 border-grade-A/25',
+    NEEDS_ATTENTION: 'text-grade-C bg-grade-C/10 border-grade-C/25',
+    BLOCKED: 'text-grade-F bg-grade-F/10 border-grade-F/25',
+  }
+  return map[status] ?? 'text-muted-foreground bg-muted border-border'
+}
+
+export function shareStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    good_to_share: 'Good to share',
+    fix_before_sharing: 'Fix before sharing',
+  }
+  return map[status] ?? status
+}
+
+export function shareStatusColor(status: string): string {
+  const map: Record<string, string> = {
+    good_to_share: 'text-grade-A bg-grade-A/10 border-grade-A/25',
+    fix_before_sharing: 'text-grade-F bg-grade-F/10 border-grade-F/25',
+  }
+  return map[status] ?? 'text-muted-foreground bg-muted border-border'
 }

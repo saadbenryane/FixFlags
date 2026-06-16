@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TextLink } from '@/components/ui/text-link'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminExpertReviewsPage() {
@@ -19,7 +21,7 @@ export default async function AdminExpertReviewsPage() {
   const fulfilled = orders.filter((o) => o.status === 'DELIVERED' || o.status === 'FULFILLED')
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+    <Container variant="report" className="py-8 space-y-8">
       <PageHeader
         title="Expert Review orders"
         description="Mark orders fulfilled after you deliver the review."
@@ -32,7 +34,7 @@ export default async function AdminExpertReviewsPage() {
         ) : (
           <div className="space-y-3">
             {pending.map((order) => (
-              <Card key={order.id}>
+              <Card key={order.id} className="border-0 shadow-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{order.email}</CardTitle>
                 </CardHeader>
@@ -43,9 +45,9 @@ export default async function AdminExpertReviewsPage() {
                   {order.audit && (
                     <p>
                       Audit:{' '}
-                      <Link href={`/audit/${order.audit.id}`} className="text-brand hover:underline">
+                      <TextLink href={`/report/${order.audit.id}`}>
                         {order.audit.url}
-                      </Link>
+                      </TextLink>
                     </p>
                   )}
                   <Button size="sm" asChild>
@@ -62,19 +64,26 @@ export default async function AdminExpertReviewsPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Recently fulfilled ({fulfilled.length})</h2>
-        {fulfilled.slice(0, 10).map((order) => (
-          <div key={order.id} className="flex items-center justify-between rounded-lg bg-muted/40 px-4 py-3 text-sm">
-            <span>{order.email}</span>
-            <span className="text-muted-foreground">
-              {new Date(order.updatedAt).toLocaleDateString()}
-            </span>
-          </div>
-        ))}
+        {fulfilled.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No fulfilled orders yet.</p>
+        ) : (
+          fulfilled.slice(0, 10).map((order) => (
+            <div
+              key={order.id}
+              className="flex items-center justify-between rounded-card border-0 bg-card px-4 py-3 text-sm shadow-card"
+            >
+              <span>{order.email}</span>
+              <span className="text-muted-foreground">
+                {new Date(order.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          ))
+        )}
       </section>
 
       <Button variant="outline" asChild>
         <Link href="/admin">Back to admin</Link>
       </Button>
-    </div>
+    </Container>
   )
 }

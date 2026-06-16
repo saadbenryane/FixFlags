@@ -49,13 +49,13 @@ export function AuditInput() {
     }
 
     if (normalized.includes('localhost') || normalized.includes('127.0.0.1') || normalized.includes('0.0.0.0')) {
-      setUrlError('QualityOS can only audit publicly accessible URLs')
+      setUrlError('FixFlags can only check publicly accessible URLs')
       return
     }
 
     setLoading(true)
     try {
-      const res = await fetch('/api/audits', {
+      const res = await fetch('/api/checks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
@@ -76,15 +76,16 @@ export function AuditInput() {
       }
 
       const data = await res.json()
+      const reportId = data.reportId as string
       setActiveAudit({
-        auditId: data.auditId,
+        auditId: reportId,
         url: normalized,
         queuePosition: data.queuePosition,
         estimatedWaitSeconds: data.estimatedWaitSeconds,
         scheduledStartAt: data.scheduledStartAt,
         queueReason: data.queueReason,
       })
-      router.push(`/audit/${data.auditId}`)
+      router.push(`/report/${reportId}`)
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
@@ -130,7 +131,7 @@ export function AuditInput() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Auditing…
+                Checking…
               </>
             ) : (
               <>

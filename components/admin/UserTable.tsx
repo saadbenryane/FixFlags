@@ -18,9 +18,9 @@ interface User {
 
 const planColors: Record<string, string> = {
   FREE: 'bg-muted text-muted-foreground',
-  BUILDER: 'bg-blue-100 text-blue-800',
-  TEAM: 'bg-purple-100 text-purple-800',
-  STUDIO: 'bg-orange-100 text-orange-800',
+  BUILDER: 'bg-grade-B/15 text-grade-B border-grade-B/25',
+  TEAM: 'bg-brand/10 text-brand border-brand/25',
+  STUDIO: 'bg-grade-A/15 text-grade-A border-grade-A/25',
 }
 
 function formatLimit(limit: number): string {
@@ -47,6 +47,14 @@ export function UserTable({ users }: { users: User[] }) {
     } finally {
       setUpdating(null)
     }
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="rounded-card border-0 bg-card p-8 text-center text-sm text-muted-foreground shadow-card">
+        No users yet.
+      </div>
+    )
   }
 
   return (

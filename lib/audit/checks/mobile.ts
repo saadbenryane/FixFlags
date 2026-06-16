@@ -1,15 +1,15 @@
 import { PageSpeedResult } from '../pagespeed'
-import { DeterministicFinding } from './index'
+import { DeterministicFlag } from './index'
 
-export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFinding[] {
-  const findings: DeterministicFinding[] = []
+export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFlag[] {
+  const findings: DeterministicFlag[] = []
 
   if (!mobile) return findings
 
   if (mobile.score !== null && mobile.score < 50) {
     findings.push({
       checkId: 'mobile-perf-critical',
-      area: 'MOBILE',
+      rubric: 'EXPERIENCE',
       severity: 'CRITICAL',
       problem: `Mobile performance is critically low (${mobile.score}/100)`,
       evidence: `Google PageSpeed mobile score: ${mobile.score}/100`,
@@ -20,8 +20,8 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFi
   } else if (mobile.score !== null && mobile.score < 75) {
     findings.push({
       checkId: 'mobile-perf-poor',
-      area: 'MOBILE',
-      severity: 'HIGH',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
       problem: `Mobile performance needs improvement (${mobile.score}/100)`,
       evidence: `Google PageSpeed mobile score: ${mobile.score}/100`,
       fix: 'Improve mobile performance: compress images, lazy load below-the-fold content, and minimize render-blocking resources.',
@@ -39,8 +39,8 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFi
   if (tapTargets) {
     findings.push({
       checkId: 'tap-targets-small',
-      area: 'MOBILE',
-      severity: 'HIGH',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
       problem: 'Tap targets are too small for mobile users',
       evidence: `Lighthouse: ${tapTargets.title}`,
       fix: 'Ensure all interactive elements have at least 48×48px touch area. Add padding to small buttons.',
@@ -52,7 +52,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFi
   if (mobile.lcp !== null && mobile.lcp / 1000 > 4) {
     findings.push({
       checkId: 'mobile-lcp-critical',
-      area: 'MOBILE',
+      rubric: 'EXPERIENCE',
       severity: 'CRITICAL',
       problem: `Mobile LCP is critically slow (${(mobile.lcp / 1000).toFixed(1)}s)`,
       evidence: `Mobile Largest Contentful Paint: ${(mobile.lcp / 1000).toFixed(2)}s`,

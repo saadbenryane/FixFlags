@@ -10,7 +10,7 @@ export interface MeUser {
   plan: string
   role: string
   isAdmin: boolean
-  tokens: {
+  checks: {
     used: number
     pending: number
     limit: number | null
@@ -21,6 +21,7 @@ export interface MeUser {
     canUseFreeRecheck: boolean
     hasUsedFreeRecheck: boolean
     canSharePublicly: boolean
+    canExportSummary: boolean
     canAccessPaidFeatures: boolean
     canRecheck: boolean
     canUseMcp: boolean

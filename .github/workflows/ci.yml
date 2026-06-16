@@ -12,13 +12,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: qualityos
-          POSTGRES_PASSWORD: qualityos
-          POSTGRES_DB: qualityos
+          POSTGRES_USER: fixflags
+          POSTGRES_PASSWORD: fixflags
+          POSTGRES_DB: fixflags
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U qualityos -d qualityos"
+          --health-cmd "pg_isready -U fixflags -d fixflags"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -33,7 +33,7 @@ jobs:
           --health-retries 10
     env:
       NODE_ENV: production
-      DATABASE_URL: postgresql://qualityos:qualityos@localhost:5432/qualityos
+      DATABASE_URL: postgresql://fixflags:fixflags@localhost:5432/fixflags
       REDIS_URL: redis://localhost:6379
       BETTER_AUTH_SECRET: ci-test-secret-minimum-32-characters
       BETTER_AUTH_URL: http://localhost:3000
@@ -43,9 +43,9 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_ci
       STRIPE_WEBHOOK_SECRET: whsec_ci
       RESEND_API_KEY: re_ci
-      RESEND_FROM_EMAIL: QualityOS <noreply@example.com>
+      RESEND_FROM_EMAIL: FixFlags <noreply@example.com>
       SAMPLE_AUDIT_URL: https://example.com
-      R2_BUCKET_NAME: qualityos-ci
+      R2_BUCKET_NAME: fixflags-ci
       R2_ACCOUNT_ID: ci-account
       R2_ACCESS_KEY_ID: ci-access
       R2_SECRET_ACCESS_KEY: ci-secret
@@ -64,9 +64,9 @@ jobs:
         run: npm run db:check
       - name: Verify migrations against a fresh database
         run: |
-          PGPASSWORD=qualityos psql -h localhost -U qualityos -d postgres -c 'CREATE DATABASE qualityos_fresh'
-          DATABASE_URL=postgresql://qualityos:qualityos@localhost:5432/qualityos_fresh npm run db:deploy
-          PGPASSWORD=qualityos psql -h localhost -U qualityos -d postgres -c 'DROP DATABASE qualityos_fresh'
+          PGPASSWORD=fixflags psql -h localhost -U fixflags -d postgres -c 'CREATE DATABASE fixflags_fresh'
+          DATABASE_URL=postgresql://fixflags:fixflags@localhost:5432/fixflags_fresh npm run db:deploy
+          PGPASSWORD=fixflags psql -h localhost -U fixflags -d postgres -c 'DROP DATABASE fixflags_fresh'
       - name: Detect schema drift
         run: npm run db:drift
       - run: npm run typecheck

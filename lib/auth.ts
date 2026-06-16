@@ -3,9 +3,10 @@ import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from './db'
 import { Resend } from 'resend'
 import { deleteUserProductData } from '@/lib/account/cleanup'
+import { BRAND } from '@/lib/marketing/copy'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'QualityOS <hello@qualityos.com>'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 function hasGoogleOAuth(): boolean {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
@@ -31,7 +32,7 @@ export const auth = betterAuth({
       void resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
-        subject: 'Reset your QualityOS password',
+        subject: `Reset your ${BRAND.name} password`,
         html: `
           <p>Hi${user.name ? ` ${user.name}` : ''},</p>
           <p>Click the link below to reset your password. This link expires in one hour.</p>
@@ -49,9 +50,9 @@ export const auth = betterAuth({
       const { error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
-        subject: 'Verify your QualityOS email',
+        subject: `Verify your ${BRAND.name} email`,
         html: `
-          <p>Verify your email to activate your QualityOS account.</p>
+          <p>Verify your email to activate your ${BRAND.name} account.</p>
           <p><a href="${url}">Verify email</a></p>
         `,
       })
@@ -86,9 +87,9 @@ export const auth = betterAuth({
         const { error } = await resend.emails.send({
           from: FROM_EMAIL,
           to: user.email,
-          subject: 'Confirm QualityOS account deletion',
+          subject: `Confirm ${BRAND.name} account deletion`,
           html: `
-            <p>This permanently deletes your QualityOS account, audits, screenshots, and API keys.</p>
+            <p>This permanently deletes your ${BRAND.name} account, reports, screenshots, and API keys.</p>
             <p><a href="${url}">Confirm account deletion</a></p>
           `,
         })

@@ -67,17 +67,13 @@ enum SubscriptionStatus {
   UNPAID
 }
 
-enum AreaName {
-  PERFORMANCE
-  ACCESSIBILITY
-  SEO
-  CONVERSION
-  TRUST
-  CONTENT
-  MOBILE
+enum RubricName {
+  MESSAGE
+  EXPERIENCE
+  REACH
 }
 
-enum AreaGrade {
+enum RubricGrade {
   A
   B
   C
@@ -85,7 +81,7 @@ enum AreaGrade {
   F
 }
 
-enum AreaStatus {
+enum RubricStatus {
   EXCELLENT
   GOOD
   NEEDS_WORK
@@ -94,21 +90,29 @@ enum AreaStatus {
 
 enum Severity {
   CRITICAL
-  HIGH
-  MEDIUM
-  LOW
-  INFO
+  IMPORTANT
+  POLISH
 }
 
-enum FindingSource {
+enum ImpactTag {
+  CONVERSION
+  REVENUE
+  TRUST
+  MEASUREMENT
+  SHARING
+  SEO
+  ACCESSIBILITY
+}
+
+enum FlagSource {
   DETERMINISTIC
   AI
 }
 
-enum FindingStatus {
+enum FlagStatus {
   OPEN
   FIXED
-  UNCHANGED
+  IGNORED
   REGRESSED
 }
 
@@ -186,6 +190,7 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -203,6 +208,7 @@ model Account {
   updatedAt            DateTime  @updatedAt
 
   @@unique([providerId, accountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -213,6 +219,8 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 
+  @@index([identifier])
+  @@index([expiresAt])
   @@map("verifications")
 }
 
@@ -295,9 +303,9 @@ model Audit {
   performanceData Json?
   consoleErrors   Json?
 
-  areas              AuditArea[]
+  rubrics            ReportRubric[]
   screenshots        Screenshot[]
-  findings           Finding[]
+  flags              Flag[]
   pages              AuditPage[]
   runCost            AuditRunCost?
   expertReviewOrders ExpertReviewOrder[]
@@ -331,7 +339,7 @@ model AuditPage {
   failureCode     String?
   failureMessage  String?
   screenshots     Screenshot[]
-  findings        Finding[]
+  flags           Flag[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -356,29 +364,29 @@ model AuditRunCost {
   @@map("audit_run_costs")
 }
 
-model AuditArea {
+model ReportRubric {
   id              String          @id @default(cuid())
   auditId         String
   audit           Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  name            AreaName
+  name            RubricName
   score           Int?
-  grade           AreaGrade?
-  status          AreaStatus?
+  grade           RubricGrade?
+  status          RubricStatus?
   assessmentState AssessmentState @default(UNKNOWN)
   confidence      Float?
   summary         String          @db.Text
 
-  areaPrompt    String  @db.Text
+  rubricPrompt  String  @db.Text
   cursorPrompt  String? @db.Text
   claudePrompt  String? @db.Text
   lovablePrompt String? @db.Text
   boltPrompt    String? @db.Text
 
-  findings Finding[]
+  flags Flag[]
 
   @@unique([auditId, name])
   @@index([auditId])
-  @@map("audit_areas")
+  @@map("report_rubrics")
 }
 
 model Screenshot {
@@ -397,17 +405,18 @@ model Screenshot {
   @@map("screenshots")
 }
 
-model Finding {
-  id       String        @id @default(cuid())
+model Flag {
+  id       String     @id @default(cuid())
   auditId  String
-  audit    Audit         @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  audit    Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
   pageId   String?
-  page     AuditPage?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  areaId   String?
-  area_rel AuditArea?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
-  source   FindingSource
+  page     AuditPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  rubricId String?
+  rubric_rel ReportRubric? @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  source   FlagSource
 
-  area         String
+  rubric       String
+  impactTag    ImpactTag?
   severity     Severity
   problem      String
   evidence     String   @db.Text
@@ -427,31 +436,31 @@ model Finding {
   pageUrl      String?
   fingerprint  String?
   position     Int
-  status       FindingStatus @default(OPEN)
+  status       FlagStatus @default(OPEN)
   resolvedInId String?
 
-  feedback  FindingFeedback[]
-  createdAt DateTime          @default(now())
+  feedback  FlagFeedback[]
+  createdAt DateTime       @default(now())
 
   @@index([auditId])
   @@index([auditId, checkId])
   @@index([pageId])
   @@index([auditId, fingerprint])
-  @@map("findings")
+  @@map("flags")
 }
 
-model FindingFeedback {
+model FlagFeedback {
   id        String   @id @default(cuid())
-  findingId String
-  finding   Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  flagId    String
+  flag      Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
   userId    String?
   vote      Int
   comment   String?  @db.Text
   createdAt DateTime @default(now())
 
-  @@unique([findingId, userId])
-  @@index([findingId])
-  @@map("finding_feedback")
+  @@unique([flagId, userId])
+  @@index([flagId])
+  @@map("flag_feedback")
 }
 
 model ExpertReviewOrder {
@@ -469,6 +478,7 @@ model ExpertReviewOrder {
   updatedAt       DateTime                 @updatedAt
 
   @@index([userId])
+  @@index([auditId])
   @@map("expert_review_orders")
 }
 
@@ -484,6 +494,7 @@ model ExpertReviewDeliverable {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  @@index([orderId])
   @@map("expert_review_deliverables")
 }
 
@@ -499,6 +510,7 @@ model ExpertReviewEvent {
 
   @@index([orderId, createdAt])
   @@unique([orderId, type])
+  @@index([actorId])
   @@map("expert_review_events")
 }
 
@@ -508,5 +520,7 @@ model ProcessedStripeEvent {
   processedAt DateTime @default(now())
   payloadHash String?
 
+  @@index([type])
+  @@index([processedAt])
   @@map("processed_stripe_events")
 }

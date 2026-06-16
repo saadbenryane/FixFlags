@@ -1,9 +1,10 @@
-import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatUsd } from '@/lib/billing/costs'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { TextLink } from '@/components/ui/text-link'
 import { cn } from '@/lib/utils'
 
 export default async function AdminAuditsPage() {
@@ -29,7 +30,7 @@ export default async function AdminAuditsPage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <Container variant="wide" className="space-y-6 py-8">
       <PageHeader title="Recent audits" />
       <div className="rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
@@ -47,9 +48,9 @@ export default async function AdminAuditsPage() {
             {audits.map((audit, i) => (
               <tr key={audit.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/20')}>
                 <td className="px-4 py-3">
-                  <Link href={`/admin/audits/${audit.id}`} className="text-primary hover:underline truncate block max-w-[240px]">
+                  <TextLink href={`/admin/audits/${audit.id}`} className="truncate block max-w-[240px]">
                     {audit.url}
-                  </Link>
+                  </TextLink>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {audit.user?.email ?? 'Anonymous'}
@@ -78,6 +79,6 @@ export default async function AdminAuditsPage() {
           <CardContent className="py-8 text-center text-muted-foreground">No audits yet.</CardContent>
         </Card>
       )}
-    </div>
+    </Container>
   )
 }

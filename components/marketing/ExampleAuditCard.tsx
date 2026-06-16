@@ -2,17 +2,18 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { AreaGrid } from '@/components/audit/AreaGrid'
+import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Heading } from '@/components/ui/typography'
-import { rankFindingsByPriority } from '@/lib/audit/priority-findings'
+import { computeRubricsFromRows } from '@/lib/audit/rubric'
+import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import type { ExampleAudit } from '@/lib/marketing/example-audits'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { areaLabel } from '@/lib/utils'
+import { rubricLabel } from '@/lib/utils'
 
 const TAG_LABELS: Record<string, string> = {
   'best-practices': 'Best practices benchmark',
@@ -27,8 +28,21 @@ interface Props {
 
 export function ExampleAuditCard({ audit }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const topIssues = rankFindingsByPriority(audit.areas, 3)
-  const topPrompt = topIssues[0]?.finding.agentPrompt ?? topIssues[0]?.finding.fix
+  const topIssues = rankFlagsByPriority(
+    audit.flags,
+    audit.rubrics.map((r) => ({ name: r.name, grade: r.grade })),
+    3
+  )
+  const topPrompt = topIssues[0]?.flag.agentPrompt ?? topIssues[0]?.flag.fix
+  const rubrics = computeRubricsFromRows(
+    audit.rubrics.map((r) => ({
+      name: r.name,
+      grade: r.grade,
+      score: r.score,
+      flags: audit.flags.filter((f) => f.rubric === r.name).map((f) => ({ severity: f.severity })),
+    })),
+    audit.flags
+  )
 
   return (
     <Card id={audit.id} className="scroll-mt-[var(--header-offset)] border-0 shadow-card">
@@ -54,15 +68,15 @@ export function ExampleAuditCard({ audit }: Props) {
       <CardContent className="space-y-5 pt-5">
         <div className="space-y-2">
           <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-            Top issues
+            Top flags
           </p>
           <ul className="space-y-2">
-            {topIssues.map(({ finding, areaName }) => (
-              <li key={finding.id} className="flex items-start gap-2 text-sm">
+            {topIssues.map(({ flag, rubricName }) => (
+              <li key={flag.id} className="flex items-start gap-2 text-sm">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span className="flex-1 text-foreground/90">{finding.problem}</span>
+                <span className="flex-1 text-foreground/90">{flag.problem}</span>
                 <span className="shrink-0 font-mono text-[10px] uppercase text-muted-foreground">
-                  {areaLabel(areaName)}
+                  {rubricLabel(rubricName)}
                 </span>
               </li>
             ))}
@@ -82,9 +96,9 @@ export function ExampleAuditCard({ audit }: Props) {
             </p>
             <div className="space-y-2">
               <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
-                All areas · Pipeline v{PIPELINE_VERSION}
+                Rubrics · Pipeline v{PIPELINE_VERSION}
               </p>
-              <AreaGrid areas={audit.areas} showScoreTypes />
+              <RubricSummaryGrid rubrics={rubrics} />
             </div>
           </div>
         )}

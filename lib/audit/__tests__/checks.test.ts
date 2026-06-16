@@ -7,7 +7,7 @@ import { runSeoChecks } from '@/lib/audit/checks/seo'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
-import { computeAreaScores, runAllChecks } from '@/lib/audit/checks'
+import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import {
   healthyDesktopPs,
@@ -432,14 +432,14 @@ describe('runAllChecks', () => {
   })
 })
 
-describe('computeAreaScores', () => {
-  it('maps PageSpeed and finding penalties to area scores', () => {
-    const scores = computeAreaScores(
+describe('computeRubricScores', () => {
+  it('maps PageSpeed and flag penalties to rubric scores', () => {
+    const scores = computeRubricScores(
       [
         {
           checkId: 'images-missing-alt',
-          area: 'ACCESSIBILITY',
-          severity: 'HIGH',
+          rubric: 'EXPERIENCE',
+          severity: 'IMPORTANT',
           problem: '',
           evidence: '',
           fix: '',
@@ -450,12 +450,9 @@ describe('computeAreaScores', () => {
       healthyDesktopPs({ score: 88 }),
       healthyMobilePs({ score: 77 })
     )
-    assert.equal(scores.PERFORMANCE, 88)
-    assert.equal(scores.MOBILE, 77)
-    assert.equal(scores.ACCESSIBILITY, 85)
-    assert.equal(scores.CONVERSION, null)
-    assert.equal(scores.TRUST, null)
-    assert.equal(scores.CONTENT, null)
+    assert.equal(scores.EXPERIENCE, 68)
+    assert.equal(scores.MESSAGE, null)
+    assert.equal(scores.REACH, null)
   })
 })
 

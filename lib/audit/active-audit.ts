@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'qos:active-audit'
+const STORAGE_KEY = 'ff:active-check'
+const LEGACY_STORAGE_KEY = 'qos:active-audit'
 
 export interface ActiveAuditSnapshot {
   auditId: string
@@ -9,6 +10,19 @@ export interface ActiveAuditSnapshot {
   queueReason?: 'rate_limit' | 'backlog'
 }
 
+function migrateLegacyStorage(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const legacy = sessionStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy && !sessionStorage.getItem(STORAGE_KEY)) {
+      sessionStorage.setItem(STORAGE_KEY, legacy)
+    }
+    sessionStorage.removeItem(LEGACY_STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
 export function setActiveAudit(snapshot: ActiveAuditSnapshot): void {
   if (typeof window === 'undefined') return
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
@@ -16,6 +30,7 @@ export function setActiveAudit(snapshot: ActiveAuditSnapshot): void {
 
 export function getActiveAudit(): ActiveAuditSnapshot | null {
   if (typeof window === 'undefined') return null
+  migrateLegacyStorage()
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null

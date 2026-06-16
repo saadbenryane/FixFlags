@@ -2,15 +2,16 @@ import './load-env'
 import { validateAuditEnv } from '../lib/env'
 import { startWorker } from '../lib/queue/worker'
 import { closeBrowser } from '../lib/audit/screenshot'
+import { logger } from '../lib/logger'
 
 validateAuditEnv()
 
-console.log('QualityOS worker starting...')
+logger.info('Worker starting')
 
 const worker = startWorker()
 
 async function shutdown() {
-  console.log('Shutting down worker...')
+  logger.info('Worker shutting down')
   await worker.close()
   await closeBrowser()
   process.exit(0)
@@ -19,4 +20,4 @@ async function shutdown() {
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
 
-console.log('Worker ready, listening for audit jobs')
+logger.info('Worker ready, listening for audit jobs')

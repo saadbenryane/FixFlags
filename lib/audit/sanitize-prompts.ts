@@ -47,7 +47,7 @@ export function sanitizePromptText(text: string, fallback: string): string {
   return text
 }
 
-type SanitizableFinding = {
+type SanitizableFlag = {
   problem?: string
   evidence?: string
   whyItMatters?: string
@@ -60,10 +60,9 @@ type SanitizableFinding = {
   verificationRule?: string | null
 }
 
-export function sanitizeFindingFields<T extends SanitizableFinding>(finding: T): T {
-  const fallback =
-    finding.fix || finding.evidence || 'Apply the fix described in the evidence.'
-  const evidence = finding.evidence ?? fallback
+export function sanitizeFlagFields<T extends SanitizableFlag>(flag: T): T {
+  const fallback = flag.fix || flag.evidence || 'Apply the fix described in the evidence.'
+  const evidence = flag.evidence ?? fallback
 
   const sanitize = (value: string | null | undefined) =>
     value ? sanitizePromptText(value, fallback) : value
@@ -71,36 +70,36 @@ export function sanitizeFindingFields<T extends SanitizableFinding>(finding: T):
   const defaultVerification = `Confirm the issue described in evidence is resolved: ${evidence.slice(0, 120)}`
 
   return {
-    ...finding,
-    problem: finding.problem
+    ...flag,
+    problem: flag.problem
       ? sanitizePromptText(
-          finding.problem,
+          flag.problem,
           'An issue was detected that should be addressed before launch.'
         )
-      : finding.problem,
-    evidence: finding.evidence
-      ? sanitizePromptText(finding.evidence, fallback)
-      : finding.evidence,
-    whyItMatters: finding.whyItMatters
+      : flag.problem,
+    evidence: flag.evidence
+      ? sanitizePromptText(flag.evidence, fallback)
+      : flag.evidence,
+    whyItMatters: flag.whyItMatters
       ? sanitizePromptText(
-          finding.whyItMatters,
+          flag.whyItMatters,
           'This issue affects user experience and should be fixed before launch.'
         )
-      : finding.whyItMatters,
-    fix: sanitize(finding.fix) ?? finding.fix,
-    agentPrompt: sanitize(finding.agentPrompt),
-    cursorPrompt: sanitize(finding.cursorPrompt),
-    claudePrompt: sanitize(finding.claudePrompt),
-    lovablePrompt: sanitize(finding.lovablePrompt),
-    boltPrompt: sanitize(finding.boltPrompt),
-    verificationRule: finding.verificationRule
-      ? sanitizePromptText(finding.verificationRule, defaultVerification)
+      : flag.whyItMatters,
+    fix: sanitize(flag.fix) ?? flag.fix,
+    agentPrompt: sanitize(flag.agentPrompt),
+    cursorPrompt: sanitize(flag.cursorPrompt),
+    claudePrompt: sanitize(flag.claudePrompt),
+    lovablePrompt: sanitize(flag.lovablePrompt),
+    boltPrompt: sanitize(flag.boltPrompt),
+    verificationRule: flag.verificationRule
+      ? sanitizePromptText(flag.verificationRule, defaultVerification)
       : defaultVerification,
   }
 }
 
-type SanitizableArea = {
-  areaPrompt?: string
+type SanitizableRubric = {
+  rubricPrompt?: string
   cursorPrompt?: string | null
   claudePrompt?: string | null
   lovablePrompt?: string | null
@@ -108,50 +107,59 @@ type SanitizableArea = {
   summary: string
 }
 
-function sanitizeAreaPrompts<T extends SanitizableArea>(area: T): T {
-  const fallback = area.summary
+function sanitizeRubricPrompts<T extends SanitizableRubric>(rubric: T): T {
+  const fallback = rubric.summary
   const sanitize = (value: string | null | undefined) =>
-    value ? sanitizePromptText(value, area.areaPrompt ?? fallback) : value
+    value ? sanitizePromptText(value, rubric.rubricPrompt ?? fallback) : value
 
   return {
-    ...area,
-    areaPrompt: sanitizePromptText(area.areaPrompt ?? fallback, fallback),
-    cursorPrompt: sanitize(area.cursorPrompt),
-    claudePrompt: sanitize(area.claudePrompt),
-    lovablePrompt: sanitize(area.lovablePrompt),
-    boltPrompt: sanitize(area.boltPrompt),
+    ...rubric,
+    rubricPrompt: sanitizePromptText(rubric.rubricPrompt ?? fallback, fallback),
+    cursorPrompt: sanitize(rubric.cursorPrompt),
+    claudePrompt: sanitize(rubric.claudePrompt),
+    lovablePrompt: sanitize(rubric.lovablePrompt),
+    boltPrompt: sanitize(rubric.boltPrompt),
   }
 }
 
 export function sanitizeJudgeOutput<
   T extends {
-    newFindings: SanitizableFinding[]
-    enrichments: Array<SanitizableFinding & { checkId?: string; whyItMatters: string }>
-    areas: Array<SanitizableArea>
+    newFlags: SanitizableFlag[]
+    enrichments: Array<SanitizableFlag & { checkId?: string; whyItMatters: string }>
+    rubrics: Array<SanitizableRubric>
   },
 >(output: T): T {
+  const dedupedEnrichments: typeof output.enrichments = []
+  const seenCheckIds = new Set<string>()
+  for (const enrichment of output.enrichments) {
+    const checkId = enrichment.checkId
+    if (!checkId || seenCheckIds.has(checkId)) continue
+    seenCheckIds.add(checkId)
+    dedupedEnrichments.push(enrichment)
+  }
+
   return {
     ...output,
-    newFindings: output.newFindings.map((f) => sanitizeFindingFields(f)),
-    enrichments: output.enrichments.map((e) =>
-      sanitizeFindingFields({
+    newFlags: output.newFlags.map((f) => sanitizeFlagFields(f)),
+    enrichments: dedupedEnrichments.map((e) =>
+      sanitizeFlagFields({
         ...e,
         fix: e.whyItMatters,
         evidence: e.checkId ?? e.whyItMatters,
       })
     ),
-    areas: output.areas.map((area) => sanitizeAreaPrompts(area)),
+    rubrics: output.rubrics.map((rubric) => sanitizeRubricPrompts(rubric)),
   }
 }
 
-/** Re-sanitize persisted finding fields before API/MCP responses. */
-export function sanitizeFindingForRead<
-  T extends SanitizableFinding & { fix: string; evidence: string },
->(finding: T): T {
-  return sanitizeFindingFields(finding)
+/** Re-sanitize persisted flag fields before API/MCP responses. */
+export function sanitizeFlagForRead<
+  T extends SanitizableFlag & { fix: string; evidence: string },
+>(flag: T): T {
+  return sanitizeFlagFields(flag)
 }
 
-/** Re-sanitize persisted area prompts before API/MCP responses. */
-export function sanitizeAreaForRead<T extends SanitizableArea>(area: T): T {
-  return sanitizeAreaPrompts(area)
+/** Re-sanitize persisted rubric prompts before API/MCP responses. */
+export function sanitizeRubricForRead<T extends SanitizableRubric>(rubric: T): T {
+  return sanitizeRubricPrompts(rubric)
 }

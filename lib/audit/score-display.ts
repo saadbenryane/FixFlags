@@ -1,43 +1,24 @@
-import type { AreaName } from '@prisma/client'
 import { gradeFromScore } from '@/lib/audit/scoring'
-
-export const OBJECTIVE_AREAS = [
-  'PERFORMANCE',
-  'ACCESSIBILITY',
-  'SEO',
-  'MOBILE',
-] as const satisfies readonly AreaName[]
-
-export type ObjectiveAreaName = (typeof OBJECTIVE_AREAS)[number]
-
-export function isObjectiveArea(name: string): boolean {
-  return (OBJECTIVE_AREAS as readonly string[]).includes(name)
-}
 
 export type ScoreDisplayMode = 'numeric' | 'grade'
 
 export interface ResolvedScoreDisplay {
   mode: ScoreDisplayMode
-  /** "78" or "B" */
   primary: string
-  /** "Grade B" for numeric mode */
   secondary: string | null
-  /** "/ 100" for numeric mode, or "Experience grade" for grade mode */
   caption: string | null
   grade: string | null
   score: number | null
 }
 
 export function resolveScoreDisplay(input: {
-  areaName?: string | null
   grade: string | null
   score: number | null
+  isOverall?: boolean
 }): ResolvedScoreDisplay {
-  const { areaName, grade, score } = input
-  const isOverall = !areaName
-  const useNumeric = isOverall || isObjectiveArea(areaName)
+  const { grade, score, isOverall = false } = input
 
-  if (useNumeric && score != null) {
+  if (isOverall && score != null) {
     const letterGrade = grade ?? gradeFromScore(score)
     return {
       mode: 'numeric',
@@ -49,14 +30,15 @@ export function resolveScoreDisplay(input: {
     }
   }
 
-  if (useNumeric && grade != null) {
+  if (score != null) {
+    const letterGrade = grade ?? gradeFromScore(score)
     return {
-      mode: 'numeric',
-      primary: grade,
-      secondary: null,
+      mode: 'grade',
+      primary: letterGrade,
+      secondary: `${score}/100`,
       caption: null,
-      grade,
-      score: null,
+      grade: letterGrade,
+      score,
     }
   }
 
@@ -64,7 +46,7 @@ export function resolveScoreDisplay(input: {
     mode: 'grade',
     primary: grade ?? '-',
     secondary: null,
-    caption: 'Experience grade',
+    caption: null,
     grade,
     score: null,
   }
@@ -73,13 +55,9 @@ export function resolveScoreDisplay(input: {
 export function formatScoreInline(
   score: number | null,
   grade: string | null,
-  options?: { areaName?: string | null }
+  options?: { isOverall?: boolean }
 ): string {
-  const resolved = resolveScoreDisplay({
-    areaName: options?.areaName,
-    grade,
-    score,
-  })
+  const resolved = resolveScoreDisplay({ grade, score, isOverall: options?.isOverall })
 
   if (resolved.mode === 'numeric' && resolved.score != null && resolved.grade) {
     return `${resolved.score}/100 · Grade ${resolved.grade}`
@@ -89,12 +67,5 @@ export function formatScoreInline(
     return `Grade ${resolved.grade}`
   }
 
-  return '—'
-}
-
-export function areaScoreForDisplay(area: {
-  name: string
-  score: number | null
-}): number | null {
-  return isObjectiveArea(area.name) ? area.score : null
+  return '-'
 }

@@ -1,18 +1,21 @@
 # Voice & Copy Guidelines
 
-## QualityOS adaptation
+## FixFlags adaptation
 
-This document preserves the operator voice principles from the design system spec, adapted for **QualityOS**: an audit tool for teams shipping sites with AI agents.
+This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: pre-launch confidence for anyone shipping a URL.
 
-**Product context:** QualityOS runs evidence-backed quality audits and returns fix prompts builders can paste into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a sharp operator who has shipped messy launches, not a consultant selling a methodology.
+**Product context:** FixFlags runs evidence-backed checks and returns fix prompts builders can paste into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a sharp reviewer who has shipped messy launches, not a consultant selling a methodology.
 
-**What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes.
+**What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
 
 **What adapts:** Examples about "founders" and "product clarity advisory" map to builders, launch quality, and fix loops. Prefer *ship, fix, evidence, pattern, outcome* over *unlock, leverage, holistic, transformation*.
 
 **Related files:**
+- Business model & pricing: [`docs/business-model.md`](./business-model.md)
+- Brand & positioning: [`docs/brand-positioning.md`](./brand-positioning.md)
+- Product scope & philosophy: [`docs/offering.md`](./offering.md)
 - UI copy: [`lib/marketing/copy.ts`](../lib/marketing/copy.ts)
-- AI auditor voice: [`lib/prompts/system-prompt.ts`](../lib/prompts/system-prompt.ts)
+- AI reviewer voice: [`lib/prompts/system-prompt.ts`](../lib/prompts/system-prompt.ts)
 
 ---
 
@@ -60,7 +63,7 @@ Why bad: generic · eager · inflated · startup-bro · could be any consultant'
 
 ## Vocabulary
 
-**Prefer:** build, ship, clear, useful, real, messy, pattern, signal, outcome, next move, product, story, system, proof, listen, fix, moved, lifted, simplified, opened, compounded, obvious, honest, cohort
+**Prefer:** build, ship, clear, useful, real, messy, pattern, signal, outcome, next move, product, story, system, proof, listen, fix, moved, lifted, simplified, opened, compounded, obvious, honest, cohort, flag, rubric
 
 **Use carefully (max once per piece):** strategy, scale, systems, advisory, growth, premium, transformation, leverage
 
@@ -98,7 +101,7 @@ Do not sound like generic startup advisory.
 
 Core idea: Help people make the right thing clearer before they spend months building, pitching, or scaling the wrong one.
 
-Better framing: Product, brand, and execution clarity for founders and teams building something real.
+Better framing: QA for AI-built products. Clear Flags across Message, Experience, and Reach before you share the link.
 
 Keep the offer implicit unless explicitly asked to sell harder. No branded service names ("Clarity Sprint," "startup advisory package"). Plain, grounded lines over consultant packaging.
 
@@ -174,7 +177,7 @@ Never paste the same CTA block on every post. Match CTA angle to article topic. 
 - Would a real operator say this in conversation?
 - Useful, or just polished?
 - Generic startup language removed?
-- Concrete object present: product, story, system, proof, next move?
+- Concrete object present: product, story, system, proof, next move, flag?
 - Claims supported by real evidence only?
 - Could this line appear on any consultant's site? If yes, rewrite.
 - Lands flat instead of selling too hard?

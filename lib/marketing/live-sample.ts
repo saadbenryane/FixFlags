@@ -2,11 +2,22 @@ import { prisma } from '@/lib/db'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import {
+  computeShareStatusFromRubrics,
+  computeRubricsFromRows,
+  type RubricComputed,
+  type ShareStatus,
+} from '@/lib/audit/rubric'
+import { buildReportShapeFromDb, type ReportRubricRow } from '@/lib/audit/build-report-shape'
+import type { RankableFlag } from '@/lib/audit/priority-flags'
 
 const sampleInclude = {
-  areas: {
+  rubrics: {
     orderBy: { name: 'asc' } as const,
-    include: { findings: { orderBy: { position: 'asc' } as const } },
+    include: { flags: { orderBy: { position: 'asc' } as const } },
+  },
+  flags: {
+    orderBy: { position: 'asc' } as const,
   },
   screenshots: {
     where: { page: { position: 0 } },
@@ -15,37 +26,6 @@ const sampleInclude = {
 }
 
 export type SampleSource = 'live' | 'archived' | 'static'
-
-export type LiveSampleAreaFinding = {
-  id: string
-  problem: string
-  evidence: string
-  whyItMatters: string
-  fix: string
-  severity: string
-  agentPrompt: string | null
-  cursorPrompt: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-  verificationRule?: string | null
-  pageUrl?: string | null
-}
-
-export type LiveSampleArea = {
-  id: string
-  name: string
-  grade: string | null
-  score: number | null
-  status: string | null
-  summary: string
-  areaPrompt: string
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-  findings: LiveSampleAreaFinding[]
-}
 
 export type LiveSampleAudit = {
   id: string
@@ -63,9 +43,12 @@ export type LiveSampleAudit = {
   parentId?: string | null
   pageSpeedErrors?: { desktopError?: string; mobileError?: string; pageSpeedPartial?: boolean }
   startedAt?: string | Date | null
-  areas: LiveSampleArea[]
+  rubricRows: ReportRubricRow[]
+  flags: RankableFlag[]
   screenshots: AuditScreenshot[]
   launchReadiness: ReturnType<typeof parseLaunchReadiness>
+  rubrics: RubricComputed[]
+  shareStatus: ShareStatus
 }
 
 export type SampleResult = {
@@ -79,7 +62,7 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
   const defaultSampleUrl =
     process.env.SAMPLE_AUDIT_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    'https://qualityos.com'
+    'https://fixflags.com'
   let audit = null
   let source: SampleSource = 'static'
 
@@ -116,16 +99,33 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
   if (!audit) {
     const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
     return {
-      audit: getStaticSampleAudit() as unknown as LiveSampleAudit,
+      audit: getStaticSampleAudit(),
       source: 'static',
       pipelineVersion: PIPELINE_VERSION,
       completedAt: new Date(),
     }
   }
 
+  const rubricSources = audit.rubrics.map((r) => ({
+    name: r.name,
+    grade: r.grade,
+    score: r.score,
+    flags: r.flags.map((f) => ({ severity: f.severity })),
+  }))
+  const flatFlags = audit.flags.map((f) => ({
+    severity: f.severity,
+    rubric: f.rubric,
+  }))
+  const rubrics = computeRubricsFromRows(rubricSources, flatFlags)
+  const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
+  const { rubricRows, flags } = buildReportShapeFromDb(audit.rubrics, audit.flags, shareStatus)
   const enriched: LiveSampleAudit = {
     ...audit,
     launchReadiness: parseLaunchReadiness(audit.launchReadiness),
+    rubrics,
+    rubricRows,
+    flags,
+    shareStatus,
   }
 
   return {

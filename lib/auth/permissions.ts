@@ -33,7 +33,7 @@ export function isUnlimitedScanLimit(limit: number): boolean {
   return limit === UNLIMITED_SCAN_LIMIT
 }
 
-export async function getPendingScanCount(userId: string): Promise<number> {
+export async function getPendingCheckCount(userId: string): Promise<number> {
   return prisma.audit.count({
     where: {
       userId,
@@ -42,11 +42,11 @@ export async function getPendingScanCount(userId: string): Promise<number> {
   })
 }
 
-export async function getScanUsage(
+export async function getCheckUsage(
   user: Pick<User, 'id' | 'role' | 'auditsUsed' | 'auditsLimit'>
 ) {
   if (isDevUnlimitedScans()) {
-    const pending = await getPendingScanCount(user.id)
+    const pending = await getPendingCheckCount(user.id)
     return {
       used: user.auditsUsed,
       pending,
@@ -55,7 +55,7 @@ export async function getScanUsage(
     }
   }
 
-  const pending = await getPendingScanCount(user.id)
+  const pending = await getPendingCheckCount(user.id)
   const limit = getEffectiveScanLimit(user)
   const isUnlimited = isUnlimitedScanLimit(limit)
 
@@ -74,6 +74,7 @@ export {
   canAccessRecheck,
   canAccessCompare,
   canSharePublicly,
+  canExportSummary,
   getEntitlements,
   shouldEnforcePlanGates,
 } from '@/lib/auth/entitlements'

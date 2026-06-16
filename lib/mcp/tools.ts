@@ -4,18 +4,22 @@ import { prisma } from '../db'
 import { User } from '@prisma/client'
 import { createAndEnqueueAudit } from '../audit/create-audit'
 import { startRecheckAudit } from '../audit/recheck'
-import { getFindingDiffSummary } from '../audit/diff-findings'
 import { pollAuditUntilDone } from '../audit/poll-audit'
-import { AREA_ORDER } from '../audit/constants'
+import { RUBRIC_ORDER, type RubricName } from '../audit/constants'
+import {
+  computeRubricsFromRows,
+  computeShareStatusFromRubrics,
+} from '../audit/rubric'
 import { canUseApiKeys } from '../auth/permissions'
 import { canAccessCompare, canAccessPaidFeatures } from '../auth/entitlements'
 import { hashApiKey } from '@/lib/security/api-keys'
 import { recordRateLimit } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
+import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import {
-  sanitizeAreaForRead,
-  sanitizeFindingForRead,
+  sanitizeFlagForRead,
+  sanitizeRubricForRead,
 } from '@/lib/audit/sanitize-prompts'
 
 async function assertMcpAccess(user: User): Promise<User> {
@@ -26,28 +30,28 @@ async function assertMcpAccess(user: User): Promise<User> {
   return fresh
 }
 
-const areaEnum = z.enum([
-  AREA_ORDER[0],
-  AREA_ORDER[1],
-  AREA_ORDER[2],
-  AREA_ORDER[3],
-  AREA_ORDER[4],
-  AREA_ORDER[5],
-  AREA_ORDER[6],
-])
+function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
+  if (flag.checkId) return `check:${flag.checkId}`
+  return buildAiFlagMatchKey(flag.problem, flag.rubric)
+}
 
-export function registerAllTools(server: McpServer, user: User) {
-  // qos_audit_url
+export function registerAllTools(
+  server: McpServer,
+  user: User,
+  options?: { signal?: AbortSignal }
+) {
+  const abortSignal = options?.signal
+
   server.tool(
-    'qos_audit_url',
-    'Start a quality audit for a URL. Returns auditId to poll for results.',
+    'ff_check_url',
+    'Start a FixFlags check for a URL. Returns reportId to poll for results.',
     {
       url: z.string().url(),
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
       mode: z
         .enum(['single', 'critical_path'])
         .optional()
-        .describe('critical_path audits up to 3 same-origin URLs (Pro+)'),
+        .describe('critical_path checks up to 3 same-origin URLs (Pro+)'),
     },
     async ({ url, waitForCompletion, mode }) => {
       const freshUser = await assertMcpAccess(user)
@@ -78,7 +82,7 @@ export function registerAllTools(server: McpServer, user: User) {
 
       const criticalPath = mode === 'critical_path'
       if (criticalPath && !canAccessPaidFeatures(freshUser)) {
-        throw new Error('Critical path audits require the Pro plan or above')
+        throw new Error('Critical path checks require the Pro plan or above')
       }
 
       const { auditId } = await createAndEnqueueAudit({
@@ -90,19 +94,19 @@ export function registerAllTools(server: McpServer, user: User) {
 
       let status = 'QUEUED'
       if (waitForCompletion) {
-        const result = await pollAuditUntilDone({ auditId })
+        const result = await pollAuditUntilDone({ auditId, signal: abortSignal })
         status = result.status
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qualityos.com'
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
       return {
         content: [
           {
             type: 'text' as const,
             text: JSON.stringify({
-              auditId,
+              reportId: auditId,
               status,
-              reportUrl: `${appUrl}/audit/${auditId}`,
+              reportUrl: `${appUrl}/report/${auditId}`,
               estimatedWaitSeconds,
               queuePosition,
               scheduledStartAt,
@@ -120,20 +124,19 @@ export function registerAllTools(server: McpServer, user: User) {
     }
   )
 
-  // qos_get_audit_status
   server.tool(
-    'qos_get_audit_status',
-    'Get the current status of an audit',
-    { auditId: z.string() },
-    async ({ auditId }) => {
+    'ff_get_check_status',
+    'Get the current status of a check report',
+    { reportId: z.string() },
+    async ({ reportId }) => {
       const audit = await prisma.audit.findUnique({
-        where: { id: auditId },
+        where: { id: reportId },
         select: { id: true, status: true, url: true, createdAt: true, userId: true, isPublic: true },
       })
-      if (!audit) throw new Error('Audit not found')
+      if (!audit) throw new Error('Report not found')
       const { canAccessAudit } = await import('@/lib/audit/access')
       if (!canAccessAudit(audit, { id: user.id })) {
-        throw new Error('You do not have access to this audit')
+        throw new Error('You do not have access to this report')
       }
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(audit) }],
@@ -141,20 +144,23 @@ export function registerAllTools(server: McpServer, user: User) {
     }
   )
 
-  // qos_get_report
   server.tool(
-    'qos_get_report',
-    'Get the full quality report for a completed audit',
-    { auditId: z.string() },
-    async ({ auditId }) => {
+    'ff_get_report',
+    'Get the full FixFlags report for a completed check',
+    { reportId: z.string() },
+    async ({ reportId }) => {
       const audit = await prisma.audit.findUnique({
-        where: { id: auditId },
+        where: { id: reportId },
         include: {
-          areas: { orderBy: { name: 'asc' } },
+          rubrics: {
+            orderBy: { name: 'asc' },
+            include: { flags: { select: { severity: true } } },
+          },
+          flags: { select: { severity: true, rubric: true } },
           screenshots: true,
         },
       })
-      if (!audit) throw new Error('Audit not found')
+      if (!audit) throw new Error('Report not found')
       if (audit.userId && audit.userId !== user.id && !audit.isPublic) {
         throw new Error('Unauthorized')
       }
@@ -163,28 +169,47 @@ export function registerAllTools(server: McpServer, user: User) {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ status: audit.status, message: 'Audit not yet complete' }),
+              text: JSON.stringify({ status: audit.status, message: 'Check not yet complete' }),
             },
           ],
         }
       }
+
+      const rubricSources = audit.rubrics.map((r) => ({
+        name: r.name,
+        grade: r.grade,
+        score: r.score,
+        flags: r.flags.map((f) => ({ severity: f.severity })),
+      }))
+      const flatFlags = audit.flags.map((f) => ({ severity: f.severity, rubric: f.rubric }))
+      const rubrics = computeRubricsFromRows(rubricSources, flatFlags)
+      const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
+
       return {
         content: [
           {
             type: 'text' as const,
             text: JSON.stringify({
-              auditId: audit.id,
+              reportId: audit.id,
               url: audit.url,
               pageJob: audit.pageJob,
               pageType: audit.pageType,
               verdict: audit.verdict,
               score: audit.score,
-              areas: audit.areas.map((a) => ({
-                name: a.name,
-                grade: a.grade,
-                score: a.score,
-                status: a.status,
-                summary: a.summary,
+              shareStatus,
+              rubrics: rubrics.map((r) => ({
+                name: r.name,
+                status: r.status,
+                flagCount: r.flagCount,
+                criticalCount: r.criticalCount,
+                importantCount: r.importantCount,
+              })),
+              rubricDetails: audit.rubrics.map((r) => ({
+                name: r.name,
+                grade: r.grade,
+                score: r.score,
+                status: r.status,
+                summary: r.summary,
               })),
             }),
           },
@@ -193,38 +218,48 @@ export function registerAllTools(server: McpServer, user: User) {
     }
   )
 
-  // qos_get_area
   server.tool(
-    'qos_get_area',
-    'Get detailed findings and fix prompt for a specific quality area',
+    'ff_get_rubric',
+    'Get rubric status and all flags for a rubric',
     {
-      auditId: z.string(),
-      area: areaEnum,
+      reportId: z.string(),
+      rubric: z.enum(RUBRIC_ORDER as unknown as [string, ...string[]]),
       tool: z.enum(['generic', 'cursor', 'claude', 'lovable', 'bolt']).optional(),
     },
-    async ({ auditId, area, tool = 'generic' }) => {
-      const ownerAudit = await prisma.audit.findUnique({ where: { id: auditId }, select: { userId: true, isPublic: true } })
-      if (!ownerAudit) throw new Error('Audit not found')
+    async ({ reportId, rubric, tool = 'generic' }) => {
+      const ownerAudit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        select: { userId: true, isPublic: true },
+      })
+      if (!ownerAudit) throw new Error('Report not found')
       if (ownerAudit.userId && ownerAudit.userId !== user.id && !ownerAudit.isPublic) {
         throw new Error('Unauthorized')
       }
-      const auditArea = await prisma.auditArea.findUnique({
-        where: { auditId_name: { auditId, name: area } },
-        include: { findings: { orderBy: { position: 'asc' } } },
-      })
-      if (!auditArea) throw new Error(`Area ${area} not found for audit ${auditId}`)
 
-      const safeArea = sanitizeAreaForRead(auditArea)
-      const safeFindings = auditArea.findings.map((f) =>
-        sanitizeFindingForRead({ ...f, fix: f.fix, evidence: f.evidence })
-      )
+      const rubricRow = await prisma.reportRubric.findUnique({
+        where: { auditId_name: { auditId: reportId, name: rubric as RubricName } },
+        include: { flags: { orderBy: { position: 'asc' } } },
+      })
+      if (!rubricRow) throw new Error(`Rubric ${rubric} not found for report ${reportId}`)
+
+      const safeRubric = sanitizeRubricForRead(rubricRow)
+      const rubricSources = [
+        {
+          name: rubricRow.name,
+          grade: rubricRow.grade,
+          score: rubricRow.score,
+          flags: rubricRow.flags.map((f) => ({ severity: f.severity })),
+        },
+      ]
+      const computed = computeRubricsFromRows(rubricSources)
+      const thisRubric = computed.find((r) => r.name === rubric)
 
       const promptMap: Record<string, string | null | undefined> = {
-        generic: safeArea.areaPrompt,
-        cursor: safeArea.cursorPrompt,
-        claude: safeArea.claudePrompt,
-        lovable: safeArea.lovablePrompt,
-        bolt: safeArea.boltPrompt,
+        generic: safeRubric.rubricPrompt,
+        cursor: safeRubric.cursorPrompt,
+        claude: safeRubric.claudePrompt,
+        lovable: safeRubric.lovablePrompt,
+        bolt: safeRubric.boltPrompt,
       }
 
       return {
@@ -232,19 +267,23 @@ export function registerAllTools(server: McpServer, user: User) {
           {
             type: 'text' as const,
             text: JSON.stringify({
-              area: safeArea.name,
-              grade: safeArea.grade,
-              score: safeArea.score,
-              status: safeArea.status,
-              summary: safeArea.summary,
-              prompt: promptMap[tool] ?? safeArea.areaPrompt,
-              findings: safeFindings.map((f) => ({
-                id: f.id,
-                severity: f.severity,
-                problem: f.problem,
-                evidence: f.evidence,
-                fix: f.fix,
-              })),
+              rubric,
+              status: thisRubric?.status ?? 'unknown',
+              grade: rubricRow.grade,
+              score: rubricRow.score,
+              summary: safeRubric.summary,
+              prompt: promptMap[tool] ?? safeRubric.rubricPrompt,
+              flagCount: rubricRow.flags.length,
+              flags: rubricRow.flags.map((f) => {
+                const safe = sanitizeFlagForRead(f)
+                return {
+                  id: safe.id,
+                  severity: safe.severity,
+                  problem: safe.problem,
+                  evidence: safe.evidence,
+                  fix: safe.fix,
+                }
+              }),
             }),
           },
         ],
@@ -252,33 +291,31 @@ export function registerAllTools(server: McpServer, user: User) {
     }
   )
 
-  // qos_get_finding
   server.tool(
-    'qos_get_finding',
-    'Get detailed fix prompt for a specific finding',
+    'ff_get_flag',
+    'Get detailed fix prompt for a specific flag',
     {
-      findingId: z.string(),
+      flagId: z.string(),
       tool: z.enum(['generic', 'cursor', 'claude', 'lovable', 'bolt']).optional(),
     },
-    async ({ findingId, tool = 'generic' }) => {
-      const finding = await prisma.finding.findUnique({ where: { id: findingId }, include: { audit: { select: { userId: true, isPublic: true } } } })
-      if (!finding) throw new Error('Finding not found')
-      if (finding.audit.userId && finding.audit.userId !== user.id && !finding.audit.isPublic) {
+    async ({ flagId, tool = 'generic' }) => {
+      const flag = await prisma.flag.findUnique({
+        where: { id: flagId },
+        include: { audit: { select: { userId: true, isPublic: true } } },
+      })
+      if (!flag) throw new Error('Flag not found')
+      if (flag.audit.userId && flag.audit.userId !== user.id && !flag.audit.isPublic) {
         throw new Error('Unauthorized')
       }
 
-      const safeFinding = sanitizeFindingForRead({
-        ...finding,
-        fix: finding.fix,
-        evidence: finding.evidence,
-      })
+      const safeFlag = sanitizeFlagForRead(flag)
 
       const promptMap: Record<string, string | null | undefined> = {
-        generic: safeFinding.agentPrompt,
-        cursor: safeFinding.cursorPrompt,
-        claude: safeFinding.claudePrompt,
-        lovable: safeFinding.lovablePrompt,
-        bolt: safeFinding.boltPrompt,
+        generic: safeFlag.agentPrompt,
+        cursor: safeFlag.cursorPrompt,
+        claude: safeFlag.claudePrompt,
+        lovable: safeFlag.lovablePrompt,
+        bolt: safeFlag.boltPrompt,
       }
 
       return {
@@ -286,14 +323,15 @@ export function registerAllTools(server: McpServer, user: User) {
           {
             type: 'text' as const,
             text: JSON.stringify({
-              id: safeFinding.id,
-              severity: safeFinding.severity,
-              problem: safeFinding.problem,
-              evidence: safeFinding.evidence,
-              whyItMatters: safeFinding.whyItMatters,
-              fix: safeFinding.fix,
-              prompt: promptMap[tool] ?? safeFinding.agentPrompt ?? safeFinding.fix,
-              verificationRule: safeFinding.verificationRule,
+              id: safeFlag.id,
+              rubric: safeFlag.rubric,
+              severity: safeFlag.severity,
+              problem: safeFlag.problem,
+              evidence: safeFlag.evidence,
+              whyItMatters: safeFlag.whyItMatters,
+              fix: safeFlag.fix,
+              prompt: promptMap[tool] ?? safeFlag.agentPrompt ?? safeFlag.fix,
+              verificationRule: safeFlag.verificationRule,
             }),
           },
         ],
@@ -301,21 +339,20 @@ export function registerAllTools(server: McpServer, user: User) {
     }
   )
 
-  // qos_recheck
   server.tool(
-    'qos_recheck',
-    'Run a new audit on the same URL to check if issues were fixed',
+    'ff_recheck',
+    'Run a new check on the same URL to verify fixes',
     {
-      parentAuditId: z.string(),
+      parentReportId: z.string(),
       waitForCompletion: z.boolean().optional(),
     },
-    async ({ parentAuditId, waitForCompletion }) => {
+    async ({ parentReportId, waitForCompletion }) => {
       await assertMcpAccess(user)
 
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
 
-      const outcome = await startRecheckAudit(parentAuditId, freshUser)
+      const outcome = await startRecheckAudit(parentReportId, freshUser)
       if (!outcome.ok) {
         throw new Error(outcome.error)
       }
@@ -324,48 +361,131 @@ export function registerAllTools(server: McpServer, user: User) {
 
       let status = 'QUEUED'
       if (waitForCompletion) {
-        const result = await pollAuditUntilDone({ auditId })
+        const result = await pollAuditUntilDone({ auditId, signal: abortSignal })
         status = result.status
       }
 
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify({ auditId, status }) }],
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ reportId: auditId, status }),
+          },
+        ],
       }
     }
   )
 
-  // qos_compare
   server.tool(
-    'qos_compare',
-    'Compare two audits to see what improved, stayed the same, or regressed',
+    'ff_compare',
+    'Compare two reports to see what improved, stayed the same, or regressed',
     { beforeId: z.string(), afterId: z.string() },
     async ({ beforeId, afterId }) => {
       const [before, after] = await Promise.all([
-        prisma.audit.findUnique({ where: { id: beforeId }, include: { areas: true } }),
-        prisma.audit.findUnique({ where: { id: afterId }, include: { areas: true } }),
+        prisma.audit.findUnique({
+          where: { id: beforeId },
+          include: {
+            rubrics: { include: { flags: { select: { severity: true } } } },
+            flags: { select: { severity: true, rubric: true } },
+          },
+        }),
+        prisma.audit.findUnique({
+          where: { id: afterId },
+          include: {
+            rubrics: { include: { flags: { select: { severity: true } } } },
+            flags: { select: { severity: true, rubric: true } },
+          },
+        }),
       ])
-      if (!before || !after) throw new Error('One or both audits not found')
+      if (!before || !after) throw new Error('One or both reports not found')
       if (before.userId && before.userId !== user.id && !before.isPublic) throw new Error('Unauthorized')
       if (after.userId && after.userId !== user.id && !after.isPublic) throw new Error('Unauthorized')
 
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
       if (!canAccessCompare(freshUser, after)) {
-        throw new Error('Upgrade to Pro or complete your free re-check to compare audits')
+        throw new Error('Upgrade to Pro or complete your free re-check to compare reports')
       }
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)
-      const areaDeltas = before.areas.map((ba) => {
-        const aa = after.areas.find((a) => a.name === ba.name)
+
+      const mapRubrics = (audit: typeof before) =>
+        audit.rubrics.map((r) => ({
+          name: r.name,
+          grade: r.grade,
+          score: r.score,
+          flags: r.flags.map((f) => ({ severity: f.severity })),
+        }))
+
+      const beforeRubrics = computeRubricsFromRows(mapRubrics(before), before.flags)
+      const afterRubrics = computeRubricsFromRows(mapRubrics(after), after.flags)
+      const rubricDeltas = RUBRIC_ORDER.map((name) => {
+        const br = beforeRubrics.find((r) => r.name === name)
+        const ar = afterRubrics.find((r) => r.name === name)
         return {
-          area: ba.name,
-          before: { grade: ba.grade, score: ba.score },
-          after: { grade: aa?.grade ?? ba.grade, score: aa?.score ?? ba.score },
-          improved: aa && aa.score !== null && ba.score !== null && aa.score > ba.score,
+          rubric: name,
+          before: br?.status ?? 'unknown',
+          after: ar?.status ?? 'unknown',
         }
       })
 
-      const findingDiff = await getFindingDiffSummary(beforeId, afterId)
+      const [beforeFlags, afterFlags] = await Promise.all([
+        prisma.flag.findMany({ where: { auditId: beforeId } }),
+        prisma.flag.findMany({ where: { auditId: afterId } }),
+      ])
+
+      const afterByKey = new Map(afterFlags.map((f) => [flagMatchKey(f), f]))
+      const beforeKeys = new Set(beforeFlags.map((f) => flagMatchKey(f)))
+
+      const fixed: Array<{ checkId: string | null; problem: string; rubric: string; severity: string }> = []
+      const unchanged: typeof fixed = []
+      const regressed: typeof fixed = []
+      const newFlags: typeof fixed = []
+
+      for (const bf of beforeFlags) {
+        const key = flagMatchKey(bf)
+        const af = afterByKey.get(key)
+        const item = {
+          checkId: bf.checkId,
+          problem: bf.problem,
+          rubric: bf.rubric,
+          severity: bf.severity,
+        }
+
+        if (!af) {
+          fixed.push(item)
+          continue
+        }
+
+        if (bf.status === 'FIXED' || af.status === 'FIXED') {
+          fixed.push(item)
+        } else if (bf.status === 'REGRESSED' || af.status === 'REGRESSED') {
+          regressed.push({
+            checkId: af.checkId,
+            problem: af.problem,
+            rubric: af.rubric,
+            severity: af.severity,
+          })
+        } else {
+          unchanged.push({
+            checkId: af.checkId,
+            problem: af.problem,
+            rubric: af.rubric,
+            severity: af.severity,
+          })
+        }
+      }
+
+      for (const af of afterFlags) {
+        if (!beforeKeys.has(flagMatchKey(af))) {
+          newFlags.push({
+            checkId: af.checkId,
+            problem: af.problem,
+            rubric: af.rubric,
+            severity: af.severity,
+          })
+        }
+      }
 
       return {
         content: [
@@ -375,18 +495,13 @@ export function registerAllTools(server: McpServer, user: User) {
               scoreDelta,
               beforeScore: before.score,
               afterScore: after.score,
-              areas: areaDeltas,
-              findings: {
-                fixed: findingDiff.fixed.length,
-                unchanged: findingDiff.unchanged.length,
-                regressed: findingDiff.regressed.length,
-                newIssues: findingDiff.newIssues.length,
-                details: {
-                  fixed: findingDiff.fixed,
-                  unchanged: findingDiff.unchanged,
-                  regressed: findingDiff.regressed,
-                  newIssues: findingDiff.newIssues,
-                },
+              rubrics: rubricDeltas,
+              flags: {
+                fixed: fixed.length,
+                unchanged: unchanged.length,
+                regressed: regressed.length,
+                newFlags: newFlags.length,
+                details: { fixed, unchanged, regressed, newFlags },
               },
             }),
           },

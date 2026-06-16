@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { Clock, BookOpen } from 'lucide-react'
 import { MARKETING_LINKS } from '@/lib/site/nav'
 import { NavLink } from '@/components/layout/nav-link'
-import { QUEUE_COPY, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { QUEUE_COPY } from '@/lib/marketing/copy'
+import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import {
   NAV_LINK_ACTIVE,
   NAV_LINK_BASE,
@@ -70,7 +71,7 @@ export function QueuePosition({
         role="status"
       >
         <p className="text-sm font-medium">Waiting for worker</p>
-        <p className="text-sm text-muted-foreground">{AUDIT_PROGRESS.workerQueuedWarning}</p>
+        <p className="text-sm text-muted-foreground">{getWorkerQueuedWarning()}</p>
       </div>
     )
   }

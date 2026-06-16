@@ -1,13 +1,13 @@
 'use client'
 import { Badge } from '@/components/ui/badge'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
-import { areaLabel } from '@/lib/utils'
+import { rubricLabel } from '@/lib/utils'
 
 interface FeedbackItem {
   key: string
   problem: string
   checkId: string | null
-  area: string
+  rubric: string
   severity: string
   evidence: string
   count: number
@@ -15,7 +15,7 @@ interface FeedbackItem {
 
 export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">No downvoted findings yet.</p>
+    return <p className="text-sm text-muted-foreground">No downvoted flags yet.</p>
   }
 
   return (
@@ -25,7 +25,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <SeverityBadge severity={item.severity} />
-              <Badge variant="outline" className="text-xs">{areaLabel(item.area)}</Badge>
+              <Badge variant="outline" className="text-xs">{rubricLabel(item.rubric)}</Badge>
               {item.checkId && (
                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{item.checkId}</code>
               )}

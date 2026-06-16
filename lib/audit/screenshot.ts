@@ -4,6 +4,7 @@ import { uploadScreenshot } from '../storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
+import { logger } from '../logger'
 
 let browser: Browser | null = null
 
@@ -114,7 +115,7 @@ async function captureViewport(
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)
   } catch (err) {
-    console.error(`${options.device} screenshot failed:`, err)
+    logger.error(`${options.device} screenshot failed`, err)
   } finally {
     if (page) {
       await page.close().catch(() => {})

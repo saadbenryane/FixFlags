@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { handleRouteError } from '@/lib/api/errors'
-import { isAdminUser, getScanUsage } from '@/lib/auth/permissions'
+import { isAdminUser, getCheckUsage } from '@/lib/auth/permissions'
 import { getEntitlements } from '@/lib/auth/entitlements'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null })
     }
 
-    const tokens = await getScanUsage({
+    const checks = await getCheckUsage({
       id: session.user.id,
       role: user.role,
       auditsUsed: user.auditsUsed,
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         plan: user.plan ?? 'FREE',
         role: user.role,
         isAdmin: isAdminUser({ id: session.user.id, role: user.role }),
-        tokens,
+        checks,
         entitlements,
       },
     })

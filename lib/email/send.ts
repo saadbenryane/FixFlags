@@ -1,10 +1,11 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
 import { NURTURE_EMAILS, type NurtureEmailType } from './templates'
+import { BRAND } from '@/lib/marketing/copy'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'QualityOS <hello@qualityos.com>'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export async function sendNurtureEmail(
   userId: string,

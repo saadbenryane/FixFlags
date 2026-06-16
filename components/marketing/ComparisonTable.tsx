@@ -25,7 +25,7 @@ export interface ComparisonRow {
   feature: string
   lighthouse: string
   manual: string
-  qualityos: string
+  fixflags: string
 }
 
 interface Props {
@@ -46,7 +46,7 @@ export function ComparisonTable({ rows }: Props) {
       >
         <table className="w-full min-w-[640px] text-sm">
           <caption className="sr-only">
-            Comparison of QualityOS, Google Lighthouse, and manual QA across key audit
+            Comparison of FixFlags, Google Lighthouse, and manual QA across key audit
             capabilities
           </caption>
           <thead>
@@ -78,7 +78,7 @@ export function ComparisonTable({ rows }: Props) {
                   <ComparisonCell value={row.manual} />
                 </td>
                 <td className="p-4 text-center font-medium">
-                  <ComparisonCell value={row.qualityos} />
+                  <ComparisonCell value={row.fixflags} />
                 </td>
               </tr>
             ))}

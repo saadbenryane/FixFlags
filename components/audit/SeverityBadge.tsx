@@ -1,4 +1,4 @@
-import { cn, severityColor } from '@/lib/utils'
+import { cn, severityColor, severityLabel } from '@/lib/utils'
 
 interface Props {
   severity: string
@@ -14,7 +14,7 @@ export function SeverityBadge({ severity, className }: Props) {
         className
       )}
     >
-      {severity}
+      {severityLabel(severity)}
     </span>
   )
 }

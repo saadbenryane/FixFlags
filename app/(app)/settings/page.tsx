@@ -1,12 +1,14 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Heading, Muted } from '@/components/ui/typography'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { BRAND } from '@/lib/marketing/copy'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -15,26 +17,24 @@ export default async function SettingsPage() {
     select: { name: true, email: true, emailVerified: true, plan: true },
   })
 
-  if (!user) return null
+  if (!user) notFound()
 
   const planDef = PLAN_DEFINITIONS[user.plan]
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-16 space-y-6">
-      <div className="space-y-1">
-        <Heading as="h1">Settings</Heading>
-        <Muted>Account and integrations</Muted>
-      </div>
+    <div className="space-y-8">
+      <PageHeader title="Settings" description="Account and integrations" />
 
-      <Card>
+      <div className="space-y-6">
+        <Card className="border-0 shadow-card">
         <CardHeader>
           <CardTitle className="text-base">Account</CardTitle>
           <CardDescription>Profile, identity, password, and account lifecycle</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4 text-sm">
             <span className="text-muted-foreground">Plan</span>
-            <span>{planDef.name}</span>
+            <span className="font-medium">{planDef.name}</span>
           </div>
           <AccountSettingsForms
             initialName={user.name ?? ''}
@@ -45,10 +45,10 @@ export default async function SettingsPage() {
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        <Card className="border-0 shadow-card">
           <CardHeader>
             <CardTitle className="text-base">API Keys</CardTitle>
-            <CardDescription>Connect QualityOS to Cursor, Claude, or Windsurf</CardDescription>
+            <CardDescription>Connect {BRAND.name} to Cursor, Claude, or Windsurf</CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild className="w-full">
@@ -56,7 +56,7 @@ export default async function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 shadow-card">
           <CardHeader>
             <CardTitle className="text-base">Billing</CardTitle>
             <CardDescription>Plan, usage, and subscription</CardDescription>
@@ -67,6 +67,7 @@ export default async function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   )

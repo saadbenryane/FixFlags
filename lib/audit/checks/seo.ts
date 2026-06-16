@@ -1,17 +1,18 @@
 import { PageMetadata } from '../metadata'
-import { DeterministicFinding } from './index'
+import { DeterministicFlag } from './index'
 
 export async function runSeoChecks(
   url: string,
   meta: PageMetadata
-): Promise<DeterministicFinding[]> {
-  const findings: DeterministicFinding[] = []
+): Promise<DeterministicFlag[]> {
+  const findings: DeterministicFlag[] = []
 
   if (meta.h1s.length === 0) {
     findings.push({
       checkId: 'h1-missing',
-      area: 'SEO',
-      severity: 'HIGH',
+      rubric: 'REACH',
+      impactTag: 'SEO',
+      severity: 'IMPORTANT',
       problem: 'No H1 heading found',
       evidence: 'No <h1> element found in the page',
       fix: 'Add exactly one H1 tag containing the primary keyword for this page.',
@@ -21,8 +22,9 @@ export async function runSeoChecks(
   } else if (meta.h1s.length > 1) {
     findings.push({
       checkId: 'h1-multiple',
-      area: 'SEO',
-      severity: 'MEDIUM',
+      rubric: 'REACH',
+      impactTag: 'SEO',
+      severity: 'POLISH',
       problem: `Multiple H1 headings found (${meta.h1s.length})`,
       evidence: `H1 tags found: ${meta.h1s.slice(0, 3).map((h) => `"${h}"`).join(', ')}`,
       fix: 'Use only one H1 per page. Make secondary headings H2 or H3.',
@@ -34,8 +36,9 @@ export async function runSeoChecks(
   if (!meta.hasStructuredData) {
     findings.push({
       checkId: 'no-structured-data',
-      area: 'SEO',
-      severity: 'MEDIUM',
+      rubric: 'REACH',
+      impactTag: 'SEO',
+      severity: 'POLISH',
       problem: 'No structured data (JSON-LD) found',
       evidence: 'No <script type="application/ld+json"> found in the page',
       fix: 'Add JSON-LD structured data. For SaaS landing pages, use WebSite + SoftwareApplication schema.',
@@ -47,8 +50,9 @@ export async function runSeoChecks(
   if (meta.externalLinksWithoutNoopener > 0) {
     findings.push({
       checkId: 'external-links-unsafe',
-      area: 'SEO',
-      severity: 'LOW',
+      rubric: 'REACH',
+      impactTag: 'TRUST',
+      severity: 'POLISH',
       problem: `${meta.externalLinksWithoutNoopener} external link${meta.externalLinksWithoutNoopener > 1 ? 's' : ''} without rel="noopener"`,
       evidence: `External links found without rel="noopener noreferrer"`,
       fix: 'Add rel="noopener noreferrer" to all external links to prevent security issues.',
@@ -66,8 +70,9 @@ export async function runSeoChecks(
     if (res.status === 404) {
       findings.push({
         checkId: 'sitemap-missing',
-        area: 'SEO',
-        severity: 'MEDIUM',
+        rubric: 'REACH',
+        impactTag: 'SEO',
+        severity: 'POLISH',
         problem: 'XML sitemap not found at /sitemap.xml',
         evidence: `HEAD ${sitemapUrl} returned 404`,
         fix: 'Generate and submit a sitemap.xml. Next.js can auto-generate one with the sitemap.ts convention.',
@@ -86,8 +91,9 @@ export async function runSeoChecks(
     if (res.status === 404) {
       findings.push({
         checkId: 'robots-txt-missing',
-        area: 'SEO',
-        severity: 'LOW',
+        rubric: 'REACH',
+        impactTag: 'SEO',
+        severity: 'POLISH',
         problem: 'robots.txt not found',
         evidence: `HEAD ${robotsUrl} returned 404`,
         fix: 'Create a robots.txt file. At minimum: User-agent: * / Allow: /',
@@ -101,8 +107,9 @@ export async function runSeoChecks(
   if (brokenLinks.length > 0) {
     findings.push({
       checkId: 'broken-internal-links',
-      area: 'SEO',
-      severity: 'HIGH',
+      rubric: 'REACH',
+      impactTag: 'SEO',
+      severity: 'IMPORTANT',
       problem: `${brokenLinks.length} internal link${brokenLinks.length > 1 ? 's' : ''} return errors`,
       evidence: brokenLinks.slice(0, 3).join('; '),
       fix: 'Fix or remove broken internal links. Update hrefs to valid routes or add redirects.',

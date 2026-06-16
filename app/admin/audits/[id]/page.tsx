@@ -4,10 +4,14 @@ import { prisma } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { RUBRIC_ORDER } from '@/lib/audit/constants'
+import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
+import { rubricLabel, rubricStatusColor, shareStatusLabel, shareStatusColor } from '@/lib/utils'
 
 export default async function AdminAuditDetailPage({
   params,
@@ -20,6 +24,14 @@ export default async function AdminAuditDetailPage({
     include: {
       user: { select: { email: true, plan: true } },
       runCost: true,
+      rubrics: {
+        select: {
+          name: true,
+          grade: true,
+          score: true,
+          flags: { select: { severity: true } },
+        },
+      },
     },
   })
 
@@ -28,11 +40,11 @@ export default async function AdminAuditDetailPage({
   const events = parsePipelineLog(audit.pipelineLog)
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <Container variant="report" className="py-8 space-y-6">
       <PageHeader title="Audit detail" description={audit.url}>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/audit/${audit.id}`}>View report</Link>
+            <Link href={`/report/${audit.id}`}>View report</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a href={`/api/audits/${audit.id}/logs`} download>Download logs</a>
@@ -45,6 +57,33 @@ export default async function AdminAuditDetailPage({
         <Badge variant="secondary">v{audit.pipelineVersion ?? PIPELINE_VERSION}</Badge>
         {audit.failureCode && <Badge variant="destructive">{audit.failureCode}</Badge>}
       </div>
+
+      {audit.rubrics.length > 0 && (() => {
+        const rubricSources = audit.rubrics.map((r) => ({
+          name: r.name,
+          grade: r.grade,
+          score: r.score,
+          flags: r.flags.map((f) => ({ severity: f.severity })),
+        }))
+        const rubrics = computeRubricsFromRows(rubricSources)
+        const shareStatus = computeShareStatusFromRubrics(rubricSources)
+        return (
+          <div className="flex flex-wrap gap-2">
+            <Badge className={shareStatusColor(shareStatus)}>
+              {shareStatusLabel(shareStatus)}
+            </Badge>
+            {RUBRIC_ORDER.map((name) => {
+              const r = rubrics.find((rr) => rr.name === name)
+              if (!r) return null
+              return (
+                <Badge key={name} className={rubricStatusColor(r.status)}>
+                  {rubricLabel(name)}: {r.status}
+                </Badge>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -108,6 +147,6 @@ export default async function AdminAuditDetailPage({
       <Button variant="ghost" size="sm" asChild>
         <Link href="/admin/audits">← Back to audits</Link>
       </Button>
-    </div>
+    </Container>
   )
 }

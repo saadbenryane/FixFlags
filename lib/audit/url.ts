@@ -61,13 +61,13 @@ export function normalizeAuditUrl(
   try {
     const parsed = new URL(raw.trim())
     if (!PUBLIC_PROTOCOLS.has(parsed.protocol)) {
-      return { ok: false, error: 'Only public HTTP and HTTPS URLs can be audited' }
+      return { ok: false, error: 'Only public HTTP and HTTPS URLs can be checked' }
     }
     if (parsed.username || parsed.password) {
-      return { ok: false, error: 'URLs containing credentials cannot be audited' }
+      return { ok: false, error: 'URLs containing credentials cannot be checked' }
     }
     if (isBlockedHostname(parsed.hostname)) {
-      return { ok: false, error: 'QualityOS can only audit publicly accessible URLs' }
+      return { ok: false, error: 'FixFlags can only check publicly accessible URLs' }
     }
     parsed.hash = ''
     return { ok: true, url: parsed.toString() }
@@ -121,7 +121,7 @@ export async function safeFetchHtml(
         signal: controller.signal,
         redirect: 'manual',
         headers: {
-          'User-Agent': 'QualityOS/1.0 (+https://qualityos.com)',
+          'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)',
           Accept: 'text/html,application/xhtml+xml',
         },
       })

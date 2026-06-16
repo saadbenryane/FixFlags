@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { BRAND } from '@/lib/marketing/copy'
 
 interface ScoringLegendProps {
   className?: string
@@ -14,9 +15,9 @@ export function ScoringLegend({ className, compact }: ScoringLegendProps) {
         className
       )}
     >
-      <span className="font-medium text-foreground/80">QualityOS standard: </span>
-      Performance, SEO, Mobile, and Accessibility use 0–100 plus a letter grade. Conversion,
-      Trust, and Content use A–F experience grades only.
+      <span className="font-medium text-foreground/80">{BRAND.name} rubrics: </span>
+      Message, Experience, and Reach each get a letter grade (A–F) based on Flags found and
+      evidence quality.
     </p>
   )
 }

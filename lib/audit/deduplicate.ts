@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { DeterministicFinding } from '@/lib/audit/checks'
+import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge'
 
 function normalizedWords(value: string): Set<string> {
@@ -23,43 +23,43 @@ function similarity(a: string, b: string): number {
   return intersection / (left.size + right.size - intersection)
 }
 
-export function findingFingerprint(input: {
+export function flagFingerprint(input: {
   checkId?: string | null
   pageUrl?: string | null
-  area: string
+  rubric: string
   problem: string
 }): string {
   const identity = input.checkId
     ? `check:${input.checkId}`
     : `problem:${[...normalizedWords(input.problem)].sort().join(' ')}`
   return createHash('sha256')
-    .update(`${input.area}|${input.pageUrl ?? 'primary'}|${identity}`)
+    .update(`${input.rubric}|${input.pageUrl ?? 'primary'}|${identity}`)
     .digest('hex')
 }
 
-export function deduplicateFindings(
-  deterministic: DeterministicFinding[],
-  aiFindings: JudgeOutput['newFindings']
-): JudgeOutput['newFindings'] {
-  const accepted: JudgeOutput['newFindings'] = []
+export function deduplicateFlags(
+  deterministic: DeterministicFlag[],
+  aiFlags: JudgeOutput['newFlags']
+): JudgeOutput['newFlags'] {
+  const accepted: JudgeOutput['newFlags'] = []
 
-  for (const candidate of aiFindings) {
+  for (const candidate of aiFlags) {
     const duplicatesDeterministic = deterministic.some(
-      (finding) =>
-        finding.area === candidate.area &&
-        (similarity(finding.problem, candidate.problem) >= 0.55 ||
+      (flag) =>
+        flag.rubric === candidate.rubric &&
+        (similarity(flag.problem, candidate.problem) >= 0.55 ||
           similarity(
-            `${finding.problem} ${finding.evidence}`,
+            `${flag.problem} ${flag.evidence}`,
             `${candidate.problem} ${candidate.evidence}`
           ) >= 0.62)
     )
     if (duplicatesDeterministic) continue
 
     const duplicatesAi = accepted.some(
-      (finding) =>
-        finding.area === candidate.area &&
+      (flag) =>
+        flag.rubric === candidate.rubric &&
         similarity(
-          `${finding.problem} ${finding.evidence}`,
+          `${flag.problem} ${flag.evidence}`,
           `${candidate.problem} ${candidate.evidence}`
         ) >= 0.72
     )

@@ -1,4 +1,4 @@
-import { AREA_ORDER } from '@/lib/audit/constants'
+import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 
 /** Score-to-grade thresholds used by deterministic scoring and the AI judge. */
 export const GRADE_THRESHOLDS = {
@@ -18,69 +18,154 @@ export const LAUNCH_CHECKLIST_IDS = [
 
 export type LaunchChecklistId = (typeof LAUNCH_CHECKLIST_IDS)[number]
 
-/** Areas the judge must always return (one entry each). */
-export const REQUIRED_JUDGE_AREAS = AREA_ORDER
+/** Rubrics the judge must always return (one entry each). */
+export const REQUIRED_JUDGE_RUBRICS = RUBRIC_ORDER
 
-/** Subjective areas scored A-F from screenshots; no PageSpeed numeric score. */
-export const SUBJECTIVE_JUDGE_AREAS = ['CONVERSION', 'TRUST', 'CONTENT'] as const
-
-/** Criteria injected into the judge prompt for subjective areas. */
-export const SUBJECTIVE_AREA_RUBRIC: Record<
-  (typeof SUBJECTIVE_JUDGE_AREAS)[number],
-  readonly string[]
-> = {
-  CONVERSION: [
-    'Primary CTA visible above the fold on desktop and mobile screenshots',
-    'One clear primary action (not three equal competing buttons)',
-    'Headline states an outcome, not a category label',
-    'Signup or demo friction is low for the page job',
-  ],
-  TRUST: [
-    'Privacy policy and contact info are easy to find',
-    'Social proof, logos, or credibility markers where expected',
-    'Visual design looks intentional, not broken or placeholder',
-    'Security or payment trust cues on pricing or signup surfaces',
-  ],
-  CONTENT: [
+/** Criteria injected into the judge prompt for each rubric. */
+export const RUBRIC_JUDGE_CRITERIA: Record<RubricName, readonly string[]> = {
+  MESSAGE: [
     'Headline and subhead are specific to this product, not generic',
-    'Features are explained as benefits where it matters',
-    'Copy is scannable with clear hierarchy',
-    'Page copy matches the inferred page job and page type',
+    'The hero says what the product does and who it is for',
+    'Benefits and outcomes are clear before feature lists',
+    'CTA copy is specific, not vague ("Get started" without context)',
+    'Social proof, trust signals, and pricing confidence feel credible',
+    'Copy hierarchy is scannable; claims are specific, not inflated',
   ],
-}
-
-/** Objective area nuance hints for the judge when reconciling with deterministic findings. */
-export const OBJECTIVE_AREA_RUBRIC: Record<string, readonly string[]> = {
-  PERFORMANCE: [
-    'Grade from Core Web Vitals and Lighthouse opportunities in the evidence',
-    'A >=90, B >=75, C >=60, D >=40, F below 40',
+  EXPERIENCE: [
+    'Primary CTA visible above the fold on desktop and mobile screenshots',
+    'Layout, buttons, forms, and flows work without confusion',
+    'Mobile tap targets, viewport, and CTA visibility on 375px screens',
+    'Keyboard use, contrast, labels, and accessibility basics',
+    'Core Web Vitals, load speed, and visual polish',
+    'No broken interactions, console errors, or layout shift issues',
   ],
-  ACCESSIBILITY: [
-    'A = zero violations, B = 1-2 minor, C = missing alts/labels/contrast, D/F = critical failures',
-    'Include color contrast and keyboard bypass issues from deterministic findings',
-  ],
-  SEO: [
-    'A = title, description, og tags, structured data, single H1',
-    'B = 1-2 missing tags, C = missing description or multiple H1, D/F = no title or noindex',
-  ],
-  MOBILE: [
-    'Grade from mobile PageSpeed, tap targets, viewport, and mobile screenshot UX',
-    'CTA must be visible without scrolling on a 375px-wide viewport',
+  REACH: [
+    'Title, description, og:image, favicon, and share preview tags',
+    'Indexability, structured data, and heading hierarchy',
+    'Privacy policy and contact links are easy to find',
+    'Analytics and conversion events appear configured where expected',
+    'Public links and metadata explain the product when shared',
   ],
 }
 
 export function formatRubricForJudgePrompt(): string {
-  const subjective = SUBJECTIVE_JUDGE_AREAS.map((area) => {
-    const bullets = SUBJECTIVE_AREA_RUBRIC[area].map((c) => `  - ${c}`).join('\n')
-    return `${area}:\n${bullets}`
+  return RUBRIC_ORDER.map((rubric) => {
+    const bullets = RUBRIC_JUDGE_CRITERIA[rubric].map((c) => `  - ${c}`).join('\n')
+    return `${rubric}:\n${bullets}`
   }).join('\n\n')
+}
 
-  const objective = Object.entries(OBJECTIVE_AREA_RUBRIC)
-    .map(([area, criteria]) => {
-      const bullets = criteria.map((c) => `  - ${c}`).join('\n')
-      return `${area}:\n${bullets}`
-    })
-    .join('\n\n')
+// ─── Rubric status computation ──────────────────────────────────────────────
 
-  return `Subjective area rubric (grade from screenshots + page text):\n${subjective}\n\nObjective area rubric (align with deterministic evidence):\n${objective}`
+export type RubricStatus = 'PASS' | 'NEEDS_ATTENTION' | 'BLOCKED'
+
+export interface RubricInput {
+  name: string
+  grade: string | null
+  score: number | null
+  flags?: Array<{ severity: string }>
+}
+
+export interface RubricSource {
+  name: string
+  grade: string | null
+  score?: number | null
+  flags?: Array<{ severity: string }>
+}
+
+export function buildRubricInput(
+  rubrics: RubricSource[],
+  flatFlags?: Array<{ severity: string; rubric?: string }>
+): RubricInput[] {
+  const flagsByRubric = new Map<string, Array<{ severity: string }>>()
+
+  if (flatFlags) {
+    for (const flag of flatFlags) {
+      if (!flag.rubric) continue
+      const list = flagsByRubric.get(flag.rubric) ?? []
+      list.push({ severity: flag.severity })
+      flagsByRubric.set(flag.rubric, list)
+    }
+  }
+
+  return rubrics.map((rubric) => ({
+    name: rubric.name,
+    grade: rubric.grade,
+    score: rubric.score ?? null,
+    flags: rubric.flags ?? flagsByRubric.get(rubric.name) ?? [],
+  }))
+}
+
+export function computeRubricsFromRows(
+  rubrics: RubricSource[],
+  flatFlags?: Array<{ severity: string; rubric?: string }>
+): RubricComputed[] {
+  return computeAllRubricStatuses(buildRubricInput(rubrics, flatFlags))
+}
+
+export function computeShareStatusFromRubrics(
+  rubrics: RubricSource[],
+  flatFlags?: Array<{ severity: string; rubric?: string }>
+): ShareStatus {
+  return computeShareStatus(computeRubricsFromRows(rubrics, flatFlags), flatFlags)
+}
+
+export interface RubricComputed {
+  name: RubricName
+  status: RubricStatus
+  flagCount: number
+  criticalCount: number
+  importantCount: number
+}
+
+export type ShareStatus = 'good_to_share' | 'fix_before_sharing'
+
+export function computeRubricStatus(rubric: RubricInput): RubricStatus {
+  let hasBlocker = false
+  let hasAttention = false
+
+  if (rubric.grade === 'F') hasBlocker = true
+  else if (rubric.grade === null || rubric.grade === 'D' || rubric.grade === 'C') {
+    hasAttention = true
+  }
+
+  for (const flag of rubric.flags ?? []) {
+    if (flag.severity === 'CRITICAL') hasBlocker = true
+    else if (flag.severity === 'IMPORTANT') hasAttention = true
+  }
+
+  if (hasBlocker) return 'BLOCKED'
+  if (hasAttention) return 'NEEDS_ATTENTION'
+  return 'PASS'
+}
+
+export function computeAllRubricStatuses(rubrics: RubricInput[]): RubricComputed[] {
+  const byName = new Map(rubrics.map((r) => [r.name, r]))
+
+  return RUBRIC_ORDER.map((name) => {
+    const rubric = byName.get(name) ?? {
+      name,
+      grade: null,
+      score: null,
+      flags: [],
+    }
+    const flags = rubric.flags ?? []
+    return {
+      name,
+      status: computeRubricStatus(rubric),
+      flagCount: flags.length,
+      criticalCount: flags.filter((f) => f.severity === 'CRITICAL').length,
+      importantCount: flags.filter((f) => f.severity === 'IMPORTANT').length,
+    }
+  })
+}
+
+export function computeShareStatus(
+  rubrics: RubricComputed[],
+  flatFlags?: Array<{ severity: string }>
+): ShareStatus {
+  const criticalFromRubrics = rubrics.some((r) => r.criticalCount > 0)
+  const criticalFromFlags = (flatFlags ?? []).some((f) => f.severity === 'CRITICAL')
+  if (criticalFromRubrics || criticalFromFlags) return 'fix_before_sharing'
+  return 'good_to_share'
 }

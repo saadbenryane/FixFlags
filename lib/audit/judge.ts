@@ -8,7 +8,7 @@ import {
 } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
-import { DeterministicFinding } from './checks'
+import { DeterministicFlag } from './checks'
 import { sanitizeJudgeOutput } from './sanitize-prompts'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
@@ -19,14 +19,16 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-const areaNameSchema = z.enum([
-  'PERFORMANCE',
-  'ACCESSIBILITY',
-  'SEO',
+export const rubricNameSchema = z.enum(['MESSAGE', 'EXPERIENCE', 'REACH'])
+
+const impactTagSchema = z.enum([
   'CONVERSION',
+  'REVENUE',
   'TRUST',
-  'CONTENT',
-  'MOBILE',
+  'MEASUREMENT',
+  'SHARING',
+  'SEO',
+  'ACCESSIBILITY',
 ])
 
 const judgeOutputSchema = z.object({
@@ -56,26 +58,27 @@ const judgeOutputSchema = z.object({
       passed: z.boolean(),
     })
   ),
-  areas: z.array(
+  rubrics: z.array(
     z.object({
-      name: areaNameSchema,
+      name: rubricNameSchema,
       score: z.number().min(0).max(100).nullable(),
       grade: z.enum(['A', 'B', 'C', 'D', 'F']),
       status: z.enum(['EXCELLENT', 'GOOD', 'NEEDS_WORK', 'CRITICAL']),
       assessmentState: z.enum(['ASSESSED', 'PARTIAL', 'UNKNOWN']),
       confidence: z.number().min(0).max(1),
       summary: z.string().min(1),
-      areaPrompt: z.string().min(1),
+      rubricPrompt: z.string().min(1),
       cursorPrompt: z.string().optional(),
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
     })
   ),
-  newFindings: z.array(
+  newFlags: z.array(
     z.object({
-      area: areaNameSchema,
-      severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']),
+      rubric: rubricNameSchema,
+      impactTag: impactTagSchema,
+      severity: z.enum(['CRITICAL', 'IMPORTANT', 'POLISH']),
       problem: z.string().min(1),
       evidence: z.string().min(1),
       whyItMatters: z.string().min(1),
@@ -86,7 +89,7 @@ const judgeOutputSchema = z.object({
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
-      verificationRule: z.string().min(1),
+      verificationRule: z.string().min(1).nullish(),
       pageUrl: z.string().url().optional(),
     })
   ),
@@ -99,7 +102,7 @@ const judgeOutputSchema = z.object({
       claudePrompt: z.string().optional(),
       lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
-      verificationRule: z.string().min(1),
+      verificationRule: z.string().min(1).nullish(),
     })
   ),
 })
@@ -144,7 +147,7 @@ function buildJudgeContext(
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null,
-  findings: DeterministicFinding[]
+  flags: DeterministicFlag[]
 ) {
   return {
     url,
@@ -167,11 +170,11 @@ function buildJudgeContext(
       0,
       5
     ),
-    deterministicFindings: findings.map((f) => ({
+    deterministicFlags: flags.map((f) => ({
       checkId: f.checkId,
       problem: f.problem,
       evidence: f.evidence,
-      area: f.area,
+      rubric: f.rubric,
       severity: f.severity,
     })),
   }
@@ -336,11 +339,11 @@ export async function runJudge(
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null,
-  findings: DeterministicFinding[],
+  flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null
 ): Promise<JudgeResult> {
-  const context = buildJudgeContext(url, metadata, desktop, mobile, findings)
+  const context = buildJudgeContext(url, metadata, desktop, mobile, flags)
 
   if (openai) {
     return runOpenAIJudge(context, desktopBase64, mobileBase64)

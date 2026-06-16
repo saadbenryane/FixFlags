@@ -1,9 +1,11 @@
-import { cn, areaLabel, gradeColor } from '@/lib/utils'
+import { cn, rubricLabel, gradeColor } from '@/lib/utils'
 import { resolveScoreDisplay } from '@/lib/audit/score-display'
 
 export type ScoreDisplayVariant = 'card' | 'compact' | 'hero' | 'inline' | 'pill'
 
 interface ScoreDisplayProps {
+  rubricName?: string
+  /** @deprecated use rubricName */
   areaName?: string
   label?: string
   grade: string | null
@@ -43,6 +45,7 @@ function GradePill({
 }
 
 export function ScoreDisplay({
+  rubricName,
   areaName,
   label,
   grade,
@@ -51,8 +54,9 @@ export function ScoreDisplay({
   size = 'md',
   className,
 }: ScoreDisplayProps) {
-  const resolved = resolveScoreDisplay({ areaName, grade, score })
-  const displayLabel = label ?? (areaName ? areaLabel(areaName) : 'Overall')
+  const resolvedRubric = rubricName ?? areaName
+  const resolved = resolveScoreDisplay({ grade, score })
+  const displayLabel = label ?? (resolvedRubric ? rubricLabel(resolvedRubric) : 'Overall')
 
   if (variant === 'pill') {
     return <GradePill grade={resolved.grade} size={size} className={className} />

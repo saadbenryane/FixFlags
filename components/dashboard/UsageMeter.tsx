@@ -21,7 +21,7 @@ export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">
-          {isUnlimited ? `${used} audits used (unlimited)` : `${used} / ${limit} audits used`}
+          {isUnlimited ? `${used} checks used (unlimited)` : `${used} / ${limit} checks used`}
         </span>
         {plan !== 'FREE' && !isUnlimited && (
           <span className="text-xs text-muted-foreground capitalize">{plan.toLowerCase()} plan</span>
@@ -30,7 +30,7 @@ export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
 
       {pending > 0 && (
         <p className="text-xs text-muted-foreground">
-          {pending} audit{pending !== 1 ? 's' : ''} in progress
+          {pending} check{pending !== 1 ? 's' : ''} in progress
         </p>
       )}
 

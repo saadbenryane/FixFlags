@@ -1,3 +1,5 @@
+import { BRAND } from '@/lib/marketing/copy'
+
 export const MARKETING_LINKS = [
   { href: '/samples', label: 'Live sample' },
   { href: '/examples', label: 'Examples' },
@@ -35,7 +37,7 @@ export const LEGAL_LINKS = [
 ] as const
 
 export const SUPPORT_LINK = {
-  href: 'mailto:hello@qualityos.com',
+  href: `mailto:${BRAND.supportEmail}`,
   label: 'Support',
 } as const
 

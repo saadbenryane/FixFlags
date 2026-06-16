@@ -4,6 +4,7 @@ import { runAudit } from '../audit/runner'
 import { getWorkerRedisConnectionOptions } from './redis'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
+import { logger } from '../logger'
 
 export function startWorker() {
   const worker = new Worker(
@@ -20,11 +21,11 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
-    console.log(`Audit job ${job.id} completed for audit ${job.data.auditId}`)
+    logger.info(`Audit job ${job.id} completed`, { auditId: job.data.auditId })
   })
 
   worker.on('failed', async (job, err) => {
-    console.error(`Audit job ${job?.id} failed:`, err)
+    logger.error(`Audit job ${job?.id} failed`, err)
     if (!job) return
 
     const auditId = (job.data as { auditId: string }).auditId

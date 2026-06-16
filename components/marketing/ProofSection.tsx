@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { ScoreCard } from '@/components/audit/ScoreCard'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
@@ -31,7 +31,7 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
         <PageGrid align="stretch">
           <PageGridCol span="intro" className="space-y-5">
             <p className="font-medium">{site.displayHost}</p>
-            <ScoreCard
+            <ScoreDisplay
               grade={scoreGrade}
               score={audit.score}
               label="Overall score"
@@ -44,15 +44,15 @@ export function ProofSection({ sample }: { sample: SampleResult }) {
 
           <PageGridCol span="content">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
-              Launch surfaces
+              Rubrics
             </p>
             <ul className="grid gap-2 sm:grid-cols-2">
-              {audit.areas.map((area) => (
-                <li key={area.id}>
-                  <ScoreCard
-                    areaName={area.name}
-                    grade={area.grade}
-                    score={area.score}
+              {audit.rubricRows.map((rubric) => (
+                <li key={rubric.id}>
+                  <ScoreDisplay
+                    rubricName={rubric.name}
+                    grade={rubric.grade}
+                    score={rubric.score}
                     size="sm"
                   />
                 </li>

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 
-export const API_KEY_PREFIX = 'qos_live_'
+export const API_KEY_PREFIX = 'ff_live_'
 export const MAX_ACTIVE_API_KEYS = 5
 
 export function hashApiKey(key: string): string {

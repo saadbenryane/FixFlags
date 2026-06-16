@@ -3,15 +3,15 @@ import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
   getEffectiveScanLimit,
-  getPendingScanCount,
+  getPendingCheckCount,
   hasUnlimitedScans,
   isAdminUser,
   isDevUnlimitedScans,
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 
-const ANON_COOKIE = 'qos_anon_audits'
-export const ANON_AUDIT_IDS_COOKIE = 'qos_anon_audit_ids'
+const ANON_COOKIE = 'ff_anon_checks'
+export const ANON_AUDIT_IDS_COOKIE = 'ff_anon_report_ids'
 export const ANON_AUDIT_LIMIT = 1
 
 export type UsageLimitCode = 'ANON_LIMIT' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
@@ -89,7 +89,7 @@ export async function checkUserAuditAllowed(
     return { allowed: true }
   }
 
-  const pending = await getPendingScanCount(user.id)
+  const pending = await getPendingCheckCount(user.id)
 
   if (user.auditsUsed + pending >= limit) {
     const isFree = user.plan === 'FREE'
@@ -130,7 +130,7 @@ export async function markAnonymousAuditCompletedOnce(auditId: string): Promise<
   if (isDevUnlimitedScans()) return
 
   const cookieStore = await cookies()
-  const countedKey = 'qos_anon_counted_ids'
+  const countedKey = 'ff_anon_counted_ids'
   const counted = readAnonAuditIds(cookieStore.get(countedKey)?.value)
   if (counted.includes(auditId)) return
 

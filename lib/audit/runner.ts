@@ -1,5 +1,5 @@
-import type { AreaName } from '@prisma/client'
 import { prisma } from '../db'
+import { RUBRIC_ORDER, type RubricName } from './constants'
 import { captureScreenshots } from './screenshot'
 import {
   fetchAndParseMetadata,
@@ -14,8 +14,8 @@ import {
 } from './pagespeed'
 import {
   runAllChecks,
-  computeAreaScores,
-  type DeterministicFinding,
+  computeRubricScores,
+  type DeterministicFlag,
 } from './checks'
 import {
   runJudge,
@@ -24,9 +24,9 @@ import {
 } from './judge'
 import {
   persistAuditResults,
-  persistDeterministicFindings,
+  persistDeterministicFlags,
 } from './persist'
-import { AUDIT_PROGRESS, setAuditProgress } from './progress'
+import { AUDIT_PROGRESS } from './progress'
 import { JudgeContractError, validateJudgeOutput } from './validate-judge-output'
 import { discoverCriticalPathUrls } from './critical-path'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
@@ -55,7 +55,7 @@ interface PageRun {
   mobileScreenshot: boolean
   desktopBase64: string
   mobileBase64: string | null
-  findings: DeterministicFinding[]
+  flags: DeterministicFlag[]
   judge?: JudgeResult
 }
 
@@ -92,7 +92,7 @@ async function runValidatedJudge(
     metadata: PageMetadata
     desktop: PageSpeedResult | null
     mobile: PageSpeedResult | null
-    findings: DeterministicFinding[]
+    flags: DeterministicFlag[]
     desktopBase64: string
     mobileBase64: string | null
   }
@@ -108,11 +108,11 @@ async function runValidatedJudge(
       input.metadata,
       input.desktop,
       input.mobile,
-      input.findings,
+      input.flags,
       input.desktopBase64,
       input.mobileBase64
     )
-    result.output = validateJudgeOutput(result.output, input.findings)
+    result.output = validateJudgeOutput(result.output, input.flags)
     return result
   }
 
@@ -314,7 +314,7 @@ async function runPage(
   await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
   const checksStart = Date.now()
 
-  const findings = (
+  const flags = (
     await runAllChecks(
       normalizedUrl,
       metadata,
@@ -330,12 +330,12 @@ async function runPage(
           }
         : undefined
     )
-  ).map((finding) => ({
-    ...finding,
+  ).map((flag) => ({
+    ...flag,
     checkId:
       input.position === 0
-        ? finding.checkId
-        : `${finding.checkId}::page:${input.position}`,
+        ? flag.checkId
+        : `${flag.checkId}::page:${input.position}`,
     pageUrl: normalizedUrl,
   }))
 
@@ -345,13 +345,13 @@ async function runPage(
     durationMs: Date.now() - checksStart,
   })
 
-  const partialAreaScores = computeAreaScores(
-    findings,
+  const partialRubricScores = computeRubricScores(
+    flags,
     pagespeed?.desktop ?? null,
     pagespeed?.mobile ?? null
   )
   if (input.primary) {
-    await persistDeterministicFindings(ctx.auditId, findings, partialAreaScores)
+    await persistDeterministicFlags(ctx.auditId, flags, partialRubricScores)
   }
 
   await prisma.auditPage.update({
@@ -368,14 +368,14 @@ async function runPage(
     metadata,
     desktop: pagespeed?.desktop ?? null,
     mobile: pagespeed?.mobile ?? null,
-    findings,
+    flags,
     desktopBase64,
     mobileBase64,
   })
   accumulateUsage(ctx, judge)
 
-  judge.output.newFindings = judge.output.newFindings.map((finding) => ({
-    ...finding,
+  judge.output.newFlags = judge.output.newFlags.map((flag) => ({
+    ...flag,
     pageUrl: normalizedUrl,
   }))
 
@@ -405,37 +405,29 @@ async function runPage(
     mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
     desktopBase64,
     mobileBase64,
-    findings,
+    flags,
     judge,
   }
 }
 
-function averageScores(pageRuns: PageRun[]): Partial<Record<AreaName, number | null>> {
-  const output: Partial<Record<AreaName, number | null>> = {}
-  for (const area of [
-    'PERFORMANCE',
-    'ACCESSIBILITY',
-    'SEO',
-    'CONVERSION',
-    'TRUST',
-    'CONTENT',
-    'MOBILE',
-  ] as AreaName[]) {
+function averageScores(pageRuns: PageRun[]): Partial<Record<RubricName, number | null>> {
+  const output: Partial<Record<RubricName, number | null>> = {}
+  for (const rubricName of RUBRIC_ORDER) {
     const values = pageRuns
       .map((page) => {
-        const deterministic = computeAreaScores(
-          page.findings,
+        const deterministic = computeRubricScores(
+          page.flags,
           page.desktop,
           page.mobile
-        )[area]
+        )[rubricName]
         return (
           deterministic ??
-          page.judge?.output.areas.find((item) => item.name === area)?.score ??
+          page.judge?.output.rubrics.find((item) => item.name === rubricName)?.score ??
           null
         )
       })
       .filter((score): score is number => score !== null)
-    output[area] =
+    output[rubricName] =
       values.length === pageRuns.length
         ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length)
         : null
@@ -449,7 +441,7 @@ async function tryPartialFinalize(
   error: unknown
 ): Promise<boolean> {
   if (pageRuns.length === 0) return false
-  const hasEvidence = pageRuns.every((p) => p.desktopScreenshot && p.findings.length >= 0)
+  const hasEvidence = pageRuns.every((p) => p.desktopScreenshot && p.flags.length >= 0)
   if (!hasEvidence) return false
 
   const errorMsg = sanitizeAuditErrorMessage(
@@ -573,21 +565,21 @@ export async function runAudit(auditId: string): Promise<void> {
     }
 
     const combined = primary.judge!
-    combined.output.newFindings = pageRuns.flatMap(
-      (page) => page.judge?.output.newFindings ?? []
+    combined.output.newFlags = pageRuns.flatMap(
+      (page) => page.judge?.output.newFlags ?? []
     )
     combined.output.enrichments = pageRuns.flatMap(
       (page) => page.judge?.output.enrichments ?? []
     )
-    combined.output.areas = combined.output.areas.map((area) => {
-      const pageAreas = pageRuns
-        .map((page) => page.judge?.output.areas.find((item) => item.name === area.name))
+    combined.output.rubrics = combined.output.rubrics.map((rubric) => {
+      const pageRubrics = pageRuns
+        .map((page) => page.judge?.output.rubrics.find((item) => item.name === rubric.name))
         .filter((item): item is NonNullable<typeof item> => Boolean(item))
-      const scores = pageAreas
+      const scores = pageRubrics
         .map((item) => item.score)
         .filter((score): score is number => score !== null)
       return {
-        ...area,
+        ...rubric,
         score:
           scores.length === pageRuns.length
             ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
@@ -595,14 +587,14 @@ export async function runAudit(auditId: string): Promise<void> {
         assessmentState:
           scores.length === pageRuns.length ? ('ASSESSED' as const) : ('PARTIAL' as const),
         confidence:
-          pageAreas.reduce((sum, item) => sum + item.confidence, 0) / pageAreas.length,
+          pageRubrics.reduce((sum, item) => sum + item.confidence, 0) / pageRubrics.length,
       }
     })
 
-    const findings = pageRuns.flatMap((page) => page.findings)
-    const areaScores = averageScores(pageRuns)
+    const flags = pageRuns.flatMap((page) => page.flags)
+    const rubricScores = averageScores(pageRuns)
     await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
-    await persistAuditResults(auditId, combined.output, findings, areaScores)
+    await persistAuditResults(auditId, combined.output, flags, rubricScores)
 
     await finalizeAudit({
       auditId,

@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: qualityos
-      POSTGRES_PASSWORD: qualityos
-      POSTGRES_DB: qualityos
+      POSTGRES_USER: fixflags
+      POSTGRES_PASSWORD: fixflags
+      POSTGRES_DB: fixflags
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U qualityos -d qualityos"]
+      test: ["CMD-SHELL", "pg_isready -U fixflags -d fixflags"]
       interval: 5s
       timeout: 5s
       retries: 5

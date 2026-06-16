@@ -23,12 +23,14 @@ export async function GET() {
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
       ])
       checks.redis = 'ok'
-      const waiting = (counts as Record<string, number>).waiting ?? 0
-      const active = (counts as Record<string, number>).active ?? 0
-      checks.queueWaiting = String(waiting)
-      checks.queueActive = String(active)
-      checks.queueDelayed = String((counts as Record<string, number>).delayed ?? 0)
-      checks.workerLikelyIdle = String(waiting > 0 && active === 0)
+      if (process.env.NODE_ENV !== 'production') {
+        const waiting = (counts as Record<string, number>).waiting ?? 0
+        const active = (counts as Record<string, number>).active ?? 0
+        checks.queueWaiting = String(waiting)
+        checks.queueActive = String(active)
+        checks.queueDelayed = String((counts as Record<string, number>).delayed ?? 0)
+        checks.workerLikelyIdle = String(waiting > 0 && active === 0)
+      }
     } catch {
       checks.redis = 'error'
     }
@@ -49,14 +51,16 @@ export async function GET() {
       checks.storage = isR2Configured() ? 'configured' : 'local'
     }
 
-    const cutoff = new Date(Date.now() - STUCK_MINUTES * 60 * 1000)
-    const stuckCount = await prisma.audit.count({
-      where: {
-        status: { notIn: ['COMPLETED', 'FAILED'] },
-        updatedAt: { lt: cutoff },
-      },
-    })
-    checks.stuckAudits = String(stuckCount)
+    if (process.env.NODE_ENV !== 'production') {
+      const cutoff = new Date(Date.now() - STUCK_MINUTES * 60 * 1000)
+      const stuckCount = await prisma.audit.count({
+        where: {
+          status: { notIn: ['COMPLETED', 'FAILED'] },
+          updatedAt: { lt: cutoff },
+        },
+      })
+      checks.stuckAudits = String(stuckCount)
+    }
 
     const allOk =
       checks.db === 'ok' &&

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
-import { ScoreCard } from '@/components/audit/ScoreCard'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
 import { Button } from '@/components/ui/button'
@@ -12,22 +12,20 @@ import { Section } from '@/components/ui/section'
 import { TextLink } from '@/components/ui/text-link'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import {
-  getTopFixPromptFromAreas,
-  rankFindingsByPriority,
-} from '@/lib/audit/priority-findings'
+  getTopFixPromptFromFlags,
+  rankFlagsByPriority,
+} from '@/lib/audit/priority-flags'
 import { OUTPUT_LABELS, PROOF_SECTION } from '@/lib/marketing/copy'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import type { SampleResult } from '@/lib/marketing/live-sample'
-import { areaLabel } from '@/lib/utils'
-
-const OBJECTIVE_AREAS = new Set(['PERFORMANCE', 'ACCESSIBILITY', 'SEO', 'MOBILE'])
+import { rubricLabel } from '@/lib/utils'
 
 export function SampleOutputSection({ sample }: { sample: SampleResult }) {
   const audit = sample.audit
   const scoreGrade = audit.score === null ? null : gradeFromScore(audit.score)
   const site = getSampleSiteDisplay(audit.url)
-  const fixPrompt = getTopFixPromptFromAreas(audit.areas)
-  const priority = rankFindingsByPriority(audit.areas, 3)
+  const fixPrompt = getTopFixPromptFromFlags(audit.flags)
+  const priority = rankFlagsByPriority(audit.flags, audit.rubricRows, 3)
   const desktop = audit.screenshots.find((item) => item.device === 'DESKTOP')
   const mobile = audit.screenshots.find((item) => item.device === 'MOBILE')
 
@@ -56,7 +54,7 @@ export function SampleOutputSection({ sample }: { sample: SampleResult }) {
               ) : null}
             </div>
 
-            <ScoreCard
+            <ScoreDisplay
               grade={scoreGrade}
               score={audit.score}
               label="Overall score"
@@ -65,12 +63,12 @@ export function SampleOutputSection({ sample }: { sample: SampleResult }) {
             />
 
             <div className="grid gap-2 sm:grid-cols-2">
-              {audit.areas.map((area) => (
-                <ScoreCard
-                  key={area.id}
-                  areaName={area.name}
-                  grade={area.grade}
-                  score={OBJECTIVE_AREAS.has(area.name) ? area.score : null}
+              {audit.rubricRows.map((rubric) => (
+                <ScoreDisplay
+                  key={rubric.id}
+                  rubricName={rubric.name}
+                  grade={rubric.grade}
+                  score={rubric.score}
                   size="sm"
                   className="h-full"
                 />
@@ -102,7 +100,7 @@ export function SampleOutputSection({ sample }: { sample: SampleResult }) {
               <div className="rounded-card bg-card p-5 shadow-card">
                 <FixPromptBlock
                   prompt={fixPrompt.prompt}
-                  finding={fixPrompt.finding}
+                  finding={fixPrompt.flag}
                   rows={4}
                   clamp={false}
                   showNextStep
@@ -112,19 +110,19 @@ export function SampleOutputSection({ sample }: { sample: SampleResult }) {
 
             {priority.length > 0 ? (
               <ul className="divide-y divide-border/15 rounded-card border-0 bg-card shadow-card">
-                {priority.map(({ areaName, areaGrade, finding }) => (
-                  <li key={finding.id} className="flex items-start gap-3 px-5 py-3.5">
-                    <ScoreCard
-                      areaName={areaName}
-                      grade={areaGrade}
-                      layout="compact"
+                {priority.map(({ rubricName, rubricGrade, flag }) => (
+                  <li key={flag.id} className="flex items-start gap-3 px-5 py-3.5">
+                    <ScoreDisplay
+                      rubricName={rubricName}
+                      grade={rubricGrade}
+                      variant="compact"
                       size="sm"
                       className="mt-0.5 shrink-0 shadow-none"
                     />
                     <div className="min-w-0 flex-1">
-                      <span className="text-xs font-medium">{areaLabel(areaName)}</span>
+                      <span className="text-xs font-medium">{rubricLabel(rubricName)}</span>
                       <p className="text-sm leading-snug text-muted-foreground text-pretty">
-                        {finding.problem}
+                        {flag.problem}
                       </p>
                     </div>
                   </li>

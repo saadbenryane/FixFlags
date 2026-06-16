@@ -1,6 +1,7 @@
 'use client'
 
 import { NavLink } from '@/components/layout/nav-link'
+import { Container } from '@/components/ui/container'
 import { SETTINGS_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
@@ -10,8 +11,11 @@ import {
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      <nav className="flex flex-wrap gap-2 pb-2">
+    <Container variant="narrow" className="space-y-8 py-8">
+      <nav
+        className="flex flex-wrap gap-1 border-b border-border/60 pb-4"
+        aria-label="Settings sections"
+      >
         {SETTINGS_NAV.map((item) => (
           <NavLink
             key={item.href}
@@ -25,6 +29,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         ))}
       </nav>
       {children}
-    </div>
+    </Container>
   )
 }

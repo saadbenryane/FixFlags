@@ -4,8 +4,7 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
-import { AreaDiff } from '@/components/compare/AreaDiff'
-import { FindingDiff } from '@/components/compare/FindingDiff'
+import { FlagDiff } from '@/components/compare/FlagDiff'
 import { BeforeAfterComparison } from '@/components/audit/BeforeAfterComparison'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
@@ -16,12 +15,12 @@ import { Section } from '@/components/ui/section'
 import { Heading, Muted } from '@/components/ui/typography'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
-import { getFindingDiffSummary } from '@/lib/audit/diff-findings'
+import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { canAccessAudit } from '@/lib/audit/access'
 import { canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser } from '@/lib/auth/permissions'
-import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
-import { LaunchReadinessDiff } from '@/components/compare/LaunchReadinessDiff'
+import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
+import { RubricDiff } from '@/components/compare/RubricDiff'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -43,11 +42,11 @@ export default async function ComparePage({ params }: Props) {
   const recheckAudit = await prisma.audit.findUnique({
     where: { id },
     include: {
-      areas: true,
+      rubrics: { include: { flags: { select: { severity: true } } } },
       screenshots: true,
       parent: {
         include: {
-          areas: true,
+          rubrics: { include: { flags: { select: { severity: true } } } },
           screenshots: true,
         },
       },
@@ -56,10 +55,10 @@ export default async function ComparePage({ params }: Props) {
 
   if (!recheckAudit) notFound()
   if (!recheckAudit.parentId || !recheckAudit.parent) {
-    redirect(`/audit/${id}`)
+    redirect(`/report/${id}`)
   }
   if (recheckAudit.status !== 'COMPLETED') {
-    redirect(`/audit/${id}`)
+    redirect(`/report/${id}`)
   }
 
   const showAdmin = isAdminUser(user)
@@ -68,7 +67,7 @@ export default async function ComparePage({ params }: Props) {
     return (
       <AuditShell session={session} showAdmin={showAdmin}>
         <Section spacing="default">
-          <Container className="max-w-3xl py-12 space-y-6">
+          <Container variant="content" className="space-y-6 py-12">
             <div className="space-y-1">
               <Heading as="h1">Before vs After</Heading>
               <Muted>Re-check is required to compare scores.</Muted>
@@ -79,7 +78,7 @@ export default async function ComparePage({ params }: Props) {
               currentPlan={user.plan}
             />
             <Button asChild variant="outline">
-              <Link href={`/audit/${id}`}>Back to report</Link>
+              <Link href={`/report/${id}`}>Back to report</Link>
             </Button>
           </Container>
         </Section>
@@ -96,7 +95,7 @@ export default async function ComparePage({ params }: Props) {
 
   const before = recheckAudit.parent
   const after = recheckAudit
-  const findingDiff = await getFindingDiffSummary(before.id, after.id)
+  const flagDiff = await getFlagDiffSummary(before.id, after.id)
 
   const beforeDesktop = before.screenshots.find((s) => s.device === 'DESKTOP')
   const afterDesktop = after.screenshots.find((s) => s.device === 'DESKTOP')
@@ -107,27 +106,37 @@ export default async function ComparePage({ params }: Props) {
   const scoreDelta =
     before.score !== null && after.score !== null ? after.score - before.score : 0
   const compareMoment = resolveCompareUpgradeMoment(before.score, after.score)
-  const beforeLaunch = parseLaunchReadiness(before.launchReadiness)
-  const afterLaunch = parseLaunchReadiness(after.launchReadiness)
+  const mapRubrics = (rubrics: typeof before.rubrics) =>
+    rubrics.map((r) => ({
+      name: r.name,
+      grade: r.grade,
+      score: r.score,
+      flags: r.flags.map((f) => ({ severity: f.severity })),
+    }))
+
+  const beforeRubrics = computeRubricsFromRows(mapRubrics(before.rubrics))
+  const afterRubrics = computeRubricsFromRows(mapRubrics(after.rubrics))
+  const beforeShareStatus = computeShareStatusFromRubrics(mapRubrics(before.rubrics))
+  const afterShareStatus = computeShareStatusFromRubrics(mapRubrics(after.rubrics))
 
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
       <Section spacing="default">
-        <Container className="max-w-4xl space-y-8">
+        <Container variant="report" className="space-y-8">
           <div className="space-y-1">
             <Heading as="h1">Before vs After</Heading>
             <Muted className="truncate">{after.url}</Muted>
           </div>
 
-        <div className="flex items-center gap-6 p-4 rounded-xl border bg-card">
+        <div className="flex items-center gap-6 rounded-card border-0 bg-card p-5 shadow-card sm:p-6">
           <div className="text-center">
-            <div className="text-3xl font-bold tabular-nums">{before.score ?? '–'}</div>
+            <div className="font-display text-3xl font-normal tabular-nums">{before.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">Before</div>
           </div>
           <div className="flex-1 text-center">
             {before.score !== null && after.score !== null ? (
               <div
-                className={`text-2xl font-bold tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
+                className={`font-display text-2xl font-normal tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
               >
                 {after.score > before.score ? '+' : ''}
                 {after.score - before.score}
@@ -138,7 +147,7 @@ export default async function ComparePage({ params }: Props) {
             <div className="text-xs text-muted-foreground mt-1">Overall change</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold tabular-nums">{after.score ?? '–'}</div>
+            <div className="font-display text-3xl font-normal tabular-nums">{after.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
         </div>
@@ -152,16 +161,28 @@ export default async function ComparePage({ params }: Props) {
           />
         ) : null}
 
-        <LaunchReadinessDiff before={beforeLaunch} after={afterLaunch} />
-
-        <AreaDiff beforeAreas={before.areas} afterAreas={after.areas} />
-
-        <FindingDiff
-          fixed={findingDiff.fixed}
-          unchanged={findingDiff.unchanged}
-          regressed={findingDiff.regressed}
-          newIssues={findingDiff.newIssues}
+        <RubricDiff
+          beforeShareStatus={beforeShareStatus}
+          afterShareStatus={afterShareStatus}
+          beforeRubrics={beforeRubrics}
+          afterRubrics={afterRubrics}
         />
+
+        {flagDiff.fixed.length === 0 &&
+        flagDiff.unchanged.length === 0 &&
+        flagDiff.regressed.length === 0 &&
+        flagDiff.newIssues.length === 0 ? (
+          <div className="rounded-card border border-border bg-muted/30 px-5 py-8 text-center sm:px-6">
+            <p className="text-sm text-muted-foreground">No changes detected between the two audits.</p>
+          </div>
+        ) : (
+          <FlagDiff
+            fixed={flagDiff.fixed}
+            unchanged={flagDiff.unchanged}
+            regressed={flagDiff.regressed}
+            newIssues={flagDiff.newIssues}
+          />
+        )}
 
         {beforeDesktop && afterDesktop && (
           <div className="space-y-3">
@@ -198,10 +219,10 @@ export default async function ComparePage({ params }: Props) {
 
         <div className="flex gap-3">
           <Button asChild variant="outline">
-            <Link href={`/audit/${before.id}`}>View original audit</Link>
+            <Link href={`/report/${before.id}`}>View original report</Link>
           </Button>
           <Button asChild>
-            <Link href={`/audit/${after.id}`}>View latest audit</Link>
+            <Link href={`/report/${after.id}`}>View latest report</Link>
           </Button>
         </div>
         </Container>

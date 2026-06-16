@@ -34,9 +34,10 @@ export interface AuditStatusPayload {
   parentId?: string | null
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
-  areas?: Array<{ name: string; grade: string; score: number | null }>
-  findingsCount?: number
-  partialFindings?: Array<{ id: string; severity: string; problem: string; area: string }>
+  rubrics?: Array<{ name: string; grade: string; score: number | null }>
+  flagCount?: number
+  shareStatus?: string
+  partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
   queuePosition?: number
   estimatedWaitSeconds?: number
   scheduledStartAt?: string | null
@@ -54,7 +55,7 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     initialAudit?.status && TERMINAL_STATUSES.has(initialAudit.status as string)
 
   const { data: statusData, error: statusError, isLoading: statusLoading } = useSWR(
-    pollStatus && !initialTerminal ? `/api/audits/${auditId}/status` : null,
+    pollStatus && !initialTerminal ? `/api/reports/${auditId}/status` : null,
     jsonFetcher,
     {
       refreshInterval: (latest) => {
@@ -74,13 +75,12 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     startedAt &&
     Date.now() - new Date(startedAt).getTime() > AUDIT_DEADLINE_MS + 5000
 
-  const isTerminal = TERMINAL_STATUSES.has(currentStatus) || clientTimedOut
   const isFailed = currentStatus === 'FAILED' || clientTimedOut
   const isComplete = currentStatus === 'COMPLETED' && !clientTimedOut
   const needsFullFetch = isComplete && !initialTerminal
 
   const { data: fullAudit, error: fullError, isLoading: fullLoading } = useSWR(
-    needsFullFetch ? `/api/audits/${auditId}` : null,
+    needsFullFetch ? `/api/reports/${auditId}` : null,
     jsonFetcher,
     { revalidateOnFocus: false }
   )

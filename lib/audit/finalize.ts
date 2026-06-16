@@ -1,8 +1,7 @@
-import type { AreaName } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
-import { diffFindingsAgainstParent } from '@/lib/audit/diff-findings'
-import { applyDeterministicVerification } from '@/lib/audit/verify-findings'
+import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
+import { applyDeterministicVerification } from '@/lib/audit/verify-flags'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { consumeTrialRecheckOnSuccess } from '@/lib/auth/entitlements'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
@@ -53,7 +52,7 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
   })
 
   if (audit.parentId) {
-    await diffFindingsAgainstParent(input.auditId, audit.parentId)
+    await diffFlagsAgainstParent(input.auditId, audit.parentId)
     const parent = await prisma.audit.findUnique({
       where: { id: audit.parentId },
       select: { url: true },
@@ -152,7 +151,7 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
   }
 
   if (audit.parentId) {
-    await diffFindingsAgainstParent(input.auditId, audit.parentId)
+    await diffFlagsAgainstParent(input.auditId, audit.parentId)
   }
 
   if (audit.userId) {

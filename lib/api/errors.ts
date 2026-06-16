@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/usage'
 import { randomUUID } from 'node:crypto'
 import { RateLimitError } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/logger'
 
 export interface ApiErrorBody {
   code: UsageLimitCode | string
@@ -30,14 +31,7 @@ export function apiError(
 
 export function handleRouteError(err: unknown, fallback = 'Something went wrong'): NextResponse {
   const requestId = randomUUID()
-  console.error(
-    JSON.stringify({
-      level: 'error',
-      event: 'api.route.error',
-      requestId,
-      error: err instanceof Error ? err.message : String(err),
-    })
-  )
+  logger.error('API route error', { requestId, error: err instanceof Error ? err.message : String(err) })
 
   if (err instanceof RateLimitError) {
     const response = apiError(err.message, 429, {

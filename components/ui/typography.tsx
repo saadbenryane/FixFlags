@@ -101,3 +101,16 @@ export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpan
     />
   )
 }
+
+/** In-page section heading (dashboard lists, admin groups) */
+export function SectionTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2
+      className={cn(
+        'text-sm font-semibold leading-heading tracking-heading text-foreground',
+        className
+      )}
+      {...props}
+    />
+  )
+}

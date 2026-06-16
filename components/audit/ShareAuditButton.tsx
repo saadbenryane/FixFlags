@@ -7,7 +7,7 @@ import { Share2, Check, Globe, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 
 interface ShareAuditButtonProps {
@@ -37,7 +37,7 @@ export function ShareAuditButton({
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const shareUrl = `${SITE_URL}/audit/${auditId}`
+  const shareUrl = `${SITE_URL}/report/${auditId}`
   const canShare = isAnonymous || isPublic || (isLoggedIn && isOwner)
   const shareState = isAnonymous ? 'anonymous' : isPublic ? 'public' : 'private'
 
@@ -74,12 +74,12 @@ export function ShareAuditButton({
       const url = shareUrl
       const shareText =
         score != null
-          ? `QualityOS report: ${score}/100${topIssue ? ` - ${topIssue}` : ''}`
-          : 'QualityOS audit report'
+          ? `${BRAND.name} report: ${score}/100${topIssue ? ` - ${topIssue}` : ''}`
+          : `${BRAND.name} report`
 
       if (typeof navigator.share === 'function') {
         try {
-          await navigator.share({ title: 'QualityOS audit', text: shareText, url })
+          await navigator.share({ title: `${BRAND.name} report`, text: shareText, url })
           return
         } catch {
           // fall through to clipboard
@@ -91,7 +91,7 @@ export function ShareAuditButton({
       setTimeout(() => setCopied(false), 2000)
       toast.success(publicNow ? 'Public link copied' : 'Link copied', {
         description: publicNow
-          ? 'Anyone with this link can view the report and run their own audit.'
+          ? 'Anyone with this link can view the report and run their own check.'
           : shareText,
       })
     } catch {
@@ -123,7 +123,7 @@ export function ShareAuditButton({
           </>
         ) : (
           <>
-            <Share2 className="h-4 w-4" /> Share audit
+            <Share2 className="h-4 w-4" /> Share report
           </>
         )}
       </Button>

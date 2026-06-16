@@ -1,8 +1,10 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
+import { BRAND } from '@/lib/marketing/copy'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'QualityOS <hello@qualityos.com>'
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL
 
 async function sendOnce(input: {
@@ -62,14 +64,14 @@ export async function notifyExpertReviewPaid(params: {
   if (!params.auditId) throw new Error('Expert Review order is missing an audit')
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const auditLink = `${appUrl}/audit/${params.auditId}`
+  const auditLink = `${appUrl}/report/${params.auditId}`
   await sendOnce({
     userId: params.userId,
     emailType: `expert-review-paid:${params.orderId}`,
     to: params.email,
     subject: 'Expert Review confirmed, we will respond within 48 hours',
     html: `
-      <p>Thanks for requesting an Expert Review from QualityOS.</p>
+      <p>Thanks for requesting an Expert Review from ${BRAND.name}.</p>
       <p>We received your payment and will respond within <strong>48 hours</strong> with a written review and prioritized fix list.</p>
       <p>Your audit: <a href="${auditLink}">${auditLink}</a></p>
       <p>Track status anytime on your <a href="${appUrl}/billing">billing page</a>.</p>
@@ -102,7 +104,7 @@ export async function sendExpertReviewDelivered(params: {
     userId: params.userId,
     emailType: `expert-review-delivered:${params.orderId}`,
     to: params.email,
-    subject: 'Your QualityOS Expert Review is ready',
+    subject: `Your ${BRAND.name} Expert Review is ready`,
     html: `
       <p>Your Expert Review is ready.</p>
       <p><a href="${appUrl}/billing/reviews/${params.orderId}">Read the review and prioritized fix list</a></p>

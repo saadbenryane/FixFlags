@@ -1,23 +1,29 @@
 /**
- * QualityOS marketing copy - single source of truth.
+ * FixFlags marketing copy. Single source of truth.
  *
- * Voice: operator clarity (see docs/voice-and-copy.md).
- * Do: short sentences, verb-first CTAs, name tools, lead with launch outcomes.
+ * Voice: sharp senior reviewer. Clear, calm, direct. No hype.
+ * Do: short sentences, verb-first CTAs, name tools, lead with what to fix.
  * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
  */
 
 import { getMarketingPlans } from '@/lib/billing/plans'
 
 export const BRAND = {
-  name: 'QualityOS',
-  tagline: 'Fix what\u2019s killing signups, fast.',
-  category: 'Automated checks + AI review with fix prompts',
-  oneLiner: 'Paste a URL. Scored report with fix prompts on every issue.',
-  tribeBadge: 'AI checks for agents',
+  name: 'FixFlags',
+  domain: 'fixflags.com',
+  tagline: 'Your AI built it. FixFlags shows what to fix.',
+  category: 'FixFlags is the QA layer for AI-built products.',
+  oneLiner: 'FixFlags finds what your AI builder missed and helps you fix it.',
+  supportEmail: 'hello@fixflags.com',
+  mcpServerKey: 'fixflags',
+  exportPrefix: 'FixFlags Report',
+  tribeBadge: 'QA for AI-built products',
 } as const
 
-/** Named once on the page - do not repeat in every section */
+/** Named once on the page. Do not repeat in every section */
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
+
+export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
 
 export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
@@ -27,84 +33,85 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  headline: 'Fix what\u2019s killing signups fast.',
-  headlineLine1: 'Fix what\u2019s killing signups',
-  headlineLine2: 'fast.',
-  audienceLine: 'For teams shipping weekly',
+  headline: 'Your AI built it. FixFlags shows what to fix.',
+  headlineLine1: 'Your AI built it.',
+  headlineLine2: 'FixFlags shows what to fix.',
+  audienceLine: 'QA for AI-built products',
   headlineAccent: false,
   subhead:
-    'Paste a URL to get a scored report with screenshots and copy-ready prompts for mobile, trust, SEO, and conversion issues.',
-  trustLine: 'Free audit. No account required. Usually under 90 seconds.',
-  primaryCta: 'Get my report',
+    'Paste a URL. Get clear Flags across message, experience, and reach. Each Flag shows where it happens, why it matters, and the fix prompt or repo change to resolve it.',
+  trustLine: 'Run a second pass before users see it.',
+  supportingLine: 'Run a second pass before users see it.',
+  primaryCta: 'Check my site',
   secondaryCta: 'See sample report',
   trySampleCta: 'Try sample URL',
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
   label: 'Who it\u2019s for',
-  headline: 'Pre-launch or live site',
-  subhead: 'Same pipeline. Different jobs.',
+  headline: 'Before you share the link',
+  subhead: 'Same report. Different moment.',
   tiles: [
     {
       id: 'ai-shipper',
-      title: 'About to share a link',
-      job: 'Catch embarrassing gaps before the launch post.',
-      proof: `Scored report and fix prompts for ${AI_TOOLS}.`,
+      title: 'About to ship',
+      job: 'Catch what your builder missed before the launch post.',
+      proof: `Flags and fix prompts for ${AI_TOOLS}.`,
     },
     {
       id: 'live-site',
-      title: 'Traffic but weak conversion',
-      job: 'See what the live site is still costing you.',
-      proof: 'Scores on conversion, trust, mobile, and sharing.',
+      title: 'Already live',
+      job: 'See what the public page is still costing you.',
+      proof: 'Flags across Message, Experience, and Reach rubrics.',
     },
   ],
 } as const
 
 export const HERO_FIX_PROMPT = {
   label: OUTPUT_LABELS.fixPrompt,
-  finding: 'Primary button below fold at 375px',
+  finding: 'Primary CTA below fold at 375px',
   prompt:
-    'Move the primary button above the fold on 375px viewport. Current button starts at 1,200px from top. Hero should fit in first viewport with the main action visible without scrolling.',
+    'Move the primary CTA above the fold on 375px viewport. Current button starts at 1,200px from top. Hero should fit in first viewport with the main action visible without scrolling.',
 } as const
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'Audit, fix, prove',
-  subhead: 'Three steps: audit, fix, re-check.',
+  headline: 'Check, fix, prove',
+  subhead: 'Three steps: check, fix, re-check.',
   steps: [
     {
       step: 1,
-      title: 'Audit',
-      body: 'Paste a URL. Get a scored report with desktop and mobile screenshots across performance, SEO, mobile, conversion, and more.',
+      title: 'Check',
+      body: 'Paste a URL. Get Flags across Message, Experience, and Reach with desktop and mobile screenshots.',
     },
     {
       step: 2,
-      title: 'Fix prompts',
-      body: `Copy-ready prompts for ${AI_TOOLS}. Paste into your editor and ship fixes.`,
+      title: 'Fix',
+      body: `Copy-ready prompts for ${AI_TOOLS}. Paste into your editor or repo and ship fixes.`,
     },
     {
       step: 3,
       title: 'Re-check',
-      body: 'Re-check the same URL to confirm scores moved.',
+      body: 'Run a second pass on the same URL to confirm Flags cleared.',
     },
   ],
 } as const
 
 export const QUEUE_COPY = {
-  browseWhileWaiting: 'Browse while you wait. Your audit continues in the background.',
+  browseWhileWaiting: 'Browse while you wait. Your check continues in the background.',
   prepMcp: 'Prep MCP while you wait: read Examples, then set up Cursor or Claude integration.',
 } as const
 
 export const SAMPLE_FINDINGS = [
-  { area: 'Mobile', grade: 'C', issue: 'Primary button below fold at 375px' },
-  { area: 'SEO', grade: 'D', issue: 'Social preview image missing. Link previews show blank.' },
-  { area: 'Performance', grade: 'B', issue: '320KB of unused JavaScript' },
+  { area: 'Experience', grade: 'C', issue: 'Primary CTA below fold at 375px' },
+  { area: 'Reach', grade: 'D', issue: 'Social preview image missing. Link previews show blank.' },
+  { area: 'Experience', grade: 'B', issue: '320KB of unused JavaScript' },
 ] as const
 
 export const SAMPLE_FINDINGS_HEADER = OUTPUT_LABELS.whatYouGet
 
 export const WORKFLOW_SECTION = {
-  headline: 'From review to fix',
+  headline: 'From Flag to fix',
 } as const
 
 export const WORKFLOW_STEPS = [
@@ -115,7 +122,7 @@ export const WORKFLOW_STEPS = [
   },
   {
     step: 2,
-    title: 'Read the review',
+    title: 'Read the Flags',
     body: 'Evidence and why each issue matters',
   },
   {
@@ -126,14 +133,15 @@ export const WORKFLOW_STEPS = [
   {
     step: 4,
     title: 'Re-check',
-    body: 'Before/after scores',
+    body: 'Confirm Flags cleared',
   },
 ] as const
 
 export const PROBLEM_SECTION = {
   label: 'Why you miss this in reviews',
-  headline: 'Performance scores look fine. Conversion gaps hide until someone shares the link.',
-  subhead: 'Layout, sharing, and trust issues slip past quick reviews until a link goes public.',
+  headline: 'Your builder shipped fast. The gaps show up when someone opens the link.',
+  subhead:
+    'Message, layout, and share-preview issues slip past quick reviews until a URL goes public.',
   pains: [
     {
       title: 'Off on mobile',
@@ -154,32 +162,42 @@ export const PROBLEM_SECTION = {
 } as const
 
 export const DIFFERENTIATION = {
-  label: 'Why QualityOS',
+  label: 'Why FixFlags',
   headline: 'More than a Lighthouse score',
-  subhead: 'Automated checks miss what a human or AI sees in a screenshot.',
-  lighthouseLinkText: 'Compare QualityOS checks with Google Lighthouse',
+  subhead: 'Automated checks miss what a reviewer sees in a screenshot.',
+  lighthouseLinkText: 'Compare FixFlags checks with Google Lighthouse',
+  is: [
+    'The QA layer for AI-built products',
+    'Flags with evidence, impact, and copy-ready fix prompts',
+    'Re-check loop to prove fixes landed',
+  ],
+  isNot: [
+    'Not a generic Lighthouse wrapper',
+    'Not manual QA-as-a-service',
+    'Not an enterprise test suite',
+  ],
   bullets: [
-    'AI reads screenshots for conversion, trust, and mobile UX gaps',
-    'Every finding ships with a copy-ready fix prompt',
+    'AI reads screenshots for message, experience, and reach gaps',
+    'Every Flag ships with a copy-ready fix prompt',
     'Re-check proves fixes landed (Pro)',
   ],
   rows: [
-    { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
-    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', qualityos: 'Built-in' },
-    { feature: 'Re-check proof loop', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Pro)' },
-    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', qualityos: 'Yes (Agency)' },
-    { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
+    { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
+    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
+    { feature: 'Re-check proof loop', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
+    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
+    { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
   comparisonRows: [
-    { feature: 'Says why each issue hurts signups', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Identifies missing social preview image', lighthouse: 'Partial', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Checks mobile button placement', lighthouse: 'No', manual: 'Yes', qualityos: 'Yes' },
-    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', qualityos: 'Yes' },
+    { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Identifies missing social preview image', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Checks mobile button placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
+    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
 } as const
 
@@ -190,7 +208,8 @@ export const SOCIAL_PROOF = {
   tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
   testimonial: {
     label: 'Example feedback',
-    quote: 'Fixed our social preview image after the first audit. Link previews in Slack now show our branding instead of blank cards.',
+    quote:
+      'Fixed our social preview image after the first check. Link previews in Slack now show our branding instead of blank cards.',
     author: 'Founder',
     company: 'B2B SaaS, 3-person team',
   },
@@ -202,99 +221,181 @@ export const CASE_STUDIES = [
     company: 'SaaS landing page',
     title: 'Fixed social preview image',
     outcome: 'Added per-page social preview images. Each page type returns a unique preview card.',
-    area: 'SEO',
+    area: 'Reach',
     scoreBefore: 64,
     scoreAfter: 78,
     link: '/examples#example-vercel',
     proofLink: '/examples#ex-vercel-seo-1',
-    proofType: 'Sample audit' as const,
+    proofType: 'Sample report' as const,
   },
   {
     id: 'mobile-cta',
     company: 'E-commerce storefront',
     title: 'Moved primary button up on mobile',
     outcome: 'Restructured mobile hero. Main action visible without scrolling at 375px.',
-    area: 'Mobile',
+    area: 'Experience',
     scoreBefore: 58,
     scoreAfter: 78,
     link: '/examples#example-vercel',
     proofLink: '/examples#ex-vercel-mobile-1',
-    proofType: 'Sample audit' as const,
+    proofType: 'Sample report' as const,
   },
   {
     id: 'hero-clarity',
     company: 'DevTools homepage',
     title: 'Rewrote hero copy',
-    outcome: 'Headline now names audience and outcome. Content grade improved.',
-    area: 'Content',
+    outcome: 'Headline now names audience and outcome. Message rubric improved.',
+    area: 'Message',
     gradeBefore: 'D' as const,
     gradeAfter: 'B' as const,
     link: '/examples#example-vercel',
     proofLink: '/examples#ex-vercel-conv-2',
-    proofType: 'Sample audit' as const,
+    proofType: 'Sample report' as const,
   },
 ] as const
 
 export const CASE_STUDIES_SECTION = {
   label: 'Re-check',
-  headline: 'Fixes that move scores',
-  subhead: 'Illustrative re-checks after applying audit fix prompts.',
+  headline: 'Fixes that clear Flags',
+  subhead: 'Illustrative re-checks after applying fix prompts.',
 } as const
 
 export const PROOF_SECTION = {
   label: OUTPUT_LABELS.whatYouGet,
-  headline: 'Scores, screenshots, and fix prompts',
+  headline: 'Flags, screenshots, and fix prompts',
   subhead:
     'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
   nextStep: OUTPUT_LABELS.nextStep,
-  cta: 'Get my report',
+  cta: 'Check my site',
   sample: {
-    name: 'QualityOS',
-    domain: 'qualityos.com',
+    name: 'FixFlags',
+    domain: 'fixflags.com',
     finding: 'Hero teaser card missing screenshot on first paint',
     areasFlagged: 4,
   },
 } as const
 
 export const WHATS_CHECKED_SECTION = {
-  label: 'Rubric',
-  headline: 'Two score formats, one rubric',
-  subhead: 'Each area includes score, what we check, and a fix prompt your agent can run.',
+  label: 'Rubrics',
+  headline: 'Three rubrics. Every Flag mapped.',
+  subhead:
+    'Message, Experience, and Reach. Each rubric includes status, what we check, and fix prompts your agent can run.',
 } as const
 
 export const TRUST_STRIP = [
-  'Full launch surfaces checked',
+  'Message, Experience, Reach',
   'Fix prompts included',
   'Re-check after fixes',
 ] as const
 
-export const QUALITY_AREAS = [
-  { name: 'Performance', impact: 'Slow pages lose visitors early', scoreFormat: '0–100', whatWeCheck: 'Core Web Vitals (LCP, CLS, INP), bundle sizes, render blocking, image optimization' },
-  { name: 'Accessibility', impact: 'Users cannot complete key actions', scoreFormat: '0–100', whatWeCheck: 'Alt text, labels, color contrast, skip links, keyboard focus, tap targets' },
-  { name: 'SEO', impact: 'Bad previews hide you on Google and Slack', scoreFormat: '0–100', whatWeCheck: 'Meta tags, og:image, favicon, structured data, heading hierarchy, broken links' },
-  { name: 'Conversion', impact: 'Does the page say what to do next?', scoreFormat: 'A–F', whatWeCheck: 'CTA placement, value prop clarity, signup friction' },
-  { name: 'Trust', impact: 'Do you look safe to pay or sign up?', scoreFormat: 'A–F', whatWeCheck: 'Privacy links, security badges, social proof, brand consistency' },
-  { name: 'Content', impact: 'Does the copy match what you sell?', scoreFormat: 'A–F', whatWeCheck: 'Headline clarity, feature communication, readability' },
-  { name: 'Mobile', impact: 'Where most visitors land first', scoreFormat: '0–100', whatWeCheck: 'Tap targets, viewport CTA visibility, font sizes, animations' },
+export const RUBRICS = [
+  {
+    key: 'MESSAGE',
+    name: 'Message',
+    statuses: 'Pass / Needs Attention / Blocked',
+    whatWeCheck:
+      'Headline clarity, audience fit, benefit hierarchy, CTA specificity, social proof, and pricing confidence.',
+    topics: [
+      'Headline and subhead are specific to this product, not generic',
+      'The hero says what the product does and who it is for',
+      'Benefits and outcomes are clear before feature lists',
+      'CTA copy is specific, not vague ("Get started" without context)',
+      'Social proof, trust signals, and pricing confidence feel credible',
+      'Copy hierarchy is scannable; claims are specific, not inflated',
+    ],
+  },
+  {
+    key: 'EXPERIENCE',
+    name: 'Experience',
+    statuses: 'Pass / Needs Attention / Blocked',
+    whatWeCheck:
+      'Layout, mobile usability, accessibility basics, Core Web Vitals, and broken interactions.',
+    topics: [
+      'Primary CTA visible above the fold on desktop and mobile screenshots',
+      'Layout, buttons, forms, and flows work without confusion',
+      'Mobile tap targets, viewport, and CTA visibility on 375px screens',
+      'Keyboard use, contrast, labels, and accessibility basics',
+      'Core Web Vitals, load speed, and visual polish',
+      'No broken interactions, console errors, or layout shift issues',
+    ],
+  },
+  {
+    key: 'REACH',
+    name: 'Reach',
+    statuses: 'Pass / Needs Attention / Blocked',
+    whatWeCheck:
+      'SEO metadata, share previews, privacy and contact links, and measurement setup.',
+    topics: [
+      'Title, description, og:image, favicon, and share preview tags',
+      'Indexability, structured data, and heading hierarchy',
+      'Privacy policy and contact links are easy to find',
+      'Analytics and conversion events appear configured where expected',
+      'Public links and metadata explain the product when shared',
+    ],
+  },
 ] as const
 
+export const IMPACT_TAGS = {
+  CONVERSION: { label: 'Conversion', description: 'Affects whether visitors take the next step' },
+  REVENUE: { label: 'Revenue', description: 'Affects willingness to pay or upgrade' },
+  TRUST: { label: 'Trust', description: 'Affects credibility and safety signals' },
+  MEASUREMENT: { label: 'Measurement', description: 'Affects analytics and event tracking' },
+  SHARING: { label: 'Sharing', description: 'Affects link previews and social cards' },
+  SEO: { label: 'SEO', description: 'Affects search visibility and metadata' },
+  ACCESSIBILITY: { label: 'Accessibility', description: 'Affects keyboard, contrast, and assistive use' },
+} as const
+
+export const SEVERITY_LABELS = {
+  CRITICAL: { label: 'Critical', description: 'Fix before you share the link' },
+  IMPORTANT: { label: 'Important', description: 'Fix soon; hurts conversion or trust' },
+  POLISH: { label: 'Polish', description: 'Worth fixing; not blocking launch' },
+} as const
+
+export const FLAG_STATUS_LABELS = {
+  OPEN: { label: 'Open', description: 'Not fixed yet' },
+  FIXED: { label: 'Fixed', description: 'Resolved in a re-check' },
+  IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
+  REGRESSED: { label: 'Regressed', description: 'Came back after a fix' },
+} as const
+
+export const PRODUCT_LADDER = {
+  headline: 'Start free. Upgrade when you ship weekly.',
+  steps: [
+    {
+      plan: 'FREE',
+      title: 'Check',
+      body: 'Full report with Flags and fix prompts. Three checks total.',
+    },
+    {
+      plan: 'BUILDER',
+      title: 'Prove',
+      body: 'Unlimited re-checks, before/after compare, and MCP in your editor.',
+    },
+    {
+      plan: 'TEAM',
+      title: 'Share',
+      body: 'Client share links, proof exports, and projects for agency work.',
+    },
+  ],
+} as const
+
 export const MCP_SECTION = {
-  headline: 'Run audits from your editor',
-  body: 'Connect via MCP so your agent audits, fixes, and re-checks without copy-pasting URLs.',
+  headline: 'Run checks from your editor',
+  body: 'Connect via MCP so your agent finds Flags, fixes them, and re-checks without copy-pasting URLs.',
   intro: 'A typical prompt sequence looks like this:',
   closing: 'Then re-check to prove the improvement.',
   cta: 'See MCP setup',
-  workflow: `User: "Audit https://myapp.com and fix the Mobile issues"
+  workflow: `User: "Check https://myapp.com and review the Experience rubric"
 
-Claude calls: qos_audit_url → qos_get_area("Mobile")
-Claude: "Mobile score is 41/100 (grade D). Here's what I found:
+Claude calls: ff_check_url → ff_get_rubric("EXPERIENCE")
+Claude: "Experience needs attention. Two Flags:
   - Primary CTA is below fold on 375px screens
   - 3 buttons with tap targets under 40px
   Should I apply fixes now?"
 User: "Yes"
 Claude: applies fixes
-Claude: calls qos_recheck
-Claude: "Mobile improved from 41 → 78 (D → B). 3 issues fixed."`,
+Claude: calls ff_recheck
+Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`,
 } as const
 
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
@@ -304,9 +405,9 @@ const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly strin
 }
 
 export const PRICING_TEASER = {
-  headline: 'Start free. Upgrade when you ship weekly.',
+  headline: PRODUCT_LADDER.headline,
   subhead: 'Full report on every plan. Pro adds unlimited re-checks and MCP in your editor.',
-  trustLine: 'Cancel anytime · No account for first audit · Recurring monthly',
+  trustLine: 'Cancel anytime · No account for first check · Recurring monthly',
   plans: getMarketingPlans()
     .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
     .map((p) => ({
@@ -321,7 +422,7 @@ export const PRICING_TEASER = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Get your report. See what to fix first.',
+  headline: 'Check your site. See what to fix first.',
   trustLine: HERO.trustLine,
 } as const
 
@@ -333,54 +434,54 @@ export const FAQ_SECTION = {
 
 export const FAQ_PAGE = {
   title: 'Frequently asked questions',
-  subhead: 'Everything you need to know about QualityOS audits, fix prompts, and plans.',
+  subhead: 'Everything you need to know about FixFlags checks, Flags, fix prompts, and plans.',
 } as const
 
 export const FAQ = [
   {
-    question: 'What does QualityOS check that Lighthouse doesn\u2019t?',
+    question: 'What does FixFlags check that Lighthouse doesn\u2019t?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. QualityOS adds an AI judge that reads your screenshots for conversion, trust, content, and mobile UX. Every finding includes evidence and a fix prompt.',
+      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps. Every Flag includes evidence and a fix prompt. Results are grouped into three rubrics (Message, Experience, and Reach) with a clear Pass / Needs Attention / Blocked status.',
   },
   {
-    question: 'Do I need an account for my first audit?',
+    question: 'Do I need an account for my first check?',
     answer:
-      'No. Paste any public URL and get a full audit in under 90 seconds. No account, no credit card. Create a free account to save reports and run 3 audits total.',
+      'No. Paste any public URL and get a full report in under 90 seconds. No account, no credit card. Create a free account to save reports and run 3 checks total.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: full report with all findings and fix prompts, 3 audits total, and one free re-check. Pro: unlimited re-checks with before/after compare, MCP in Cursor or Claude, and 25 audits per month.',
+      'Free: full report with all Flags and fix prompts, 3 checks total, and one free re-check. Pro: unlimited re-checks with before/after compare, MCP in Cursor or Claude, and 25 checks per month.',
   },
   {
-    question: 'Can it audit sites built with Lovable/Bolt/v0?',
+    question: 'Can it check sites built with Lovable/Bolt/v0?',
     answer:
-      'Yes. QualityOS audits any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, and Bolt.',
+      'Yes. FixFlags checks any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, and Bolt.',
   },
   {
     question: 'How do fix prompts work with Cursor/Claude?',
     answer:
-      'Each finding and area includes a copy-ready prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
+      'Each Flag includes a copy-ready prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
   },
   {
     question: 'Can I re-check after my agent fixes issues?',
     answer:
-      'Registered free users get one free re-check to compare before/after scores. Paid plans include unlimited re-checks that do not count against your monthly new-URL audit limit.',
+      'Registered free users get one free re-check to compare before/after. Paid plans include unlimited re-checks that do not count against your monthly new-URL limit.',
   },
   {
     question: 'Does it work on staging/password-protected sites?',
     answer:
-      'QualityOS audits publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
+      'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
   },
   {
     question: 'We already have a live site. Is this only for pre-launch?',
     answer:
-      'No. QualityOS audits any public page, live or new. Most live sites still fail conversion, trust, or mobile checks even when performance scores look fine.',
+      'No. FixFlags checks any public page, live or new. Most live sites still fail message, experience, or reach Flags even when performance scores look fine.',
   },
   {
-    question: 'Who is QualityOS for?',
+    question: 'Who is FixFlags for?',
     answer:
-      'Solo builders, founders, and small teams with a new launch or a live site that should convert better. Works with AI editors like Cursor and Claude, or hand off fix prompts to your dev. Not built for enterprise QA teams running manual test suites.',
+      'Builders and small teams shipping with AI tools like Cursor, Lovable, and Bolt. Run a second pass before users see the link. Not built for enterprise QA teams running manual test suites.',
   },
 ] as const
 
@@ -396,15 +497,18 @@ export const HOME_FAQ = [
 export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
-    answer: 'Yes. Run your first audit without an account. Create a free account for 3 audits total, then upgrade to Pro when you need unlimited re-checks and MCP.',
+    answer:
+      'Yes. Run your first check without an account. Create a free account for 3 checks total, then upgrade to Pro when you need unlimited re-checks and MCP.',
   },
   {
-    question: 'What happens when I hit my audit limit?',
-    answer: 'You\u2019ll see an upgrade prompt. Free accounts get 3 audits total (not monthly). Paid plans reset each billing cycle.',
+    question: 'What happens when I hit my check limit?',
+    answer:
+      'You\u2019ll see an upgrade prompt. Free accounts get 3 checks total (not monthly). Paid plans reset each billing cycle.',
   },
   {
     question: 'Is the founding offer permanent?',
-    answer: 'Founding pricing locks in for your first 3 months on Pro and Studio. After that, standard pricing applies unless you cancel.',
+    answer:
+      'Founding pricing locks in for your first 3 months on Pro and Studio. After that, standard pricing applies unless you cancel.',
   },
   {
     question: 'Do I need Pro for MCP?',
@@ -412,84 +516,90 @@ export const PRICING_FAQ = [
   },
   {
     question: 'What\u2019s included in every plan?',
-    answer: 'Every plan includes the full report and copy-ready fix prompts. Paid plans add unlimited re-checks, MCP, higher audit volume, and team features.',
+    answer:
+      'Every plan includes the full report and copy-ready fix prompts. Paid plans add unlimited re-checks, MCP, higher check volume, and team features.',
   },
 ] as const
 
 export const PRICING = {
   headline: 'Pay when you\u2019re shipping, not when you\u2019re browsing',
-  subhead: 'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
+  subhead:
+    'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
   foundingBadge: 'Founding offer active: lock in launch-week pricing',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   expertReview: {
     title: 'Expert Review - $500',
-    body: 'A human reviews your audit and writes a prioritized fix plan. Perfect for launch week.',
+    body: 'A human reviews your report and writes a prioritized fix plan. Good for launch week.',
     steps: [
-      'Submit your latest audit report',
-      'A quality expert prioritizes fixes by launch impact',
+      'Submit your latest FixFlags report',
+      'A senior reviewer prioritizes Flags by launch impact',
       'Get a launch checklist within 48 hours',
     ],
     cta: 'Get Expert Review',
   },
   allPlansInclude:
-    'Every audit includes evidence, fix prompts, and area summaries. Pro adds the ship loop: re-check, compare, and audit from your editor.',
+    'Every check includes evidence, fix prompts, and rubric summaries. Pro adds the ship loop: re-check, compare, and check from your editor.',
 } as const
 
 export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
-  subhead: 'This is what a completed QualityOS audit looks like: full report, all findings.',
+  subhead: 'This is what a completed FixFlags report looks like: full report, all Flags.',
   tierNote: 'Free includes the full report. Pro adds unlimited re-checks and MCP in your editor.',
-  bottomCta: 'Get my report',
+  bottomCta: 'Check my site',
 } as const
 
-export const AUDIT_REPORT = {
+export const REPORT_COPY = {
+  launchGates: {
+    title: 'Launch gates',
+    body: 'Five concrete checks from your report evidence. Fix any failed gates before you ship.',
+  },
   recheckHint: {
     title: 'Next: prove your fixes worked',
     bodyPrefix: 'Paste fix prompts into your editor, ship the changes, then hit',
-    bodySuffix: 'above to compare before/after scores.',
+    bodySuffix: 'above to compare before/after.',
   },
   sampleCta: {
-    title: 'Run the same audit on your site',
-    body: 'Paste a URL. See findings across seven areas and copy-ready fix prompts for your agent.',
+    title: 'Run the same check on your site',
+    body: 'Paste a URL. See Flags across three rubrics and copy-ready fix prompts for your agent.',
   },
 } as const
 
 export const MCP_DOCS = {
   headline: 'MCP Integration',
   subhead:
-    'Your agent can audit and fix your site without you copy-pasting URLs. Connect QualityOS to your AI coding tool.',
+    'Your agent can check and fix your site without you copy-pasting URLs. Connect FixFlags to your AI coding tool.',
   quickStart: [
     'Generate an API key in Settings → API Keys (Pro plan)',
     'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
-    'Run audit_url: use the curl test below to verify your key',
+    'Run ff_check_url: use the curl test below to verify your key',
   ],
   builderRequired: 'Requires Pro plan',
   lovableBoltNote:
-    'Lovable and Bolt don\u2019t support MCP yet. Copy fix prompts from the web UI or audit report directly into those tools.',
+    'Lovable and Bolt don\u2019t support MCP yet. Copy fix prompts from the web UI or report directly into those tools.',
   tools: [
-    { name: 'qos_audit_url', desc: 'Start a quality audit on any URL. Returns auditId.' },
-    { name: 'qos_get_audit_status', desc: 'Check if an audit is complete.' },
-    { name: 'qos_get_report', desc: 'Get the full report with all area grades and scores.' },
+    { name: 'ff_check_url', desc: 'Start a check on any URL. Returns reportId.' },
+    { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
+    { name: 'ff_get_report', desc: 'Get the full report with rubric statuses and shareStatus.' },
     {
-      name: 'qos_get_area',
-      desc: 'Get detailed findings + fix prompt for one area (Performance, SEO, Mobile, etc.)',
+      name: 'ff_get_rubric',
+      desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
     },
-    { name: 'qos_get_finding', desc: 'Get the fix prompt for a specific finding.' },
-    { name: 'qos_recheck', desc: 'Run a new audit on the same URL to verify fixes.' },
+    { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
+    { name: 'ff_recheck', desc: 'Run a new check on the same URL to verify fixes.' },
     {
-      name: 'qos_compare',
-      desc: 'Compare two audits: see what improved, stayed the same, or regressed.',
+      name: 'ff_compare',
+      desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
     },
   ],
   configExamples: {
     claudeCode: `# ~/.claude/mcp.json
 {
   "mcpServers": {
-    "qualityos": {
-      "url": "https://qualityos.com/api/mcp",
+    "${BRAND.mcpServerKey}": {
+      "url": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "qos_live_your_key_here"
+        "x-api-key": "ff_live_your_key_here"
       }
     }
   }
@@ -497,10 +607,10 @@ export const MCP_DOCS = {
     cursor: `# .cursor/mcp.json
 {
   "mcpServers": {
-    "qualityos": {
-      "url": "https://qualityos.com/api/mcp",
+    "${BRAND.mcpServerKey}": {
+      "url": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "qos_live_your_key_here"
+        "x-api-key": "ff_live_your_key_here"
       }
     }
   }
@@ -508,10 +618,10 @@ export const MCP_DOCS = {
     windsurf: `# ~/.codeium/windsurf/mcp_config.json
 {
   "mcpServers": {
-    "qualityos": {
-      "serverUrl": "https://qualityos.com/api/mcp",
+    "${BRAND.mcpServerKey}": {
+      "serverUrl": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "qos_live_your_key_here"
+        "x-api-key": "ff_live_your_key_here"
       }
     }
   }
@@ -529,7 +639,7 @@ export const AUTH = {
     title: 'Sign in to your account',
     subtitle: 'Use your email and password to continue',
     subtitleWithOAuth: 'Continue with Google or GitHub, or use email',
-    trustLine: 'Your audit history stays on your account.',
+    trustLine: 'Your report history stays on your account.',
     tryWithoutAccount: 'Try without an account',
     cta: 'Sign in',
     footer: 'Don\u2019t have an account?',
@@ -539,7 +649,7 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: 'Save audit history · 3 free audits · Upgrade anytime',
+    subtitle: 'Save report history · 3 free checks · Upgrade anytime',
     subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
     oauthNote: 'We never post or access your repositories.',
     cta: 'Create account',
@@ -547,17 +657,17 @@ export const AUTH = {
     footerLink: 'Sign in',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Pro, unlimited re-checks and MCP from day one',
-      TEAM: 'You\u2019re signing up for Agency, organize audits across up to 5 projects',
-      STUDIO: 'You\u2019re signing up for Studio, audit client sites at scale with up to 20 projects',
+      TEAM: 'You\u2019re signing up for Agency, organize checks across up to 5 projects',
+      STUDIO: 'You\u2019re signing up for Studio, check client sites at scale with up to 20 projects',
     },
     planSteps: [
       'Create your account',
       'Complete payment in Stripe',
-      'Run your first audit from the dashboard',
+      'Run your first check from the dashboard',
     ],
   },
   valueProps: [
-    { icon: 'history' as const, text: 'Audit history saved to your account' },
+    { icon: 'history' as const, text: 'Report history saved to your account' },
     { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
     { icon: 'recheck' as const, text: 'Re-check after fixes to track improvement' },
   ],
@@ -589,7 +699,7 @@ export const AUTH = {
 export const UPSELLS = {
   anon: {
     headline: 'Don\u2019t lose this report',
-    body: 'Create a free account to save history and run 3 audits total.',
+    body: 'Create a free account to save history and run 3 checks total.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -598,14 +708,14 @@ export const UPSELLS = {
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your 3 free audits',
-    body: 'Upgrade to Pro for 25 audits per month, unlimited re-checks, and MCP in Cursor or Claude.',
+    headline: 'You\u2019ve used your 3 free checks',
+    body: 'Upgrade to Pro for 25 checks per month, unlimited re-checks, and MCP in Cursor or Claude.',
     cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   trial_recheck_available: {
     headline: 'Prove your fixes worked',
-    body: 'Paste fix prompts into your editor, ship changes, then re-check once for free to compare before/after scores.',
+    body: 'Paste fix prompts into your editor, ship changes, then re-check once for free to compare before/after.',
     cta: 'Use your free re-check',
     plan: 'BUILDER' as const,
   },
@@ -617,7 +727,7 @@ export const UPGRADE_MOMENTS = {
     plan: 'BUILDER' as const,
   },
   compare_flat: {
-    headline: 'Still gaps after your re-check',
+    headline: 'Still Flags after your re-check',
     body: 'Pro gives unlimited re-checks and MCP so your agent can close what remains without copy-pasting URLs.',
     cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
@@ -629,20 +739,26 @@ export const UPGRADE_MOMENTS = {
     plan: 'BUILDER' as const,
   },
   share_public: {
-    headline: 'Share audit reports with clients',
-    body: 'Agency includes public share links with OG previews and a Run audit CTA for viewers.',
+    headline: 'Share reports with clients',
+    body: 'Agency includes public share links with OG previews and a Check my site CTA for viewers.',
+    cta: 'Upgrade to Agency',
+    plan: 'TEAM' as const,
+  },
+  export_locked: {
+    headline: 'Proof exports are on Agency',
+    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Agency to unlock exports.',
     cta: 'Upgrade to Agency',
     plan: 'TEAM' as const,
   },
   free_default: {
     headline: 'Ship weekly? Automate the loop',
-    body: 'Pro adds unlimited re-checks, before/after compare, and MCP so audits run inside Cursor or Claude.',
+    body: 'Pro adds unlimited re-checks, before/after compare, and MCP so checks run inside Cursor or Claude.',
     cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
   report_completed: {
-    headline: 'Unlock full audit history and automation',
-    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report history, not just more checks.',
+    headline: 'Unlock full report history and automation',
+    body: 'Pro adds unlimited re-checks, before/after proof, MCP in Cursor or Claude, and saved report history.',
     cta: 'Upgrade to Pro - $29/mo founding',
     plan: 'BUILDER' as const,
   },
@@ -650,85 +766,85 @@ export const UPGRADE_MOMENTS = {
 
 export const AUDIT_PROGRESS = {
   capturing: 'Taking screenshots...',
-  checking: 'Running automated checks across performance, SEO, accessibility, and more...',
-  judging: 'AI is analyzing your page...',
+  checking: 'Running checks across Message, Experience, and Reach...',
+  judging: 'AI is reviewing your page...',
   completed: 'Report ready',
-  inProgress: 'Auditing your site...',
+  inProgress: 'Checking your site...',
   usuallyUnder: 'Usually under 90 seconds',
-  workerQueuedWarning:
-    'Audit is still queued. In local dev, run npm run dev:all so the worker processes jobs.',
+  workerQueuedWarningDev:
+    'Check is still queued. In local dev, run npm run dev:all so the worker processes jobs.',
+  workerQueuedWarningProd:
+    'Your check is queued. We are processing a backlog and it will start shortly.',
   stages: [
-    { status: 'QUEUED', label: 'Starting audit', subtitle: 'Preparing your report...' },
+    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your report...' },
     { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views...' },
-    { status: 'CHECKING', label: 'Running checks', subtitle: 'Performance, SEO, accessibility, and more...' },
-    { status: 'JUDGING', label: 'AI review', subtitle: 'Turning findings into fix prompts...' },
-    { status: 'FINALIZING', label: 'Preparing report', subtitle: 'Scoring areas and packaging results...' },
+    { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, Reach...' },
+    { status: 'JUDGING', label: 'AI review', subtitle: 'Turning issues into Flags and fix prompts...' },
+    { status: 'FINALIZING', label: 'Preparing report', subtitle: 'Scoring rubrics and packaging results...' },
   ],
   stageActivity: {
-    QUEUED: ['Queueing your audit...', 'Spinning up the pipeline...'],
+    QUEUED: ['Queueing your check...', 'Spinning up the pipeline...'],
     CAPTURING: ['Capturing desktop screenshot...', 'Capturing mobile screenshot...', 'Loading page in browser...'],
     CHECKING: [
+      'Reviewing message clarity and CTA copy...',
+      'Checking layout, mobile viewport, and tap targets...',
+      'Scanning share preview tags and metadata...',
       'Measuring load speed and Core Web Vitals...',
-      'Checking SEO tags and link preview metadata...',
-      'Scanning accessibility on images and headings...',
       'Reviewing trust signals like HTTPS and privacy links...',
-      'Testing mobile layout and performance...',
-      'Looking for conversion gaps in your hero and CTAs...',
+      'Looking for broken interactions and console errors...',
     ],
     JUDGING: [
-      'AI is analyzing screenshots and findings...',
+      'AI is analyzing screenshots and evidence...',
       'Generating agent-ready fix prompts...',
-      'Prioritizing issues by launch impact...',
+      'Prioritizing Flags by launch impact...',
     ],
-    FINALIZING: ['Packaging your report...', 'Scoring all 7 areas...', 'Almost ready...'],
+    FINALIZING: ['Packaging your report...', 'Scoring all 3 rubrics...', 'Almost ready...'],
   },
 } as const
 
 export const SEO = {
   home: {
-    title: 'QualityOS - Fix what\u2019s killing signups, fast.',
+    title: 'FixFlags - Your AI built it. FixFlags shows what to fix.',
     description:
-      'Paste a URL to get a scored report with screenshots and copy-ready fix prompts for mobile, trust, SEO, and conversion issues. Free first audit.',
+      'Paste a URL. Get clear Flags across message, experience, and reach with copy-ready fix prompts. Free first check.',
   },
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with the full report and 3 audits. Upgrade to Pro for unlimited re-checks and MCP. Founding offer active.',
+      'Start free with the full report and 3 checks. Upgrade to Pro for unlimited re-checks and MCP. Founding offer active.',
   },
   samples: {
     title: 'Sample Report',
     description:
-      'See a real QualityOS audit of our own homepage: evidence-backed findings with copy-ready fix prompts.',
+      'See a real FixFlags report of our own homepage: evidence-backed Flags with copy-ready fix prompts.',
   },
   examples: {
-    title: 'Example Audits',
+    title: 'Example Reports',
     description:
-      'Automated QualityOS audits of recognizable sites like web.dev, Vercel, and Wikipedia. Illustrative, not endorsements.',
+      'Automated FixFlags checks of recognizable sites like web.dev, Vercel, and Wikipedia. Illustrative, not endorsements.',
   },
   mcp: {
     title: 'MCP Integration',
     description:
-      'Connect QualityOS to Cursor, Claude Code, or Windsurf. Audit and fix your site without leaving your editor.',
+      'Connect FixFlags to Cursor, Claude Code, or Windsurf. Check and fix your site without leaving your editor.',
   },
   faq: {
     title: 'FAQ',
     description:
-      'Answers about QualityOS audits, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+      'Answers about FixFlags checks, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
   },
   privacy: {
     title: 'Privacy Policy',
-    description: 'How QualityOS collects and uses your data.',
+    description: 'How FixFlags collects and uses your data.',
   },
   terms: {
     title: 'Terms of Service',
-    description: 'Terms for using QualityOS.',
+    description: 'Terms for using FixFlags.',
   },
 } as const
 
 export const MARKETING_ILLUSTRATION_PROMPTS = {
-  hero: 'Minimal editorial SaaS hero: browser window with audit score card and fix prompt snippet, warm neutral palette, no text labels.',
-  steps: 'Three-step horizontal flow: URL audit, clipboard fix prompt, before/after score refresh, flat vector, muted ochre accent.',
-  proof: 'Split panel: website screenshot with highlighted issues and copy-ready prompt card, calm dark UI, product marketing style.',
+  hero: 'Minimal editorial SaaS hero: browser window with Flag list and fix prompt snippet, warm neutral palette, no text labels.',
+  steps: 'Three-step horizontal flow: URL check, clipboard fix prompt, re-check with cleared Flags, flat vector, muted ochre accent.',
+  proof: 'Split panel: website screenshot with highlighted Flags and copy-ready prompt card, calm dark UI, product marketing style.',
 } as const
-
-export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://qualityos.com'

@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, Check } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FileText, Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
+import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 
-interface ExportArea {
+interface ExportRubric {
   name: string
   grade: string | null
   score: number | null
-  findings?: Array<{ severity: string; problem: string }>
+  flags?: Array<{ severity: string; problem: string; rubric?: string }>
 }
 
 interface ExportSummaryButtonProps {
@@ -18,7 +20,8 @@ interface ExportSummaryButtonProps {
   url: string
   score: number | null
   verdict?: string | null
-  areas: ExportArea[]
+  rubrics: ExportRubric[]
+  canExport?: boolean
   size?: 'sm' | 'default'
 }
 
@@ -27,22 +30,39 @@ export function ExportSummaryButton({
   url,
   score,
   verdict,
-  areas,
+  rubrics,
+  canExport = false,
   size = 'sm',
 }: ExportSummaryButtonProps) {
+  const router = useRouter()
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
-    const findings = areas.flatMap((area) =>
-      (area.findings ?? []).map((f) => ({ ...f, area: area.name }))
+    if (!canExport) {
+      const content = getUpgradeMomentContent('export_locked')
+      toast.error(content.headline, {
+        description: content.body,
+        action: {
+          label: 'See Agency',
+          onClick: () => router.push('/pricing'),
+        },
+      })
+      return
+    }
+
+    const flags = rubrics.flatMap((rubric) =>
+      (rubric.flags ?? []).map((flag) => ({
+        ...flag,
+        rubric: flag.rubric ?? rubric.name,
+      }))
     )
     const summary = buildAuditExportSummary({
       auditId,
       url,
       score,
       verdict,
-      areas,
-      findings,
+      rubrics,
+      flags,
     })
 
     try {
@@ -63,9 +83,13 @@ export function ExportSummaryButton({
         <>
           <Check className="h-4 w-4" /> Copied
         </>
-      ) : (
+      ) : canExport ? (
         <>
           <FileText className="h-4 w-4" /> Copy summary
+        </>
+      ) : (
+        <>
+          <Lock className="h-4 w-4" /> Copy summary
         </>
       )}
     </Button>

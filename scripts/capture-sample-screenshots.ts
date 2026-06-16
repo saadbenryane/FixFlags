@@ -11,7 +11,7 @@ import { closeBrowser, captureScreenshots } from '../lib/audit/screenshot'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../lib/audit/viewports'
 import { getLocalScreenshotPath } from '../lib/storage/screenshots'
 
-const AUDIT_ID = 'sample-qualityos-capture'
+const AUDIT_ID = 'sample-fixflags-capture'
 const CAPTURE_URL =
   process.env.SAMPLE_CAPTURE_URL ??
   process.env.SAMPLE_AUDIT_URL ??
@@ -23,8 +23,8 @@ const TIMEOUT_MS = 30_000
 const OUT_DIR = path.join(process.cwd(), 'public', 'samples')
 
 const OUTPUT_FILES = {
-  desktop: path.join(OUT_DIR, 'qualityos-desktop.webp'),
-  mobile: path.join(OUT_DIR, 'qualityos-mobile.webp'),
+  desktop: path.join(OUT_DIR, 'fixflags-desktop.webp'),
+  mobile: path.join(OUT_DIR, 'fixflags-mobile.webp'),
 } as const
 
 function isLocalCaptureUrl(raw: string): boolean {
@@ -104,7 +104,7 @@ async function main() {
       throw new Error('Desktop capture failed')
     }
     if (!local.mobileOk) {
-      console.warn('Mobile capture failed, qualityos-mobile.webp not updated')
+      console.warn('Mobile capture failed, fixflags-mobile.webp not updated')
     }
     console.log('Sample screenshots written to', OUT_DIR)
     return
@@ -118,7 +118,7 @@ async function main() {
     throw new Error('Desktop capture failed')
   }
   if (!result.mobileUrl) {
-    console.warn('Mobile capture failed, qualityos-mobile.webp not updated')
+    console.warn('Mobile capture failed, fixflags-mobile.webp not updated')
   }
   await closeBrowser()
 
@@ -130,7 +130,7 @@ async function main() {
     await fs.access(mobilePath)
     await fs.copyFile(mobilePath, OUTPUT_FILES.mobile)
   } catch {
-    console.warn('Mobile screenshot file missing, qualityos-mobile.webp not updated')
+    console.warn('Mobile screenshot file missing, fixflags-mobile.webp not updated')
   }
 
   console.log('Sample screenshots written to', OUT_DIR)

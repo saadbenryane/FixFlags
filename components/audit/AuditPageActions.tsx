@@ -20,11 +20,11 @@ interface Props {
   score: number | null
   verdict?: string | null
   topIssue?: string
-  areas: Array<{
+  rubrics: Array<{
     name: string
     grade: string | null
     score: number | null
-    findings?: Array<{ severity: string; problem: string }>
+    flags?: Array<{ severity: string; problem: string }>
   }>
   isPaid: boolean
   isLoggedIn: boolean
@@ -35,6 +35,7 @@ interface Props {
   plan?: Plan
   projectId?: string | null
   canUseFreeRecheck?: boolean
+  canExportSummary?: boolean
 }
 
 export function AuditPageActions({
@@ -43,7 +44,7 @@ export function AuditPageActions({
   score,
   verdict,
   topIssue,
-  areas,
+  rubrics,
   isPaid,
   isLoggedIn,
   isOwner,
@@ -53,6 +54,7 @@ export function AuditPageActions({
   plan = 'FREE',
   projectId,
   canUseFreeRecheck = false,
+  canExportSummary = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -64,10 +66,10 @@ export function AuditPageActions({
   async function handleRecheck() {
     setRecheckLoading(true)
     try {
-      const res = await fetch(`/api/audits/${auditId}/recheck`, { method: 'POST' })
+      const res = await fetch(`/api/reports/${auditId}/recheck`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
-        router.push(`/audit/${data.auditId}`)
+        router.push(`/report/${data.reportId}`)
       } else if (res.status === 402) {
         const error = await parseApiErrorResponse(res)
         const moment = error.code === 'UPGRADE_REQUIRED' ? 'trial_exhausted' : 'free_default'
@@ -121,7 +123,8 @@ export function AuditPageActions({
         url={url}
         score={score}
         verdict={verdict}
-        areas={areas}
+        rubrics={rubrics}
+        canExport={canExportSummary}
       />
       {showRecheck && (
         <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>

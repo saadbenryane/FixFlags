@@ -1,25 +1,12 @@
-import type { AreaGrade, AreaName, AreaStatus } from '@prisma/client'
+import type { RubricGrade, RubricName, RubricStatus } from '@prisma/client'
 
-export const AREA_WEIGHTS: Record<AreaName, number> = {
-  PERFORMANCE: 0.15,
-  ACCESSIBILITY: 0.15,
-  SEO: 0.15,
-  CONVERSION: 0.2,
-  TRUST: 0.15,
-  CONTENT: 0.1,
-  MOBILE: 0.1,
+export const RUBRIC_WEIGHTS: Record<RubricName, number> = {
+  MESSAGE: 0.35,
+  EXPERIENCE: 0.4,
+  REACH: 0.25,
 }
 
-/** Experience areas scored A–F only in UI; mapped to numeric for overall score. */
-export const SUBJECTIVE_AREAS: readonly AreaName[] = ['CONVERSION', 'TRUST', 'CONTENT']
-
-export { isObjectiveArea, OBJECTIVE_AREAS } from '@/lib/audit/score-display'
-
-export function isSubjectiveArea(area: AreaName): boolean {
-  return SUBJECTIVE_AREAS.includes(area)
-}
-
-const GRADE_NUMERIC: Record<AreaGrade, number> = {
+const GRADE_NUMERIC: Record<RubricGrade, number> = {
   A: 95,
   B: 82,
   C: 67,
@@ -31,7 +18,7 @@ export function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)))
 }
 
-export function gradeFromScore(score: number): AreaGrade {
+export function gradeFromScore(score: number): RubricGrade {
   const value = clampScore(score)
   if (value >= 90) return 'A'
   if (value >= 75) return 'B'
@@ -40,11 +27,11 @@ export function gradeFromScore(score: number): AreaGrade {
   return 'F'
 }
 
-export function numericFromGrade(grade: AreaGrade): number {
+export function numericFromGrade(grade: RubricGrade): number {
   return GRADE_NUMERIC[grade]
 }
 
-export function statusFromScore(score: number): AreaStatus {
+export function statusFromScore(score: number): RubricStatus {
   const grade = gradeFromScore(score)
   if (grade === 'A') return 'EXCELLENT'
   if (grade === 'B') return 'GOOD'
@@ -52,13 +39,13 @@ export function statusFromScore(score: number): AreaStatus {
   return 'CRITICAL'
 }
 
-export function statusFromGrade(grade: AreaGrade): AreaStatus {
+export function statusFromGrade(grade: RubricGrade): RubricStatus {
   return statusFromScore(numericFromGrade(grade))
 }
 
-export function areaNumericValue(input: {
+export function rubricNumericValue(input: {
   score: number | null
-  grade: AreaGrade | null
+  grade: RubricGrade | null
 }): number | null {
   if (input.score !== null && input.score !== undefined) {
     return clampScore(input.score)
@@ -70,29 +57,28 @@ export function areaNumericValue(input: {
 }
 
 export function calculateOverallScore(
-  scores: Partial<Record<AreaName, number | null>>,
-  grades?: Partial<Record<AreaName, AreaGrade | null>>
+  scores: Partial<Record<RubricName, number | null>>,
+  grades?: Partial<Record<RubricName, RubricGrade | null>>
 ): number | null {
-  const values: number[] = []
+  const rubrics = Object.keys(RUBRIC_WEIGHTS) as RubricName[]
 
-  for (const area of Object.keys(AREA_WEIGHTS) as AreaName[]) {
-    const numeric = areaNumericValue({
-      score: scores[area] ?? null,
-      grade: grades?.[area] ?? null,
+  for (const rubric of rubrics) {
+    const numeric = rubricNumericValue({
+      score: scores[rubric] ?? null,
+      grade: grades?.[rubric] ?? null,
     })
     if (numeric === null) return null
-    values.push(numeric)
   }
 
   return clampScore(
-    (Object.keys(AREA_WEIGHTS) as AreaName[]).reduce(
-      (total, area) =>
+    rubrics.reduce(
+      (total, rubric) =>
         total +
-        areaNumericValue({
-          score: scores[area] ?? null,
-          grade: grades?.[area] ?? null,
+        rubricNumericValue({
+          score: scores[rubric] ?? null,
+          grade: grades?.[rubric] ?? null,
         })! *
-          AREA_WEIGHTS[area],
+          RUBRIC_WEIGHTS[rubric],
       0
     )
   )

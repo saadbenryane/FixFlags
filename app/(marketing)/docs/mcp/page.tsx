@@ -43,7 +43,7 @@ export default function McpDocsPage() {
 
   return (
     <Section spacing="default">
-      <Container className="max-w-3xl space-y-10">
+      <Container variant="content" className="space-y-10">
         <div className="space-y-3">
           <Heading as="h1">{MCP_DOCS.headline}</Heading>
           <Body className="text-muted-foreground">{MCP_DOCS.subhead}</Body>
@@ -105,7 +105,7 @@ export default function McpDocsPage() {
         <div className="space-y-4">
           <Heading as="h2">Base URL</Heading>
           <Body className="text-sm text-muted-foreground">
-            QualityOS exposes an HTTP MCP endpoint at <code>/api/mcp</code>. Pass your API key in
+            FixFlags exposes an HTTP MCP endpoint at <code>/api/mcp</code>. Pass your API key in
             the <code>x-api-key</code> header.
           </Body>
           <div className="grid gap-3 sm:grid-cols-2">

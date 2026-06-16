@@ -16,7 +16,7 @@ import {
   calculateOverallScore,
   gradeFromScore,
 } from '@/lib/audit/scoring'
-import { findingFingerprint } from '@/lib/audit/deduplicate'
+import { flagFingerprint } from '@/lib/audit/deduplicate'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
 import { isPublicIp, normalizeAuditUrl } from '@/lib/audit/url'
 import { statusToStageIndex, getStageProgress } from '@/lib/audit/progress-ui'
@@ -46,30 +46,15 @@ const baseJudgeOutput = {
   }>,
 }
 
-const validAreas = [
-  'PERFORMANCE',
-  'ACCESSIBILITY',
-  'SEO',
-  'CONVERSION',
-  'TRUST',
-  'CONTENT',
-  'MOBILE',
-].map((name) => ({
-  name: name as
-    | 'PERFORMANCE'
-    | 'ACCESSIBILITY'
-    | 'SEO'
-    | 'CONVERSION'
-    | 'TRUST'
-    | 'CONTENT'
-    | 'MOBILE',
+const validRubrics = ['MESSAGE', 'EXPERIENCE', 'REACH'].map((name) => ({
+  name: name as 'MESSAGE' | 'EXPERIENCE' | 'REACH',
   score: 80,
   grade: 'B' as const,
   status: 'GOOD' as const,
   assessmentState: 'ASSESSED' as const,
   confidence: 0.9,
   summary: `${name} summary`,
-  areaPrompt: `Improve ${name}`,
+  rubricPrompt: `Improve ${name}`,
 }))
 
 describe('getReportTierForUser', () => {
@@ -210,22 +195,22 @@ describe('resolveFreeUserUpgradeMoment', () => {
 })
 
 describe('validateJudgeOutput', () => {
-  it('accepts a complete seven-area contract', () => {
+  it('accepts a complete three-rubric contract', () => {
     const output = validateJudgeOutput(
-      { ...baseJudgeOutput, areas: validAreas, newFindings: [], enrichments: [] },
+      { ...baseJudgeOutput, rubrics: validRubrics, newFlags: [], enrichments: [] },
       []
     )
-    assert.equal(output.areas.length, 7)
+    assert.equal(output.rubrics.length, 3)
   })
 
-  it('rejects missing areas instead of fabricating them', () => {
+  it('rejects missing rubrics instead of fabricating them', () => {
     assert.throws(
       () =>
         validateJudgeOutput(
           {
             ...baseJudgeOutput,
-            areas: validAreas.slice(0, 6),
-            newFindings: [],
+            rubrics: validRubrics.slice(0, 2),
+            newFlags: [],
             enrichments: [],
           },
           []
@@ -234,11 +219,11 @@ describe('validateJudgeOutput', () => {
     )
   })
 
-  it('requires one enrichment for every deterministic finding', () => {
-    const finding = {
+  it('requires one enrichment for every deterministic flag', () => {
+    const flag = {
       checkId: 'perf-lcp',
-      area: 'PERFORMANCE',
-      severity: 'HIGH' as const,
+      rubric: 'EXPERIENCE' as const,
+      severity: 'IMPORTANT' as const,
       problem: 'Slow LCP',
       evidence: '4.2s',
       fix: 'Optimize hero image',
@@ -248,8 +233,8 @@ describe('validateJudgeOutput', () => {
     assert.throws(
       () =>
         validateJudgeOutput(
-          { ...baseJudgeOutput, areas: validAreas, newFindings: [], enrichments: [] },
-          [finding]
+          { ...baseJudgeOutput, rubrics: validRubrics, newFlags: [], enrichments: [] },
+          [flag]
         ),
       JudgeContractError
     )
@@ -265,15 +250,11 @@ describe('production hardening primitives', () => {
     assert.equal(gradeFromScore(39), 'F')
     assert.equal(
       calculateOverallScore({
-        PERFORMANCE: 90,
-        ACCESSIBILITY: 80,
-        SEO: 70,
-        CONVERSION: 60,
-        TRUST: 50,
-        CONTENT: 40,
-        MOBILE: 30,
+        MESSAGE: 80,
+        EXPERIENCE: 70,
+        REACH: 60,
       }),
-      63
+      71
     )
   })
 
@@ -289,8 +270,8 @@ describe('production hardening primitives', () => {
     assert.notEqual(key.rawKey, key.keyHash)
     assert.equal(hashApiKey(key.rawKey), key.keyHash)
     assert.equal(
-      findingFingerprint({ area: 'SEO', problem: 'Missing title', checkId: 'seo-title' }),
-      findingFingerprint({ area: 'SEO', problem: 'Different wording', checkId: 'seo-title' })
+      flagFingerprint({ rubric: 'REACH', problem: 'Missing title', checkId: 'seo-title' }),
+      flagFingerprint({ rubric: 'REACH', problem: 'Different wording', checkId: 'seo-title' })
     )
   })
 })

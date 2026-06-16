@@ -2,12 +2,14 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCost } from '@/lib/billing/costs'
 
 function StatValue({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-mono text-2xl font-medium tabular-nums tracking-tight">{children}</div>
+    <div className="font-mono text-2xl font-medium tabular-nums">{children}</div>
   )
 }
 
@@ -79,7 +81,7 @@ export default async function AdminPage() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <Container variant="report" className="py-8 space-y-8">
       <PageHeader title="Admin metrics" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -95,8 +97,8 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <div>
-        <h2 className="text-sm font-semibold mb-3">Estimated run costs</h2>
+      <section className="space-y-4">
+        <SectionTitle>Estimated run costs</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {costStats.map((s) => (
             <Card key={s.label} className="border-0 shadow-card">
@@ -109,17 +111,17 @@ export default async function AdminPage() {
             </Card>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-sm font-semibold mb-3">Admin tools</h2>
+      <section className="space-y-4">
+        <SectionTitle>Admin tools</SectionTitle>
         <Button variant="outline" asChild>
           <Link href="/admin/expert-reviews">Expert Review orders</Link>
         </Button>
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-sm font-semibold mb-3">Plan breakdown</h2>
+      <section className="space-y-4">
+        <SectionTitle>Plan breakdown</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {plans.map((p) => (
             <Card key={p.label} className="border-0 shadow-card">
@@ -132,7 +134,7 @@ export default async function AdminPage() {
             </Card>
           ))}
         </div>
-      </div>
-    </div>
+      </section>
+    </Container>
   )
 }

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { UserTable } from '@/components/admin/UserTable'
 import { formatUsd } from '@/lib/billing/costs'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminUsersPage() {
@@ -44,9 +45,9 @@ export default async function AdminUsersPage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <Container variant="wide" className="space-y-6 py-8">
       <PageHeader title={`Users (${rows.length})`} />
       <UserTable users={rows} />
-    </div>
+    </Container>
   )
 }

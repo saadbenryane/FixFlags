@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og'
+import { BRAND, HERO } from '@/lib/marketing/copy'
 
 export const runtime = 'edge'
-export const alt = 'QualityOS - Paste a URL. Get fix prompts.'
+export const alt = `${BRAND.name} - ${HERO.headlineLine2}`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -20,14 +21,13 @@ export default function Image() {
           padding: '80px',
         }}
       >
-        {/* Left: brand + tagline */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
             justifyContent: 'center',
-            maxWidth: 500,
+            maxWidth: 560,
           }}
         >
           <div
@@ -41,7 +41,7 @@ export default function Image() {
               marginBottom: 16,
             }}
           >
-            QualityOS
+            {BRAND.name}
           </div>
           <div
             style={{
@@ -52,7 +52,7 @@ export default function Image() {
               marginBottom: 20,
             }}
           >
-            Paste a URL.
+            {HERO.headlineLine1}
           </div>
           <div
             style={{
@@ -63,21 +63,20 @@ export default function Image() {
               marginBottom: 32,
             }}
           >
-            Get fix prompts.
+            {HERO.headlineLine2}
           </div>
           <div
             style={{
               fontSize: 20,
               color: '#737373',
               lineHeight: 1.5,
-              maxWidth: 420,
+              maxWidth: 480,
             }}
           >
-            Scored report with screenshots. Every issue includes a copy-ready prompt.
+            Flags across Message, Experience, and Reach. Every issue includes a copy-ready fix prompt.
           </div>
         </div>
 
-        {/* Right: score card */}
         <div
           style={{
             display: 'flex',

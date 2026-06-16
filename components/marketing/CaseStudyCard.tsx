@@ -3,7 +3,7 @@
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { TextLink } from '@/components/ui/text-link'
 import { gradeFromScore } from '@/lib/audit/scoring'
-import type { AreaGrade } from '@prisma/client'
+import type { RubricGrade } from '@prisma/client'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -15,8 +15,8 @@ interface CaseStudy {
   area: string
   scoreBefore?: number
   scoreAfter?: number
-  gradeBefore?: AreaGrade
-  gradeAfter?: AreaGrade
+  gradeBefore?: RubricGrade
+  gradeAfter?: RubricGrade
   link: string
   proofLink?: string
   proofType?: string
@@ -24,7 +24,7 @@ interface CaseStudy {
 
 const GRADE_ONLY_AREAS = new Set(['Conversion', 'Trust', 'Content'])
 
-function beforeGrade(study: CaseStudy): AreaGrade | null {
+function beforeGrade(study: CaseStudy): RubricGrade | null {
   if (GRADE_ONLY_AREAS.has(study.area) && study.gradeBefore) {
     return study.gradeBefore
   }
@@ -34,14 +34,14 @@ function beforeGrade(study: CaseStudy): AreaGrade | null {
   return null
 }
 
-function afterGrade(study: CaseStudy): AreaGrade {
+function afterGrade(study: CaseStudy): RubricGrade {
   if (GRADE_ONLY_AREAS.has(study.area) && study.gradeAfter) {
     return study.gradeAfter
   }
   return gradeFromScore(study.scoreAfter ?? 0)
 }
 
-function formatMetric(value: string | number, grade: AreaGrade | null): string {
+function formatMetric(value: string | number, grade: RubricGrade | null): string {
   if (grade) return `${value} (${grade})`
   return String(value)
 }

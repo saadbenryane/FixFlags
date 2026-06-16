@@ -214,7 +214,7 @@ export const CONTACT_PLAN = {
     'Dedicated onboarding',
   ],
   cta: 'Contact us',
-  href: 'mailto:hello@qualityos.com?subject=QualityOS%20high%20volume',
+  href: 'mailto:hello@fixflags.com?subject=FixFlags%20high%20volume',
   highlight: false,
   accountModel: 'Talk to us about your workflow.',
 } as const

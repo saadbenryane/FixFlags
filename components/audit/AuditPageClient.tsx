@@ -12,7 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Container } from '@/components/ui/container'
 import { AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { BRAND, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -99,16 +100,16 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   useEffect(() => {
     if (isComplete || isFailed) {
-      document.title = 'QualityOS'
+      document.title = BRAND.name
       return
     }
     if (status === 'QUEUED' && url) {
-      document.title = `Queued - ${auditHostname(url)} · QualityOS`
+      document.title = `Queued - ${auditHostname(url)} · ${BRAND.name}`
     } else if (inProgress && url) {
-      document.title = `Auditing ${auditHostname(url)} · QualityOS`
+      document.title = `Checking ${auditHostname(url)} · ${BRAND.name}`
     }
     return () => {
-      document.title = 'QualityOS'
+      document.title = BRAND.name
     }
   }, [status, url, inProgress, isComplete, isFailed])
 
@@ -141,10 +142,10 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     return (
       <AuditShell session={session}>
         <Container className="py-24 text-center space-y-4">
-          <h2 className="text-xl font-semibold">Audit not found</h2>
-          <p className="text-muted-foreground text-sm">This audit does not exist or has been removed.</p>
+          <h2 className="text-xl font-semibold">Report not found</h2>
+          <p className="text-muted-foreground text-sm">This report does not exist or has been removed.</p>
           <Button asChild>
-            <Link href="/">Start a new audit</Link>
+            <Link href="/">Check my site</Link>
           </Button>
         </Container>
       </AuditShell>
@@ -156,7 +157,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       <AuditShell session={session}>
         <Container className="py-24 text-center space-y-4">
           <h2 className="text-xl font-semibold">Access denied</h2>
-          <p className="text-muted-foreground text-sm">{fetchError || 'You do not have access to this audit.'}</p>
+          <p className="text-muted-foreground text-sm">{fetchError || 'You do not have access to this report.'}</p>
           <Button asChild>
             <Link href="/">Go home</Link>
           </Button>
@@ -175,7 +176,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       <AuditShell session={session}>
         <Container className="py-24 text-center space-y-4 max-w-lg mx-auto">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-          <h2 className="text-xl font-semibold">Audit failed</h2>
+          <h2 className="text-xl font-semibold">Check failed</h2>
           <AuditFailurePanel
             auditId={id}
             errorMsg={errorMsg}
@@ -185,7 +186,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             retryLoading={retryLoading}
           />
           <Button asChild variant="ghost" size="sm">
-            <Link href="/">Start a new audit</Link>
+            <Link href="/">Check another site</Link>
           </Button>
           {limitGate && (
             <AuditLimitGate
@@ -208,7 +209,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   return (
     <AuditShell session={session}>
-      <Container className="max-w-4xl py-8 space-y-8">
+      <Container variant="report" className="space-y-8 py-8">
         {inProgress && (
           <div className="space-y-6 py-6 md:py-10">
             <h2 className="text-xl font-semibold text-center md:text-left">
@@ -216,7 +217,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             </h2>
             {showQueue && workerIdle && (
               <p className="rounded-lg border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-brand">
-                {AUDIT_PROGRESS.workerQueuedWarning}
+                {getWorkerQueuedWarning()}
               </p>
             )}
             {showQueue && (

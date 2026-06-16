@@ -1,17 +1,18 @@
 import { prisma } from '@/lib/db'
 import { FeedbackList } from '@/components/admin/FeedbackList'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function AdminFeedbackPage() {
-  const feedback = await prisma.findingFeedback.findMany({
+  const feedback = await prisma.flagFeedback.findMany({
     where: { vote: -1 },
     include: {
-      finding: {
+      flag: {
         select: {
           id: true,
           problem: true,
           checkId: true,
-          area: true,
+          rubric: true,
           severity: true,
           evidence: true,
         },
@@ -21,36 +22,45 @@ export default async function AdminFeedbackPage() {
     take: 200,
   })
 
-  const grouped = feedback.reduce<Record<string, { problem: string; checkId: string | null; area: string; severity: string; evidence: string; count: number }>>(
-    (acc, f) => {
-      const key = f.finding.checkId ?? f.finding.id
-      if (!acc[key]) {
-        acc[key] = {
-          problem: f.finding.problem,
-          checkId: f.finding.checkId,
-          area: f.finding.area,
-          severity: f.finding.severity,
-          evidence: f.finding.evidence,
-          count: 0,
-        }
+  const grouped = feedback.reduce<
+    Record<
+      string,
+      {
+        problem: string
+        checkId: string | null
+        rubric: string
+        severity: string
+        evidence: string
+        count: number
       }
-      acc[key].count++
-      return acc
-    },
-    {}
-  )
+    >
+  >((acc, item) => {
+    const key = item.flag.checkId ?? item.flag.id
+    if (!acc[key]) {
+      acc[key] = {
+        problem: item.flag.problem,
+        checkId: item.flag.checkId,
+        rubric: item.flag.rubric,
+        severity: item.flag.severity,
+        evidence: item.flag.evidence,
+        count: 0,
+      }
+    }
+    acc[key].count++
+    return acc
+  }, {})
 
   const items = Object.entries(grouped)
     .map(([key, val]) => ({ key, ...val }))
     .sort((a, b) => b.count - a.count)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <Container variant="wide" className="space-y-8 py-8">
       <PageHeader
-        title="Downvoted findings"
-        description={`${feedback.length} downvotes across ${items.length} unique findings`}
+        title="Downvoted flags"
+        description={`${feedback.length} downvotes across ${items.length} unique flags`}
       />
       <FeedbackList items={items} />
-    </div>
+    </Container>
   )
 }

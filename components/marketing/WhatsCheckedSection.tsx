@@ -2,7 +2,7 @@ import { Container } from '@/components/ui/container'
 import { PageGrid, PageGridCol } from '@/components/ui/page-grid'
 import { Section } from '@/components/ui/section'
 import { SectionIntro } from '@/components/marketing/SectionIntro'
-import { QUALITY_AREAS, WHATS_CHECKED_SECTION } from '@/lib/marketing/copy'
+import { RUBRICS, WHATS_CHECKED_SECTION } from '@/lib/marketing/copy'
 
 export function WhatsCheckedSection({ id }: { id?: string }) {
   return (
@@ -27,7 +27,7 @@ export function WhatsCheckedSection({ id }: { id?: string }) {
                       className="p-3 pl-5 text-left font-mono text-[10px] uppercase tracking-label text-muted-foreground/80"
                       scope="col"
                     >
-                      Area
+                      Rubric
                     </th>
                     <th
                       className="p-3 text-left font-mono text-[10px] uppercase tracking-label text-muted-foreground/80"
@@ -39,24 +39,24 @@ export function WhatsCheckedSection({ id }: { id?: string }) {
                       className="p-3 pr-5 text-right font-mono text-[10px] uppercase tracking-label text-muted-foreground/80"
                       scope="col"
                     >
-                      Score
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {QUALITY_AREAS.map((area) => (
-                    <tr key={area.name} className="border-t border-border/20 last:border-b-0">
+                  {RUBRICS.map((rubric) => (
+                    <tr key={rubric.key} className="border-t border-border/20 last:border-b-0">
                       <td className="p-3 pl-5 align-top">
-                        <span className="font-display text-base tracking-display">{area.name}</span>
+                        <span className="font-display text-base tracking-display">{rubric.name}</span>
                       </td>
                       <td className="p-3 align-top">
                         <p className="max-w-prose text-xs leading-relaxed text-muted-foreground text-pretty">
-                          {area.whatWeCheck}
+                          {rubric.whatWeCheck}
                         </p>
                       </td>
                       <td className="p-3 pr-5 align-top text-right">
                         <span className="inline-block rounded-sm bg-muted/40 px-2 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {area.scoreFormat}
+                          {rubric.statuses}
                         </span>
                       </td>
                     </tr>

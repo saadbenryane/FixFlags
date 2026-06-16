@@ -7,11 +7,13 @@ import { runSeoChecks } from './seo'
 import { runTrustChecks } from './trust'
 import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
+import { logger } from '@/lib/logger'
 
-export interface DeterministicFinding {
+export interface DeterministicFlag {
   checkId: string
-  area: string
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
+  rubric: 'MESSAGE' | 'EXPERIENCE' | 'REACH'
+  impactTag?: 'CONVERSION' | 'REVENUE' | 'TRUST' | 'MEASUREMENT' | 'SHARING' | 'SEO' | 'ACCESSIBILITY' | null
+  severity: 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   problem: string
   evidence: string
   fix: string
@@ -27,8 +29,8 @@ export async function runAllChecks(
   mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>,
   onAreaComplete?: (index: number) => void
-): Promise<DeterministicFinding[]> {
-  const allFindings: DeterministicFinding[] = []
+): Promise<DeterministicFlag[]> {
+  const allFindings: DeterministicFlag[] = []
 
   const checkers = [
     () => runMetadataChecks(metadata),
@@ -45,7 +47,7 @@ export async function runAllChecks(
       const findings = await checkers[i]()
       allFindings.push(...findings)
     } catch (err) {
-      console.error('Check module failed:', err)
+      logger.error('Check module failed', err)
     }
     onAreaComplete?.(i)
   }
@@ -59,47 +61,49 @@ export async function runAllChecks(
   })
 }
 
-export function computeAreaScores(
-  findings: DeterministicFinding[],
+export function computeRubricScores(
+  findings: DeterministicFlag[],
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null
-): Record<string, number | null> {
-  const perf = desktop?.score ?? null
-  const a11yScore = computeA11yScore(
-    findings.filter((f) => f.area === 'ACCESSIBILITY')
-  )
-  const seoScore = computeSeoScore(findings.filter((f) => f.area === 'SEO'))
-  const mobileScore = mobile?.score ?? null
+): Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number | null> {
+  const messageFindings = findings.filter((f) => f.rubric === 'MESSAGE')
+  const experienceFindings = findings.filter((f) => f.rubric === 'EXPERIENCE')
+  const reachFindings = findings.filter((f) => f.rubric === 'REACH')
 
-  return {
-    PERFORMANCE: perf,
-    ACCESSIBILITY: a11yScore,
-    SEO: seoScore,
-    MOBILE: mobileScore,
-    CONVERSION: null,
-    TRUST: null,
-    CONTENT: null,
+  const perfScores = [desktop?.score, mobile?.score].filter((s): s is number => s !== null)
+
+  let experience: number | null = null
+  if (perfScores.length > 0) {
+    let score = Math.round(perfScores.reduce((a, b) => a + b, 0) / perfScores.length)
+    for (const f of experienceFindings) {
+      score -= rubricPenalty(f.severity)
+    }
+    experience = Math.max(0, Math.min(100, score))
+  } else if (experienceFindings.length > 0) {
+    experience = scoreFromFindings(experienceFindings)
+  }
+
+  const message = messageFindings.length > 0 ? scoreFromFindings(messageFindings) : null
+  const reach = reachFindings.length > 0 ? scoreFromFindings(reachFindings) : null
+
+  return { MESSAGE: message, EXPERIENCE: experience, REACH: reach }
+}
+
+function rubricPenalty(severity: DeterministicFlag['severity']): number {
+  switch (severity) {
+    case 'CRITICAL':
+      return 25
+    case 'IMPORTANT':
+      return 15
+    case 'POLISH':
+      return 5
   }
 }
 
-function computeA11yScore(findings: DeterministicFinding[]): number {
+function scoreFromFindings(findings: DeterministicFlag[]): number {
   let score = 100
   for (const f of findings) {
-    if (f.severity === 'CRITICAL') score -= 25
-    else if (f.severity === 'HIGH') score -= 15
-    else if (f.severity === 'MEDIUM') score -= 8
-    else if (f.severity === 'LOW') score -= 3
-  }
-  return Math.max(0, score)
-}
-
-function computeSeoScore(findings: DeterministicFinding[]): number {
-  let score = 100
-  for (const f of findings) {
-    if (f.severity === 'CRITICAL') score -= 20
-    else if (f.severity === 'HIGH') score -= 12
-    else if (f.severity === 'MEDIUM') score -= 6
-    else if (f.severity === 'LOW') score -= 2
+    score -= rubricPenalty(f.severity)
   }
   return Math.max(0, Math.min(100, score))
 }

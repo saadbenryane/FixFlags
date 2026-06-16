@@ -31,12 +31,12 @@ export default async function ExpertReviewDetailPage({
     : []
 
   return (
-    <Container className="max-w-3xl space-y-10 py-10">
+    <Container variant="content" className="space-y-10 py-10">
       <header className="space-y-3">
         <p className="section-label">Expert Review</p>
         <h1 className="font-display text-4xl tracking-display">What to fix next</h1>
         {order.audit && (
-          <Link href={`/audit/${order.audit.id}`} className="text-sm text-brand hover:underline">
+          <Link href={`/report/${order.audit.id}`} className="text-sm text-brand hover:underline">
             {order.audit.url}
           </Link>
         )}

@@ -9,7 +9,7 @@ export const SAMPLE_AUDIT_URL = `${SITE_URL.replace(/\/$/, '')}/`
 export const DOGFOOD_CONTEXT_TAG = 'Dogfooding our homepage' as const
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
-const MARKETING_HOST = 'qualityos.com'
+const MARKETING_HOST = 'fixflags.com'
 
 const FRESH_CAPTURE_DAYS = 7
 

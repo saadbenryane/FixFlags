@@ -67,7 +67,7 @@ export function ActiveAuditBanner() {
             {waitLabel ? ` - ${waitLabel}` : null}
           </span>
           <Link
-            href={`/audit/${active.auditId}`}
+            href={`/report/${active.auditId}`}
             className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
           >
             Return to audit

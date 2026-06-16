@@ -9,9 +9,13 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { sanitizeRubricForRead } from '@/lib/audit/sanitize-prompts'
 import {
-  sanitizeAreaForRead,
-} from '@/lib/audit/sanitize-prompts'
+  computeShareStatusFromRubrics,
+  computeRubricsFromRows,
+  type RubricComputed,
+  type ShareStatus,
+} from '@/lib/audit/rubric'
 
 function parsePageSpeedErrors(performanceData: unknown): {
   desktopError?: string
@@ -32,13 +36,16 @@ function parsePageSpeedErrors(performanceData: unknown): {
 }
 
 export const auditFullInclude = {
-  areas: {
+  rubrics: {
     include: {
-      findings: {
+      flags: {
         orderBy: { position: 'asc' as const },
       },
     },
     orderBy: { name: 'asc' as const },
+  },
+  flags: {
+    orderBy: { position: 'asc' as const },
   },
   screenshots: true,
 } as const
@@ -50,7 +57,7 @@ async function fetchAuditRow(id: string) {
   })
 }
 
-/** Remove large JSON blobs not used by the audit UI. */
+/** Remove large JSON blobs not used by the report UI. */
 export function stripInternalAuditFields<T extends Record<string, unknown>>(audit: T) {
   const { htmlMetadata, performanceData, consoleErrors, ...rest } = audit
   void htmlMetadata
@@ -84,10 +91,23 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit, session?.user)
-  const sanitizedAreas = audit.areas.map((area) => sanitizeAreaForRead(area))
-  const stripped = stripInternalAuditFields({ ...audit, areas: sanitizedAreas })
+  const sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
+  const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics })
   const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
+
+  const rubricSources = sanitizedRubrics.map((r) => ({
+    name: r.name,
+    grade: r.grade,
+    score: r.score,
+    flags: r.flags.map((f: { severity: string }) => ({ severity: f.severity })),
+  }))
+  const flatFlags = audit.flags.map((f) => ({
+    severity: f.severity,
+    rubric: f.rubric,
+  }))
+  const rubrics: RubricComputed[] = computeRubricsFromRows(rubricSources, flatFlags)
+  const shareStatus: ShareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
 
   const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
   const screenshotCapture = deriveScreenshotCaptureStatus(
@@ -103,6 +123,8 @@ export async function getGatedAuditForRequest(id: string) {
       pipelineLog: parsePipelineLog(audit.pipelineLog),
       screenshotCapture,
       launchReadiness,
+      rubrics,
+      shareStatus,
       pageSpeedErrors: pageSpeed,
     },
     isPaid,

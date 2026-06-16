@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   containsSpeculation,
-  sanitizeFindingFields,
+  sanitizeFlagFields,
   sanitizePromptText,
 } from '@/lib/audit/sanitize-prompts'
 
@@ -35,23 +35,23 @@ describe('sanitize-prompts', () => {
   })
 
   it('sanitizes verificationRule with speculation', () => {
-    const finding = sanitizeFindingFields({
+    const flag = sanitizeFlagFields({
       evidence: 'og:image missing in HTML head',
       fix: 'Add og:image meta tag',
       verificationRule: 'CSS size reduced by 40%',
     })
-    assert.ok(finding.verificationRule?.includes('Confirm the issue'))
-    assert.equal(finding.verificationRule?.includes('40%'), false)
+    assert.ok(flag.verificationRule?.includes('Confirm the issue'))
+    assert.equal(flag.verificationRule?.includes('40%'), false)
   })
 
   it('sanitizes component-guess prompts', () => {
-    const finding = sanitizeFindingFields({
+    const flag = sanitizeFlagFields({
       evidence: 'CTA at y=1200px on 375px viewport',
       fix: 'Move CTA above fold',
       agentPrompt: '60% of traffic is mobile, move CTA',
       cursorPrompt: 'In the hero component, update H1',
     })
-    assert.equal(finding.agentPrompt, 'Move CTA above fold')
-    assert.equal(finding.cursorPrompt, 'Move CTA above fold')
+    assert.equal(flag.agentPrompt, 'Move CTA above fold')
+    assert.equal(flag.cursorPrompt, 'Move CTA above fold')
   })
 })

@@ -10,9 +10,9 @@ describe('parseMetadataFromHtml', () => {
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>QualityOS - Website quality audits in 60 seconds</title>
-  <meta name="description" content="Paste any public URL and get graded scores, evidence-backed findings, and copy-ready fix prompts for your AI coding agent." />
-  <meta property="og:title" content="QualityOS" />
+  <title>FixFlags - QA for AI-built products</title>
+  <meta name="description" content="Paste any public URL and get Flags across message, experience, and reach, with copy-ready fix prompts for your AI coding agent." />
+  <meta property="og:title" content="FixFlags" />
   <meta property="og:description" content="Audits in 60 seconds" />
   <meta property="og:image" content="https://example.com/og.png" />
   <link rel="canonical" href="https://example.com/" />
@@ -24,7 +24,7 @@ describe('parseMetadataFromHtml', () => {
   <a href="#main" class="skip-link">Skip to content</a>
   <nav><a href="/">Home</a></nav>
   <main id="main">
-    <h1>Website quality audits in 60 seconds</h1>
+    <h1>QA for AI-built products</h1>
     <button>Get started free</button>
     <img src="/hero.png" alt="Screenshot" />
     <img src="/decorative.png" alt="" />
@@ -37,7 +37,7 @@ describe('parseMetadataFromHtml', () => {
 
     const meta = parseMetadataFromHtml(html, BASE_URL)
 
-    assert.equal(meta.title, 'QualityOS - Website quality audits in 60 seconds')
+    assert.equal(meta.title, 'FixFlags - QA for AI-built products')
     assert.ok((meta.description?.length ?? 0) >= 50)
     assert.equal(meta.ogImage, 'https://example.com/og.png')
     assert.equal(meta.hasFavicon, true)

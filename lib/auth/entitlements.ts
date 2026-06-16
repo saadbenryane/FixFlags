@@ -48,6 +48,11 @@ export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): bool
   return user.plan === 'TEAM' || user.plan === 'STUDIO'
 }
 
+/** Proof export (copy summary) - Agency and Studio plans. */
+export function canExportSummary(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+  return canSharePublicly(user)
+}
+
 export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   return canAccessPaidFeatures(user)
 }
@@ -73,6 +78,7 @@ export interface UserEntitlements {
   canUseFreeRecheck: boolean
   hasUsedFreeRecheck: boolean
   canSharePublicly: boolean
+  canExportSummary: boolean
   canAccessPaidFeatures: boolean
   canRecheck: boolean
   canUseMcp: boolean
@@ -88,6 +94,7 @@ export function getEntitlements(
     canUseFreeRecheck: canUseFreeRecheck(user),
     hasUsedFreeRecheck: hasUsedFreeRecheck(user),
     canSharePublicly: canSharePublicly(user),
+    canExportSummary: canExportSummary(user),
     canAccessPaidFeatures: paid,
     canRecheck: canAccessRecheck(user),
     canUseMcp: canUseApiKeys(user),

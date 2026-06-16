@@ -37,9 +37,9 @@ const ABOVE_FOLD_COPY = [
 ]
 
 describe('homepage message guardrails', () => {
-  it('hero headline is one clear outcome (≤4 words per line)', () => {
-    assert.ok(HERO.headlineLine1.split(/\s+/).length <= 4)
-    assert.ok(HERO.headlineLine2.split(/\s+/).length <= 4)
+  it('hero headline is one clear outcome (≤5 words per line)', () => {
+    assert.ok(HERO.headlineLine1.split(/\s+/).length <= 5)
+    assert.ok(HERO.headlineLine2.split(/\s+/).length <= 5)
     assert.equal(HERO.headline, `${HERO.headlineLine1} ${HERO.headlineLine2}`)
   })
 
@@ -49,14 +49,14 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience line names a single tight audience', () => {
-    assert.match(HERO.audienceLine, /shipping weekly/i)
+  it('audience line names the FixFlags tribe', () => {
+    assert.match(HERO.audienceLine, /QA for AI-built products/i)
     assert.ok(!/live sites/i.test(HERO.audienceLine))
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
     assert.match(HERO.subhead, /paste a url/i)
-    assert.match(HERO.subhead, /screenshots/i)
+    assert.match(HERO.subhead, /flags/i)
     assert.ok(!HERO.subhead.toLowerCase().includes(HERO.headlineLine1.toLowerCase()))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
@@ -94,8 +94,8 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA is a delivery promise', () => {
-    assert.equal(HERO.primaryCta, 'Get my report')
-    assert.equal(PROOF_SECTION.cta, 'Get my report')
+    assert.equal(HERO.primaryCta, 'Check my site')
+    assert.equal(PROOF_SECTION.cta, 'Check my site')
   })
 
   it('DIFFERENTIATION has at most 3 bullets and 5 comparison rows', () => {

@@ -37,29 +37,3 @@ export function parseLaunchReadiness(raw: unknown): LaunchReadinessData | null {
     : []
   return { readiness, checklist }
 }
-
-export function launchReadinessLabel(readiness: LaunchReadinessValue): string {
-  switch (readiness) {
-    case 'safe':
-      return 'Ready to launch'
-    case 'fix_first':
-      return 'Fix first'
-    case 'not_ready':
-      return 'Not ready'
-    case 'unknown':
-      return 'Not enough evidence'
-  }
-}
-
-export function launchReadinessTone(readiness: LaunchReadinessValue): string {
-  switch (readiness) {
-    case 'safe':
-      return 'text-grade-A bg-grade-A/10 border-grade-A/25'
-    case 'fix_first':
-      return 'text-grade-C bg-grade-C/10 border-grade-C/25'
-    case 'not_ready':
-      return 'text-grade-F bg-grade-F/10 border-grade-F/25'
-    case 'unknown':
-      return 'text-muted-foreground bg-muted/50 border-border'
-  }
-}

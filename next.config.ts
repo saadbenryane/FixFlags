@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: process.env.GOOGLE_CLIENT_ID ? 'true' : '',
     NEXT_PUBLIC_GITHUB_OAUTH_ENABLED: process.env.GITHUB_CLIENT_ID ? 'true' : '',
   },
+  poweredByHeader: false,
   serverExternalPackages: [
     'puppeteer',
     '@prisma/client',
@@ -18,6 +19,7 @@ const nextConfig: NextConfig = {
     'cheerio',
   ],
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -28,6 +30,9 @@ const nextConfig: NextConfig = {
         hostname: '*.r2.dev',
       },
     ],
+  },
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
   },
 }
 

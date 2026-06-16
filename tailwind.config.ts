@@ -70,6 +70,7 @@ const config: Config = {
           hover: 'hsl(var(--link-hover))',
         },
         'focus-ring': 'hsl(var(--focus-ring))',
+        'surface-raised': 'hsl(var(--surface-raised))',
         terminal: {
           DEFAULT: 'hsl(var(--terminal))',
           foreground: 'hsl(var(--terminal-foreground))',
@@ -168,7 +169,7 @@ const config: Config = {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
         },
-        pulse: {
+        'pulse': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
         },

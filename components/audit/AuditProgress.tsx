@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import {
   DESKTOP_FRAME_FLEX_CLASS,
   MOBILE_FRAME_WIDTH_CLASS,
@@ -121,7 +122,7 @@ export function AuditProgress({
 
         {showWorkerWarning && (
           <p className="rounded-lg bg-brand/10 px-3 py-2 text-sm text-brand">
-            {AUDIT_PROGRESS.workerQueuedWarning}
+            {getWorkerQueuedWarning()}
           </p>
         )}
 

@@ -8,15 +8,15 @@ interface PageHeaderProps {
   children?: React.ReactNode
 }
 
-/** App/admin page title — smaller Fraunces scale, not marketing hero size */
+/** App/admin page title - smaller Fraunces scale, not marketing hero size */
 export function PageHeader({ title, description, className, children }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-start justify-between gap-4', className)}>
-      <div className="space-y-1">
+    <div className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
+      <div className="min-w-0 space-y-1.5">
         <PageTitle>{title}</PageTitle>
         {description && <Muted>{description}</Muted>}
       </div>
-      {children}
+      {children && <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>}
     </div>
   )
 }

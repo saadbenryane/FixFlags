@@ -1,46 +1,67 @@
 import { prisma } from '@/lib/db'
-import { AreaName, Severity, FindingSource, AreaGrade } from '@prisma/client'
-import { DeterministicFinding } from './checks'
+import {
+  RubricName,
+  Severity,
+  FlagSource,
+  RubricGrade,
+  ImpactTag,
+} from '@prisma/client'
+import { DeterministicFlag } from './checks'
 import { JudgeOutput } from './judge'
-import { verificationRuleForCheckId } from './verify-findings'
+import { verificationRuleForCheckId } from './verify-flags'
 import {
   calculateOverallScore,
   clampScore,
   gradeFromScore,
-  isSubjectiveArea,
   statusFromGrade,
   statusFromScore,
 } from './scoring'
-import { AREA_ORDER } from './constants'
-import { deduplicateFindings, findingFingerprint } from './deduplicate'
+import { RUBRIC_ORDER } from './constants'
+import { deduplicateFlags, flagFingerprint } from './deduplicate'
 
 function aiSeverityToEnum(severity: string): Severity {
   const map: Record<string, Severity> = {
     CRITICAL: 'CRITICAL',
-    HIGH: 'HIGH',
-    MEDIUM: 'MEDIUM',
-    LOW: 'LOW',
-    INFO: 'INFO',
+    IMPORTANT: 'IMPORTANT',
+    POLISH: 'POLISH',
+    HIGH: 'IMPORTANT',
+    MEDIUM: 'POLISH',
+    LOW: 'POLISH',
+    INFO: 'POLISH',
   }
-  return map[severity] ?? 'MEDIUM'
+  return map[severity] ?? 'POLISH'
+}
+
+function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null {
+  if (!tag) return null
+  const valid: ImpactTag[] = [
+    'CONVERSION',
+    'REVENUE',
+    'TRUST',
+    'MEASUREMENT',
+    'SHARING',
+    'SEO',
+    'ACCESSIBILITY',
+  ]
+  return valid.includes(tag as ImpactTag) ? (tag as ImpactTag) : null
 }
 
 /** Remove partial results before a retry or fresh persist. */
 export async function clearAuditResults(auditId: string): Promise<void> {
   await prisma.$transaction([
-    prisma.finding.deleteMany({ where: { auditId } }),
-    prisma.auditArea.deleteMany({ where: { auditId } }),
+    prisma.flag.deleteMany({ where: { auditId } }),
+    prisma.reportRubric.deleteMany({ where: { auditId } }),
   ])
 }
 
-/** Persist deterministic findings and partial area scores during the pipeline run. */
-export async function persistDeterministicFindings(
+/** Persist deterministic flags and partial rubric scores during the pipeline run. */
+export async function persistDeterministicFlags(
   auditId: string,
-  deterministicFindings: DeterministicFinding[],
-  areaScores: Partial<Record<AreaName, number | null>>
+  deterministicFlags: DeterministicFlag[],
+  rubricScores: Partial<Record<RubricName, number | null>>
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await tx.finding.deleteMany({
+    await tx.flag.deleteMany({
       where: { auditId, source: 'DETERMINISTIC' },
     })
 
@@ -50,14 +71,14 @@ export async function persistDeterministicFindings(
     })
     const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
 
-    const areaRecords = await Promise.all(
-      AREA_ORDER.map(async (areaName) => {
-        const score = areaScores[areaName]
-        const existing = await tx.auditArea.findFirst({
-          where: { auditId, name: areaName },
+    const rubricRecords = await Promise.all(
+      RUBRIC_ORDER.map(async (rubricName) => {
+        const score = rubricScores[rubricName as RubricName]
+        const existing = await tx.reportRubric.findFirst({
+          where: { auditId, name: rubricName as RubricName },
         })
         if (existing) {
-          return tx.auditArea.update({
+          return tx.reportRubric.update({
             where: { id: existing.id },
             data: {
               score: score !== null && score !== undefined ? clampScore(score) : null,
@@ -71,14 +92,14 @@ export async function persistDeterministicFindings(
                 score !== null && score !== undefined ? 'ASSESSED' : 'PARTIAL',
               summary:
                 existing.summary ||
-                `Partial ${areaName.toLowerCase()} assessment from automated checks.`,
+                `Partial ${rubricName.toLowerCase()} assessment from automated checks.`,
             },
           })
         }
-        return tx.auditArea.create({
+        return tx.reportRubric.create({
           data: {
             auditId,
-            name: areaName,
+            name: rubricName as RubricName,
             score: score !== null && score !== undefined ? clampScore(score) : null,
             grade:
               score !== null && score !== undefined ? gradeFromScore(clampScore(score)) : null,
@@ -86,39 +107,40 @@ export async function persistDeterministicFindings(
               score !== null && score !== undefined ? statusFromScore(clampScore(score)) : null,
             assessmentState: score !== null && score !== undefined ? 'ASSESSED' : 'PARTIAL',
             confidence: 0.7,
-            summary: `Partial ${areaName.toLowerCase()} assessment from automated checks.`,
-            areaPrompt: `Review ${areaName.toLowerCase()} findings and apply fixes.`,
+            summary: `Partial ${rubricName.toLowerCase()} assessment from automated checks.`,
+            rubricPrompt: `Review ${rubricName.toLowerCase()} flags and apply fixes.`,
           },
         })
       })
     )
 
-    const areaIdByName = new Map(areaRecords.map((record) => [record.name, record.id]))
+    const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
-    const findingRows = deterministicFindings.map((f, i) => ({
+    const flagRows = deterministicFlags.map((f, i) => ({
       auditId,
       pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-      areaId: areaIdByName.get(f.area as AreaName) ?? null,
-      source: 'DETERMINISTIC' as FindingSource,
-      area: f.area,
+      rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
+      source: 'DETERMINISTIC' as FlagSource,
+      rubric: f.rubric,
+      impactTag: f.impactTag ? (f.impactTag as ImpactTag) : null,
       severity: f.severity as Severity,
       problem: f.problem,
       evidence: f.evidence,
-      whyItMatters: `This issue affects the ${f.area.toLowerCase()} quality of your page.`,
+      whyItMatters: `This flag affects the ${f.rubric.toLowerCase()} quality of your page.`,
       fix: f.fix,
       confidence: f.confidence,
       verificationRule: verificationRuleForCheckId(f.checkId) ?? null,
       checkId: f.checkId,
       pageUrl: f.pageUrl ?? null,
-      fingerprint: findingFingerprint(f),
+      fingerprint: flagFingerprint(f),
       position: i,
     }))
 
-    if (findingRows.length > 0) {
-      await tx.finding.createMany({ data: findingRows })
+    if (flagRows.length > 0) {
+      await tx.flag.createMany({ data: flagRows })
     }
 
-    const overallScore = calculateOverallScore(areaScores)
+    const overallScore = calculateOverallScore(rubricScores)
     await tx.audit.update({
       where: { id: auditId },
       data: {
@@ -132,8 +154,8 @@ export async function persistDeterministicFindings(
 export async function persistAuditResults(
   auditId: string,
   judgeOutput: JudgeOutput,
-  deterministicFindings: DeterministicFinding[],
-  areaScores: Partial<Record<AreaName, number | null>>
+  deterministicFlags: DeterministicFlag[],
+  rubricScores: Partial<Record<RubricName, number | null>>
 ): Promise<void> {
   await clearAuditResults(auditId)
 
@@ -143,77 +165,67 @@ export async function persistAuditResults(
       select: { id: true, normalizedUrl: true },
     })
     const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
-    const resolvedScores: Partial<Record<AreaName, number | null>> = {}
-    const resolvedGrades: Partial<Record<AreaName, AreaGrade | null>> = {}
-    const areaRecords = await Promise.all(
-      judgeOutput.areas.map((areaData) => {
-        const areaName = areaData.name as AreaName
-        const subjective = isSubjectiveArea(areaName)
-        const deterministicScore = areaScores[areaName]
+    const resolvedScores: Partial<Record<RubricName, number | null>> = {}
+    const resolvedGrades: Partial<Record<RubricName, RubricGrade | null>> = {}
 
-        let finalScore: number | null
-        let finalGrade: AreaGrade
+    const rubricRecords = await Promise.all(
+      judgeOutput.rubrics.map((rubricData) => {
+        const rubricName = rubricData.name as RubricName
+        const deterministicScore = rubricScores[rubricName]
 
-        if (subjective) {
-          finalScore = null
-          finalGrade = areaData.grade
-        } else {
-          finalScore =
-            deterministicScore !== null && deterministicScore !== undefined
-              ? clampScore(deterministicScore)
-              : areaData.score !== null
-                ? clampScore(areaData.score)
-                : null
-          finalGrade =
-            finalScore !== null ? gradeFromScore(finalScore) : areaData.grade
-        }
+        const finalScore =
+          deterministicScore !== null && deterministicScore !== undefined
+            ? clampScore(deterministicScore)
+            : rubricData.score !== null
+              ? clampScore(rubricData.score)
+              : null
+        const finalGrade =
+          finalScore !== null ? gradeFromScore(finalScore) : rubricData.grade
 
-        resolvedScores[areaName] = finalScore
-        resolvedGrades[areaName] = finalGrade
+        resolvedScores[rubricName] = finalScore
+        resolvedGrades[rubricName] = finalGrade
 
-        return tx.auditArea.create({
+        return tx.reportRubric.create({
           data: {
             auditId,
-            name: areaName,
+            name: rubricName,
             score: finalScore,
             grade: finalGrade,
-            status: subjective
-              ? statusFromGrade(finalGrade)
-              : finalScore === null
-                ? null
-                : statusFromScore(finalScore),
-            assessmentState: finalScore === null && !subjective ? areaData.assessmentState : 'ASSESSED',
-            confidence: areaData.confidence,
-            summary: areaData.summary,
-            areaPrompt: areaData.areaPrompt,
-            cursorPrompt: areaData.cursorPrompt ?? null,
-            claudePrompt: areaData.claudePrompt ?? null,
-            lovablePrompt: areaData.lovablePrompt ?? null,
-            boltPrompt: areaData.boltPrompt ?? null,
+            status:
+              finalScore === null ? statusFromGrade(finalGrade) : statusFromScore(finalScore),
+            assessmentState: finalScore === null ? rubricData.assessmentState : 'ASSESSED',
+            confidence: rubricData.confidence,
+            summary: rubricData.summary,
+            rubricPrompt: rubricData.rubricPrompt,
+            cursorPrompt: rubricData.cursorPrompt ?? null,
+            claudePrompt: rubricData.claudePrompt ?? null,
+            lovablePrompt: rubricData.lovablePrompt ?? null,
+            boltPrompt: rubricData.boltPrompt ?? null,
           },
         })
       })
     )
 
-    const areaIdByName = new Map(areaRecords.map((record) => [record.name, record.id]))
+    const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
     const enrichmentMap = new Map(judgeOutput.enrichments.map((e) => [e.checkId, e]))
-    const aiFindings = deduplicateFindings(deterministicFindings, judgeOutput.newFindings)
+    const aiFlags = deduplicateFlags(deterministicFlags, judgeOutput.newFlags)
 
-    const findingRows = [
-      ...deterministicFindings.map((f, i) => {
+    const flagRows = [
+      ...deterministicFlags.map((f, i) => {
         const enrichment = enrichmentMap.get(f.checkId)
         return {
           auditId,
           pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-          areaId: areaIdByName.get(f.area as AreaName) ?? null,
-          source: 'DETERMINISTIC' as FindingSource,
-          area: f.area,
+          rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
+          source: 'DETERMINISTIC' as FlagSource,
+          rubric: f.rubric,
+          impactTag: f.impactTag ? (f.impactTag as ImpactTag) : null,
           severity: f.severity as Severity,
           problem: f.problem,
           evidence: f.evidence,
           whyItMatters:
             enrichment?.whyItMatters ??
-            `This issue affects the ${f.area.toLowerCase()} quality of your page.`,
+            `This flag affects the ${f.rubric.toLowerCase()} quality of your page.`,
           fix: f.fix,
           confidence: f.confidence,
           agentPrompt: enrichment?.agentPrompt ?? null,
@@ -227,16 +239,17 @@ export async function persistAuditResults(
             null,
           checkId: f.checkId,
           pageUrl: f.pageUrl ?? null,
-          fingerprint: findingFingerprint(f),
+          fingerprint: flagFingerprint(f),
           position: i,
         }
       }),
-      ...aiFindings.map((f, i) => ({
+      ...aiFlags.map((f, i) => ({
         auditId,
         pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-        areaId: areaIdByName.get(f.area as AreaName) ?? null,
-        source: 'AI' as FindingSource,
-        area: f.area,
+        rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
+        source: 'AI' as FlagSource,
+        rubric: f.rubric,
+        impactTag: aiImpactToEnum(f.impactTag),
         severity: aiSeverityToEnum(f.severity),
         problem: f.problem,
         evidence: f.evidence,
@@ -251,13 +264,13 @@ export async function persistAuditResults(
         verificationRule: f.verificationRule ?? 'Confirm the issue described in evidence on the live page.',
         checkId: null,
         pageUrl: f.pageUrl ?? null,
-        fingerprint: findingFingerprint(f),
-        position: deterministicFindings.length + i,
+        fingerprint: flagFingerprint(f),
+        position: deterministicFlags.length + i,
       })),
     ]
 
-    if (findingRows.length > 0) {
-      await tx.finding.createMany({ data: findingRows })
+    if (flagRows.length > 0) {
+      await tx.flag.createMany({ data: flagRows })
     }
 
     const overallScore = calculateOverallScore(resolvedScores, resolvedGrades)

@@ -1,6 +1,6 @@
-# QualityOS
+# FixFlags
 
-Post-build QA for AI-shipped apps. Paste a URL, get graded on performance, SEO, mobile, conversion, and trust, with fix prompts for your AI editor.
+Post-build QA for AI-shipped apps. Paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
 
 ## Prerequisites
 
@@ -66,15 +66,15 @@ Expect `db: ok`, `redis: ok`, and queue stats when everything is running.
 
 ## MCP integration
 
-QualityOS exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/settings/api-keys` (Builder plan+), then configure your agent:
+FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/settings/api-keys` (Builder plan+), then configure your agent:
 
 ```json
 {
   "mcpServers": {
-    "qualityos": {
+    "fixflags": {
       "url": "http://localhost:3000/api/mcp",
       "headers": {
-        "x-api-key": "qos_live_..."
+        "x-api-key": "ff_live_..."
       }
     }
   }
@@ -98,7 +98,7 @@ Both services need:
 
 - `DATABASE_URL`, `REDIS_URL`
 - `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
-- `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`
+- `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL` (production: `https://fixflags.com`)
 - **R2** (screenshots in production): `R2_BUCKET_NAME`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_URL`
 - **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price IDs (see `.env.example`)
 - **Cron**: `CRON_SECRET`
@@ -118,7 +118,7 @@ Configure Railway (or any scheduler) to POST to these routes with header `Author
 Example:
 
 ```bash
-curl -X POST https://your-app.com/api/cron/recover-stuck-audits \
+curl -X POST https://fixflags.com/api/cron/recover-stuck-audits \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 

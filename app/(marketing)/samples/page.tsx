@@ -11,6 +11,7 @@ import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 
 export const metadata = buildPageMetadata('samples', '/samples')
+export const dynamic = 'force-dynamic'
 
 export default async function SamplesPage() {
   const sample = await getLiveSampleAudit()
@@ -22,7 +23,7 @@ export default async function SamplesPage() {
       : SAMPLES_PAGE.tierNote
 
   const affiliationNote = site.isDogfood
-    ? 'Audit of qualityos.com. Automated and illustrative.'
+    ? 'Sample report of fixflags.com. Automated and illustrative.'
     : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
 
   return (

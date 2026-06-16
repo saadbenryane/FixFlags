@@ -6,6 +6,7 @@ import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { prisma } from '@/lib/db'
 import { notifyExpertReviewPaid } from '@/lib/email/expert-review'
+import { logger } from '@/lib/logger'
 
 function entitlementStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   if (status === 'active') return 'ACTIVE'
@@ -99,6 +100,16 @@ export async function POST(req: NextRequest) {
         await processSubscription(event.data.object)
         break
 
+      case 'checkout.session.expired': {
+        const session = event.data.object
+        if (session.metadata?.type === 'expert_review') {
+          await prisma.expertReviewOrder.deleteMany({
+            where: { stripeSessionId: session.id, status: 'PENDING' },
+          })
+        }
+        break
+      }
+
       case 'checkout.session.completed': {
         const session = event.data.object
         if (session.metadata?.type === 'expert_review') {
@@ -138,15 +149,11 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'stripe.webhook.failed',
-        stripeEventId: event.id,
-        stripeEventType: event.type,
-        error: error instanceof Error ? error.message : String(error),
-      })
-    )
+    logger.error('Stripe webhook failed', {
+      stripeEventId: event.id,
+      stripeEventType: event.type,
+      error: error instanceof Error ? error.message : String(error),
+    })
     return NextResponse.json({ message: 'Webhook processing failed' }, { status: 500 })
   }
 }

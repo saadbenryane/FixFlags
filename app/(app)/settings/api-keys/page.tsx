@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
-import { MCP_DOCS } from '@/lib/marketing/copy'
+import { MCP_DOCS, BRAND } from '@/lib/marketing/copy'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -98,14 +98,24 @@ export default function ApiKeysPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading...</p>
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 w-32 rounded bg-muted" />
+        <div className="h-24 rounded-card bg-muted" />
+        <div className="space-y-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="API Keys"
-        description="Use API keys to connect QualityOS to Claude Code, Cursor, or Windsurf via MCP."
+        description={`Use API keys to connect ${BRAND.name} to Claude Code, Cursor, or Windsurf via MCP.`}
       />
 
       {!canUseKeys && (
@@ -142,7 +152,7 @@ export default function ApiKeysPage() {
       )}
 
       {canUseKeys && (
-        <Card>
+        <Card className="border-0 shadow-card">
           <CardHeader>
             <CardTitle className="text-base">Create new key</CardTitle>
             <CardDescription>Give it a name to remember where it&apos;s used</CardDescription>
@@ -173,7 +183,7 @@ export default function ApiKeysPage() {
             <p className="py-4 text-center text-sm text-muted-foreground">No API keys yet</p>
           ) : (
             keys.map((key) => (
-              <div key={key.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
+              <div key={key.id} className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3 shadow-sm">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{key.name}</div>
                   <code className="text-xs text-muted-foreground">

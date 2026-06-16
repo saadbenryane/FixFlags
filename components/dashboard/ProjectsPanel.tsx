@@ -183,7 +183,7 @@ export function ProjectsPanel({ plan }: Props) {
       )}
 
       {projects.length < limit && (
-        <form onSubmit={handleCreate} className="rounded-xl border p-4 bg-muted/20 space-y-3">
+        <form onSubmit={handleCreate} className="rounded-card border-0 bg-muted/20 p-4 shadow-card space-y-3">
           <p className="text-sm font-medium flex items-center gap-2">
             <FolderPlus className="h-4 w-4" />
             New project
