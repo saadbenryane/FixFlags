@@ -22,7 +22,7 @@
     "db:migrate": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma migrate dev",
     "db:deploy": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma migrate deploy",
     "db:check": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma migrate status",
-    "db:drift": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma migrate diff --from-config-datasource --to-schema-datamodel prisma/schema.prisma --exit-code",
+    "db:drift": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code",
     "db:validate": "DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.bin/prisma validate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",

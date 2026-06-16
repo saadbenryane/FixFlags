@@ -17,6 +17,16 @@ describe('parsePreviewMeta', () => {
     )
     assert.equal(result?.title, 'FixFlags')
     assert.equal(result?.ogImage, 'https://example.com/og.png')
+    assert.equal(result?.ogImageOk, true)
+  })
+
+  it('marks ogImageOk false when explicitly set', () => {
+    const result = parsePreviewMeta(
+      { ogImage: 'https://example.com/broken.png' },
+      'https://example.com',
+      { ogImageOk: false }
+    )
+    assert.equal(result?.ogImageOk, false)
   })
 
   it('returns null for invalid metadata', () => {

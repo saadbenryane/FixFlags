@@ -1,12 +1,12 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
 export const BRAND_HEX = {
-  primary: '#FF4D1F',
+  primary: '#FF4D2E',
   primaryLight: '#FF744D',
   background: '#FFFFFF',
-  foreground: '#0F1115',
+  foreground: '#0B0B0D',
   muted: '#F3F4F6',
-  mutedForeground: '#5B7380',
+  mutedForeground: '#6B7178',
   border: '#E5E7EB',
   success: '#22C55E',
   warning: '#FACC15',
@@ -15,13 +15,13 @@ export const BRAND_HEX = {
 } as const
 
 export const BRAND_HEX_DARK = {
-  primary: '#FF4D1F',
+  primary: '#FF4D2E',
   primaryLight: '#FF744D',
-  background: '#0F1115',
+  background: '#0B0B0D',
   foreground: '#FFFFFF',
-  muted: '#2A2F3A',
-  mutedForeground: '#8B9BAA',
-  border: '#1C1F26',
+  muted: '#2A2D33',
+  mutedForeground: '#A3A7AE',
+  border: '#1E1F23',
   success: '#22C55E',
   warning: '#FACC15',
   error: '#EF4444',

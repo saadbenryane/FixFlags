@@ -42,8 +42,21 @@ SELECT
     grouped."auditId",
     grouped.rubric_name::"RubricName",
     grouped."score",
-    grouped."grade"::"RubricGrade",
-    grouped."status"::"RubricStatus",
+    CASE grouped."grade"::text
+        WHEN 'A' THEN 'A'::"RubricGrade"
+        WHEN 'B' THEN 'B'::"RubricGrade"
+        WHEN 'C' THEN 'C'::"RubricGrade"
+        WHEN 'D' THEN 'D'::"RubricGrade"
+        WHEN 'F' THEN 'F'::"RubricGrade"
+        ELSE NULL
+    END,
+    CASE grouped."status"::text
+        WHEN 'EXCELLENT' THEN 'EXCELLENT'::"RubricStatus"
+        WHEN 'GOOD' THEN 'GOOD'::"RubricStatus"
+        WHEN 'NEEDS_WORK' THEN 'NEEDS_WORK'::"RubricStatus"
+        WHEN 'CRITICAL' THEN 'CRITICAL'::"RubricStatus"
+        ELSE NULL
+    END,
     grouped."assessmentState",
     grouped."confidence",
     grouped."summary",

@@ -8,37 +8,37 @@
 :root {
   /* ── Surfaces ── */
   --background: 0 0% 100%;
-  --foreground: 220 17% 7%;
+  --foreground: 240 8% 5%;
   --card: 0 0% 100%;
-  --card-foreground: 220 17% 7%;
+  --card-foreground: 240 8% 5%;
   --muted: 220 14% 96%;
-  --muted-foreground: 203 14% 43%;
+  --muted-foreground: 212 6% 45%;
   --border: 220 13% 91%;
   --border-subtle: 220 13% 94%;
 
-  /* ── Brand orange (primary CTA) ── */
-  --brand: 12 100% 56%;
+  /* ── Brand orange (Flag #FF4D2E) ── */
+  --brand: 9 100% 59%;
   --brand-foreground: 0 0% 100%;
-  --brand-hover: 12 100% 65%;
-  --brand-muted: 12 100% 97%;
-  --brand-border: 12 90% 88%;
+  --brand-hover: 13 100% 65%;
+  --brand-muted: 9 100% 97%;
+  --brand-border: 9 90% 88%;
 
-  --primary: 12 100% 56%;
+  --primary: 9 100% 59%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
-  --secondary-foreground: 220 17% 7%;
-  --accent: 12 80% 97%;
-  --accent-foreground: 220 17% 7%;
+  --secondary-foreground: 240 8% 5%;
+  --accent: 9 80% 97%;
+  --accent-foreground: 240 8% 5%;
 
   /* Links & focus */
   --link: 217 91% 60%;
   --link-hover: 217 91% 52%;
-  --focus-ring: 12 100% 56%;
+  --focus-ring: 9 100% 59%;
   --ring: var(--focus-ring);
 
   --surface-raised: 0 0% 100%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 17% 7%;
+  --popover-foreground: 240 8% 5%;
   --input: 220 13% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
@@ -53,7 +53,7 @@
   /* Grade palette */
   --grade-A: 142 71% 45%;
   --grade-B: 84 81% 44%;
-  --grade-C: 12 100% 56%;
+  --grade-C: 9 100% 59%;
   --grade-D: 25 95% 53%;
   --grade-F: 0 84% 60%;
 
@@ -124,37 +124,37 @@
 }
 
 .dark {
-  --background: 220 17% 7%;
+  --background: 240 8% 5%;
   --foreground: 0 0% 98%;
-  --card: 222 17% 13%;
+  --card: 228 8% 13%;
   --card-foreground: 0 0% 98%;
-  --muted: 223 13% 20%;
-  --muted-foreground: 203 12% 58%;
-  --border: 222 17% 13%;
-  --border-subtle: 223 13% 16%;
+  --muted: 220 10% 18%;
+  --muted-foreground: 218 6% 66%;
+  --border: 228 8% 13%;
+  --border-subtle: 222 9% 16%;
 
-  --brand: 12 100% 56%;
+  --brand: 9 100% 59%;
   --brand-foreground: 0 0% 100%;
-  --brand-hover: 12 100% 65%;
-  --brand-muted: 12 60% 12%;
-  --brand-border: 12 50% 22%;
+  --brand-hover: 13 100% 65%;
+  --brand-muted: 9 60% 12%;
+  --brand-border: 9 50% 22%;
 
-  --primary: 12 100% 56%;
+  --primary: 9 100% 59%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 223 13% 20%;
+  --secondary: 220 10% 18%;
   --secondary-foreground: 0 0% 98%;
-  --accent: 223 13% 18%;
+  --accent: 222 9% 18%;
   --accent-foreground: 0 0% 98%;
 
   --link: 217 91% 68%;
   --link-hover: 217 91% 75%;
-  --focus-ring: 12 100% 56%;
+  --focus-ring: 9 100% 59%;
   --ring: var(--focus-ring);
 
-  --surface-raised: 223 13% 20%;
-  --popover: 222 17% 13%;
+  --surface-raised: 220 10% 18%;
+  --popover: 228 8% 13%;
   --popover-foreground: 0 0% 98%;
-  --input: 223 13% 20%;
+  --input: 220 10% 18%;
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 98%;
   --success: 142 70% 45%;
@@ -167,7 +167,7 @@
 
   --grade-A: 142 70% 45%;
   --grade-B: 84 75% 50%;
-  --grade-C: 12 100% 56%;
+  --grade-C: 9 100% 59%;
   --grade-D: 25 90% 58%;
   --grade-F: 0 72% 55%;
 
@@ -175,17 +175,17 @@
   --shadow-card-hover: 0 2px 8px rgb(0 0 0 / 0.24), 0 12px 28px -4px rgb(0 0 0 / 0.32);
   --shadow-raised: 0 8px 32px -8px rgb(0 0 0 / 0.4);
 
-  --glass-bg-subtle: rgba(15, 17, 21, 0.72);
-  --glass-bg: rgba(15, 17, 21, 0.88);
-  --glass-bg-strong: rgba(15, 17, 21, 0.94);
-  --glass-bg-elevated: rgba(15, 17, 21, 0.98);
-  --glass-border: hsl(222 17% 13%);
-  --overlay-pill-bg: hsl(223 13% 20% / 0.95);
-  --overlay-pill-border: hsl(222 17% 13%);
-  --cover-gradient: linear-gradient(to top, rgba(15, 17, 21, 0.95) 0%, rgba(15, 17, 21, 0.6) 45%, transparent 90%);
+  --glass-bg-subtle: rgba(11, 11, 13, 0.72);
+  --glass-bg: rgba(11, 11, 13, 0.88);
+  --glass-bg-strong: rgba(11, 11, 13, 0.94);
+  --glass-bg-elevated: rgba(11, 11, 13, 0.98);
+  --glass-border: hsl(228 8% 13%);
+  --overlay-pill-bg: hsl(220 10% 18% / 0.95);
+  --overlay-pill-border: hsl(228 8% 13%);
+  --cover-gradient: linear-gradient(to top, rgba(11, 11, 13, 0.95) 0%, rgba(11, 11, 13, 0.6) 45%, transparent 90%);
 
-  --terminal: 220 17% 7%;
-  --terminal-foreground: 220 10% 78%;
-  --terminal-muted: 203 12% 58%;
-  --terminal-border: 223 13% 20%;
+  --terminal: 240 8% 5%;
+  --terminal-foreground: 218 6% 78%;
+  --terminal-muted: 218 6% 58%;
+  --terminal-border: 220 10% 18%;
 }

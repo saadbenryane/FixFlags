@@ -13,10 +13,10 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 |-------|-------|------|
 | 60% | `--background`, `--muted` | White / dark surfaces |
 | 30% | `--foreground` | Ink structure, headings |
-| 10% | `--brand` (`#FF4D1F`) | CTAs, flags, scores, focus |
+| 10% | `--brand` (`#FF4D2E`) | CTAs, flags, scores, focus |
 
 **Rules:**
-- Brand is vibrant orange `#FF4D1F`, hover `#FF744D`
+- Brand is Flag orange `#FF4D2E`, hover `#FF744D`
 - Links use `--link` (info blue `#3B82F6`), not brand orange
 - Focus rings use brand orange on inputs
 - Dark mode is re-authored (`#0F1115` canvas), orange unchanged

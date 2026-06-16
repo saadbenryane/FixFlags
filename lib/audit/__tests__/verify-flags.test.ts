@@ -1,7 +1,11 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
-import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
+import {
+  allCheckIdsHaveVerificationRules,
+  buildCurrentVerifiableCheckIds,
+  isCheckStillFailing,
+} from '@/lib/audit/verify-flags'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 
 describe('verify-flags', () => {
@@ -13,16 +17,16 @@ describe('verify-flags', () => {
   })
 
   it('flow-cta-dead-end clears when flow scan succeeds on re-check', () => {
-    const failingIds = runFlowChecks({
+    const failingFlags = runFlowChecks({
       status: 'dead_end',
       steps: [],
       finalUrl: 'https://example.com',
       ctaText: 'Sign up',
-    }).map((f) => f.checkId)
+    })
+    const failingIds = buildCurrentVerifiableCheckIds(failingFlags)
+    assert.ok(isCheckStillFailing('flow-cta-dead-end', failingIds))
 
-    assert.ok(failingIds.includes('flow-cta-dead-end'))
-
-    const passingIds = runFlowChecks({
+    const passingFlags = runFlowChecks({
       status: 'success',
       steps: [
         { label: 'Landing', screenshotUrl: '/a.png', url: 'https://example.com' },
@@ -30,9 +34,8 @@ describe('verify-flags', () => {
       ],
       finalUrl: 'https://example.com/signup',
       ctaText: 'Sign up',
-    }).map((f) => f.checkId)
-
-    assert.equal(passingIds.includes('flow-cta-dead-end'), false)
-    assert.equal(failingIds.includes('flow-cta-dead-end'), true)
+    })
+    const passingIds = buildCurrentVerifiableCheckIds(passingFlags)
+    assert.equal(isCheckStillFailing('flow-cta-dead-end', passingIds), false)
   })
 })

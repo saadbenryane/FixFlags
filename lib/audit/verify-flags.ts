@@ -140,6 +140,16 @@ function currentVerifiableCheckIds(flags: DeterministicFlag[]): Set<string> {
   )
 }
 
+/** True when a parent flag checkId still fails on re-check (used in tests). */
+export function isCheckStillFailing(checkId: string, currentCheckIds: Set<string>): boolean {
+  return currentCheckIds.has(checkId)
+}
+
+/** Build current check IDs from deterministic audit output (used in tests). */
+export function buildCurrentVerifiableCheckIds(flags: DeterministicFlag[]): Set<string> {
+  return currentVerifiableCheckIds(flags)
+}
+
 /** Re-run deterministic checks on re-check and mark flags verified when checkId clears. */
 export async function applyDeterministicVerification(
   recheckAuditId: string,

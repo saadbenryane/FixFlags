@@ -87,8 +87,6 @@ export function validateProductionEnv(): void {
     'BETTER_AUTH_SECRET',
     'BETTER_AUTH_URL',
     'NEXT_PUBLIC_APP_URL',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_WEBHOOK_SECRET',
     'CRON_SECRET',
     'RESEND_API_KEY',
     'RESEND_FROM_EMAIL',
@@ -97,6 +95,14 @@ export function validateProductionEnv(): void {
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
     throw new Error(`Missing required production env vars: ${missing.join(', ')}`)
+  }
+  // Billing (Stripe) is optional: when STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET
+  // are unset, checkout, the customer portal, and webhooks are disabled, but the
+  // rest of the app boots and audits run normally. Set both to enable paid plans.
+  if (!!process.env.STRIPE_SECRET_KEY !== !!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error(
+      'Stripe is partially configured: set BOTH STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET, or neither.'
+    )
   }
 }
 

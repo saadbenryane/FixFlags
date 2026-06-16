@@ -7,45 +7,34 @@ type LogoMarkProps = {
   height?: number
 }
 
-/** Five-bar flag mark matching brand guidelines */
+/**
+ * FixFlags mark: seven-bar equalizer.
+ * Pattern (L→R): short, tall, short, [orange flagpole], short, tall, short.
+ * Center orange bar runs tallest, extends below the others, flag points up-right.
+ */
 export function LogoMarkSvg({
   barColor = BRAND_HEX.foreground,
   flagColor = BRAND_HEX.primary,
   width = 40,
   height = 40,
 }: LogoMarkProps) {
-  const barW = 5
-  const gap = 3.5
-  const baseY = 34
-  const rx = 2.5
-  const xs = [0, barW + gap, (barW + gap) * 2, (barW + gap) * 3, (barW + gap) * 4]
-  const heights = [16, 22, 28, 22, 16]
-
   return (
     <svg
       width={width}
       height={height}
-      viewBox="0 0 40 40"
+      viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      {xs.map((x, i) => {
-        if (i === 2) {
-          const h = heights[i]!
-          return (
-            <g key={x}>
-              <rect x={x} y={baseY - h} width={barW} height={h} rx={rx} fill={flagColor} />
-              <path
-                d={`M${x + barW} ${baseY - h - 1} L${x + barW + 5} ${baseY - h + 3} L${x + barW} ${baseY - h + 6} Z`}
-                fill={flagColor}
-              />
-            </g>
-          )
-        }
-        const h = heights[i]!
-        return <rect key={x} x={x} y={baseY - h} width={barW} height={h} rx={rx} fill={barColor} />
-      })}
+      <rect x="1" y="16" width="4" height="16" rx="2" fill={barColor} />
+      <rect x="8" y="10" width="4" height="28" rx="2" fill={barColor} />
+      <rect x="15" y="16" width="4" height="16" rx="2" fill={barColor} />
+      <rect x="29" y="16" width="4" height="16" rx="2" fill={barColor} />
+      <rect x="36" y="10" width="4" height="28" rx="2" fill={barColor} />
+      <rect x="43" y="16" width="4" height="16" rx="2" fill={barColor} />
+      <rect x="22" y="14" width="4" height="30" rx="2" fill={flagColor} />
+      <path d="M22 7 L32 12.5 L24.5 16.5 Z" fill={flagColor} />
     </svg>
   )
 }
