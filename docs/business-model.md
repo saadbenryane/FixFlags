@@ -13,22 +13,22 @@ Why: habit over scarcity. 100 free checks/month = 100 upsell CTAs vs. 3 and sile
 
 ## Pricing Philosophy
 
-- **Entry price: $19-29/mo.** $49/mo competes with free (Lighthouse) and feels expensive for solo builders.
-- **Flat-rate unlimited** over per-scan billing. Psychology of "unlimited" is stronger than "25 audits."
+- **Entry price: $29/mo.** Low enough to convert solo builders without justification. Raise after 100 paying users if retention supports it.
+- **Flat-rate unlimited** over per-scan billing. Psychology of "unlimited re-checks" is stronger than "25 audits."
 - **Re-checks are never gated.** The core loop (check, fix, re-check, prove) is the habit. Do not interrupt it with paywalls.
-- **Annual discount** to lock in committed users.
+- **Annual discount** to lock in committed users. Target $19/mo annually on Pro.
+- **No founding offers.** $29 is the real price. Founding offers create expectation debt and complicate Stripe.
 
 ## Pricing Tiers (Current)
 
 | Tier | Price | Audits | Key Hook |
 |------|-------|--------|----------|
 | Free | $0 | 3 full, unlimited deterministic | No screenshots, no AI after 3 |
-| Pro | $49 ($29 founding) | 25/mo | Unlimited re-checks, MCP, AI, screenshots |
-| Agency | $199 | 100/mo | Share links, up to 5 projects |
-| Studio | $999 ($499 founding) | 500/mo | Up to 20 projects, agency use |
+| Pro | $29/mo | 25/mo | Unlimited re-checks, MCP, AI, screenshots |
+| Agency | $99/mo | 100/mo | Share links, up to 5 projects |
 | High Volume | Custom | 500+ | Contact sales |
 
-Note: pricing needs validation. $49 may be too high for the target market.
+Studio tier ($999) is retained in the schema but not marketed. Redirect high-volume inquiries to contact.
 
 ## Target Customer
 

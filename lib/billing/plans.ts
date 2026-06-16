@@ -55,15 +55,13 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'BUILDER',
     name: 'Pro',
     label: 'Pro',
-    price: '$49',
+    price: '$29',
     period: '/mo',
     persona: 'Solo builders shipping weekly',
     outcome: 'Prove every fix, audit from your editor',
     auditLimit: 25,
     auditLimitKind: 'monthly',
     auditLimitLabel: '25 / month',
-    founding: '$29/mo for 3 months',
-    foundingPriceId: envPriceId('STRIPE_BUILDER_FOUNDING_PRICE_ID'),
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
       'Unlimited re-checks + before/after compare',
@@ -78,7 +76,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'TEAM',
     name: 'Agency',
     label: 'Agency',
-    price: '$199',
+    price: '$99',
     period: '/mo',
     persona: 'Independent agencies with multiple sites',
     outcome: 'Share proof with clients',
@@ -107,8 +105,6 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     auditLimit: 500,
     auditLimitKind: 'monthly',
     auditLimitLabel: '500 / month',
-    founding: '$499/mo for 3 months',
-    foundingPriceId: envPriceId('STRIPE_STUDIO_FOUNDING_PRICE_ID'),
     stripePriceId: envPriceId('STRIPE_STUDIO_PRICE_ID'),
     projectLimit: 20,
     features: [
@@ -118,8 +114,8 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       '500 audits per month',
     ],
     highlight: false,
-    cta: 'Start Studio',
-    href: '/sign-up?plan=STUDIO',
+    cta: 'Contact us',
+    href: 'mailto:hello@fixflags.com?subject=FixFlags%20high%20volume',
   },
 }
 
@@ -137,21 +133,14 @@ export const STRIPE_PRICE_IDS: Partial<Record<Plan, string>> = Object.fromEntrie
     .map((def) => [def.plan, def.stripePriceId])
 ) as Partial<Record<Plan, string>>
 
-export const STRIPE_FOUNDING_PRICE_IDS: Partial<Record<PaidPlan, string>> = Object.fromEntries(
-  (['BUILDER', 'TEAM', 'STUDIO'] as const)
-    .map((plan) => [plan, PLAN_DEFINITIONS[plan].foundingPriceId])
-    .filter(([, id]) => id)
-) as Partial<Record<PaidPlan, string>>
+export const STRIPE_FOUNDING_PRICE_IDS: Partial<Record<PaidPlan, string>> = {}
 
 export function hasActiveFoundingOffer(): boolean {
-  return Object.keys(STRIPE_FOUNDING_PRICE_IDS).length > 0
+  return false
 }
 
 export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
   const def = PLAN_DEFINITIONS.BUILDER
-  if (hasActiveFoundingOffer() && def.founding) {
-    return `${prefix} - ${def.founding.replace('/mo for 3 months', '/mo founding')}`
-  }
   return `${prefix} - ${def.price}${def.period}`
 }
 
