@@ -1,17 +1,15 @@
-import { Fraunces, IBM_Plex_Mono, Source_Sans_3 } from 'next/font/google'
+import localFont from 'next/font/local'
+import { IBM_Plex_Mono } from 'next/font/google'
 
-export const sourceSans = Source_Sans_3({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+export const satoshi = localFont({
+  src: [
+    { path: '../../public/fonts/Satoshi-Regular.woff2', weight: '400', style: 'normal' },
+    { path: '../../public/fonts/Satoshi-Medium.woff2', weight: '500', style: 'normal' },
+    { path: '../../public/fonts/Satoshi-Bold.woff2', weight: '700', style: 'normal' },
+    { path: '../../public/fonts/Satoshi-Black.woff2', weight: '900', style: 'normal' },
+  ],
   variable: '--font-sans',
   display: 'swap',
-})
-
-export const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-  axes: ['SOFT', 'WONK', 'opsz'],
 })
 
 export const ibmPlexMono = IBM_Plex_Mono({
@@ -21,12 +19,11 @@ export const ibmPlexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
-/** Class string for <body> — swap fonts here during rebrand */
-export const fontVariables = `${sourceSans.variable} ${fraunces.variable} ${ibmPlexMono.variable}`
+/** Satoshi for display + body; mono for scores/labels */
+export const fontVariables = `${satoshi.variable} ${ibmPlexMono.variable}`
 
-/** Font family names for OG ImageResponse (no CSS vars) */
 export const ogFontFamilies = {
-  display: 'Georgia, serif',
-  sans: 'system-ui, sans-serif',
+  display: 'Satoshi, system-ui, sans-serif',
+  sans: 'Satoshi, system-ui, sans-serif',
   mono: 'ui-monospace, monospace',
 } as const

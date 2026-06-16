@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
-import { gradeFromScore } from '@/lib/audit/scoring'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { ReportOgImage } from '@/lib/design/og-templates'
 

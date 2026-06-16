@@ -8,7 +8,7 @@ Full scan list by rubric: [scan-catalog.md](./scan-catalog.md).
 
 ---
 
-## Pipeline (current + Phase 1)
+## Pipeline (current)
 
 ```mermaid
 flowchart TD
@@ -23,29 +23,37 @@ flowchart TD
 
 ---
 
-## Phase 1 (now)
+## Phase 1 — Complete
 
 **Goal:** Catch embarrassing AI-ship failures before share — dead CTAs, placeholder copy, blank link previews.
 
-| Deliverable | Rubric | Method | Exit criteria |
-|-------------|--------|--------|---------------|
-| **Slop scan** | Message | deterministic | 4 new check IDs; unit tests pass |
-| **Flow scan MVP** | Experience | agent | CTA click-through with step screenshots; flags on 404/dead-end |
-| **Preview cards UI** | Reach | UI | Google snippet + social card rendered in report |
-| **Flow timeline UI** | Experience | UI | Step strip in report when flowData present |
+| Deliverable | Rubric | Method | Status |
+|-------------|--------|--------|--------|
+| **Slop scan** | Message | deterministic | Shipped (4 check IDs) |
+| **Flow scan MVP** | Experience | agent | Shipped (5 check IDs, re-check verifies flow flags) |
+| **Preview cards UI** | Reach | UI | Shipped (Google snippet + social card) |
+| **og:image validation** | Reach | deterministic | Shipped (`og-image-broken`) |
+| **Flow timeline UI** | Experience | UI | Shipped (step strip + failure states) |
 | **Docs** | — | — | scan-catalog.md, this file, cross-links |
 
-**Out of scope:** Form fill, LLM-planned journeys, real devices, new entitlements.
+### Exit criteria (met)
 
-**Version:** `PIPELINE_VERSION` → `2.1.0`
+- [x] Re-check marks flow flags FIXED/REGRESSED via `applyDeterministicVerification` + flow re-run
+- [x] Flow click uses stable `data-fixflags-flow-idx` selectors
+- [x] Single landing capture (desktop screenshot reused as flow step 0)
+- [x] Preview cards use design tokens; broken og:image flagged and shown
+- [x] `npm run verify` green
+
+**Version:** `PIPELINE_VERSION` `2.1.0`
 
 ---
 
-## Phase 2
+## Phase 2 (next)
 
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
 | CTA focus scan | Message / Experience | Annotated mobile screenshot, contrast, competing CTAs |
+| Flow scan (message layer) | Message | CTA destination matches headline promise |
 | Measurement scan | Reach | GA4/GTM/PostHog, conversion events, consent |
 | Auth & checkout smoke | Experience | Login loads, OAuth wired, Stripe links resolve |
 
@@ -80,19 +88,15 @@ flowchart TD
 
 | Deliverable | Notes |
 |-------------|-------|
-| Native app scan | App Store / Play Store listing audit |
-| Real device app flow | Maestro/BrowserStack tap-through |
+| Native app scan | Real device tap-through for mobile apps |
+| Store listing scan | App Store / Play Store metadata |
 
-**Packaging:** Studio tier or add-on — keeps web product focused.
+**Exit criteria:** Studio-tier native app audit mode documented and gated.
 
 ---
 
-## Implementation files (Phase 1)
+## References
 
-| Area | Files |
-|------|-------|
-| Slop | `lib/audit/checks/slop.ts` |
-| Flow | `lib/audit/flow/discover-cta.ts`, `run-flow-scan.ts`, `checks/flow.ts` |
-| UI | `components/audit/PreviewCards.tsx`, `FlowScanTimeline.tsx` |
-| Pipeline | `lib/audit/screenshot.ts`, `runner.ts`, `prisma/schema.prisma` (`flowData`) |
-| Registry | `check-ids.ts`, `verify-flags.ts`, `checks/index.ts` |
+- Check ID registry: `lib/audit/check-ids.ts`
+- Verification rules: `lib/audit/verify-flags.ts`
+- Pipeline config: `lib/audit/pipeline-config.ts`

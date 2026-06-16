@@ -30,6 +30,8 @@ npm run dev:all
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
 
+**Phase 1 report sections:** Share & search preview cards, CTA flow timeline (`flowData` on Audit), slop and flow flags. Apply migration `20260616120000_audit_flow_data` via `npm run db:migrate` if upgrading an existing database.
+
 **Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
 
 **Sample report assets:** Regenerate static sample WebPs with:

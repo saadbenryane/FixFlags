@@ -1,6 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
-import { runMetadataChecks } from './metadata-checks'
+import { runMetadataChecks, runOgImageUrlCheck } from './metadata-checks'
 import { runPerformanceChecks } from './performance'
 import { runAccessibilityChecks } from './accessibility'
 import { runSeoChecks } from './seo'
@@ -35,6 +35,7 @@ export async function runAllChecks(
 
   const checkers = [
     () => runMetadataChecks(metadata),
+    () => runOgImageUrlCheck(url, metadata),
     () => runPerformanceChecks(desktop, mobile),
     () => runAccessibilityChecks(metadata, desktop ?? mobile),
     () => runSeoChecks(url, metadata),

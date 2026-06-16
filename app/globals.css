@@ -22,8 +22,8 @@
   }
 
   .font-display {
-    font-variation-settings: "SOFT" 50, "WONK" 0;
-    font-optical-sizing: auto;
+    font-weight: 700;
+    letter-spacing: var(--tracking-display);
   }
 
   h1, h2, h3, h4 {

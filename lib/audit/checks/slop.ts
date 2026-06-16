@@ -1,4 +1,5 @@
 import { PageMetadata } from '../metadata'
+import { isDeadHref } from '../flow/link-scoring'
 import { DeterministicFlag } from './index'
 
 const PLACEHOLDER_PATTERNS = [
@@ -21,19 +22,15 @@ const TEMPLATE_TOKEN_PATTERN = /\{\{[^}]+\}\}|\$\{[^}]+\}|%[A-Z_]+%/i
 const CTA_PATTERN =
   /get started|sign up|signup|start free|try free|book demo|contact|register|join/i
 
-function isDeadHref(href: string): boolean {
-  const normalized = href.trim().toLowerCase()
-  return (
-    normalized === '' ||
-    normalized === '#' ||
-    normalized.startsWith('javascript:void') ||
-    normalized === 'javascript:;'
-  )
-}
-
 export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const sampleText = [meta.pageText, ...meta.h1s].join(' ').slice(0, 8000)
+  const h1Generic =
+    meta.h1s.length > 0 &&
+    ['home', 'welcome', 'welcome to', 'untitled', 'coming soon', 'hello world'].some((p) =>
+      meta.h1s[0].toLowerCase().includes(p)
+    )
+  const bodyText = meta.pageText.slice(0, 8000)
+  const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, 8000)
 
   for (const { pattern, label } of PLACEHOLDER_PATTERNS) {
     if (pattern.test(sampleText)) {

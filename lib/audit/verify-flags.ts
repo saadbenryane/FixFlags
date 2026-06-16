@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/db'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
-import { DeterministicFlag, runAllChecks } from './checks'
-import { fetchAndParseMetadata } from './metadata'
-import { fetchPageSpeedData } from './pagespeed'
+import { DeterministicFlag } from './checks'
+import { runDeterministicAudit } from './deterministic-audit'
+import { serializeFlowData } from './flow/flow-url'
 import type { FlagStatus, Severity } from '@prisma/client'
 
 const CHECK_ID_TO_RULE: Record<string, string> = {
@@ -20,6 +20,8 @@ const CHECK_ID_TO_RULE: Record<string, string> = {
     'Confirm the meta description is 160 characters or fewer.',
   'og-image-missing':
     'View page source for og:image; open the image URL in a new tab (should return 200).',
+  'og-image-broken':
+    'Open the og:image URL in a new tab; it should return 200 with a valid image.',
   'og-title-missing': 'View page source, confirm meta property="og:title" is present.',
   'og-description-missing':
     'View page source, confirm meta property="og:description" is present.',
@@ -132,6 +134,12 @@ const severityRank: Record<Severity, number> = {
   POLISH: 1,
 }
 
+function currentVerifiableCheckIds(flags: DeterministicFlag[]): Set<string> {
+  return new Set(
+    flags.filter((f) => VERIFIABLE_CHECK_IDS.has(f.checkId)).map((f) => f.checkId)
+  )
+}
+
 /** Re-run deterministic checks on re-check and mark flags verified when checkId clears. */
 export async function applyDeterministicVerification(
   recheckAuditId: string,
@@ -147,25 +155,26 @@ export async function applyDeterministicVerification(
 
   if (parentFlags.length === 0) return
 
-  let metadata
+  let auditResult
   try {
-    metadata = await fetchAndParseMetadata(url)
+    auditResult = await runDeterministicAudit(url, {
+      includeFlow: true,
+      auditId: recheckAuditId,
+    })
   } catch {
     return
   }
 
-  const pagespeed = await fetchPageSpeedData(url)
-  const current = await runAllChecks(
-    url,
-    metadata,
-    pagespeed.desktop,
-    pagespeed.mobile,
-    []
-  )
+  if (auditResult.flowResult) {
+    await prisma.audit.update({
+      where: { id: recheckAuditId },
+      data: {
+        flowData: serializeFlowData(auditResult.flowResult) as never,
+      },
+    })
+  }
 
-  const currentCheckIds = new Set(
-    current.filter((f) => VERIFIABLE_CHECK_IDS.has(f.checkId)).map((f) => f.checkId)
-  )
+  const currentCheckIds = currentVerifiableCheckIds(auditResult.flags)
 
   for (const flag of parentFlags) {
     if (!flag.checkId || !VERIFIABLE_CHECK_IDS.has(flag.checkId)) continue

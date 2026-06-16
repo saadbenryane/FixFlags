@@ -1,6 +1,6 @@
 import { describe, it, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { runMetadataChecks } from '@/lib/audit/checks/metadata-checks'
+import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
@@ -11,6 +11,7 @@ import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
+import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
 import {
   healthyDesktopPs,
   healthyMeta,
@@ -41,6 +42,10 @@ describe('audit check registry', () => {
   it('documents all deterministic checkIds', () => {
     assert.equal(ALL_CHECK_IDS.length, CHECK_ID_COUNT)
     assert.equal(new Set(ALL_CHECK_IDS).size, CHECK_ID_COUNT)
+  })
+
+  it('every checkId has a verification rule', () => {
+    assert.ok(allCheckIdsHaveVerificationRules())
   })
 })
 
@@ -487,6 +492,15 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'description-too-long': () =>
       checkIds(runMetadataChecks(healthyMeta({ description: 'A'.repeat(161) }))),
     'og-image-missing': () => checkIds(runMetadataChecks(healthyMeta({ ogImage: null }))),
+    'og-image-broken': async () => {
+      restoreFetch = mockFetchHead({ '/broken.png': 404 })
+      return checkIds(
+        await runOgImageUrlCheck(
+          'https://example.com',
+          healthyMeta({ ogImage: 'https://example.com/broken.png' })
+        )
+      )
+    },
     'og-title-missing': () => checkIds(runMetadataChecks(healthyMeta({ ogTitle: null }))),
     'og-description-missing': () =>
       checkIds(runMetadataChecks(healthyMeta({ ogDescription: null }))),

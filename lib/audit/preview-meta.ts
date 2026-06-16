@@ -4,21 +4,25 @@ export interface PreviewMeta {
   ogTitle: string | null
   ogDescription: string | null
   ogImage: string | null
+  ogImageOk: boolean
   url: string
 }
 
 export function parsePreviewMeta(
   htmlMetadata: unknown,
-  url: string
+  url: string,
+  options?: { ogImageOk?: boolean }
 ): PreviewMeta | null {
   if (!htmlMetadata || typeof htmlMetadata !== 'object') return null
   const data = htmlMetadata as Record<string, unknown>
+  const ogImage = typeof data.ogImage === 'string' ? data.ogImage : null
   return {
     title: typeof data.title === 'string' ? data.title : null,
     description: typeof data.description === 'string' ? data.description : null,
     ogTitle: typeof data.ogTitle === 'string' ? data.ogTitle : null,
     ogDescription: typeof data.ogDescription === 'string' ? data.ogDescription : null,
-    ogImage: typeof data.ogImage === 'string' ? data.ogImage : null,
+    ogImage,
+    ogImageOk: options?.ogImageOk ?? Boolean(ogImage),
     url,
   }
 }

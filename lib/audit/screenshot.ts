@@ -1,16 +1,14 @@
-import puppeteer, { Browser, ConsoleMessage, Page } from 'puppeteer'
+import puppeteer, { Browser } from 'puppeteer'
 import fs from 'fs'
-import { uploadScreenshot } from '../storage/screenshots'
+import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
-import { logger } from '../logger'
+import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
+import { createAuditPage } from './browser/page-session'
 
 let browser: Browser | null = null
-
-const SETTLE_MS = 1500
-const TIMEOUT_MS = 30_000
 
 function getChromePath(): string | undefined {
   const paths = [
@@ -68,41 +66,15 @@ async function captureDesktopWithFlow(
     html: null,
     flowResult: null,
   }
-  let page: Page | null = null
 
+  let page = null
   try {
-    page = await b.newPage()
-    await page.setRequestInterception(true)
-    page.on('request', (request) => {
-      const protocol = new URL(request.url()).protocol
-      if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
-        void request.continue()
-        return
-      }
-      void assertPublicAuditUrl(request.url())
-        .then(() => request.continue())
-        .catch(() => request.abort('blockedbyclient'))
-    })
-    page.on('console', (msg: ConsoleMessage) => {
-      if (msg.type() === 'error') {
-        consoleErrors.push({ type: msg.type(), text: msg.text() })
-      }
-    })
-
-    await page.setViewport({
+    const session = await createAuditPage(b, targetUrl, {
       width: DESKTOP_VIEWPORT.width,
       height: DESKTOP_VIEWPORT.height,
+      consoleErrors,
     })
-
-    const response = await page.goto(targetUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: TIMEOUT_MS,
-    })
-    const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
-    if (!response?.ok() || (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml'))) {
-      throw new Error('Destination did not return a successful HTML document')
-    }
-    await settlePage(page)
+    page = session.page
 
     result.html = await page.content()
 
@@ -112,12 +84,19 @@ async function captureDesktopWithFlow(
 
     if (runFlow) {
       try {
-        result.flowResult = await runFlowScan(page, auditId, targetUrl)
+        const landingStep = {
+          label: 'Landing',
+          screenshotUrl: result.url,
+          url: page.url(),
+        }
+        result.flowResult = await runFlowScan(page, auditId, targetUrl, { landingStep })
       } catch (err) {
         logger.error('Flow scan failed', err)
         result.flowResult = {
           status: 'skipped',
-          steps: [],
+          steps: result.url
+            ? [{ label: 'Landing', screenshotUrl: result.url, url: page.url() }]
+            : [],
           finalUrl: page.url(),
         }
       }
@@ -149,50 +128,23 @@ async function captureViewport(
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, html: null }
-  let page: Page | null = null
+  let page = null
 
   try {
-    page = await b.newPage()
-    await page.setRequestInterception(true)
-    page.on('request', (request) => {
-      const protocol = new URL(request.url()).protocol
-      if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
-        void request.continue()
-        return
-      }
-      void assertPublicAuditUrl(request.url())
-        .then(() => request.continue())
-        .catch(() => request.abort('blockedbyclient'))
-    })
-    page.on('console', (msg: ConsoleMessage) => {
-      if (msg.type() === 'error') {
-        consoleErrors.push({ type: msg.type(), text: msg.text() })
-      }
-    })
-
-    await page.setViewport({
+    const session = await createAuditPage(b, targetUrl, {
       width: options.width,
       height: options.height,
       isMobile: options.isMobile,
       deviceScaleFactor: options.deviceScaleFactor,
+      consoleErrors,
     })
-
-    const response = await page.goto(targetUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: TIMEOUT_MS,
-    })
-    const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
-    if (!response?.ok() || (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml'))) {
-      throw new Error('Destination did not return a successful HTML document')
-    }
-    await settlePage(page)
+    page = session.page
 
     if (options.captureHtml) {
       result.html = await page.content()
     }
 
-    const buffer = await page.screenshot({ type: 'png', fullPage: false }) as Buffer
-
+    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)
   } catch (err) {
@@ -204,11 +156,6 @@ async function captureViewport(
   }
 
   return result
-}
-
-async function settlePage(_page: Page) {
-  void _page
-  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
 }
 
 export async function captureScreenshots(

@@ -99,7 +99,12 @@ export async function getGatedAuditForRequest(id: string) {
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics })
   const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
-  const previewMeta = parsePreviewMeta(audit.htmlMetadata, audit.url)
+  const ogImageBroken = audit.flags.some(
+    (f) => f.checkId === 'og-image-broken' && f.status !== 'FIXED'
+  )
+  const previewMeta = parsePreviewMeta(audit.htmlMetadata, audit.url, {
+    ogImageOk: !ogImageBroken,
+  })
   const flowData = parseFlowData(audit.flowData)
 
   const rubricSources = sanitizedRubrics.map((r) => ({

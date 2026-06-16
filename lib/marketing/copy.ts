@@ -283,10 +283,45 @@ export const WHATS_CHECKED_SECTION = {
 } as const
 
 export const TRUST_STRIP = [
-  'Message, Experience, Reach',
-  'Fix prompts included',
-  'Re-check after fixes',
+  'Slop & dead CTA detection',
+  'Automated CTA flow test',
+  'Live search & social previews',
 ] as const
+
+export const FLOW_SCAN_STATUS = {
+  success: {
+    label: 'Passed',
+    description: 'The primary CTA navigated to a meaningful destination.',
+  },
+  no_cta: {
+    label: 'No CTA found',
+    description: 'No clickable signup, pricing, or get-started control was visible in the viewport.',
+  },
+  unclickable: {
+    label: 'CTA not clickable',
+    description: 'A CTA was detected but could not be clicked (overlay, disabled, or obscured).',
+  },
+  error_response: {
+    label: 'Error page',
+    description: 'The CTA destination returned a 4xx or 5xx HTTP status.',
+  },
+  dead_end: {
+    label: 'Dead end',
+    description: 'Clicking the CTA did not change the URL or page content meaningfully.',
+  },
+  external_leave: {
+    label: 'Left your domain',
+    description: 'The CTA sent users to an external site instead of signup or pricing on your domain.',
+  },
+  skipped: {
+    label: 'Skipped',
+    description: 'Flow scan could not run during this audit. Try a full re-check.',
+  },
+  timeout: {
+    label: 'Timed out',
+    description: 'Flow scan exceeded the time limit before completing the click-through.',
+  },
+} as const
 
 export const RUBRICS = [
   {
@@ -294,14 +329,14 @@ export const RUBRICS = [
     name: 'Message',
     statuses: 'Pass / Needs Attention / Blocked',
     whatWeCheck:
-      'Headline clarity, audience fit, benefit hierarchy, CTA specificity, social proof, and pricing confidence.',
+      'Headline clarity, placeholder copy, dead CTA links, audience fit, and pricing confidence.',
     topics: [
       'Headline and subhead are specific to this product, not generic',
+      'No Lorem ipsum, TODO markers, or unreplaced template tokens in visible copy',
+      'Primary CTA links point to real destinations, not href="#"',
       'The hero says what the product does and who it is for',
       'Benefits and outcomes are clear before feature lists',
-      'CTA copy is specific, not vague ("Get started" without context)',
       'Social proof, trust signals, and pricing confidence feel credible',
-      'Copy hierarchy is scannable; claims are specific, not inflated',
     ],
   },
   {
@@ -309,11 +344,11 @@ export const RUBRICS = [
     name: 'Experience',
     statuses: 'Pass / Needs Attention / Blocked',
     whatWeCheck:
-      'Layout, mobile usability, accessibility basics, Core Web Vitals, and broken interactions.',
+      'Layout, mobile usability, accessibility basics, Core Web Vitals, and automated CTA click-through.',
     topics: [
+      'Automated CTA flow test: click primary CTA and capture before/after screenshots',
+      'Flow flags for dead-end clicks, 404 destinations, and unclickable CTAs',
       'Primary CTA visible above the fold on desktop and mobile screenshots',
-      'Layout, buttons, forms, and flows work without confusion',
-      'Mobile tap targets, viewport, and CTA visibility on 375px screens',
       'Keyboard use, contrast, labels, and accessibility basics',
       'Core Web Vitals, load speed, and visual polish',
       'No broken interactions, console errors, or layout shift issues',
@@ -324,12 +359,12 @@ export const RUBRICS = [
     name: 'Reach',
     statuses: 'Pass / Needs Attention / Blocked',
     whatWeCheck:
-      'SEO metadata, share previews, privacy and contact links, and measurement setup.',
+      'SEO metadata, live search and social preview cards, og:image validation, and indexability.',
     topics: [
-      'Title, description, og:image, favicon, and share preview tags',
+      'Live Google snippet and social link preview cards in your report',
+      'Title, description, og:image (validated), favicon, and share preview tags',
       'Indexability, structured data, and heading hierarchy',
       'Privacy policy and contact links are easy to find',
-      'Analytics and conversion events appear configured where expected',
       'Public links and metadata explain the product when shared',
     ],
   },

@@ -1,3 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 32" fill="none" role="img" aria-label="FixFlags">
-  <text x="0" y="24" fill="hsl(25 10% 13%)" font-family="Georgia, serif" font-size="22" font-weight="600" letter-spacing="-0.02em">FixFlags</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 40" fill="none" role="img" aria-label="FixFlags">
+  <rect x="0" y="20" width="5.5" height="16" rx="2.5" fill="#0F1115"/>
+  <rect x="8.5" y="14" width="5.5" height="22" rx="2.5" fill="#0F1115"/>
+  <rect x="17" y="8" width="5.5" height="28" rx="2.5" fill="#FF4D1F"/>
+  <path d="M22.5 7 L27.5 11 L22.5 14 Z" fill="#FF4D1F"/>
+  <rect x="25.5" y="14" width="5.5" height="22" rx="2.5" fill="#0F1115"/>
+  <rect x="34" y="20" width="5.5" height="16" rx="2.5" fill="#0F1115"/>
+  <text x="52" y="28" fill="#0F1115" font-family="Satoshi, Inter, system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.02em">FixFlags</text>
 </svg>

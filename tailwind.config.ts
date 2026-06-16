@@ -25,7 +25,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'ui-serif', 'Georgia', 'serif'],
+        display: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       colors: {
@@ -64,6 +64,9 @@ const config: Config = {
         brand: {
           DEFAULT: 'hsl(var(--brand))',
           foreground: 'hsl(var(--brand-foreground))',
+          muted: 'hsl(var(--brand-muted))',
+          border: 'hsl(var(--brand-border))',
+          hover: 'hsl(var(--brand-hover))',
         },
         link: {
           DEFAULT: 'hsl(var(--link))',

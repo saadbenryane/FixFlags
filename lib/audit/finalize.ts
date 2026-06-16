@@ -22,6 +22,7 @@ interface FinalizeAuditInput {
     aiAssessment: boolean
     desktopPageSpeed: boolean
     mobilePageSpeed: boolean
+    flowScan?: boolean
   }
 }
 

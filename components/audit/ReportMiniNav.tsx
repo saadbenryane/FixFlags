@@ -1,23 +1,44 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FilterPill } from '@/components/ui/filter-pill'
 import { cn } from '@/lib/utils'
 
-const SECTIONS = [
+const BASE_SECTIONS = [
   { id: 'report-overview', label: 'Overview' },
   { id: 'report-flags', label: 'Flags' },
   { id: 'report-rubrics', label: 'Rubrics' },
   { id: 'report-recheck', label: 'Re-check' },
 ] as const
 
-export function ReportMiniNav({ className }: { className?: string }) {
-  const [active, setActive] = useState<string>(SECTIONS[0].id)
+type NavSection = { id: string; label: string }
+
+interface Props {
+  className?: string
+  showPreviews?: boolean
+  showFlow?: boolean
+}
+
+export function ReportMiniNav({ className, showPreviews, showFlow }: Props) {
+  const sections = useMemo((): NavSection[] => {
+    const items: NavSection[] = [...BASE_SECTIONS]
+    const overviewIndex = items.findIndex((s) => s.id === 'report-overview')
+    const insertAt = overviewIndex >= 0 ? overviewIndex + 1 : 0
+    const optional: Array<{ id: string; label: string }> = []
+    if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
+    if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })
+    if (optional.length > 0) {
+      items.splice(insertAt, 0, ...optional)
+    }
+    return items
+  }, [showPreviews, showFlow])
+
+  const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
 
   useEffect(() => {
     const observers: IntersectionObserver[] = []
 
-    for (const section of SECTIONS) {
+    for (const section of sections) {
       const el = document.getElementById(section.id)
       if (!el) continue
 
@@ -36,7 +57,7 @@ export function ReportMiniNav({ className }: { className?: string }) {
     }
 
     return () => observers.forEach((o) => o.disconnect())
-  }, [])
+  }, [sections])
 
   function scrollTo(id: string) {
     const el = document.getElementById(id)
@@ -55,7 +76,7 @@ export function ReportMiniNav({ className }: { className?: string }) {
         className
       )}
     >
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <FilterPill
           key={section.id}
           active={active === section.id}

@@ -18,9 +18,9 @@ function SerpPreview({ preview }: Props) {
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         Google search preview
       </p>
-      <div className="rounded-lg border bg-card p-4 shadow-sm space-y-1">
+      <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
         <p className="text-xs text-muted-foreground">{hostname}</p>
-        <p className="text-base text-[#1a0dab] dark:text-blue-400 leading-snug">
+        <p className="text-base text-link leading-snug">
           {title || 'Missing page title'}
         </p>
         <p className="text-sm text-muted-foreground leading-snug">
@@ -35,26 +35,32 @@ function SocialPreview({ preview }: Props) {
   const title = preview.ogTitle ?? preview.title ?? 'Missing title'
   const description =
     preview.ogDescription ?? preview.description ?? 'Missing description'
+  const showBrokenImage = Boolean(preview.ogImage) && !preview.ogImageOk
 
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         Social link preview
       </p>
-      <div className="rounded-lg border bg-card overflow-hidden shadow-sm max-w-md">
-        {preview.ogImage ? (
+      <div className="rounded-card border-0 bg-card overflow-hidden shadow-card max-w-md">
+        {preview.ogImage && preview.ogImageOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview.ogImage}
             alt=""
             className="aspect-[1.91/1] w-full object-cover bg-muted"
           />
+        ) : showBrokenImage ? (
+          <div className="aspect-[1.91/1] w-full bg-muted flex flex-col items-center justify-center gap-1 text-sm text-muted-foreground px-4 text-center">
+            <span className="font-medium text-foreground">og:image broken</span>
+            <span className="text-xs">The image URL does not load</span>
+          </div>
         ) : (
           <div className="aspect-[1.91/1] w-full bg-muted flex items-center justify-center text-sm text-muted-foreground">
             No og:image
           </div>
         )}
-        <div className="p-3 space-y-1 border-t">
+        <div className="p-3 space-y-1 border-t border-border/60">
           <p className="text-[10px] uppercase text-muted-foreground tracking-wide">
             {displayHostname(preview.url)}
           </p>

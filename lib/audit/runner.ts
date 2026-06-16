@@ -58,6 +58,7 @@ interface PageRun {
   mobileError?: string
   desktopScreenshot: boolean
   mobileScreenshot: boolean
+  flowScan: boolean
   desktopBase64: string
   mobileBase64: string | null
   flags: DeterministicFlag[]
@@ -214,6 +215,9 @@ async function runPage(
     })
   } else {
     await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
+    if (input.primary && input.position === 0) {
+      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
+    }
     const captureStart = Date.now()
 
     const [captured, speed] = await Promise.all([
@@ -453,6 +457,7 @@ async function runPage(
     mobileError: pagespeed?.mobileError,
     desktopScreenshot: Boolean(desktopBase64),
     mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
+    flowScan: Boolean(input.primary && input.position === 0 && flowResult),
     desktopBase64,
     mobileBase64,
     flags,
@@ -662,6 +667,7 @@ export async function runAudit(auditId: string): Promise<void> {
         aiAssessment: pageRuns.every((page) => Boolean(page.judge)),
         desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
         mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+        flowScan: pageRuns.some((page) => page.flowScan),
       },
     })
   } catch (error) {

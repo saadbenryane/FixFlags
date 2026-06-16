@@ -2,7 +2,9 @@
 
 ## What We Ship
 
-- **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis.
+- **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
+- **CTA flow test** (free): automated click-through on the primary CTA with before/after screenshots and flow flags.
+- **Preview cards** (free): live Google snippet and social link preview rendered in the report.
 - **AI review** (paid, 3 free trials): reads desktop + mobile screenshots, PageSpeed data, and deterministic flags. Outputs rubric scores, AI-generated flags, and fix prompts.
 - **Fix prompts** (paid after 3): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from the user's page.
 - **Re-check loop** (free, unlimited on all plans): re-run the same URL, diff flags, show before/after comparison. This is the core habit.

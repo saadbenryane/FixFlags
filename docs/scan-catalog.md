@@ -30,7 +30,6 @@ Does the page communicate clearly and convert? Copy, positioning, CTAs, credibil
 |-------------|--------|-------|
 | **CTA focus scan** | agent + AI | Annotated mobile screenshot, CTA contrast, competing CTAs |
 | **Social proof scan** | AI | Testimonial credibility, pricing confidence |
-| **Flow scan (message layer)** | agent | CTA destination matches headline promise |
 
 ---
 
@@ -72,7 +71,7 @@ Can people find, share, trust, and measure the site? SEO, previews, legal, analy
 
 | Scan family | Method | Check IDs |
 |-------------|--------|-----------|
-| **Metadata scan** | deterministic | `title-missing`, `title-too-short`, `title-too-long`, `description-missing`, `description-too-short`, `description-too-long`, `og-image-missing`, `og-title-missing`, `og-description-missing`, `canonical-missing`, `robots-blocks-indexing`, `favicon-missing` |
+| **Metadata scan** | deterministic | `title-missing`, `title-too-short`, `title-too-long`, `description-missing`, `description-too-short`, `description-too-long`, `og-image-missing`, `og-image-broken`, `og-title-missing`, `og-description-missing`, `canonical-missing`, `robots-blocks-indexing`, `favicon-missing` |
 | **SEO scan** | deterministic | `h1-missing`, `h1-multiple`, `no-structured-data`, `external-links-unsafe`, `sitemap-missing`, `robots-txt-missing`, `broken-internal-links` |
 | **Trust scan** | deterministic | `no-https`, `no-privacy-policy`, `no-contact-info`, `cookie-consent-absent` |
 | **Preview cards UI** | UI | Rendered Google snippet + social card from metadata |

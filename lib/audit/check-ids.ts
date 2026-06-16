@@ -8,6 +8,7 @@ export const ALL_CHECK_IDS = [
   'description-too-short',
   'description-too-long',
   'og-image-missing',
+  'og-image-broken',
   'og-title-missing',
   'og-description-missing',
   'viewport-missing',

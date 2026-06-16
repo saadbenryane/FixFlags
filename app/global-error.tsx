@@ -22,7 +22,7 @@ export default function GlobalError({
         </p>
         <button
           onClick={() => reset()}
-          className="mt-6 rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90"
+          className="mt-6 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-brand-hover"
         >
           Try again
         </button>

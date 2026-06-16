@@ -1,8 +1,11 @@
 import type { Browser, Page } from 'puppeteer'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
-import { discoverFlowCtas, rankCtaCandidate } from './discover-cta'
+import { discoverFlowCtas, flowCtaSelector, rankCtaCandidate } from './discover-cta'
 import { resolveSameOrigin } from './link-scoring'
+import { urlsMeaningfullyChanged } from './flow-url'
+import { createAuditPage } from '@/lib/audit/browser/page-session'
+import { DESKTOP_VIEWPORT } from '@/lib/audit/viewports'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -29,6 +32,12 @@ export interface FlowScanResult {
   finalUrl: string
   ctaText?: string
   httpStatus?: number
+}
+
+export interface RunFlowScanOptions {
+  deadlineMs?: number
+  /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
+  landingStep?: FlowScanStep | null
 }
 
 async function captureFlowStep(
@@ -61,8 +70,9 @@ export async function runFlowScan(
   page: Page,
   auditId: string,
   pageUrl: string,
-  deadlineMs: number = FLOW_SCAN_TIMEOUT_MS
+  options: RunFlowScanOptions = {}
 ): Promise<FlowScanResult> {
+  const deadlineMs = options.deadlineMs ?? FLOW_SCAN_TIMEOUT_MS
   const started = Date.now()
   const origin = new URL(pageUrl).origin
   const steps: FlowScanStep[] = []
@@ -71,7 +81,11 @@ export async function runFlowScan(
     return { status: 'timeout', steps, finalUrl: page.url() }
   }
 
-  steps.push(await captureFlowStep(page, auditId, 0, 'Landing'))
+  if (options.landingStep) {
+    steps.push(options.landingStep)
+  } else {
+    steps.push(await captureFlowStep(page, auditId, 0, 'Landing'))
+  }
 
   const candidates = await discoverFlowCtas(page, pageUrl)
   const cta = rankCtaCandidate(candidates)
@@ -80,17 +94,19 @@ export async function runFlowScan(
   }
 
   const landingUrl = page.url()
+  const selector = flowCtaSelector(cta.flowIdx)
   let clicked = false
+  let clickResponseStatus: number | undefined
 
   try {
-    await page.evaluate((selector) => {
-      const el = document.querySelector(selector)
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel)
       if (el instanceof HTMLElement) {
         el.scrollIntoView({ block: 'center' })
       }
-    }, cta.selector)
+    }, selector)
 
-    const clickTarget = await page.$(cta.selector)
+    const clickTarget = await page.$(selector)
     if (!clickTarget) {
       return {
         status: 'unclickable',
@@ -100,16 +116,18 @@ export async function runFlowScan(
       }
     }
 
+    const navigationPromise = page
+      .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
+      .catch(() => null)
+
     await Promise.race([
       (async () => {
         await clickTarget.click()
         clicked = true
-        try {
-          await page.waitForNavigation({
-            waitUntil: 'domcontentloaded',
-            timeout: FLOW_CLICK_TIMEOUT_MS,
-          })
-        } catch {
+        const response = await navigationPromise
+        if (response) {
+          clickResponseStatus = response.status()
+        } else {
           await new Promise((r) => setTimeout(r, 1500))
         }
       })(),
@@ -134,16 +152,7 @@ export async function runFlowScan(
   steps.push(await captureFlowStep(page, auditId, 1, 'After click'))
 
   const finalUrl = page.url()
-  let httpStatus: number | undefined
-  try {
-    const response = await page.goto(finalUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 5000,
-    })
-    httpStatus = response?.status()
-  } catch {
-    httpStatus = undefined
-  }
+  const httpStatus = clickResponseStatus
 
   if (httpStatus && httpStatus >= 400) {
     return {
@@ -165,7 +174,7 @@ export async function runFlowScan(
     }
   }
 
-  if (finalUrl === landingUrl || finalUrl === `${landingUrl}#`) {
+  if (!urlsMeaningfullyChanged(landingUrl, finalUrl)) {
     return {
       status: 'dead_end',
       steps,
@@ -189,10 +198,11 @@ export async function runFlowScanStandalone(
 ): Promise<FlowScanResult> {
   let page: Page | null = null
   try {
-    page = await browser.newPage()
-    await page.setViewport({ width: 1280, height: 900 })
-    await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
-    await new Promise((r) => setTimeout(r, 1500))
+    const session = await createAuditPage(browser, pageUrl, {
+      width: DESKTOP_VIEWPORT.width,
+      height: DESKTOP_VIEWPORT.height,
+    })
+    page = session.page
     return await runFlowScan(page, auditId, pageUrl)
   } catch (err) {
     logger.error('Standalone flow scan failed', err)

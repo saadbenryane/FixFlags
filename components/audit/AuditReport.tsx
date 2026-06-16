@@ -175,7 +175,10 @@ export function AuditReport({
         )}
       </div>
 
-      <ReportMiniNav />
+      <ReportMiniNav
+        showPreviews={Boolean(audit.previewMeta)}
+        showFlow={Boolean(audit.flowData)}
+      />
 
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
         <FlagSections flags={audit.flags} showFeedback={showFeedback} />

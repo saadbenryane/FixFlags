@@ -14,9 +14,9 @@ export function AuthCard({ title, subtitle, trustLine, children, footer }: AuthC
   return (
     <div className="w-full max-w-sm space-y-4">
       <div className="flex flex-col items-center space-y-3 text-center">
-        <Logo variant="wordmark" size="md" href="/" />
+        <Logo variant="lockup" size="md" href="/" />
         <div className="space-y-1">
-          <h1 className="font-display text-xl tracking-heading">{title}</h1>
+          <h1 className="font-sans text-xl font-semibold tracking-heading">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           {trustLine && <Muted className="text-xs">{trustLine}</Muted>}
         </div>

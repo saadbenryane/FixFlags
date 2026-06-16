@@ -4,10 +4,10 @@ import { cn } from '@/lib/utils'
 type HeadingLevel = 'h1' | 'h2' | 'h3' | 'h4'
 
 const headingStyles: Record<HeadingLevel, string> = {
-  h1: 'text-[2rem] sm:text-[2.625rem] md:text-[2.875rem] lg:text-[3.25rem] xl:text-[3.5rem]',
-  h2: 'text-[1.75rem] sm:text-[1.875rem] md:text-[2.125rem] lg:text-[2.375rem]',
-  h3: 'text-xl sm:text-[1.375rem] md:text-2xl',
-  h4: 'text-lg sm:text-xl',
+  h1: 'text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem]',
+  h2: 'text-2xl sm:text-[1.75rem] md:text-[2rem]',
+  h3: 'text-xl md:text-[1.25rem]',
+  h4: 'text-lg md:text-xl',
 }
 
 export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
@@ -18,7 +18,7 @@ export function PageTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
   return (
     <h1
       className={cn(
-        'font-display text-[1.625rem] font-normal leading-heading tracking-heading text-balance sm:text-[1.875rem]',
+        'font-sans text-[1.625rem] font-medium leading-heading tracking-heading text-balance sm:text-[2rem]',
         className
       )}
       {...props}
@@ -32,7 +32,7 @@ export function Heading({ as: Tag = 'h2', className, ...props }: HeadingProps) {
     <Tag
       className={cn(
         isDisplay
-          ? 'font-display font-normal leading-display tracking-display text-balance'
+          ? 'font-sans font-medium leading-display tracking-display text-balance'
           : 'font-sans font-semibold leading-heading tracking-heading text-balance',
         headingStyles[Tag],
         className
@@ -58,7 +58,7 @@ export function Body({ className, ...props }: React.HTMLAttributes<HTMLParagraph
   return (
     <p
       className={cn(
-        'max-w-prose text-base sm:text-lg leading-body tracking-body text-pretty text-foreground',
+        'max-w-prose text-base leading-body tracking-body text-pretty text-foreground',
         className
       )}
       {...props}
@@ -82,7 +82,7 @@ export function Prose({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        'max-w-prose text-base sm:text-lg leading-relaxed tracking-body text-pretty text-foreground',
+        'max-w-prose text-base leading-relaxed tracking-body text-pretty text-foreground',
         className
       )}
       {...props}
@@ -94,7 +94,7 @@ export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpan
   return (
     <span
       className={cn(
-        'font-mono text-[11px] uppercase tracking-label text-muted-foreground',
+        'font-mono text-[11px] font-medium uppercase tracking-label text-muted-foreground',
         className
       )}
       {...props}

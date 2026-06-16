@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
-import { BRAND, HERO } from '@/lib/marketing/copy'
+import { HERO } from '@/lib/marketing/copy'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
@@ -75,17 +75,17 @@ export function Header({
   const resolvedRight = right ?? defaultRight
 
   return (
-    <header className={cn('sticky top-0 z-navbar pt-3 pb-2 pointer-events-none', className)}>
-      <Container className="pointer-events-auto">
-        <div className="flex h-14 items-center justify-between gap-4 rounded-full glass-surface-elevated px-3 shadow-raised sm:px-4">
+    <header className={cn('sticky top-0 z-navbar border-b border-border bg-background/95 backdrop-blur-md', className)}>
+      <Container>
+        <div className="flex h-14 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <Logo
-              variant="wordmark"
+              variant="lockup"
               size="md"
               href={logoHref ?? defaultLogoHref}
             />
             {variant === 'admin' && (
-              <span className="hidden rounded-full bg-destructive px-2 py-0.5 text-[10px] font-medium uppercase tracking-label text-destructive-foreground sm:inline">
+              <span className="hidden rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-label text-destructive sm:inline">
                 Admin
               </span>
             )}

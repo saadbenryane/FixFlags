@@ -1,19 +1,32 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-/** Convert HSL components (h 0–360, s/l 0–100) to #rrggbb */
-export function hslToHex(h: number, s: number, l: number): string {
-  s /= 100
-  l /= 100
-  const a = s * Math.min(l, 1 - l)
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, '0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
+export const BRAND_HEX = {
+  primary: '#FF4D1F',
+  primaryLight: '#FF744D',
+  background: '#FFFFFF',
+  foreground: '#0F1115',
+  muted: '#F3F4F6',
+  mutedForeground: '#5B7380',
+  border: '#E5E7EB',
+  success: '#22C55E',
+  warning: '#FACC15',
+  error: '#EF4444',
+  info: '#3B82F6',
+} as const
+
+export const BRAND_HEX_DARK = {
+  primary: '#FF4D1F',
+  primaryLight: '#FF744D',
+  background: '#0F1115',
+  foreground: '#FFFFFF',
+  muted: '#2A2F3A',
+  mutedForeground: '#8B9BAA',
+  border: '#1C1F26',
+  success: '#22C55E',
+  warning: '#FACC15',
+  error: '#EF4444',
+  info: '#3B82F6',
+} as const
 
 export type GradeLetter = 'A' | 'B' | 'C' | 'D' | 'F'
 
@@ -32,47 +45,45 @@ export type BrandPalette = {
   grades: Record<GradeLetter, string>
 }
 
-/** Light palette — mirrors :root in tokens.css */
 export const brandLight: BrandPalette = {
-  background: hslToHex(42, 26, 99),
-  foreground: hslToHex(25, 10, 13),
-  card: hslToHex(42, 32, 99.5),
-  muted: hslToHex(38, 16, 96.5),
-  mutedForeground: hslToHex(25, 5, 44),
-  brand: hslToHex(28, 45, 38),
-  brandForeground: hslToHex(42, 26, 99),
-  border: hslToHex(36, 10, 90),
-  link: hslToHex(220, 45, 38),
-  success: hslToHex(142, 71, 45),
-  destructive: hslToHex(0, 72, 51),
+  background: BRAND_HEX.background,
+  foreground: BRAND_HEX.foreground,
+  card: BRAND_HEX.background,
+  muted: BRAND_HEX.muted,
+  mutedForeground: BRAND_HEX.mutedForeground,
+  brand: BRAND_HEX.primary,
+  brandForeground: '#FFFFFF',
+  border: BRAND_HEX.border,
+  link: BRAND_HEX.info,
+  success: BRAND_HEX.success,
+  destructive: BRAND_HEX.error,
   grades: {
-    A: hslToHex(142, 71, 45),
-    B: hslToHex(84, 81, 44),
-    C: hslToHex(28, 45, 38),
-    D: hslToHex(25, 95, 53),
-    F: hslToHex(0, 84, 60),
+    A: BRAND_HEX.success,
+    B: '#84CC16',
+    C: BRAND_HEX.primary,
+    D: '#F97316',
+    F: BRAND_HEX.error,
   },
 }
 
-/** Dark palette — mirrors .dark in tokens.css */
 export const brandDark: BrandPalette = {
-  background: hslToHex(25, 10, 6),
-  foreground: hslToHex(40, 16, 96),
-  card: hslToHex(25, 8, 8),
-  muted: hslToHex(25, 6, 13),
-  mutedForeground: hslToHex(30, 6, 58),
-  brand: hslToHex(32, 48, 52),
-  brandForeground: hslToHex(25, 10, 8),
-  border: hslToHex(25, 6, 15),
-  link: hslToHex(215, 55, 68),
-  success: hslToHex(142, 70, 45),
-  destructive: hslToHex(0, 62, 40),
+  background: BRAND_HEX_DARK.background,
+  foreground: BRAND_HEX_DARK.foreground,
+  card: BRAND_HEX_DARK.border,
+  muted: BRAND_HEX_DARK.muted,
+  mutedForeground: BRAND_HEX_DARK.mutedForeground,
+  brand: BRAND_HEX_DARK.primary,
+  brandForeground: '#FFFFFF',
+  border: BRAND_HEX_DARK.border,
+  link: BRAND_HEX_DARK.info,
+  success: BRAND_HEX_DARK.success,
+  destructive: BRAND_HEX_DARK.error,
   grades: {
-    A: hslToHex(142, 70, 45),
-    B: hslToHex(84, 75, 50),
-    C: hslToHex(32, 48, 52),
-    D: hslToHex(25, 90, 58),
-    F: hslToHex(0, 72, 55),
+    A: BRAND_HEX_DARK.success,
+    B: '#A3E635',
+    C: BRAND_HEX_DARK.primary,
+    D: '#FB923C',
+    F: BRAND_HEX_DARK.error,
   },
 }
 
@@ -92,7 +103,6 @@ export function scoreColorHex(score: number, mode: BrandMode = 'light'): string 
   return gradeColorHex(gradeFromScore(score), mode)
 }
 
-/** PWA manifest colors */
 export const manifestColors = {
   background_color: brandLight.background,
   theme_color: brandLight.brand,

@@ -1,11 +1,34 @@
 import { BRAND, HERO } from '@/lib/marketing/copy'
-import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
+import { BRAND_HEX, brandDark, brandLight, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
+import { LogoMarkSvg } from '@/lib/design/logo-mark'
 import { rubricLabel } from '@/lib/utils'
 
 type RubricOgRow = {
   name: string
   status: string
+}
+
+function OgLogoRow({ mode }: { mode: BrandMode }) {
+  const p = getBrandPalette(mode)
+  const barColor = mode === 'dark' ? brandDark.foreground : BRAND_HEX.foreground
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+      <LogoMarkSvg barColor={barColor} flagColor={p.brand} width={48} height={48} />
+      <div
+        style={{
+          fontSize: 28,
+          fontWeight: 700,
+          color: p.foreground,
+          fontFamily: ogFontFamilies.sans,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {BRAND.name}
+      </div>
+    </div>
+  )
 }
 
 /** Site-wide marketing OG card (1200×630) */
@@ -22,7 +45,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: p.background,
-        padding: '80px',
+        padding: '72px 80px',
       }}
     >
       <div
@@ -31,42 +54,32 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
           flexDirection: 'column',
           alignItems: 'flex-start',
           justifyContent: 'center',
-          maxWidth: 560,
+          maxWidth: 580,
         }}
       >
+        <OgLogoRow mode={mode} />
         <div
           style={{
-            fontSize: 20,
-            fontWeight: 600,
-            color: p.brand,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            fontFamily: ogFontFamilies.mono,
-            marginBottom: 16,
-          }}
-        >
-          {BRAND.name}
-        </div>
-        <div
-          style={{
-            fontSize: 42,
-            fontWeight: 700,
+            fontSize: 48,
+            fontWeight: 500,
             color: p.foreground,
-            lineHeight: 1.2,
-            marginBottom: 20,
-            fontFamily: ogFontFamilies.display,
+            lineHeight: 1.15,
+            marginBottom: 16,
+            fontFamily: ogFontFamilies.sans,
+            letterSpacing: '-0.02em',
           }}
         >
           {HERO.headlineLine1}
         </div>
         <div
           style={{
-            fontSize: 42,
-            fontWeight: 700,
+            fontSize: 48,
+            fontWeight: 500,
             color: p.foreground,
-            lineHeight: 1.2,
-            marginBottom: 32,
-            fontFamily: ogFontFamilies.display,
+            lineHeight: 1.15,
+            marginBottom: 28,
+            fontFamily: ogFontFamilies.sans,
+            letterSpacing: '-0.02em',
           }}
         >
           {HERO.headlineLine2}
@@ -80,7 +93,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             fontFamily: ogFontFamilies.sans,
           }}
         >
-          Flags across Message, Experience, and Reach. Every issue includes a copy-ready fix prompt.
+          FLAG ISSUES. <span style={{ color: p.brand, fontWeight: 700 }}>FOCUS</span> WHAT MATTERS.
         </div>
       </div>
 
@@ -91,16 +104,17 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: p.card,
-          borderRadius: 20,
+          borderRadius: 12,
           padding: '40px 48px',
-          boxShadow: '0 12px 40px -12px rgba(0,0,0,0.12)',
+          border: `1px solid ${p.border}`,
+          boxShadow: '0 8px 32px -8px rgba(15,17,21,0.1)',
         }}
       >
         <div
           style={{
             fontSize: 72,
             fontWeight: 700,
-            color: p.grades.C,
+            color: p.brand,
             fontFamily: ogFontFamilies.mono,
             lineHeight: 1,
             marginBottom: 4,
@@ -110,7 +124,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         </div>
         <div
           style={{
-            fontSize: 20,
+            fontSize: 18,
             color: p.mutedForeground,
             fontFamily: ogFontFamilies.mono,
             marginBottom: 16,
@@ -120,12 +134,13 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         </div>
         <div
           style={{
-            fontSize: 16,
+            fontSize: 14,
+            fontWeight: 500,
             color: p.brand,
-            backgroundColor: `${p.brand}18`,
-            borderRadius: 8,
-            padding: '6px 16px',
-            fontFamily: ogFontFamilies.mono,
+            backgroundColor: `${p.brand}14`,
+            borderRadius: 6,
+            padding: '6px 14px',
+            fontFamily: ogFontFamilies.sans,
           }}
         >
           fix prompts included
@@ -135,10 +150,8 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
   )
 }
 
-/** Favicon / app icon (32×32) */
-export function IconOgImage({ mode = 'light' }: { mode?: BrandMode }) {
-  const p = getBrandPalette(mode)
-
+/** Favicon / app icon - white mark on orange square */
+export function IconOgImage() {
   return (
     <div
       style={{
@@ -147,21 +160,11 @@ export function IconOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: p.brand,
+        backgroundColor: BRAND_HEX.primary,
         borderRadius: 8,
       }}
     >
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: p.brandForeground,
-          fontFamily: ogFontFamilies.display,
-          letterSpacing: '-0.02em',
-        }}
-      >
-        {BRAND.name.slice(0, 2)}
-      </div>
+      <LogoMarkSvg barColor={brandLight.background} flagColor={brandLight.background} width={24} height={24} />
     </div>
   )
 }
@@ -202,25 +205,15 @@ export function ReportOgImage({
           gap: 24,
         }}
       >
+        <OgLogoRow mode={mode} />
         <div
           style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: p.brand,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            fontFamily: ogFontFamilies.mono,
-          }}
-        >
-          {BRAND.name}
-        </div>
-        <div
-          style={{
-            fontSize: 42,
-            fontWeight: 700,
+            fontSize: 40,
+            fontWeight: 500,
             color: p.foreground,
             textAlign: 'center',
-            fontFamily: ogFontFamilies.display,
+            fontFamily: ogFontFamilies.sans,
+            letterSpacing: '-0.01em',
           }}
         >
           QA for AI-built products
@@ -252,24 +245,14 @@ export function ReportOgImage({
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div
-          style={{
-            fontSize: 18,
-            fontWeight: 600,
-            color: p.brand,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            fontFamily: ogFontFamilies.mono,
-          }}
-        >
-          {BRAND.name}
-        </div>
+        <OgLogoRow mode={mode} />
         <div
           style={{
             fontSize: 36,
-            fontWeight: 700,
+            fontWeight: 600,
             color: p.foreground,
-            fontFamily: ogFontFamilies.display,
+            fontFamily: ogFontFamilies.sans,
+            letterSpacing: '-0.01em',
           }}
         >
           {hostname}
@@ -303,7 +286,7 @@ export function ReportOgImage({
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 20, color: p.mutedForeground, fontFamily: ogFontFamilies.sans }}>
+        <div style={{ fontSize: 18, color: p.mutedForeground, fontFamily: ogFontFamilies.sans }}>
           Want your own report?
         </div>
         <div
@@ -312,9 +295,9 @@ export function ReportOgImage({
             flexDirection: 'column',
             alignItems: 'center',
             backgroundColor: p.card,
-            borderRadius: 16,
+            borderRadius: 12,
             padding: '28px 40px',
-            boxShadow: '0 6px 20px -4px rgba(0,0,0,0.08)',
+            border: `1px solid ${p.border}`,
           }}
         >
           <div

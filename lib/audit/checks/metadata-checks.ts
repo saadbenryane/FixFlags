@@ -193,3 +193,63 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
 
   return findings
 }
+
+export async function runOgImageUrlCheck(
+  pageUrl: string,
+  meta: PageMetadata
+): Promise<DeterministicFlag[]> {
+  if (!meta.ogImage) return []
+
+  let imageUrl: string
+  try {
+    imageUrl = new URL(meta.ogImage, pageUrl).toString()
+  } catch {
+    return [
+      {
+        checkId: 'og-image-broken',
+        rubric: 'REACH',
+        impactTag: 'SHARING',
+        severity: 'IMPORTANT',
+        problem: 'og:image URL is invalid',
+        evidence: `og:image content="${meta.ogImage}" could not be resolved`,
+        fix: 'Set og:image to an absolute HTTPS URL that returns a valid image (1200×630px recommended).',
+        confidence: 1.0,
+        source: 'DETERMINISTIC',
+      },
+    ]
+  }
+
+  try {
+    const headController = new AbortController()
+    const headTimer = setTimeout(() => headController.abort(), 5000)
+    const res = await fetch(imageUrl, { method: 'HEAD', signal: headController.signal })
+    clearTimeout(headTimer)
+    if (res.ok) return []
+
+    const getController = new AbortController()
+    const getTimer = setTimeout(() => getController.abort(), 5000)
+    const getRes = await fetch(imageUrl, {
+      method: 'GET',
+      signal: getController.signal,
+      headers: { Range: 'bytes=0-0' },
+    })
+    clearTimeout(getTimer)
+    if (getRes.ok) return []
+  } catch {
+    // fall through to flag
+  }
+
+  return [
+    {
+      checkId: 'og-image-broken',
+      rubric: 'REACH',
+      impactTag: 'SHARING',
+      severity: 'IMPORTANT',
+      problem: 'og:image URL does not load',
+      evidence: `HEAD/GET ${imageUrl} failed or returned an error status`,
+      fix: 'Fix the og:image URL so it returns 200 with a valid image. Check CDN permissions and absolute paths.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    },
+  ]
+}

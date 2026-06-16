@@ -5,9 +5,9 @@ export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 export type LogoTheme = 'light' | 'dark' | 'auto'
 
 const SIZE_MAP = {
-  sm: { mark: 24, wordmark: { width: 100, height: 24 } },
-  md: { mark: 32, wordmark: { width: 120, height: 28 } },
-  lg: { mark: 40, wordmark: { width: 140, height: 32 } },
+  sm: { mark: 28, wordmark: { width: 132, height: 30 } },
+  md: { mark: 36, wordmark: { width: 168, height: 36 } },
+  lg: { mark: 44, wordmark: { width: 200, height: 44 } },
 } as const
 
 type LogoSize = keyof typeof SIZE_MAP

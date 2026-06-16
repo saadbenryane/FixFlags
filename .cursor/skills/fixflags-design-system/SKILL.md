@@ -1,158 +1,82 @@
 ---
 name: fixflags-design-system
-description: FixFlags visual design tokens, kerning, spacing, concentric border radius, 60-30-10 color theory, typography scale. Use when building or polishing any FixFlags UI, marketing page, or component. Triggers on typography, spacing, colors, border radius, kerning, design tokens, or "make it feel designed."
+description: FixFlags visual design tokens, kerning, spacing, border radius, 60-30-10 color theory, typography scale. Use when building or polishing any FixFlags UI, marketing page, or component. Triggers on typography, spacing, colors, border radius, kerning, design tokens, or "make it feel designed."
 ---
 
 # FixFlags Design System
 
-Project tokens live in `lib/design/tokens.css` and `app/globals.css`. Brand constants for OG/email: `lib/design/brand-spec.ts`. Read before changing UI.
+UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
 
 ## Color theory (60-30-10)
 
 | Share | Token | Role |
 |-------|-------|------|
-| 60% | `--background`, `--muted` | Warm paper surfaces |
-| 30% | `--foreground`, `--primary` | Ink structure |
-| 10% | `--brand` (refined ochre) | CTAs, scores, focus, max 3× above fold |
+| 60% | `--background`, `--muted` | White / dark surfaces |
+| 30% | `--foreground` | Ink structure, headings |
+| 10% | `--brand` (`#FF4D1F`) | CTAs, flags, scores, focus |
 
 **Rules:**
-- Brand is ochre (28°), not neon amber
-- Depth via `--shadow-card` / `--shadow-raised`, not borders on cards
-- Section rhythm: `bg-muted/35` alternation, not `border-y`
-- Never add a second accent hue on marketing pages
-- Dark mode is re-authored, not inverted
+- Brand is vibrant orange `#FF4D1F`, hover `#FF744D`
+- Links use `--link` (info blue `#3B82F6`), not brand orange
+- Focus rings use brand orange on inputs
+- Dark mode is re-authored (`#0F1115` canvas), orange unchanged
+- Cards: `rounded-card` + border + `shadow-card`
 
-See also: [lean-visual.md](../fixflags-marketing/lean-visual.md) for borderless marketing rules.
+## Typography — Satoshi
 
-## Kerning & letter-spacing
+| Role | Font | Use |
+|------|------|-----|
+| All UI + marketing headings | Satoshi (`font-sans`) | H1–body, logo wordmark |
+| Scores / labels | IBM Plex Mono (`font-mono`) | Grades, tabular nums |
 
-| Role | Token | When |
-|------|-------|------|
-| Display h1 | `--tracking-display` (-0.012em) | Large serif only, subtle optical tighten |
-| Section h2–h3 | `--tracking-heading` (-0.006em) | Sans/semibold headings |
-| Body | `--tracking-body` (0) | Let browser `kern` work, do not tighten body |
-| Labels | `--tracking-label` (+0.12em) | Uppercase mono labels only |
+**Avoid:** Fraunces, Inter, DM Sans on new work.
 
-**Never** use `tracking-tight` on body or muted text. **Always** use positive tracking on uppercase labels.
-
-## Line-height & type scale
-
-| Role | Leading | Size range |
-|------|---------|------------|
-| Display | `--leading-display` (1.18) | 2rem–4rem |
-| Heading | `--leading-heading` (1.28) | 1.65rem–2.25rem |
-| Body | `--leading-body` (1.6) | 1rem–1.125rem |
-| Captions | 1.45 | 0.75rem–0.875rem |
-
-Use `text-wrap: balance` on headings, `text-wrap: pretty` on body paragraphs.
-
-## Font stack
-
-- **Display:** Fraunces variable (`font-display`, SOFT 50), hero h1, section h2, logo
-- **Body:** Source Sans 3 400/500/600/700 (`font-sans`), UI, paragraphs, forms
-- **Mono:** IBM Plex Mono 400/500, grades, labels, code blocks
-
-Enable: `font-feature-settings: "kern" 1, "liga" 1, "calt" 1` + `font-optical-sizing: auto`
-
-**Avoid:** Instrument Serif, DM Sans, Inter, generic startup stacks. Do not tighten body tracking.
-
-## Spacing (8px grid)
+## Radius
 
 | Token | Value | Use |
 |-------|-------|-----|
-| 2 | 8px | Tight inline gaps |
-| 3 | 12px | Icon + text |
-| 4 | 16px | Card padding, form gaps |
-| 6 | 24px | Section sub-blocks |
-| 8 | 32px | Between related groups |
-| 12–16 | 48–64px | Section vertical rhythm |
+| `--radius-input` | 6px | Buttons, inputs |
+| `--radius-card` | 12px | Cards, panels |
 
-Tighter inside groups; generous between sections. Hero gets the most air.
+**Anti-pattern:** `rounded-full` on buttons (legacy). Use `rounded-md`.
 
-## Concentric border radius
+## Logo
 
-**Formula:** `inner = outer − gap`
+- Component: `components/brand/Logo.tsx` — variants `mark`, `wordmark`, `lockup`
+- SVG assets: `public/brand/`
+- Mark: five bars, center orange with flag tip
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `--radius-input` | 6px | Small controls (non-pill) |
-| `--radius-inner` | 10px | Badges, nested chips |
-| `--radius-modal` | 14px | Dialogs, sheets |
-| `--radius-outer` / `--radius-card` | 20px | Cards, marketing panels |
-| `--radius-nested-md` | calc(20px − 12px) | Header/footer inside cards |
+## Dual-token accent
 
-**Anti-pattern:** Same radius on parent and padded child, creates pinched corners.
-
-Apply `rounded-t-[var(--radius-nested-md)]` on full-bleed card headers when outer is `--radius-card`.
-
-## App shell (dashboard, billing, settings)
-
-- Wrap pages in `Container` + `PageHeader`
-- Raised panels: `surface-raised rounded-xl p-6 shadow-card` — not `rounded-xl border`
-- Settings nav: `SETTINGS_NAV` in `lib/site/nav.ts`
-
-## Shared constants
-
-- Audit area order: `AREA_ORDER` from `lib/audit/constants.ts` (UI, judge repair, MCP)
-
-## Component defaults
-
-- **Upsells / upgrade cards:** `surface-raised` or `shadow-card`, not `border-2 border-primary/20`
-- **Buttons:** pill (`rounded-full`), primary = ink, outline = border
-- **Inputs (audit):** pill, exception to 6px rule (signature pattern)
-- **Cards:** `--radius-card`, shadow over heavy borders
-- **Grade badges:** `--radius-inner`, tabular nums
-
-## Dual-token accent (links vs brand)
-
-- **`--link` / `--focus-ring`**: slate-blue, text links, keyboard focus (never brand)
-- **`--brand`**: refined ochre (~45% sat), CTAs, scores, badges only
-- Use `TextLink` for inline links; `Button` primary for CTAs
-
-## Layout grid
-
-- `Container` variants: `default` (1280px), `narrow` (672px), `prose` (720px), `report` (896px), `content` (768px), `wide` (1152px)
-- `PageGrid` 12-col: `text` (7), `card` (5), `intro`/`content` splits
-- App pages: `Container` + `PageHeader` + `space-y-8 py-8`
-- Settings: `narrow` container + tab nav with `border-b border-border/60`
-- Section titles align to same container left edge, no orphan `max-w-2xl` on outer Container
-
-## Calm by default + progressive disclosure
-
-- **Above the fold:** one primary action + one proof block; hide detail behind expand/chevron
-- **Surfaces:** prefer `Surface` (`elevated` / `nested`) or `border-0 shadow-card` over bordered panels
-- **Motion:** `--motion-fast` (200ms) + `--ease-out` for hovers; match buttons, nav, cards
-- **Header offset:** use `top-[var(--header-offset)]` for sticky report nav, banners, scroll anchors
-- **Filter pills:** reuse `FilterPill` for examples, report mini-nav, FAQ anchors
-
-## Pre-ship checklist
-
-- [ ] Headings use balance wrap; body uses pretty wrap
-- [ ] Only uppercase labels have wide tracking
-- [ ] Nested rounded elements use concentric formula
-- [ ] Brand amber appears ≤5 times above the fold
-- [ ] Focus rings use `--ring` (focus-ring), never removed
-- [ ] Numbers in scores use `tabular-nums`
+- **`--link`**: info blue for inline links (`TextLink`)
+- **`--brand`**: orange for CTAs, scores, flagged states
+- **`--focus-ring`**: brand orange
 
 ## Rebrand file layout
-
-Centralize brand changes here (do not scatter hex):
 
 | File | Purpose |
 |------|---------|
 | `lib/design/tokens.css` | CSS variables (light + `.dark`) |
 | `lib/design/brand-spec.ts` | Hex for OG, email, manifest |
-| `lib/design/fonts.ts` | Font loaders |
-| `lib/design/og-templates.tsx` | OG + favicon layouts |
-| `lib/design/brand-rules.md` | Brand rules reference |
+| `lib/design/fonts.ts` | Satoshi + IBM Plex Mono |
+| `lib/design/og-templates.tsx` | OG + favicon |
+| `lib/design/logo-mark.tsx` | Flag-bar SVG |
 | `components/brand/Logo.tsx` | Logo component |
-| `public/brand/` | SVG assets |
 
 **Rule:** No raw hex in components. Use Tailwind semantic tokens or `brand-spec.ts`.
 
+## Pre-ship checklist
+
+- [ ] Headings use `font-sans`, balance wrap on h1–h2
+- [ ] Primary buttons: orange, `rounded-md`
+- [ ] Brand orange ≤5× above fold on marketing
+- [ ] Focus rings on all interactive elements
+- [ ] Scores use `font-mono tabular-nums`
+- [ ] Logo lockup in header (light/dark SVG swap)
+
 ## Companion skills
 
-- `color-theory`, palette validation, contrast, harmony
-- `make-interfaces-feel-better`, concentric radius, shadows, micro-interaction
-- `ui-craft`, anti-slop, craft knobs
-- `web-design-guidelines`, a11y compliance audit
+- `color-theory`, palette validation, contrast
+- `make-interfaces-feel-better`, shadows, micro-interaction
+- `ui-craft`, anti-slop
+- `fixflags-marketing/lean-visual.md`
