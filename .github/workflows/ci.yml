@@ -56,7 +56,8 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-      - run: npm ci
+      # NODE_ENV=production omits devDependencies; we still need eslint/tsc for verify.
+      - run: npm ci --include=dev
       - run: npm run db:generate
       - name: Apply migrations to existing database
         run: npm run db:deploy
