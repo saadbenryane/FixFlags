@@ -1,86 +1,135 @@
-import { ArrowRight, Check, X } from 'lucide-react'
-import { Card } from '@/components/ui/card'
+import { Check, X } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { TextLink } from '@/components/ui/text-link'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
-import { CASE_STUDIES, CASE_STUDIES_SECTION } from '@/lib/marketing/copy'
 
-function ImpactCard({
-  label,
-  items,
+function CircleScore({
   score,
   positive,
 }: {
-  label: string
-  items: readonly string[]
-  score: number | null
+  score: number
   positive: boolean
 }) {
+  const radius = 36
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (score / 100) * circumference
+
   return (
-    <Card className="flex h-full flex-col border-0 bg-terminal p-5 text-terminal-foreground shadow-card sm:p-6">
-      <p className="font-mono text-[11px] uppercase tracking-label text-terminal-muted">{label}</p>
-      <ul className="mt-4 space-y-2.5">
-        {items.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm">
-            <span
-              className={positive ? 'mt-0.5 text-success' : 'mt-0.5 text-destructive'}
-              aria-hidden
-            >
-              {positive ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-            </span>
-            <span className="text-terminal-foreground/90">{item}</span>
-          </li>
-        ))}
-      </ul>
-      {score != null ? (
-        <div className="mt-auto pt-6">
-          <p className="font-mono text-[10px] uppercase tracking-label text-terminal-muted">
-            Overall score
-          </p>
-          <p className="mt-1 font-mono text-4xl font-medium tabular-nums">{score}</p>
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative h-20 w-20">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden>
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${circumference}`}
+            strokeDashoffset={offset}
+            className={positive ? 'text-emerald-400' : 'text-orange-400'}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-mono text-2xl font-bold tabular-nums text-white">{score}</span>
         </div>
-      ) : null}
-    </Card>
+      </div>
+      <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Performance</span>
+    </div>
   )
 }
 
-export function RealImpactSection() {
-  const study = CASE_STUDIES[0]
-  const beforeItems = [`Missing ${study.area.toLowerCase()} signal`, study.title]
-  const afterItems = [study.outcome]
+const BEFORE_ITEMS = [
+  'Vague hero, low clarity',
+  'Slow mobile load',
+  'Missing social preview',
+  'Weak CTA',
+]
 
+const AFTER_ITEMS = [
+  'Clear value in 5 seconds',
+  'Faster and smoother',
+  'Great social preview',
+  'Stronger CTA',
+]
+
+export function RealImpactSection() {
   return (
     <Section spacing="marketing" id="real-impact" className="scroll-mt-[var(--header-offset)]">
-      <Container className="space-y-12 sm:space-y-14">
-        <LandingSectionHeader label={CASE_STUDIES_SECTION.label} headline={CASE_STUDIES_SECTION.headline} />
+      <Container className="space-y-12 sm:space-y-16">
+        <LandingSectionHeader
+          label="SEE WHAT CHANGED"
+          headline="Real impact. Not opinions."
+        />
 
-        <div className="grid items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8">
-          <ImpactCard
-            label="Before"
-            items={beforeItems}
-            score={study.scoreBefore ?? null}
-            positive={false}
-          />
-          <div className="flex items-center justify-center">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand lg:h-12 lg:w-12">
-              <ArrowRight className="h-5 w-5 rotate-90 lg:rotate-0" aria-hidden />
-            </span>
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+          {/* BEFORE */}
+          <div className="rounded-2xl bg-gray-900 p-6 sm:p-8">
+            <div className="mb-5 flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">BEFORE</span>
+            </div>
+
+            {/* mock headline */}
+            <div className="mb-5 rounded-xl border border-white/5 bg-white/5 px-4 py-3">
+              <p className="text-sm font-semibold text-white/60 line-through">
+                Build something amazing with AI
+              </p>
+              <p className="mt-1 text-[11px] text-white/30">The all-in-one platform for next-gen teams.</p>
+            </div>
+
+            <ul className="space-y-2.5">
+              {BEFORE_ITEMS.map((item) => (
+                <li key={item} className="flex items-center gap-3 text-sm">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/15">
+                    <X className="h-3 w-3 text-red-400" aria-hidden />
+                  </span>
+                  <span className="text-white/60">{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-5">
+              <span className="text-xs text-white/30">Overall score</span>
+              <CircleScore score={62} positive={false} />
+            </div>
           </div>
-          <ImpactCard
-            label="After"
-            items={afterItems}
-            score={study.scoreAfter ?? null}
-            positive
-          />
-        </div>
 
-        <div className="flex flex-col items-center gap-4 text-center">
-          <TextLink href={study.proofLink} className="text-sm font-medium">
-            View sample report
-          </TextLink>
-          <ThirdPartyAuditDisclaimer variant="compact" className="max-w-lg" />
+          {/* AFTER */}
+          <div className="rounded-2xl bg-gray-900 p-6 ring-1 ring-emerald-500/20 sm:p-8">
+            <div className="mb-5 flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">AFTER</span>
+            </div>
+
+            {/* mock headline */}
+            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+              <p className="text-sm font-semibold text-white">
+                Ship AI products users love.
+              </p>
+              <div className="mt-2 inline-block rounded-md bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white">
+                Start free
+              </div>
+            </div>
+
+            <ul className="space-y-2.5">
+              {AFTER_ITEMS.map((item) => (
+                <li key={item} className="flex items-center gap-3 text-sm">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
+                    <Check className="h-3 w-3 text-emerald-400" aria-hidden />
+                  </span>
+                  <span className="text-white/80">{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-5">
+              <span className="text-xs text-white/30">Overall score</span>
+              <CircleScore score={92} positive={true} />
+            </div>
+          </div>
         </div>
       </Container>
     </Section>

@@ -3,30 +3,45 @@
 import { AuditInput } from '@/components/audit/AuditInput'
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
-import { MarketingBackdrop } from '@/components/marketing/MarketingBackdrop'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Heading, Lead } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
-import { cn } from '@/lib/utils'
 
 export function LandingHeroSection() {
   return (
     <Section spacing="loose" className="relative overflow-hidden pb-8 sm:pb-12 lg:pb-16">
-      <MarketingBackdrop />
+      {/* Soft gradient background blobs */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        {/* Top-center warm glow */}
+        <div className="absolute -top-40 left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,hsl(24_100%_60%/0.12),transparent_65%)]" />
+        {/* Top-right peachy blob */}
+        <div className="absolute -right-40 -top-20 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,hsl(340_80%_75%/0.07),transparent_65%)]" />
+        {/* Bottom-left cool tint */}
+        <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,hsl(200_80%_70%/0.06),transparent_65%)]" />
+      </div>
+
       <Container className="relative space-y-12 lg:space-y-16">
+        {/* Text block */}
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <p className="font-mono text-[11px] uppercase tracking-label text-brand">
-            {HERO.badge}
+          {/* Eyebrow */}
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-orange-500">
+            {HERO.audienceLine}
           </p>
 
-          <Heading as="h1" className="mt-5 max-w-[20ch] text-balance sm:max-w-none">
-            {HERO.headlineLine1}{' '}
-            <span className="text-brand">{HERO.headlineAccent}</span>.
-          </Heading>
+          {/* Headline */}
+          <h1 className="mt-5 max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+            Ship AI-built products{' '}
+            <br className="hidden sm:block" />
+            people can{' '}
+            <span className="text-orange-500">{HERO.headlineAccent}</span>.
+          </h1>
 
-          <Lead className="mx-auto mt-5 max-w-2xl text-pretty">{HERO.subhead}</Lead>
+          {/* Subhead */}
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+            {HERO.subhead}
+          </p>
 
+          {/* Input */}
           <div
             id="audit"
             className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)]"
@@ -34,14 +49,12 @@ export function LandingHeroSection() {
             <AuditInput variant="landing" />
           </div>
 
-          <LandingTrustBadges className="mt-6" />
+          {/* Trust badges */}
+          <LandingTrustBadges className="mt-5" />
         </div>
 
-        <div
-          className={cn(
-            'motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-fill-mode:forwards] motion-safe:[animation-delay:200ms]'
-          )}
-        >
+        {/* Product preview card */}
+        <div className="motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
           <HeroProductPreview />
         </div>
       </Container>
