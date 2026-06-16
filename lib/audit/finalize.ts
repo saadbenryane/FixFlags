@@ -5,6 +5,7 @@ import { applyDeterministicVerification } from '@/lib/audit/verify-flags'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { consumeTrialRecheckOnSuccess } from '@/lib/auth/entitlements'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
+import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
 
 interface FinalizeAuditInput {
   auditId: string
@@ -101,6 +102,10 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
       failureMetadata: undefined,
     },
   })
+
+  await upsertLeadFromAudit(input.auditId).catch(() => {
+    // Lead upsert must not fail audit finalization
+  })
 }
 
 interface PartialFinalizeInput {
@@ -189,6 +194,10 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       failureCode: input.failureCode,
       failureStage: input.failureStage,
     },
+  })
+
+  await upsertLeadFromAudit(input.auditId).catch(() => {
+    // Lead upsert must not fail audit finalization
   })
 }
 

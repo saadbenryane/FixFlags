@@ -10,6 +10,7 @@ import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
 import { sanitizeJudgeOutput } from './sanitize-prompts'
+import { normalizeJudgeRawOutput } from './validate-judge-output'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -180,8 +181,12 @@ function buildJudgeContext(
   }
 }
 
-function parseJudgeOutput(raw: unknown): JudgeOutput {
-  const parsed = judgeOutputSchema.safeParse(raw)
+function parseJudgeOutput(raw: unknown, flags: DeterministicFlag[]): JudgeOutput {
+  const normalized =
+    typeof raw === 'object' && raw !== null
+      ? normalizeJudgeRawOutput(raw as Record<string, unknown>, flags)
+      : raw
+  const parsed = judgeOutputSchema.safeParse(normalized)
   if (!parsed.success) {
     throw new Error(`Invalid judge output: ${parsed.error.message}`)
   }
@@ -190,6 +195,7 @@ function parseJudgeOutput(raw: unknown): JudgeOutput {
 
 async function runAnthropicJudge(
   context: ReturnType<typeof buildJudgeContext>,
+  flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null
 ): Promise<JudgeResult> {
@@ -245,7 +251,7 @@ async function runAnthropicJudge(
     }
 
     return {
-      output: parseJudgeOutput(toolUse.input),
+      output: parseJudgeOutput(toolUse.input, flags),
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -259,6 +265,7 @@ async function runAnthropicJudge(
 
 async function runOpenAIJudge(
   context: ReturnType<typeof buildJudgeContext>,
+  flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null
 ): Promise<JudgeResult> {
@@ -322,7 +329,7 @@ async function runOpenAIJudge(
 
     const raw = JSON.parse(toolCall.function.arguments)
     return {
-      output: parseJudgeOutput(raw),
+      output: parseJudgeOutput(raw, flags),
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,
@@ -346,10 +353,10 @@ export async function runJudge(
   const context = buildJudgeContext(url, metadata, desktop, mobile, flags)
 
   if (openai) {
-    return runOpenAIJudge(context, desktopBase64, mobileBase64)
+    return runOpenAIJudge(context, flags, desktopBase64, mobileBase64)
   }
   if (anthropic) {
-    return runAnthropicJudge(context, desktopBase64, mobileBase64)
+    return runAnthropicJudge(context, flags, desktopBase64, mobileBase64)
   }
   throw new Error('No LLM API key configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY)')
 }

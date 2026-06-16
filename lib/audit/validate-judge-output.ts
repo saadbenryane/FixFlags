@@ -3,6 +3,47 @@ import type { JudgeOutput } from '@/lib/audit/judge'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { LAUNCH_CHECKLIST_IDS } from '@/lib/audit/rubric'
 
+type JudgeEnrichmentDraft = {
+  checkId?: string
+  whyItMatters?: string
+  agentPrompt?: string
+  cursorPrompt?: string
+  claudePrompt?: string
+  lovablePrompt?: string
+  boltPrompt?: string
+  verificationRule?: string | null
+}
+
+/** Fill arrays and enrichments the LLM sometimes omits before schema validation. */
+export function normalizeJudgeRawOutput(
+  raw: Record<string, unknown>,
+  deterministicFlags: DeterministicFlag[]
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = { ...raw }
+  if (!Array.isArray(normalized.newFlags)) normalized.newFlags = []
+
+  const enrichments = Array.isArray(normalized.enrichments)
+    ? [...(normalized.enrichments as JudgeEnrichmentDraft[])]
+    : []
+  const seenCheckIds = new Set(
+    enrichments.map((item) => item.checkId).filter((id): id is string => Boolean(id))
+  )
+
+  for (const flag of deterministicFlags) {
+    if (seenCheckIds.has(flag.checkId)) continue
+    enrichments.push({
+      checkId: flag.checkId,
+      whyItMatters: `Fixing this issue improves the page before launch: ${flag.problem}`,
+      agentPrompt: flag.fix,
+      verificationRule: `Re-run FixFlags and confirm ${flag.checkId} no longer fails.`,
+    })
+    seenCheckIds.add(flag.checkId)
+  }
+
+  normalized.enrichments = enrichments
+  return normalized
+}
+
 const RUBRIC_NAMES = new Set<string>(RUBRIC_ORDER)
 const LAUNCH_CHECK_IDS = new Set<string>(LAUNCH_CHECKLIST_IDS)
 

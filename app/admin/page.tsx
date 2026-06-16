@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCost } from '@/lib/billing/costs'
+import { getAdminUnreadCount } from '@/lib/live-support/sessions'
 
 function StatValue({ children }: { children: React.ReactNode }) {
   return (
@@ -36,6 +37,10 @@ export default async function AdminPage() {
     costWeek,
     tokenAgg,
     completedWithCost,
+    newLeadsWeek,
+    qualifiedLeads,
+    openChatSessions,
+    inboxUnread,
   ] = await Promise.all([
     prisma.audit.count(),
     prisma.audit.count({ where: { createdAt: { gte: todayStart } } }),
@@ -50,12 +55,27 @@ export default async function AdminPage() {
       _sum: { llmInputTokens: true, llmOutputTokens: true },
     }),
     prisma.auditRunCost.count(),
+    prisma.lead.count({ where: { firstSeenAt: { gte: weekAgo } } }),
+    prisma.lead.count({ where: { status: 'QUALIFIED' } }),
+    prisma.supportSession.count({
+      where: { status: { in: ['OPEN', 'WAITING', 'ACTIVE'] } },
+    }),
+    getAdminUnreadCount(),
   ])
 
   const planMap = Object.fromEntries(planCounts.map((p) => [p.plan, p._count.id]))
   const avgCost = completedWithCost > 0 ? costAllTime / completedWithCost : 0
+  const costPerScanToday = auditsToday > 0 ? costToday / auditsToday : 0
+  const costPerScanWeek = auditsThisWeek > 0 ? costWeek / auditsThisWeek : 0
   const totalTokens =
     (tokenAgg._sum.llmInputTokens ?? 0) + (tokenAgg._sum.llmOutputTokens ?? 0)
+
+  const opsStats = [
+    { label: 'New leads (7d)', value: newLeadsWeek.toLocaleString(), href: '/admin/leads' },
+    { label: 'Qualified leads', value: qualifiedLeads.toLocaleString(), href: '/admin/leads' },
+    { label: 'Open chat sessions', value: openChatSessions.toLocaleString(), href: '/admin/inbox' },
+    { label: 'Inbox unread', value: inboxUnread.toLocaleString(), href: '/admin/inbox' },
+  ]
 
   const stats = [
     { label: 'Total audits', value: totalAudits.toLocaleString() },
@@ -69,6 +89,8 @@ export default async function AdminPage() {
     { label: 'Est. cost (all time)', value: formatUsd(costAllTime) },
     { label: 'Est. cost (today)', value: formatUsd(costToday) },
     { label: 'Est. cost (7d)', value: formatUsd(costWeek) },
+    { label: 'Cost / scan (today)', value: formatUsd(costPerScanToday) },
+    { label: 'Cost / scan (7d)', value: formatUsd(costPerScanWeek) },
     { label: 'Avg cost / audit', value: formatUsd(avgCost) },
     { label: 'LLM tokens (in+out)', value: totalTokens.toLocaleString() },
   ]
@@ -83,6 +105,25 @@ export default async function AdminPage() {
   return (
     <Container variant="report" className="py-8 space-y-8">
       <PageHeader title="Admin metrics" />
+
+      <section className="space-y-4">
+        <SectionTitle>Customer ops</SectionTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {opsStats.map((s) => (
+            <Card key={s.label} className="border-0 shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <StatValue>{s.value}</StatValue>
+                <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                  <Link href={s.href}>View</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((s) => (
@@ -115,9 +156,17 @@ export default async function AdminPage() {
 
       <section className="space-y-4">
         <SectionTitle>Admin tools</SectionTitle>
-        <Button variant="outline" asChild>
-          <Link href="/admin/expert-reviews">Expert Review orders</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/inbox">Live chat inbox</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/leads">Leads</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/expert-reviews">Expert Review orders</Link>
+          </Button>
+        </div>
       </section>
 
       <section className="space-y-4">

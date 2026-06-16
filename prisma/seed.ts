@@ -47,6 +47,21 @@ async function main() {
     },
   })
 
+  await prisma.supportTenant.upsert({
+    where: { slug: 'fixflags' },
+    create: {
+      slug: 'fixflags',
+      name: 'FixFlags',
+      isUnlimited: true,
+      ownerUserId: user.id,
+    },
+    update: {
+      name: 'FixFlags',
+      isUnlimited: true,
+      ownerUserId: user.id,
+    },
+  })
+
   console.log(`Seeded admin user: ${ADMIN_EMAIL}`)
 }
 

@@ -8,6 +8,7 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
+import type { AuditAttribution } from '@/lib/leads/attribution'
 
 export interface CreateAuditOptions {
   url: string
@@ -18,6 +19,7 @@ export interface CreateAuditOptions {
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   recheckMode?: 'FULL' | 'SUMMARY_ONLY'
   delayMs?: number
+  attribution?: AuditAttribution
 }
 
 export interface CreateAuditResult {
@@ -43,6 +45,7 @@ export async function createAndEnqueueAudit(
   options: CreateAuditOptions
 ): Promise<CreateAuditResult> {
   const url = (await assertPublicAuditUrl(options.url)).toString()
+  const attribution = options.attribution
   const data = {
     url,
     userId: options.userId ?? null,
@@ -53,6 +56,16 @@ export async function createAndEnqueueAudit(
     recheckMode: options.recheckMode ?? ('FULL' as const),
     status: 'QUEUED' as const,
     progress: 5,
+    ...(attribution
+      ? {
+          normalizedDomain: attribution.normalizedDomain,
+          source: attribution.source,
+          referrer: attribution.referrer,
+          utmSource: attribution.utmSource,
+          utmMedium: attribution.utmMedium,
+          utmCampaign: attribution.utmCampaign,
+        }
+      : {}),
   }
 
   let audit: { id: string }

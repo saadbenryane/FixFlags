@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { prisma } from '@/lib/db'
 import { runFlowScanStandalone } from '@/lib/audit/flow/run-flow-scan'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
-import { getAuditBrowser } from '@/lib/audit/screenshot'
+import { getAuditBrowser, closeBrowser } from '@/lib/audit/screenshot'
 import {
   buildCurrentVerifiableCheckIds,
   isCheckStillFailing,
@@ -82,6 +82,7 @@ async function main() {
 
     console.log('\nSmoke passed.')
   } finally {
+    await closeBrowser().catch(() => {})
     await prisma.audit.delete({ where: { id: audit.id } }).catch(() => {})
   }
 }

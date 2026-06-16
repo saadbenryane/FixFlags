@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/entitlements'
 import {
   JudgeContractError,
+  normalizeJudgeRawOutput,
   validateJudgeOutput,
 } from '@/lib/audit/validate-judge-output'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
@@ -238,6 +239,26 @@ describe('validateJudgeOutput', () => {
         ),
       JudgeContractError
     )
+  })
+
+  it('fills missing enrichments from deterministic flags before validation', () => {
+    const flag = {
+      checkId: 'perf-lcp',
+      rubric: 'EXPERIENCE' as const,
+      severity: 'IMPORTANT' as const,
+      problem: 'Slow LCP',
+      evidence: '4.2s',
+      fix: 'Optimize hero image',
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    }
+    const normalized = normalizeJudgeRawOutput(
+      { ...baseJudgeOutput, rubrics: validRubrics, newFlags: [] },
+      [flag]
+    )
+    const output = validateJudgeOutput(normalized as never, [flag])
+    assert.equal(output.enrichments.length, 1)
+    assert.equal(output.enrichments[0]?.checkId, 'perf-lcp')
   })
 })
 

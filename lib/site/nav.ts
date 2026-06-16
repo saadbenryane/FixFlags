@@ -39,6 +39,8 @@ export const APP_NAV = [
 
 export const ADMIN_NAV = [
   { href: '/admin', label: 'Metrics' },
+  { href: '/admin/inbox', label: 'Inbox' },
+  { href: '/admin/leads', label: 'Leads' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/audits', label: 'Audits' },
   { href: '/admin/feedback', label: 'Feedback' },

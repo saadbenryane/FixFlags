@@ -105,3 +105,21 @@ export async function sumEstimatedCost(where?: Prisma.AuditRunCostWhereInput): P
   })
   return result._sum.estimatedCostUsd?.toNumber() ?? 0
 }
+
+/** Sum estimated run cost for completed audits on a domain. */
+export async function sumEstimatedCostForDomain(normalizedDomain: string): Promise<number> {
+  const result = await prisma.auditRunCost.aggregate({
+    where: {
+      audit: {
+        status: 'COMPLETED',
+        OR: [{ normalizedDomain }, { url: { contains: normalizedDomain } }],
+      },
+    },
+    _sum: { estimatedCostUsd: true },
+  })
+  return result._sum.estimatedCostUsd?.toNumber() ?? 0
+}
+
+export function decimalCost(value: number): Prisma.Decimal {
+  return new Prisma.Decimal(value)
+}

@@ -1,5 +1,6 @@
 import { SiteShell } from '@/components/layout/site-shell'
 import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
+import { SupportWidget } from '@/components/live-support/SupportWidget'
 
 interface MarketingShellProps {
   children: React.ReactNode
@@ -8,13 +9,16 @@ interface MarketingShellProps {
 
 export function MarketingShell({ children, footer = 'default' }: MarketingShellProps) {
   return (
-    <SiteShell
-      variant="marketing"
-      headerRight={<MarketingHeaderAuth />}
-      showFooter={footer !== 'none'}
-      footer={footer === 'minimal' ? 'minimal' : 'default'}
-    >
-      {children}
-    </SiteShell>
+    <>
+      <SiteShell
+        variant="marketing"
+        headerRight={<MarketingHeaderAuth />}
+        showFooter={footer !== 'none'}
+        footer={footer === 'minimal' ? 'minimal' : 'default'}
+      >
+        {children}
+      </SiteShell>
+      <SupportWidget />
+    </>
   )
 }

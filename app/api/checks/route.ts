@@ -13,6 +13,7 @@ import { prisma } from '@/lib/db'
 import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
+import { parseAuditAttribution } from '@/lib/leads/attribution'
 
 const createSchema = z.object({
   url: z.string().url('Invalid URL, please include https://'),
@@ -94,11 +95,21 @@ export async function POST(req: NextRequest) {
       workerEstimate
     )
 
+    const referer = req.headers.get('referer')
+    const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
+    const attribution = parseAuditAttribution({
+      url,
+      referer,
+      pathname: refererPath ?? req.nextUrl.pathname,
+      searchParams: req.nextUrl.searchParams,
+    })
+
     const { auditId, status } = await createAndEnqueueAudit({
       url,
       userId: session?.user?.id ?? null,
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
+      attribution,
     })
 
     if (!session?.user) {
