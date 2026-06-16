@@ -16,6 +16,8 @@ import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckout
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
 import { Container } from '@/components/ui/container'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Surface } from '@/components/ui/surface'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
@@ -96,10 +98,13 @@ export default async function DashboardPage() {
       <ProjectsPanel plan={user?.plan ?? 'FREE'} />
 
       {audits.length === 0 ? (
-          title="No audits yet"
-          description="Paste a URL above to run your first check and get fix prompts."
-        />
-        <FirstAuditPrompt />
+        <>
+          <EmptyState
+            title="No audits yet"
+            description="Paste a URL above to run your first check and get fix prompts."
+          />
+          <FirstAuditPrompt />
+        </>
       ) : (
         <div className="space-y-3">
           <SectionTitle>Recent audits</SectionTitle>
