@@ -16,25 +16,25 @@ Use with `fixflags-design-system` and `writing-simple.md`.
 ## App surfaces (dashboard, billing, settings)
 
 - `Container` + `PageHeader` for page chrome
-- `surface-raised shadow-card` for panels — not bordered card wrappers
+- `Card` or `Surface variant="elevated"` for panels — not bordered card wrappers
 - Upsells: shadow-first (`ContextualUpgradeCard`), never `border-2 border-primary/20`
 
-## Palette (2026 lean)
+## Palette (UI Kit v2.0)
 
 | Token | Role |
 |-------|------|
-| `--background` | Warm paper white (42° hue) |
-| `--foreground` | Warm ink |
+| `--background` | Warm paper white |
+| `--foreground` | Ink (`#0F1115`) |
 | `--muted` | Section wash, not gray slab |
-| `--brand` | Refined ochre (28° 62% 37%), not neon amber |
+| `--brand` | Flag orange (`#FF4D1F`) |
 | `--accent` | Soft wash for hero radial only |
 
 Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
 
 ## Typography + copy pairing
 
-- Display serif for headlines only
-- Body stays Source Sans, never tightened
+- Satoshi for all UI and marketing type (display weight for headlines)
+- Body stays readable; never tightened below token scale
 - Section labels optional, drop when headline is enough
 - Pain/workflow blocks: title + one line. No icons unless semantic.
 

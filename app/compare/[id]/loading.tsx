@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function CompareLoading() {
   return (
     <AuditShell>
-      <Container variant="content" className="space-y-8 py-8">
+      <Container variant="report" className="space-y-8 py-8">
         <Skeleton className="h-8 w-48 rounded-card" />
         <Skeleton className="h-12 w-full rounded-card" />
         <div className="grid gap-3 sm:grid-cols-3">

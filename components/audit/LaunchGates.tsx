@@ -1,4 +1,7 @@
 import { Check, X } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { SectionTitle } from '@/components/ui/typography'
+import { Surface } from '@/components/ui/surface'
 import { LAUNCH_CHECKLIST_IDS } from '@/lib/audit/rubric'
 import type { LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 import { cn } from '@/lib/utils'
@@ -17,37 +20,37 @@ export function LaunchGates({ checklist }: Props) {
   const items = ordered.length > 0 ? ordered : checklist
 
   return (
-    <section
+    <Card
       id="report-launch-gates"
-      className="scroll-mt-[var(--header-offset)] rounded-card border-0 bg-card p-4 shadow-card space-y-3"
+      className="scroll-mt-[var(--header-offset)] space-y-3 p-4"
       aria-labelledby="launch-gates-heading"
     >
       <div>
-        <h2 id="launch-gates-heading" className="text-sm font-semibold tracking-heading">
-          {REPORT_COPY.launchGates.title}
-        </h2>
+        <SectionTitle id="launch-gates-heading">{REPORT_COPY.launchGates.title}</SectionTitle>
         <p className="mt-1 text-sm text-muted-foreground text-pretty">{REPORT_COPY.launchGates.body}</p>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => (
-          <li
-            key={item.id}
-            className={cn(
-              'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
-              item.passed
-                ? 'border-grade-A/25 bg-grade-A/5 text-foreground'
-                : 'border-grade-F/25 bg-grade-F/5 text-foreground'
-            )}
-          >
-            {item.passed ? (
-              <Check className="h-4 w-4 shrink-0 text-grade-A mt-0.5" aria-hidden />
-            ) : (
-              <X className="h-4 w-4 shrink-0 text-grade-F mt-0.5" aria-hidden />
-            )}
-            <span>{item.label}</span>
+          <li key={item.id}>
+            <Surface
+              variant="flat"
+              className={cn(
+                'flex items-start gap-2 text-sm',
+                item.passed
+                  ? 'bg-grade-A/5 text-foreground'
+                  : 'bg-grade-F/5 text-foreground'
+              )}
+            >
+              {item.passed ? (
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-grade-A" aria-hidden />
+              ) : (
+                <X className="mt-0.5 h-4 w-4 shrink-0 text-grade-F" aria-hidden />
+              )}
+              <span>{item.label}</span>
+            </Surface>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   )
 }

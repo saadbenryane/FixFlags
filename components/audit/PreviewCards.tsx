@@ -1,5 +1,7 @@
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
+import { Card } from '@/components/ui/card'
+import { LabelCaps, SectionTitle } from '@/components/ui/typography'
 
 interface Props {
   preview: PreviewMeta
@@ -15,18 +17,14 @@ function SerpPreview({ preview }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Google search preview
-      </p>
-      <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
+      <LabelCaps>Google search preview</LabelCaps>
+      <Card className="space-y-1 p-4">
         <p className="text-xs text-muted-foreground">{hostname}</p>
-        <p className="text-base text-link leading-snug">
-          {title || 'Missing page title'}
-        </p>
-        <p className="text-sm text-muted-foreground leading-snug">
+        <p className="text-base leading-snug text-link">{title || 'Missing page title'}</p>
+        <p className="text-sm leading-snug text-muted-foreground">
           {description || 'Missing meta description'}
         </p>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -39,35 +37,33 @@ function SocialPreview({ preview }: Props) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Social link preview
-      </p>
-      <div className="rounded-card border-0 bg-card overflow-hidden shadow-card max-w-md">
+      <LabelCaps>Social link preview</LabelCaps>
+      <Card className="max-w-md overflow-hidden p-0">
         {preview.ogImage && preview.ogImageOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview.ogImage}
             alt=""
-            className="aspect-[1.91/1] w-full object-cover bg-muted"
+            className="aspect-[1.91/1] w-full bg-muted object-cover"
           />
         ) : showBrokenImage ? (
-          <div className="aspect-[1.91/1] w-full bg-muted flex flex-col items-center justify-center gap-1 text-sm text-muted-foreground px-4 text-center">
+          <div className="flex aspect-[1.91/1] w-full flex-col items-center justify-center gap-1 bg-muted px-4 text-center text-sm text-muted-foreground">
             <span className="font-medium text-foreground">og:image broken</span>
             <span className="text-xs">The image URL does not load</span>
           </div>
         ) : (
-          <div className="aspect-[1.91/1] w-full bg-muted flex items-center justify-center text-sm text-muted-foreground">
+          <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-muted text-sm text-muted-foreground">
             No og:image
           </div>
         )}
-        <div className="p-3 space-y-1 border-t border-border/60">
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wide">
+        <div className="space-y-1 border-t border-border/60 p-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {displayHostname(preview.url)}
           </p>
-          <p className="text-sm font-semibold leading-snug line-clamp-2">{title}</p>
-          <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-snug">{title}</p>
+          <p className="line-clamp-2 text-xs text-muted-foreground">{description}</p>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -80,9 +76,7 @@ export function PreviewCards({ preview }: Props) {
       aria-labelledby="preview-cards-heading"
     >
       <div>
-        <h2 id="preview-cards-heading" className="text-sm font-semibold tracking-heading">
-          Share & search previews
-        </h2>
+        <SectionTitle id="preview-cards-heading">Share & search previews</SectionTitle>
         <p className="mt-1 text-sm text-muted-foreground">
           How your page may appear in search results and when shared on Slack or social.
         </p>

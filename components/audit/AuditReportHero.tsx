@@ -59,7 +59,7 @@ export function AuditReportHero({
               <span className="font-medium text-foreground">{pageJob ?? 'Unavailable'}</span>
             </span>
           </div>
-          <blockquote className="border-l-2 border-brand pl-4 font-display text-lg font-medium leading-[1.45] text-foreground text-pretty">
+          <blockquote className="border-l-2 border-brand pl-4 font-sans text-lg font-medium leading-[1.45] text-foreground text-pretty">
             {verdict ?? 'The available evidence was insufficient for a reliable verdict.'}
           </blockquote>
           <p className="text-xs text-muted-foreground truncate">{url}</p>

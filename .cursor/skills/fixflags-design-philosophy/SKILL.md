@@ -119,6 +119,7 @@ This philosophy is versioned on purpose.
 
 ### Changelog
 
+- **v1.1 (Jun 2026)** — Design completion pass: live report `#report-fix` + `FixPromptBlock` arc; terminal tokens on fix prompts; `Callout` / `Card` / `Surface` standardized across audit surfaces; layout `Container variant="report"` alignment; `EmptyState` primitive; removed `surface-raised` utility.
 - **v1.0 (Jun 2026)** — Established pillars, heuristics map, laws, report + layout doctrine, review rubric. Introduced `Callout` primitive and pull-quote verdict; standardized report radii on `rounded-card`.
 
 ---

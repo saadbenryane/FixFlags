@@ -1,12 +1,11 @@
 import { cn, rubricLabel, gradeColor } from '@/lib/utils'
 import { resolveScoreDisplay } from '@/lib/audit/score-display'
+import { Card } from '@/components/ui/card'
 
 export type ScoreDisplayVariant = 'card' | 'compact' | 'hero' | 'inline' | 'pill'
 
 interface ScoreDisplayProps {
   rubricName?: string
-  /** @deprecated use rubricName */
-  areaName?: string
   label?: string
   grade: string | null
   score?: number | null
@@ -46,7 +45,6 @@ function GradePill({
 
 export function ScoreDisplay({
   rubricName,
-  areaName,
   label,
   grade,
   score = null,
@@ -54,9 +52,8 @@ export function ScoreDisplay({
   size = 'md',
   className,
 }: ScoreDisplayProps) {
-  const resolvedRubric = rubricName ?? areaName
   const resolved = resolveScoreDisplay({ grade, score })
-  const displayLabel = label ?? (resolvedRubric ? rubricLabel(resolvedRubric) : 'Overall')
+  const displayLabel = label ?? (rubricName ? rubricLabel(rubricName) : 'Overall')
 
   if (variant === 'pill') {
     return <GradePill grade={resolved.grade} size={size} className={className} />
@@ -81,8 +78,8 @@ export function ScoreDisplay({
     return (
       <div
         className={cn(
-          'min-w-[88px] shrink-0 rounded-xl border p-4 text-center',
-          resolved.grade ? gradeColor(resolved.grade) : 'border-border bg-muted/50 text-muted-foreground',
+          'min-w-[88px] shrink-0 rounded-card border-0 p-4 text-center shadow-card',
+          resolved.grade ? gradeColor(resolved.grade) : 'bg-muted/50 text-muted-foreground',
           className
         )}
       >
@@ -119,9 +116,9 @@ export function ScoreDisplay({
 
   // card variant (default)
   return (
-    <div
+    <Card
       className={cn(
-        'flex min-h-[4.5rem] items-center gap-4 rounded-card border-0 bg-card p-4 shadow-card',
+        'flex min-h-[4.5rem] items-center gap-4 p-4',
         size === 'sm' && 'min-h-[3.75rem] gap-3 p-3',
         className
       )}
@@ -156,6 +153,6 @@ export function ScoreDisplay({
           </p>
         ) : null}
       </div>
-    </div>
+    </Card>
   )
 }

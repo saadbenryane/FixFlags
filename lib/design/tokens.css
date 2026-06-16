@@ -36,7 +36,6 @@
   --focus-ring: 12 100% 56%;
   --ring: var(--focus-ring);
 
-  --surface-raised: 0 0% 100%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 17% 7%;
   --input: 220 13% 91%;
@@ -151,7 +150,6 @@
   --focus-ring: 12 100% 56%;
   --ring: var(--focus-ring);
 
-  --surface-raised: 220 10% 18%;
   --popover: 228 8% 13%;
   --popover-foreground: 0 0% 98%;
   --input: 220 10% 18%;

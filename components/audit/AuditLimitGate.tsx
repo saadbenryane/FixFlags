@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Callout } from '@/components/ui/callout'
 
 interface Props {
   code?: string
@@ -15,34 +15,32 @@ export function AuditLimitGate({ code, action, message, onDismiss }: Props) {
   const isAnonLimit = code === 'ANON_LIMIT' || action === 'signup'
 
   return (
-    <Card className="border-destructive/30 bg-destructive/5">
-      <CardContent className="py-4 px-5 space-y-3">
-        <p className="text-sm font-medium">
-          {isAnonLimit ? 'Free audit used' : 'Audit limit reached'}
-        </p>
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <div className="flex flex-wrap gap-2">
-          {isAnonLimit ? (
-            <>
-              <Button asChild size="sm">
-                <Link href="/sign-up">Create free account</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-            </>
-          ) : (
+    <Callout
+      variant="danger"
+      title={isAnonLimit ? 'Free audit used' : 'Audit limit reached'}
+    >
+      <p>{message}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {isAnonLimit ? (
+          <>
             <Button asChild size="sm">
-              <Link href="/pricing">Upgrade to continue</Link>
+              <Link href="/sign-up">Create free account</Link>
             </Button>
-          )}
-          {onDismiss && (
-            <Button variant="ghost" size="sm" onClick={onDismiss}>
-              Dismiss
+            <Button asChild variant="outline" size="sm">
+              <Link href="/sign-in">Sign in</Link>
             </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </>
+        ) : (
+          <Button asChild size="sm">
+            <Link href="/pricing">Upgrade to continue</Link>
+          </Button>
+        )}
+        {onDismiss && (
+          <Button variant="ghost" size="sm" onClick={onDismiss}>
+            Dismiss
+          </Button>
+        )}
+      </div>
+    </Callout>
   )
 }

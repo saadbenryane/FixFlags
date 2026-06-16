@@ -114,7 +114,7 @@ export default async function ReportPage({ params }: Props) {
   if (result.kind === 'forbidden') {
     return (
       <AuditShell session={null}>
-        <Container className="py-24 text-center space-y-4">
+        <Container variant="report" className="space-y-4 py-24 text-center">
           <h2 className="text-xl font-semibold">Access denied</h2>
           <p className="text-muted-foreground text-sm">You do not have access to this report.</p>
           <Button asChild>

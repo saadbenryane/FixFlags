@@ -1,4 +1,5 @@
 import { COMPACT_DISCLAIMER, formatPipelineVersion } from '@/lib/marketing/display-meta'
+import { Surface } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 interface ThirdPartyAuditDisclaimerProps {
@@ -14,7 +15,7 @@ export function ThirdPartyAuditDisclaimer({
 }: ThirdPartyAuditDisclaimerProps) {
   if (variant === 'compact') {
     return (
-      <p className={cn('text-[10px] text-muted-foreground leading-relaxed', className)}>
+      <p className={cn('text-[10px] leading-relaxed text-muted-foreground', className)}>
         {COMPACT_DISCLAIMER}
         {showPipeline ? ` ${formatPipelineVersion()}.` : null}
       </p>
@@ -22,7 +23,7 @@ export function ThirdPartyAuditDisclaimer({
   }
 
   return (
-    <div className={cn('rounded-card border-0 bg-muted/30 p-5 space-y-3 shadow-card', className)}>
+    <Surface variant="flat" className={cn('space-y-3', className)}>
       <p className="text-sm font-medium">About these audits</p>
       <ul className="space-y-1.5 text-xs text-muted-foreground">
         <li>• All audits are automated and context-dependent, results may vary.</li>
@@ -33,6 +34,6 @@ export function ThirdPartyAuditDisclaimer({
         <li>• These are not official audits or endorsements of the sites shown.</li>
         <li>• Run your own URL through the pipeline to see how your site performs.</li>
       </ul>
-    </div>
+    </Surface>
   )
 }

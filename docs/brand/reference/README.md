@@ -1,11 +1,14 @@
 Reference images for the FixFlags brand (logo mockups, UI kit, mood boards).
 
+These are **design references only** — not served at runtime. Production assets live in `public/brand/*.svg` and `lib/design/`.
+
 - `logo-primary.png` — official primary lockup (mark + wordmark)
+- `logo-primary-transparent.png` — transparent lockup reference (unused at runtime; SVG lockup is canonical)
 - `ui-kit-v2.png` — UI Kit v2.0 (color palette, type scale, components)
 
-These were used to extract the production brand assets:
+Extracted into production:
+
 - Logo mark/wordmark SVGs → `public/brand/*.svg` + `lib/design/logo-mark.tsx`
-- Transparent lockup → `public/brand/logo-primary-transparent.png`
 - Color palette (light + dark) → `lib/design/tokens.css` + `lib/design/brand-spec.ts`
 - Typography → Satoshi (`lib/design/fonts.ts`)
 

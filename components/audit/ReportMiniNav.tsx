@@ -17,9 +17,17 @@ interface Props {
   className?: string
   showPreviews?: boolean
   showFlow?: boolean
+  showFix?: boolean
+  showLaunchGates?: boolean
 }
 
-export function ReportMiniNav({ className, showPreviews, showFlow }: Props) {
+export function ReportMiniNav({
+  className,
+  showPreviews,
+  showFlow,
+  showFix,
+  showLaunchGates,
+}: Props) {
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
     const overviewIndex = items.findIndex((s) => s.id === 'report-overview')
@@ -27,11 +35,16 @@ export function ReportMiniNav({ className, showPreviews, showFlow }: Props) {
     const optional: Array<{ id: string; label: string }> = []
     if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
     if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })
+    if (showLaunchGates) optional.push({ id: 'report-launch-gates', label: 'Launch' })
     if (optional.length > 0) {
       items.splice(insertAt, 0, ...optional)
     }
+    if (showFix) {
+      const flagsIndex = items.findIndex((s) => s.id === 'report-flags')
+      items.splice(flagsIndex + 1, 0, { id: 'report-fix', label: 'Fix prompt' })
+    }
     return items
-  }, [showPreviews, showFlow])
+  }, [showPreviews, showFlow, showFix, showLaunchGates])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
 
@@ -71,7 +84,7 @@ export function ReportMiniNav({ className, showPreviews, showFlow }: Props) {
     <nav
       aria-label="Report sections"
       className={cn(
-        'sticky z-10 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-thin',
+        'sticky z-10 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-thin',
         'top-[var(--header-offset)]',
         className
       )}

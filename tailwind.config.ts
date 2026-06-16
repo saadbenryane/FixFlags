@@ -78,7 +78,6 @@ const config: Config = {
           hover: 'hsl(var(--link-hover))',
         },
         'focus-ring': 'hsl(var(--focus-ring))',
-        'surface-raised': 'hsl(var(--surface-raised))',
         terminal: {
           DEFAULT: 'hsl(var(--terminal))',
           foreground: 'hsl(var(--terminal-foreground))',

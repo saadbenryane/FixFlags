@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
+import { Card } from '@/components/ui/card'
 import { FlagDiff } from '@/components/compare/FlagDiff'
 import { BeforeAfterComparison } from '@/components/audit/BeforeAfterComparison'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
@@ -11,7 +12,6 @@ import { MOBILE_FRAME_WIDTH_CLASS } from '@/lib/audit/viewports'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
-import { Section } from '@/components/ui/section'
 import { Heading, Muted } from '@/components/ui/typography'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
@@ -66,8 +66,7 @@ export default async function ComparePage({ params }: Props) {
   if (!canAccessCompare(user, recheckAudit)) {
     return (
       <AuditShell session={session} showAdmin={showAdmin}>
-        <Section spacing="default">
-          <Container variant="content" className="space-y-6 py-12">
+        <Container variant="report" className="space-y-6 py-8">
             <div className="space-y-1">
               <Heading as="h1">Before vs After</Heading>
               <Muted>Re-check is required to compare scores.</Muted>
@@ -80,8 +79,7 @@ export default async function ComparePage({ params }: Props) {
             <Button asChild variant="outline">
               <Link href={`/report/${id}`}>Back to report</Link>
             </Button>
-          </Container>
-        </Section>
+        </Container>
       </AuditShell>
     )
   }
@@ -121,14 +119,13 @@ export default async function ComparePage({ params }: Props) {
 
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
-      <Section spacing="default">
-        <Container variant="report" className="space-y-8">
+      <Container variant="report" className="space-y-8 py-8">
           <div className="space-y-1">
             <Heading as="h1">Before vs After</Heading>
             <Muted className="truncate">{after.url}</Muted>
           </div>
 
-        <div className="flex items-center gap-6 rounded-card border-0 bg-card p-5 shadow-card sm:p-6">
+        <Card className="flex items-center gap-6 p-5 sm:p-6">
           <div className="text-center">
             <div className="font-display text-3xl font-normal tabular-nums">{before.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">Before</div>
@@ -150,7 +147,7 @@ export default async function ComparePage({ params }: Props) {
             <div className="font-display text-3xl font-normal tabular-nums">{after.score ?? '–'}</div>
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
-        </div>
+        </Card>
 
         {!user.plan || user.plan === 'FREE' ? (
           <ContextualUpgradeCard
@@ -225,8 +222,7 @@ export default async function ComparePage({ params }: Props) {
             <Link href={`/report/${after.id}`}>View latest report</Link>
           </Button>
         </div>
-        </Container>
-      </Section>
+      </Container>
     </AuditShell>
   )
 }

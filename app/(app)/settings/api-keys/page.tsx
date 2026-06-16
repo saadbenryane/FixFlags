@@ -9,6 +9,7 @@ import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCP_DOCS, BRAND } from '@/lib/marketing/copy'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
@@ -180,7 +181,10 @@ export default function ApiKeysPage() {
       {canUseKeys && (
         <div className="space-y-2">
           {keys.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">No API keys yet</p>
+            <EmptyState
+              title="No API keys yet"
+              description="Create a key above to connect FixFlags to Claude Code, Cursor, or Windsurf via MCP."
+            />
           ) : (
             keys.map((key) => (
               <div key={key.id} className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3 shadow-sm">

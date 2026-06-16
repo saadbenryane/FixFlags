@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
 import { cn } from '@/lib/utils'
 
 interface SharedReportBannerProps {
@@ -18,37 +19,42 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
   if (dismissed) return null
 
   return (
-    <div
+    <Callout
+      variant="info"
+      title="Run your own audit"
       className={cn(
-        'sticky top-[var(--header-offset)] z-10 rounded-card border-0 bg-brand/[0.06] p-4 sm:p-5 space-y-3 shadow-card',
+        'sticky top-[var(--header-offset)] z-10 bg-brand-muted/80 backdrop-blur-sm',
         className
       )}
+      icon={null}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <p className="text-sm font-semibold">Run your own audit</p>
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
           <p className="text-xs text-muted-foreground text-pretty">
             {hostname}
             {score != null ? (
               <>
                 {' '}
-                scored <span className="font-mono tabular-nums font-medium text-foreground">{score}/100</span>
+                scored{' '}
+                <span className="font-mono tabular-nums font-medium text-foreground">
+                  {score}/100
+                </span>
               </>
             ) : null}
             . Paste your URL for a full report with fix prompts.
           </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            aria-label="Dismiss"
+            onClick={() => setDismissed(true)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0"
-          aria-label="Dismiss"
-          onClick={() => setDismissed(true)}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <AuditInput />
       </div>
-      <AuditInput />
-    </div>
+    </Callout>
   )
 }

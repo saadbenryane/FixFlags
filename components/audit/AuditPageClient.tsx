@@ -10,7 +10,7 @@ import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Container } from '@/components/ui/container'
-import { AlertCircle } from 'lucide-react'
+import { Callout } from '@/components/ui/callout'
 import { toast } from 'sonner'
 import { BRAND, AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -141,7 +141,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   if (isNotFound) {
     return (
       <AuditShell session={session}>
-        <Container className="py-24 text-center space-y-4">
+        <Container variant="report" className="space-y-4 py-24 text-center">
           <h2 className="text-xl font-semibold">Report not found</h2>
           <p className="text-muted-foreground text-sm">This report does not exist or has been removed.</p>
           <Button asChild>
@@ -155,7 +155,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   if (isForbidden) {
     return (
       <AuditShell session={session}>
-        <Container className="py-24 text-center space-y-4">
+        <Container variant="report" className="space-y-4 py-24 text-center">
           <h2 className="text-xl font-semibold">Access denied</h2>
           <p className="text-muted-foreground text-sm">{fetchError || 'You do not have access to this report.'}</p>
           <Button asChild>
@@ -174,9 +174,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
     return (
       <AuditShell session={session}>
-        <Container className="py-24 text-center space-y-4 max-w-lg mx-auto">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-          <h2 className="text-xl font-semibold">Check failed</h2>
+        <Container variant="report" className="mx-auto max-w-lg space-y-4 py-24 text-center">
           <AuditFailurePanel
             auditId={id}
             errorMsg={errorMsg}
@@ -211,14 +209,14 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     <AuditShell session={session}>
       <Container variant="report" className="space-y-8 py-8">
         {inProgress && (
-          <div className="space-y-6 py-6 md:py-10">
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold text-center md:text-left">
               {AUDIT_PROGRESS.inProgress}
             </h2>
             {showQueue && workerIdle && (
-              <p className="rounded-lg border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-brand">
+              <Callout variant="warning" title="Worker starting">
                 {getWorkerQueuedWarning()}
-              </p>
+              </Callout>
             )}
             {showQueue && (
                 <QueuePosition
@@ -246,7 +244,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         )}
 
         {finishing && (
-          <div className="space-y-6 py-6 md:py-10">
+          <div className="space-y-6">
             <h2 className="text-xl font-semibold text-center md:text-left">
               Preparing your report...
             </h2>

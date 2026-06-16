@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Clock, BookOpen } from 'lucide-react'
+import { Callout } from '@/components/ui/callout'
+import { Card } from '@/components/ui/card'
 import { MARKETING_LINKS } from '@/lib/site/nav'
 import { NavLink } from '@/components/layout/nav-link'
 import { QUEUE_COPY } from '@/lib/marketing/copy'
@@ -66,13 +68,9 @@ export function QueuePosition({
 
   if (workerIdle) {
     return (
-      <div
-        className="space-y-3 rounded-card border border-dashed border-muted-foreground/30 bg-muted/30 p-4"
-        role="status"
-      >
-        <p className="text-sm font-medium">Waiting for worker</p>
-        <p className="text-sm text-muted-foreground">{getWorkerQueuedWarning()}</p>
-      </div>
+      <Callout variant="warning" title="Waiting for worker">
+        {getWorkerQueuedWarning()}
+      </Callout>
     )
   }
 
@@ -97,7 +95,7 @@ export function QueuePosition({
         : '33%'
 
   return (
-    <div className="space-y-4 rounded-card border-0 bg-card p-4 shadow-card" role="status">
+    <Card className="space-y-4 p-4" role="status">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10">
           <Clock className="h-4 w-4 text-brand" />
@@ -146,6 +144,6 @@ export function QueuePosition({
           </p>
         )}
       </div>
-    </div>
+    </Card>
   )
 }

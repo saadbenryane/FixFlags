@@ -3,7 +3,6 @@ import { BRAND_HEX } from '@/lib/design/brand-spec'
 import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
-export type LogoTheme = 'light' | 'dark' | 'auto'
 
 const MARK_PX = { sm: 24, md: 30, lg: 38 } as const
 const TEXT_CLASS = { sm: 'text-lg', md: 'text-xl', lg: 'text-[1.75rem]' } as const
@@ -12,8 +11,6 @@ type LogoSize = keyof typeof MARK_PX
 
 interface LogoProps {
   variant?: LogoVariant
-  /** Retained for API compatibility; mark bars follow currentColor (theme). */
-  theme?: LogoTheme
   size?: LogoSize
   className?: string
   href?: string

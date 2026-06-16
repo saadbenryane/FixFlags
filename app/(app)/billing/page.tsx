@@ -14,6 +14,7 @@ import {
 } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
+import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
@@ -66,7 +67,7 @@ export default async function BillingPage() {
     <Container variant="narrow" className="space-y-8 py-8">
       <PageHeader title="Billing" description="Manage your plan and subscription" />
 
-      <div className="surface-raised space-y-4 rounded-card p-6 shadow-card">
+      <Card className="space-y-4 p-6">
         <div className="space-y-1">
           <Heading as="h2" className="text-base">
             {planDef.name} plan
@@ -106,10 +107,10 @@ export default async function BillingPage() {
             <Link href="/pricing">Upgrade plan</Link>
           </Button>
         )}
-      </div>
+      </Card>
 
       {expertOrders.length > 0 && (
-        <div className="surface-raised space-y-4 rounded-card p-6 shadow-card">
+        <Card className="space-y-4 p-6">
           <SectionTitle>Expert Review orders</SectionTitle>
           <div className="space-y-3">
             {expertOrders.map((order) => (
@@ -137,7 +138,7 @@ export default async function BillingPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
     </Container>
   )

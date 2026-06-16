@@ -18,6 +18,7 @@ import {
 } from '@/lib/mcp/docs-content'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
+import { Callout } from '@/components/ui/callout'
 
 export const metadata = buildPageMetadata('mcp', '/docs/mcp')
 
@@ -93,14 +94,13 @@ export default function McpDocsPage() {
           ))}
         </div>
 
-        <div className="rounded-card border-0 bg-brand/[0.06] p-5 shadow-card space-y-3">
-          <p className="text-sm font-medium">Security</p>
-          <ul className="space-y-2 text-xs text-muted-foreground">
+        <Callout variant="neutral" title="Security">
+          <ul className="space-y-2 text-xs">
             {MCP_SECURITY.map((item) => (
               <li key={item}>• {item}</li>
             ))}
           </ul>
-        </div>
+        </Callout>
 
         <div className="space-y-4">
           <Heading as="h2">Base URL</Heading>
@@ -109,18 +109,18 @@ export default function McpDocsPage() {
             the <code>x-api-key</code> header.
           </Body>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
+            <Card className="space-y-1 p-4">
               <p className="text-xs font-medium">Production</p>
               <p className="text-xs text-muted-foreground">Use for live sites and deployed apps.</p>
               <code className="text-xs break-all">{productionEndpoint}</code>
-            </div>
-            <div className="rounded-card border-0 bg-card p-4 shadow-card space-y-1">
+            </Card>
+            <Card className="space-y-1 p-4">
               <p className="text-xs font-medium">Local development</p>
               <p className="text-xs text-muted-foreground">
                 Use when running <code>npm run dev</code> on this machine.
               </p>
               <code className="text-xs break-all">{localEndpoint}</code>
-            </div>
+            </Card>
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel, rubricDescription, rubricStatusColor, cn } from '@/lib/utils'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
+import { Card } from '@/components/ui/card'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 interface RubricData extends RubricComputed {
@@ -31,9 +32,11 @@ export function RubricSummaryGrid({ rubrics }: Props) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       {ordered.map((rubric) => (
-        <button
+        <Card
           key={rubric.name}
-          type="button"
+          interactive
+          role="button"
+          tabIndex={0}
           onClick={() => {
             const el = document.getElementById(`rubric-${rubric.name}`)
             if (el) {
@@ -41,16 +44,23 @@ export function RubricSummaryGrid({ rubrics }: Props) {
               el.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              const el = document.getElementById(`rubric-${rubric.name}`)
+              el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          }}
           className={cn(
-            'rounded-card border-0 p-4 text-left shadow-card transition-shadow duration-200 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            'cursor-pointer p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
             rubricStatusColor(rubric.status)
           )}
         >
-          <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{rubric.label}</h3>
             <RubricStatusBadge status={rubric.status} size="sm" />
           </div>
-          <p className="text-xs text-muted-foreground leading-snug text-pretty mb-3">
+          <p className="mb-3 text-xs leading-snug text-muted-foreground text-pretty">
             {rubric.description}
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -58,7 +68,7 @@ export function RubricSummaryGrid({ rubrics }: Props) {
               <span>
                 {rubric.flagCount} Flag{rubric.flagCount !== 1 ? 's' : ''}
                 {rubric.criticalCount > 0 && (
-                  <span className="text-destructive font-medium ml-1">
+                  <span className="ml-1 font-medium text-destructive">
                     ({rubric.criticalCount} critical)
                   </span>
                 )}
@@ -67,7 +77,7 @@ export function RubricSummaryGrid({ rubrics }: Props) {
               <span>No Flags</span>
             )}
           </div>
-        </button>
+        </Card>
       ))}
     </div>
   )

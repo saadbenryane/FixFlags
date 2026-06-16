@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
 import { RefreshCw, Copy, Download, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatFailureCode } from '@/lib/audit/progress-ui'
@@ -49,34 +50,34 @@ export function AuditFailurePanel({
   }
 
   return (
-    <div className="space-y-4">
+    <Callout variant="danger" title="Check failed">
       {formattedFailure && (
-        <p className="text-xs font-mono uppercase tracking-label text-destructive/80">
+        <p className="font-mono text-xs uppercase tracking-label text-destructive/80">
           {formattedFailure}
         </p>
       )}
-      <p className="text-muted-foreground text-sm">{displayMessage}</p>
-      <div className="flex flex-wrap gap-2 justify-center">
+      <p>{displayMessage}</p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
         {onRetry && (
           <Button variant="default" onClick={onRetry} disabled={retryLoading}>
             {retryLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="mr-2 h-4 w-4" />
             )}
             Retry
           </Button>
         )}
         <Button variant="outline" onClick={handleCopyId} disabled={copying}>
-          <Copy className="h-4 w-4 mr-2" />
+          <Copy className="mr-2 h-4 w-4" />
           Copy job ID
         </Button>
         <Button variant="outline" onClick={handleDownloadLogs}>
-          <Download className="h-4 w-4 mr-2" />
+          <Download className="mr-2 h-4 w-4" />
           Download logs
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground font-mono">ID: {auditId}</p>
-    </div>
+      <p className="mt-2 font-mono text-xs text-muted-foreground">ID: {auditId}</p>
+    </Callout>
   )
 }

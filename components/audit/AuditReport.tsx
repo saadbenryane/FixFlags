@@ -3,13 +3,14 @@ import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
 import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 import { RubricCard } from '@/components/audit/RubricCard'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagSections } from '@/components/audit/FlagSections'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
-import { Card } from '@/components/ui/card'
+import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
-import { UPSELLS, REPORT_COPY, HERO } from '@/lib/marketing/copy'
+import { UPSELLS, REPORT_COPY, HERO, OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
@@ -19,6 +20,10 @@ import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
+import {
+  auditHasFixPrompts,
+  getTopFixPromptFromFlags,
+} from '@/lib/audit/priority-flags'
 import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LaunchGates } from '@/components/audit/LaunchGates'
@@ -108,6 +113,10 @@ export function AuditReport({
   })()
 
   const rubricsGradedCount = audit.rubricRows.filter((r) => r.grade !== null).length
+  const hasFixPrompts = auditHasFixPrompts(audit.flags)
+  const topFixPrompt = getTopFixPromptFromFlags(audit.flags)
+  const hasLaunchGates =
+    (audit.launchReadiness?.checklist?.length ?? 0) > 0
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -137,6 +146,13 @@ export function AuditReport({
           mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
         />
 
+        <ReportMiniNav
+          showPreviews={Boolean(audit.previewMeta)}
+          showFlow={Boolean(audit.flowData)}
+          showFix={Boolean(topFixPrompt)}
+          showLaunchGates={hasLaunchGates}
+        />
+
         {!isSample && !isViewerOwner && (
           <>
             <ThirdPartyAuditDisclaimer variant="compact" />
@@ -146,9 +162,9 @@ export function AuditReport({
 
         <CompletenessHeader
           hasScreenshots={(audit.screenshots?.length ?? 0) > 0}
-          areasGradedCount={rubricsGradedCount}
-          totalAreas={audit.rubricRows.length}
-          hasFixPrompts={audit.flags.length > 0}
+          rubricsGradedCount={rubricsGradedCount}
+          totalRubrics={audit.rubricRows.length}
+          hasFixPrompts={hasFixPrompts}
           canRecheck={viewerIsPaid || canUseFreeRecheck}
         />
 
@@ -172,14 +188,24 @@ export function AuditReport({
         )}
       </div>
 
-      <ReportMiniNav
-        showPreviews={Boolean(audit.previewMeta)}
-        showFlow={Boolean(audit.flowData)}
-      />
-
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
         <FlagSections flags={audit.flags} showFeedback={showFeedback} />
       </section>
+
+      {topFixPrompt && (
+        <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
+          <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
+          <Card className="p-5">
+            <FixPromptBlock
+              prompt={topFixPrompt.prompt}
+              finding={topFixPrompt.flag}
+              showNextStep
+              rows={5}
+              clamp={false}
+            />
+          </Card>
+        </section>
+      )}
 
       <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
         <div className="space-y-3">
@@ -207,7 +233,7 @@ export function AuditReport({
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
         {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
           <Card className="space-y-2 p-5">
-            <h3 className="font-semibold text-sm">{REPORT_COPY.recheckHint.title}</h3>
+            <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">
               {REPORT_COPY.recheckHint.bodyPrefix}{' '}
               <strong>
@@ -220,7 +246,7 @@ export function AuditReport({
 
         {isSample && (
           <Card className="space-y-3 p-6 text-center">
-            <h3 className="font-semibold">{REPORT_COPY.sampleCta.title}</h3>
+            <CardTitle>{REPORT_COPY.sampleCta.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
             <Button asChild>
               <Link href="/">{HERO.primaryCta}</Link>
@@ -230,7 +256,7 @@ export function AuditReport({
 
         {!isSample && !isLoggedIn && (
           <Card className="space-y-3 p-6 text-center">
-            <h3 className="font-semibold">{UPSELLS.anon.headline}</h3>
+            <CardTitle>{UPSELLS.anon.headline}</CardTitle>
             <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
             <div className="flex justify-center gap-3">
               <Button asChild>

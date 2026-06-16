@@ -54,6 +54,26 @@ export function countFlags(flags: RankableFlag[]): {
   }
 }
 
+export function resolveFixPrompt(flag: RankableFlag): string | null {
+  return (
+    flag.lovablePrompt ??
+    flag.boltPrompt ??
+    flag.cursorPrompt ??
+    flag.claudePrompt ??
+    flag.agentPrompt ??
+    flag.fix ??
+    null
+  )
+}
+
+export function flagHasFixPrompt(flag: RankableFlag): boolean {
+  return resolveFixPrompt(flag) !== null
+}
+
+export function auditHasFixPrompts(flags: RankableFlag[]): boolean {
+  return flags.some(flagHasFixPrompt)
+}
+
 export function getTopFixPromptFromFlags(
   flags: RankableFlag[]
 ): { prompt: string; flag?: string } | null {
@@ -62,13 +82,7 @@ export function getTopFixPromptFromFlags(
   )
 
   for (const flag of sorted) {
-    const prompt =
-      flag.lovablePrompt ??
-      flag.boltPrompt ??
-      flag.cursorPrompt ??
-      flag.claudePrompt ??
-      flag.agentPrompt ??
-      flag.fix
+    const prompt = resolveFixPrompt(flag)
     if (prompt) {
       return { prompt, flag: flag.problem }
     }

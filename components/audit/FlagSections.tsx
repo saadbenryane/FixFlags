@@ -1,6 +1,8 @@
 'use client'
 
 import { FlagCard } from '@/components/audit/FlagCard'
+import { Card } from '@/components/ui/card'
+import { SectionTitle } from '@/components/ui/typography'
 import {
   groupFlagsBySeverity,
   countFlags,
@@ -27,17 +29,18 @@ export function FlagSections({
 }: Props) {
   const groups = groupFlagsBySeverity(flags)
   const counts = countFlags(flags)
+  const expandCritical = counts.critical > 0
 
   if (counts.total === 0) return null
 
   return (
     <section className="space-y-4">
-      <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <h2 className="text-sm font-semibold tracking-heading">
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <SectionTitle>
           {counts.total} Flag{counts.total !== 1 ? 's' : ''} found
-        </h2>
+        </SectionTitle>
         {counts.critical > 0 && (
-          <span className="text-xs text-destructive font-medium">
+          <span className="text-xs font-medium text-destructive">
             {counts.critical} critical
             {counts.important > 0 && ` · ${counts.important} important`}
           </span>
@@ -54,22 +57,25 @@ export function FlagSections({
         const sectionFlags = groups[key]
         if (sectionFlags.length === 0) return null
 
+        const sectionExpanded =
+          key === 'critical' ? expandCritical : !defaultCollapsed
+
         return (
           <div key={key} className="space-y-2">
-            <h3 className="text-xs font-mono uppercase tracking-label text-muted-foreground">
+            <h3 className="font-mono text-xs uppercase tracking-label text-muted-foreground">
               {severityLabel(severity)} ({sectionFlags.length})
             </h3>
-            <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">
-              {sectionFlags.map((flag) => (
+            <Card className="overflow-hidden p-0">
+              {sectionFlags.map((flag, index) => (
                 <FlagCard
                   key={flag.id}
                   flag={flag}
                   showFeedback={showFeedback}
                   variant="row"
-                  defaultExpanded={!defaultCollapsed}
+                  defaultExpanded={sectionExpanded && (key !== 'critical' || index === 0)}
                 />
               ))}
-            </div>
+            </Card>
           </div>
         )
       })}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Surface } from '@/components/ui/surface'
 import { FlagCard } from '@/components/audit/FlagCard'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
@@ -90,7 +91,7 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
           <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
 
           {rubricRow.flags.length > 0 ? (
-            <div className="rounded-lg overflow-hidden border border-border/60">
+            <Surface variant="nested" className="overflow-hidden p-0">
               {rubricRow.flags.map((flag) => (
                 <FlagCard
                   key={flag.id}
@@ -99,7 +100,7 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
                   variant="row"
                 />
               ))}
-            </div>
+            </Surface>
           ) : rubricRow.grade === 'A' ? (
             <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
           ) : rubricRow.grade === null ? (

@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { PromptCopyButton } from './PromptCopyButton'
 import { FlagFeedback } from './FlagFeedback'
+import { Card } from '@/components/ui/card'
+import { resolveFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
 import { rubricLabel, severityLabel, impactTagLabel } from '@/lib/utils'
-import type { RankableFlag } from '@/lib/audit/priority-flags'
 
 interface Props {
   flag: RankableFlag
@@ -15,15 +17,7 @@ interface Props {
 }
 
 function bestFixPrompt(flag: RankableFlag): string {
-  return (
-    flag.lovablePrompt ??
-    flag.boltPrompt ??
-    flag.cursorPrompt ??
-    flag.claudePrompt ??
-    flag.agentPrompt ??
-    flag.fix ??
-    flag.problem
-  )
+  return resolveFixPrompt(flag) ?? flag.problem
 }
 
 function metaLine(flag: RankableFlag): string {
@@ -53,9 +47,7 @@ export function FlagCard({
   )
 
   if (variant === 'card') {
-    return (
-      <div className="relative rounded-card border-0 bg-card shadow-card">{content}</div>
-    )
+    return <Card className="relative">{content}</Card>
   }
 
   return (
@@ -134,6 +126,8 @@ function FlagRowContent({
               <p className="text-sm text-foreground/90 text-pretty">{flag.fix}</p>
             </div>
           )}
+
+          <FixPromptBlock prompt={fixPrompt} rows={4} clamp={false} />
 
           {(flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT') &&
             flag.verificationRule && (

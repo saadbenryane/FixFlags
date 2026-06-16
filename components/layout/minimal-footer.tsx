@@ -1,6 +1,7 @@
 'use client'
 
 import { NavLink } from '@/components/layout/nav-link'
+import { Logo } from '@/components/brand/Logo'
 import { BRAND } from '@/lib/marketing/copy'
 import { LEGAL_LINKS } from '@/lib/site/nav'
 import {
@@ -14,7 +15,10 @@ export function MinimalFooter() {
   return (
     <footer>
       <Container className="flex flex-col gap-3 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <span>© 2026 {BRAND.name}</span>
+        <div className="flex items-center gap-2">
+          <Logo variant="mark" size="sm" href="/" />
+          <span>© 2026 {BRAND.name}</span>
+        </div>
         <div className="flex items-center gap-1">
           {LEGAL_LINKS.map((link, index) => (
             <span key={link.href} className="inline-flex items-center">

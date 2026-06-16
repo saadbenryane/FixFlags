@@ -72,6 +72,7 @@ jobs:
         run: npm run db:drift
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run brand:hex-guard
       - run: npm run test:unit
       - run: npm run build
       - run: npm run worker:build

@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Callout } from '@/components/ui/callout'
+import { Surface } from '@/components/ui/surface'
+import { SectionTitle } from '@/components/ui/typography'
 import { IconInput } from '@/components/ui/icon-input'
 import { FolderPlus, Trash2, Tag, Globe, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -105,10 +108,10 @@ export function ProjectsPanel({ plan }: Props) {
 
   if (limit === 0) {
     return (
-      <Card className="border-border/60">
+      <Card>
         <CardContent className="space-y-3 py-5">
           <div>
-            <h2 className="text-sm font-medium">Projects</h2>
+            <SectionTitle>Projects</SectionTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Organize audits across sites on Agency or Studio plans.
             </p>
@@ -128,7 +131,7 @@ export function ProjectsPanel({ plan }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-medium">Projects</h2>
+        <SectionTitle>Projects</SectionTitle>
           <p className="text-xs text-muted-foreground">
             {projects.length} / {limit} used, assign audits from report pages
           </p>
@@ -141,12 +144,12 @@ export function ProjectsPanel({ plan }: Props) {
           Loading projects…
         </div>
       ) : loadError ? (
-        <div role="alert" className="space-y-3 rounded-lg bg-destructive/5 p-4">
-          <p className="text-sm text-destructive">{loadError}</p>
-          <Button type="button" size="sm" variant="outline" onClick={loadProjects}>
+        <Callout variant="danger" title="Could not load projects">
+          <p>{loadError}</p>
+          <Button type="button" size="sm" variant="outline" className="mt-3" onClick={loadProjects}>
             Try again
           </Button>
-        </div>
+        </Callout>
       ) : projects.length === 0 ? (
         <p className="py-6 text-sm text-muted-foreground">
           No projects yet. Create one to group audits for the same site.
@@ -183,7 +186,8 @@ export function ProjectsPanel({ plan }: Props) {
       )}
 
       {projects.length < limit && (
-        <form onSubmit={handleCreate} className="rounded-card border-0 bg-muted/20 p-4 shadow-card space-y-3">
+        <form onSubmit={handleCreate} className="space-y-3">
+          <Surface variant="nested" className="space-y-3">
           <p className="text-sm font-medium flex items-center gap-2">
             <FolderPlus className="h-4 w-4" />
             New project
@@ -217,6 +221,7 @@ export function ProjectsPanel({ plan }: Props) {
             {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Create project
           </Button>
+          </Surface>
         </form>
       )}
     </div>

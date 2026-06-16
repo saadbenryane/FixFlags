@@ -66,10 +66,6 @@
     @apply rounded-card bg-card shadow-card;
   }
 
-  .surface-raised {
-    @apply rounded-card bg-card shadow-card transition-shadow duration-300 hover:shadow-card-hover;
-  }
-
   .overlay-pill-glass {
     background: var(--overlay-pill-bg);
   }

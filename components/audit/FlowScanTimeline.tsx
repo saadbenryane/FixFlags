@@ -1,5 +1,7 @@
 import type { FlowData } from '@/lib/audit/flow-data'
 import { FLOW_SCAN_STATUS } from '@/lib/marketing/copy'
+import { Card } from '@/components/ui/card'
+import { SectionTitle } from '@/components/ui/typography'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,9 +30,7 @@ export function FlowScanTimeline({ flowData }: Props) {
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 id="flow-scan-heading" className="text-sm font-semibold tracking-heading">
-            CTA flow test
-          </h2>
+          <SectionTitle id="flow-scan-heading">CTA flow test</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             FixFlags clicked your primary CTA and captured each step.
             {flowData.ctaText ? ` Target: "${flowData.ctaText}".` : null}
@@ -49,39 +49,37 @@ export function FlowScanTimeline({ flowData }: Props) {
       </div>
 
       {!hasSteps ? (
-        <div className="rounded-card border-0 bg-card p-4 shadow-card text-sm text-muted-foreground">
-          {status.description}
-        </div>
+        <Card className="p-4 text-sm text-muted-foreground">{status.description}</Card>
       ) : (
-        <ol className="flex flex-col sm:flex-row sm:items-start gap-4">
+        <ol className="flex flex-col gap-4 sm:flex-row sm:items-start">
           {flowData.steps.map((step, index) => (
             <li
               key={`${step.label}-${index}`}
-              className="flex sm:flex-col items-start gap-3 flex-1 min-w-0"
+              className="flex min-w-0 flex-1 items-start gap-3 sm:flex-col"
             >
               {index > 0 && (
                 <ArrowRight
-                  className="hidden sm:block h-4 w-4 text-muted-foreground shrink-0 mt-24"
+                  className="mt-24 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block"
                   aria-hidden
                 />
               )}
-              <div className="flex-1 min-w-0 space-y-2 w-full">
+              <div className="w-full min-w-0 flex-1 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">{step.label}</p>
-                <div className="rounded-card bg-card shadow-card overflow-hidden">
+                <Card className="overflow-hidden p-0">
                   {step.screenshotUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={step.screenshotUrl}
                       alt={step.label}
-                      className="w-full aspect-video object-cover object-top bg-muted"
+                      className="aspect-video w-full bg-muted object-cover object-top"
                     />
                   ) : (
-                    <div className="w-full aspect-video bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    <div className="flex aspect-video w-full items-center justify-center bg-muted text-xs text-muted-foreground">
                       No capture
                     </div>
                   )}
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate font-mono">{step.url}</p>
+                </Card>
+                <p className="truncate font-mono text-[10px] text-muted-foreground">{step.url}</p>
               </div>
             </li>
           ))}

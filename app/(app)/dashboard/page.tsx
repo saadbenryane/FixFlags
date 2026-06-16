@@ -14,9 +14,11 @@ import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
-import { Container } from '@/components/ui/container'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Surface } from '@/components/ui/surface'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
+import { Container } from '@/components/ui/container'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
@@ -87,19 +89,18 @@ export default async function DashboardPage() {
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
       )}
 
-      <div className="rounded-card border-0 bg-muted/20 p-5 shadow-card sm:p-6">
+      <Surface variant="nested" className="sm:p-6">
         <SectionTitle className="mb-4">Audit a new URL</SectionTitle>
         <AuditInput />
-      </div>
+      </Surface>
 
       <ProjectsPanel plan={user?.plan ?? 'FREE'} />
 
       {audits.length === 0 ? (
-        <Card className="border-0 shadow-card">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No audits yet. Paste a URL above to get started.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No audits yet"
+          description="Paste a URL above to run your first check and get fix prompts."
+        />
       ) : (
         <div className="space-y-3">
           <SectionTitle>Recent audits</SectionTitle>

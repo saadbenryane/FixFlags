@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
+import { Callout } from '@/components/ui/callout'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -121,9 +122,9 @@ export function AuditProgress({
         )}
 
         {showWorkerWarning && (
-          <p className="rounded-lg bg-brand/10 px-3 py-2 text-sm text-brand">
+          <Callout variant="warning" title="Worker starting">
             {getWorkerQueuedWarning()}
-          </p>
+          </Callout>
         )}
 
         <div className="space-y-2">
@@ -164,7 +165,7 @@ export function AuditProgress({
               <div
                 key={stage.status}
                 className={cn(
-                  'flex items-start gap-3 rounded-lg px-3 py-2 transition-colors',
+                  'flex items-start gap-3 rounded-md px-3 py-2 transition-colors',
                   active && 'bg-muted/50'
                 )}
               >

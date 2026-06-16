@@ -58,7 +58,9 @@ export function ExampleAuditCard({ audit }: Props) {
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>{audit.pageType}</span>
               <span>·</span>
-              <span className="line-clamp-1 italic">&ldquo;{audit.verdict}&rdquo;</span>
+              <span className="line-clamp-1 border-l-2 border-brand/40 pl-2 text-foreground/90">
+                {audit.verdict}
+              </span>
             </div>
           </div>
           <ScoreDisplay grade={audit.grade} score={audit.score} variant="inline" />
@@ -91,7 +93,7 @@ export function ExampleAuditCard({ audit }: Props) {
 
         {expanded && (
           <div className="space-y-5 border-t border-border/15 pt-5">
-            <p className="text-sm text-muted-foreground italic text-pretty">
+            <p className="text-sm text-muted-foreground text-pretty">
               &ldquo;{audit.verdict}&rdquo;
             </p>
             <div className="space-y-2">

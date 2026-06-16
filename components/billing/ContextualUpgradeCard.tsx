@@ -2,20 +2,20 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Card, CardTitle } from '@/components/ui/card'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import {
   getUpgradeMomentContent,
   type UpgradeMoment,
 } from '@/lib/billing/upgrade-moments'
+import { cn } from '@/lib/utils'
 
 interface Props {
   moment: UpgradeMoment
   scoreDelta?: number
   isLoggedIn?: boolean
   currentPlan?: string
-  /** When set, primary action is a link instead of checkout */
   primaryHref?: string
-  /** When false, omit the CTA button (info-only banner) */
   showCta?: boolean
   className?: string
 }
@@ -34,13 +34,11 @@ export function ContextualUpgradeCard({
     content.plan === 'TEAM' ? '/sign-up?plan=TEAM' : '/sign-up?plan=BUILDER'
 
   return (
-    <div
-      className={`surface-raised rounded-xl p-6 text-center space-y-3 shadow-card ${className ?? ''}`}
-    >
-      <h3 className="font-semibold">{content.headline}</h3>
+    <Card className={cn('space-y-3 p-6 text-center', className)}>
+      <CardTitle>{content.headline}</CardTitle>
       <p className="text-sm text-muted-foreground">{content.body}</p>
-      {showCta && (
-        primaryHref ? (
+      {showCta &&
+        (primaryHref ? (
           <Button asChild>
             <Link href={primaryHref}>{content.cta}</Link>
           </Button>
@@ -55,8 +53,7 @@ export function ContextualUpgradeCard({
               currentPlan={currentPlan}
             />
           </div>
-        )
-      )}
-    </div>
+        ))}
+    </Card>
   )
 }
