@@ -5,7 +5,10 @@ import { RubricCard } from '@/components/audit/RubricCard'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { FlagSections } from '@/components/audit/FlagSections'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
+import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
+import { SectionTitle } from '@/components/ui/typography'
 import { UPSELLS, REPORT_COPY, HERO } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
@@ -150,16 +153,10 @@ export function AuditReport({
         />
 
         {audit.reportCompleteness !== 'FULL' && (
-          <div
-            role="status"
-            className="rounded-card border-0 bg-grade-C/10 px-4 py-3 text-sm text-foreground shadow-card"
-          >
-            <p className="font-medium">Partial report</p>
-            <p className="mt-1 text-muted-foreground">
-              Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
-              being inferred.
-            </p>
-          </div>
+          <Callout variant="warning" title="Partial report">
+            Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
+            being inferred.
+          </Callout>
         )}
 
         {audit.launchReadiness?.checklist && audit.launchReadiness.checklist.length > 0 && (
@@ -186,7 +183,7 @@ export function AuditReport({
 
       <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold tracking-heading">Summary by rubric</h2>
+          <SectionTitle>Summary by rubric</SectionTitle>
           <RubricSummaryGrid rubrics={audit.rubrics} />
         </div>
 
@@ -209,7 +206,7 @@ export function AuditReport({
 
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
         {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
-          <div className="surface-raised rounded-xl p-5 space-y-2 shadow-card">
+          <Card className="space-y-2 p-5">
             <h3 className="font-semibold text-sm">{REPORT_COPY.recheckHint.title}</h3>
             <p className="text-sm text-muted-foreground text-pretty">
               {REPORT_COPY.recheckHint.bodyPrefix}{' '}
@@ -218,21 +215,21 @@ export function AuditReport({
               </strong>{' '}
               {REPORT_COPY.recheckHint.bodySuffix}
             </p>
-          </div>
+          </Card>
         )}
 
         {isSample && (
-          <div className="surface-raised rounded-xl p-6 text-center space-y-3 shadow-card">
+          <Card className="space-y-3 p-6 text-center">
             <h3 className="font-semibold">{REPORT_COPY.sampleCta.title}</h3>
             <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
             <Button asChild>
               <Link href="/">{HERO.primaryCta}</Link>
             </Button>
-          </div>
+          </Card>
         )}
 
         {!isSample && !isLoggedIn && (
-          <div className="surface-raised rounded-xl p-6 text-center space-y-3 shadow-card">
+          <Card className="space-y-3 p-6 text-center">
             <h3 className="font-semibold">{UPSELLS.anon.headline}</h3>
             <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
             <div className="flex justify-center gap-3">
@@ -243,7 +240,7 @@ export function AuditReport({
                 <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
               </Button>
             </div>
-          </div>
+          </Card>
         )}
 
         {upgradeMoment && upgradeMoment !== 'free_default' && (

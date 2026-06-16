@@ -5,7 +5,7 @@ Source: brand assets June 2026. Reference files in `public/brand/incoming/`.
 ## Identity
 
 - **Name:** FixFlags
-- **Mark:** Seven-bar equalizer (short, tall, short, orange flagpole, short, tall, short). Center Flag bar is tallest, extends below the others, flag points up-right.
+- **Mark:** Equalizer with a flag at center. Pattern (L→R): short bar, tall bar, orange flagpole, tall bar, short bar - four ink bars flanking one orange pole. The pole is tallest, extends below the bars, and flies a right-pointing pennant from its top.
 - **Wordmark:** Satoshi Bold, title case `FixFlags`, tracking -0.02em
 - **Tagline:** FLAG ISSUES. **FOCUS** WHAT MATTERS. (FOCUS in Flag orange)
 
@@ -13,17 +13,17 @@ Source: brand assets June 2026. Reference files in `public/brand/incoming/`.
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
-| Flag (primary) | `#FF4D2E` | `#FF4D2E` | CTAs, flags, scores, focus rings |
+| Flag (primary) | `#FF4D1F` | `#FF4D1F` | CTAs, flags, scores, focus rings |
 | Flag hover | `#FF744D` | `#FF744D` | Button hover |
-| Background | `#FFFFFF` | `#0B0B0D` (Ink) | Page canvas |
-| Foreground | `#0B0B0D` (Ink) | `#FFFFFF` | Headings, body |
-| Graphite | — | `#1E1F23` | Dark cards / surfaces |
-| Steel | `#6B7178` | `#2A2D33` | Light muted text / dark muted surface |
+| Background | `#FFFFFF` | `#0F1115` (Ink) | Page canvas |
+| Foreground | `#0F1115` (Ink) | `#FFFFFF` | Headings, body |
+| Graphite | - | `#1E1F23` | Dark cards / surfaces |
+| Steel | `#687380` | `#2A2D33` | Light muted text / dark muted surface |
 | Mist | `#A3A7AE` | `#A3A7AE` | Dark muted text |
 | Border | `#E5E7EB` | `#1E1F23` | Inputs, dividers |
 | Success | `#22C55E` | `#22C55E` | Grade A, fixed states |
 | Warning | `#FACC15` | `#FACC15` | Warnings |
-| Error | `#EF4444` | `#EF4444` | Destructive, grade F |
+| Error | `#FF4444` | `#FF4444` | Destructive, grade F |
 | Info / links | `#3B82F6` | `#3B82F6` | Inline links |
 
 Accent usage: use Flag orange sparingly for flags, highlights, and critical states.
@@ -62,4 +62,4 @@ Mono (IBM Plex): scores, grades, labels only.
 
 ## Dark mode
 
-Re-authored, not inverted. Orange stays `#FF4D2E`. Bars and text flip to white on dark surfaces.
+Re-authored, not inverted. Orange stays `#FF4D1F`. Bars and text flip to white on dark surfaces.

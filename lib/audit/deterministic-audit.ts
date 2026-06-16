@@ -21,13 +21,14 @@ export async function runDeterministicAudit(
   const metadata = await fetchAndParseMetadata(url)
   const pagespeed = await fetchPageSpeedData(url)
 
-  let flags = await runAllChecks(
+  const { flags: detFlags } = await runAllChecks(
     url,
     metadata,
     pagespeed.desktop,
     pagespeed.mobile,
     options?.consoleErrors ?? []
   )
+  let flags = detFlags
 
   let flowResult: FlowScanResult | null = null
   if (options?.includeFlow && options.auditId) {

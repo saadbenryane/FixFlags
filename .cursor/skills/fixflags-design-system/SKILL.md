@@ -13,10 +13,10 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 |-------|-------|------|
 | 60% | `--background`, `--muted` | White / dark surfaces |
 | 30% | `--foreground` | Ink structure, headings |
-| 10% | `--brand` (`#FF4D2E`) | CTAs, flags, scores, focus |
+| 10% | `--brand` (`#FF4D1F`) | CTAs, flags, scores, focus |
 
 **Rules:**
-- Brand is Flag orange `#FF4D2E`, hover `#FF744D`
+- Brand is Flag orange `#FF4D1F`, hover `#FF744D`
 - Links use `--link` (info blue `#3B82F6`), not brand orange
 - Focus rings use brand orange on inputs
 - Dark mode is re-authored (`#0F1115` canvas), orange unchanged
@@ -44,7 +44,7 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 
 - Component: `components/brand/Logo.tsx` — variants `mark`, `wordmark`, `lockup`
 - SVG assets: `public/brand/`
-- Mark: five bars, center orange with flag tip
+- Mark: four ink bars (short·tall · tall·short) flanking one orange pole that flies a right-pointing flag
 
 ## Dual-token accent
 
@@ -76,6 +76,7 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 
 ## Companion skills
 
+- `fixflags-design-philosophy`, the *why* (NN/g + Apple HIG) + pre-ship review rubric
 - `color-theory`, palette validation, contrast
 - `make-interfaces-feel-better`, shadows, micro-interaction
 - `ui-craft`, anti-slop

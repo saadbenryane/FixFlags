@@ -364,23 +364,31 @@ async function runPage(
   await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
   const checksStart = Date.now()
 
-  const flags = (
-    await runAllChecks(
-      normalizedUrl,
-      metadata,
-      pagespeed?.desktop ?? null,
-      pagespeed?.mobile ?? null,
-      screenshots?.consoleErrors ?? [],
-      input.primary
-        ? (index) => {
-            void logPipelineEvent(ctx.auditId, {
-              stage: 'checking',
-              event: `check_${index + 1}`,
-            })
-          }
-        : undefined
-    )
+  const { flags: detFlags, failedModules } = await runAllChecks(
+    normalizedUrl,
+    metadata,
+    pagespeed?.desktop ?? null,
+    pagespeed?.mobile ?? null,
+    screenshots?.consoleErrors ?? [],
+    input.primary
+      ? (index) => {
+          void logPipelineEvent(ctx.auditId, {
+            stage: 'checking',
+            event: `check_${index + 1}`,
+          })
+        }
+      : undefined
   )
+
+  for (const mod of failedModules) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'checking',
+      event: `check_failed`,
+      detail: mod,
+    })
+  }
+
+  const flags = detFlags
     .concat(
       input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
     )

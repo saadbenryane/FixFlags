@@ -1,30 +1,32 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
+// Hex values are the source of truth from the official FixFlags UI Kit v2.0.
+// Keep these in sync with lib/design/tokens.css (HSL) and public/brand/*.svg.
 export const BRAND_HEX = {
-  primary: '#FF4D2E',
+  primary: '#FF4D1F',
   primaryLight: '#FF744D',
   background: '#FFFFFF',
-  foreground: '#0B0B0D',
+  foreground: '#0F1115',
   muted: '#F3F4F6',
-  mutedForeground: '#6B7178',
+  mutedForeground: '#687380',
   border: '#E5E7EB',
   success: '#22C55E',
   warning: '#FACC15',
-  error: '#EF4444',
+  error: '#FF4444',
   info: '#3B82F6',
 } as const
 
 export const BRAND_HEX_DARK = {
-  primary: '#FF4D2E',
+  primary: '#FF4D1F',
   primaryLight: '#FF744D',
-  background: '#0B0B0D',
+  background: '#0F1115',
   foreground: '#FFFFFF',
   muted: '#2A2D33',
   mutedForeground: '#A3A7AE',
   border: '#1E1F23',
   success: '#22C55E',
   warning: '#FACC15',
-  error: '#EF4444',
+  error: '#FF4444',
   info: '#3B82F6',
 } as const
 

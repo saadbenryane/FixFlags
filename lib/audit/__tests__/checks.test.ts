@@ -403,7 +403,7 @@ describe('runAllChecks', () => {
 
   it('deduplicates findings by checkId', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
-    const findings = await runAllChecks(
+    const { flags: findings } = await runAllChecks(
       'https://example.com',
       healthyMeta({ title: null }),
       healthyDesktopPs(),
@@ -416,7 +416,7 @@ describe('runAllChecks', () => {
 
   it('returns only registry checkIds', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 404, 'robots.txt': 404 })
-    const findings = await runAllChecks(
+    const { flags: findings } = await runAllChecks(
       'https://example.com',
       healthyMeta({
         title: null,

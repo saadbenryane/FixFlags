@@ -8,39 +8,39 @@
 :root {
   /* ── Surfaces ── */
   --background: 0 0% 100%;
-  --foreground: 240 8% 5%;
+  --foreground: 220 17% 7%;
   --card: 0 0% 100%;
-  --card-foreground: 240 8% 5%;
+  --card-foreground: 220 17% 7%;
   --muted: 220 14% 96%;
-  --muted-foreground: 212 6% 45%;
+  --muted-foreground: 212 10% 46%;
   --border: 220 13% 91%;
   --border-subtle: 220 13% 94%;
 
-  /* ── Brand orange (Flag #FF4D2E) ── */
-  --brand: 9 100% 59%;
+  /* ── Brand orange (Flag #FF4D1F) ── */
+  --brand: 12 100% 56%;
   --brand-foreground: 0 0% 100%;
   --brand-hover: 13 100% 65%;
-  --brand-muted: 9 100% 97%;
-  --brand-border: 9 90% 88%;
+  --brand-muted: 12 100% 97%;
+  --brand-border: 12 90% 88%;
 
-  --primary: 9 100% 59%;
+  --primary: 12 100% 56%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
-  --secondary-foreground: 240 8% 5%;
-  --accent: 9 80% 97%;
-  --accent-foreground: 240 8% 5%;
+  --secondary-foreground: 220 17% 7%;
+  --accent: 12 80% 97%;
+  --accent-foreground: 220 17% 7%;
 
   /* Links & focus */
   --link: 217 91% 60%;
   --link-hover: 217 91% 52%;
-  --focus-ring: 9 100% 59%;
+  --focus-ring: 12 100% 56%;
   --ring: var(--focus-ring);
 
   --surface-raised: 0 0% 100%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 8% 5%;
+  --popover-foreground: 220 17% 7%;
   --input: 220 13% 91%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 100% 63%;
   --destructive-foreground: 0 0% 98%;
   --success: 142 71% 45%;
   --success-foreground: 0 0% 98%;
@@ -53,9 +53,9 @@
   /* Grade palette */
   --grade-A: 142 71% 45%;
   --grade-B: 84 81% 44%;
-  --grade-C: 9 100% 59%;
+  --grade-C: 12 100% 56%;
   --grade-D: 25 95% 53%;
-  --grade-F: 0 84% 60%;
+  --grade-F: 0 100% 63%;
 
   /* ── Radius (6px controls, 12px cards) ── */
   --radius-input: 0.375rem;
@@ -124,7 +124,7 @@
 }
 
 .dark {
-  --background: 240 8% 5%;
+  --background: 220 17% 7%;
   --foreground: 0 0% 98%;
   --card: 228 8% 13%;
   --card-foreground: 0 0% 98%;
@@ -133,13 +133,13 @@
   --border: 228 8% 13%;
   --border-subtle: 222 9% 16%;
 
-  --brand: 9 100% 59%;
+  --brand: 12 100% 56%;
   --brand-foreground: 0 0% 100%;
   --brand-hover: 13 100% 65%;
-  --brand-muted: 9 60% 12%;
-  --brand-border: 9 50% 22%;
+  --brand-muted: 12 60% 12%;
+  --brand-border: 12 50% 22%;
 
-  --primary: 9 100% 59%;
+  --primary: 12 100% 56%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 10% 18%;
   --secondary-foreground: 0 0% 98%;
@@ -148,14 +148,14 @@
 
   --link: 217 91% 68%;
   --link-hover: 217 91% 75%;
-  --focus-ring: 9 100% 59%;
+  --focus-ring: 12 100% 56%;
   --ring: var(--focus-ring);
 
   --surface-raised: 220 10% 18%;
   --popover: 228 8% 13%;
   --popover-foreground: 0 0% 98%;
   --input: 220 10% 18%;
-  --destructive: 0 72% 55%;
+  --destructive: 0 100% 63%;
   --destructive-foreground: 0 0% 98%;
   --success: 142 70% 45%;
   --success-foreground: 0 0% 98%;
@@ -167,9 +167,9 @@
 
   --grade-A: 142 70% 45%;
   --grade-B: 84 75% 50%;
-  --grade-C: 9 100% 59%;
+  --grade-C: 12 100% 56%;
   --grade-D: 25 90% 58%;
-  --grade-F: 0 72% 55%;
+  --grade-F: 0 100% 63%;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px -2px rgb(0 0 0 / 0.28);
   --shadow-card-hover: 0 2px 8px rgb(0 0 0 / 0.24), 0 12px 28px -4px rgb(0 0 0 / 0.32);
@@ -184,7 +184,7 @@
   --overlay-pill-border: hsl(228 8% 13%);
   --cover-gradient: linear-gradient(to top, rgba(11, 11, 13, 0.95) 0%, rgba(11, 11, 13, 0.6) 45%, transparent 90%);
 
-  --terminal: 240 8% 5%;
+  --terminal: 220 17% 7%;
   --terminal-foreground: 218 6% 78%;
   --terminal-muted: 218 6% 58%;
   --terminal-border: 220 10% 18%;

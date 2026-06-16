@@ -9,19 +9,20 @@ Run this skill when improving visual quality project-wide. **Read the project sk
 
 ## Step 0 — Always read first
 
-1. [fixflags-design-system/SKILL.md](../fixflags-design-system/SKILL.md) — tokens, fonts, spacing
-2. [fixflags-marketing/lean-visual.md](../fixflags-marketing/lean-visual.md) — if touching marketing/report surfaces
+1. [fixflags-design-philosophy/SKILL.md](../fixflags-design-philosophy/SKILL.md) — the *why* (NN/g + Apple HIG); use its pre-ship review rubric
+2. [fixflags-design-system/SKILL.md](../fixflags-design-system/SKILL.md) — tokens, fonts, spacing
+3. [fixflags-marketing/lean-visual.md](../fixflags-marketing/lean-visual.md) — if touching marketing/report surfaces
 
-## Font stack (current)
+## Font stack (current — UI Kit v2.0)
 
 | Role | Font | Use |
 |------|------|-----|
-| Display | Fraunces (SOFT 50, opsz) | Hero h1, section h2, logo, **not** app page titles at hero scale |
+| Display | Satoshi (`font-sans` / `font-display`) | Hero h1, section h2, logo, **not** app page titles at hero scale |
 | App titles | `PageTitle` / `PageHeader` | Dashboard, settings, billing, admin — 1.625–1.875rem |
-| Body | Source Sans 3 | UI, forms, paragraphs |
+| Body | Satoshi (`font-sans`) | UI, forms, paragraphs |
 | Mono | IBM Plex Mono | Grades, scores, labels, code |
 
-**Never** use `Heading as="h1"` on app/admin pages — use `PageHeader` + `PageTitle`.
+Satoshi is the single typeface for display + body. **Never** use `Heading as="h1"` on app/admin pages — use `PageHeader` + `PageTitle`. **Do not** reintroduce Fraunces / Source Sans 3 (legacy).
 
 ## Global skills (read before editing)
 
@@ -59,7 +60,7 @@ Run this skill when improving visual quality project-wide. **Read the project sk
 
 ## Anti-patterns (reject on review)
 
-- Inter, DM Sans, Instrument Serif, Roboto
+- Inter, DM Sans, Instrument Serif, Roboto, Fraunces, Source Sans 3 (all non-Satoshi)
 - `font-bold` on page titles (use `PageTitle` or `Heading`)
 - Hero-sized display type on dashboard/settings
 - Purple gradients, generic 3-card grids, border-heavy cards

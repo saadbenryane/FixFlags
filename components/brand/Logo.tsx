@@ -20,8 +20,10 @@ interface LogoProps {
 }
 
 /**
- * FixFlags mark: seven-bar equalizer. Bars use currentColor so they invert
- * with the theme (Ink in light, white in dark); center flagpole stays Flag orange.
+ * FixFlags mark: equalizer with a flag at center. Pattern (L→R): short bar,
+ * tall bar, [orange flagpole + pennant], tall bar, short bar. Bars use
+ * currentColor so they invert with the theme (Ink in light, white in dark);
+ * the center pole + flag stay Flag orange. Traced from the official UI Kit art.
  */
 function Mark({ px }: { px: number }) {
   return (
@@ -34,14 +36,12 @@ function Mark({ px }: { px: number }) {
       className="shrink-0"
       aria-hidden
     >
-      <rect x="1" y="16" width="4" height="16" rx="2" fill="currentColor" />
-      <rect x="8" y="10" width="4" height="28" rx="2" fill="currentColor" />
-      <rect x="15" y="16" width="4" height="16" rx="2" fill="currentColor" />
-      <rect x="29" y="16" width="4" height="16" rx="2" fill="currentColor" />
-      <rect x="36" y="10" width="4" height="28" rx="2" fill="currentColor" />
-      <rect x="43" y="16" width="4" height="16" rx="2" fill="currentColor" />
-      <rect x="22" y="14" width="4" height="30" rx="2" fill={BRAND_HEX.primary} />
-      <path d="M22 7 L32 12.5 L24.5 16.5 Z" fill={BRAND_HEX.primary} />
+      <rect x="0.5" y="15" width="5" height="18" rx="1.6" fill="currentColor" />
+      <rect x="10.5" y="8" width="5" height="32" rx="1.6" fill="currentColor" />
+      <rect x="32.5" y="8" width="5" height="32" rx="1.6" fill="currentColor" />
+      <rect x="42.5" y="15" width="5" height="18" rx="1.6" fill="currentColor" />
+      <rect x="21.5" y="4" width="5" height="43" rx="1.6" fill={BRAND_HEX.primary} />
+      <path d="M21.5 4 L21.5 0.5 L33 4.5 L26.5 9 Z" fill={BRAND_HEX.primary} />
     </svg>
   )
 }

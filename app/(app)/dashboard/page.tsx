@@ -115,8 +115,8 @@ export default async function DashboardPage() {
             const rubricMap = new Map(rubrics.map((r) => [r.name, r]))
 
             return (
-              <Link key={audit.id} href={`/report/${audit.id}`}>
-                <Card className="border-0 shadow-card transition-shadow hover:shadow-card-hover">
+              <Link key={audit.id} href={`/report/${audit.id}`} className="block">
+                <Card interactive>
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex-1 min-w-0">
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
                           )
                         })}
                         {audit.rechecks.length > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                             <ArrowLeftRight className="h-3 w-3" />
                             Compare
                           </span>

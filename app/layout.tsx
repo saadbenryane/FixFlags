@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'
@@ -28,6 +29,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontVariables} font-sans antialiased`}>
@@ -40,6 +43,7 @@ export default function RootLayout({
           </a>
           {children}
         </Providers>
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   )

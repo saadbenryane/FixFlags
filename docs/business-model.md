@@ -1,5 +1,7 @@
 # Business Model
 
+FixFlags finishes what your AI started. The business model supports that loop: check, fix, re-check, prove.
+
 ## Free Tier Strategy
 
 - **Deterministic checks are free forever with no limit.** No caps, no gating. Every free check is an upsell impression and a data point for our moat.

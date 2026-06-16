@@ -110,7 +110,6 @@ export async function createAndEnqueueAudit(
       {
         jobId: audit.id,
         delay: options.delayMs ?? 0,
-        attempts: 1,
         removeOnComplete: 100,
         removeOnFail: 500,
       }

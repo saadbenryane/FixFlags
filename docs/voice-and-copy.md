@@ -2,9 +2,9 @@
 
 ## FixFlags adaptation
 
-This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: pre-launch confidence for anyone shipping a URL.
+This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the tool that finishes what your AI started.
 
-**Product context:** FixFlags runs evidence-backed checks and returns fix prompts builders can paste into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a sharp reviewer who has shipped messy launches, not a consultant selling a methodology.
+**Product context:** FixFlags runs evidence-backed checks and returns fix prompts builders can paste into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a sharp reviewer who has shipped messy launches, not a consultant selling a methodology. FixFlags is the second pass. The AI built it. FixFlags finds what it missed.
 
 **What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
 
@@ -101,7 +101,7 @@ Do not sound like generic startup advisory.
 
 Core idea: Help people make the right thing clearer before they spend months building, pitching, or scaling the wrong one.
 
-Better framing: QA for AI-built products. Clear Flags across Message, Experience, and Reach before you share the link.
+Better framing: Finish what your AI started. Clear Flags across Message, Experience, and Reach before you share the link.
 
 Keep the offer implicit unless explicitly asked to sell harder. No branded service names ("Clarity Sprint," "startup advisory package"). Plain, grounded lines over consultant packaging.
 

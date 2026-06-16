@@ -1,5 +1,7 @@
 # Offering & Product Scope
 
+Finish what your AI started. FixFlags is the second pass that catches what speed skipped.
+
 ## What We Ship
 
 - **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.

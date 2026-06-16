@@ -2,21 +2,26 @@
 
 ## Category
 
-Pre-launch confidence for anyone shipping a URL.
+FixFlags finishes what your AI started. AI tools ship fast. FixFlags catches what they miss.
 
-Not "QA for AI products." That limits TAM. AI builders are the wedge, but the problem (shipping broken UIs) is universal.
+Not a QA tool you use after. The completion of the AI development loop.
 
 ## One-Liner
 
-Lighthouse finds problems. FixFlags finds problems and tells your AI how to fix them.
+Your AI shipped a site. FixFlags finds what it missed.
 
 ## Tagline
 
 Your AI built it. FixFlags shows what to fix.
 
+## Anchoring Line
+
+Finish what your AI started.
+
 ## Positioning
 
-- **The fix prompt is the differentiator, not the AI.** Anyone can screenshot a page and ask GPT what is wrong. The unique value is: evidence + fix prompt tuned for Cursor/Claude/Lovable/Bolt in one step.
+- **FixFlags completes the AI loop.** AI coding tools (Cursor, Claude Code, Lovable, Bolt) ship fast. They ship UIs that look right at a glance. FixFlags is the second pass that catches what speed skipped: message gaps, UX issues, missing metadata. With fix prompts your AI can run immediately.
+- **The fix prompt is the differentiator, not the AI.** Anyone can screenshot a page and ask GPT what is wrong. The unique value is: evidence + fix prompt tuned for your AI editor in one step. Paste and ship.
 - **Re-check loop proves improvement.** Not just finding issues, but verifying they are resolved. Before/after comparison is the proof.
 - **Not a Lighthouse wrapper.** Lighthouse scores performance and best practices. FixFlags reads screenshots for message clarity, UX gaps, and shareability.
 - **Not a consulting service.** No manual QA, no enterprise dashboards, no compliance reports.
@@ -29,13 +34,13 @@ Your AI built it. FixFlags shows what to fix.
 
 ## Owned Moment
 
-"The pre-launch checklist" for high stakes events:
+"Shipping this week? Run the checklist." High stakes moments:
 - Product Hunt launch
 - Demo day (YC, Techstars)
 - Launch week / ship announcement
 - Client deliverable handoff (agency use case)
 
-Positioning around a specific high-stakes moment is stronger than positioning around a category. People know when they need it.
+Tied to the AI loop: your AI built it, FixFlags checks it before you share the link.
 
 ## Voice Guardrails
 
@@ -55,6 +60,6 @@ Positioning around a specific high-stakes moment is stronger than positioning ar
 
 ## Brand Name
 
-FixFlags. Not QualityOS (rebrand in progress).
+FixFlags. Not QualityOS (rebrand complete).
 
 The name is concrete and action-oriented. "Flags" is the unit of value. "Fix" is the outcome. Keep everything aligned around this: Flags, not Findings. Rubrics, not Areas. Re-check, not Re-audit.

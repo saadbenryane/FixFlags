@@ -7,6 +7,7 @@ export interface PipelineLogEvent {
   event: string
   durationMs?: number
   error?: string
+  detail?: string
 }
 
 export function parsePipelineLog(raw: unknown): PipelineLogEvent[] {
@@ -28,6 +29,7 @@ export async function logPipelineEvent(
     event: string
     durationMs?: number
     error?: string
+    detail?: string
   }
 ): Promise<void> {
   const entry: PipelineLogEvent = {
@@ -36,6 +38,7 @@ export async function logPipelineEvent(
     event: event.event,
     durationMs: event.durationMs,
     error: event.error,
+    detail: event.detail,
   }
 
   const audit = await prisma.audit.findUnique({

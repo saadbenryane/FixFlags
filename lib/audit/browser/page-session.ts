@@ -1,7 +1,6 @@
 import type { Browser, ConsoleMessage, Page } from 'puppeteer'
 import { assertPublicAuditUrl } from '../url'
 
-export const SETTLE_MS = 1500
 export const PAGE_TIMEOUT_MS = 30_000
 
 export interface AuditPageSession {
@@ -18,9 +17,12 @@ export interface CreateAuditPageOptions {
   consoleErrors?: Array<{ type: string; text: string }>
 }
 
-export async function settleAuditPage(_page: Page): Promise<void> {
-  void _page
-  await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
+export async function settleAuditPage(page: Page): Promise<void> {
+  try {
+    await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 })
+  } catch {
+    // timeout is fine. page may be slow. screenshot still captures useful state.
+  }
 }
 
 export async function createAuditPage(

@@ -9,6 +9,10 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_GA_ID: z
+    .string()
+    .regex(/^G-[A-Z0-9]+$/, 'NEXT_PUBLIC_GA_ID must be a GA4 Measurement ID (e.g. G-XXXXXXXXXX)')
+    .optional(),
   PAGESPEED_API_KEY: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   R2_BUCKET_NAME: z.string().optional(),

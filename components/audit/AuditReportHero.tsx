@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { Callout } from '@/components/ui/callout'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
@@ -58,36 +59,34 @@ export function AuditReportHero({
               <span className="font-medium text-foreground">{pageJob ?? 'Unavailable'}</span>
             </span>
           </div>
-          <p className="font-display text-lg leading-snug text-foreground/90 italic text-pretty">
-            &ldquo;{verdict ?? 'The available evidence was insufficient for a reliable verdict.'}
-            &rdquo;
-          </p>
+          <blockquote className="border-l-2 border-brand pl-4 font-display text-lg font-medium leading-[1.45] text-foreground text-pretty">
+            {verdict ?? 'The available evidence was insufficient for a reliable verdict.'}
+          </blockquote>
           <p className="text-xs text-muted-foreground truncate">{url}</p>
         </div>
       </div>
 
       {screenshotLimited && (
-        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          Visual review limited, desktop screenshot could not be captured for this report.
-        </div>
+        <Callout variant="neutral">
+          Visual review limited - the desktop screenshot could not be captured for this report.
+        </Callout>
       )}
 
       {screenshotPartial && !screenshotLimited && (
-        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <Callout variant="neutral">
           Mobile screenshot could not be captured. Desktop viewport review is shown below.
-        </div>
+        </Callout>
       )}
 
       {pageSpeedPartial && (
-        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm text-muted-foreground space-y-1">
-          <p>PageSpeed data was partial for this report.</p>
-          {desktopPageSpeedError && (
-            <p className="text-xs font-mono">Desktop: {desktopPageSpeedError}</p>
+        <Callout variant="neutral" title="PageSpeed data was partial for this report.">
+          {(desktopPageSpeedError || mobilePageSpeedError) && (
+            <div className="space-y-0.5 font-mono text-xs">
+              {desktopPageSpeedError && <p>Desktop: {desktopPageSpeedError}</p>}
+              {mobilePageSpeedError && <p>Mobile: {mobilePageSpeedError}</p>}
+            </div>
           )}
-          {mobilePageSpeedError && (
-            <p className="text-xs font-mono">Mobile: {mobilePageSpeedError}</p>
-          )}
-        </div>
+        </Callout>
       )}
 
       {hasScreenshots && <ScreenshotViewer screenshots={screenshots!} url={url} />}
