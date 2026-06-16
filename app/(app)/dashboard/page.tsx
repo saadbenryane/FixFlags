@@ -14,11 +14,10 @@ import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Surface } from '@/components/ui/surface'
+import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
+import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
-import { Container } from '@/components/ui/container'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
@@ -97,10 +96,10 @@ export default async function DashboardPage() {
       <ProjectsPanel plan={user?.plan ?? 'FREE'} />
 
       {audits.length === 0 ? (
-        <EmptyState
           title="No audits yet"
           description="Paste a URL above to run your first check and get fix prompts."
         />
+        <FirstAuditPrompt />
       ) : (
         <div className="space-y-3">
           <SectionTitle>Recent audits</SectionTitle>
