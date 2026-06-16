@@ -1,6 +1,9 @@
 import { prisma } from '../db'
 import { RUBRIC_ORDER, type RubricName } from './constants'
-import { captureScreenshots } from './screenshot'
+import {
+  captureScreenshots,
+  getAuditBrowser,
+} from './screenshot'
 import {
   fetchAndParseMetadata,
   parseMetadataFromHtml,
@@ -17,6 +20,8 @@ import {
   computeRubricScores,
   type DeterministicFlag,
 } from './checks'
+import { runFlowChecks } from './checks/flow'
+import { runFlowScanStandalone, type FlowScanResult } from './flow/run-flow-scan'
 import {
   runJudge,
   isRetryableJudgeError,
@@ -169,6 +174,7 @@ async function runPage(
 
   let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
   let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
+  let flowResult: FlowScanResult | null = null
   let desktopBase64 = ''
   let mobileBase64: string | null = null
 
@@ -211,11 +217,20 @@ async function runPage(
     const captureStart = Date.now()
 
     const [captured, speed] = await Promise.all([
-      captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`),
+      captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
+        runFlow: input.primary && input.position === 0,
+      }),
       fetchPageSpeedData(normalizedUrl),
     ])
     screenshots = captured
     pagespeed = speed
+    flowResult = captured.flowResult ?? null
+    if (flowResult && input.primary) {
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'capturing',
+        event: 'flow_completed',
+      })
+    }
     ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
 
     await logPipelineEvent(ctx.auditId, {
@@ -296,6 +311,16 @@ async function runPage(
           htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
           performanceData: storedPerformance as never,
           consoleErrors: screenshots.consoleErrors as never,
+          ...(flowResult
+            ? {
+                flowData: {
+                  status: flowResult.status,
+                  steps: flowResult.steps,
+                  finalUrl: flowResult.finalUrl,
+                  ctaText: flowResult.ctaText ?? null,
+                } as never,
+              }
+            : {}),
         },
       })
     }
@@ -309,6 +334,27 @@ async function runPage(
           select: { htmlMetadata: true },
         }))?.htmlMetadata as PageMetadata | null) ??
         (await fetchAndParseMetadata(normalizedUrl))
+
+  if (input.skipCapture && input.primary && input.position === 0) {
+    await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started' })
+    const browser = await getAuditBrowser()
+    flowResult = await runFlowScanStandalone(browser, ctx.auditId, normalizedUrl)
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'checking',
+      event: 'flow_completed',
+    })
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: {
+        flowData: {
+          status: flowResult.status,
+          steps: flowResult.steps,
+          finalUrl: flowResult.finalUrl,
+          ctaText: flowResult.ctaText ?? null,
+        } as never,
+      },
+    })
+  }
 
   assertDeadline(ctx, 'checking')
   await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
@@ -330,7 +376,11 @@ async function runPage(
           }
         : undefined
     )
-  ).map((flag) => ({
+  )
+    .concat(
+      input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
+    )
+    .map((flag) => ({
     ...flag,
     checkId:
       input.position === 0

@@ -20,6 +20,10 @@ import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
+import { PreviewCards } from '@/components/audit/PreviewCards'
+import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
+import type { PreviewMeta } from '@/lib/audit/preview-meta'
+import type { FlowData } from '@/lib/audit/flow-data'
 
 interface RubricRow {
   id: string
@@ -57,6 +61,8 @@ interface AuditReportProps {
       mobileError?: string
       pageSpeedPartial?: boolean
     }
+    previewMeta?: PreviewMeta | null
+    flowData?: FlowData | null
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -159,6 +165,10 @@ export function AuditReport({
         {audit.launchReadiness?.checklist && audit.launchReadiness.checklist.length > 0 && (
           <LaunchGates checklist={audit.launchReadiness.checklist} />
         )}
+
+        {audit.previewMeta && <PreviewCards preview={audit.previewMeta} />}
+
+        {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
 
         {!isSample && isLoggedIn && !viewerIsPaid && (
           <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />

@@ -39,7 +39,7 @@ export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
           value={pct}
           className={cn(
             'h-2',
-            atLimit ? '[&>div]:bg-destructive' : nearLimit ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'
+            atLimit ? '[&>div]:bg-destructive' : nearLimit ? '[&>div]:bg-grade-C' : '[&>div]:bg-success'
           )}
         />
       )}

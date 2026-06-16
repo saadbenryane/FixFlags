@@ -13,6 +13,7 @@ import {
   NAV_LINK_MOBILE_BASE,
 } from '@/lib/site/nav-styles'
 import { NavLink } from '@/components/layout/nav-link'
+import { Logo } from '@/components/brand/Logo'
 import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -78,12 +79,11 @@ export function Header({
       <Container className="pointer-events-auto">
         <div className="flex h-14 items-center justify-between gap-4 rounded-full glass-surface-elevated px-3 shadow-raised sm:px-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Link
+            <Logo
+              variant="wordmark"
+              size="md"
               href={logoHref ?? defaultLogoHref}
-              className="shrink-0 font-display text-xl"
-            >
-              {BRAND.name}
-            </Link>
+            />
             {variant === 'admin' && (
               <span className="hidden rounded-full bg-destructive px-2 py-0.5 text-[10px] font-medium uppercase tracking-label text-destructive-foreground sm:inline">
                 Admin
@@ -129,7 +129,9 @@ export function Header({
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px]">
                 <SheetHeader>
-                  <SheetTitle>{BRAND.name}</SheetTitle>
+                  <SheetTitle>
+                    <Logo variant="wordmark" size="sm" />
+                  </SheetTitle>
                 </SheetHeader>
                 <nav className="mt-6 flex flex-col gap-1">
                   {navLinks.map((link) => (

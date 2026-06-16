@@ -104,6 +104,24 @@ const CHECK_ID_TO_RULE: Record<string, string> = {
     'H1 should describe a specific product outcome, not a generic welcome message.',
   'no-cta-detected':
     'A primary CTA button or link should be visible above the fold.',
+  'placeholder-copy-detected':
+    'Page should not contain Lorem ipsum, TODO, TBD, or [object Object] in visible text.',
+  'template-default-copy':
+    'Replace generic template phrases like "Welcome to" or "Your Company" with product-specific copy.',
+  'unreplaced-template-token':
+    'No {{token}}, ${var}, or %VAR% placeholders should appear in rendered page text.',
+  'cta-dead-link':
+    'Primary CTA links should not use href="#" or empty href; point to a real destination.',
+  'flow-no-cta-found':
+    'A clickable primary CTA should be visible in the desktop viewport.',
+  'flow-cta-unclickable':
+    'The primary CTA should be clickable without being obscured by overlays.',
+  'flow-cta-404':
+    'Clicking the primary CTA should not navigate to a 4xx or 5xx page.',
+  'flow-cta-dead-end':
+    'Clicking the primary CTA should navigate or update the page meaningfully.',
+  'flow-cta-external-leave':
+    'Primary CTA should lead to signup, pricing, or contact on your domain when possible.',
 }
 
 const VERIFIABLE_CHECK_IDS = new Set(Object.keys(CHECK_ID_TO_RULE))

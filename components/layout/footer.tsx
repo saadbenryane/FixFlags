@@ -2,6 +2,7 @@
 
 import { AuditCtaBlock } from '@/components/marketing/AuditCtaBlock'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
+import { Logo } from '@/components/brand/Logo'
 import { NavLink } from '@/components/layout/nav-link'
 import { BRAND, FINAL_CTA } from '@/lib/marketing/copy'
 import { FOOTER_LINKS } from '@/lib/site/nav'
@@ -24,7 +25,10 @@ export function Footer() {
         />
 
         <div className="flex flex-col gap-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>© 2026 {BRAND.name}</span>
+          <div className="flex items-center gap-3">
+            <Logo variant="mark" size="sm" href="/" />
+            <span>© 2026 {BRAND.name}</span>
+          </div>
           <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
             {FOOTER_LINKS.map((link, index) => (
               <span key={link.href} className="inline-flex items-center">

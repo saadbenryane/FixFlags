@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { TextLink } from '@/components/ui/text-link'
 import { Mail, Loader2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
@@ -46,10 +46,10 @@ export default function ForgotPasswordPage() {
       subtitle={sent ? AUTH.forgotPassword.sentSubtitle : AUTH.forgotPassword.subtitle}
       footer={
         <p className="text-center text-sm text-muted-foreground">
-          <Link href="/sign-in" className="inline-flex items-center gap-1 text-primary transition-colors duration-200 hover:text-primary/80">
+          <TextLink href="/sign-in" className="inline-flex items-center gap-1">
             <ArrowLeft className="h-3 w-3" />
             {AUTH.forgotPassword.backToSignIn}
-          </Link>
+          </TextLink>
         </p>
       }
     >

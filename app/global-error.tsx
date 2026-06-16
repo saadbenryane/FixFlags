@@ -1,5 +1,8 @@
 'use client'
 
+import './globals.css'
+import { fontVariables } from '@/lib/design/fonts'
+
 export default function GlobalError({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   error,
@@ -9,15 +12,17 @@ export default function GlobalError({
   reset: () => void
 }) {
   return (
-    <html>
-      <body className="flex min-h-screen flex-col items-center justify-center bg-[#fefcfa] px-6 text-center text-[#1e1b17]">
-        <h1 className="font-serif text-2xl font-normal">Something went wrong</h1>
-        <p className="mt-2 max-w-md text-sm text-[#756b62]">
+    <html lang="en">
+      <body
+        className={`${fontVariables} flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center text-foreground font-sans antialiased`}
+      >
+        <h1 className="font-display text-2xl tracking-heading">Something went wrong</h1>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
           A critical error occurred. Please try again or refresh the page.
         </p>
         <button
           onClick={() => reset()}
-          className="mt-6 rounded-full bg-[#1e1b17] px-6 py-2 text-sm font-medium text-white hover:bg-[#1e1b17]/90"
+          className="mt-6 rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90"
         >
           Try again
         </button>

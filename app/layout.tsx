@@ -1,29 +1,8 @@
 import type { Metadata } from 'next'
-import { Fraunces, IBM_Plex_Mono, Source_Sans_3 } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'
-
-const sourceSans = Source_Sans_3({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-sans',
-  display: 'swap',
-})
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-  axes: ['SOFT', 'WONK', 'opsz'],
-})
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-mono',
-  display: 'swap',
-})
+import { fontVariables } from '@/lib/design/fonts'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -33,6 +12,10 @@ export const metadata: Metadata = {
     title: BRAND.name,
     description: HERO.subhead,
     type: 'website',
+  },
+  icons: {
+    icon: '/icon',
+    apple: '/icon',
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
@@ -47,7 +30,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${sourceSans.variable} ${fraunces.variable} ${ibmPlexMono.variable} font-sans antialiased`}>
+      <body className={`${fontVariables} font-sans antialiased`}>
         <Providers>
           <a
             href="#main-content"

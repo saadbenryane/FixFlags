@@ -7,6 +7,8 @@ import { runSeoChecks } from '@/lib/audit/checks/seo'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
+import { runSlopChecks } from '@/lib/audit/checks/slop'
+import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import {
@@ -660,6 +662,59 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome home'] }))),
     'no-cta-detected': () =>
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
+    'placeholder-copy-detected': () =>
+      checkIds(runSlopChecks(healthyMeta({ pageText: 'Lorem ipsum dolor sit amet.' }))),
+    'template-default-copy': () =>
+      checkIds(runSlopChecks(healthyMeta({ pageText: 'Welcome to our platform.' }))),
+    'unreplaced-template-token': () =>
+      checkIds(runSlopChecks(healthyMeta({ pageText: 'Hello {{user_name}}!' }))),
+    'cta-dead-link': () =>
+      checkIds(
+        runSlopChecks(
+          healthyMeta({
+            links: [{ href: '#', text: 'Get started free', rel: null }],
+          })
+        )
+      ),
+    'flow-no-cta-found': () =>
+      checkIds(runFlowChecks({ status: 'no_cta', steps: [], finalUrl: 'https://example.com' })),
+    'flow-cta-unclickable': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'unclickable',
+          steps: [],
+          finalUrl: 'https://example.com',
+          ctaText: 'Sign up',
+        })
+      ),
+    'flow-cta-404': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'error_response',
+          steps: [],
+          finalUrl: 'https://example.com/missing',
+          httpStatus: 404,
+          ctaText: 'Sign up',
+        })
+      ),
+    'flow-cta-dead-end': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'dead_end',
+          steps: [],
+          finalUrl: 'https://example.com',
+          ctaText: 'Sign up',
+        })
+      ),
+    'flow-cta-external-leave': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'external_leave',
+          steps: [],
+          finalUrl: 'https://other.com/signup',
+          ctaText: 'Sign up',
+        })
+      ),
   }
 
   for (const checkId of ALL_CHECK_IDS) {

@@ -32,7 +32,7 @@ export function FlagFeedback({ flagId }: Props) {
         variant="ghost"
         size="sm"
         onClick={() => handleVote(1)}
-        className={`h-7 w-7 p-0 ${vote === 1 ? 'text-green-600' : 'text-muted-foreground'}`}
+        className={`h-7 w-7 p-0 ${vote === 1 ? 'text-success' : 'text-muted-foreground'}`}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
       </Button>
@@ -40,7 +40,7 @@ export function FlagFeedback({ flagId }: Props) {
         variant="ghost"
         size="sm"
         onClick={() => handleVote(-1)}
-        className={`h-7 w-7 p-0 ${vote === -1 ? 'text-red-500' : 'text-muted-foreground'}`}
+        className={`h-7 w-7 p-0 ${vote === -1 ? 'text-destructive' : 'text-muted-foreground'}`}
       >
         <ThumbsDown className="h-3.5 w-3.5" />
       </Button>

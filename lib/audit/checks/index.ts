@@ -7,6 +7,7 @@ import { runSeoChecks } from './seo'
 import { runTrustChecks } from './trust'
 import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
+import { runSlopChecks } from './slop'
 import { logger } from '@/lib/logger'
 
 export interface DeterministicFlag {
@@ -40,6 +41,7 @@ export async function runAllChecks(
     () => runTrustChecks(url, metadata, consoleErrors),
     () => runMobileChecks(mobile),
     () => runContentChecks(metadata),
+    () => runSlopChecks(metadata),
   ]
 
   for (let i = 0; i < checkers.length; i++) {

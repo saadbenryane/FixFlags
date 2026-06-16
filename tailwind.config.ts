@@ -86,11 +86,11 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         grade: {
-          A: '#22c55e',
-          B: '#84cc16',
-          C: 'hsl(var(--brand))',
-          D: '#f97316',
-          F: '#ef4444',
+          A: 'hsl(var(--grade-A))',
+          B: 'hsl(var(--grade-B))',
+          C: 'hsl(var(--grade-C))',
+          D: 'hsl(var(--grade-D))',
+          F: 'hsl(var(--grade-F))',
         },
       },
       borderRadius: {

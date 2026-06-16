@@ -784,7 +784,12 @@ export const AUDIT_PROGRESS = {
   ],
   stageActivity: {
     QUEUED: ['Queueing your check...', 'Spinning up the pipeline...'],
-    CAPTURING: ['Capturing desktop screenshot...', 'Capturing mobile screenshot...', 'Loading page in browser...'],
+    CAPTURING: [
+      'Capturing desktop screenshot...',
+      'Capturing mobile screenshot...',
+      'Testing primary CTA click-through...',
+      'Loading page in browser...',
+    ],
     CHECKING: [
       'Reviewing message clarity and CTA copy...',
       'Checking layout, mobile viewport, and tap targets...',

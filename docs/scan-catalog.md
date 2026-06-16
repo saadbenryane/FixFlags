@@ -1,0 +1,126 @@
+# Scan Catalog
+
+Single source of truth for every scan FixFlags runs or plans to run, organized by rubric.
+
+**Rubrics** (from `lib/audit/constants.ts`): `MESSAGE`, `EXPERIENCE`, `REACH`.
+
+**Methods:** `deterministic` (code rules), `AI` (judge on screenshots + evidence), `agent` (Puppeteer navigation).
+
+See [scan-roadmap.md](./scan-roadmap.md) for phased build order.
+
+---
+
+## Message
+
+Does the page communicate clearly and convert? Copy, positioning, CTAs, credibility.
+
+### Live
+
+| Scan family | Method | Check IDs |
+|-------------|--------|-----------|
+| **Content scan** | deterministic | `h1-generic`, `no-cta-detected` |
+| **Console error scan** | deterministic | `console-errors-critical`, `console-errors-some` |
+| **Slop scan** | deterministic | `placeholder-copy-detected`, `template-default-copy`, `unreplaced-template-token`, `cta-dead-link` |
+| **AI message review** | AI | Headline specificity, audience fit, benefit hierarchy, CTA copy, social proof, copy hierarchy |
+| **Launch gate: mobile CTA** | AI + evidence | Primary CTA visible above fold on 375px |
+
+### Roadmap
+
+| Scan family | Method | Notes |
+|-------------|--------|-------|
+| **CTA focus scan** | agent + AI | Annotated mobile screenshot, CTA contrast, competing CTAs |
+| **Social proof scan** | AI | Testimonial credibility, pricing confidence |
+| **Flow scan (message layer)** | agent | CTA destination matches headline promise |
+
+---
+
+## Experience
+
+Does the page work, feel good, and work on mobile? Layout, speed, accessibility, interactions.
+
+### Live
+
+| Scan family | Method | Check IDs |
+|-------------|--------|-----------|
+| **Screenshot capture** | agent | Desktop 1280×900, mobile 375×812 |
+| **Performance scan** | deterministic | `perf-score-critical`, `perf-score-poor`, `lcp-critical`, `lcp-poor`, `cls-critical`, `cls-poor`, `render-blocking`, `unused-js-large`, `unused-css-large`, `unoptimized-images`, `inp-critical`, `inp-poor` |
+| **Mobile scan** | deterministic | `mobile-perf-critical`, `mobile-perf-poor`, `tap-targets-small`, `mobile-lcp-critical` |
+| **Accessibility scan** | deterministic | `images-missing-alt`, `images-empty-alt`, `form-inputs-no-label`, `buttons-no-text`, `links-no-text`, `iframe-no-title`, `tabindex-positive`, `color-contrast-poor`, `skip-link-missing`, `keyboard-nav-trap`, `focus-visible-missing` |
+| **Viewport scan** | deterministic | `viewport-missing`, `lang-missing` |
+| **Flow scan** | agent | `flow-no-cta-found`, `flow-cta-unclickable`, `flow-cta-404`, `flow-cta-dead-end`, `flow-cta-external-leave` |
+| **AI experience review** | AI | CTA above fold, layout, mobile usability, keyboard/contrast, CWV, broken interactions |
+| **Launch gate: console errors** | deterministic | No critical console errors |
+| **Critical path scan** (Pro) | agent + deterministic | Same checks on up to 3 pages: home + pricing + primary CTA |
+
+### Roadmap
+
+| Scan family | Method | Notes |
+|-------------|--------|-------|
+| **Auth & checkout smoke** | agent | Login/signup loads, OAuth wired, Stripe links resolve |
+| **Real device mobile scan** | agent | iPhone Safari + Android Chrome |
+| **Interaction scan** | agent | Modals, sticky nav, form validation |
+| **Visual polish scan** | AI + agent | Dark mode, empty states, font flash |
+| **Native app scan** | agent | Real device tap-through (Studio tier) |
+
+---
+
+## Reach
+
+Can people find, share, trust, and measure the site? SEO, previews, legal, analytics.
+
+### Live
+
+| Scan family | Method | Check IDs |
+|-------------|--------|-----------|
+| **Metadata scan** | deterministic | `title-missing`, `title-too-short`, `title-too-long`, `description-missing`, `description-too-short`, `description-too-long`, `og-image-missing`, `og-title-missing`, `og-description-missing`, `canonical-missing`, `robots-blocks-indexing`, `favicon-missing` |
+| **SEO scan** | deterministic | `h1-missing`, `h1-multiple`, `no-structured-data`, `external-links-unsafe`, `sitemap-missing`, `robots-txt-missing`, `broken-internal-links` |
+| **Trust scan** | deterministic | `no-https`, `no-privacy-policy`, `no-contact-info`, `cookie-consent-absent` |
+| **Preview cards UI** | UI | Rendered Google snippet + social card from metadata |
+| **AI reach review** | AI | Share tags, indexability, privacy/contact, analytics |
+| **Launch gates** | mixed | `https`, `social-preview`, `privacy-contact` |
+
+### Roadmap
+
+| Scan family | Method | Notes |
+|-------------|--------|-------|
+| **Measurement scan** | deterministic | GA4/GTM/PostHog presence, conversion events, consent blocking |
+| **Secret leak scan** | deterministic | API keys in page source or bundles |
+| **Security basics scan** | deterministic | Mixed content, CSP headers |
+| **Expanded critical path** | deterministic | Cross-page OG consistency |
+| **Store listing scan** | deterministic | App Store / Play Store metadata (native apps) |
+
+---
+
+## Cross-rubric modes
+
+Not rubrics themselves — audit modes that run all three.
+
+| Mode | Status | Description |
+|------|--------|-------------|
+| **Single URL audit** | Live | One page, all rubrics |
+| **Critical path audit** | Live (Pro) | Up to 3 conversion-path URLs |
+| **Re-check** | Live | Re-runs checks, diffs flags, marks FIXED / REGRESSED |
+| **CI deploy gate** | Roadmap | Block deploy if launch gates fail |
+| **Weekly pulse** | Roadmap | Scheduled re-check, alert on regressions |
+
+---
+
+## Launch gates
+
+Five yes/no checks from report evidence (`lib/audit/rubric.ts`):
+
+| Gate ID | Primary rubric | What it checks |
+|---------|----------------|----------------|
+| `https` | Reach | Site served over HTTPS |
+| `social-preview` | Reach | og:image present and valid |
+| `mobile-cta` | Message / Experience | Primary CTA above fold on mobile |
+| `console-errors` | Experience | No critical JS console errors |
+| `privacy-contact` | Reach | Privacy policy and contact info findable |
+
+---
+
+## Check ID registry
+
+All deterministic check IDs live in `lib/audit/check-ids.ts`. When adding a scan, register the ID there and add a verification rule in `lib/audit/verify-flags.ts`.
+
+**Current count:** see `CHECK_ID_COUNT` in `check-ids.ts` (updates with each phase).

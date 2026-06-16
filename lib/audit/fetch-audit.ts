@@ -9,6 +9,10 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { parsePreviewMeta, type PreviewMeta } from '@/lib/audit/preview-meta'
+import { parseFlowData, type FlowData } from '@/lib/audit/flow-data'
+
+export type { PreviewMeta, FlowData }
 import { sanitizeRubricForRead } from '@/lib/audit/sanitize-prompts'
 import {
   computeShareStatusFromRubrics,
@@ -95,6 +99,8 @@ export async function getGatedAuditForRequest(id: string) {
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics })
   const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
+  const previewMeta = parsePreviewMeta(audit.htmlMetadata, audit.url)
+  const flowData = parseFlowData(audit.flowData)
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -126,6 +132,8 @@ export async function getGatedAuditForRequest(id: string) {
       rubrics,
       shareStatus,
       pageSpeedErrors: pageSpeed,
+      previewMeta,
+      flowData,
     },
     isPaid,
     isLoggedIn: !!session?.user,

@@ -5,6 +5,7 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
 import { logger } from '../logger'
+import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 
 let browser: Browser | null = null
 
@@ -44,12 +45,92 @@ export interface ScreenshotResult {
   desktopHtml: string | null
   consoleErrors: Array<{ type: string; text: string }>
   captureStatus: ScreenshotCaptureStatus
+  flowResult?: FlowScanResult | null
 }
 
 interface ViewportCapture {
   base64: string | null
   url: string | null
   html: string | null
+}
+
+async function captureDesktopWithFlow(
+  b: Browser,
+  targetUrl: string,
+  auditId: string,
+  pageKey: string | undefined,
+  consoleErrors: Array<{ type: string; text: string }>,
+  runFlow: boolean
+): Promise<ViewportCapture & { flowResult: FlowScanResult | null }> {
+  const result: ViewportCapture & { flowResult: FlowScanResult | null } = {
+    base64: null,
+    url: null,
+    html: null,
+    flowResult: null,
+  }
+  let page: Page | null = null
+
+  try {
+    page = await b.newPage()
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      const protocol = new URL(request.url()).protocol
+      if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
+        void request.continue()
+        return
+      }
+      void assertPublicAuditUrl(request.url())
+        .then(() => request.continue())
+        .catch(() => request.abort('blockedbyclient'))
+    })
+    page.on('console', (msg: ConsoleMessage) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push({ type: msg.type(), text: msg.text() })
+      }
+    })
+
+    await page.setViewport({
+      width: DESKTOP_VIEWPORT.width,
+      height: DESKTOP_VIEWPORT.height,
+    })
+
+    const response = await page.goto(targetUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: TIMEOUT_MS,
+    })
+    const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
+    if (!response?.ok() || (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml'))) {
+      throw new Error('Destination did not return a successful HTML document')
+    }
+    await settlePage(page)
+
+    result.html = await page.content()
+
+    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    result.base64 = buffer.toString('base64')
+    result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
+
+    if (runFlow) {
+      try {
+        result.flowResult = await runFlowScan(page, auditId, targetUrl)
+      } catch (err) {
+        logger.error('Flow scan failed', err)
+        result.flowResult = {
+          status: 'skipped',
+          steps: [],
+          finalUrl: page.url(),
+        }
+      }
+    }
+  } catch (err) {
+    logger.error('desktop screenshot failed', err)
+  } finally {
+    if (page) {
+      await page.close().catch(() => {})
+    }
+  }
+
+  return result
 }
 
 async function captureViewport(
@@ -133,26 +214,16 @@ async function settlePage(_page: Page) {
 export async function captureScreenshots(
   url: string,
   auditId: string,
-  pageKey?: string
+  pageKey?: string,
+  options?: { runFlow?: boolean }
 ): Promise<ScreenshotResult> {
   await assertPublicAuditUrl(url)
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
+  const runFlow = options?.runFlow ?? true
 
   const [desktop, mobile] = await Promise.all([
-    captureViewport(
-      b,
-      url,
-      auditId,
-      {
-        width: DESKTOP_VIEWPORT.width,
-        height: DESKTOP_VIEWPORT.height,
-        device: 'desktop',
-        captureHtml: true,
-        pageKey,
-      },
-      consoleErrors
-    ),
+    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow),
     captureViewport(
       b,
       url,
@@ -180,7 +251,12 @@ export async function captureScreenshots(
       desktop: desktop.url ? 'ok' : 'failed',
       mobile: mobile.url ? 'ok' : 'failed',
     },
+    flowResult: desktop.flowResult,
   }
+}
+
+export async function getAuditBrowser(): Promise<Browser> {
+  return getBrowser()
 }
 
 export async function closeBrowser() {

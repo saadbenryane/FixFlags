@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -126,7 +126,7 @@ export default function ApiKeysPage() {
               Upgrade to Pro to generate API keys and audit from your editor.
             </p>
             <Button asChild size="sm">
-              <Link href="/pricing">Upgrade to Pro</Link>
+              <TextLink href="/pricing">Upgrade to Pro</TextLink>
             </Button>
           </CardContent>
         </Card>
@@ -212,9 +212,7 @@ export default function ApiKeysPage() {
 
       <div className="text-center text-sm text-muted-foreground">
         See the{' '}
-        <Link href="/docs/mcp" className="text-primary hover:underline">
-          MCP setup guide
-        </Link>{' '}
+        <TextLink href="/docs/mcp">MCP setup guide</TextLink>{' '}
         to connect your key to Claude Code, Cursor, or Windsurf.
       </div>
     </div>

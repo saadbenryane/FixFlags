@@ -5,7 +5,7 @@ description: FixFlags visual design tokens, kerning, spacing, concentric border 
 
 # FixFlags Design System
 
-Project tokens live in `lib/design/tokens.css` and `app/globals.css`. Read before changing UI.
+Project tokens live in `lib/design/tokens.css` and `app/globals.css`. Brand constants for OG/email: `lib/design/brand-spec.ts`. Read before changing UI.
 
 ## Color theory (60-30-10)
 
@@ -131,8 +131,24 @@ Apply `rounded-t-[var(--radius-nested-md)]` on full-bleed card headers when oute
 - [ ] Only uppercase labels have wide tracking
 - [ ] Nested rounded elements use concentric formula
 - [ ] Brand amber appears ≤5 times above the fold
-- [ ] Focus rings use `--ring` (brand), never removed
+- [ ] Focus rings use `--ring` (focus-ring), never removed
 - [ ] Numbers in scores use `tabular-nums`
+
+## Rebrand file layout
+
+Centralize brand changes here (do not scatter hex):
+
+| File | Purpose |
+|------|---------|
+| `lib/design/tokens.css` | CSS variables (light + `.dark`) |
+| `lib/design/brand-spec.ts` | Hex for OG, email, manifest |
+| `lib/design/fonts.ts` | Font loaders |
+| `lib/design/og-templates.tsx` | OG + favicon layouts |
+| `lib/design/brand-rules.md` | Brand rules reference |
+| `components/brand/Logo.tsx` | Logo component |
+| `public/brand/` | SVG assets |
+
+**Rule:** No raw hex in components. Use Tailwind semantic tokens or `brand-spec.ts`.
 
 ## Companion skills
 

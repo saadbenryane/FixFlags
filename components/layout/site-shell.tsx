@@ -25,7 +25,7 @@ export function SiteShell({
   showAdmin,
 }: SiteShellProps) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header
         variant={variant}
         logoHref={logoHref}

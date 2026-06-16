@@ -11,6 +11,8 @@ Read before changing product logic or writing copy that promises a feature.
 
 | Area | Files |
 |------|-------|
+| Scan catalog + roadmap | `docs/scan-catalog.md`, `docs/scan-roadmap.md` |
+| Check ID registry | `lib/audit/check-ids.ts` |
 | Copy + upgrade strings | `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`) |
 | Upgrade moment resolver | `lib/billing/upgrade-moments.ts` (logic only) |
 | Plan definitions | `lib/billing/plans.ts` (`getMarketingPlans()`) |

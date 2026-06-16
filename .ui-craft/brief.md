@@ -17,5 +17,6 @@ FixFlags is the QA layer for AI-built products. Users paste URLs, get graded rep
 ## Skills
 
 - `.cursor/skills/fixflags-design-system/SKILL.md`
+- `lib/design/brand-rules.md` — palette, typography, file layout
 - `.cursor/skills/fixflags-marketing/lean-visual.md`
 - `.cursor/skills/fixflags-marketing/writing-simple.md`

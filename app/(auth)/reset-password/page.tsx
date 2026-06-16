@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import Link from 'next/link'
+import { TextLink } from '@/components/ui/text-link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -57,9 +57,7 @@ function ResetPasswordForm() {
         subtitle={AUTH.resetPassword.invalidSubtitle}
         footer={
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/forgot-password" className="text-primary transition-colors duration-200 hover:text-primary/80">
-              {AUTH.resetPassword.requestNewLink}
-            </Link>
+            <TextLink href="/forgot-password">{AUTH.resetPassword.requestNewLink}</TextLink>
           </p>
         }
       >

@@ -1,10 +1,12 @@
-import Link from 'next/link'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { LabelCaps } from '@/components/ui/typography'
+import { TextLink } from '@/components/ui/text-link'
 
 export default async function ExpertReviewDetailPage({
   params,
@@ -32,15 +34,15 @@ export default async function ExpertReviewDetailPage({
 
   return (
     <Container variant="content" className="space-y-10 py-10">
-      <header className="space-y-3">
-        <p className="section-label">Expert Review</p>
-        <h1 className="font-display text-4xl tracking-display">What to fix next</h1>
+      <div className="space-y-2">
+        <LabelCaps>Expert Review</LabelCaps>
+        <PageHeader title="What to fix next" />
         {order.audit && (
-          <Link href={`/report/${order.audit.id}`} className="text-sm text-brand hover:underline">
+          <TextLink href={`/report/${order.audit.id}`} className="text-sm">
             {order.audit.url}
-          </Link>
+          </TextLink>
         )}
-      </header>
+      </div>
 
       <section className="space-y-3">
         <h2 className="font-display text-2xl tracking-heading">Executive summary</h2>

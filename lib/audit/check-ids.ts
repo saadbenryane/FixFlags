@@ -63,6 +63,17 @@ export const ALL_CHECK_IDS = [
   // content.ts
   'h1-generic',
   'no-cta-detected',
+  // slop.ts
+  'placeholder-copy-detected',
+  'template-default-copy',
+  'unreplaced-template-token',
+  'cta-dead-link',
+  // flow.ts
+  'flow-no-cta-found',
+  'flow-cta-unclickable',
+  'flow-cta-404',
+  'flow-cta-dead-end',
+  'flow-cta-external-leave',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

@@ -30,7 +30,7 @@ export function FlagDiff({ fixed, unchanged, regressed, newIssues }: Props) {
       <h2 className="text-sm font-semibold">Flag changes</h2>
 
       {fixed.length > 0 && (
-        <DiffSection title="Fixed" items={fixed} className="text-green-600 border-green-200" />
+        <DiffSection title="Fixed" items={fixed} className="text-success border-success-border" />
       )}
       {unchanged.length > 0 && (
         <DiffSection

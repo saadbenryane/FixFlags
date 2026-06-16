@@ -302,6 +302,7 @@ model Audit {
   htmlMetadata    Json?
   performanceData Json?
   consoleErrors   Json?
+  flowData        Json?
 
   rubrics            ReportRubric[]
   screenshots        Screenshot[]

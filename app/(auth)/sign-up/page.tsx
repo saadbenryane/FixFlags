@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
+import { TextLink } from '@/components/ui/text-link'
 import { Mail, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
@@ -73,9 +74,7 @@ function SignUpForm() {
       footer={
         <p className="text-center text-sm text-muted-foreground">
           {AUTH.signUp.footer}{' '}
-          <Link href={signInHref()} className="text-primary transition-colors duration-200 hover:text-primary/80">
-            {AUTH.signUp.footerLink}
-          </Link>
+          <TextLink href={signInHref()}>{AUTH.signUp.footerLink}</TextLink>
         </p>
       }
     >

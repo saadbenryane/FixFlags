@@ -20,9 +20,15 @@
 
 These are not planned until 100 paying users validate demand.
 
+## Scans
+
+Full catalog by rubric: [scan-catalog.md](./scan-catalog.md). Phased build plan: [scan-roadmap.md](./scan-roadmap.md).
+
+Phase 1 (flow scan, slop detection, preview cards) is the validated exception to the freeze below — it directly serves the core loop for AI builders.
+
 ## Feature Philosophy
 
-- **Zero new features until 100 paying users.** Enough product scope. What is missing is distribution, not depth.
+- **Zero new features until 100 paying users** — except scan depth in [scan-roadmap.md](./scan-roadmap.md) Phase 1. What is missing is distribution, not depth.
 - **Every feature must serve the core loop:** check, fix, re-check, prove. If it does not fit that loop, it does not ship.
 - **Re-checks are the habit.** Never gate them. A user who re-checks is a user who sees value. A user who hits a paywall on re-check is a user who churns.
 
