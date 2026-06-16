@@ -1,14 +1,11 @@
-import { LandingFaqSection } from '@/components/marketing/landing/LandingFaqSection'
 import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
 import { LandingSampleReportSection } from '@/components/marketing/landing/LandingSampleReportSection'
 import { LogoCloudSection } from '@/components/marketing/landing/LogoCloudSection'
-import { PricingTeaserSection } from '@/components/marketing/landing/PricingTeaserSection'
 import { RealImpactSection } from '@/components/marketing/landing/RealImpactSection'
 import { TestimonialsSection } from '@/components/marketing/landing/TestimonialsSection'
 import { ThreePlacesSection } from '@/components/marketing/landing/ThreePlacesSection'
-import { HOME_FAQ } from '@/lib/marketing/copy'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -37,8 +34,6 @@ export default async function HomePage() {
         sampleHref={sampleHref}
         source={sample.source}
       />
-      <LandingFaqSection items={HOME_FAQ} />
-      <PricingTeaserSection />
       <LandingFinalCtaSection />
     </>
   )

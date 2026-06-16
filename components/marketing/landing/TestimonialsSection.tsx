@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Github, Linkedin } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -35,12 +36,13 @@ export function TestimonialsSection() {
                 {item.quote}
               </blockquote>
               <div className="mt-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-sans text-sm font-semibold text-foreground">
-                  {item.name
-                    .split(' ')
-                    .map((part) => part[0])
-                    .join('')}
-                </div>
+                <Image
+                  src={item.avatar}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{item.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{item.handle}</p>
@@ -53,7 +55,7 @@ export function TestimonialsSection() {
           ))}
         </div>
 
-        <Muted className="text-center text-xs">{disclaimer}</Muted>
+        <Muted className="text-center text-sm">{disclaimer}</Muted>
       </Container>
     </Section>
   )

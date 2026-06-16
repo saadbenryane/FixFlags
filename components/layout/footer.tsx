@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { Github, Linkedin } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
+import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
@@ -11,20 +13,32 @@ import {
 } from '@/lib/site/nav-styles'
 
 export function Footer() {
-  const { tagline, madeWith, columns } = LANDING_PAGE.footer
+  const { tagline, madeWith, columns, social } = LANDING_PAGE.footer
 
   return (
     <footer className="border-t border-border/40 bg-muted/25">
       <Container className="space-y-12 py-14 sm:py-16 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] lg:gap-8">
-          <div className="space-y-4">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))] lg:gap-8">
+          <div className="space-y-5">
             <Logo variant="lockup" size="md" href="/" />
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
+            <div className="flex items-center gap-3">
+              <FooterSocialLink href={social.x} label="X">
+                <span className="font-sans text-sm font-bold" aria-hidden>X</span>
+              </FooterSocialLink>
+              <FooterSocialLink href={social.linkedin} label="LinkedIn">
+                <Linkedin className="h-4 w-4" aria-hidden />
+              </FooterSocialLink>
+              <FooterSocialLink href={social.github} label="GitHub">
+                <Github className="h-4 w-4" aria-hidden />
+              </FooterSocialLink>
+            </div>
           </div>
 
           <FooterColumn title="Product" links={columns.product} />
           <FooterColumn title="Resources" links={columns.resources} />
           <FooterColumn title="Company" links={columns.company} />
+          <FooterNewsletter />
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border/30 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
@@ -52,6 +66,28 @@ export function Footer() {
         </div>
       </Container>
     </footer>
+  )
+}
+
+function FooterSocialLink({
+  href,
+  label,
+  children,
+}: {
+  href: string
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      aria-label={label}
+    >
+      {children}
+    </Link>
   )
 }
 

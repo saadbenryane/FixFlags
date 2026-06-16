@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.r2.dev',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
   },
   experimental: {

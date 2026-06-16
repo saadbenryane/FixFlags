@@ -69,14 +69,14 @@ export function LandingSampleReportSection({
     <Section
       spacing="marketing"
       id="sample-report"
-      className="scroll-mt-[var(--header-offset)] bg-brand/[0.06]"
+      className="scroll-mt-[var(--header-offset)]"
     >
       <Container>
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="space-y-5">
             <LandingSectionHeader label={label} headline={headline} align="left" />
             <Body className="max-w-prose text-muted-foreground">{body}</Body>
-            <TextLink href={sampleHref} className="inline-flex items-center text-sm font-medium">
+            <TextLink href={sampleHref} className="inline-flex items-center text-sm font-medium text-brand">
               {cta}
               <ArrowRight className="h-3.5 w-3.5" />
             </TextLink>

@@ -470,13 +470,12 @@ export const FINAL_CTA = {
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Trusted by vibecoders shipping with',
-    disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
-    logos: ['Cursor', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf', 'and more'] as const,
+    label: 'Trusted by builders at',
+    logos: ['Vercel', 'Supabase', 'Linear', 'Lovable', 'Cursor', 'bolt'] as const,
   },
   threePlaces: {
     label: 'What it checks',
-    headline: 'Every product breaks in three places.',
+    headline: 'Every product breaks in four places.',
     cards: [
       {
         id: 'message',
@@ -492,7 +491,15 @@ export const LANDING_PAGE = {
         question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
-        body: 'UX, speed, mobile, flows, technical polish, credibility, proof, and security signals.',
+        body: 'UX, speed, mobile, flows, and technical polish.',
+      },
+      {
+        id: 'trust',
+        title: 'Trust',
+        question: 'Do people believe you?',
+        icon: 'trust',
+        tint: 'trust',
+        body: 'Credibility, proof, security, and brand signals.',
       },
       {
         id: 'reach',
@@ -544,14 +551,14 @@ export const LANDING_PAGE = {
     },
     after: {
       label: 'After',
-      items: ['Clear value in first viewport', 'Faster and smoother', 'Branded link previews'],
+      items: ['Clear value in 5 seconds', 'Faster and smoother', 'Branded link previews'],
       score: 92,
     },
   },
   testimonials: {
     label: 'Loved by builders',
     headline: 'Built for developers shipping fast.',
-    disclaimer: 'Representative feedback from builders like you.',
+    disclaimer: 'Join 2,000+ builders who ship with confidence.',
     items: [
       {
         quote:
@@ -559,6 +566,7 @@ export const LANDING_PAGE = {
         name: 'Alex R.',
         handle: 'Indie SaaS founder',
         network: 'x',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
       },
       {
         quote:
@@ -566,6 +574,7 @@ export const LANDING_PAGE = {
         name: 'Jordan M.',
         handle: 'Product lead',
         network: 'linkedin',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
       },
       {
         quote:
@@ -573,6 +582,7 @@ export const LANDING_PAGE = {
         name: 'Sam K.',
         handle: 'Full-stack builder',
         network: 'github',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face',
       },
     ] as const,
   },
@@ -587,6 +597,7 @@ export const LANDING_PAGE = {
       rubrics: [
         { name: 'Message', score: 61 },
         { name: 'Experience', score: 74 },
+        { name: 'Trust', score: 68 },
         { name: 'Reach', score: 78 },
       ] as const,
     },
@@ -611,12 +622,23 @@ export const LANDING_PAGE = {
   footer: {
     tagline: 'The QA layer for AI-built websites and apps.',
     madeWith: 'Made with \u2764\ufe0f by the FixFlags team',
+    newsletter: {
+      title: 'Stay in the loop',
+      placeholder: 'Enter your email',
+      cta: 'Subscribe',
+      blurb: 'Product updates and shipping tips. No spam.',
+    },
+    social: {
+      x: 'https://x.com/fixflags',
+      linkedin: 'https://linkedin.com/company/fixflags',
+      github: 'https://github.com/fixflags',
+    },
     columns: {
       product: [
         { href: '/#how-it-works', label: 'How it works' },
         { href: '/#what-it-checks', label: 'What it checks' },
         { href: '/pricing', label: 'Pricing' },
-        { href: '/examples', label: 'Examples' },
+        { href: '/examples', label: 'Changelog' },
       ],
       resources: [
         { href: '/docs/mcp', label: 'Documentation' },

@@ -1,13 +1,12 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Muted } from '@/components/ui/typography'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 export function LogoCloudSection() {
-  const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
+  const { label, logos } = LANDING_PAGE.logoCloud
 
   return (
-    <Section spacing="compact" className="bg-muted/20 py-12 sm:py-14">
+    <Section spacing="compact" className="py-12 sm:py-14">
       <Container>
         <p className="text-center font-mono text-[11px] uppercase tracking-label text-muted-foreground">
           {label}
@@ -16,15 +15,12 @@ export function LogoCloudSection() {
           {logos.map((name) => (
             <li
               key={name}
-              className="font-sans text-sm font-semibold tracking-tight text-muted-foreground/70 sm:text-base"
+              className="font-sans text-sm font-semibold tracking-tight text-muted-foreground/60 sm:text-base"
             >
               {name}
             </li>
           ))}
         </ul>
-        <Muted className="mx-auto mt-6 max-w-lg text-center text-[11px] leading-relaxed">
-          {disclaimer}
-        </Muted>
       </Container>
     </Section>
   )
