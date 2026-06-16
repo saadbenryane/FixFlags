@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { TextLink } from '@/components/ui/text-link'
-import { Mail, User, Loader2 } from 'lucide-react'
+import { Mail, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -13,7 +13,7 @@ import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { PasswordInput } from '@/components/auth/PasswordInput'
-import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
+import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 
@@ -21,30 +21,19 @@ function SignUpForm() {
   const { oauthCallbackURL, navigateAfterAuth, signInHref, plan } = useAuthRedirect()
   useRedirectIfAuthenticated()
 
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [confirmError, setConfirmError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setConfirmError('')
-
-    if (password !== confirmPassword) {
-      setConfirmError('Passwords do not match')
-      return
-    }
-
     setLoading(true)
     try {
-      const { error } = await authClient.signUp.email({ name, email, password })
+      const { error } = await authClient.signUp.email({ name: '', email, password })
       if (error) {
         toast.error(error.message || 'Sign up failed')
         return
       }
-
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
       await navigateAfterAuth()
     } catch {
@@ -60,12 +49,7 @@ function SignUpForm() {
       : null
 
   const showPlanSteps = plan && plan in AUTH.signUp.planTitles
-
-  const subtitle = planTitle
-    ? planTitle
-    : hasOAuthEnabled()
-      ? AUTH.signUp.subtitleWithOAuth
-      : AUTH.signUp.subtitle
+  const subtitle = planTitle ? planTitle : AUTH.signUp.subtitleWithOAuth
 
   return (
     <AuthCard
@@ -82,9 +66,7 @@ function SignUpForm() {
         <AuthValueProps />
       </div>
       <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
-      {hasOAuthEnabled() && (
-        <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
-      )}
+      <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
       {showPlanSteps && (
         <div className="rounded-card bg-muted/30 p-4 space-y-2">
           <p className="text-xs font-medium">What happens next</p>
@@ -97,13 +79,6 @@ function SignUpForm() {
       )}
       <FormContainer onSubmit={handleSubmit}>
         <IconInput
-          label="Name"
-          icon={<User className="h-4 w-4" />}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-        />
-        <IconInput
           type="email"
           label="Email"
           icon={<Mail className="h-4 w-4" />}
@@ -111,21 +86,13 @@ function SignUpForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
+          autoFocus
         />
         <PasswordInput
           label="Password"
           value={password}
           onChange={setPassword}
           showRequirements
-        />
-        <PasswordInput
-          label="Confirm password"
-          value={confirmPassword}
-          onChange={(value) => {
-            setConfirmPassword(value)
-            setConfirmError('')
-          }}
-          error={confirmError}
         />
         <p className="text-center text-xs text-muted-foreground">
           By creating an account, you agree to our{' '}

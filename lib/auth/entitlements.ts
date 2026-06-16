@@ -45,7 +45,7 @@ export function canUseFreeRecheck(
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan === 'TEAM' || user.plan === 'STUDIO'
+  return user.plan === 'BUILDER' || user.plan === 'TEAM' || user.plan === 'STUDIO'
 }
 
 /** Proof export (copy summary) - Agency and Studio plans. */

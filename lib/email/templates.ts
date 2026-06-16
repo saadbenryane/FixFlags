@@ -23,47 +23,51 @@ function layout(content: string): string {
 
 export const NURTURE_EMAILS = {
   welcome: {
-    subject: 'Your audit found issues, here\u2019s how to fix them in one prompt',
+    subject: `Your first check is ready`,
     html: (name: string) =>
       layout(`
-  <p>Hi ${name || 'there'},</p>
-  <p>Welcome to ${BRAND.name}. You just joined builders who ship with AI and audit before they launch.</p>
-  <p>Here\u2019s the fastest workflow:</p>
-  <ol>
-    <li>Run an audit on your site</li>
-    <li>Open any finding and copy the fix prompt</li>
-    <li>Paste it into Cursor, Claude Code, Lovable, or Bolt</li>
-    <li>Re-check after fixes (Pro plan)</li>
-  </ol>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Go to dashboard</a></p>
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>You have 3 free checks. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>Paste the URL you are about to share. That is what this is for.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first check</a></p>
+  <p style="font-size: 13px; color: #666;">Common first checks: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
+`),
+  },
+  firstAuditNudge: {
+    subject: `Still have 3 free checks`,
+    html: (name: string) =>
+      layout(`
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your 3 free checks are still waiting.</p>
+  <p>Paste any public URL. You will get Flags with evidence and a fix prompt for each one. The whole thing takes about 60 seconds.</p>
+  <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
   },
   recheck: {
-    subject: 'Re-check: did your agent actually fix it?',
+    subject: `Did your agent actually fix it?`,
     html: (name: string) =>
       layout(`
-  <p>Hi ${name || 'there'},</p>
-  <p>You ran a ${BRAND.name} audit a few days ago. Did your agent apply the fixes?</p>
-  <p>Most AI-built sites look fixed in the editor but still fail on mobile, SEO previews, or performance. A re-check proves what actually changed.</p>
-  <p>Registered free users get one free re-check to compare before/after scores. Paid plans include unlimited re-checks that do not count against your monthly new-URL audit limit.</p>
-  <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Upgrade to Pro</a></p>
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>You ran a ${BRAND.name} check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
+  <p>A re-check runs the same URL again and shows exactly what cleared and what is still open.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Re-check your site</a></p>
 `),
   },
   launchChecklist: {
-    subject: 'Launch week checklist',
+    subject: `5 things to confirm before you share the link`,
     html: (name: string) =>
       layout(`
-  <p>Hi ${name || 'there'},</p>
-  <p>Launching soon? Run through this 5-minute checklist before you ship:</p>
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>Before your next launch post, run through this:</p>
   <ul>
-    <li>Mobile: is the primary CTA above the fold at 375px?</li>
-    <li>SEO: does your link preview show an image and description?</li>
-    <li>Performance: is LCP under 2.5s?</li>
-    <li>Trust: do you have social proof above the fold?</li>
-    <li>Conversion: is your page job obvious in the hero?</li>
+    <li>Primary CTA visible above the fold at 375px</li>
+    <li>Social preview shows a branded image (not blank)</li>
+    <li>LCP under 2.5s on mobile</li>
+    <li>Social proof visible before the scroll</li>
+    <li>Page job clear in the hero headline</li>
   </ul>
-  <p>${BRAND.name} checks all of this automatically and writes fix prompts for anything that fails.</p>
-  <p><a href="${SITE_URL}" style="${ctaStyle}">Audit my site</a></p>
+  <p>${BRAND.name} checks all of this automatically and writes the fix prompt for anything that fails.</p>
+  <p><a href="${SITE_URL}" style="${ctaStyle}">Check before you ship</a></p>
 `),
   },
 } as const
