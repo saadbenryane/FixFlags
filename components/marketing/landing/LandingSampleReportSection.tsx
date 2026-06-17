@@ -67,7 +67,7 @@ export function LandingSampleReportSection({
   sampleHref = '/samples',
   source = 'static',
 }: LandingSampleReportSectionProps) {
-  const { label, headline, body, cta, scores } = LANDING_PAGE.sampleReport
+  const { headline, body, cta, scores } = LANDING_PAGE.sampleReport
   const resolvedTotal = totalScore ?? scores.total
   const resolvedRubrics = rubrics ?? scores.rubrics
 
@@ -120,7 +120,7 @@ export function LandingSampleReportSection({
                 </span>
               </div>
 
-              <div className="w-full flex-1 grid grid-cols-2 gap-3">
+              <div className="w-full flex-1 grid grid-cols-3 gap-3">
                 {resolvedRubrics.map((rubric) => (
                   <div
                     key={rubric.name}

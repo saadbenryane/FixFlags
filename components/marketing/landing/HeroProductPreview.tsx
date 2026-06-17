@@ -1,4 +1,4 @@
-import { Sparkles, Check, Loader2 } from 'lucide-react'
+import { Sparkles, Check } from 'lucide-react'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Button } from '@/components/ui/button'
 import { LANDING_PAGE } from '@/lib/marketing/copy'

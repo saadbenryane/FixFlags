@@ -85,7 +85,7 @@ export function OAuthButtons({ callbackURL, disabled }: Props) {
   )
 }
 
-/** Always true — OAuth buttons are always shown. Env vars control whether they work at runtime. */
+/** Always true. OAuth buttons are always shown. Env vars control whether they work at runtime. */
 export function hasOAuthEnabled(): boolean {
   return true
 }

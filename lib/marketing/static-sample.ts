@@ -134,7 +134,7 @@ const STATIC_RUBRIC_ROWS: ReportRubricRow[] = [
     id: 'rubric-message',
     name: 'MESSAGE',
     grade: 'B',
-    score: null,
+    score: 82,
     status: 'NEEDS_ATTENTION',
     summary:
       'CTA visible above fold on desktop. Value proposition clear but could target developers more directly.',
