@@ -18,7 +18,7 @@ import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 
 function SignUpForm() {
-  const { oauthCallbackURL, navigateAfterAuth, signInHref, plan } = useAuthRedirect()
+  const { oauthCallbackURL, navigateAfterAuth, signInHref, plan, from } = useAuthRedirect()
   useRedirectIfAuthenticated()
 
   const [email, setEmail] = useState('')
@@ -51,9 +51,11 @@ function SignUpForm() {
   const showPlanSteps = plan && plan in AUTH.signUp.planTitles
   const subtitle = planTitle
     ? planTitle
-    : hasOAuthEnabled()
-      ? AUTH.signUp.subtitleWithOAuth
-      : AUTH.signUp.subtitle
+    : from === 'pricing'
+      ? AUTH.signUp.fromPricing
+      : hasOAuthEnabled()
+        ? AUTH.signUp.subtitleWithOAuth
+        : AUTH.signUp.subtitle
 
   return (
     <AuthCard

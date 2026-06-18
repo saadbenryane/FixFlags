@@ -10,7 +10,9 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
+    background: var(--gradient-surface);
+    background-attachment: fixed;
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     font-kerning: normal;
     font-optical-sizing: auto;
@@ -68,6 +70,13 @@
     background: var(--glass-bg-strong);
     backdrop-filter: blur(32px);
     -webkit-backdrop-filter: blur(32px);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-nav {
+    background: var(--glass-bg-nav);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
     box-shadow: var(--glass-shadow);
   }
 

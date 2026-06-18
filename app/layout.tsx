@@ -55,7 +55,7 @@ export default function RootLayout({
         <Providers>
           <a
             href="#main-content"
-            className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-md bg-background px-4 py-3 text-sm font-semibold shadow-lg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring"
+            className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-full bg-[var(--glass-bg-elevated)] px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur-md transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             Skip to content
           </a>

@@ -15,12 +15,12 @@ export function MarketingHeaderAuth() {
       <div className="ml-2 flex items-center gap-2 sm:gap-3">
         <Link
           href="/sign-in"
-          className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
+          className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline"
         >
           Log in
         </Link>
         <Button variant="ink" size="sm" asChild>
-          <Link href="/sign-up">
+          <Link href="/#audit">
             {HERO.primaryCta}
             <ArrowRight className="h-4 w-4" />
           </Link>

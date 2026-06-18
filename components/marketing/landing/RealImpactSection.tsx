@@ -1,14 +1,15 @@
-import { Check, X } from 'lucide-react'
+import { ArrowRight, Check, X } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { cn } from '@/lib/utils'
 
 function CircleScore({
   score,
-  positive,
+  tone,
 }: {
   score: number
-  positive: boolean
+  tone: 'before' | 'after'
 }) {
   const radius = 36
   const circumference = 2 * Math.PI * radius
@@ -18,7 +19,15 @@ function CircleScore({
     <div className="flex flex-col items-center gap-1">
       <div className="relative h-20 w-20">
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden>
-          <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-white/10" />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            className="text-muted/60"
+          />
           <circle
             cx="50"
             cy="50"
@@ -29,14 +38,16 @@ function CircleScore({
             strokeLinecap="round"
             strokeDasharray={`${circumference}`}
             strokeDashoffset={offset}
-            className={positive ? 'text-success' : 'text-brand'}
+            className={tone === 'after' ? 'text-success' : 'text-brand'}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-mono text-2xl font-bold tabular-nums text-white">{score}</span>
+          <span className="font-mono text-2xl font-bold tabular-nums text-foreground">{score}</span>
         </div>
       </div>
-      <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Performance</span>
+      <span className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+        Score
+      </span>
     </div>
   )
 }
@@ -58,78 +69,106 @@ const AFTER_ITEMS = [
 export function RealImpactSection() {
   return (
     <Section spacing="marketing" id="real-impact" className="scroll-mt-[var(--header-offset)]">
-      <Container className="space-y-12 sm:space-y-16">
+      <Container className="space-y-8 sm:space-y-11">
         <LandingSectionHeader
           label="SEE WHAT CHANGED"
           headline="Real impact. Not opinions."
+          showLabel
         />
+        <p className="mx-auto max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
+          Same site, second pass. FixFlags surfaces what changed in clarity, speed, and conversion readiness.
+        </p>
 
-        <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-          {/* BEFORE */}
-          <div className="rounded-2xl bg-gray-900 p-6 sm:p-8">
-            <div className="mb-5 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
-              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">BEFORE</span>
+        <div className="relative grid gap-4 lg:grid-cols-2 lg:gap-5">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 lg:flex"
+          >
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-card">
+              <ArrowRight className="h-5 w-5" aria-hidden />
+            </span>
+          </div>
+
+          <article className="rounded-card p-6 glass-surface shadow-card sm:p-7">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-label text-muted-foreground">
+                  Before
+                </span>
+              </div>
+              <span className="rounded-full bg-muted/70 px-2.5 py-1 font-mono text-[11px] font-semibold tabular-nums text-muted-foreground">
+                62 / 100
+              </span>
             </div>
 
-            {/* mock headline */}
-            <div className="mb-5 rounded-xl border border-white/5 bg-white/5 px-4 py-3">
-              <p className="text-sm font-semibold text-white/60 line-through">
+            <div className="mb-5 rounded-card bg-muted/35 px-4 py-3.5">
+              <p className="text-sm font-semibold text-muted-foreground line-through decoration-destructive/40">
                 Build something amazing with AI
               </p>
-              <p className="mt-1 text-[11px] text-white/30">The all-in-one platform for next-gen teams.</p>
+              <p className="mt-1 text-xs text-muted-foreground/80">
+                The all-in-one platform for next-gen teams.
+              </p>
             </div>
 
             <ul className="space-y-2.5">
               {BEFORE_ITEMS.map((item) => (
                 <li key={item} className="flex items-center gap-3 text-sm">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/15">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/10">
                     <X className="h-3 w-3 text-destructive" aria-hidden />
                   </span>
-                  <span className="text-white/60">{item}</span>
+                  <span className="text-muted-foreground">{item}</span>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-5">
-              <span className="text-xs text-white/30">Overall score</span>
-              <CircleScore score={62} positive={false} />
+            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-5">
+              <span className="text-xs font-medium text-muted-foreground">Overall score</span>
+              <CircleScore score={62} tone="before" />
             </div>
-          </div>
+          </article>
 
-          {/* AFTER */}
-          <div className="rounded-2xl bg-gray-900 p-6 ring-1 ring-success/20 sm:p-8">
-            <div className="mb-5 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-success" />
-              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">AFTER</span>
-            </div>
-
-            {/* mock headline */}
-            <div className="mb-5 rounded-xl border border-success/20 bg-success/5 px-4 py-3">
-              <p className="text-sm font-semibold text-white">
-                Ship AI products users love.
-              </p>
-              <div className="mt-2 inline-block rounded-md bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">
-                Start free
+          <article
+            className={cn(
+              'rounded-card p-6 glass-surface-strong shadow-card sm:p-7',
+              'ring-2 ring-success/25',
+            )}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-success" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-label text-foreground">
+                  After
+                </span>
               </div>
+              <span className="rounded-full bg-success/10 px-2.5 py-1 font-mono text-[11px] font-semibold tabular-nums text-success">
+                +30 pts
+              </span>
+            </div>
+
+            <div className="mb-5 rounded-card bg-brand/5 px-4 py-3.5 ring-1 ring-brand/10">
+              <p className="text-sm font-semibold text-foreground">Ship AI products users love.</p>
+              <span className="mt-2 inline-flex rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">
+                Start free
+              </span>
             </div>
 
             <ul className="space-y-2.5">
               {AFTER_ITEMS.map((item) => (
                 <li key={item} className="flex items-center gap-3 text-sm">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/10">
                     <Check className="h-3 w-3 text-success" aria-hidden />
                   </span>
-                  <span className="text-white/80">{item}</span>
+                  <span className="text-foreground">{item}</span>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-5">
-              <span className="text-xs text-white/30">Overall score</span>
-              <CircleScore score={92} positive={true} />
+            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-5">
+              <span className="text-xs font-medium text-muted-foreground">Overall score</span>
+              <CircleScore score={92} tone="after" />
             </div>
-          </div>
+          </article>
         </div>
       </Container>
     </Section>

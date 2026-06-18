@@ -99,7 +99,7 @@ function SignInForm() {
         </Button>
         <p className="text-center">
           <Link
-            href="/"
+            href="/#audit"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
           >
             {AUTH.signIn.tryWithoutAccount}

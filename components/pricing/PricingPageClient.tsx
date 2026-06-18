@@ -23,7 +23,7 @@ export function PricingPageClient() {
 
   return (
     <Section spacing="marketing" className="relative">
-      <Container className="space-y-12 sm:space-y-16">
+      <Container className="space-y-8 sm:space-y-11">
         <div className="mx-auto max-w-3xl text-center">
           <Heading as="h1" className="text-balance">
             {PRICING.headline}

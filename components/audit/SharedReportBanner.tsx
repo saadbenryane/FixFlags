@@ -41,7 +41,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
                 </span>
               </>
             ) : null}
-            . Paste your URL for a full report with fix prompts.
+            . Paste your URL for a free deterministic check. Sign up to unlock AI fix prompts.
           </p>
           <Button
             variant="ghost"
@@ -53,7 +53,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <AuditInput />
+        <AuditInput source="report" />
       </div>
     </Callout>
   )

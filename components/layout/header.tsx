@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
@@ -50,6 +50,7 @@ export function Header({
   adminInboxUnread = 0,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   const navLinks =
     variant === 'app' ? APP_NAV : variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
@@ -69,10 +70,21 @@ export function Header({
   const resolvedRight = right ?? defaultRight
   const isMarketing = variant === 'marketing'
 
+  useEffect(() => {
+    if (!isMarketing) return
+
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [isMarketing])
+
   return (
     <header
       className={cn(
-        'sticky top-0 z-navbar glass-surface-elevated border-0',
+        'sticky top-0 z-navbar border-0 transition-[background-color,box-shadow,backdrop-filter] duration-200 ease-out',
+        isMarketing && !scrolled && 'bg-transparent shadow-none backdrop-blur-none',
+        (!isMarketing || scrolled) && 'glass-nav',
         className
       )}
     >
@@ -154,7 +166,7 @@ export function Header({
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
                 <Button variant="ink" size="xs" className="shrink-0" asChild>
-                  <Link href="/sign-up">{HERO.primaryCta}</Link>
+                  <Link href="/#audit">{HERO.primaryCta}</Link>
                 </Button>
               )}
               <Sheet open={open} onOpenChange={setOpen}>

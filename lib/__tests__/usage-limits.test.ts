@@ -5,7 +5,7 @@ import {
   checkUsageProgress,
   wouldBlockNewCheck,
 } from '@/lib/audit/check-limit'
-import { ANON_AUDIT_LIMIT } from '@/lib/audit/usage'
+import { resolveIncludeAiForNewAudit, remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
 import { scanLimitForPlan } from '@/lib/billing/plans'
 import {
   canAccessRecheck,
@@ -13,14 +13,23 @@ import {
   canSharePublicly,
   getEntitlements,
 } from '@/lib/auth/entitlements'
+import {
+  canViewAiReportContent,
+  stripAiFromFlags,
+} from '@/lib/audit/report-access'
 
 describe('product contract limits', () => {
-  it('anonymous users get one free check', () => {
-    assert.equal(ANON_AUDIT_LIMIT, 1)
+  it('anonymous new audits skip AI review', async () => {
+    assert.equal(await resolveIncludeAiForNewAudit(null), false)
   })
 
-  it('free plan has 3 lifetime new URL checks', () => {
+  it('free plan has 3 lifetime AI reports', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
+  })
+
+  it('remaining AI credits subtracts used from limit', () => {
+    assert.equal(remainingAiReportCredits({ auditsUsed: 1, auditsLimit: 3 }), 2)
+    assert.equal(remainingAiReportCredits({ auditsUsed: 3, auditsLimit: 3 }), 0)
   })
 
   it('pro plan has 25 monthly checks', () => {
@@ -29,6 +38,35 @@ describe('product contract limits', () => {
 
   it('agency plan has 100 monthly checks', () => {
     assert.equal(scanLimitForPlan('TEAM'), 100)
+  })
+})
+
+describe('AI report access', () => {
+  it('blocks AI content without aiReviewAt', () => {
+    assert.equal(
+      canViewAiReportContent({ userId: 'u1', aiReviewAt: null }, { id: 'u1' }),
+      false
+    )
+  })
+
+  it('allows AI content for owner after review', () => {
+    assert.equal(
+      canViewAiReportContent(
+        { userId: 'u1', aiReviewAt: new Date() },
+        { id: 'u1' }
+      ),
+      true
+    )
+  })
+
+  it('strips AI flags when gating', () => {
+    const stripped = stripAiFromFlags([
+      { source: 'AI', problem: 'ai issue' },
+      { source: 'DETERMINISTIC', problem: 'det issue', agentPrompt: 'prompt' },
+    ])
+    assert.equal(stripped.length, 1)
+    assert.equal(stripped[0].problem, 'det issue')
+    assert.equal(stripped[0].agentPrompt, null)
   })
 })
 

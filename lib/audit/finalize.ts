@@ -63,10 +63,6 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
     }
   }
 
-  if (audit.userId) {
-    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-  }
-
   const requiredComplete =
     input.evidence.desktopScreenshot &&
     input.evidence.metadata &&
@@ -91,6 +87,7 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
       progress: 100,
       reportCompleteness: completeness,
       evidenceCoverage: input.evidence,
+      aiReviewAt: new Date(),
       completedAt: audit.completedAt ?? new Date(),
       finalizedAt: new Date(),
       failureCode: null,
@@ -98,6 +95,10 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
       failureMetadata: undefined,
     },
   })
+
+  if (audit.userId && input.evidence.aiAssessment) {
+    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
+  }
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after audit finalize', err)
@@ -155,10 +156,6 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     await diffFlagsAgainstParent(input.auditId, audit.parentId)
   }
 
-  if (audit.userId) {
-    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-  }
-
   const stubVerdict =
     audit.verdict ??
     'AI summary unavailable, deterministic checks and screenshots are shown below.'
@@ -185,6 +182,78 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       errorMsg: input.errorMsg,
       failureCode: input.failureCode,
       failureStage: input.failureStage,
+    },
+  })
+
+  await upsertLeadFromAudit(input.auditId).catch((err) => {
+    logger.error('Lead upsert failed after audit finalize', err)
+  })
+}
+
+interface DeterministicFinalizeInput {
+  auditId: string
+  durationMs: number
+  pagespeedCalls: number
+  evidence: {
+    desktopScreenshot: boolean
+    mobileScreenshot: boolean
+    metadata: boolean
+    desktopPageSpeed: boolean
+    mobilePageSpeed: boolean
+    flowScan?: boolean
+  }
+}
+
+/** Complete audit with deterministic results only (no LLM judge). */
+export async function finalizeDeterministicOnly(
+  input: DeterministicFinalizeInput
+): Promise<void> {
+  const audit = await prisma.audit.findUnique({
+    where: { id: input.auditId },
+    select: {
+      id: true,
+      status: true,
+      completedAt: true,
+    },
+  })
+  if (!audit) return
+  if (audit.status === 'COMPLETED' && audit.completedAt) return
+
+  await persistAuditRunCost(input.auditId, {
+    durationMs: input.durationMs,
+    llmInputTokens: 0,
+    llmOutputTokens: 0,
+    llmModel: 'none',
+    pagespeedCalls: input.pagespeedCalls,
+  })
+
+  const completeness =
+    input.evidence.mobileScreenshot &&
+    input.evidence.desktopPageSpeed &&
+    input.evidence.mobilePageSpeed
+      ? 'FULL'
+      : 'PARTIAL'
+
+  await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'deterministic_completed' })
+
+  await prisma.audit.update({
+    where: { id: input.auditId },
+    data: {
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: completeness,
+      evidenceCoverage: {
+        ...input.evidence,
+        aiAssessment: false,
+      },
+      verdict:
+        'Deterministic scan complete. Sign up to unlock AI review, fix prompts, and rubric analysis.',
+      completedAt: audit.completedAt ?? new Date(),
+      finalizedAt: new Date(),
+      failureCode: null,
+      failureStage: null,
+      failureMetadata: undefined,
+      errorMsg: null,
     },
   })
 

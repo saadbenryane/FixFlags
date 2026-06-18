@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils"
 const sectionVariants = cva("", {
   variants: {
     spacing: {
-      default: "py-16 sm:py-20 lg:py-24",
-      tight: "py-12 sm:py-16 lg:py-20",
-      compact: "py-8 sm:py-12",
-      loose: "py-24 sm:py-28 lg:py-32",
-      marketing: "py-20 sm:py-28 lg:py-36",
+      default: 'py-11 sm:py-14 lg:py-16',
+      tight: 'py-8 sm:py-11 lg:py-14',
+      compact: 'py-6 sm:py-8',
+      loose: 'py-16 sm:py-20 lg:py-24',
+      marketing: 'py-14 sm:py-20 lg:py-24',
     },
   },
   defaultVariants: {

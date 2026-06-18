@@ -16,9 +16,12 @@ import { cn } from '@/lib/utils'
 
 export function AuditInput({
   variant = 'default',
+  source,
   idSuffix = '',
 }: {
   variant?: 'default' | 'landing'
+  /** Audit attribution source sent to POST /api/checks (defaults from variant). */
+  source?: 'homepage' | 'dashboard' | 'report'
   idSuffix?: string
 }) {
   const inputId = `audit-url${idSuffix}`
@@ -72,7 +75,7 @@ export function AuditInput({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: normalized,
-          source: 'homepage',
+          source: auditSource,
           utmSource: params.get('utm_source') ?? undefined,
           utmMedium: params.get('utm_medium') ?? undefined,
           utmCampaign: params.get('utm_campaign') ?? undefined,
@@ -81,7 +84,10 @@ export function AuditInput({
 
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
-        if (res.status === 402) {
+        if (
+          res.status === 402 ||
+          (res.status === 401 && parsed.code === 'AUTH_REQUIRED')
+        ) {
           setLimitGate(parsed)
         } else if (res.status === 429 || parsed.code === 'RATE_LIMITED') {
           setQueueHold({
@@ -122,7 +128,11 @@ export function AuditInput({
   }
 
   const isLanding = variant === 'landing'
+  const auditSource = source ?? (isLanding ? 'homepage' : 'dashboard')
   const describedBy = cn(isLanding && !urlError && helperId, urlError && errorId) || undefined
+
+  const fieldHeightClass = 'h-12 min-h-12'
+  const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
@@ -151,8 +161,12 @@ export function AuditInput({
             <Button
               type="submit"
               variant="gradient"
+              size="lg"
               disabled={loading}
-              className="h-11 w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6"
+              className={cn(
+                fieldHeightClass,
+                'w-full shrink-0 gap-2 rounded-lg px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:rounded-full sm:px-6'
+              )}
             >
               {loading ? (
                 <>
@@ -184,7 +198,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-12 flex-1 text-base"
+              className={cn(fieldHeightInputClass, 'flex-1 rounded-xl text-base sm:rounded-full')}
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={urlError ? errorId : undefined}
@@ -193,7 +207,10 @@ export function AuditInput({
               type="submit"
               size="lg"
               disabled={loading}
-              className="h-12 w-full shrink-0 gap-2 px-6 sm:w-auto"
+              className={cn(
+                fieldHeightClass,
+                'w-full shrink-0 gap-2 rounded-xl px-6 sm:w-auto sm:rounded-full'
+              )}
             >
               {loading ? (
                 <>

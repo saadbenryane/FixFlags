@@ -18,7 +18,7 @@ export function Footer() {
 
   return (
     <footer className="glass-surface border-0">
-      <Container className="space-y-12 py-14 sm:py-16 lg:py-20">
+      <Container className="space-y-8 py-10 sm:space-y-11 sm:py-11 lg:py-14">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="space-y-5">
             <Logo variant="lockup" size="md" href="/" />

@@ -3,7 +3,6 @@ import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
-import { markAnonymousAuditCompletedOnce } from '@/lib/audit/usage'
 import {
   deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
@@ -40,6 +39,8 @@ export async function GET(
         userId: true,
         isPublic: true,
         parentId: true,
+        aiReviewAt: true,
+        includeAi: true,
         performanceData: true,
         screenshots: {
           select: { device: true, url: true, width: true, height: true },
@@ -62,10 +63,6 @@ export async function GET(
 
     if (!canAccessAudit(audit, session?.user)) {
       return apiError('You do not have access to this report', 403)
-    }
-
-    if (!audit.userId && audit.status === 'COMPLETED') {
-      await markAnonymousAuditCompletedOnce(id)
     }
 
     const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)

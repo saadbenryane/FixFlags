@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
+import { remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
+import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
 
 function readAnonAuditIds(raw: string | undefined): string[] {
@@ -23,7 +25,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
       id: { in: ids },
       userId: null,
     },
-    select: { id: true, status: true },
+    select: { id: true, status: true, aiReviewAt: true },
   })
 
   if (audits.length === 0) {
@@ -31,28 +33,40 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     return 0
   }
 
-  const completedCount = audits.filter((a) => a.status === 'COMPLETED').length
+  await prisma.audit.updateMany({
+    where: { id: { in: audits.map((a) => a.id) } },
+    data: { userId },
+  })
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { id: true, role: true, auditsUsed: true, auditsLimit: true },
   })
-  const shouldIncrement = completedCount > 0 && user && !hasUnlimitedScans(user)
 
-  await prisma.$transaction([
-    prisma.audit.updateMany({
-      where: { id: { in: audits.map((a) => a.id) } },
-      data: { userId },
-    }),
-    ...(shouldIncrement
-      ? [
-          prisma.user.update({
-            where: { id: userId },
-            data: { auditsUsed: { increment: completedCount } },
-          }),
-        ]
-      : []),
-  ])
+  if (user && !hasUnlimitedScans(user)) {
+    let credits = remainingAiReportCredits(user)
+    const unlockCandidates = audits
+      .filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)
+      .map((a) => a.id)
+
+    for (const auditId of unlockCandidates) {
+      if (credits <= 0) break
+      try {
+        await enqueueAiReview(auditId)
+        credits -= 1
+      } catch {
+        // queue unavailable or duplicate job; skip
+      }
+    }
+  } else if (user && hasUnlimitedScans(user)) {
+    for (const audit of audits.filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)) {
+      try {
+        await enqueueAiReview(audit.id)
+      } catch {
+        // skip
+      }
+    }
+  }
 
   cookieStore.delete(ANON_AUDIT_IDS_COOKIE)
   return audits.length

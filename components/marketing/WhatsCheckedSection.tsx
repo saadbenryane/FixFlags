@@ -6,7 +6,7 @@ import { RUBRICS, WHATS_CHECKED_SECTION } from '@/lib/marketing/copy'
 export function WhatsCheckedSection({ id }: { id?: string }) {
   return (
     <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]" id={id}>
-      <Container className="space-y-10 sm:space-y-12">
+      <Container className="space-y-7 sm:space-y-8">
         <LandingSectionHeader
           label={WHATS_CHECKED_SECTION.label}
           headline={WHATS_CHECKED_SECTION.headline}

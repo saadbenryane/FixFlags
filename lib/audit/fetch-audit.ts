@@ -2,6 +2,11 @@ import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { canAccessAudit } from '@/lib/audit/access'
+import {
+  canViewAiReportContentForAudit,
+  stripAiFromRubrics,
+  stripAiFromFlags,
+} from '@/lib/audit/report-access'
 import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
 import {
   deriveScreenshotCaptureStatus,
@@ -95,9 +100,26 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit, session?.user)
-  const sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
-  const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics })
-  const launchReadiness = parseLaunchReadiness(audit.launchReadiness)
+  const showAiContent = await canViewAiReportContentForAudit(
+    {
+      userId: audit.userId,
+      aiReviewAt: audit.aiReviewAt,
+      isPublic: audit.isPublic,
+    },
+    session?.user
+  )
+  const aiReviewPending = audit.status === 'JUDGING' && Boolean(audit.includeAi) && !audit.aiReviewAt
+
+  let sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
+  let reportFlags = audit.flags
+
+  if (!showAiContent) {
+    sanitizedRubrics = stripAiFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
+    reportFlags = stripAiFromFlags(reportFlags) as typeof reportFlags
+  }
+
+  const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
+  const launchReadiness = showAiContent ? parseLaunchReadiness(audit.launchReadiness) : null
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
   const ogImageBroken = audit.flags.some(
     (f) => f.checkId === 'og-image-broken' && f.status !== 'FIXED'
@@ -113,7 +135,7 @@ export async function getGatedAuditForRequest(id: string) {
     score: r.score,
     flags: r.flags.map((f: { severity: string }) => ({ severity: f.severity })),
   }))
-  const flatFlags = audit.flags.map((f) => ({
+  const flatFlags = reportFlags.map((f) => ({
     severity: f.severity,
     rubric: f.rubric,
   }))
@@ -131,6 +153,9 @@ export async function getGatedAuditForRequest(id: string) {
     kind: 'ok' as const,
     audit: {
       ...stripped,
+      verdict: showAiContent ? stripped.verdict : null,
+      pageJob: showAiContent ? stripped.pageJob : null,
+      pageType: showAiContent ? stripped.pageType : null,
       pipelineLog: parsePipelineLog(audit.pipelineLog),
       screenshotCapture,
       launchReadiness,
@@ -142,6 +167,8 @@ export async function getGatedAuditForRequest(id: string) {
     },
     isPaid,
     isLoggedIn: !!session?.user,
+    showAiContent,
+    aiReviewPending,
     session,
   }
 }

@@ -6,7 +6,7 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 
-export type UsageLimitCode = 'ANON_LIMIT' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
+export type UsageLimitCode = 'ANON_LIMIT' | 'AUTH_REQUIRED' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
 export type UsageLimitAction = 'signup' | 'upgrade'
 
 export interface UsageLimitResult {

@@ -12,16 +12,19 @@ interface Props {
 }
 
 export function AuditLimitGate({ code, action, message, onDismiss }: Props) {
-  const isAnonLimit = code === 'ANON_LIMIT' || action === 'signup'
+  const needsSignup =
+    code === 'ANON_LIMIT' ||
+    code === 'AUTH_REQUIRED' ||
+    action === 'signup'
 
   return (
     <Callout
       variant="danger"
-      title={isAnonLimit ? 'Free audit used' : 'Audit limit reached'}
+      title={needsSignup ? 'Sign up to continue' : 'Audit limit reached'}
     >
       <p>{message}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {isAnonLimit ? (
+        {needsSignup ? (
           <>
             <Button asChild size="sm">
               <Link href="/sign-up">Create free account</Link>

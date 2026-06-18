@@ -1,6 +1,7 @@
 import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
+import { runAiReview } from '../audit/run-ai-review'
 import { getWorkerRedisConnectionOptions } from './redis'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
@@ -10,6 +11,11 @@ export function startWorker() {
   const worker = new Worker(
     'audit',
     async (job) => {
+      if (job.name === 'ai-review') {
+        const { auditId } = job.data as { auditId: string }
+        await runAiReview(auditId)
+        return
+      }
       const { auditId } = job.data as { auditId: string }
       await runAudit(auditId)
     },

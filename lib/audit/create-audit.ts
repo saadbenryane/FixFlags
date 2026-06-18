@@ -7,6 +7,8 @@ import {
   isAdminUser,
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
+import { isAtCheckLimit } from '@/lib/audit/usage'
+import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 
@@ -45,6 +47,8 @@ export async function createAndEnqueueAudit(
 ): Promise<CreateAuditResult> {
   const url = (await assertPublicAuditUrl(options.url)).toString()
   const attribution = options.attribution
+  const includeAi = await resolveIncludeAiForNewAudit(options.userId ?? null)
+
   const data = {
     url,
     userId: options.userId ?? null,
@@ -54,6 +58,7 @@ export async function createAndEnqueueAudit(
     recheckMode: options.recheckMode ?? ('FULL' as const),
     status: 'QUEUED' as const,
     progress: 5,
+    includeAi,
     ...(attribution
       ? {
           normalizedDomain: attribution.normalizedDomain,
@@ -79,16 +84,17 @@ export async function createAndEnqueueAudit(
             if (!hasUnlimitedScans(user) && !isAdminUser(user)) {
               const limit = getEffectiveScanLimit(user)
               if (!isUnlimitedScanLimit(limit)) {
-                const pending = await tx.audit.count({
+                const pendingAi = await tx.audit.count({
                   where: {
                     userId: user.id,
+                    includeAi: true,
+                    aiReviewAt: null,
                     status: { notIn: ['COMPLETED', 'FAILED'] },
                   },
                 })
-                if (user.auditsUsed + pending >= limit) {
-                  throw new AuditLimitError(
-                    user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT'
-                  )
+                const atAiCap = isAtCheckLimit(user.auditsUsed, pendingAi, limit)
+                if (atAiCap && user.plan !== 'FREE') {
+                  throw new AuditLimitError('TOKEN_LIMIT')
                 }
               }
             }

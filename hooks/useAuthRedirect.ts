@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 const PAID_PLANS = ['BUILDER', 'TEAM', 'STUDIO'] as const
+const FUNNEL_SOURCES = ['pricing', 'report', 'hero'] as const
 
 export function sanitizeNextPath(next: string | null): string | null {
   if (!next) return null
@@ -12,12 +13,31 @@ export function sanitizeNextPath(next: string | null): string | null {
   return next
 }
 
-function buildPostLoginQuery(next: string | null, plan: string | null): string {
-  const params = new URLSearchParams()
+export function sanitizeFunnelFrom(from: string | null): string | null {
+  if (!from) return null
+  return FUNNEL_SOURCES.includes(from as (typeof FUNNEL_SOURCES)[number]) ? from : null
+}
+
+function appendAuthParams(
+  params: URLSearchParams,
+  next: string | null,
+  plan: string | null,
+  from: string | null
+) {
   if (next) params.set('next', next)
   if (plan && PAID_PLANS.includes(plan as (typeof PAID_PLANS)[number])) {
     params.set('plan', plan)
   }
+  if (from) params.set('from', from)
+}
+
+function buildPostLoginQuery(
+  next: string | null,
+  plan: string | null,
+  from: string | null
+): string {
+  const params = new URLSearchParams()
+  appendAuthParams(params, next, plan, from)
   const qs = params.toString()
   return qs ? `/post-login?${qs}` : '/post-login'
 }
@@ -31,10 +51,14 @@ export function useAuthRedirect() {
     [searchParams]
   )
   const plan = searchParams.get('plan')
+  const from = useMemo(
+    () => sanitizeFunnelFrom(searchParams.get('from')),
+    [searchParams]
+  )
 
   const oauthCallbackURL = useMemo(
-    () => buildPostLoginQuery(next, plan),
-    [next, plan]
+    () => buildPostLoginQuery(next, plan, from),
+    [next, plan, from]
   )
 
   const navigateAfterAuth = useCallback(async () => {
@@ -70,17 +94,14 @@ export function useAuthRedirect() {
 
   function signInHref(extraNext?: string) {
     const params = new URLSearchParams()
-    const targetNext = extraNext ?? next
-    if (targetNext) params.set('next', targetNext)
-    if (plan) params.set('plan', plan)
+    appendAuthParams(params, extraNext ?? next, plan, from)
     const qs = params.toString()
     return qs ? `/sign-in?${qs}` : '/sign-in'
   }
 
   function signUpHref() {
     const params = new URLSearchParams()
-    if (next) params.set('next', next)
-    if (plan) params.set('plan', plan)
+    appendAuthParams(params, next, plan, from)
     const qs = params.toString()
     return qs ? `/sign-up?${qs}` : '/sign-up'
   }
@@ -88,6 +109,7 @@ export function useAuthRedirect() {
   return {
     next,
     plan,
+    from,
     oauthCallbackURL,
     navigateAfterAuth,
     signInHref,

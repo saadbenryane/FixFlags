@@ -5,15 +5,11 @@ import { Section } from '@/components/ui/section'
 import { Button } from '@/components/ui/button'
 import { HERO } from '@/lib/marketing/copy'
 
-const TRUST_BADGES = [
-  'No sign-up required',
-  'Results in seconds',
-  'Live or preview URLs',
-]
+const TRUST_BADGES = HERO.trustBadges
 
 export function LandingFinalCtaSection() {
   return (
-    <Section spacing="marketing" className="pb-16 sm:pb-20">
+    <Section spacing="marketing" className="pb-11 sm:pb-14">
       <Container>
         <div className="relative overflow-hidden rounded-card p-8 glass-surface-strong shadow-card sm:p-12 lg:p-16">
           <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">

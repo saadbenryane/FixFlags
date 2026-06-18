@@ -38,6 +38,7 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import {
   finalizeAudit,
   finalizePartialAudit,
+  finalizeDeterministicOnly,
   persistFailedAuditCost,
 } from './finalize'
 import { AUDIT_DEADLINE_MS } from './pipeline-config'
@@ -71,6 +72,7 @@ interface PipelineContext {
   startedAt: Date
   pagespeedCalls: number
   usage: { inputTokens: number; outputTokens: number; models: string[] }
+  includeAi: boolean
 }
 
 function sanitizeAuditErrorMessage(message: string): string {
@@ -416,6 +418,39 @@ async function runPage(
     await persistDeterministicFlags(ctx.auditId, flags, partialRubricScores)
   }
 
+  const completeness =
+    (screenshots?.mobileUrl || mobileBase64) &&
+    pagespeed?.desktop &&
+    pagespeed?.mobile
+      ? 'FULL'
+      : 'PARTIAL'
+
+  if (!ctx.includeAi) {
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: {
+        status: completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL',
+        completeness,
+      },
+    })
+    return {
+      pageId: page.id,
+      url: normalizedUrl,
+      metadata,
+      desktop: pagespeed?.desktop ?? null,
+      mobile: pagespeed?.mobile ?? null,
+      desktopError: pagespeed?.desktopError,
+      mobileError: pagespeed?.mobileError,
+      desktopScreenshot: Boolean(desktopBase64),
+      mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
+      flowScan: Boolean(input.primary && input.position === 0 && flowResult),
+      desktopBase64,
+      mobileBase64,
+      flags,
+      judge: undefined,
+    }
+  }
+
   await prisma.auditPage.update({
     where: { id: page.id },
     data: { status: 'JUDGING' },
@@ -441,12 +476,6 @@ async function runPage(
     pageUrl: normalizedUrl,
   }))
 
-  const completeness =
-    (screenshots?.mobileUrl || mobileBase64) &&
-    pagespeed?.desktop &&
-    pagespeed?.mobile
-      ? 'FULL'
-      : 'PARTIAL'
   await prisma.auditPage.update({
     where: { id: page.id },
     data: {
@@ -558,6 +587,7 @@ export async function runAudit(auditId: string): Promise<void> {
     startedAt,
     pagespeedCalls: 0,
     usage: { inputTokens: 0, outputTokens: 0, models: [] },
+    includeAi: audit.includeAi,
   }
 
   const isSummaryOnly = audit.recheckMode === 'SUMMARY_ONLY'
@@ -625,6 +655,24 @@ export async function runAudit(auditId: string): Promise<void> {
           primary: false,
         })
       )
+    }
+
+    if (!ctx.includeAi) {
+      await logPipelineEvent(auditId, { stage: 'finalizing', event: 'deterministic_only' })
+      await finalizeDeterministicOnly({
+        auditId,
+        durationMs: Date.now() - startedAt.getTime(),
+        pagespeedCalls: ctx.pagespeedCalls,
+        evidence: {
+          desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
+          mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
+          metadata: pageRuns.every((page) => Boolean(page.metadata)),
+          desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
+          mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+          flowScan: pageRuns.some((page) => page.flowScan),
+        },
+      })
+      return
     }
 
     const combined = primary.judge!

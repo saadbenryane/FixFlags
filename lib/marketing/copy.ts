@@ -49,7 +49,7 @@ export const HERO = {
   urlPlaceholder: 'https://your-site.com',
   urlHelper: "Paste any live or preview URL. We'll add https:// if needed.",
   trustBadges: [
-    'No sign-up required',
+    'Free deterministic checks',
     'Results in seconds',
     'Live or preview URLs',
   ] as const,
@@ -520,7 +520,6 @@ export const LANDING_PAGE = {
         question: 'Can people understand and care?',
         icon: 'message',
         tint: 'brand',
-        body: 'Clarity, positioning, copy, and the story you tell.',
         checks: [
           'Clarity in the first five seconds',
           'Positioning that names the audience',
@@ -534,7 +533,6 @@ export const LANDING_PAGE = {
         question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
-        body: 'UX, speed, mobile, flows, technical polish, and trust signals like HTTPS and privacy links.',
         checks: [
           'Mobile layout and tap targets',
           'Primary flow friction',
@@ -548,7 +546,6 @@ export const LANDING_PAGE = {
         question: 'Can people find and share it?',
         icon: 'reach',
         tint: 'info',
-        body: 'SEO, metadata, social previews, and discoverability.',
         checks: [
           'Metadata and canonical basics',
           'Social preview readiness',
@@ -662,12 +659,12 @@ export const FAQ = [
   {
     question: 'Do I need an account for my first check?',
     answer:
-      'No. Paste any public URL and get a full report in under 90 seconds. No account, no credit card. Create a free account to save reports and run 3 checks total.',
+      'No, on the homepage or any shared report. Run unlimited deterministic checks without an account. Sign up for 3 AI reports with fix prompts and saved history.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: full report with all Flags and fix prompts, 3 new URL checks total, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
+      'Free: unlimited deterministic checks, 3 AI reports with fix prompts, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
   },
   {
     question: 'Can it check sites built with Lovable/Bolt/v0?',
@@ -714,12 +711,12 @@ export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
     answer:
-      'Yes. Run your first check without an account. Create a free account for 3 checks total, then upgrade to Pro when you need unlimited re-checks and MCP.',
+      'Yes. Run unlimited deterministic checks without an account. Sign up for 3 AI reports with fix prompts, then upgrade to Pro when you need unlimited re-checks and MCP.',
   },
   {
     question: 'What happens when I hit my check limit?',
     answer:
-      'You\u2019ll see an upgrade prompt. Free accounts get 3 checks total (not monthly). Paid plans reset each billing cycle.',
+      'You\u2019ll see an upgrade prompt. Free accounts get 3 AI reports total (not monthly). Paid plans reset each billing cycle.',
   },
   {
     question: 'Do I need Pro for MCP?',
@@ -883,8 +880,9 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: 'Save report history · 3 free checks · Upgrade anytime',
+    subtitle: 'Unlimited deterministic checks · 3 AI reports · Upgrade anytime',
     subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
+    fromPricing: 'Create your free account: 3 AI reports included, upgrade anytime',
     oauthNote: 'We never post or access your repositories.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -932,17 +930,17 @@ export const AUTH = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Don\u2019t lose this report',
-    body: 'Create a free account to save history and run 3 checks total.',
+    headline: 'Unlock AI review',
+    body: 'Create a free account to see fix prompts, rubric analysis, and the full AI review on this report.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
-  atLimit: 'Token limit reached. Upgrade to continue',
+  atLimit: 'AI report limit reached. Upgrade to continue',
 } as const
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your 3 free checks',
+    headline: 'You\u2019ve used your 3 AI reports',
     body: 'Upgrade to Pro for 25 checks per month, unlimited re-checks, and MCP in Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,

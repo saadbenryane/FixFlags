@@ -12,7 +12,7 @@ describe('audit attribution', () => {
     assert.equal(inferAuditSource('/dashboard'), 'DASHBOARD')
     assert.equal(inferAuditSource('/report/abc'), 'REPORT')
     assert.equal(inferAuditSource('/api/mcp'), 'MCP')
-    assert.equal(inferAuditSource('/pricing'), 'HOMEPAGE')
+    assert.equal(inferAuditSource('/pricing'), 'UNKNOWN')
   })
 
   it('builds attribution with explicit source and UTM params', () => {

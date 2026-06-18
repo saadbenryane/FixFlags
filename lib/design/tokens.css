@@ -39,11 +39,12 @@
     hsl(var(--peach-ember)) 100%
   );
   --gradient-surface: linear-gradient(
-    145deg,
-    hsl(28 100% 97%) 0%,
-    hsl(var(--brand-muted)) 42%,
-    hsl(18 90% 94%) 78%,
-    hsl(24 80% 96%) 100%
+    135deg,
+    hsl(32 100% 97%) 0%,
+    hsl(24 100% 95%) 28%,
+    hsl(var(--brand-muted)) 52%,
+    hsl(18 95% 93%) 76%,
+    hsl(28 90% 96%) 100%
   );
   --gradient-accent-text: linear-gradient(
     110deg,
@@ -61,18 +62,27 @@
   );
   --gradient-orb-peach: radial-gradient(
     circle,
-    hsl(var(--peach-glow) / 0.45) 0%,
-    transparent 70%
+    hsl(var(--peach-coral) / 0.55) 0%,
+    hsl(var(--peach-glow) / 0.28) 42%,
+    transparent 72%
   );
   --gradient-orb-brand: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.18) 0%,
-    transparent 70%
+    hsl(var(--brand) / 0.32) 0%,
+    hsl(var(--peach-ember) / 0.14) 48%,
+    transparent 72%
   );
   --gradient-orb-warm: radial-gradient(
     circle,
-    hsl(var(--peach-warm) / 0.35) 0%,
-    transparent 70%
+    hsl(var(--peach-warm) / 0.5) 0%,
+    hsl(var(--peach-gold) / 0.22) 45%,
+    transparent 72%
+  );
+  --gradient-orb-coral: radial-gradient(
+    circle,
+    hsl(var(--peach-coral) / 0.42) 0%,
+    hsl(var(--brand) / 0.16) 50%,
+    transparent 72%
   );
 
   --primary: 12 100% 56%;
@@ -154,9 +164,9 @@
 
   --header-offset: 4.5rem;
   --floating-action-offset: 1.25rem;
-  --space-section-inner: 3rem;
+  --space-section-inner: 2.125rem;
   --space-card: 1.25rem;
-  --space-section-y: 4rem;
+  --space-section-y: 2.75rem;
 
   --screenshot-desktop-aspect: 1280 / 900;
   --screenshot-mobile-aspect: 375 / 812;
@@ -166,6 +176,7 @@
   --glass-bg: rgba(255, 255, 255, 0.78);
   --glass-bg-strong: rgba(255, 255, 255, 0.88);
   --glass-bg-elevated: rgba(255, 255, 255, 0.94);
+  --glass-bg-nav: rgba(255, 255, 255, 0.5);
   --glass-border: hsl(220 13% 91%);
   --overlay-pill-bg: hsl(220 14% 96% / 0.95);
   --overlay-pill-border: hsl(220 13% 91%);
@@ -242,6 +253,12 @@
     hsl(var(--peach-warm) / 0.22) 0%,
     transparent 70%
   );
+  --gradient-orb-coral: radial-gradient(
+    circle,
+    hsl(var(--peach-coral) / 0.24) 0%,
+    hsl(var(--brand) / 0.1) 50%,
+    transparent 72%
+  );
 
   --primary: 12 100% 56%;
   --primary-foreground: 0 0% 100%;
@@ -283,6 +300,7 @@
   --glass-bg: rgba(11, 11, 13, 0.78);
   --glass-bg-strong: rgba(11, 11, 13, 0.88);
   --glass-bg-elevated: rgba(11, 11, 13, 0.94);
+  --glass-bg-nav: rgba(11, 11, 13, 0.48);
   --glass-border: hsl(228 8% 13%);
   --overlay-pill-bg: hsl(220 10% 18% / 0.95);
   --overlay-pill-border: hsl(228 8% 13%);

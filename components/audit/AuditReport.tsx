@@ -25,6 +25,7 @@ import {
   getTopFixPromptFromFlags,
 } from '@/lib/audit/priority-flags'
 import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
+import { ReportAiGate } from '@/components/audit/ReportAiGate'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -82,6 +83,8 @@ interface AuditReportProps {
   atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
+  showAiContent?: boolean
+  aiReviewPending?: boolean
 }
 
 export function AuditReport({
@@ -96,10 +99,13 @@ export function AuditReport({
   atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
+  showAiContent = true,
+  aiReviewPending = false,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
-  const signUpHref = auditId ? `/sign-up?next=/report/${auditId}` : '/sign-up'
+  const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
+  const aiLocked = !showAiContent
   const hostname = (() => {
     try {
       return new URL(audit.url).hostname
@@ -156,9 +162,15 @@ export function AuditReport({
           hasScreenshots={(audit.screenshots?.length ?? 0) > 0}
           rubricsGradedCount={rubricsGradedCount}
           totalRubrics={audit.rubricRows.length}
-          hasFixPrompts={hasFixPrompts}
+          hasFixPrompts={showAiContent && hasFixPrompts}
           canRecheck={isLoggedIn && isViewerOwner}
         />
+
+        {aiReviewPending && (
+          <Callout variant="info" title="Generating AI review">
+            Unlocking fix prompts and rubric analysis. This usually takes under a minute.
+          </Callout>
+        )}
 
         {audit.reportCompleteness !== 'FULL' && (
           <Callout variant="warning" title="Partial report">
@@ -167,17 +179,20 @@ export function AuditReport({
           </Callout>
         )}
 
-        {audit.launchReadiness?.checklist && audit.launchReadiness.checklist.length > 0 && (
-          <LaunchGates checklist={audit.launchReadiness.checklist} />
-        )}
+        <ReportAiGate
+          locked={aiLocked}
+          signUpHref={signUpHref}
+          headline={UPSELLS.anon.headline}
+          body={UPSELLS.anon.body}
+        >
+          {audit.launchReadiness?.checklist && audit.launchReadiness.checklist.length > 0 && (
+            <LaunchGates checklist={audit.launchReadiness.checklist} />
+          )}
+        </ReportAiGate>
 
         {audit.previewMeta && <PreviewCards preview={audit.previewMeta} />}
 
         {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
-
-        {!isSample && isLoggedIn && !viewerIsPaid && (
-          <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />
-        )}
       </div>
 
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
@@ -187,40 +202,46 @@ export function AuditReport({
       {topFixPrompt && (
         <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
-          <Card className="p-5">
-            <FixPromptBlock
-              prompt={topFixPrompt.prompt}
-              finding={topFixPrompt.flag}
-              showNextStep
-              showCursorAction
-              rows={5}
-              clamp={false}
-            />
-          </Card>
+          <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>
+            <Card className="p-5">
+              <FixPromptBlock
+                prompt={topFixPrompt.prompt}
+                finding={topFixPrompt.flag}
+                showNextStep
+                showCursorAction
+                rows={5}
+                clamp={false}
+              />
+            </Card>
+          </ReportAiGate>
         </section>
       )}
 
       <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
-        <div className="space-y-3">
-          <SectionTitle>Summary by rubric</SectionTitle>
-          <RubricSummaryGrid rubrics={audit.rubrics} />
-        </div>
+        <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <SectionTitle>Summary by rubric</SectionTitle>
+              <RubricSummaryGrid rubrics={audit.rubrics} />
+            </div>
 
-        <div className="space-y-4">
-          {RUBRIC_ORDER.map((rubricName) => {
-            const rubric = audit.rubrics.find((r) => r.name === rubricName)
-            const rubricRow = audit.rubricRows.find((r) => r.name === rubricName)
-            if (!rubric || !rubricRow) return null
-            return (
-              <RubricCard
-                key={rubric.name}
-                rubric={rubric}
-                rubricRow={rubricRow}
-                showFeedback={showFeedback}
-              />
-            )
-          })}
-        </div>
+            <div className="space-y-4">
+              {RUBRIC_ORDER.map((rubricName) => {
+                const rubric = audit.rubrics.find((r) => r.name === rubricName)
+                const rubricRow = audit.rubricRows.find((r) => r.name === rubricName)
+                if (!rubric || !rubricRow) return null
+                return (
+                  <RubricCard
+                    key={rubric.name}
+                    rubric={rubric}
+                    rubricRow={rubricRow}
+                    showFeedback={showFeedback}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        </ReportAiGate>
       </section>
 
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
@@ -244,7 +265,7 @@ export function AuditReport({
           </Card>
         )}
 
-        {!isSample && !isLoggedIn && (
+        {!isSample && aiLocked && (
           <Card className="space-y-3 p-6 text-center">
             <CardTitle>{UPSELLS.anon.headline}</CardTitle>
             <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
@@ -257,6 +278,10 @@ export function AuditReport({
               </Button>
             </div>
           </Card>
+        )}
+
+        {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
+          <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />
         )}
 
         {upgradeMoment && upgradeMoment !== 'free_default' && (

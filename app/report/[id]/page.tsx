@@ -128,7 +128,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session } = result
+  const { audit, isLoggedIn, session, showAiContent, aiReviewPending } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const topIssue = topIssueFromFlags(audit.flags)
@@ -307,6 +307,8 @@ export default async function ReportPage({ params }: Props) {
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}
+          showAiContent={showAiContent}
+          aiReviewPending={aiReviewPending}
         />
         <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
       </AuditShell>

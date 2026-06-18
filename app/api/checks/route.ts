@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       recordRateLimit({
         scope: session?.user ? 'audit-user' : 'audit-client',
         identifier: session?.user?.id ?? clientId,
-        limit: session?.user ? 30 : 3,
+        limit: session?.user ? 30 : 10,
         windowSeconds: 3600,
       }),
       recordRateLimit({

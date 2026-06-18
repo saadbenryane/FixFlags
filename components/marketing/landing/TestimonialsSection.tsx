@@ -54,7 +54,7 @@ export function TestimonialsSection() {
       id="testimonials"
       className="scroll-mt-[var(--header-offset)] bg-muted/20"
     >
-      <Container className="space-y-12 sm:space-y-16">
+      <Container className="space-y-8 sm:space-y-11">
         <LandingSectionHeader
           label="LOVED BY BUILDERS"
           headline="Built for developers shipping fast."

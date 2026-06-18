@@ -24,7 +24,7 @@ export function inferAuditSource(pathname: string | null | undefined): AuditSour
   if (pathname === '/' || pathname.startsWith('/#')) return 'HOMEPAGE'
   if (pathname.startsWith('/dashboard')) return 'DASHBOARD'
   if (pathname.startsWith('/report') || pathname.startsWith('/audit')) return 'REPORT'
-  if (pathname.startsWith('/pricing')) return 'HOMEPAGE'
+  if (pathname.startsWith('/pricing')) return 'UNKNOWN'
   if (pathname.startsWith('/api/mcp')) return 'MCP'
   if (pathname.startsWith('/api/')) return 'API'
   return 'UNKNOWN'
