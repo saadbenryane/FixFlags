@@ -3,10 +3,12 @@ import assert from 'node:assert/strict'
 import {
   canAccessCompare,
   canAccessPaidFeatures,
+  canExportSummary,
+  canSharePublicly,
   getEntitlements,
   getReportTierForUser,
-  hasUsedFreeRecheck,
 } from '@/lib/auth/entitlements'
+import { scanLimitForPlan } from '@/lib/billing/plans'
 import {
   JudgeContractError,
   normalizeJudgeRawOutput,
@@ -73,7 +75,7 @@ describe('getReportTierForUser', () => {
 })
 
 describe('getEntitlements', () => {
-  it('grants free recheck trial for free users who have not used it', () => {
+  it('grants unlimited re-check for free users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const entitlements = getEntitlements({
       id: 'u1',
@@ -81,25 +83,23 @@ describe('getEntitlements', () => {
       plan: 'FREE',
       freeRecheckUsedAt: null,
     })
-    assert.equal(entitlements.canUseFreeRecheck, true)
-    assert.equal(entitlements.hasUsedFreeRecheck, false)
+    assert.equal(entitlements.canUseFreeRecheck, false)
     assert.equal(entitlements.canRecheck, true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('marks trial exhausted after freeRecheckUsedAt is set', () => {
+  it('denies share/export for pro users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    const usedAt = new Date()
-    assert.equal(hasUsedFreeRecheck({ freeRecheckUsedAt: usedAt }), true)
-    const entitlements = getEntitlements({
-      id: 'u1',
-      role: 'user',
-      plan: 'FREE',
-      freeRecheckUsedAt: usedAt,
-    })
-    assert.equal(entitlements.canUseFreeRecheck, false)
-    assert.equal(entitlements.hasUsedFreeRecheck, true)
+    const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const }
+    assert.equal(canSharePublicly(user), false)
+    assert.equal(canExportSummary(user), false)
     delete process.env.DEV_SIMULATE_BILLING
+  })
+})
+
+describe('plan limits', () => {
+  it('sets free plan to 3 lifetime checks', () => {
+    assert.equal(scanLimitForPlan('FREE'), 3)
   })
 })
 
@@ -120,10 +120,6 @@ describe('canAccessCompare', () => {
     plan: 'FREE' as const,
     freeRecheckUsedAt: null,
   }
-  const freeUserTrialUsed = {
-    ...freeUser,
-    freeRecheckUsedAt: new Date(),
-  }
   const builderUser = {
     id: 'u1',
     role: 'user' as const,
@@ -138,13 +134,7 @@ describe('canAccessCompare', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows free users who used trial recheck on own recheck', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(freeUserTrialUsed, recheck), true)
-    delete process.env.DEV_SIMULATE_BILLING
-  })
-
-  it('blocks free users who have not used trial recheck', () => {
+  it('blocks free users from compare', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(canAccessCompare(freeUser, recheck), false)
     delete process.env.DEV_SIMULATE_BILLING
@@ -152,44 +142,16 @@ describe('canAccessCompare', () => {
 })
 
 describe('resolveFreeUserUpgradeMoment', () => {
-  it('prefers audit limit over trial recheck', () => {
+  it('prefers audit limit moment when at cap', () => {
     assert.equal(
-      resolveFreeUserUpgradeMoment({
-        atAuditLimit: true,
-        canUseFreeRecheck: true,
-      }),
+      resolveFreeUserUpgradeMoment({ atAuditLimit: true }),
       'audit_limit_reached'
     )
   })
 
-  it('shows trial recheck when under audit limit', () => {
+  it('defaults to builder teaser when under audit limit', () => {
     assert.equal(
-      resolveFreeUserUpgradeMoment({
-        atAuditLimit: false,
-        canUseFreeRecheck: true,
-      }),
-      'trial_recheck_available'
-    )
-  })
-
-  it('shows trial exhausted after free recheck used', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({
-        atAuditLimit: false,
-        canUseFreeRecheck: false,
-        hasUsedFreeRecheck: true,
-      }),
-      'trial_exhausted'
-    )
-  })
-
-  it('defaults to builder teaser when no stronger moment', () => {
-    assert.equal(
-      resolveFreeUserUpgradeMoment({
-        atAuditLimit: false,
-        canUseFreeRecheck: false,
-        hasUsedFreeRecheck: false,
-      }),
+      resolveFreeUserUpgradeMoment({ atAuditLimit: false }),
       'free_default'
     )
   })
@@ -297,12 +259,11 @@ describe('production hardening primitives', () => {
   })
 })
 
-describe('trial recheck flag semantics', () => {
-  it('only trial recheck audits should consume freeRecheckUsedAt (design contract)', () => {
-    const paidRecheck = { trialRecheck: false, skipUsageCount: true, parentId: 'p1' }
-    const trialRecheck = { trialRecheck: true, skipUsageCount: true, parentId: 'p1' }
-    assert.equal(paidRecheck.trialRecheck === true, false)
-    assert.equal(trialRecheck.trialRecheck === true, true)
+describe('recheck quota semantics', () => {
+  it('re-checks skip monthly audit usage', () => {
+    const recheckAudit = { trialRecheck: false, skipUsageCount: true, parentId: 'p1' }
+    assert.equal(recheckAudit.skipUsageCount, true)
+    assert.equal(recheckAudit.trialRecheck, false)
   })
 })
 

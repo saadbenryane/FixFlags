@@ -24,8 +24,8 @@ function CircleDot({ state }: { state: string }) {
 
   if (state === 'active') {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-500/15">
-        <span className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-brand" />
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
+        <span className="h-2 w-2 rounded-full bg-amber-500/80" />
       </span>
     )
   }
@@ -58,7 +58,7 @@ function ScoreCard({ score }: { score?: number | null }) {
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-muted/50">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-brand"
+              className="h-full rounded-full bg-gradient-to-r from-amber-500/80 to-brand"
               style={{ width: `${score}%` }}
             />
           </div>
@@ -82,7 +82,7 @@ function ProductPagePreview() {
         </p>
         <h3 className="text-lg font-bold leading-tight">
           Build something{' '}
-          <span className="bg-gradient-to-r from-violet-500 to-brand bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-amber-600 to-brand bg-clip-text text-transparent">
             amazing
           </span>{' '}
           with AI
@@ -91,7 +91,7 @@ function ProductPagePreview() {
           The all-in-one platform for next-gen teams.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          <button className="pointer-events-none rounded-md bg-gradient-to-r from-violet-600 to-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm">
+          <button className="pointer-events-none rounded-md bg-gradient-to-r from-amber-600 to-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm">
             Get started
           </button>
           <button className="pointer-events-none rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -100,7 +100,7 @@ function ProductPagePreview() {
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <div className="flex -space-x-1">
-            {['bg-brand', 'bg-violet-400', 'bg-success'].map((color, index) => (
+            {['bg-brand', 'bg-amber-400', 'bg-success'].map((color, index) => (
               <span key={index} className={cn('h-5 w-5 rounded-full border-2 border-card', color)} />
             ))}
           </div>
@@ -228,7 +228,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                   <button
                     type="button"
                     onClick={showPreviousFlag}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-violet-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-amber-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     aria-label="Show previous flag"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -236,7 +236,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                   <button
                     type="button"
                     onClick={showNextFlag}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-violet-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-amber-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     aria-label="Show next flag"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -250,7 +250,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
                   {currentFlag.severity}
                 </span>
-                <span className="rounded-full bg-gradient-to-r from-violet-600 to-brand px-2.5 py-0.5 text-[11px] font-bold uppercase text-white">
+                <span className="rounded-full bg-gradient-to-r from-amber-600 to-brand px-2.5 py-0.5 text-[11px] font-bold uppercase text-white">
                   {currentFlag.rubric}
                 </span>
               </div>

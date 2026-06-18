@@ -69,3 +69,13 @@ Five concrete yes/no checks from report evidence. Fix before shipping:
 3. Social preview shows branded image.
 4. Privacy policy link is present.
 5. Console has no errors.
+
+## Stuck audit recovery
+
+Production runs a cron at `/api/cron/recover-stuck-audits` (authorized with `CRON_SECRET`). Audits in a non-terminal status with no update for 15 minutes (`STUCK_AUDIT_MINUTES`) are recovered as follows:
+
+- **QUEUED** with a stale queue job: re-enqueue the audit.
+- **Active worker job**: force-fail the job and mark the audit `FAILED` with `AUDIT_TIMEOUT`.
+- **Other in-progress statuses**: mark `FAILED` with `AUDIT_TIMEOUT` so the user can retry.
+
+Users see a human-readable timeout message and can start a new check or re-check from the report.

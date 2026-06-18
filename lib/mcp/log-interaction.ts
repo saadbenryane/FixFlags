@@ -17,7 +17,7 @@ export interface LogMcpInteractionInput {
   durationMs: number
   errorCode?: string
   auditId?: string | null
-  metadata?: Record<string, unknown>
+  metadata?: import('@prisma/client').Prisma.InputJsonValue
 }
 
 const AUDIT_ID_PARAM_KEYS = [
@@ -106,7 +106,7 @@ export async function logMcpInteraction(
     durationMs: number
     errorCode?: string
     auditId?: string | null
-    metadata?: Record<string, unknown>
+    metadata?: import('@prisma/client').Prisma.InputJsonValue
   }) => Promise<unknown>
 ): Promise<void> {
   try {

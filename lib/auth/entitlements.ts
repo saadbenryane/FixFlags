@@ -38,8 +38,9 @@ export function canAccessPaidFeatures(
 
 /** @deprecated Use canAccessRecheck; always false under unlimited owned re-check contract. */
 export function canUseFreeRecheck(
-  _user: Pick<User, 'plan' | 'freeRecheckUsedAt'>
+  user: Pick<User, 'plan' | 'freeRecheckUsedAt'>
 ): boolean {
+  void user
   return false
 }
 
@@ -60,15 +61,17 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean
 
 /** Authenticated users can re-check reports they own; quota is not consumed. */
 export function canAccessRecheck(
-  _user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
 ): boolean {
+  void user
   return true
 }
 
 export function canAccessCompare(
   user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>,
-  _recheckAudit: { parentId: string | null; userId: string | null }
+  recheckAudit: { parentId: string | null; userId: string | null }
 ): boolean {
+  void recheckAudit
   return canAccessPaidFeatures(user)
 }
 

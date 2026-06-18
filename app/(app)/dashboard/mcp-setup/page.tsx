@@ -16,16 +16,17 @@ import { Callout } from '@/components/ui/callout'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useMe } from '@/hooks/useMe'
 import { McpConnectionTest } from '@/components/dashboard/McpConnectionTest'
+import { McpToolMark } from '@/components/brand/EditorMarks'
 import { buildMcpConfigExample, getMcpEndpoint } from '@/lib/mcp/docs-content'
 import { SITE_URL } from '@/lib/marketing/copy'
 
 type EditorKey = 'cursor' | 'claudeCode' | 'windsurf'
 type VibecodingLevel = 'beginner' | 'regular' | 'advanced'
 
-const ALL_EDITORS: { key: EditorKey; label: string; icon: string }[] = [
-  { key: 'cursor', label: 'Cursor', icon: '⌨️' },
-  { key: 'claudeCode', label: 'Claude Code', icon: '🤖' },
-  { key: 'windsurf', label: 'Windsurf', icon: '🏄' },
+const ALL_EDITORS: { key: EditorKey; label: string }[] = [
+  { key: 'cursor', label: 'Cursor' },
+  { key: 'claudeCode', label: 'Claude Code' },
+  { key: 'windsurf', label: 'Windsurf' },
 ]
 
 const LEVELS: { key: VibecodingLevel; label: string; desc: string }[] = [
@@ -169,6 +170,7 @@ export default function McpSetupWizard() {
                     }`}
                   >
                     {selected && <Check className="h-3 w-3" />}
+                    <McpToolMark toolKey={t.key} className="h-3.5 w-3.5 shrink-0 text-current" />
                     {t.label}
                   </button>
                 )
@@ -209,8 +211,10 @@ export default function McpSetupWizard() {
                   : 'border-border hover:border-muted-foreground/30'
               }`}
             >
-              <span className="text-lg mr-2">{e.icon}</span>
-              <span className="font-medium">{e.label}</span>
+              <span className="inline-flex items-center gap-2">
+                <McpToolMark toolKey={e.key} className="h-5 w-5 shrink-0 text-brand" />
+                <span className="font-medium">{e.label}</span>
+              </span>
             </button>
           ))}
         </div>

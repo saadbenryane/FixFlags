@@ -73,15 +73,18 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
         {(mcpAudits > 0 || webAudits > 0) && (
           <div className="flex gap-4 text-xs">
             <div>
-              <span className="font-medium text-foreground">{mcpAudits}</span>{' '}
-              <span className="text-muted-foreground">via MCP</span>
+              <span className="font-medium text-foreground tabular-nums">{mcpAudits}</span>{' '}
+              <span className="text-muted-foreground">audits via MCP</span>
             </div>
             <div>
-              <span className="font-medium text-foreground">{webAudits}</span>{' '}
-              <span className="text-muted-foreground">via web</span>
+              <span className="font-medium text-foreground tabular-nums">{webAudits}</span>{' '}
+              <span className="text-muted-foreground">audits via web</span>
             </div>
           </div>
         )}
+        <p className="text-[10px] text-muted-foreground">
+          Analytics tracks every MCP API call, including tools/list and connection tests.
+        </p>
 
         {configLines && (
           <div className="space-y-1">
