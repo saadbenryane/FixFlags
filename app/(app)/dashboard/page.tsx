@@ -63,6 +63,11 @@ export default async function DashboardPage() {
   const atAuditLimit =
     user?.plan === 'FREE' && !isUnlimited && effectiveLimit !== null && used >= effectiveLimit
 
+  const [mcpAudits, webAudits] = await Promise.all([
+    prisma.audit.count({ where: { userId, source: 'MCP' } }),
+    prisma.audit.count({ where: { userId, source: { not: 'MCP' } } }),
+  ])
+
   return (
     <Container variant="report" className="py-8 space-y-8">
       <Suspense>
@@ -94,7 +99,7 @@ export default async function DashboardPage() {
             pending={pending}
             plan={user?.plan ?? 'FREE'}
           />
-          <McpDashboardCard />
+          <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
         </div>
       </div>
 

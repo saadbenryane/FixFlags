@@ -1,17 +1,16 @@
 'use client'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { ExpertReviewButton } from '@/components/pricing/ExpertReviewButton'
 import { FaqSection } from '@/components/marketing/FaqSection'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Surface } from '@/components/ui/surface'
-import { Body, Muted } from '@/components/ui/typography'
+import { Body, Heading, Muted } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2 } from 'lucide-react'
 import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
 import { CONTACT_PLAN } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
@@ -23,106 +22,119 @@ export function PricingPageClient() {
   const isLoggedIn = !!user
 
   return (
-    <Section spacing="marketing">
-      <Container className="space-y-12 sm:space-y-14">
-        <div className="mx-auto max-w-2xl text-center">
-          <LandingSectionHeader label="Pricing" headline={PRICING.headline} />
-          <Body className="mt-4 text-muted-foreground text-pretty">{PRICING.subhead}</Body>
+    <Section spacing="marketing" className="relative overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(ellipse_at_top,hsl(var(--brand)/0.1),transparent_64%)]" />
+      <Container className="space-y-12 sm:space-y-16">
+        <div className="mx-auto max-w-3xl text-center">
+          <Heading as="h1" className="text-balance">
+            {PRICING.headline}
+          </Heading>
+          <Body className="mx-auto mt-4 max-w-2xl text-muted-foreground text-pretty">
+            {PRICING.subhead}
+          </Body>
+          <div className="mt-5 inline-flex items-center rounded-full bg-brand-muted px-3 py-1 text-xs font-medium text-brand">
+            {PRICING.foundingBadge}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           {PLANS.map((plan) => (
             <Card
               key={plan.name}
               className={cn(
-                'relative flex h-full flex-col border-0 shadow-card',
-                plan.highlight && 'bg-brand/[0.03] shadow-card-hover'
+                'relative flex h-full flex-col overflow-hidden border border-border/40 shadow-card',
+                plan.highlight && 'border-brand/25 bg-brand/[0.035] shadow-card-hover'
               )}
             >
               {plan.highlight && (
-                <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand px-2 py-0.5 text-xs text-brand-foreground">
-                  Popular
+                <span className="absolute right-4 top-4 rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground">
+                  Best for shipping
                 </span>
               )}
-              <CardHeader className={cn(plan.highlight && 'pt-8')}>
-                <div>
-                  <CardTitle>{plan.name}</CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">{plan.persona}</p>
-                  <p className="mt-2 text-sm font-medium text-pretty">{plan.outcome}</p>
-                  <div className="mt-2">
-                    <span className="font-mono text-3xl tabular-nums">{plan.price}</span>
-                    <span className="text-muted-foreground">{plan.period}</span>
-                  </div>
+              <CardHeader className="pb-4">
+                <CardTitle className="pr-28 text-xl">{plan.name}</CardTitle>
+                <CardDescription>{plan.persona}</CardDescription>
+                <p className="pt-3 text-sm font-medium leading-snug text-pretty">{plan.outcome}</p>
+                <div className="flex items-end gap-1 pt-3">
+                  <span className="font-mono text-4xl font-semibold tabular-nums tracking-tight">
+                    {plan.price}
+                  </span>
+                  <span className="pb-1 text-sm text-muted-foreground">{plan.period}</span>
                 </div>
-                <CardDescription className="mt-1 text-xs font-medium">{plan.audits}</CardDescription>
+                <p className="text-xs font-medium text-muted-foreground">{plan.audits}</p>
               </CardHeader>
-              <CardContent className="flex flex-1 flex-col space-y-4">
-                <ul className="flex-1 space-y-2">
-                  {plan.features.slice(0, 3).map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                      {f}
+              <CardContent className="flex flex-1 flex-col gap-5">
+                <ul className="flex-1 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2.5 text-sm leading-snug">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-auto">
-                  <PricingCTAButton
-                    plan={plan.plan}
-                    cta={plan.cta}
-                    signUpHref={plan.href}
-                    highlight={plan.highlight}
-                    isLoggedIn={isLoggedIn}
-                    currentPlan={currentPlan}
-                  />
-                </div>
+                <PricingCTAButton
+                  plan={plan.plan}
+                  cta={plan.cta}
+                  signUpHref={plan.href}
+                  highlight={plan.highlight}
+                  isLoggedIn={isLoggedIn}
+                  currentPlan={currentPlan}
+                />
               </CardContent>
             </Card>
           ))}
-
-          <Card className="flex h-full flex-col border-0 shadow-card">
-            <CardHeader>
-              <CardTitle>{CONTACT_PLAN.name}</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">{CONTACT_PLAN.persona}</p>
-              <p className="mt-2 text-sm font-medium text-pretty">{CONTACT_PLAN.outcome}</p>
-              <div className="mt-2">
-                <span className="font-mono text-3xl tabular-nums">{CONTACT_PLAN.price}</span>
-              </div>
-              <CardDescription className="mt-1 text-xs font-medium">{CONTACT_PLAN.audits}</CardDescription>
-            </CardHeader>
-            <CardContent className="mt-auto space-y-4">
-              <ul className="space-y-2">
-                {CONTACT_PLAN.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button variant="outline" className="w-full" asChild>
-                <Link href={CONTACT_PLAN.href}>{CONTACT_PLAN.cta}</Link>
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
-        <PricingComparisonTable />
+        <Surface
+          variant="elevated"
+          className="grid gap-5 border border-border/40 bg-card p-5 shadow-card sm:grid-cols-[1fr_auto] sm:items-center sm:p-6"
+        >
+          <div>
+            <p className="text-lg font-semibold tracking-heading">{CONTACT_PLAN.name}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{CONTACT_PLAN.outcome}</p>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              {CONTACT_PLAN.features.map((feature) => (
+                <span key={feature} className="inline-flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-brand" aria-hidden />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
+            <Link href={CONTACT_PLAN.href}>
+              {CONTACT_PLAN.cta}
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+        </Surface>
 
-        <Muted className="text-center text-sm">{PRICING.allPlansInclude}</Muted>
+        <div className="space-y-5">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-semibold tracking-heading">Compare the launch loop</h2>
+            <Muted className="mt-2 text-sm">{PRICING.allPlansInclude}</Muted>
+          </div>
+          <PricingComparisonTable />
+        </div>
 
-        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-4 border-0 text-center shadow-card">
-          <p className="section-label">Expert review</p>
+        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-5 border border-border/40 text-center shadow-card">
           <h2 className="font-sans text-2xl font-semibold tracking-heading">{PRICING.expertReview.title}</h2>
           <Body className="text-muted-foreground">{PRICING.expertReview.body}</Body>
-          <ol className="mx-auto max-w-md list-inside list-decimal space-y-2 text-left text-sm text-muted-foreground">
-            {PRICING.expertReview.steps.map((step) => (
-              <li key={step}>{step}</li>
+          <ol className="mx-auto grid max-w-2xl gap-2 text-left text-sm text-muted-foreground sm:grid-cols-3">
+            {PRICING.expertReview.steps.map((step, index) => (
+              <li key={step} className="rounded-nested-md bg-muted/35 p-3">
+                <span className="mb-2 block font-mono text-xs font-semibold text-brand">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                {step}
+              </li>
             ))}
           </ol>
           <ExpertReviewButton isLoggedIn={isLoggedIn} label={PRICING.expertReview.cta} />
         </Surface>
 
         <div className="mx-auto max-w-3xl">
-          <FaqSection items={PRICING_FAQ} title="Pricing questions" sectionLabel="FAQ" />
+          <FaqSection items={PRICING_FAQ} title="Pricing questions" sectionLabel={null} />
         </div>
       </Container>
     </Section>

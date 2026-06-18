@@ -29,7 +29,7 @@ function CircleScore({
             strokeLinecap="round"
             strokeDasharray={`${circumference}`}
             strokeDashoffset={offset}
-            className={positive ? 'text-emerald-400' : 'text-orange-400'}
+            className={positive ? 'text-success' : 'text-brand'}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -68,7 +68,7 @@ export function RealImpactSection() {
           {/* BEFORE */}
           <div className="rounded-2xl bg-gray-900 p-6 sm:p-8">
             <div className="mb-5 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
               <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">BEFORE</span>
             </div>
 
@@ -83,8 +83,8 @@ export function RealImpactSection() {
             <ul className="space-y-2.5">
               {BEFORE_ITEMS.map((item) => (
                 <li key={item} className="flex items-center gap-3 text-sm">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/15">
-                    <X className="h-3 w-3 text-red-400" aria-hidden />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/15">
+                    <X className="h-3 w-3 text-destructive" aria-hidden />
                   </span>
                   <span className="text-white/60">{item}</span>
                 </li>
@@ -98,18 +98,18 @@ export function RealImpactSection() {
           </div>
 
           {/* AFTER */}
-          <div className="rounded-2xl bg-gray-900 p-6 ring-1 ring-emerald-500/20 sm:p-8">
+          <div className="rounded-2xl bg-gray-900 p-6 ring-1 ring-success/20 sm:p-8">
             <div className="mb-5 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              <span className="h-2.5 w-2.5 rounded-full bg-success" />
               <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-white/40">AFTER</span>
             </div>
 
             {/* mock headline */}
-            <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <div className="mb-5 rounded-xl border border-success/20 bg-success/5 px-4 py-3">
               <p className="text-sm font-semibold text-white">
                 Ship AI products users love.
               </p>
-              <div className="mt-2 inline-block rounded-md bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white">
+              <div className="mt-2 inline-block rounded-md bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">
                 Start free
               </div>
             </div>
@@ -117,8 +117,8 @@ export function RealImpactSection() {
             <ul className="space-y-2.5">
               {AFTER_ITEMS.map((item) => (
                 <li key={item} className="flex items-center gap-3 text-sm">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                    <Check className="h-3 w-3 text-emerald-400" aria-hidden />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15">
+                    <Check className="h-3 w-3 text-success" aria-hidden />
                   </span>
                   <span className="text-white/80">{item}</span>
                 </li>

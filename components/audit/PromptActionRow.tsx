@@ -20,7 +20,7 @@ export function PromptActionRow({
   copyLabel,
   showCursorAction = false,
   className,
-  compact = true,
+  compact = false,
   dark = false,
 }: PromptActionRowProps) {
   return (

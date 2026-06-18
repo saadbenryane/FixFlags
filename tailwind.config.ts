@@ -178,6 +178,10 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
         },
+        'loop-progress': {
+          from: { opacity: '0', transform: 'scaleX(0)' },
+          to: { opacity: '1', transform: 'scaleX(1)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -189,6 +193,7 @@ const config: Config = {
         'soft-reveal': 'soft-reveal 0.2s ease-out',
         'word-reveal': 'word-reveal 0.5s ease-out',
         'gradient-shift': 'gradient-shift 3s ease infinite',
+        'loop-progress': 'loop-progress 0.7s var(--ease-out) 0.12s both',
       },
     },
   },

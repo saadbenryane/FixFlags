@@ -238,7 +238,7 @@ export default function McpSetupWizard() {
           {!newKey ? (
             <>
               <Button onClick={createApiKey} disabled={creatingKey} size="lg" className="w-full">
-                {creatingKey ? 'Creating...' : 'Create API key'}
+                {creatingKey ? 'Creating...' : 'Create API Key'}
               </Button>
               {keyError && (
                 <p className="text-xs text-destructive text-center">{keyError}</p>
@@ -255,7 +255,7 @@ export default function McpSetupWizard() {
                     size="icon"
                     variant="outline"
                     onClick={() => copyKey(newKey)}
-                    aria-label="Copy API key"
+                    aria-label="Copy API Key"
                   >
                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>

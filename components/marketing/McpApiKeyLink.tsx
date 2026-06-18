@@ -9,8 +9,8 @@ export function McpApiKeyLink() {
   const href = user ? '/settings/api-keys' : '/sign-in?next=/settings/api-keys'
 
   return (
-    <Button variant="outline" size="sm" asChild>
-      <Link href={href}>Get API key</Link>
+    <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+      <Link href={href}>Get API Key</Link>
     </Button>
   )
 }

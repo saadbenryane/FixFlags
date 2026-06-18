@@ -52,7 +52,7 @@ function SupportWidgetInner() {
     <>
       {panelOpen && (
         <div
-          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)+env(safe-area-inset-right))] z-[60] flex h-[min(32rem,calc(100vh-7rem))] w-[min(24rem,calc(100vw-(var(--floating-action-offset)*2)))] flex-col overflow-hidden rounded-card border border-border bg-background shadow-2xl"
+          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] flex h-[min(32rem,calc(100vh_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-bottom)))] w-[min(24rem,calc(100vw_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-right)))] flex-col overflow-hidden rounded-card border border-border bg-background shadow-2xl"
           role="dialog"
           aria-label="Live chat with FixFlags"
         >
@@ -79,7 +79,7 @@ function SupportWidgetInner() {
           onClick={() => void openPanel()}
           size="icon"
           className={cn(
-            'fixed bottom-[calc(var(--floating-action-offset)+env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)+env(safe-area-inset-right))] z-[60] h-14 w-14 rounded-full shadow-lg',
+            'fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] h-14 w-14 rounded-full shadow-lg',
             'bg-brand text-brand-foreground hover:bg-brand/90'
           )}
           aria-label="Open live chat"

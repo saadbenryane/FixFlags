@@ -27,7 +27,7 @@ export function PromptCopyButton({ prompt, label = 'Copy prompt', className, com
       variant="outline"
       size={compact ? 'xs' : 'sm'}
       onClick={handleCopy}
-      className={cn(compact && 'gap-1.5', className)}
+      className={cn(compact ? 'gap-1.5 [&_svg]:size-3.5' : '[&_svg]:size-4', className)}
     >
       {copied ? (
         <><Check className="h-3 w-3" /> Copied!</>

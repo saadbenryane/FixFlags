@@ -16,11 +16,6 @@ export function LandingFinalCtaSection() {
     <Section spacing="marketing" className="pb-16 sm:pb-20">
       <Container>
         <div className="relative overflow-hidden rounded-card border border-brand/10 bg-brand-muted/70 p-8 shadow-card sm:p-12 lg:p-16">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-brand/20"
-          />
-
           <div className="relative grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {/* Left */}
             <div className="space-y-6">
@@ -64,10 +59,10 @@ export function LandingFinalCtaSection() {
               {TRUST_BADGES.map((badge) => (
                 <div
                   key={badge}
-                  className="flex items-center gap-4 rounded-card border border-brand/15 bg-background/70 px-5 py-4 backdrop-blur-sm"
+                  className="flex items-center gap-4 rounded-card bg-background/70 px-5 py-4 shadow-sm backdrop-blur-sm"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                    <Check className="h-4 w-4 text-emerald-500" aria-hidden />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/15">
+                    <Check className="h-4 w-4 text-brand" aria-hidden />
                   </span>
                   <span className="text-sm font-semibold text-foreground">{badge}</span>
                 </div>

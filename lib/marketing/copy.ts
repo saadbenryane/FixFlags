@@ -44,7 +44,7 @@ export const HERO = {
     'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
-  primaryCta: 'Run free check',
+  primaryCta: 'Run Free Check',
   trySampleCta: 'Try sample URL',
   urlPlaceholder: 'https://your-site.com',
   urlHelper: "Paste any live or preview URL. We'll add https:// if needed.",
@@ -274,7 +274,7 @@ export const PROOF_SECTION = {
   subhead:
     'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
   nextStep: OUTPUT_LABELS.nextStep,
-  cta: 'Check my site',
+  cta: 'Check My Site',
   sample: {
     name: 'FixFlags',
     domain: 'fixflags.com',
@@ -475,7 +475,7 @@ export const CHANGELOG_ENTRIES = [
       'Sign up and create your account to start testing your sites',
       'Run free checks on any live or preview URL',
       'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
-      "We'd love your feedback — use the chat button to tell us what you think",
+      "We'd love your feedback - use the chat button to tell us what you think",
     ],
   },
   {
@@ -483,7 +483,7 @@ export const CHANGELOG_ENTRIES = [
     title: 'Check your URLs from Cursor and Claude Code',
     items: [
       'Run FixFlags checks directly from your editor without leaving your workflow',
-      'Fetch fix prompts and verify your fixes landed — all from your terminal',
+      'Fetch fix prompts and verify your fixes landed - all from your terminal',
     ],
   },
   {
@@ -749,7 +749,7 @@ export const PLANS = getMarketingPlans()
 export const SAMPLES_PAGE = {
   subhead: 'This is what a completed FixFlags report looks like: full report, all Flags.',
   tierNote: 'Free includes the full report. Pro adds unlimited re-checks and MCP in your editor.',
-  bottomCta: 'Check my site',
+  bottomCta: 'Check My Site',
 } as const
 
 export const REPORT_COPY = {
@@ -778,8 +778,31 @@ export const MCP_DOCS = {
     'Run ff_check_url: use the curl test below to verify your key',
   ],
   builderRequired: 'Requires Pro plan',
+  expectationsTitle: 'What to expect',
+  expectations: [
+    {
+      label: 'Plan',
+      title: 'Pro plan required',
+      body: 'API keys and MCP access are included with Pro.',
+    },
+    {
+      label: 'Works with',
+      title: 'Cursor, Claude Code, and Windsurf',
+      body: 'Paste the config into your editor, then run checks from your coding workflow.',
+    },
+    {
+      label: 'Wait time',
+      title: 'Checks may queue',
+      body: 'When FixFlags is busy, your editor receives an estimated wait before the check starts.',
+    },
+    {
+      label: 'URL support',
+      title: 'Public URLs only',
+      body: 'Live and preview URLs work. Localhost and private sites are not reachable yet.',
+    },
+  ],
   lovableBoltNote:
-    'Lovable and Bolt don\u2019t support MCP yet. Use the generate-fix-prompt tool from a supported editor, or copy fix prompts from the web UI / report directly into those tools.',
+    'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
   tools: [
     { name: 'ff_check_url', desc: 'Start a check on any URL. Returns reportId.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
@@ -943,7 +966,7 @@ export const UPGRADE_MOMENTS = {
   },
   share_public: {
     headline: 'Share reports with clients',
-    body: 'Agency includes public share links with OG previews and a Check my site CTA for viewers.',
+    body: 'Agency includes public share links with OG previews and a Check My Site CTA for viewers.',
     cta: 'Upgrade to Agency',
     plan: 'TEAM' as const,
   },

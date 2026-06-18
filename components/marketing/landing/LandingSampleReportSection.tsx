@@ -15,7 +15,7 @@ function ScoreGauge({ score }: { score: number }) {
   const radius = 42
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
-  const color = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-brand' : 'text-red-500'
+  const color = score >= 80 ? 'text-success' : score >= 60 ? 'text-brand' : 'text-destructive'
 
   return (
     <div className="relative h-28 w-28">
@@ -44,7 +44,7 @@ function ScoreGauge({ score }: { score: number }) {
 
 const RUBRIC_COLORS: Record<string, string> = {
   Message: 'bg-brand/10 text-brand border-brand/20',
-  Experience: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  Experience: 'bg-success/10 text-success border-success/20',
   Reach: 'bg-info/10 text-info border-info/20',
 }
 
@@ -97,7 +97,7 @@ export function LandingSampleReportSection({
             {/* report header */}
             <div className="flex items-center justify-between border-b border-border/40 px-5 py-4">
               <div className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="h-2 w-2 rounded-full bg-success" />
                 <div>
                   <p className="text-sm font-semibold">fixflags.dev</p>
                   <p className="text-[11px] text-muted-foreground">Scanned 2 minutes ago</p>

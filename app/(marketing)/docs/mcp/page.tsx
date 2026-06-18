@@ -31,14 +31,6 @@ const MCP_SECURITY = [
   'Rotate immediately if a key is exposed.',
 ] as const
 
-const MCP_LIMITATIONS = [
-  'Pro required',
-  'Rate limits queue with ETA',
-  'Editors: Cursor, Claude Code, Windsurf',
-  'Bolt/Lovable: use generate-fix-prompt',
-  'Public URLs only',
-] as const
-
 export default function McpDocsPage() {
   const productionEndpoint = getMcpEndpoint(SITE_URL)
   const localEndpoint = getMcpEndpoint(MCP_LOCAL_BASE_URL)
@@ -49,13 +41,15 @@ export default function McpDocsPage() {
         <div className="space-y-3">
           <Heading as="h1">{MCP_DOCS.headline}</Heading>
           <Body className="text-muted-foreground">{MCP_DOCS.subhead}</Body>
-          <McpApiKeyLink />
-          <Button size="sm" asChild>
-            <Link href="/#audit">
-              {HERO.primaryCta}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <McpApiKeyLink />
+            <Button size="sm" className="w-full sm:w-auto" asChild>
+              <Link href="/#audit">
+                {HERO.primaryCta}
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <Surface variant="elevated" className="space-y-5">
@@ -84,15 +78,19 @@ export default function McpDocsPage() {
           </div>
         </Surface>
 
-        <div className="flex flex-wrap gap-2">
-          {MCP_LIMITATIONS.map((item) => (
-            <span
-              key={item}
-              className="inline-flex min-h-9 items-center rounded-full bg-muted/50 px-3.5 py-1.5 font-mono text-[10px] uppercase tracking-label text-muted-foreground shadow-filterPill"
-            >
-              {item}
-            </span>
-          ))}
+        <div className="space-y-3">
+          <Heading as="h2" className="text-xl">
+            {MCP_DOCS.expectationsTitle}
+          </Heading>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {MCP_DOCS.expectations.map((item) => (
+              <Card key={item.label} className="space-y-2 p-4">
+                <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                <p className="text-sm font-semibold leading-heading text-foreground">{item.title}</p>
+                <p className="text-sm leading-body text-muted-foreground">{item.body}</p>
+              </Card>
+            ))}
+          </div>
         </div>
 
         <Callout variant="neutral" title="Security">

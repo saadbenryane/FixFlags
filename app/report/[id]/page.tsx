@@ -13,6 +13,7 @@ import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
@@ -308,6 +309,7 @@ export default async function ReportPage({ params }: Props) {
           screenshotLimited={limited}
           screenshotPartial={partial}
         />
+        <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
       </AuditShell>
     )
   }

@@ -113,6 +113,7 @@ export function registerAllTools(
               status,
               reportUrl: `${appUrl}/report/${auditId}`,
               estimatedWaitSeconds,
+              rateLimitRetryAfter,
               queuePosition,
               scheduledStartAt,
               queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
@@ -357,6 +358,20 @@ export function registerAllTools(
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
 
+      const [userLimit, workerEstimate] = await Promise.all([
+        recordRateLimit({
+          scope: 'mcp-user',
+          identifier: freshUser.id,
+          limit: 60,
+          windowSeconds: 3600,
+        }),
+        getWorkerQueueEstimate(),
+      ])
+
+      const rateLimitRetryAfter = userLimit.exceeded ? userLimit.retryAfterSeconds : 0
+      const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
+        computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
+
       const outcome = await startRecheckAudit(parentReportId, freshUser)
       if (!outcome.ok) {
         throw new Error(outcome.error)
@@ -374,7 +389,21 @@ export function registerAllTools(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ reportId: auditId, status }),
+            text: JSON.stringify({
+              reportId: auditId,
+              status,
+              rateLimitRetryAfter,
+              estimatedWaitSeconds,
+              queuePosition,
+              scheduledStartAt,
+              queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
+              queueReason:
+                delayMs > 0
+                  ? 'rate_limit'
+                  : workerEstimate.waitingJobs > 0
+                    ? 'backlog'
+                    : undefined,
+            }),
           },
         ],
       }

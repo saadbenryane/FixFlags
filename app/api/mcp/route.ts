@@ -13,12 +13,14 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
   if (!user) {
     return Response.json(
       {
-        code: 'UNAUTHORIZED',
-        message: 'Provide a valid x-api-key header',
-        action: 'create_api_key',
-        requestId: crypto.randomUUID(),
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: 'Provide a valid x-api-key header. Create one at /settings/api-keys.',
+        },
+        id: null,
       },
-      { status: 401 }
+      { status: 401, headers: { 'WWW-Authenticate': 'x-api-key' } }
     )
   }
 

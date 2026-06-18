@@ -15,7 +15,7 @@ const pipeline = [
 
 function CircleDot({ state }: { state: string }) {
   if (state === 'done') return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
       <Check className="h-3 w-3" />
     </span>
   )
@@ -32,10 +32,10 @@ function CircleDot({ state }: { state: string }) {
 }
 
 const partnerLogos = [
-  { name: 'Vercel' },
-  { name: 'Supabase' },
-  { name: 'Linear' },
-  { name: 'Lottie' },
+  { name: 'Cursor' },
+  { name: 'Codex' },
+  { name: 'Lovable' },
+  { name: 'Bolt' },
 ]
 
 export function HeroProductPreview({ className }: { className?: string }) {
@@ -44,19 +44,19 @@ export function HeroProductPreview({ className }: { className?: string }) {
       {/* Soft glow behind the card */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(24_100%_60%/0.12),transparent_70%)]"
+        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--brand)/0.12),transparent_70%)]"
       />
 
       <div className="rounded-2xl border border-border/40 bg-card/95 shadow-2xl backdrop-blur-sm">
         {/* Window chrome */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border/30 px-4 py-3">
           <div className="flex gap-1.5" aria-hidden>
-            <span className="h-3 w-3 rounded-full bg-red-400/80" />
-            <span className="h-3 w-3 rounded-full bg-yellow-400/80" />
-            <span className="h-3 w-3 rounded-full bg-green-400/80" />
+            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
+            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
+            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
           </div>
           <div className="mx-auto flex items-center gap-2 rounded-md bg-muted/50 px-3 py-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+            <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
             <span className="font-mono text-[11px] text-muted-foreground">saadbenryane.com</span>
           </div>
         </div>

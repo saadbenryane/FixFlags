@@ -145,7 +145,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
           <h2 className="text-xl font-semibold">Report not found</h2>
           <p className="text-muted-foreground text-sm">This report does not exist or has been removed.</p>
           <Button asChild>
-            <Link href="/">Check my site</Link>
+            <Link href="/">Check My Site</Link>
           </Button>
         </Container>
       </AuditShell>

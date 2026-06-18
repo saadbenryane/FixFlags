@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Settings,
@@ -14,9 +15,13 @@ import { Badge } from '@/components/ui/badge'
 import { useMe } from '@/hooks/useMe'
 import { getMcpEndpoint } from '@/lib/mcp/docs-content'
 import { SITE_URL } from '@/lib/marketing/copy'
-import { useState } from 'react'
 
-export function McpDashboardCard() {
+interface Props {
+  mcpAudits?: number
+  webAudits?: number
+}
+
+export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
   const { user } = useMe()
   const [copied, setCopied] = useState(false)
   const canUseMcp = user?.entitlements?.canUseMcp ?? false
@@ -64,6 +69,19 @@ export function McpDashboardCard() {
           Your editor can now check sites via MCP.
         </p>
 
+        {(mcpAudits > 0 || webAudits > 0) && (
+          <div className="flex gap-4 text-xs">
+            <div>
+              <span className="font-medium text-foreground">{mcpAudits}</span>{' '}
+              <span className="text-muted-foreground">via MCP</span>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">{webAudits}</span>{' '}
+              <span className="text-muted-foreground">via web</span>
+            </div>
+          </div>
+        )}
+
         {configLines && (
           <div className="space-y-1">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -94,7 +112,7 @@ export function McpDashboardCard() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/settings/api-keys">
               <Settings className="mr-1.5 h-3 w-3" />
-              Manage keys
+              Manage Keys
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>

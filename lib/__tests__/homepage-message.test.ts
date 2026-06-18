@@ -53,8 +53,9 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience badge states the finish promise after AI builds', () => {
-    assert.match(HERO.audienceLine, /fixflags finishes it/i)
+  it('audience line avoids the old all-caps finish badge', () => {
+    assert.ok(!/YOUR AI BUILT IT/i.test(HERO.audienceLine))
+    assert.match(HERO.audienceLine, /AI-built/i)
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
@@ -97,7 +98,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA is a delivery promise', () => {
-    assert.equal(HERO.primaryCta, 'Run free check')
+    assert.equal(HERO.primaryCta, 'Run Free Check')
     assert.match(FINAL_CTA.headlineAccent, /flag/i)
   })
 
@@ -129,6 +130,15 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
     assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
     assert.equal(LANDING_PAGE.sampleReport.scores.rubrics.length, 3)
+    assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
+      'Cursor',
+      'Codex',
+      'Lovable',
+      'Bolt',
+      'Claude Code',
+      'Windsurf',
+    ])
+    assert.ok(LANDING_PAGE.checkDimensions.cards.every((card) => card.checks.length >= 4))
     assert.ok(LANDING_PAGE.logoCloud.disclaimer.length > 0)
     assert.ok(!LANDING_PAGE.testimonials.disclaimer.includes('2,000'))
   })

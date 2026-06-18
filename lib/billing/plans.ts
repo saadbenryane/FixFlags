@@ -45,7 +45,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       '3 audits with AI review',
     ],
     highlight: false,
-    cta: 'Audit free',
+    cta: 'Audit Free',
     href: '/',
   },
   BUILDER: {
@@ -111,7 +111,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       '500 audits per month',
     ],
     highlight: false,
-    cta: 'Contact us',
+    cta: 'Contact Us',
     href: 'mailto:hello@fixflags.com?subject=FixFlags%20high%20volume',
   },
 }
@@ -183,7 +183,7 @@ export const CONTACT_PLAN = {
     'Custom audit volume',
     'Dedicated onboarding',
   ],
-  cta: 'Contact us',
+  cta: 'Contact Us',
   href: 'mailto:hello@fixflags.com?subject=FixFlags%20high%20volume',
   highlight: false,
   accountModel: 'Talk to us about your workflow.',
