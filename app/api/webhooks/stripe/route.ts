@@ -37,12 +37,18 @@ async function resolveSubscriptionUser(subscription: Stripe.Subscription) {
   })
 }
 
+function resolvePriceIds(subscription: Stripe.Subscription): string[] {
+  return subscription.items.data.map((item) => item.price.id).filter(Boolean)
+}
+
 async function processSubscription(subscription: Stripe.Subscription): Promise<void> {
   const user = await resolveSubscriptionUser(subscription)
   if (!user) throw new Error(`No user found for Stripe subscription ${subscription.id}`)
 
-  const priceId = subscription.items.data[0]?.price.id ?? null
-  const paidPlan = priceId ? planFromPriceId(priceId) : null
+  const priceIds = resolvePriceIds(subscription)
+  const paidPlan = priceIds.reduce<Plan | null>((found, id) => {
+    return found ?? planFromPriceId(id)
+  }, null)
   const status = entitlementStatus(subscription.status)
   const periodEnd = subscriptionPeriodEnd(subscription)
   const resetUsage =
@@ -58,11 +64,28 @@ async function processSubscription(subscription: Stripe.Subscription): Promise<v
     data: {
       stripeCustomerId: subscription.customer as string,
       stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
+      stripePriceId: priceIds[0] ?? null,
       stripeCurrentPeriodEnd: periodEnd,
       subscriptionStatus: status,
       ...(resetUsage ? { auditsUsed: 0 } : {}),
     },
+  })
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  if (!invoice.subscription) return
+
+  const subscriptionId =
+    typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
+
+  const user = await prisma.user.findFirst({
+    where: { stripeSubscriptionId: subscriptionId },
+  })
+  if (!user) return
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { subscriptionStatus: 'PAST_DUE' as SubscriptionStatus },
   })
 }
 
@@ -73,13 +96,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Missing Stripe signature' }, { status: 400 })
   }
 
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    return NextResponse.json({ message: 'Stripe webhook not configured' }, { status: 500 })
+  }
+
   let event: Stripe.Event
   try {
-    event = getStripe().webhooks.constructEvent(
-      rawBody,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
+    event = getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret)
   } catch (error) {
     return NextResponse.json(
       { message: `Webhook signature failed: ${(error as Error).message}` },
@@ -87,66 +111,78 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const processed = await prisma.processedStripeEvent.findUnique({
-    where: { id: event.id },
-  })
-  if (processed) return NextResponse.json({ received: true, replay: true })
-
   try {
-    switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
-        await processSubscription(event.data.object)
-        break
-
-      case 'checkout.session.expired': {
-        const session = event.data.object
-        if (session.metadata?.type === 'expert_review') {
-          await prisma.expertReviewOrder.deleteMany({
-            where: { stripeSessionId: session.id, status: 'PENDING' },
-          })
-        }
-        break
-      }
-
-      case 'checkout.session.completed': {
-        const session = event.data.object
-        if (session.metadata?.type === 'expert_review') {
-          const order = await prisma.expertReviewOrder.update({
-            where: { stripeSessionId: session.id },
-            data: { status: 'PAID' },
-          })
-          await prisma.expertReviewEvent.createMany({
-            data: [{ orderId: order.id, type: 'PAYMENT_CONFIRMED' }],
-            skipDuplicates: true,
-          })
-          await notifyExpertReviewPaid({
-            userId: order.userId,
-            email: order.email,
-            auditId: order.auditId,
-            orderId: order.id,
-          })
-        }
-
-        const userId = session.metadata?.userId
-        if (userId && session.customer) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { stripeCustomerId: session.customer as string },
-          })
-        }
-        break
-      }
-    }
-
-    await prisma.processedStripeEvent.create({
-      data: {
-        id: event.id,
-        type: event.type,
-        payloadHash: createHash('sha256').update(rawBody).digest('hex'),
-      },
+    const existing = await prisma.processedStripeEvent.findUnique({
+      where: { id: event.id },
     })
+    if (existing) return NextResponse.json({ received: true, replay: true })
+
+    await prisma.$transaction(async (tx) => {
+      const alreadyProcessed = await tx.processedStripeEvent.findUnique({
+        where: { id: event.id },
+      })
+      if (alreadyProcessed) return
+
+      switch (event.type) {
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+          await processSubscription(event.data.object)
+          break
+
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(event.data.object)
+          break
+
+        case 'checkout.session.expired': {
+          const session = event.data.object
+          if (session.metadata?.type === 'expert_review') {
+            await tx.expertReviewOrder.deleteMany({
+              where: { stripeSessionId: session.id, status: 'PENDING' },
+            })
+          }
+          break
+        }
+
+        case 'checkout.session.completed': {
+          const session = event.data.object
+          if (session.metadata?.type === 'expert_review') {
+            const order = await tx.expertReviewOrder.update({
+              where: { stripeSessionId: session.id },
+              data: { status: 'PAID' },
+            })
+            await tx.expertReviewEvent.createMany({
+              data: [{ orderId: order.id, type: 'PAYMENT_CONFIRMED' }],
+              skipDuplicates: true,
+            })
+            await notifyExpertReviewPaid({
+              userId: order.userId,
+              email: order.email,
+              auditId: order.auditId,
+              orderId: order.id,
+            })
+          }
+
+          const userId = session.metadata?.userId
+          if (userId && session.customer) {
+            await tx.user.update({
+              where: { id: userId },
+              data: { stripeCustomerId: session.customer as string },
+            })
+          }
+          break
+        }
+      }
+
+      await tx.processedStripeEvent.create({
+        data: {
+          id: event.id,
+          type: event.type,
+          payloadHash: createHash('sha256').update(rawBody).digest('hex'),
+        },
+      })
+    })
+
     return NextResponse.json({ received: true })
   } catch (error) {
     logger.error('Stripe webhook failed', {

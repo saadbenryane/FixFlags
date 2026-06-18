@@ -21,4 +21,11 @@ describe('isNavActive', () => {
     assert.equal(isNavActive('/examples/foo', '/examples'), true)
     assert.equal(isNavActive('/pricing', '/examples'), false)
   })
+
+  it('prefix-matches admin inbox and lead detail routes', () => {
+    assert.equal(isNavActive('/admin/inbox', '/admin/inbox'), true)
+    assert.equal(isNavActive('/admin/leads', '/admin/leads'), true)
+    assert.equal(isNavActive('/admin/leads/example.com', '/admin/leads'), true)
+    assert.equal(isNavActive('/admin/users', '/admin/leads'), false)
+  })
 })

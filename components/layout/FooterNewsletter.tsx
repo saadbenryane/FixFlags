@@ -82,12 +82,12 @@ export function FooterNewsletter() {
             </p>
           ) : null}
           {success ? (
-            <p id="footer-newsletter-success" className="text-xs text-success">
+            <p id="footer-newsletter-success" role="status" className="text-xs text-success">
               {success}
             </p>
           ) : null}
         </div>
-        <Button type="submit" variant="ink" size="sm" disabled={loading} className="h-10 shrink-0 px-5">
+        <Button type="submit" size="sm" disabled={loading} className="h-10 shrink-0 px-5">
           {cta}
         </Button>
       </form>

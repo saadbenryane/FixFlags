@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { LeadEditor } from '@/components/admin/LeadEditor'
 import { Button } from '@/components/ui/button'
+import { SectionTitle } from '@/components/ui/typography'
 import { TextLink } from '@/components/ui/text-link'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
 import { formatUsd } from '@/lib/billing/costs'
@@ -135,7 +136,7 @@ export default async function AdminLeadDetailPage({
 
       {lead.supportSessions.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Chat sessions</h2>
+          <SectionTitle>Chat sessions</SectionTitle>
           <Card className="border-0 shadow-card divide-y">
             {lead.supportSessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
@@ -155,7 +156,14 @@ export default async function AdminLeadDetailPage({
       )}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Audit history</h2>
+        <SectionTitle>Audit history</SectionTitle>
+        {audits.length === 0 ? (
+          <Card className="border-0 shadow-card">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No completed audits found for this domain.
+            </CardContent>
+          </Card>
+        ) : (
         <Card className="overflow-hidden border-0 p-0 shadow-card">
           <table className="w-full text-sm">
             <thead>
@@ -190,6 +198,7 @@ export default async function AdminLeadDetailPage({
             </tbody>
           </table>
         </Card>
+        )}
       </section>
     </Container>
   )

@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/db'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatUsd } from '@/lib/billing/costs'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
-import { cn } from '@/lib/utils'
+import {
+  AdminTable,
+  AdminTableCell,
+  AdminTableHead,
+  AdminTableHeaderCell,
+  AdminTableRow,
+} from '@/components/admin/AdminTable'
 
 export default async function AdminAuditsPage() {
   const audits = await prisma.audit.findMany({
@@ -30,55 +35,51 @@ export default async function AdminAuditsPage() {
   })
 
   return (
-    <Container variant="wide" className="space-y-6 py-8">
-      <PageHeader title="Recent audits" />
-      <Card className="overflow-hidden border-0 p-0 shadow-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left px-4 py-3 font-medium">URL</th>
-              <th className="text-left px-4 py-3 font-medium">User</th>
-              <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-left px-4 py-3 font-medium">LLM tokens</th>
-              <th className="text-left px-4 py-3 font-medium">Est. cost</th>
-              <th className="text-left px-4 py-3 font-medium">Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audits.map((audit, i) => (
-              <tr key={audit.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/20')}>
-                <td className="px-4 py-3">
-                  <TextLink href={`/admin/audits/${audit.id}`} className="truncate block max-w-[240px]">
-                    {audit.url}
-                  </TextLink>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {audit.user?.email ?? 'Anonymous'}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline" className="text-xs">{audit.status}</Badge>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                  {audit.runCost
-                    ? audit.runCost.llmInputTokens + audit.runCost.llmOutputTokens
-                    : '–'}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground text-xs">
-                  {new Date(audit.createdAt).toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-      {audits.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">No audits yet.</CardContent>
-        </Card>
-      )}
+    <Container variant="wide" className="space-y-8 py-8">
+      <PageHeader
+        title="Recent audits"
+        description="Pipeline runs with token usage and estimated LLM cost."
+      />
+      <AdminTable isEmpty={audits.length === 0} emptyMessage="No audits yet.">
+        <AdminTableHead>
+          <AdminTableHeaderCell>URL</AdminTableHeaderCell>
+          <AdminTableHeaderCell>User</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Status</AdminTableHeaderCell>
+          <AdminTableHeaderCell>LLM tokens</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Est. cost</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Created</AdminTableHeaderCell>
+        </AdminTableHead>
+        <tbody>
+          {audits.map((audit, i) => (
+            <AdminTableRow key={audit.id} index={i}>
+              <AdminTableCell>
+                <TextLink href={`/admin/audits/${audit.id}`} className="truncate block max-w-[240px]">
+                  {audit.url}
+                </TextLink>
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground">
+                {audit.user?.email ?? 'Anonymous'}
+              </AdminTableCell>
+              <AdminTableCell>
+                <Badge variant="outline" className="text-xs">
+                  {audit.status}
+                </Badge>
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground tabular-nums">
+                {audit.runCost
+                  ? audit.runCost.llmInputTokens + audit.runCost.llmOutputTokens
+                  : '–'}
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground">
+                {audit.runCost ? formatUsd(audit.runCost.estimatedCostUsd) : '–'}
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground text-xs">
+                {new Date(audit.createdAt).toLocaleString()}
+              </AdminTableCell>
+            </AdminTableRow>
+          ))}
+        </tbody>
+      </AdminTable>
     </Container>
   )
 }

@@ -1,12 +1,12 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 
 const SCREENSHOT_BASE = '/samples'
-const SAMPLE_URL = `${SITE_URL.replace(/\/$/, '')}/`
+const SAMPLE_URL = DEFAULT_SAMPLE_AUDIT_URL
 
 const STATIC_FLAGS: RankableFlag[] = [
   {

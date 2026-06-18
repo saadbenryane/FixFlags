@@ -3,12 +3,6 @@ import { SupportMessageRole, SupportSessionStatus } from '@prisma/client'
 export const SUPPORT_VISITOR_COOKIE = 'ff_support_visitor'
 export const DEFAULT_SUPPORT_TENANT_SLUG = 'fixflags'
 
-export interface SupportWidgetConfig {
-  tenantSlug: string
-  title: string
-  greeting: string
-}
-
 export interface SupportMessageDto {
   id: string
   role: SupportMessageRole
@@ -44,10 +38,4 @@ export interface SupportSessionListItem extends SupportSessionDto {
 /** Reserved for future AI layer - pass-through in v1. */
 export async function onBeforeAgentReply(body: string): Promise<string> {
   return body
-}
-
-/** Reserved for future AI auto-reply when no agent is online. */
-export async function onNoAgentOnline(sessionId: string): Promise<void> {
-  void sessionId
-  // v1: email notification handled separately
 }

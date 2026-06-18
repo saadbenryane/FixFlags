@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
-import { PromptCopyButton } from './PromptCopyButton'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FlagFeedback } from './FlagFeedback'
 import { Card } from '@/components/ui/card'
 import { resolveFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'

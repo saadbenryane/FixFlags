@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { handleRouteError } from '@/lib/api/errors'
+
+const VALID_LEVELS = ['beginner', 'regular', 'advanced'] as const
+const VALID_TOOLS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt', 'other'] as const
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await req.json().catch(() => ({}))
+    const vibecodingLevel =
+      typeof body.vibecodingLevel === 'string' &&
+      (VALID_LEVELS as readonly string[]).includes(body.vibecodingLevel)
+        ? body.vibecodingLevel
+        : undefined
+
+    const preferredTools: string[] | undefined = Array.isArray(body.preferredTools)
+      ? body.preferredTools.filter((t: string) =>
+          (VALID_TOOLS as readonly string[]).includes(t)
+        )
+      : undefined
+
+    if (vibecodingLevel === undefined && preferredTools === undefined) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        ...(vibecodingLevel !== undefined && { vibecodingLevel }),
+        ...(preferredTools !== undefined && { preferredTools }),
+      },
+    })
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    return handleRouteError(err)
+  }
+}

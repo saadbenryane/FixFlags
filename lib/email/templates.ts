@@ -30,7 +30,7 @@ export const NURTURE_EMAILS = {
   <p>You have 3 free checks. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first check</a></p>
-  <p style="font-size: 13px; color: #666;">Common first checks: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
+  <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first checks: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
 `),
   },
   firstAuditNudge: {

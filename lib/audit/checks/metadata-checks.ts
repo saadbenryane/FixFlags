@@ -236,7 +236,7 @@ export async function runOgImageUrlCheck(
     clearTimeout(getTimer)
     if (getRes.ok) return []
   } catch {
-    // fall through to flag
+    // og:image HEAD/GET failed, fall through to flag
   }
 
   return [

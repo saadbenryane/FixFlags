@@ -15,24 +15,24 @@ const LOGOS = [
     name: 'Supabase',
     svg: (
       <svg viewBox="0 0 109 113" className="h-4 w-4" aria-hidden fill="none">
-        <path d="M63.7 110.284c-2.75 3.45-8.37 1.5-8.44-2.9l-1.14-71.56h48.02c8.7 0 13.56 10.08 8.1 16.86L63.7 110.284z" fill="#3ECF8E" />
+        <path d="M63.7 110.284c-2.75 3.45-8.37 1.5-8.44-2.9l-1.14-71.56h48.02c8.7 0 13.56 10.08 8.1 16.86L63.7 110.284z" fill="currentColor" />
         <path d="M63.7 110.284c-2.75 3.45-8.37 1.5-8.44-2.9l-1.14-71.56h48.02c8.7 0 13.56 10.08 8.1 16.86L63.7 110.284z" fill="url(#supabase-grad)" fillOpacity="0.2" />
-        <path d="M45.317 2.716c2.75-3.45 8.37-1.5 8.44 2.9l.59 71.56H6.847c-8.7 0-13.56-10.08-8.1-16.86l46.57-57.6z" fill="#3ECF8E" />
+        <path d="M45.317 2.716c2.75-3.45 8.37-1.5 8.44 2.9l.59 71.56H6.847c-8.7 0-13.56-10.08-8.1-16.86l46.57-57.6z" fill="currentColor" />
         <defs>
           <linearGradient id="supabase-grad" x1="53.974" y1="35.828" x2="94.163" y2="78.291" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#249361" />
-            <stop offset="1" stopColor="#3ECF8E" stopOpacity="0" />
+            <stop stopColor="currentColor" />
+            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
           </linearGradient>
         </defs>
       </svg>
     ),
-    color: 'text-[#3ECF8E]',
+    color: 'text-foreground',
   },
   {
     name: 'Linear',
     svg: (
       <svg viewBox="0 0 100 100" className="h-4 w-4" aria-hidden fill="none">
-        <circle cx="50" cy="50" r="50" fill="#5E6AD2" />
+        <circle cx="50" cy="50" r="50" fill="currentColor" />
         <path d="M16.5 62.5L37.5 83.5C28.5 80.5 19.5 71.5 16.5 62.5Z" fill="white" />
         <path d="M14 53.5L46.5 86C43 85.5 39.5 84.5 36.5 83L16.5 63C15 59.5 14 56.5 14 53.5Z" fill="white" />
         <path d="M14.5 43.5L56.5 85.5C54 85.5 51.5 85 49 84.5L15.5 51C15 48.5 14.5 46 14.5 43.5Z" fill="white" />
@@ -45,16 +45,16 @@ const LOGOS = [
         <path d="M82.5 30.5C83.5 33.5 84.5 36.5 85 39.5L60.5 15C63.5 15.5 66.5 16 69.5 17L82.5 30.5Z" fill="white" />
       </svg>
     ),
-    color: 'text-[#5E6AD2]',
+    color: 'text-foreground',
   },
   {
     name: 'Lovable',
     svg: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden fill="none">
-        <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="#ff4d4f" />
+        <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="currentColor" />
       </svg>
     ),
-    color: 'text-[#ff4d4f]',
+    color: 'text-foreground',
   },
   {
     name: 'Cursor',

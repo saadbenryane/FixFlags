@@ -1,6 +1,6 @@
 # FixFlags
 
-Post-build QA for AI-shipped apps. Paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
+Finish what your AI started. Paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
 
 ## Prerequisites
 
@@ -106,7 +106,24 @@ Both services need:
 - **Cron**: `CRON_SECRET`
 - **Email**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 
-Optional: `ADMIN_NOTIFICATION_EMAIL` for Expert Review purchase alerts.
+Optional: `ADMIN_NOTIFICATION_EMAIL` for Expert Review purchase alerts and live chat admin notifications.
+
+Live support (production):
+
+- `ADMIN_NOTIFICATION_EMAIL` — required in production (visitor chat alerts)
+- `SUPPORT_TENANT_SLUG` — defaults to `fixflags`
+
+### Deploy checklist (leads + live support)
+
+After schema changes on a fresh or upgraded database:
+
+```bash
+npm run db:deploy
+npm run db:seed
+npm run backfill:leads
+```
+
+Admin ops URLs: `/admin/leads`, `/admin/inbox`
 
 ### Cron jobs
 

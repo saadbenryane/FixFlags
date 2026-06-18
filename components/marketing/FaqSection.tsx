@@ -22,7 +22,7 @@ interface Props {
   items: readonly FaqItem[]
   title?: string
   /** Uppercase label above title (hidden when title is empty) */
-  sectionLabel?: string
+  sectionLabel?: string | null
   /** First item open on load (e.g. /faq page) */
   defaultOpenFirst?: boolean
   /** Show search input */
@@ -71,7 +71,7 @@ export function FaqSection({
     <section className="space-y-8">
       {title && (
         <div className="space-y-3 text-center">
-          {title !== '' && sectionLabel && (
+          {sectionLabel && (
             <p className="section-label">{sectionLabel}</p>
           )}
           <Heading as="h2">{title}</Heading>

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
 import { Plan } from '@prisma/client'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { isAdminUser } from '@/lib/auth/permissions'
+import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 
@@ -19,18 +17,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    if (!session?.user?.id) {
-      return apiError('Forbidden', 403)
-    }
-
-    const adminUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true },
-    })
-    if (!adminUser || !isAdminUser(adminUser)) {
-      return apiError('Forbidden', 403)
-    }
+    const admin = await requireAdmin()
+    if (isAdminResponse(admin)) return admin
 
     const { id } = await params
     const body = await req.json().catch(() => ({}))

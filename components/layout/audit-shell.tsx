@@ -1,7 +1,6 @@
 import { SiteShell } from '@/components/layout/site-shell'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { Container } from '@/components/ui/container'
-import { SupportWidget } from '@/components/live-support/SupportWidget'
 
 interface AuditShellProps {
   children: React.ReactNode
@@ -11,26 +10,21 @@ interface AuditShellProps {
 }
 
 export function AuditShell({ children, actions, session, showAdmin = false }: AuditShellProps) {
-  const isPublic = !session
-
   return (
-    <>
-      <SiteShell
-        variant={session ? 'app' : 'marketing'}
-        userEmail={session?.user?.email}
-        showAdmin={showAdmin}
-      >
-        {session && <ClaimAnonymousAudits />}
-        {actions && (
-          <div className="border-b border-border/60 bg-muted/20">
-            <Container variant="report" className="flex flex-wrap items-center justify-end gap-2 py-3">
-              {actions}
-            </Container>
-          </div>
-        )}
-        {children}
-      </SiteShell>
-      {isPublic && <SupportWidget />}
-    </>
+    <SiteShell
+      variant={session ? 'app' : 'marketing'}
+      userEmail={session?.user?.email}
+      showAdmin={showAdmin}
+    >
+      {session && <ClaimAnonymousAudits />}
+      {actions && (
+        <div className="border-b border-border/60 bg-muted/20">
+          <Container variant="report" className="flex flex-wrap items-center justify-end gap-2 py-3">
+            {actions}
+          </Container>
+        </div>
+      )}
+      {children}
+    </SiteShell>
   )
 }

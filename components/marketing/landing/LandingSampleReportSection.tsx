@@ -2,8 +2,10 @@ import { ArrowRight, Download, Share2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import type { SampleSource } from '@/lib/marketing/live-sample'
+import { rubricLabel } from '@/lib/utils'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +15,7 @@ function ScoreGauge({ score }: { score: number }) {
   const radius = 42
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
-  const color = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-orange-500' : 'text-red-500'
+  const color = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-brand' : 'text-red-500'
 
   return (
     <div className="relative h-28 w-28">
@@ -41,16 +43,14 @@ function ScoreGauge({ score }: { score: number }) {
 }
 
 const RUBRIC_COLORS: Record<string, string> = {
-  Message: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+  Message: 'bg-brand/10 text-brand border-brand/20',
   Experience: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  Trust: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  Reach: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  Reach: 'bg-info/10 text-info border-info/20',
 }
 
 const FLAG_COUNTS: Record<string, number> = {
   Message: 5,
   Experience: 7,
-  Trust: 4,
   Reach: 4,
 }
 
@@ -69,7 +69,11 @@ export function LandingSampleReportSection({
 }: LandingSampleReportSectionProps) {
   const { headline, body, cta, scores } = LANDING_PAGE.sampleReport
   const resolvedTotal = totalScore ?? scores.total
-  const resolvedRubrics = rubrics ?? scores.rubrics
+  const sourceRubrics = rubrics ?? scores.rubrics
+  const resolvedRubrics = RUBRIC_ORDER.map((rubric) => {
+    const name = rubricLabel(rubric)
+    return sourceRubrics.find((item) => item.name === name) ?? { name, score: 0 }
+  })
 
   return (
     <Section spacing="marketing" id="sample-report" className="scroll-mt-[var(--header-offset)]">
@@ -81,7 +85,7 @@ export function LandingSampleReportSection({
             <p className="max-w-prose text-base leading-relaxed text-muted-foreground">{body}</p>
             <Link
               href={sampleHref}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-orange-500 transition-colors hover:text-orange-600"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
             >
               {cta}
               <ArrowRight className="h-4 w-4" />
@@ -115,7 +119,7 @@ export function LandingSampleReportSection({
             <div className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
               <div className="flex flex-col items-center gap-1 text-center">
                 <ScoreGauge score={resolvedTotal} />
-                <span className="mt-1 rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-orange-600">
+                <span className="mt-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
                   Needs work
                 </span>
               </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
 import { ShareAuditButton } from '@/components/audit/ShareAuditButton'
 import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
@@ -127,6 +128,7 @@ export function AuditPageActions({
         rubrics={rubrics}
         canExport={canExportSummary}
       />
+      {isPaid && <CopyMcpCommand auditId={auditId} />}
       {showRecheck && (
         <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />

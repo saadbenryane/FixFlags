@@ -10,6 +10,7 @@ import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 
 const postSchema = z.object({
   pageUrl: z.string().url().optional(),
+  auditId: z.string().min(1).optional(),
   visitorName: z.string().max(120).optional(),
   visitorEmail: z.string().email().optional(),
 })
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
       visitorToken,
       userId: session?.user?.id ?? null,
       pageUrl: parsed.data.pageUrl ?? null,
+      auditId: parsed.data.auditId ?? null,
       visitorName: parsed.data.visitorName ?? session?.user?.name ?? null,
       visitorEmail: parsed.data.visitorEmail ?? session?.user?.email ?? null,
     })

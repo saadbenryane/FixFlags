@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
@@ -29,9 +29,12 @@ const EXPERT_STATUS_LABELS = {
 } as const
 
 export default async function BillingPage() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  if (!session?.user) {
+    redirect('/sign-in')
+  }
   const user = await prisma.user.findUnique({
-    where: { id: session!.user.id },
+    where: { id: session.user.id },
     select: {
       id: true,
       plan: true,
@@ -60,7 +63,7 @@ export default async function BillingPage() {
   const isUnlimited =
     isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
   const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
-  const pending = await getPendingCheckCount(session!.user.id)
+  const pending = await getPendingCheckCount(session.user.id)
   const isPaid = user.plan !== 'FREE'
   const isActivating = isPaid && !user.stripeCustomerId
 

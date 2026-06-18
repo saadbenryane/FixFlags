@@ -200,6 +200,7 @@ export function AuditReport({
               prompt={topFixPrompt.prompt}
               finding={topFixPrompt.flag}
               showNextStep
+              showCursorAction
               rows={5}
               clamp={false}
             />

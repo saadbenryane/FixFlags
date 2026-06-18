@@ -14,8 +14,6 @@ export interface PlanDefinition {
   auditLimit: number
   auditLimitKind: 'monthly' | 'lifetime'
   auditLimitLabel: string
-  founding?: string
-  foundingPriceId?: string
   stripePriceId?: string
   projectLimit?: number
   features: readonly string[]
@@ -38,14 +36,13 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     period: '',
     persona: 'Try before launch',
     outcome: 'See everything on one page',
-    auditLimit: 3,
+    auditLimit: -1,
     auditLimitKind: 'lifetime',
-    auditLimitLabel: '3 audits total',
+    auditLimitLabel: 'Unlimited scans',
     features: [
       'Full report on every audit',
       'All fix prompts',
-      '1 free re-check',
-      '3 audits total',
+      '3 audits with AI review',
     ],
     highlight: false,
     cta: 'Audit free',
@@ -133,12 +130,6 @@ export const STRIPE_PRICE_IDS: Partial<Record<Plan, string>> = Object.fromEntrie
     .map((def) => [def.plan, def.stripePriceId])
 ) as Partial<Record<Plan, string>>
 
-export const STRIPE_FOUNDING_PRICE_IDS: Partial<Record<PaidPlan, string>> = {}
-
-export function hasActiveFoundingOffer(): boolean {
-  return false
-}
-
 export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
   const def = PLAN_DEFINITIONS.BUILDER
   return `${prefix} - ${def.price}${def.period}`
@@ -154,18 +145,9 @@ export function projectLimitForPlan(plan: Plan): number {
 
 export function planFromPriceId(priceId: string): Plan | null {
   for (const def of Object.values(PLAN_DEFINITIONS)) {
-    if (def.stripePriceId === priceId || def.foundingPriceId === priceId) {
-      return def.plan
-    }
+    if (def.stripePriceId === priceId) return def.plan
   }
   return null
-}
-
-export function resolveCheckoutPriceId(plan: PaidPlan, useFounding: boolean): string | undefined {
-  if (useFounding && PLAN_DEFINITIONS[plan].foundingPriceId) {
-    return PLAN_DEFINITIONS[plan].foundingPriceId
-  }
-  return PLAN_DEFINITIONS[plan].stripePriceId
 }
 
 export function getMarketingPlans() {
@@ -179,7 +161,6 @@ export function getMarketingPlans() {
       persona: def.persona,
       outcome: def.outcome,
       audits: def.auditLimitLabel,
-      founding: def.founding,
       features: def.features,
       cta: def.cta,
       href: def.href,

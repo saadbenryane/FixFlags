@@ -1,0 +1,348 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle,
+  Copy,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Container } from '@/components/ui/container'
+import { Callout } from '@/components/ui/callout'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { useMe } from '@/hooks/useMe'
+import { buildMcpConfigExample, getMcpEndpoint } from '@/lib/mcp/docs-content'
+import { SITE_URL } from '@/lib/marketing/copy'
+
+type EditorKey = 'cursor' | 'claudeCode' | 'windsurf'
+type VibecodingLevel = 'beginner' | 'regular' | 'advanced'
+
+const ALL_EDITORS: { key: EditorKey; label: string; icon: string }[] = [
+  { key: 'cursor', label: 'Cursor', icon: '⌨️' },
+  { key: 'claudeCode', label: 'Claude Code', icon: '🤖' },
+  { key: 'windsurf', label: 'Windsurf', icon: '🏄' },
+]
+
+const LEVELS: { key: VibecodingLevel; label: string; desc: string }[] = [
+  { key: 'beginner', label: 'New to AI coding tools', desc: 'Walk me through, explain what MCP is' },
+  { key: 'regular', label: 'Use them regularly', desc: 'Show config directly, light explanation' },
+  { key: 'advanced', label: 'I know what I\'m doing', desc: 'Show all options, skip hand-holding' },
+]
+
+const TOOLS = [
+  { key: 'cursor', label: 'Cursor' },
+  { key: 'claudeCode', label: 'Claude Code' },
+  { key: 'windsurf', label: 'Windsurf' },
+  { key: 'lovable', label: 'Lovable' },
+  { key: 'bolt', label: 'Bolt' },
+  { key: 'other', label: 'Other' },
+]
+
+export default function McpSetupWizard() {
+  const { refresh } = useMe()
+  const [step, setStep] = useState(0)
+  const [vibecodingLevel, setVibecodingLevel] = useState<VibecodingLevel | null>(null)
+  const [selectedTools, setSelectedTools] = useState<string[]>([])
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [newKey, setNewKey] = useState<string | null>(null)
+  const [creatingKey, setCreatingKey] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [editor, setEditor] = useState<EditorKey | null>(null)
+  const [keyError, setKeyError] = useState<string | null>(null)
+
+  async function saveProfile() {
+    setSavingProfile(true)
+    try {
+      await fetch('/api/me/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vibecodingLevel: vibecodingLevel || undefined,
+          preferredTools: selectedTools.length ? selectedTools : undefined,
+        }),
+      })
+      await refresh()
+    } catch {
+      // non-blocking
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  async function createApiKey() {
+    setCreatingKey(true)
+    setKeyError(null)
+    try {
+      const res = await fetch('/api/api-keys', {
+        method: 'PUT',
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setKeyError(data.message || 'Could not create API key')
+        return
+      }
+      const data = await res.json()
+      setNewKey(data.key)
+    } catch {
+      setKeyError('Could not create the key. Try again.')
+    } finally {
+      setCreatingKey(false)
+    }
+  }
+
+  async function copyKey(key: string) {
+    await navigator.clipboard.writeText(key)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleNext() {
+    if (step === 0) {
+      await saveProfile()
+    }
+    if (step < 3) {
+      setStep((s) => s + 1)
+    }
+  }
+
+  function canProceed(): boolean {
+    if (step === 0) return true
+    if (step === 1) return editor !== null
+    if (step === 2) return newKey !== null
+    return true
+  }
+
+  if (step === 0) {
+    return (
+      <Container variant="narrow" className="py-8 space-y-8">
+        <PageHeader
+          title="Connect your AI coding tool"
+          description="Tell us about your setup so we can tailor the experience. You can change this later in Settings."
+        />
+        <Card className="p-6 space-y-6">
+          <div className="space-y-3">
+            <p className="text-sm font-medium">What&apos;s your experience with AI coding tools?</p>
+            <div className="space-y-2">
+              {LEVELS.map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  onClick={() => setVibecodingLevel(l.key)}
+                  className={`w-full text-left rounded-card border p-3 text-sm transition-colors ${
+                    vibecodingLevel === l.key
+                      ? 'border-brand bg-brand/5'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <span className="font-medium">{l.label}</span>
+                  <span className="ml-2 text-muted-foreground">{l.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Which editor(s) do you use?</p>
+            <div className="flex flex-wrap gap-2">
+              {TOOLS.map((t) => {
+                const selected = selectedTools.includes(t.key)
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() =>
+                      setSelectedTools((prev) =>
+                        prev.includes(t.key)
+                          ? prev.filter((k) => k !== t.key)
+                          : [...prev, t.key]
+                      )
+                    }
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      selected
+                        ? 'border-brand bg-brand/10 text-brand'
+                        : 'border-border text-muted-foreground hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    {selected && <Check className="h-3 w-3" />}
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/dashboard">Skip</Link>
+            </Button>
+            <Button size="sm" onClick={handleNext} disabled={savingProfile}>
+              {savingProfile ? 'Saving...' : 'Continue'}
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      </Container>
+    )
+  }
+
+  if (step === 1) {
+    return (
+      <Container variant="narrow" className="py-8 space-y-8">
+        <PageHeader
+          title="Pick your editor"
+          description="Choose the editor you use most. We'll show the exact config for it."
+        />
+        <div className="space-y-2">
+          {ALL_EDITORS.map((e) => (
+            <button
+              key={e.key}
+              type="button"
+              onClick={() => setEditor(e.key)}
+              className={`w-full text-left rounded-card border p-4 transition-colors ${
+                editor === e.key
+                  ? 'border-brand bg-brand/5'
+                  : 'border-border hover:border-muted-foreground/30'
+              }`}
+            >
+              <span className="text-lg mr-2">{e.icon}</span>
+              <span className="font-medium">{e.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            Back
+          </Button>
+          <Button size="sm" onClick={handleNext} disabled={!canProceed()}>
+            Continue
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      </Container>
+    )
+  }
+
+  if (step === 2) {
+    return (
+      <Container variant="narrow" className="py-8 space-y-8">
+        <PageHeader
+          title="Create an API key"
+          description="This key lets your editor talk to FixFlags. Copy it now - you won't see it again."
+        />
+        <Card className="p-6 space-y-4">
+          {!newKey ? (
+            <>
+              <Button onClick={createApiKey} disabled={creatingKey} size="lg" className="w-full">
+                {creatingKey ? 'Creating...' : 'Create API key'}
+              </Button>
+              {keyError && (
+                <p className="text-xs text-destructive text-center">{keyError}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <Callout variant="success" title="Key created">
+                <div className="flex items-center gap-2 mt-2">
+                  <code className="flex-1 break-all rounded border bg-background px-3 py-2 font-mono text-xs">
+                    {newKey}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyKey(newKey)}
+                    aria-label="Copy API key"
+                  >
+                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </Callout>
+            </>
+          )}
+        </Card>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            Back
+          </Button>
+          <Button size="sm" onClick={handleNext} disabled={!canProceed()}>
+            {newKey ? 'Continue' : 'Skip'}
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      </Container>
+    )
+  }
+
+  const endpoint = getMcpEndpoint(SITE_URL)
+  const config = editor ? buildMcpConfigExample(editor, SITE_URL) : ''
+  const editorLabel = ALL_EDITORS.find((e) => e.key === editor)?.label ?? 'your editor'
+
+  return (
+    <Container variant="narrow" className="py-8 space-y-8">
+      <PageHeader
+        title="Configure your editor"
+        description={`Paste this into your ${editorLabel} config file.`}
+      />
+
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-muted-foreground">
+          Step 1: Copy this config
+        </p>
+        <div className="relative">
+          <pre className="overflow-x-auto rounded-card bg-muted/40 p-4 font-mono text-xs">
+            <code>{config}</code>
+          </pre>
+          <Button
+            size="icon"
+            variant="outline"
+            className="absolute right-2 top-2"
+            onClick={async () => {
+              await navigator.clipboard.writeText(config)
+            }}
+            aria-label="Copy config"
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-muted-foreground">
+          Step 2: Verify with curl
+        </p>
+        <pre className="overflow-x-auto rounded-card bg-muted/40 p-4 font-mono text-xs">
+          <code>{`curl -s -X POST "${endpoint}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${newKey ?? '$FF_API_KEY'}" \\\n  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'`}</code>
+        </pre>
+      </div>
+
+      <div className="flex items-center justify-between pt-4">
+        <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          Back
+        </Button>
+        <Button asChild size="sm">
+          <Link href="/dashboard">
+            Done, go to dashboard
+            <CheckCircle className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Need help?{' '}
+        <Link href="/docs/mcp" className="underline underline-offset-2 hover:text-foreground">
+          Full MCP docs
+        </Link>
+        <span className="mx-1.5">·</span>
+        <Link href="/settings/api-keys" className="underline underline-offset-2 hover:text-foreground">
+          Manage API keys
+        </Link>
+      </p>
+    </Container>
+  )
+}

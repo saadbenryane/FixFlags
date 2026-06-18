@@ -1,15 +1,37 @@
 /**
  * Backfill Lead rows from completed audits grouped by domain.
- * Usage: DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/backfill-leads.ts
+ * Usage: npm run backfill:leads
  */
 import { PrismaClient } from '@prisma/client'
-import { decimalCost } from '../lib/billing/costs'
+import { decimalCost, sumEstimatedCostForDomain } from '../lib/billing/costs'
+import { mergeLeadStatusOnBackfill } from '../lib/leads/merge-status'
 import { normalizeDomain } from '../lib/leads/normalize-domain'
 import { shouldAutoQualifyLead } from '../lib/leads/qualify'
 
 const prisma = new PrismaClient()
 
+async function backfillAuditDomains() {
+  const audits = await prisma.audit.findMany({
+    where: { status: 'COMPLETED', normalizedDomain: null },
+    select: { id: true, url: true },
+  })
+
+  let updated = 0
+  for (const audit of audits) {
+    const domain = normalizeDomain(audit.url)
+    if (!domain) continue
+    await prisma.audit.update({
+      where: { id: audit.id },
+      data: { normalizedDomain: domain },
+    })
+    updated++
+  }
+  console.log(`Backfilled normalizedDomain on ${updated} audits`)
+}
+
 async function main() {
+  await backfillAuditDomains()
+
   const audits = await prisma.audit.findMany({
     where: { status: 'COMPLETED' },
     orderBy: { createdAt: 'asc' },
@@ -22,6 +44,7 @@ async function main() {
       source: true,
       createdAt: true,
       completedAt: true,
+      leadSyncedAt: true,
       runCost: { select: { estimatedCostUsd: true } },
     },
   })
@@ -39,6 +62,7 @@ async function main() {
       source: string | undefined
       totalCostUsd: number
       latestScanCostUsd: number
+      auditIds: string[]
     }
   >()
 
@@ -63,12 +87,14 @@ async function main() {
         source: sourceLabel,
         totalCostUsd: scanCostUsd,
         latestScanCostUsd: scanCostUsd,
+        auditIds: [audit.id],
       })
       continue
     }
 
     existing.scanCount += 1
     existing.totalCostUsd += scanCostUsd
+    existing.auditIds.push(audit.id)
     if (lastSeenAt >= existing.lastSeenAt) {
       existing.lastSeenAt = lastSeenAt
       existing.latestScore = audit.score
@@ -88,13 +114,28 @@ async function main() {
   let updated = 0
 
   for (const [normalizedDomain, data] of byDomain) {
-    const status = shouldAutoQualifyLead({
+    const existingLead = await prisma.lead.findUnique({
+      where: { normalizedDomain },
+      select: { status: true },
+    })
+
+    const freshStatus = shouldAutoQualifyLead({
       status: 'NEW',
       scanCount: data.scanCount,
       latestScore: data.latestScore,
     })
       ? 'QUALIFIED'
       : 'NEW'
+
+    const status = existingLead
+      ? mergeLeadStatusOnBackfill({
+          currentStatus: existingLead.status,
+          scanCount: data.scanCount,
+          latestScore: data.latestScore,
+        })
+      : freshStatus
+
+    const verifiedCost = await sumEstimatedCostForDomain(normalizedDomain)
 
     const result = await prisma.lead.upsert({
       where: { normalizedDomain },
@@ -109,7 +150,7 @@ async function main() {
         linkedUserId: data.linkedUserId,
         source: data.source,
         status,
-        totalCostUsd: decimalCost(data.totalCostUsd),
+        totalCostUsd: decimalCost(verifiedCost || data.totalCostUsd),
         latestScanCostUsd: decimalCost(data.latestScanCostUsd),
       },
       update: {
@@ -122,9 +163,14 @@ async function main() {
         linkedUserId: data.linkedUserId,
         source: data.source,
         status,
-        totalCostUsd: decimalCost(data.totalCostUsd),
+        totalCostUsd: decimalCost(verifiedCost || data.totalCostUsd),
         latestScanCostUsd: decimalCost(data.latestScanCostUsd),
       },
+    })
+
+    await prisma.audit.updateMany({
+      where: { id: { in: data.auditIds }, leadSyncedAt: null },
+      data: { leadSyncedAt: new Date() },
     })
 
     if (result.createdAt.getTime() === result.updatedAt.getTime()) created++

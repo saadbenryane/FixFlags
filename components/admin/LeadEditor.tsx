@@ -46,7 +46,7 @@ export function LeadEditor({ domain, initialStatus, initialNotes }: LeadEditorPr
           id="lead-status"
           value={status}
           onChange={(e) => setStatus(e.target.value as LeadStatus)}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           {STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -65,7 +65,7 @@ export function LeadEditor({ domain, initialStatus, initialNotes }: LeadEditorPr
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={5}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           placeholder="Outbound notes, context, next steps…"
         />
       </div>

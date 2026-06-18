@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' blob: data: https:",
     "font-src 'self' https://fonts.gstatic.com",

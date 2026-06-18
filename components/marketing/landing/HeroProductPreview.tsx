@@ -1,9 +1,7 @@
-import { Sparkles, Check } from 'lucide-react'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
-import { Button } from '@/components/ui/button'
+import { Check } from 'lucide-react'
+import { PromptActionRow } from '@/components/audit/PromptActionRow'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
 
 const { heroPreview } = LANDING_PAGE
 
@@ -22,8 +20,8 @@ function CircleDot({ state }: { state: string }) {
     </span>
   )
   if (state === 'active') return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/15">
-      <span className="h-2 w-2 rounded-full bg-orange-500" />
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15">
+      <span className="h-2 w-2 rounded-full bg-brand" />
     </span>
   )
   return (
@@ -34,10 +32,10 @@ function CircleDot({ state }: { state: string }) {
 }
 
 const partnerLogos = [
-  { name: 'Vercel', color: '#000' },
-  { name: 'Supabase', color: '#3ECF8E' },
-  { name: 'Linear', color: '#5E6AD2' },
-  { name: 'Lottie', color: '#00D8FF' },
+  { name: 'Vercel' },
+  { name: 'Supabase' },
+  { name: 'Linear' },
+  { name: 'Lottie' },
 ]
 
 export function HeroProductPreview({ className }: { className?: string }) {
@@ -59,7 +57,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
           </div>
           <div className="mx-auto flex items-center gap-2 rounded-md bg-muted/50 px-3 py-1">
             <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
-            <span className="font-mono text-[11px] text-muted-foreground">fixflags.com</span>
+            <span className="font-mono text-[11px] text-muted-foreground">saadbenryane.com</span>
           </div>
         </div>
 
@@ -79,7 +77,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
               <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">HERO SECTION</p>
               <h3 className="text-lg font-bold leading-tight">
                 Build something{' '}
-                <span className="bg-gradient-to-r from-orange-500 to-purple-500 bg-clip-text text-transparent">
+                <span className="text-brand">
                   amazing
                 </span>{' '}
                 with AI
@@ -88,7 +86,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 The all-in-one platform for next-gen teams.
               </p>
               <div className="flex gap-2 pt-1">
-                <button className="pointer-events-none rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white">
+                <button className="pointer-events-none rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background">
                   Get started
                 </button>
                 <button className="pointer-events-none rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -97,13 +95,13 @@ export function HeroProductPreview({ className }: { className?: string }) {
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <div className="flex -space-x-1">
-                  {['bg-orange-400', 'bg-blue-400', 'bg-green-400'].map((c, i) => (
+                  {['bg-brand', 'bg-muted-foreground/30', 'bg-success'].map((c, i) => (
                     <span key={i} className={cn('h-5 w-5 rounded-full border-2 border-card', c)} />
                   ))}
                 </div>
                 <div className="flex gap-0.5">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-[10px] text-yellow-400">★</span>
+                    <span key={i} className="text-[10px] text-brand">★</span>
                   ))}
                 </div>
                 <span className="text-[10px] text-muted-foreground">12,000+ builders</span>
@@ -116,8 +114,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 {partnerLogos.map((l) => (
                   <span
                     key={l.name}
-                    className="font-sans text-[10px] font-bold"
-                    style={{ color: l.color === '#000' ? 'currentColor' : l.color }}
+                    className="font-sans text-[10px] font-bold text-foreground"
                   >
                     {l.name}
                   </span>
@@ -144,7 +141,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                         {step.label}
                       </span>
                       {step.state === 'active' ? (
-                        <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                        <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-foreground">
                           {step.detail}
                         </span>
                       ) : (
@@ -169,7 +166,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 <span className="mb-1 text-xs text-muted-foreground">/ 100</span>
               </div>
               <div className="mt-2 h-1.5 rounded-full bg-muted/50">
-                <div className="h-full w-[72%] rounded-full bg-orange-500" />
+                <div className="h-full w-[72%] rounded-full bg-brand" />
               </div>
             </div>
           </div>
@@ -179,10 +176,10 @@ export function HeroProductPreview({ className }: { className?: string }) {
             <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">FLAG DETAIL</p>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-orange-500">
+                <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
                   High impact
                 </span>
-                <span className="rounded-full bg-orange-500 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                <span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-bold text-brand-foreground">
                   MESSAGE
                 </span>
               </div>
@@ -212,20 +209,12 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
                   FIX (AGENT-READY)
                 </p>
-                <p className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 text-sm leading-relaxed text-foreground/80">
+                <p className="rounded-lg border border-brand/20 bg-brand/5 p-3 text-sm leading-relaxed text-foreground/80">
                   {heroPreview.flag.fix}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-                <Button size="sm" className="gap-2 bg-orange-500 hover:bg-orange-600 text-white" asChild>
-                  <Link href="/docs/mcp">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Send to Cursor
-                  </Link>
-                </Button>
-                <PromptCopyButton prompt={heroPreview.flag.fix} compact />
-              </div>
+              <PromptActionRow prompt={heroPreview.flag.fix} showCursorAction className="pt-1" />
             </div>
           </div>
         </div>

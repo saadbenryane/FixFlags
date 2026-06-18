@@ -19,7 +19,7 @@ export function MarketingHeaderAuth() {
         >
           Log in
         </Link>
-        <Button variant="ink" size="sm" asChild>
+        <Button size="sm" asChild>
           <Link href="/#audit">
             {HERO.primaryCta}
             <ArrowRight className="h-4 w-4" />

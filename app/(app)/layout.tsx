@@ -23,7 +23,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     where: { id: session.user.id },
     select: { role: true, id: true },
   })
-  const showAdmin = user ? isAdminUser(user) : false
+  if (!user) {
+    redirect(signInUrl(await getRequestedPath('/dashboard')))
+  }
+  const showAdmin = isAdminUser(user)
 
   return (
     <SiteShell

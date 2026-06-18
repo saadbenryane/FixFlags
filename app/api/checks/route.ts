@@ -13,11 +13,15 @@ import { prisma } from '@/lib/db'
 import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
-import { parseAuditAttribution } from '@/lib/leads/attribution'
+import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
 
 const createSchema = z.object({
   url: z.string().url('Invalid URL, please include https://'),
   mode: z.enum(['single', 'critical_path']).optional(),
+  source: z.string().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -97,11 +101,16 @@ export async function POST(req: NextRequest) {
 
     const referer = req.headers.get('referer')
     const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
-    const attribution = parseAuditAttribution({
+    const clientSource = parseClientAuditSource(parsed.data.source)
+    const attribution = buildAttribution({
       url,
+      source: clientSource,
       referer,
       pathname: refererPath ?? req.nextUrl.pathname,
       searchParams: req.nextUrl.searchParams,
+      utmSource: parsed.data.utmSource,
+      utmMedium: parsed.data.utmMedium,
+      utmCampaign: parsed.data.utmCampaign,
     })
 
     const { auditId, status } = await createAndEnqueueAudit({

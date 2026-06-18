@@ -3,11 +3,9 @@ import { Plan } from '@prisma/client'
 export {
   PLAN_LIMITS,
   STRIPE_PRICE_IDS,
-  STRIPE_FOUNDING_PRICE_IDS,
   scanLimitForPlan,
   projectLimitForPlan,
   planFromPriceId,
-  resolveCheckoutPriceId,
   getMarketingPlans,
   getExpertReviewStripePriceId,
   EXPERT_REVIEW_PRICE_USD,

@@ -17,6 +17,17 @@ async function shutdown() {
   process.exit(0)
 }
 
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection in worker', {
+    error: reason instanceof Error ? reason.message : String(reason),
+  })
+})
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception in worker', { error: error.message })
+  shutdown().finally(() => process.exit(1))
+})
+
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
 

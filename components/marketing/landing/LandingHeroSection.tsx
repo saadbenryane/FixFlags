@@ -1,5 +1,3 @@
-'use client'
-
 import { AuditInput } from '@/components/audit/AuditInput'
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
@@ -10,50 +8,33 @@ import { HERO } from '@/lib/marketing/copy'
 export function LandingHeroSection() {
   return (
     <Section spacing="loose" className="relative overflow-hidden pb-8 sm:pb-12 lg:pb-16">
-      {/* Soft gradient background blobs */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        {/* Top-center warm glow */}
-        <div className="absolute -top-40 left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,hsl(24_100%_60%/0.12),transparent_65%)]" />
-        {/* Top-right peachy blob */}
-        <div className="absolute -right-40 -top-20 h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,hsl(340_80%_75%/0.07),transparent_65%)]" />
-        {/* Bottom-left cool tint */}
-        <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,hsl(200_80%_70%/0.06),transparent_65%)]" />
+        <div className="absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(ellipse_at_top,hsl(var(--brand)/0.12),transparent_62%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,hsl(var(--background)/0),hsl(var(--background))_82%)]" />
       </div>
 
       <Container className="relative space-y-12 lg:space-y-16">
-        {/* Text block */}
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          {/* Eyebrow */}
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-orange-500">
-            {HERO.audienceLine}
-          </p>
-
-          {/* Headline */}
-          <h1 className="mt-5 max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-            Ship AI-built products{' '}
+          <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up sm:text-5xl lg:text-6xl">
+            {HERO.headlineLine1}{' '}
             <br className="hidden sm:block" />
-            people can{' '}
-            <span className="text-orange-500">{HERO.headlineAccent}</span>.
+            <span className="text-brand">{HERO.headlineAccent}</span>.
           </h1>
 
-          {/* Subhead */}
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground motion-safe:animate-fade-in-up motion-safe:[animation-delay:80ms] motion-safe:[animation-fill-mode:both] sm:text-lg">
             {HERO.subhead}
           </p>
 
-          {/* Input */}
           <div
             id="audit"
-            className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)]"
+            className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)] motion-safe:animate-fade-in-up motion-safe:[animation-delay:160ms] motion-safe:[animation-fill-mode:both]"
           >
             <AuditInput variant="landing" />
           </div>
 
-          {/* Trust badges */}
           <LandingTrustBadges className="mt-5" />
         </div>
 
-        {/* Product preview card */}
         <div className="motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
           <HeroProductPreview />
         </div>

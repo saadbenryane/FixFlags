@@ -23,6 +23,7 @@ export function AuditInput({
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
+  const helperId = `audit-url-helper${idSuffix}`
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -65,10 +66,17 @@ export function AuditInput({
 
     setLoading(true)
     try {
+      const params = new URLSearchParams(window.location.search)
       const res = await fetch('/api/checks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalized }),
+        body: JSON.stringify({
+          url: normalized,
+          source: 'homepage',
+          utmSource: params.get('utm_source') ?? undefined,
+          utmMedium: params.get('utm_medium') ?? undefined,
+          utmCampaign: params.get('utm_campaign') ?? undefined,
+        }),
       })
 
       if (!res.ok) {
@@ -114,14 +122,15 @@ export function AuditInput({
   }
 
   const isLanding = variant === 'landing'
+  const describedBy = cn(isLanding && !urlError && helperId, urlError && errorId) || undefined
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <Surface variant="elevated" className="flex flex-col gap-2 p-1.5 sm:flex-row sm:items-center">
+          <Surface variant="elevated" className="flex flex-col gap-2 p-1 sm:flex-row sm:items-center">
             <label htmlFor={inputId} className="sr-only">
-              Public website URL
+              Website URL
             </label>
             <Input
               id={inputId}
@@ -135,17 +144,16 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-12 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+              className="h-11 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
-              aria-describedby={urlError ? errorId : undefined}
+              aria-describedby={describedBy}
             />
             <Button
               type="submit"
               size="lg"
-              variant="ink"
               disabled={loading}
-              className="h-12 w-full shrink-0 gap-2 px-6 sm:w-auto"
+              className="h-11 w-full shrink-0 gap-2 px-6 sm:w-auto"
             >
               {loading ? (
                 <>
@@ -163,7 +171,7 @@ export function AuditInput({
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row">
             <label htmlFor={inputId} className="sr-only">
-              Public website URL
+              Website URL
             </label>
             <Input
               id={inputId}
@@ -207,6 +215,11 @@ export function AuditInput({
             {urlError}
           </p>
         )}
+        {isLanding && !urlError ? (
+          <p id={helperId} className="px-1 text-center text-xs text-muted-foreground sm:text-left">
+            {HERO.urlHelper}
+          </p>
+        ) : null}
       </form>
 
       {!isLanding ? (

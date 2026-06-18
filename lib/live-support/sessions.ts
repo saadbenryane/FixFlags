@@ -1,29 +1,23 @@
 import { prisma } from '@/lib/db'
-import { normalizeDomain } from '@/lib/leads/normalize-domain'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
+import { resolveLeadIdForSession } from '@/lib/live-support/resolve-lead-context'
 
 const ACTIVE_STATUSES = ['OPEN', 'WAITING', 'ACTIVE'] as const
-
-async function linkLeadForPageUrl(pageUrl: string | null | undefined): Promise<string | null> {
-  if (!pageUrl) return null
-  const domain = normalizeDomain(pageUrl)
-  if (!domain) return null
-  const lead = await prisma.lead.findUnique({
-    where: { normalizedDomain: domain },
-    select: { id: true },
-  })
-  return lead?.id ?? null
-}
 
 export async function resumeOrCreateSession(input: {
   visitorToken: string
   userId?: string | null
   pageUrl?: string | null
+  auditId?: string | null
   visitorName?: string | null
   visitorEmail?: string | null
 }) {
   const tenant = await getDefaultSupportTenant()
-  const leadId = await linkLeadForPageUrl(input.pageUrl)
+  const leadId = await resolveLeadIdForSession({
+    pageUrl: input.pageUrl,
+    userId: input.userId,
+    auditId: input.auditId,
+  })
 
   const existing = await prisma.supportSession.findFirst({
     where: {

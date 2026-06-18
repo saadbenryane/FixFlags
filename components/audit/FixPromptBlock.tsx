@@ -1,6 +1,6 @@
 'use client'
 
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
+import { PromptActionRow } from '@/components/audit/PromptActionRow'
 import { TerminalShell } from '@/components/ui/terminal-shell'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
@@ -13,6 +13,7 @@ interface FixPromptBlockProps {
   rows?: number
   clamp?: boolean
   showNextStep?: boolean
+  showCursorAction?: boolean
 }
 
 export function FixPromptBlock({
@@ -23,6 +24,7 @@ export function FixPromptBlock({
   rows = 4,
   clamp = true,
   showNextStep = false,
+  showCursorAction = false,
 }: FixPromptBlockProps) {
   return (
     <div className={cn('space-y-2', className)}>
@@ -32,10 +34,11 @@ export function FixPromptBlock({
       <TerminalShell
         label={label}
         headerRight={
-          <PromptCopyButton
+          <PromptActionRow
             prompt={prompt}
+            showCursorAction={showCursorAction}
             compact
-            className="h-7 border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground"
+            dark
           />
         }
       >

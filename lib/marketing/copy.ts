@@ -12,12 +12,12 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'Your AI built it. FixFlags shows what to fix.',
-  category: 'FixFlags is the QA layer for AI-built products.',
-  oneLiner: 'FixFlags finds what your AI builder missed and helps you fix it.',
+  category: 'FixFlags finishes what your AI started.',
+  oneLiner: 'Your AI shipped a site. FixFlags finds what it missed, with fix prompts your agent can run.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
-  tribeBadge: 'QA for AI-built products',
+  tribeBadge: 'Finish what your AI started',
 } as const
 
 /** Named once on the page. Do not repeat in every section */
@@ -33,20 +33,21 @@ export const OUTPUT_LABELS = {
 } as const
 
 export const HERO = {
-  badge: '+ AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
-  headline: 'Ship AI-built products people can trust.',
-  headlineLine1: 'Ship AI-built products people can',
-  headlineLine2: 'trust.',
-  headlineAccent: 'trust',
-  audienceLine: 'AI BUILDS FAST. FIXFLAGS MAKES IT SHIPPABLE.',
+  badge: 'Finish what your AI started.',
+  headline: 'Finish what your AI started.',
+  headlineLine1: 'Finish what your',
+  headlineLine2: 'AI started.',
+  headlineAccent: 'AI started',
+  audienceLine: 'Second pass for AI-built sites.',
   headlineAccentLegacy: false,
   subhead:
-    'Paste a URL. FixFlags scans your product like a senior QA, product, and growth reviewer. It finds the issues hurting trust, conversion, speed, and reach, then gives your AI agent the fix.',
+    'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
   primaryCta: 'Run free check',
   trySampleCta: 'Try sample URL',
-  urlPlaceholder: 'Paste your website or preview URL',
+  urlPlaceholder: 'https://your-site.com',
+  urlHelper: "Paste any live or preview URL. We'll add https:// if needed.",
   trustBadges: [
     'No sign-up required',
     'Results in seconds',
@@ -174,7 +175,7 @@ export const DIFFERENTIATION = {
   subhead: 'Automated checks miss what a reviewer sees in a screenshot.',
   lighthouseLinkText: 'Compare FixFlags checks with Google Lighthouse',
   is: [
-    'The QA layer for AI-built products',
+    'The second pass that finishes what your AI started',
     'Flags with evidence, impact, and copy-ready fix prompts',
     'Re-check loop to prove fixes landed',
   ],
@@ -469,36 +470,37 @@ export const FINAL_CTA = {
 export const CHANGELOG_ENTRIES = [
   {
     date: '2026-06-15',
-    title: 'FixFlags rebrand and 3-rubric report model',
+    title: 'FixFlags is now in open beta',
     items: [
-      'Message, Experience, and Reach rubrics with Pass / Needs Attention / Blocked status',
-      'Trust checks run as scan modules with Trust impact tags on flags',
-      'Updated marketing site, report UI, and MCP tools',
+      'Sign up and create your account to start testing your sites',
+      'Run free checks on any live or preview URL',
+      'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
+      "We'd love your feedback — use the chat button to tell us what you think",
     ],
   },
   {
     date: '2026-06-01',
-    title: 'MCP integration for Cursor and Claude Code',
+    title: 'Check your URLs from Cursor and Claude Code',
     items: [
-      'Check URLs and fetch rubric fix prompts from your editor',
-      'Re-check loop to verify fixes landed',
+      'Run FixFlags checks directly from your editor without leaving your workflow',
+      'Fetch fix prompts and verify your fixes landed — all from your terminal',
     ],
   },
   {
     date: '2026-05-15',
-    title: 'Agent-ready fix prompts on every Flag',
+    title: 'Agent-ready fix prompts on every flag',
     items: [
-      'Copy-ready prompts with evidence and verification rules',
-      'Desktop and mobile screenshots on every check',
+      'Copy-ready fixes with evidence and verification rules for each issue found',
+      'Desktop and mobile screenshots included on every check result',
     ],
   },
 ] as const
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Trusted by vibecoders shipping with',
+    label: 'Trusted by builders using',
     disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
-    logos: ['Cursor', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf', 'and more'] as const,
+    logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
   },
   checkDimensions: {
     label: 'What it checks',
@@ -511,6 +513,12 @@ export const LANDING_PAGE = {
         icon: 'message',
         tint: 'brand',
         body: 'Clarity, positioning, copy, and the story you tell.',
+        checks: [
+          'Clarity in the first five seconds',
+          'Positioning that names the audience',
+          'Copy and story that make the next step obvious',
+          'CTA and proof that reduce hesitation',
+        ] as const,
       },
       {
         id: 'experience',
@@ -519,6 +527,12 @@ export const LANDING_PAGE = {
         icon: 'experience',
         tint: 'success',
         body: 'UX, speed, mobile, flows, technical polish, and trust signals like HTTPS and privacy links.',
+        checks: [
+          'Mobile layout and tap targets',
+          'Primary flow friction',
+          'Accessibility and performance blockers',
+          'Trust signals like HTTPS and privacy links',
+        ] as const,
       },
       {
         id: 'reach',
@@ -527,6 +541,12 @@ export const LANDING_PAGE = {
         icon: 'reach',
         tint: 'info',
         body: 'SEO, metadata, social previews, and discoverability.',
+        checks: [
+          'Metadata and canonical basics',
+          'Social preview readiness',
+          'Indexability and shareability',
+          'Search snippets people can understand',
+        ] as const,
       },
     ] as const,
   },
@@ -598,7 +618,7 @@ export const LANDING_PAGE = {
     },
   },
   footer: {
-    tagline: 'The QA layer for AI-built websites and apps.',
+    tagline: 'Finish what your AI started.',
     madeWith: 'Made with \u2764\ufe0f by the FixFlags team',
     newsletter: {
       title: 'Stay in the loop',
@@ -759,7 +779,7 @@ export const MCP_DOCS = {
   ],
   builderRequired: 'Requires Pro plan',
   lovableBoltNote:
-    'Lovable and Bolt don\u2019t support MCP yet. Copy fix prompts from the web UI or report directly into those tools.',
+    'Lovable and Bolt don\u2019t support MCP yet. Use the generate-fix-prompt tool from a supported editor, or copy fix prompts from the web UI / report directly into those tools.',
   tools: [
     { name: 'ff_check_url', desc: 'Start a check on any URL. Returns reportId.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
@@ -992,9 +1012,9 @@ export const AUDIT_PROGRESS = {
 
 export const SEO = {
   home: {
-    title: 'FixFlags - Ship AI-built products people can trust.',
+    title: 'FixFlags - Finish what your AI started',
     description:
-      'Paste a URL. FixFlags scans your product like a senior QA reviewer and gives your AI agent copy-ready fixes. Free first check.',
+      'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run. Free check.',
   },
   pricing: {
     title: 'Pricing',

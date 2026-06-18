@@ -13,7 +13,7 @@ import { Body, Muted } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2 } from 'lucide-react'
 import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
-import { CONTACT_PLAN, hasActiveFoundingOffer } from '@/lib/billing/plans'
+import { CONTACT_PLAN } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/hooks/useMe'
 
@@ -28,11 +28,6 @@ export function PricingPageClient() {
         <div className="mx-auto max-w-2xl text-center">
           <LandingSectionHeader label="Pricing" headline={PRICING.headline} />
           <Body className="mt-4 text-muted-foreground text-pretty">{PRICING.subhead}</Body>
-          {hasActiveFoundingOffer() && (
-            <div className="mt-4 inline-block rounded-full bg-brand/10 px-4 py-1.5 text-sm font-medium text-brand">
-              {PRICING.foundingBadge}
-            </div>
-          )}
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,9 +53,6 @@ export function PricingPageClient() {
                     <span className="font-mono text-3xl tabular-nums">{plan.price}</span>
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
-                  {plan.founding && (
-                    <div className="mt-1 text-xs font-medium text-brand">{plan.founding}</div>
-                  )}
                 </div>
                 <CardDescription className="mt-1 text-xs font-medium">{plan.audits}</CardDescription>
               </CardHeader>

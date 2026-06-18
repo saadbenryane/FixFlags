@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
+import { normalizeDomain } from '@/lib/leads/normalize-domain'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import {
   computeShareStatusFromRubrics,
@@ -58,29 +60,43 @@ export type SampleResult = {
   completedAt: Date | null
 }
 
+function sampleUrlCandidates(raw: string): string[] {
+  const domain = normalizeDomain(raw)
+  if (!domain) {
+    try {
+      return [new URL(raw).toString()]
+    } catch {
+      return []
+    }
+  }
+  return [
+    `https://${domain}`,
+    `https://${domain}/`,
+    `https://www.${domain}`,
+    `https://www.${domain}/`,
+  ]
+}
+
 export async function getLiveSampleAudit(): Promise<SampleResult> {
-  const defaultSampleUrl =
-    process.env.SAMPLE_AUDIT_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    'https://fixflags.com'
+  const defaultSampleUrl = process.env.SAMPLE_AUDIT_URL ?? DEFAULT_SAMPLE_AUDIT_URL
+  const sampleDomain = normalizeDomain(defaultSampleUrl)
   let audit = null
   let source: SampleSource = 'static'
 
-  try {
-    const normalized = new URL(defaultSampleUrl).toString()
+  if (sampleDomain) {
     audit = await prisma.audit.findFirst({
       where: {
-        url: normalized,
         status: 'COMPLETED',
-        isPublic: true,
         reportCompleteness: { in: ['FULL', 'PARTIAL'] },
+        OR: [
+          { normalizedDomain: sampleDomain },
+          { url: { in: sampleUrlCandidates(defaultSampleUrl) } },
+        ],
       },
       orderBy: { completedAt: 'desc' },
       include: sampleInclude,
     })
-    if (audit) source = 'live'
-  } catch {
-    // Invalid SAMPLE_AUDIT_URL; fall through to archived/static sample.
+    if (audit) source = audit.isPublic ? 'live' : 'archived'
   }
 
   if (!audit) {

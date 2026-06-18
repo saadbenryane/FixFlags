@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { SiteShell } from '@/components/layout/site-shell'
 import { BRAND } from '@/lib/marketing/copy'
+import { getAdminUnreadCount } from '@/lib/live-support/sessions'
 
 export const metadata: Metadata = {
   title: BRAND.name,
@@ -28,8 +29,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/')
   }
 
+  const adminInboxUnread = await getAdminUnreadCount().catch(() => 0)
+
   return (
-    <SiteShell variant="admin" logoHref="/dashboard">
+    <SiteShell variant="admin" logoHref="/dashboard" adminInboxUnread={adminInboxUnread}>
       {children}
     </SiteShell>
   )

@@ -6,17 +6,17 @@ export { ALL_CHECK_IDS, CHECK_ID_COUNT, type CheckId } from '@/lib/audit/check-i
 /** Healthy baseline metadata - individual tests override one field at a time. */
 export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata {
   return {
-    title: 'FixFlags - QA for AI-built products',
+    title: 'FixFlags - Finish what your AI started',
     description:
       'Paste any public URL and get graded scores, evidence-backed findings, and copy-ready fix prompts for your AI coding agent.',
     ogTitle: 'FixFlags',
-    ogDescription: 'QA for AI-built products',
+    ogDescription: 'Finish what your AI started',
     ogImage: 'https://example.com/og.png',
     canonical: 'https://example.com/',
     lang: 'en',
     viewport: 'width=device-width, initial-scale=1',
     robots: 'index, follow',
-    h1s: ['QA for AI-built products'],
+    h1s: ['Finish what your AI started'],
     h2s: ['How it works'],
     images: [{ src: '/hero.png', alt: 'Product screenshot' }],
     imagesWithoutAlt: 0,

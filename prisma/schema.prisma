@@ -186,6 +186,8 @@ model User {
   stripeCurrentPeriodEnd DateTime?
   subscriptionStatus     SubscriptionStatus  @default(NONE)
   freeRecheckUsedAt      DateTime?
+  vibecodingLevel        String?
+  preferredTools         String[]
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   projects               Project[]

@@ -1,5 +1,5 @@
 import { BRAND, HERO } from '@/lib/marketing/copy'
-import { BRAND_HEX, brandDark, brandLight, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
+import { BRAND_HEX, brandDark, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg } from '@/lib/design/logo-mark'
 import { rubricLabel } from '@/lib/utils'
@@ -150,10 +150,9 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
   )
 }
 
-/** Favicon / app icon - white mark on orange square */
+/** Favicon / app icon - official FixFlags mark for light surfaces */
 export function IconOgImage({ size = 32 }: { size?: number }) {
-  const borderRadius = Math.round((size / 32) * 8)
-  const markSize = Math.round((size / 32) * 24)
+  const markSize = Math.round((size / 32) * 28)
 
   return (
     <div
@@ -163,13 +162,12 @@ export function IconOgImage({ size = 32 }: { size?: number }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: BRAND_HEX.primary,
-        borderRadius,
+        backgroundColor: 'transparent',
       }}
     >
       <LogoMarkSvg
-        barColor={brandLight.background}
-        flagColor={brandLight.background}
+        barColor={BRAND_HEX.foreground}
+        flagColor={BRAND_HEX.primary}
         width={markSize}
         height={markSize}
       />
@@ -224,7 +222,7 @@ export function ReportOgImage({
             letterSpacing: '-0.01em',
           }}
         >
-          QA for AI-built products
+          Finish what your AI started
         </div>
         <div
           style={{

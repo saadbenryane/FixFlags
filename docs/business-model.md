@@ -4,31 +4,31 @@ FixFlags finishes what your AI started. The business model supports that loop: c
 
 ## Free Tier Strategy
 
-- **Deterministic checks are free forever with no limit.** No caps, no gating. Every free check is an upsell impression and a data point for our moat.
-- **First 3 audits** include the full experience: AI review + fix prompts + screenshots. This shows the ceiling of what paid unlocks.
-- **After 3, free tier continues** with deterministic checks only. Every result page has "Upgrade to see what AI found" on every flag.
-- **No screenshots on free.** Puppeteer compute is expensive. Free reports show evidence text but no captures.
+- **Free users get unlimited audits.** No hard wall. First 3 audits are full AI experience. After 3, audits run through the full pipeline (capture, check, judge) but AI-generated content (screenshots, AI flags, fix prompts) is gated at the display layer. The data is saved, so if they upgrade, their past audits unlock immediately.
+- **Re-checks unlimited on all plans.**
+- **Every free report is an upsell impression.** Deterministic results visible. "Upgrade to see what AI found" on every page.
+- **Cost is negligible at this stage.** LLM cost per audit is ~$0.00025 (gpt-4o-mini). Prioritize distribution over optimization.
 
-Why: habit over scarcity. 100 free checks/month = 100 upsell CTAs vs. 3 and silence. Also beats the "just use Lighthouse" objection.
+Why: habit over scarcity. More users = more data = stronger moat = more upgrades.
 
 ## Pricing Philosophy
 
-- **Entry price: $29/mo.** Low enough to convert solo builders without justification. Raise after 100 paying users if retention supports it.
-- **Flat-rate unlimited** over per-scan billing. Psychology of "unlimited re-checks" is stronger than "25 audits."
-- **Re-checks are never gated.** The core loop (check, fix, re-check, prove) is the habit. Do not interrupt it with paywalls.
-- **Annual discount** to lock in committed users. Target $19/mo annually on Pro.
-- **No founding offers.** $29 is the real price. Founding offers create expectation debt and complicate Stripe.
+- **Entry price: $29/mo.** Low enough to convert without justification. Raise after 100 paying users if retention supports it.
+- **Flat-rate** over per-scan billing. "Unlimited re-checks" is stronger than "25 audits."
+- **Re-checks never gated.** The core loop (check, fix, re-check, prove) is the habit.
+- **Annual discount.** Target $19/mo annually on Pro.
+- **No founding offers.** $29 is the real price. Founding offers create expectation debt.
 
 ## Pricing Tiers (Current)
 
 | Tier | Price | Audits | Key Hook |
 |------|-------|--------|----------|
-| Free | $0 | 3 full, unlimited deterministic | No screenshots, no AI after 3 |
-| Pro | $29/mo | 25/mo | Unlimited re-checks, MCP, AI, screenshots |
+| Free | $0 | Unlimited (3 full) | AI gated after 3. Unlimited re-checks. |
+| Pro | $29/mo | 25/mo | AI review, screenshots, fix prompts, MCP |
 | Agency | $99/mo | 100/mo | Share links, up to 5 projects |
 | High Volume | Custom | 500+ | Contact sales |
 
-Studio tier ($999) is retained in the schema but not marketed. Redirect high-volume inquiries to contact.
+Studio tier ($999) is retained in schema but not marketed.
 
 ## Target Customer
 

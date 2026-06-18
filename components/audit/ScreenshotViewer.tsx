@@ -49,7 +49,7 @@ export function ScreenshotViewer({ screenshots, url }: Props) {
   return (
     <>
       <div className="lg:hidden w-full">
-        <Tabs defaultValue="desktop">
+        <Tabs defaultValue={desktop ? 'desktop' : 'mobile'}>
           <TabsList>
             {desktop && (
               <TabsTrigger value="desktop" className="gap-2">

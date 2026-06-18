@@ -26,6 +26,8 @@ export interface MeUser {
     canRecheck: boolean
     canUseMcp: boolean
   }
+  vibecodingLevel: string | null
+  preferredTools: string[]
 }
 
 interface MeState {

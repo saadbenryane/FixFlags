@@ -2,7 +2,7 @@
  * Capture marketing sample screenshots into public/samples/.
  * Run: npx tsx scripts/capture-sample-screenshots.ts
  *
- * Defaults to the local dev server (port 3001) so we dogfood our own homepage.
+ * Defaults to the marketing sample URL (saadbenryane.com).
  */
 import fs from 'fs/promises'
 import path from 'path'
@@ -10,13 +10,13 @@ import puppeteer from 'puppeteer'
 import { closeBrowser, captureScreenshots } from '../lib/audit/screenshot'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../lib/audit/viewports'
 import { getLocalScreenshotPath } from '../lib/storage/screenshots'
+import { DEFAULT_SAMPLE_AUDIT_URL } from '../lib/marketing/display-meta'
 
 const AUDIT_ID = 'sample-fixflags-capture'
 const CAPTURE_URL =
   process.env.SAMPLE_CAPTURE_URL ??
   process.env.SAMPLE_AUDIT_URL ??
-  process.env.NEXT_PUBLIC_APP_URL ??
-  'http://localhost:3001'
+  DEFAULT_SAMPLE_AUDIT_URL
 
 const SETTLE_MS = 1500
 const TIMEOUT_MS = 30_000

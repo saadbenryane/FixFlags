@@ -41,9 +41,9 @@ const ABOVE_FOLD_COPY = [
 ]
 
 describe('homepage message guardrails', () => {
-  it('hero headline names trust outcome', () => {
-    assert.match(HERO.headline, /trust/i)
-    assert.equal(HERO.headlineAccent, 'trust')
+  it('hero headline names completion outcome after AI builds', () => {
+    assert.match(HERO.headline, /finish/i)
+    assert.match(HERO.headlineAccent, /AI/i)
     assert.equal(HERO.headline, `${HERO.headlineLine1} ${HERO.headlineLine2}`)
   })
 
@@ -53,15 +53,14 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience badge states the shipping promise', () => {
-    assert.match(HERO.audienceLine, /fixflags makes it shippable/i)
-    assert.match(HERO.badge, /ai builds fast/i)
+  it('audience badge states the finish promise after AI builds', () => {
+    assert.match(HERO.audienceLine, /fixflags finishes it/i)
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
     assert.match(HERO.subhead, /paste a url/i)
-    assert.match(HERO.subhead, /ai agent/i)
-    assert.ok(!HERO.subhead.toLowerCase().includes('ship ai-built products'))
+    assert.match(HERO.subhead, /fix prompts/i)
+    assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 

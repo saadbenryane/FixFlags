@@ -4,6 +4,7 @@ import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/usage'
 import { randomUUID } from 'node:crypto'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
+import { isSupportError } from '@/lib/live-support/errors'
 
 export interface ApiErrorBody {
   code: UsageLimitCode | string
@@ -31,7 +32,11 @@ export function apiError(
 
 export function handleRouteError(err: unknown, fallback = 'Something went wrong'): NextResponse {
   const requestId = randomUUID()
-  logger.error('API route error', { requestId, error: err instanceof Error ? err.message : String(err) })
+  logger.error('API route error', err instanceof Error ? err : new Error(String(err)))
+
+  if (isSupportError(err)) {
+    return apiError(err.message, err.status, { code: err.code, requestId })
+  }
 
   if (err instanceof RateLimitError) {
     const response = apiError(err.message, 429, {

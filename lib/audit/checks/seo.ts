@@ -80,7 +80,9 @@ export async function runSeoChecks(
         source: 'DETERMINISTIC',
       })
     }
-  } catch {}
+  } catch {
+    // sitemap fetch failed, skip flagging
+  }
 
   // Check robots.txt
   try {
@@ -101,7 +103,9 @@ export async function runSeoChecks(
         source: 'DETERMINISTIC',
       })
     }
-  } catch {}
+  } catch {
+    // robots.txt fetch failed, skip flagging
+  }
 
   const brokenLinks = await findBrokenInternalLinks(url, meta)
   if (brokenLinks.length > 0) {

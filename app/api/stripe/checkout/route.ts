@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getStripe, resolveCheckoutPriceId } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { Plan } from '@prisma/client'
+
+const PAID_PLANS = Object.values(PLAN_DEFINITIONS).filter(
+  (def) => def.plan !== 'FREE' && def.stripePriceId
+).map((def) => def.plan)
 
 const schema = z.object({
-  plan: z.enum(['BUILDER', 'TEAM', 'STUDIO']),
-  useFounding: z.boolean().optional(),
+  plan: z.enum(PAID_PLANS as [string, ...string[]]),
 })
 
 export async function POST(req: NextRequest) {
@@ -21,34 +25,32 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(body)
     if (!parsed.success) return apiError('Select a valid plan', 400, { code: 'INVALID_PLAN' })
 
-    const plan = parsed.data.plan
-    const useFounding = parsed.data.useFounding === true
-    const priceId = resolveCheckoutPriceId(plan, useFounding)
+    const plan = parsed.data.plan as Plan
+    const priceId = PLAN_DEFINITIONS[plan]?.stripePriceId
     if (!priceId) return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-  const checkoutSession = await getStripe().checkout.sessions.create({
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
-    customer: user?.stripeCustomerId ?? undefined,
-    customer_email: user?.stripeCustomerId ? undefined : session.user.email,
-    success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
-    cancel_url: `${appUrl}/pricing`,
-    metadata: {
-      userId: session.user.id,
-      plan,
-      founding: useFounding && !!PLAN_DEFINITIONS[plan].foundingPriceId ? '1' : '0',
-    },
-    subscription_data: {
+    const checkoutSession = await getStripe().checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      customer: user?.stripeCustomerId ?? undefined,
+      customer_email: user?.stripeCustomerId ? undefined : session.user.email,
+      success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
+      cancel_url: `${appUrl}/pricing`,
       metadata: {
         userId: session.user.id,
         plan,
       },
-    },
-  })
+      subscription_data: {
+        metadata: {
+          userId: session.user.id,
+          plan,
+        },
+      },
+    })
 
     return NextResponse.json({ url: checkoutSession.url })
   } catch (error) {

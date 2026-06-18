@@ -35,6 +35,7 @@ const MCP_LIMITATIONS = [
   'Pro required',
   'Rate limits queue with ETA',
   'Editors: Cursor, Claude Code, Windsurf',
+  'Bolt/Lovable: use generate-fix-prompt',
   'Public URLs only',
 ] as const
 

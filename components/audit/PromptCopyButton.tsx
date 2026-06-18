@@ -25,9 +25,9 @@ export function PromptCopyButton({ prompt, label = 'Copy prompt', className, com
   return (
     <Button
       variant="outline"
-      size={compact ? 'sm' : 'sm'}
+      size={compact ? 'xs' : 'sm'}
       onClick={handleCopy}
-      className={cn(compact && 'h-7 px-2 text-xs', className)}
+      className={cn(compact && 'gap-1.5', className)}
     >
       {copied ? (
         <><Check className="h-3 w-3" /> Copied!</>

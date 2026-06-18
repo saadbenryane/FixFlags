@@ -78,12 +78,13 @@ export function AdminInbox() {
   const searchParams = useSearchParams()
   const initialSession = searchParams.get('session')
   const [selectedId, setSelectedId] = useState<string | null>(initialSession)
-  const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open')
+  const [filter, setFilter] = useState<'open' | 'closed' | 'all'>(initialSession ? 'all' : 'open')
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { data: sessionsData, mutate: mutateSessions } = useAdminSupportSessions(filter)
+  const { data: sessionsData, mutate: mutateSessions, isLoading: sessionsLoading } =
+    useAdminSupportSessions(filter)
   const { data: messagesData, mutate: mutateMessages } = useAdminSupportMessages(selectedId)
 
   const sessions = (sessionsData?.sessions ?? []) as SupportSessionListItem[]
@@ -138,7 +139,7 @@ export function AdminInbox() {
   }
 
   return (
-    <div className="grid min-h-[32rem] grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-card lg:grid-cols-[280px_1fr_240px]">
+    <div className="grid min-h-[32rem] grid-cols-1 overflow-hidden rounded-card border border-border bg-card shadow-card lg:grid-cols-[280px_1fr_240px]">
       <div className="border-b border-border lg:border-b-0 lg:border-r">
         <div className="flex gap-1 border-b border-border p-2">
           {(['open', 'closed', 'all'] as const).map((f) => (
@@ -154,10 +155,14 @@ export function AdminInbox() {
           ))}
         </div>
         <div className="max-h-[28rem] overflow-y-auto lg:max-h-none lg:h-full">
-          {sessions.length === 0 && (
+          {sessionsLoading && (
+            <p className="p-4 text-sm text-muted-foreground">Loading sessions…</p>
+          )}
+          {!sessionsLoading && sessions.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">No sessions yet.</p>
           )}
-          {sessions.map((s) => (
+          {!sessionsLoading &&
+            sessions.map((s) => (
             <SessionRow
               key={s.id}
               session={s}
@@ -203,7 +208,7 @@ export function AdminInbox() {
                   onChange={(e) => setDraft(e.target.value)}
                   rows={2}
                   placeholder="Reply as FixFlags team…"
-                  className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                  className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
                 <Button type="submit" size="icon" disabled={sending || !draft.trim()}>
                   <Send className="h-4 w-4" />

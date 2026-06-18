@@ -2,6 +2,8 @@ import { SupportMessageRole } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { onBeforeAgentReply } from '@/lib/live-support/types'
 import { notifyAdminOfVisitorMessage } from '@/lib/live-support/notify'
+import { SupportError } from '@/lib/live-support/errors'
+import { logger } from '@/lib/logger'
 
 export async function listMessages(sessionId: string) {
   return prisma.supportMessage.findMany({
@@ -19,15 +21,21 @@ export async function listMessages(sessionId: string) {
 
 export async function sendVisitorMessage(sessionId: string, body: string) {
   const trimmed = body.trim()
-  if (!trimmed) throw new Error('Message cannot be empty')
+  if (!trimmed) {
+    throw new SupportError('Message cannot be empty', 'EMPTY_MESSAGE', 400)
+  }
 
   const message = await prisma.$transaction(async (tx) => {
     const session = await tx.supportSession.findUnique({
       where: { id: sessionId },
-      select: { id: true, status: true, unreadByAgent: true },
+      select: { id: true, status: true },
     })
-    if (!session) throw new Error('Session not found')
-    if (session.status === 'CLOSED') throw new Error('Session is closed')
+    if (!session) {
+      throw new SupportError('Session not found', 'SESSION_NOT_FOUND', 404)
+    }
+    if (session.status === 'CLOSED') {
+      throw new SupportError('Session is closed', 'SESSION_CLOSED', 409)
+    }
 
     const created = await tx.supportMessage.create({
       data: {
@@ -49,21 +57,27 @@ export async function sendVisitorMessage(sessionId: string, body: string) {
     return created
   })
 
-  await notifyAdminOfVisitorMessage(sessionId).catch(() => {})
+  await notifyAdminOfVisitorMessage(sessionId, trimmed).catch((err) => {
+    logger.error('Failed to notify admin of visitor message', err)
+  })
 
   return message
 }
 
 export async function sendAgentMessage(sessionId: string, senderId: string, body: string) {
   const trimmed = await onBeforeAgentReply(body.trim())
-  if (!trimmed) throw new Error('Message cannot be empty')
+  if (!trimmed) {
+    throw new SupportError('Message cannot be empty', 'EMPTY_MESSAGE', 400)
+  }
 
   return prisma.$transaction(async (tx) => {
     const session = await tx.supportSession.findUnique({
       where: { id: sessionId },
       select: { id: true, status: true },
     })
-    if (!session) throw new Error('Session not found')
+    if (!session) {
+      throw new SupportError('Session not found', 'SESSION_NOT_FOUND', 404)
+    }
 
     const created = await tx.supportMessage.create({
       data: {
@@ -79,7 +93,7 @@ export async function sendAgentMessage(sessionId: string, senderId: string, body
       data: {
         lastMessageAt: created.createdAt,
         unreadByVisitor: { increment: 1 },
-        status: session.status === 'CLOSED' ? 'ACTIVE' : 'ACTIVE',
+        status: 'ACTIVE',
         assignedAgentId: senderId,
       },
     })

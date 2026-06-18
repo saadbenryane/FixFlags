@@ -16,6 +16,8 @@ import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckout
 import { ExpertReviewSelectDialog } from '@/components/dashboard/ExpertReviewSelectDialog'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
+import { McpDashboardCard } from '@/components/dashboard/McpDashboardCard'
+import { VibecodingProfilePrompt } from '@/components/dashboard/VibecodingProfilePrompt'
 import { Container } from '@/components/ui/container'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
@@ -85,19 +87,22 @@ export default async function DashboardPage() {
           </Button>
           {user?.plan === 'FREE' && !isUnlimited && <UpgradeButton />}
         </PageHeader>
-        <div className="max-w-xs">
+        <div className="grid gap-4 sm:grid-cols-2">
           <UsageMeter
             used={used}
             limit={isUnlimited ? null : effectiveLimit}
             pending={pending}
             plan={user?.plan ?? 'FREE'}
           />
+          <McpDashboardCard />
         </div>
       </div>
 
       {atAuditLimit && (
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
       )}
+
+      <VibecodingProfilePrompt />
 
       <Surface variant="nested" className="sm:p-6">
         <SectionTitle className="mb-4">Audit a new URL</SectionTitle>

@@ -14,6 +14,10 @@ export const MCP_TOOL_DEFINITIONS = [
     name: 'ff_compare',
     desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
   },
+  {
+    name: 'generate-fix-prompt',
+    desc: 'Generate a custom fix prompt from any problem description. Useful for Bolt/Lovable.',
+  },
 ] as const
 
 export const MCP_LOCAL_BASE_URL = 'http://localhost:3000'

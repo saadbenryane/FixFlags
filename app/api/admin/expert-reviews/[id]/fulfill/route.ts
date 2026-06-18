@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { isAdminUser } from '@/lib/auth/permissions'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
 import { sendExpertReviewDelivered } from '@/lib/email/expert-review'
 
 export async function POST(
@@ -11,13 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    if (!session?.user?.id) return apiError('Unauthorized', 401)
-    const admin = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true },
-    })
-    if (!admin || !isAdminUser(admin)) return apiError('Forbidden', 403)
+    const admin = await requireAdmin()
+    if (isAdminResponse(admin)) return admin
 
     const { id } = await params
     const order = await prisma.expertReviewOrder.findUnique({

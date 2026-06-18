@@ -30,6 +30,8 @@ export async function GET(request: Request) {
         auditsUsed: true,
         auditsLimit: true,
         freeRecheckUsedAt: true,
+        vibecodingLevel: true,
+        preferredTools: true,
       },
     })
 
@@ -53,16 +55,18 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       claimedCount,
-      user: {
-        id: session.user.id,
-        email: user.email ?? session.user.email,
-        name: user.name ?? session.user.name,
-        plan: user.plan ?? 'FREE',
-        role: user.role,
-        isAdmin: isAdminUser({ id: session.user.id, role: user.role }),
-        checks,
-        entitlements,
-      },
+        user: {
+          id: session.user.id,
+          email: user.email ?? session.user.email,
+          name: user.name ?? session.user.name,
+          plan: user.plan ?? 'FREE',
+          role: user.role,
+          isAdmin: isAdminUser({ id: session.user.id, role: user.role }),
+          checks,
+          entitlements,
+          vibecodingLevel: user.vibecodingLevel,
+          preferredTools: user.preferredTools,
+        },
     })
   } catch (err) {
     return handleRouteError(err)

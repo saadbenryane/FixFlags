@@ -2,10 +2,11 @@ import { Heading } from '@/components/ui/typography'
 import { cn } from '@/lib/utils'
 
 interface LandingSectionHeaderProps {
-  label: string
+  label?: string
   headline: string
   className?: string
   align?: 'center' | 'left'
+  showLabel?: boolean
 }
 
 export function LandingSectionHeader({
@@ -13,6 +14,7 @@ export function LandingSectionHeader({
   headline,
   className,
   align = 'center',
+  showLabel = false,
 }: LandingSectionHeaderProps) {
   return (
     <div
@@ -22,7 +24,7 @@ export function LandingSectionHeader({
         className
       )}
     >
-      <p className="section-label">{label}</p>
+      {showLabel && label ? <p className="section-label">{label}</p> : null}
       <Heading as="h2">{headline}</Heading>
     </div>
   )

@@ -3,9 +3,9 @@ import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
 import { applyDeterministicVerification } from '@/lib/audit/verify-flags'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
-import { consumeTrialRecheckOnSuccess } from '@/lib/auth/entitlements'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
+import { logger } from '@/lib/logger'
 
 interface FinalizeAuditInput {
   auditId: string
@@ -66,9 +66,6 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-    if (audit.trialRecheck && audit.parentId) {
-      await consumeTrialRecheckOnSuccess(audit.userId)
-    }
   }
 
   const requiredComplete =
@@ -103,8 +100,8 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
     },
   })
 
-  await upsertLeadFromAudit(input.auditId).catch(() => {
-    // Lead upsert must not fail audit finalization
+  await upsertLeadFromAudit(input.auditId).catch((err) => {
+    logger.error('Lead upsert failed after audit finalize', err)
   })
 }
 
@@ -162,9 +159,6 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
-    if (audit.trialRecheck && audit.parentId) {
-      await consumeTrialRecheckOnSuccess(audit.userId)
-    }
   }
 
   const stubVerdict =
@@ -196,8 +190,8 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     },
   })
 
-  await upsertLeadFromAudit(input.auditId).catch(() => {
-    // Lead upsert must not fail audit finalization
+  await upsertLeadFromAudit(input.auditId).catch((err) => {
+    logger.error('Lead upsert failed after audit finalize', err)
   })
 }
 

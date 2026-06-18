@@ -88,9 +88,7 @@ export async function createAndEnqueueAudit(
                   },
                 })
                 if (user.auditsUsed + pending >= limit) {
-                  throw new AuditLimitError(
-                    user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT'
-                  )
+                  throw new AuditLimitError('UPGRADE_REQUIRED')
                 }
               }
             }

@@ -26,6 +26,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
 
 export type HeaderVariant = 'marketing' | 'app' | 'admin'
 
@@ -36,6 +37,7 @@ interface HeaderProps {
   className?: string
   userEmail?: string | null
   showAdmin?: boolean
+  adminInboxUnread?: number
 }
 
 export function Header({
@@ -45,6 +47,7 @@ export function Header({
   className,
   userEmail,
   showAdmin,
+  adminInboxUnread = 0,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
 
@@ -67,7 +70,13 @@ export function Header({
   const isMarketing = variant === 'marketing'
 
   return (
-    <header className={cn('sticky top-0 z-navbar border-b border-border bg-background/95 backdrop-blur-md', className)}>
+    <header
+      className={cn(
+        'sticky top-0 z-navbar bg-background/95 backdrop-blur-md',
+        !isMarketing && 'border-b border-border/40',
+        className
+      )}
+    >
       <Container>
         <div
           className={cn(
@@ -102,7 +111,14 @@ export function Header({
                 activeClassName={NAV_LINK_ACTIVE}
                 inactiveClassName={NAV_LINK_INACTIVE}
               >
-                {link.label}
+                <span className="inline-flex items-center gap-1.5">
+                  {link.label}
+                  {variant === 'admin' && link.href === '/admin/inbox' && adminInboxUnread > 0 && (
+                    <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                      {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
+                    </Badge>
+                  )}
+                </span>
               </NavLink>
             ))}
             {!isMarketing &&
@@ -139,7 +155,7 @@ export function Header({
 
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
-                <Button variant="ink" size="sm" className="h-8 shrink-0 px-3 text-xs" asChild>
+                <Button size="xs" className="shrink-0" asChild>
                   <Link href="/#audit">{HERO.primaryCta}</Link>
                 </Button>
               )}
@@ -166,7 +182,14 @@ export function Header({
                       activeClassName={NAV_LINK_MOBILE_ACTIVE}
                       inactiveClassName={NAV_LINK_INACTIVE}
                     >
-                      {link.label}
+                      <span className="inline-flex items-center gap-1.5">
+                        {link.label}
+                        {variant === 'admin' && link.href === '/admin/inbox' && adminInboxUnread > 0 && (
+                          <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                            {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
+                          </Badge>
+                        )}
+                      </span>
                     </NavLink>
                   ))}
                   {secondaryNavLinks.map((link) => (

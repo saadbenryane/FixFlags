@@ -99,6 +99,7 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
   --header-offset: 4.5rem;
+  --floating-action-offset: 1.25rem;
   --space-section-inner: 3rem;
   --space-card: 1.25rem;
   --space-section-y: 4rem;
