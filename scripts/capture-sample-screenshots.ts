@@ -2,7 +2,7 @@
  * Capture marketing sample screenshots into public/samples/.
  * Run: npx tsx scripts/capture-sample-screenshots.ts
  *
- * Defaults to the marketing sample URL (saadbenryane.com).
+ * Defaults to the marketing sample URL (fixflags.com).
  */
 import fs from 'fs/promises'
 import path from 'path'

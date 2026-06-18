@@ -586,10 +586,10 @@ export const LANDING_PAGE = {
     disclaimer: 'Representative feedback from builders like you.',
   },
   sampleReport: {
-    label: 'Sample report',
-    headline: 'A report your AI agent can act on.',
+    label: 'Sample review',
+    headline: 'A review your AI agent can act on.',
     body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
-    cta: 'View full sample report',
+    cta: 'View full sample review',
     illustrativeLabel: 'Illustrative scores',
     scores: {
       total: 72,
@@ -601,10 +601,10 @@ export const LANDING_PAGE = {
     },
   },
   heroPreview: {
-    siteUrl: 'yourproduct.com',
+    siteUrl: 'fixflags.com',
     siteHeadline: 'Build something amazing with AI',
     siteCta: 'Get started',
-    pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Report ready'] as const,
+    pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Review ready'] as const,
     flag: {
       severity: 'High impact',
       rubric: 'Message',
@@ -994,7 +994,7 @@ export const AUDIT_PROGRESS = {
   capturing: 'Taking screenshots...',
   checking: 'Running checks across Message, Experience, and Reach...',
   judging: 'AI is reviewing your page...',
-  completed: 'Report ready',
+  completed: 'Review ready',
   inProgress: 'Checking your site...',
   usuallyUnder: 'Usually under 90 seconds',
   workerQueuedWarningDev:
@@ -1002,11 +1002,11 @@ export const AUDIT_PROGRESS = {
   workerQueuedWarningProd:
     'Your check is queued. We are processing a backlog and it will start shortly.',
   stages: [
-    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your report...' },
+    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review...' },
     { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views...' },
     { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, Reach...' },
     { status: 'JUDGING', label: 'AI review', subtitle: 'Turning issues into Flags and fix prompts...' },
-    { status: 'FINALIZING', label: 'Preparing report', subtitle: 'Scoring rubrics and packaging results...' },
+    { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results...' },
   ],
   stageActivity: {
     QUEUED: ['Queueing your check...', 'Spinning up the pipeline...'],
@@ -1029,7 +1029,7 @@ export const AUDIT_PROGRESS = {
       'Generating agent-ready fix prompts...',
       'Prioritizing Flags by launch impact...',
     ],
-    FINALIZING: ['Packaging your report...', 'Scoring all 3 rubrics...', 'Almost ready...'],
+    FINALIZING: ['Packaging your review...', 'Scoring all 3 rubrics...', 'Almost ready...'],
   },
 } as const
 

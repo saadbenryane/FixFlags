@@ -68,7 +68,7 @@ export function LandingSampleReportSection({
   sampleHref = '/samples',
   source = 'static',
 }: LandingSampleReportSectionProps) {
-  const { headline, body, cta, scores } = LANDING_PAGE.sampleReport
+  const { label, headline, body, cta, scores } = LANDING_PAGE.sampleReport
   const resolvedTotal = totalScore ?? REVIEW_PREVIEW.score ?? scores.total
   const sourceRubrics = rubrics ?? scores.rubrics
   const resolvedRubrics = RUBRIC_ORDER.map((rubric) => {
@@ -82,7 +82,7 @@ export function LandingSampleReportSection({
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           {/* Left */}
           <div className="space-y-6">
-            <LandingSectionHeader label="SAMPLE REPORT" headline={headline} align="left" />
+            <LandingSectionHeader label={label} headline={headline} align="left" />
             <p className="max-w-prose text-base leading-relaxed text-muted-foreground">{body}</p>
             <Link
               href={sampleHref}

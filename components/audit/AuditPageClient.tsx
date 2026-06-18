@@ -233,6 +233,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             <AuditProgress
               status={status}
               progress={progress}
+              score={statusPayload?.score}
               url={url}
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}
@@ -246,11 +247,12 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         {finishing && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-center md:text-left">
-              Preparing your report...
+              Preparing your review...
             </h2>
             <AuditProgress
               status="COMPLETED"
               progress={100}
+              score={statusPayload?.score}
               url={url}
               startedAt={startedAt}
               desktopScreenshotUrl={desktopScreenshot?.url}

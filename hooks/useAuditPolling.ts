@@ -20,6 +20,7 @@ async function jsonFetcher(url: string) {
 export interface AuditStatusPayload {
   status: string
   progress: number
+  score?: number | null
   errorMsg?: string | null
   failureCode?: string | null
   failureStage?: string | null

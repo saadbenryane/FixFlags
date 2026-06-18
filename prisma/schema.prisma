@@ -201,6 +201,7 @@ model User {
   linkedLeads            Lead[]              @relation("LeadLinkedUser")
   supportSessions        SupportSession[]    @relation("SupportSessionUser")
   assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
+  mcpInteractions         McpInteraction[]
 
   @@map("users")
 }

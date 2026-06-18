@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 interface AuditProgressProps {
   status: string
   progress?: number | null
+  score?: number | null
   url?: string
   startedAt?: string | null
   desktopScreenshotUrl?: string | null
@@ -35,6 +36,7 @@ interface AuditProgressProps {
 
 export function AuditProgress({
   status,
+  score,
   url,
   startedAt,
   desktopScreenshotUrl,
@@ -119,6 +121,23 @@ export function AuditProgress({
           <p className="text-sm text-muted-foreground truncate" title={url}>
             {url}
           </p>
+        )}
+
+        {score != null && (
+          <div className="rounded-card border border-border/60 bg-card p-4 shadow-card">
+            <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+              Overall score
+            </p>
+            <div className="mt-2 flex items-end gap-2">
+              <span className="font-mono text-4xl font-bold leading-none tabular-nums">
+                {score}
+              </span>
+              <span className="mb-1 text-xs text-muted-foreground">/ 100</span>
+            </div>
+            <div className="mt-3 h-1.5 rounded-full bg-muted/60">
+              <div className="h-full rounded-full bg-brand" style={{ width: `${score}%` }} />
+            </div>
+          </div>
         )}
 
         {showWorkerWarning && (

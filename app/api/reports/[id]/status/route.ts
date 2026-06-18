@@ -26,6 +26,7 @@ export async function GET(
       select: {
         status: true,
         progress: true,
+        score: true,
         errorMsg: true,
         failureCode: true,
         failureStage: true,

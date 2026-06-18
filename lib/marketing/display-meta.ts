@@ -5,7 +5,7 @@ import type { SampleSource } from '@/lib/marketing/live-sample'
 export const TRUST_LINE = HERO.trustLine
 
 /** Default demo URL for "Try sample", landing sample report, and marketing captures. */
-export const DEFAULT_SAMPLE_AUDIT_URL = 'https://saadbenryane.com'
+export const DEFAULT_SAMPLE_AUDIT_URL = 'https://fixflags.com'
 
 /** Client-safe sample URL (server code may override via SAMPLE_AUDIT_URL). */
 export const SAMPLE_AUDIT_URL = DEFAULT_SAMPLE_AUDIT_URL
