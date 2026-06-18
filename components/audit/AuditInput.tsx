@@ -165,7 +165,7 @@ export function AuditInput({
               disabled={loading}
               className={cn(
                 fieldHeightClass,
-                'w-full shrink-0 gap-2 rounded-lg px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:rounded-full sm:px-6'
+                'w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6'
               )}
             >
               {loading ? (
@@ -198,7 +198,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className={cn(fieldHeightInputClass, 'flex-1 rounded-xl text-base sm:rounded-full')}
+              className={cn(fieldHeightInputClass, 'flex-1 text-base')}
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={urlError ? errorId : undefined}
@@ -209,7 +209,7 @@ export function AuditInput({
               disabled={loading}
               className={cn(
                 fieldHeightClass,
-                'w-full shrink-0 gap-2 rounded-xl px-6 sm:w-auto sm:rounded-full'
+                'w-full shrink-0 gap-2 px-6 sm:w-auto'
               )}
             >
               {loading ? (

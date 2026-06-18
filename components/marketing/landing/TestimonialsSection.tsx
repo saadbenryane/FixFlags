@@ -64,7 +64,7 @@ export function TestimonialsSection() {
           {TESTIMONIALS.map((t) => (
             <div
               key={t.name}
-              className="flex flex-col justify-between rounded-2xl border border-border/50 bg-card p-6 shadow-md transition-shadow hover:shadow-lg"
+              className="flex flex-col justify-between rounded-card border border-border/50 bg-card p-6 shadow-md transition-shadow hover:shadow-lg"
             >
               {/* quote */}
               <blockquote className="text-sm leading-relaxed text-foreground/80">

@@ -35,9 +35,9 @@ export const OUTPUT_LABELS = {
 export const HERO = {
   badge: 'Finish what your AI started.',
   headline: 'Finish what your AI started.',
-  headlineLine1: 'Finish what your',
+  headlineLine1: 'what your',
   headlineLine2: 'AI started.',
-  headlineAccent: 'AI started',
+  headlineAccent: 'Finish',
   audienceLine: 'Second pass for AI-built sites.',
   headlineAccentLegacy: false,
   subhead:
@@ -283,13 +283,6 @@ export const PROOF_SECTION = {
   },
 } as const
 
-export const WHATS_CHECKED_SECTION = {
-  label: 'Rubrics',
-  headline: 'Three rubrics. Every Flag mapped.',
-  subhead:
-    'Message, Experience, and Reach. Each rubric includes status, what we check, and fix prompts your agent can run.',
-} as const
-
 export const TRUST_STRIP = HERO.trustBadges
 
 export const FLOW_SCAN_STATUS = {
@@ -326,53 +319,6 @@ export const FLOW_SCAN_STATUS = {
     description: 'Flow scan exceeded the time limit before completing the click-through.',
   },
 } as const
-
-export const RUBRICS = [
-  {
-    key: 'MESSAGE',
-    name: 'Message',
-    statuses: 'Pass / Needs Attention / Blocked',
-    whatWeCheck:
-      'Headline clarity, placeholder copy, dead CTA links, audience fit, and pricing confidence.',
-    topics: [
-      'Headline and subhead are specific to this product, not generic',
-      'No Lorem ipsum, TODO markers, or unreplaced template tokens in visible copy',
-      'Primary CTA links point to real destinations, not href="#"',
-      'The hero says what the product does and who it is for',
-      'Benefits and outcomes are clear before feature lists',
-      'Social proof, trust signals, and pricing confidence feel credible',
-    ],
-  },
-  {
-    key: 'EXPERIENCE',
-    name: 'Experience',
-    statuses: 'Pass / Needs Attention / Blocked',
-    whatWeCheck:
-      'Layout, mobile usability, accessibility basics, Core Web Vitals, and automated CTA click-through.',
-    topics: [
-      'Automated CTA flow test: click primary CTA and capture before/after screenshots',
-      'Flow flags for dead-end clicks, 404 destinations, and unclickable CTAs',
-      'Primary CTA visible above the fold on desktop and mobile screenshots',
-      'Keyboard use, contrast, labels, and accessibility basics',
-      'Core Web Vitals, load speed, and visual polish',
-      'No broken interactions, console errors, or layout shift issues',
-    ],
-  },
-  {
-    key: 'REACH',
-    name: 'Reach',
-    statuses: 'Pass / Needs Attention / Blocked',
-    whatWeCheck:
-      'SEO metadata, live search and social preview cards, og:image validation, and indexability.',
-    topics: [
-      'Live Google snippet and social link preview cards in your report',
-      'Title, description, og:image (validated), favicon, and share preview tags',
-      'Indexability, structured data, and heading hierarchy',
-      'Privacy policy and contact links are easy to find',
-      'Public links and metadata explain the product when shared',
-    ],
-  },
-] as const
 
 export const IMPACT_TAGS = {
   CONVERSION: { label: 'Conversion', description: 'Affects whether visitors take the next step' },
@@ -632,9 +578,7 @@ export const LANDING_PAGE = {
       blurb: 'Product updates and shipping tips. No spam.',
     },
     social: {
-      x: 'https://x.com/fixflags',
-      linkedin: 'https://linkedin.com/company/fixflags',
-      github: 'https://github.com/fixflags',
+      instagram: 'https://instagram.com/fixedflax',
     },
   },
 } as const
@@ -654,7 +598,27 @@ export const FAQ = [
   {
     question: 'What does FixFlags check that Lighthouse doesn\u2019t?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps, including trust and credibility signals checked under Experience and Reach impact tags. Every Flag includes evidence and a fix prompt. Results are grouped into three rubrics (Message, Experience, and Reach) with a clear Pass / Needs Attention / Blocked status.',
+      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps, including trust and credibility signals. Every Flag includes evidence and a fix prompt. Results are grouped into three sections: Message, Experience, and Reach.',
+  },
+  {
+    question: 'How are FixFlags checks organized?',
+    answer:
+      'Every report groups findings into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews. Each section shows what we found and a fix prompt your agent can run.',
+  },
+  {
+    question: 'What does the Message section check?',
+    answer:
+      'Headline clarity, placeholder copy, dead CTA links, audience fit, and pricing confidence.',
+  },
+  {
+    question: 'What does the Experience section check?',
+    answer:
+      'Layout, mobile usability, accessibility basics, Core Web Vitals, and automated CTA click-through.',
+  },
+  {
+    question: 'What does the Reach section check?',
+    answer:
+      'SEO metadata, live search and social preview cards, og:image validation, and indexability.',
   },
   {
     question: 'Do I need an account for my first check?',
@@ -701,10 +665,10 @@ export const FAQ = [
 /** Top objections for the home page: full list lives on /faq */
 export const HOME_FAQ = [
   FAQ[0],
-  FAQ[1],
-  FAQ[7],
-  FAQ[4],
+  FAQ[5],
+  FAQ[11],
   FAQ[8],
+  FAQ[12],
 ] as const
 
 export const PRICING_FAQ = [

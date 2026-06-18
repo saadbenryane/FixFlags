@@ -1,13 +1,15 @@
-import { AuditReport } from '@/components/audit/AuditReport'
+import { SampleReportExplorer } from '@/components/marketing/sample/SampleReportExplorer'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
 import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
+import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
-import { SAMPLES_PAGE } from '@/lib/marketing/copy'
+import { HERO, REPORT_COPY, SAMPLES_PAGE } from '@/lib/marketing/copy'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 
 export const metadata = buildPageMetadata('samples', '/samples')
@@ -16,6 +18,7 @@ export const dynamic = 'force-dynamic'
 export default async function SamplesPage() {
   const sample = await getLiveSampleAudit()
   const site = getSampleSiteDisplay(sample.audit.url)
+  const report = buildSampleReportDisplay(sample.audit)
 
   const statusNote =
     sample.source === 'archived'
@@ -45,12 +48,21 @@ export default async function SamplesPage() {
         </div>
       </Container>
 
-      <AuditReport
-        audit={sample.audit}
-        viewerIsPaid={false}
-        isLoggedIn={false}
-        variant="sample"
-      />
+      <Container variant="report">
+        <SampleReportExplorer report={report} variant="page" />
+      </Container>
+
+      <Container variant="report" className="pb-12 pt-8">
+        <div className="rounded-card glass-surface p-6 text-center shadow-card sm:p-8">
+          <h2 className="text-xl font-semibold text-balance">{REPORT_COPY.sampleCta.title}</h2>
+          <p className="mx-auto mt-2 max-w-prose text-sm text-muted-foreground text-pretty">
+            {REPORT_COPY.sampleCta.body}
+          </p>
+          <Button asChild className="mt-5">
+            <a href="/#audit">{HERO.primaryCta}</a>
+          </Button>
+        </div>
+      </Container>
     </Section>
   )
 }

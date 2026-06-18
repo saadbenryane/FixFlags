@@ -2,7 +2,7 @@
  * FixFlags design tokens - UI Kit v3.0
  *
  * Palette: peach mesh canvas, frosted glass surfaces, ink structure, orange accent (10%)
- * Primary: #FF4D1F | Type: Satoshi | Controls: pill | Cards: 12px glass
+ * Primary: #FF4D1F | Type: Satoshi | Controls: pill | Cards: 27px glass
  */
 
 :root {
@@ -118,13 +118,13 @@
   --grade-D: 25 95% 53%;
   --grade-F: 0 100% 63%;
 
-  /* ── Radius (pill controls, 12px glass cards) ── */
+  /* ── Radius (pill controls, 27px glass cards) ── */
   --radius-pill: 9999px;
   --radius-input: var(--radius-pill);
-  --radius-inner: 0.5rem;
-  --radius-modal: 0.75rem;
-  --radius-outer: 0.75rem;
-  --radius-card: 0.75rem;
+  --radius-card: 1.716rem;
+  --radius-inner: 1.144rem;
+  --radius-modal: var(--radius-card);
+  --radius-outer: var(--radius-card);
   --gap-nested-sm: 0.5rem;
   --gap-nested-md: 0.75rem;
   --gap-nested-lg: 1rem;

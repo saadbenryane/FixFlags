@@ -26,7 +26,7 @@ export const IconInput = React.forwardRef<HTMLInputElement, IconInputProps>(
           {label}
         </label>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+          <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-foreground/55">
             {icon}
           </span>
           <Input

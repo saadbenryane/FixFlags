@@ -62,27 +62,27 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
           style={{
             fontSize: 48,
             fontWeight: 500,
-            color: p.foreground,
+            color: p.brand,
             lineHeight: 1.15,
             marginBottom: 16,
             fontFamily: ogFontFamilies.sans,
             letterSpacing: '-0.02em',
           }}
         >
-          {HERO.headlineLine1}
+          {HERO.headlineAccent}
         </div>
         <div
           style={{
             fontSize: 48,
             fontWeight: 500,
-            color: p.brand,
+            color: p.foreground,
             lineHeight: 1.15,
             marginBottom: 28,
             fontFamily: ogFontFamilies.sans,
             letterSpacing: '-0.02em',
           }}
         >
-          {HERO.headlineLine2}
+          {HERO.headlineLine1} {HERO.headlineLine2}
         </div>
         <div
           style={{

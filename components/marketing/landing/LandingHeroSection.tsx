@@ -11,9 +11,10 @@ export function LandingHeroSection() {
       <Container className="relative space-y-8 lg:space-y-11">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up sm:text-5xl lg:text-6xl">
+            <span className="bg-gradient-peach-accent bg-clip-text text-transparent">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
             <br className="hidden sm:block" />
-            <span className="bg-gradient-peach-accent bg-clip-text text-transparent">{HERO.headlineAccent}</span>.
+            {HERO.headlineLine2}
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground motion-safe:animate-fade-in-up motion-safe:[animation-delay:80ms] motion-safe:[animation-fill-mode:both] sm:text-lg">

@@ -10,8 +10,6 @@ import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { rubricLabel } from '@/lib/utils'
-
 export const metadata = buildPageMetadata('home', '/')
 export const revalidate = 3600
 
@@ -28,10 +26,6 @@ export default async function HomePage() {
     }
   }
 
-  const rubrics = sample.audit.rubricRows.map((rubric) => ({
-    name: rubricLabel(rubric.name),
-    score: rubric.score ?? 0,
-  }))
   const sampleHref = sample.source === 'static' ? '/samples' : `/report/${sample.audit.id}`
 
   return (
@@ -43,8 +37,7 @@ export default async function HomePage() {
       <RealImpactSection />
       <TestimonialsSection />
       <LandingSampleReportSection
-        totalScore={sample.audit.score}
-        rubrics={rubrics}
+        audit={sample.audit}
         sampleHref={sampleHref}
         source={sample.source}
       />

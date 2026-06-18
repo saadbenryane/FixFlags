@@ -102,7 +102,7 @@ export function RealImpactSection() {
               </span>
             </div>
 
-            <div className="mb-5 rounded-card bg-muted/35 px-4 py-3.5">
+            <div className="mb-5 rounded-nested-md bg-muted/35 px-4 py-3.5">
               <p className="text-sm font-semibold text-muted-foreground line-through decoration-destructive/40">
                 Build something amazing with AI
               </p>
@@ -146,7 +146,7 @@ export function RealImpactSection() {
               </span>
             </div>
 
-            <div className="mb-5 rounded-card bg-brand/5 px-4 py-3.5 ring-1 ring-brand/10">
+            <div className="mb-5 rounded-nested-md bg-brand/5 px-4 py-3.5 ring-1 ring-brand/10">
               <p className="text-sm font-semibold text-foreground">Ship AI products users love.</p>
               <span className="mt-2 inline-flex rounded-full bg-brand px-3 py-1 text-[11px] font-semibold text-brand-foreground">
                 Start free

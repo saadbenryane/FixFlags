@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Github, Linkedin } from 'lucide-react'
+import { Instagram } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
@@ -24,14 +24,8 @@ export function Footer() {
             <Logo variant="lockup" size="md" href="/" />
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
             <div className="flex items-center gap-3">
-              <FooterSocialLink href={social.x} label="X">
-                <span className="font-sans text-sm font-bold" aria-hidden>X</span>
-              </FooterSocialLink>
-              <FooterSocialLink href={social.linkedin} label="LinkedIn">
-                <Linkedin className="h-4 w-4" aria-hidden />
-              </FooterSocialLink>
-              <FooterSocialLink href={social.github} label="GitHub">
-                <Github className="h-4 w-4" aria-hidden />
+              <FooterSocialLink href={social.instagram} label="Instagram">
+                <Instagram className="h-4 w-4" aria-hidden />
               </FooterSocialLink>
             </div>
           </div>

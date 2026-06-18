@@ -8,8 +8,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { FilterPill } from '@/components/ui/filter-pill'
 import { IconInput } from '@/components/ui/icon-input'
+import { cn } from '@/lib/utils'
 import { Heading } from '@/components/ui/typography'
 import { FAQ_SECTION } from '@/lib/marketing/copy'
 
@@ -27,8 +27,6 @@ interface Props {
   defaultOpenFirst?: boolean
   /** Show search input */
   searchable?: boolean
-  /** Pill jumps to first N questions */
-  anchorPills?: number
 }
 
 function highlightMatch(text: string, query: string) {
@@ -52,7 +50,6 @@ export function FaqSection({
   sectionLabel = FAQ_SECTION.label,
   defaultOpenFirst = false,
   searchable = false,
-  anchorPills = 0,
 }: Props) {
   const [query, setQuery] = useState('')
 
@@ -83,7 +80,7 @@ export function FaqSection({
           <IconInput
             type="search"
             label="Search FAQ"
-            icon={<Search className="h-4 w-4" />}
+            icon={<Search className="h-4 w-4" strokeWidth={2} />}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search questions…"
@@ -96,26 +93,10 @@ export function FaqSection({
         </div>
       )}
 
-      {anchorPills > 0 && !query.trim() && (
-        <nav aria-label="Jump to question" className="-mx-1 flex flex-wrap gap-2 px-1">
-          {items.slice(0, anchorPills).map((item, i) => (
-            <FilterPill
-              key={item.question}
-              onClick={() => {
-                const el = document.getElementById(`faq-item-${i}`)
-                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-            >
-              {item.question.length > 40 ? `${item.question.slice(0, 37)}…` : item.question}
-            </FilterPill>
-          ))}
-        </nav>
-      )}
-
       <Accordion
         type="single"
         collapsible
-        className="w-full"
+        className="flex w-full flex-col gap-2"
         defaultValue={defaultValue}
         key={defaultValue ?? 'closed'}
       >
@@ -124,12 +105,19 @@ export function FaqSection({
             key={item.question}
             value={`item-${i}`}
             id={`faq-item-${i}`}
-            className="scroll-mt-[var(--header-offset)] border-border-subtle py-1"
+            className={cn(
+              'scroll-mt-[var(--header-offset)] border-b-0',
+              'rounded-full bg-[var(--glass-bg-subtle)] shadow-glass backdrop-blur-md',
+              'transition-[border-radius,background-color,box-shadow] duration-200 ease-out',
+              'has-[[data-state=open]]:rounded-card has-[[data-state=open]]:glass-surface has-[[data-state=open]]:shadow-card'
+            )}
           >
-            <AccordionTrigger className="text-left">
+            <AccordionTrigger className="px-5 py-3.5 text-left hover:bg-transparent">
               {highlightMatch(item.question, query)}
             </AccordionTrigger>
-            <AccordionContent className="pb-4">{highlightMatch(item.answer, query)}</AccordionContent>
+            <AccordionContent className="px-5 pb-4 pt-0">
+              {highlightMatch(item.answer, query)}
+            </AccordionContent>
           </AccordionItem>
         ))}
       </Accordion>

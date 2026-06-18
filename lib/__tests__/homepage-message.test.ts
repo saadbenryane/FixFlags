@@ -43,8 +43,11 @@ const ABOVE_FOLD_COPY = [
 describe('homepage message guardrails', () => {
   it('hero headline names completion outcome after AI builds', () => {
     assert.match(HERO.headline, /finish/i)
-    assert.match(HERO.headlineAccent, /AI/i)
-    assert.equal(HERO.headline, `${HERO.headlineLine1} ${HERO.headlineLine2}`)
+    assert.match(HERO.headlineAccent, /finish/i)
+    assert.equal(
+      HERO.headline,
+      `${HERO.headlineAccent} ${HERO.headlineLine1} ${HERO.headlineLine2}`,
+    )
   })
 
   it('above-fold copy avoids internal "7 areas" taxonomy', () => {

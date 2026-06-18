@@ -1,6 +1,5 @@
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { WhatsCheckedSection } from '@/components/marketing/WhatsCheckedSection'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
@@ -32,13 +31,10 @@ export default function FaqPage() {
               title=""
               defaultOpenFirst
               searchable
-              anchorPills={3}
             />
           </div>
         </Container>
       </Section>
-
-      <WhatsCheckedSection id="rubric" />
     </>
   )
 }

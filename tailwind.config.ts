@@ -102,9 +102,9 @@ const config: Config = {
       },
       borderRadius: {
         sm: 'var(--radius-input)',
-        md: 'calc(var(--radius-inner))',
-        lg: 'var(--radius-modal)',
-        xl: 'var(--radius-outer)',
+        md: 'var(--radius-inner)',
+        lg: 'var(--radius-card)',
+        xl: 'var(--radius-card)',
         card: 'var(--radius-card)',
         nested: 'var(--radius-nested-md)',
         pill: 'var(--radius-pill)',

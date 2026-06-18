@@ -67,7 +67,7 @@ export function RubricDiff({
             <div
               key={name}
               className={cn(
-                'rounded-lg border-0 p-3 space-y-2 shadow-card',
+                'rounded-nested-md border-0 p-3 space-y-2 shadow-card',
                 improved && 'bg-grade-A/5',
                 regressed && 'bg-destructive/5'
               )}

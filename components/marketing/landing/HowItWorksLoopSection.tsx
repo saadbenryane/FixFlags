@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Flag, Globe, MousePointer2 } from 'lucide-react'
+import { ArrowDown, ArrowRight, CheckCircle2, Flag, Globe, MousePointer2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
@@ -27,7 +27,7 @@ function LoopStepCard({
       <div className="mb-4 flex items-center justify-between">
         <span
           className={cn(
-            'inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-sm',
+            'inline-flex h-10 w-10 items-center justify-center rounded-nested-md shadow-sm',
             visual.iconBg
           )}
         >
@@ -41,7 +41,7 @@ function LoopStepCard({
       <p className="text-base font-bold">{step.title}</p>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
 
-      <div className="mt-5 flex items-center gap-2 rounded-xl bg-muted/45 px-3 py-2.5">
+      <div className="mt-5 flex items-center gap-2 rounded-nested-md bg-muted/45 px-3 py-2.5">
         {index === 0 && <span className="h-2 w-2 rounded-full bg-success" aria-hidden />}
         {index === 1 && (
           <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-brand-foreground">
@@ -60,14 +60,21 @@ function LoopStepCard({
   )
 }
 
-function LoopConnector() {
+function LoopConnector({ direction }: { direction: 'horizontal' | 'vertical' }) {
+  const Icon = direction === 'horizontal' ? ArrowRight : ArrowDown
+
   return (
     <div
       aria-hidden
-      className="hidden shrink-0 items-center justify-center self-center px-1 xl:flex"
+      className={cn(
+        'shrink-0 items-center justify-center',
+        direction === 'horizontal'
+          ? 'hidden self-center px-1 xl:flex'
+          : 'flex py-1 sm:hidden'
+      )}
     >
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-muted-foreground/50 shadow-sm backdrop-blur-sm">
-        <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+        <Icon className="h-4 w-4" strokeWidth={1.75} />
       </span>
     </div>
   )
@@ -90,20 +97,24 @@ export function HowItWorksLoopSection() {
               </RevealOnView>,
             ]
             if (index < steps.length - 1) {
-              items.push(<LoopConnector key={`connector-${index}`} />)
+              items.push(<LoopConnector key={`connector-${index}`} direction="horizontal" />)
             }
             return items
           })}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:hidden">
-          {steps.map((step, index) => {
+        <div className="flex flex-col sm:grid sm:grid-cols-2 sm:gap-4 xl:hidden">
+          {steps.flatMap((step, index) => {
             const visual = STEP_VISUALS[index]
-            return (
+            const items = [
               <RevealOnView key={step.title} delayMs={index * 55} className="h-full">
                 <LoopStepCard step={step} index={index} visual={visual} />
-              </RevealOnView>
-            )
+              </RevealOnView>,
+            ]
+            if (index < steps.length - 1) {
+              items.push(<LoopConnector key={`connector-${index}`} direction="vertical" />)
+            }
+            return items
           })}
         </div>
       </Container>
