@@ -84,8 +84,9 @@ export function ReportMiniNav({
     <nav
       aria-label="Report sections"
       className={cn(
-        'sticky z-10 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-thin',
+        'sticky z-10 -mx-5 flex gap-2 overflow-x-auto bg-background/95 px-5 pb-2 pt-1 backdrop-blur-sm scrollbar-thin',
         'top-[var(--header-offset)]',
+        'max-sm:border-b max-sm:border-border/40',
         className
       )}
     >

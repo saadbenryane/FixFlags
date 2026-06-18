@@ -69,9 +69,9 @@ function FlagRowContent({
   showFeedback: boolean
 }) {
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0 space-y-1">
+    <div className="px-3 py-3 sm:px-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
           <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
             {metaLine(flag)}
           </p>
@@ -82,14 +82,14 @@ function FlagRowContent({
             </p>
           )}
           {flag.pageUrl && (
-            <p className="text-[10px] text-muted-foreground truncate">{flag.pageUrl}</p>
+            <p className="break-all text-[10px] text-muted-foreground sm:truncate">{flag.pageUrl}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center justify-end gap-1 sm:justify-start">
           <PromptCopyButton prompt={fixPrompt} label="Copy fix prompt" compact />
           <button
             onClick={onToggle}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+            className="min-h-11 min-w-11 p-1 text-muted-foreground transition-colors hover:text-foreground"
             aria-expanded={expanded}
             aria-label={expanded ? 'Collapse details' : 'Expand details'}
           >

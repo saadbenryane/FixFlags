@@ -63,7 +63,7 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1">
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <ScoreDisplay
                   grade={rubricRow.grade}
                   score={rubricRow.score}
@@ -71,7 +71,7 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
                   size="sm"
                 />
                 {!open && (
-                  <p className="text-sm text-muted-foreground leading-snug text-pretty line-clamp-2">
+                  <p className="text-sm leading-snug text-muted-foreground text-pretty sm:line-clamp-2">
                     {rubricRow.summary}
                   </p>
                 )}

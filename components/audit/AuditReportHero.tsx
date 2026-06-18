@@ -46,25 +46,26 @@ export function AuditReportHero({
     <div className="space-y-6">
       <ShareStatusBanner shareStatus={shareStatus} rubrics={rubrics} />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+      <div className="flex items-start gap-4 sm:gap-6">
         <ScoreDisplay grade={scoreGrade} score={score} variant="hero" />
-        <div className="flex-1 min-w-0 space-y-3">
-          <ScoringLegend compact />
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
             <Badge variant="secondary" className="text-xs capitalize">
               {pageType ?? 'Page type unavailable'}
             </Badge>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground text-pretty">
               Page job:{' '}
               <span className="font-medium text-foreground">{pageJob ?? 'Unavailable'}</span>
             </span>
           </div>
-          <blockquote className="border-l-2 border-brand pl-4 font-sans text-lg font-medium leading-[1.45] text-foreground text-pretty">
+          <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
             {verdict ?? 'The available evidence was insufficient for a reliable verdict.'}
           </blockquote>
-          <p className="text-xs text-muted-foreground truncate">{url}</p>
+          <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
         </div>
       </div>
+
+      <ScoringLegend compact className="max-sm:text-[11px] max-sm:leading-snug" />
 
       {screenshotLimited && (
         <Callout variant="neutral">

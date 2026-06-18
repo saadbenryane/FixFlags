@@ -96,17 +96,17 @@ export function LandingSampleReportSection({
           {/* Right: report card mockup */}
           <div className="rounded-2xl border border-border/50 bg-card shadow-xl">
             {/* report header */}
-            <div className="flex items-center justify-between border-b border-border/40 px-5 py-4">
+            <div className="flex flex-col gap-3 border-b border-border/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
               <div className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                <div>
-                  <p className="text-sm font-semibold">{REVIEW_PREVIEW.reviewedHost}</p>
+                <span className="h-2 w-2 shrink-0 rounded-full bg-success" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{REVIEW_PREVIEW.reviewedHost}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {REVIEW_PREVIEW.completedAtLabel}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted/50 transition-colors">
                   <Share2 className="h-3 w-3" />
                   Share
@@ -119,7 +119,7 @@ export function LandingSampleReportSection({
             </div>
 
             {/* score + rubrics */}
-            <div className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-start">
+            <div className="flex flex-col items-center gap-6 p-5 sm:flex-row sm:items-start sm:p-6">
               <div className="flex flex-col items-center gap-1 text-center">
                 <ScoreGauge score={resolvedTotal} />
                 <span className="mt-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
@@ -127,7 +127,7 @@ export function LandingSampleReportSection({
                 </span>
               </div>
 
-              <div className="w-full flex-1 grid grid-cols-3 gap-3">
+              <div className="grid w-full flex-1 grid-cols-1 gap-2 min-[420px]:grid-cols-3 min-[420px]:gap-3">
                 {resolvedRubrics.map((rubric) => (
                   <div
                     key={rubric.name}

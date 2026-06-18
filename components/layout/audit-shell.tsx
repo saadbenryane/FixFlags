@@ -19,7 +19,7 @@ export function AuditShell({ children, actions, session, showAdmin = false }: Au
       {session && <ClaimAnonymousAudits />}
       {actions && (
         <div className="border-b border-border/60 bg-muted/20">
-          <Container variant="report" className="flex flex-wrap items-center justify-end gap-2 py-3">
+          <Container variant="report" className="flex flex-wrap items-center justify-start gap-2 py-3 sm:justify-end">
             {actions}
           </Container>
         </div>

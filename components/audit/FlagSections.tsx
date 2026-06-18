@@ -35,7 +35,7 @@ export function FlagSections({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <SectionTitle>
           {counts.total} Flag{counts.total !== 1 ? 's' : ''} found
         </SectionTitle>

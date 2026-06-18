@@ -78,13 +78,13 @@ export function ScoreDisplay({
     return (
       <div
         className={cn(
-          'min-w-[88px] shrink-0 rounded-card border-0 p-4 text-center shadow-card',
+          'w-fit min-w-[5.5rem] shrink-0 self-start rounded-card border-0 p-3 text-center shadow-card sm:min-w-[5.5rem] sm:p-4',
           resolved.grade ? gradeColor(resolved.grade) : 'bg-muted/50 text-muted-foreground',
           className
         )}
       >
-        <div className="font-mono text-4xl font-bold tabular-nums">{resolved.primary}</div>
-        <div className="mt-1 font-mono text-xs text-muted-foreground">
+        <div className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">{resolved.primary}</div>
+        <div className="mt-1 font-mono text-[10px] text-muted-foreground sm:text-xs">
           {resolved.score == null
             ? 'Unavailable'
             : `${resolved.caption ?? '/ 100'} · ${resolved.secondary}`}

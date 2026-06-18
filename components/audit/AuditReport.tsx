@@ -126,8 +126,8 @@ export function AuditReport({
       : null
 
   return (
-    <Container variant="report" className="space-y-8 py-8">
-      <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-8">
+    <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
+      <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         <AuditReportHero
           pageJob={audit.pageJob}
           pageType={audit.pageType}
@@ -203,7 +203,7 @@ export function AuditReport({
         <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
           <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>
-            <Card className="p-5">
+            <Card className="p-4 sm:p-5">
               <FixPromptBlock
                 prompt={topFixPrompt.prompt}
                 finding={topFixPrompt.flag}
@@ -244,7 +244,7 @@ export function AuditReport({
         </ReportAiGate>
       </section>
 
-      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
+      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         {showRecheckHint && isLoggedIn && isViewerOwner && (
           <Card className="space-y-2 p-5">
             <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>

@@ -35,6 +35,7 @@ function DesktopFrame({ url, imageUrl }: { url?: string; imageUrl: string }) {
 export function ScreenshotViewer({ screenshots, url }: Props) {
   const desktop = screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = screenshots.find((s) => s.device === 'MOBILE')
+  const tabCount = Number(Boolean(desktop)) + Number(Boolean(mobile))
 
   if (!desktop && !mobile) return null
 
@@ -48,16 +49,16 @@ export function ScreenshotViewer({ screenshots, url }: Props) {
 
   return (
     <>
-      <div className="lg:hidden w-full">
+      <div className="w-full lg:hidden">
         <Tabs defaultValue={desktop ? 'desktop' : 'mobile'}>
-          <TabsList>
+          <TabsList className={cn('grid h-auto w-full', tabCount > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
             {desktop && (
-              <TabsTrigger value="desktop" className="gap-2">
+              <TabsTrigger value="desktop" className="gap-2 py-2">
                 <Monitor className="h-3.5 w-3.5" /> Desktop
               </TabsTrigger>
             )}
             {mobile && (
-              <TabsTrigger value="mobile" className="gap-2">
+              <TabsTrigger value="mobile" className="gap-2 py-2">
                 <Smartphone className="h-3.5 w-3.5" /> Mobile
               </TabsTrigger>
             )}
