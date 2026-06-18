@@ -22,8 +22,7 @@ export function PricingPageClient() {
   const isLoggedIn = !!user
 
   return (
-    <Section spacing="marketing" className="relative overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(ellipse_at_top,hsl(var(--brand)/0.1),transparent_64%)]" />
+    <Section spacing="marketing" className="relative">
       <Container className="space-y-12 sm:space-y-16">
         <div className="mx-auto max-w-3xl text-center">
           <Heading as="h1" className="text-balance">
@@ -42,8 +41,8 @@ export function PricingPageClient() {
             <Card
               key={plan.name}
               className={cn(
-                'relative flex h-full flex-col overflow-hidden border border-border/40 shadow-card',
-                plan.highlight && 'border-brand/25 bg-brand/[0.035] shadow-card-hover'
+                'relative flex h-full flex-col overflow-hidden shadow-card',
+                plan.highlight && 'bg-brand/[0.04] shadow-card-hover ring-2 ring-brand/20'
               )}
             >
               {plan.highlight && (
@@ -87,7 +86,7 @@ export function PricingPageClient() {
 
         <Surface
           variant="elevated"
-          className="grid gap-5 border border-border/40 bg-card p-5 shadow-card sm:grid-cols-[1fr_auto] sm:items-center sm:p-6"
+          className="grid gap-5 p-5 shadow-card sm:grid-cols-[1fr_auto] sm:items-center sm:p-6"
         >
           <div>
             <p className="text-lg font-semibold tracking-heading">{CONTACT_PLAN.name}</p>
@@ -117,7 +116,7 @@ export function PricingPageClient() {
           <PricingComparisonTable />
         </div>
 
-        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-5 border border-border/40 text-center shadow-card">
+        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-5 text-center shadow-card">
           <h2 className="font-sans text-2xl font-semibold tracking-heading">{PRICING.expertReview.title}</h2>
           <Body className="text-muted-foreground">{PRICING.expertReview.body}</Body>
           <ol className="mx-auto grid max-w-2xl gap-2 text-left text-sm text-muted-foreground sm:grid-cols-3">

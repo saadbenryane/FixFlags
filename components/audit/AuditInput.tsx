@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
@@ -127,18 +128,11 @@ export function AuditInput({
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <div
-            className={cn(
-              'flex flex-col gap-1.5 overflow-hidden rounded-card bg-card p-1.5 shadow-card',
-              'transition-shadow duration-200',
-              'focus-within:shadow-card-hover focus-within:ring-2 focus-within:ring-ring/25',
-              'sm:flex-row sm:items-stretch sm:gap-0',
-            )}
-          >
+          <InputGroup>
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>
-            <Input
+            <InputGroupInput
               id={inputId}
               name="url"
               type="text"
@@ -150,7 +144,6 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-3.5 py-0 text-base shadow-none focus-visible:ring-0 sm:min-h-11"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
@@ -173,7 +166,7 @@ export function AuditInput({
                 </>
               )}
             </Button>
-          </div>
+          </InputGroup>
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row">
             <label htmlFor={inputId} className="sr-only">

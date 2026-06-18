@@ -43,7 +43,7 @@
   select:-webkit-autofill,
   select:-webkit-autofill:hover,
   select:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--glass-bg-subtle) inset !important;
     -webkit-text-fill-color: hsl(var(--foreground)) !important;
     caret-color: hsl(var(--foreground));
   }
@@ -54,12 +54,21 @@
     background: var(--glass-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--glass-shadow);
   }
 
   .glass-surface-elevated {
     background: var(--glass-bg-elevated);
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-surface-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    box-shadow: var(--glass-shadow);
   }
 
   .overlay-pill-glass {

@@ -139,7 +139,7 @@ export function AdminInbox() {
   }
 
   return (
-    <div className="grid min-h-[32rem] grid-cols-1 overflow-hidden rounded-card border border-border bg-card shadow-card lg:grid-cols-[280px_1fr_240px]">
+    <div className="grid min-h-[32rem] grid-cols-1 overflow-hidden rounded-card glass-surface-strong shadow-card lg:grid-cols-[280px_1fr_240px]">
       <div className="border-b border-border lg:border-b-0 lg:border-r">
         <div className="flex gap-1 border-b border-border p-2">
           {(['open', 'closed', 'all'] as const).map((f) => (

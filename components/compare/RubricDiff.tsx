@@ -32,7 +32,7 @@ export function RubricDiff({
   afterRubrics,
 }: Props) {
   return (
-    <div className="rounded-card border-0 bg-card p-4 space-y-4 shadow-card">
+    <div className="rounded-card p-4 space-y-4 glass-surface shadow-card">
       <h2 className="text-sm font-semibold tracking-heading">Rubric comparison</h2>
 
       <div className="flex items-center gap-4 flex-wrap">

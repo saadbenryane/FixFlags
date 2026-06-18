@@ -124,7 +124,7 @@ export function AuditProgress({
         )}
 
         {score != null && (
-          <div className="rounded-card border border-border/60 bg-card p-4 shadow-card">
+          <div className="rounded-card p-4 glass-surface shadow-card">
             <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
               Overall score
             </p>

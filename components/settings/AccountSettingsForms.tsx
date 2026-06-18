@@ -206,7 +206,7 @@ export function AccountSettingsForms({
       </form>
       </Card>
 
-      <Card className="border-0 border-destructive/20 bg-destructive/5 p-5 shadow-card">
+      <Card className="bg-destructive/5 p-5 ring-2 ring-destructive/20 shadow-card">
       <form onSubmit={deleteAccount} className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-base font-semibold text-destructive">Delete account</h2>

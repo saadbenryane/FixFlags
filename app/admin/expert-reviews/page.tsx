@@ -70,7 +70,7 @@ export default async function AdminExpertReviewsPage() {
           fulfilled.slice(0, 10).map((order) => (
             <div
               key={order.id}
-              className="flex items-center justify-between rounded-card border-0 bg-card px-4 py-3 text-sm shadow-card"
+              className="flex items-center justify-between rounded-card px-4 py-3 text-sm glass-surface shadow-card"
             >
               <span>{order.email}</span>
               <span className="text-muted-foreground">

@@ -13,7 +13,7 @@ export function WhatsCheckedSection({ id }: { id?: string }) {
           align="left"
         />
 
-        <div className="overflow-hidden rounded-card border-0 bg-card shadow-card">
+        <div className="overflow-hidden rounded-card glass-surface shadow-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/20">

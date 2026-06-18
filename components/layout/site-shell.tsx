@@ -3,6 +3,7 @@ import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 import { SupportWidget } from '@/components/live-support/SupportWidget'
+import { GlobalMeshBackdrop } from '@/components/marketing/landing/PeachyMeshBackdrop'
 
 interface SiteShellProps {
   children: React.ReactNode
@@ -30,22 +31,25 @@ export function SiteShell({
   const showSupport = variant !== 'admin'
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header
-        variant={variant}
-        logoHref={logoHref}
-        right={headerRight}
-        userEmail={userEmail}
-        showAdmin={showAdmin}
-        adminInboxUnread={adminInboxUnread}
-      />
-      <ActiveAuditBanner />
-      <main id="main-content" className="flex-1" tabIndex={-1}>
-        {children}
-      </main>
-      {showFooter && footer === 'minimal' && <MinimalFooter />}
-      {showFooter && footer === 'default' && <Footer />}
-      {showSupport && <SupportWidget />}
+    <div className="relative min-h-screen flex flex-col">
+      <GlobalMeshBackdrop fixed />
+      <div className="relative z-0 flex min-h-screen flex-col">
+        <Header
+          variant={variant}
+          logoHref={logoHref}
+          right={headerRight}
+          userEmail={userEmail}
+          showAdmin={showAdmin}
+          adminInboxUnread={adminInboxUnread}
+        />
+        <ActiveAuditBanner />
+        <main id="main-content" className="flex-1" tabIndex={-1}>
+          {children}
+        </main>
+        {showFooter && footer === 'minimal' && <MinimalFooter />}
+        {showFooter && footer === 'default' && <Footer />}
+        {showSupport && <SupportWidget />}
+      </div>
     </div>
   )
 }

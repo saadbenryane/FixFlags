@@ -72,8 +72,7 @@ export function Header({
   return (
     <header
       className={cn(
-        'sticky top-0 z-navbar bg-background/95 backdrop-blur-md',
-        !isMarketing && 'border-b border-border/40',
+        'sticky top-0 z-navbar glass-surface-elevated border-0',
         className
       )}
     >

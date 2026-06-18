@@ -51,7 +51,7 @@ function SupportWidgetInner() {
     <>
       {panelOpen && (
         <div
-          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] flex h-[min(32rem,calc(100vh_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-bottom)))] w-[min(24rem,calc(100vw_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-right)))] flex-col overflow-hidden rounded-card border border-border bg-background shadow-2xl"
+          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] flex h-[min(32rem,calc(100vh_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-bottom)))] w-[min(24rem,calc(100vw_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-right)))] flex-col overflow-hidden rounded-card glass-surface-elevated shadow-2xl"
           role="dialog"
           aria-label="Live chat with FixFlags"
         >

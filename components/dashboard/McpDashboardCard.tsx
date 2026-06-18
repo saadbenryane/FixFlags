@@ -34,7 +34,7 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
 
   if (!canUseMcp) {
     return (
-      <Card className="border-brand/20">
+      <Card className="ring-2 ring-brand/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Cpu className="h-4 w-4 text-brand" />

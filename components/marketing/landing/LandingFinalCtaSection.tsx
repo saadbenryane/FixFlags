@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
-import { PeachyMeshBackdrop } from '@/components/marketing/landing/PeachyMeshBackdrop'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Button } from '@/components/ui/button'
@@ -16,9 +15,7 @@ export function LandingFinalCtaSection() {
   return (
     <Section spacing="marketing" className="pb-16 sm:pb-20">
       <Container>
-        <div className="relative overflow-hidden rounded-card border border-brand/10 p-8 shadow-card sm:p-12 lg:p-16">
-          <PeachyMeshBackdrop />
-
+        <div className="relative overflow-hidden rounded-card p-8 glass-surface-strong shadow-card sm:p-12 lg:p-16">
           <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-6">
               <h2 className="text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
@@ -56,7 +53,7 @@ export function LandingFinalCtaSection() {
               {TRUST_BADGES.map((badge) => (
                 <div
                   key={badge}
-                  className="flex items-center gap-4 rounded-card border border-brand/15 bg-background/60 px-5 py-4 shadow-sm backdrop-blur-sm"
+                  className="flex items-center gap-4 rounded-card px-5 py-4 glass-surface shadow-sm"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/15">
                     <Check className="h-4 w-4 text-brand" aria-hidden />

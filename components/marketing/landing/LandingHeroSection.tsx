@@ -7,12 +7,7 @@ import { HERO } from '@/lib/marketing/copy'
 
 export function LandingHeroSection() {
   return (
-    <Section spacing="loose" className="relative overflow-hidden pb-8 sm:pb-12 lg:pb-16">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(ellipse_at_top,hsl(var(--brand)/0.12),transparent_62%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,hsl(var(--background)/0),hsl(var(--background))_82%)]" />
-      </div>
-
+    <Section spacing="loose" className="relative pb-8 sm:pb-12 lg:pb-16">
       <Container className="relative space-y-12 lg:space-y-16">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up sm:text-5xl lg:text-6xl">

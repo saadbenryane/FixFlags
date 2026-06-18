@@ -17,7 +17,7 @@ export function Footer() {
   const { tagline, madeWith, social } = LANDING_PAGE.footer
 
   return (
-    <footer className="border-t border-border/40 bg-muted/25">
+    <footer className="glass-surface border-0">
       <Container className="space-y-12 py-14 sm:py-16 lg:py-20">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="space-y-5">

@@ -122,7 +122,7 @@ export default function ApiKeysPage() {
       />
 
       {!canUseKeys && (
-        <Card className="border-brand/30 bg-brand/5">
+        <Card className="bg-brand/5 ring-2 ring-brand/25">
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
             <p className="text-sm text-muted-foreground">

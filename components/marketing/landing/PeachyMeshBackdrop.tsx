@@ -1,14 +1,19 @@
 import { cn } from '@/lib/utils'
 
-interface PeachyMeshBackdropProps {
+interface GlobalMeshBackdropProps {
   className?: string
+  fixed?: boolean
 }
 
-export function PeachyMeshBackdrop({ className }: PeachyMeshBackdropProps) {
+export function GlobalMeshBackdrop({ className, fixed = false }: GlobalMeshBackdropProps) {
   return (
     <div
       aria-hidden
-      className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}
+      className={cn(
+        'pointer-events-none overflow-hidden',
+        fixed ? 'fixed inset-0 -z-10' : 'absolute inset-0',
+        className
+      )}
     >
       <div className="absolute inset-0 bg-gradient-peach-surface" />
 
@@ -39,3 +44,6 @@ export function PeachyMeshBackdrop({ className }: PeachyMeshBackdropProps) {
     </div>
   )
 }
+
+/** @deprecated Use GlobalMeshBackdrop */
+export const PeachyMeshBackdrop = GlobalMeshBackdrop

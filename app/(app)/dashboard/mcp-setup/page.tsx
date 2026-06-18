@@ -136,10 +136,10 @@ export default function McpSetupWizard() {
                   key={l.key}
                   type="button"
                   onClick={() => setVibecodingLevel(l.key)}
-                  className={`w-full text-left rounded-card border p-3 text-sm transition-colors ${
+                  className={`w-full text-left rounded-card p-3 text-sm transition-[box-shadow,background-color] ${
                     vibecodingLevel === l.key
-                      ? 'border-brand bg-brand/5'
-                      : 'border-border hover:border-muted-foreground/30'
+                      ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
+                      : 'glass-surface hover:bg-[var(--glass-bg)]'
                   }`}
                 >
                   <span className="font-medium">{l.label}</span>
@@ -165,10 +165,10 @@ export default function McpSetupWizard() {
                           : [...prev, t.key]
                       )
                     }
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-[box-shadow,background-color] ${
                       selected
-                        ? 'border-brand bg-brand/10 text-brand'
-                        : 'border-border text-muted-foreground hover:border-muted-foreground/30'
+                        ? 'bg-brand/10 text-brand ring-2 ring-brand/25'
+                        : 'glass-surface text-muted-foreground hover:bg-[var(--glass-bg)]'
                     }`}
                   >
                     {selected && <Check className="h-3 w-3" />}
@@ -209,10 +209,10 @@ export default function McpSetupWizard() {
               key={e.key}
               type="button"
               onClick={() => setEditor(e.key)}
-              className={`w-full text-left rounded-card border p-4 transition-colors ${
+              className={`w-full text-left rounded-card p-4 transition-[box-shadow,background-color] ${
                 editor === e.key
-                  ? 'border-brand bg-brand/5'
-                  : 'border-border hover:border-muted-foreground/30'
+                  ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
+                  : 'glass-surface hover:bg-[var(--glass-bg)]'
               }`}
             >
               <span className="inline-flex items-center gap-2">

@@ -52,7 +52,7 @@ export function UserTable({ users }: { users: User[] }) {
 
   if (users.length === 0) {
     return (
-      <div className="rounded-card border-0 bg-card p-8 text-center text-sm text-muted-foreground shadow-card">
+      <div className="rounded-card p-8 text-center text-sm text-muted-foreground glass-surface shadow-card">
         No users yet.
       </div>
     )

@@ -16,7 +16,7 @@ export function VibecodingProfilePrompt() {
   if (hasProfile || dismissed) return null
 
   return (
-    <Card className="border-brand/20 bg-brand/5 p-4 sm:p-5">
+    <Card className="bg-brand/5 p-4 ring-2 ring-brand/20 sm:p-5">
       <div className="flex items-start gap-3">
         <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
         <div className="min-w-0 flex-1 space-y-2">
