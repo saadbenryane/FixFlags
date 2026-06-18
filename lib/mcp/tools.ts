@@ -545,6 +545,64 @@ export function registerAllTools(
   )
 
   server.tool(
+    'ff_list_recent_audits',
+    'List recent audits with status, score, and key metadata. Supports pagination and filtering.',
+    {
+      limit: z
+        .number()
+        .min(1)
+        .max(50)
+        .optional()
+        .describe('Number of audits to return (1-50, default 10)'),
+      offset: z
+        .number()
+        .min(0)
+        .optional()
+        .describe('Number of audits to skip (default 0)'),
+      status: z
+        .enum(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING', 'COMPLETED', 'FAILED'])
+        .optional()
+        .describe('Filter by audit status'),
+      url: z.string().optional().describe('Filter by URL (substring match)'),
+    },
+    async ({ limit = 10, offset = 0, status, url }) => {
+      const freshUser = await assertMcpAccess(user)
+
+      const where: Record<string, unknown> = { userId: freshUser.id }
+      if (status) where.status = status
+      if (url) where.url = { contains: url }
+
+      const [audits, total] = await Promise.all([
+        prisma.audit.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: offset,
+          select: {
+            id: true,
+            url: true,
+            status: true,
+            score: true,
+            verdict: true,
+            createdAt: true,
+            completedAt: true,
+          },
+        }),
+        prisma.audit.count({ where }),
+      ])
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ audits, total, limit, offset }),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
     'generate-fix-prompt',
     'Generate a custom fix prompt for any problem description. Useful for Bolt/Lovable users who cannot call ff_check_url directly.',
     {

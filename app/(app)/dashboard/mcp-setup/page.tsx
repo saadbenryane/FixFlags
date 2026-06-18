@@ -15,6 +15,7 @@ import { Container } from '@/components/ui/container'
 import { Callout } from '@/components/ui/callout'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useMe } from '@/hooks/useMe'
+import { McpConnectionTest } from '@/components/dashboard/McpConnectionTest'
 import { buildMcpConfigExample, getMcpEndpoint } from '@/lib/mcp/docs-content'
 import { SITE_URL } from '@/lib/marketing/copy'
 
@@ -319,6 +320,10 @@ export default function McpSetupWizard() {
           <code>{`curl -s -X POST "${endpoint}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${newKey ?? '$FF_API_KEY'}" \\\n  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'`}</code>
         </pre>
       </div>
+
+      {newKey && (
+        <McpConnectionTest endpoint={endpoint} apiKey={newKey} />
+      )}
 
       <div className="flex items-center justify-between pt-4">
         <Button variant="ghost" size="sm" onClick={() => setStep(2)}>

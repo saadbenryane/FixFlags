@@ -667,3 +667,23 @@ model ProcessedStripeEvent {
   @@index([processedAt])
   @@map("processed_stripe_events")
 }
+
+model McpInteraction {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method     String   @default("unknown")
+  tool       String?
+  durationMs Int?
+  success    Boolean  @default(true)
+  errorCode  String?
+  auditId    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([method, tool])
+  @@index([success, createdAt])
+  @@map("mcp_interactions")
+}

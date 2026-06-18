@@ -18,6 +18,10 @@ export const MCP_TOOL_DEFINITIONS = [
     name: 'generate-fix-prompt',
     desc: 'Generate a custom fix prompt from any problem description. Useful for Bolt/Lovable.',
   },
+  {
+    name: 'ff_list_recent_audits',
+    desc: 'List recent audits with status, score, and key metadata. Supports pagination and URL/status filtering.',
+  },
 ] as const
 
 export const MCP_LOCAL_BASE_URL = 'http://localhost:3000'

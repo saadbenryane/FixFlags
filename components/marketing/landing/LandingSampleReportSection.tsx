@@ -4,6 +4,7 @@ import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { REVIEW_PREVIEW } from '@/lib/marketing/review-preview'
 import type { SampleSource } from '@/lib/marketing/live-sample'
 import { rubricLabel } from '@/lib/utils'
 import Link from 'next/link'
@@ -68,7 +69,7 @@ export function LandingSampleReportSection({
   source = 'static',
 }: LandingSampleReportSectionProps) {
   const { headline, body, cta, scores } = LANDING_PAGE.sampleReport
-  const resolvedTotal = totalScore ?? scores.total
+  const resolvedTotal = totalScore ?? REVIEW_PREVIEW.score ?? scores.total
   const sourceRubrics = rubrics ?? scores.rubrics
   const resolvedRubrics = RUBRIC_ORDER.map((rubric) => {
     const name = rubricLabel(rubric)
@@ -99,8 +100,10 @@ export function LandingSampleReportSection({
               <div className="flex items-center gap-3">
                 <span className="h-2 w-2 rounded-full bg-success" />
                 <div>
-                  <p className="text-sm font-semibold">fixflags.dev</p>
-                  <p className="text-[11px] text-muted-foreground">Scanned 2 minutes ago</p>
+                  <p className="text-sm font-semibold">{REVIEW_PREVIEW.reviewedHost}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {REVIEW_PREVIEW.completedAtLabel}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -120,7 +123,7 @@ export function LandingSampleReportSection({
               <div className="flex flex-col items-center gap-1 text-center">
                 <ScoreGauge score={resolvedTotal} />
                 <span className="mt-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
-                  Needs work
+                  {REVIEW_PREVIEW.scoreStatus}
                 </span>
               </div>
 
@@ -146,7 +149,7 @@ export function LandingSampleReportSection({
             {/* flag preview bar */}
             <div className="border-t border-border/40 px-5 py-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">7 high-impact flags</span>
+                <span className="text-sm font-semibold">{REVIEW_PREVIEW.flagsSummary}</span>
                 <div className="flex gap-2">
                   <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-foreground">
                     All
