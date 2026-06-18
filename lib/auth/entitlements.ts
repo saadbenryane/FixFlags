@@ -7,13 +7,14 @@ import {
 
 export type ReportTier = 'free' | 'paid'
 
+/** @deprecated Trial re-check model removed; column may remain in schema. */
 export function hasUsedFreeRecheck(
   user: Pick<User, 'freeRecheckUsedAt'>
 ): boolean {
   return user.freeRecheckUsedAt !== null && user.freeRecheckUsedAt !== undefined
 }
 
-/** When true, plan gates (recheck trial, share) behave like production. */
+/** When true, plan gates (share, compare) behave like production. */
 export function shouldEnforcePlanGates(): boolean {
   if (process.env.DEV_SIMULATE_BILLING === 'true') return true
   return !isDevUnlimitedScans()
@@ -35,17 +36,17 @@ export function canAccessPaidFeatures(
   return user.plan !== 'FREE'
 }
 
+/** @deprecated Use canAccessRecheck; always false under unlimited owned re-check contract. */
 export function canUseFreeRecheck(
-  user: Pick<User, 'plan' | 'freeRecheckUsedAt'>
+  _user: Pick<User, 'plan' | 'freeRecheckUsedAt'>
 ): boolean {
-  if (!shouldEnforcePlanGates()) return false
-  return user.plan === 'FREE' && !hasUsedFreeRecheck(user)
+  return false
 }
 
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan === 'BUILDER' || user.plan === 'TEAM' || user.plan === 'STUDIO'
+  return user.plan === 'TEAM' || user.plan === 'STUDIO'
 }
 
 /** Proof export (copy summary) - Agency and Studio plans. */
@@ -57,20 +58,18 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean
   return canAccessPaidFeatures(user)
 }
 
+/** Authenticated users can re-check reports they own; quota is not consumed. */
 export function canAccessRecheck(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
+  _user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
 ): boolean {
-  return canAccessPaidFeatures(user) || canUseFreeRecheck(user)
+  return true
 }
 
 export function canAccessCompare(
   user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>,
-  recheckAudit: { parentId: string | null; userId: string | null }
+  _recheckAudit: { parentId: string | null; userId: string | null }
 ): boolean {
-  if (canAccessPaidFeatures(user)) return true
-  if (!recheckAudit.parentId) return false
-  if (recheckAudit.userId !== user.id) return false
-  return hasUsedFreeRecheck(user)
+  return canAccessPaidFeatures(user)
 }
 
 export interface UserEntitlements {
@@ -91,7 +90,7 @@ export function getEntitlements(
   const paid = canAccessPaidFeatures(user)
   return {
     reportTier,
-    canUseFreeRecheck: canUseFreeRecheck(user),
+    canUseFreeRecheck: false,
     hasUsedFreeRecheck: hasUsedFreeRecheck(user),
     canSharePublicly: canSharePublicly(user),
     canExportSummary: canExportSummary(user),
@@ -116,23 +115,4 @@ export async function resolveReportTierForAudit(
   if (!owner) return 'free'
 
   return getReportTierForUser(owner)
-}
-
-export async function hasPendingTrialRecheck(userId: string): Promise<boolean> {
-  const count = await prisma.audit.count({
-    where: {
-      userId,
-      trialRecheck: true,
-      parentId: { not: null },
-      status: { notIn: ['COMPLETED', 'FAILED'] },
-    },
-  })
-  return count > 0
-}
-
-export async function consumeTrialRecheckOnSuccess(userId: string): Promise<void> {
-  await prisma.user.updateMany({
-    where: { id: userId, freeRecheckUsedAt: null },
-    data: { freeRecheckUsedAt: new Date() },
-  })
 }

@@ -67,12 +67,8 @@ export function getUpgradeMomentContent(
 
 export function resolveFreeUserUpgradeMoment(options: {
   atAuditLimit: boolean
-  canUseFreeRecheck: boolean
-  hasUsedFreeRecheck?: boolean
 }): UpgradeMoment {
   if (options.atAuditLimit) return 'audit_limit_reached'
-  if (options.canUseFreeRecheck) return 'trial_recheck_available'
-  if (options.hasUsedFreeRecheck) return 'trial_exhausted'
   return 'free_default'
 }
 

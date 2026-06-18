@@ -31,7 +31,7 @@ export function McpConnectionTest({ endpoint, apiKey }: Props) {
       clearTimeout(timer)
 
       if (res.status === 401) {
-        throw new Error('Invalid API key — create a new one and try again')
+        throw new Error('Invalid API key - create a new one and try again')
       }
       if (!res.ok) {
         const text = await res.text().catch(() => '')

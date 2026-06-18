@@ -144,7 +144,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-11 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
+              className="h-11 flex-1 border-0 bg-transparent px-3 py-1.5 text-base shadow-none focus-visible:ring-0"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}

@@ -438,7 +438,7 @@ Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`
 } as const
 
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
-  FREE: ['Limited re-checks', 'No share links', 'No export'],
+  FREE: ['Unlimited re-checks on your reports', 'No share links', 'No export'],
   BUILDER: ['Re-check loop', 'Before/after compare', 'Editor integration (MCP)'],
   TEAM: ['Client share links', 'Proof exports', 'Everything in Pro'],
 }
@@ -659,7 +659,7 @@ export const FAQ = [
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: full report with all Flags and fix prompts, 3 checks total, and one free re-check. Pro: unlimited re-checks with before/after compare, MCP in Cursor or Claude, and 25 checks per month.',
+      'Free: full report with all Flags and fix prompts, 3 new URL checks total, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
   },
   {
     question: 'Can it check sites built with Lovable/Bolt/v0?',
@@ -674,7 +674,7 @@ export const FAQ = [
   {
     question: 'Can I re-check after my agent fixes issues?',
     answer:
-      'Registered free users get one free re-check to compare before/after. Paid plans include unlimited re-checks that do not count against your monthly new-URL limit.',
+      'All registered users can re-check reports they own as often as needed. Re-checks do not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
   },
   {
     question: 'Does it work on staging/password-protected sites?',

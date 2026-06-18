@@ -4,9 +4,9 @@ FixFlags finishes what your AI started. The business model supports that loop: c
 
 ## Free Tier Strategy
 
-- **Free users get unlimited audits.** No hard wall. First 3 audits are full AI experience. After 3, audits run through the full pipeline (capture, check, judge) but AI-generated content (screenshots, AI flags, fix prompts) is gated at the display layer. The data is saved, so if they upgrade, their past audits unlock immediately.
-- **Re-checks unlimited on all plans.**
-- **Every free report is an upsell impression.** Deterministic results visible. "Upgrade to see what AI found" on every page.
+- **Free accounts get 3 new URL checks total.** Every check runs the full pipeline and returns the complete report with fix prompts.
+- **Re-checks are unlimited on reports you own** and never count against the 3-check cap.
+- **Every free report is an upsell impression.** Deterministic results visible. Upgrade when you ship weekly and need MCP, compare, or more new checks.
 - **Cost is negligible at this stage.** LLM cost per audit is ~$0.00025 (gpt-4o-mini). Prioritize distribution over optimization.
 
 Why: habit over scarcity. More users = more data = stronger moat = more upgrades.
@@ -21,11 +21,11 @@ Why: habit over scarcity. More users = more data = stronger moat = more upgrades
 
 ## Pricing Tiers (Current)
 
-| Tier | Price | Audits | Key Hook |
-|------|-------|--------|----------|
-| Free | $0 | Unlimited (3 full) | AI gated after 3. Unlimited re-checks. |
-| Pro | $29/mo | 25/mo | AI review, screenshots, fix prompts, MCP |
-| Agency | $99/mo | 100/mo | Share links, up to 5 projects |
+| Tier | Price | New URL checks | Key Hook |
+|------|-------|----------------|----------|
+| Free | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
+| Pro | $29/mo | 25/mo | Compare, MCP, 25 new checks/month |
+| Agency | $99/mo | 100/mo | Share links, exports, up to 5 projects |
 | High Volume | Custom | 500+ | Contact sales |
 
 Studio tier ($999) is retained in schema but not marketed.

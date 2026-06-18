@@ -79,8 +79,6 @@ interface AuditReportProps {
   isViewerOwner?: boolean
   variant?: 'default' | 'sample'
   showRecheckHint?: boolean
-  canUseFreeRecheck?: boolean
-  hasUsedFreeRecheck?: boolean
   atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
@@ -95,8 +93,6 @@ export function AuditReport({
   isViewerOwner = true,
   variant = 'default',
   showRecheckHint = false,
-  canUseFreeRecheck = false,
-  hasUsedFreeRecheck = false,
   atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
@@ -120,11 +116,7 @@ export function AuditReport({
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
-      ? resolveFreeUserUpgradeMoment({
-          atAuditLimit,
-          canUseFreeRecheck,
-          hasUsedFreeRecheck,
-        })
+      ? resolveFreeUserUpgradeMoment({ atAuditLimit })
       : null
 
   return (
@@ -165,7 +157,7 @@ export function AuditReport({
           rubricsGradedCount={rubricsGradedCount}
           totalRubrics={audit.rubricRows.length}
           hasFixPrompts={hasFixPrompts}
-          canRecheck={viewerIsPaid || canUseFreeRecheck}
+          canRecheck={isLoggedIn && isViewerOwner}
         />
 
         {audit.reportCompleteness !== 'FULL' && (
@@ -232,15 +224,12 @@ export function AuditReport({
       </section>
 
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-8">
-        {showRecheckHint && (viewerIsPaid || canUseFreeRecheck) && (
+        {showRecheckHint && isLoggedIn && isViewerOwner && (
           <Card className="space-y-2 p-5">
             <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">
               {REPORT_COPY.recheckHint.bodyPrefix}{' '}
-              <strong>
-                {canUseFreeRecheck && !viewerIsPaid ? 'Re-check free (1x)' : 'Re-check'}
-              </strong>{' '}
-              {REPORT_COPY.recheckHint.bodySuffix}
+              <strong>Re-check</strong> {REPORT_COPY.recheckHint.bodySuffix}
             </p>
           </Card>
         )}
@@ -275,7 +264,7 @@ export function AuditReport({
             moment={upgradeMoment}
             isLoggedIn
             currentPlan={viewerPlan}
-            showCta={upgradeMoment !== 'trial_recheck_available'}
+            showCta={true}
           />
         )}
 

@@ -43,7 +43,7 @@ Do not market white-label reports or priority support — not implemented.
 - `npm run dev` — Next.js only; audits stay **QUEUED** without worker
 - `npm run dev:all` — **required** for local audit completion (web + worker)
 - `AuditProgress` shows dev warning if `QUEUED` >30s
-- `DEV_SIMULATE_BILLING=true` — test plan gates locally (recheck trial, share, API keys)
+- `DEV_SIMULATE_BILLING=true` — test plan gates locally (share, compare, API keys)
 - `instrumentation.ts` calls `validateProductionEnv()` on Node startup
 
 ## Audit quota vs re-check
@@ -51,18 +51,17 @@ Do not market white-label reports or priority support — not implemented.
 | Action | Counts toward monthly/lifetime audit limit? |
 |--------|---------------------------------------------|
 | New URL audit | Yes (unless admin/dev unlimited) |
-| Paid re-check | **No** (`skipUsageCount: true` in `recheck.ts`) |
-| Free trial re-check (1×) | **No** (`skipUsageCount: true`) |
+| Re-check (owned report) | **No** (`skipUsageCount: true` in `recheck.ts`) |
 
-Copy must say: monthly limits apply to **new URL audits**; paid re-checks are unlimited and free on quota.
+Copy must say: monthly limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
 
 ## Entitlements (`shouldEnforcePlanGates()`)
 
 When enforcing (prod or `DEV_SIMULATE_BILLING`):
 
-- `canAccessPaidFeatures` — Pro+ report tier, paid re-check
-- `canUseFreeRecheck` — FREE + `freeRecheckUsedAt` null
-- `canSharePublicly` — **Agency (TEAM) or Studio only**
+- `canAccessPaidFeatures` — Pro+ report tier, compare, MCP
+- `canAccessRecheck` — any authenticated user (owned reports; API enforces ownership)
+- `canSharePublicly` / `canExportSummary` — **Agency (TEAM) or Studio only**
 - `canUseApiKeys` / `canUseMcp` — Pro+
 
 UI must gate before API 402:
@@ -104,7 +103,7 @@ Minimal fulfillment (do not defer):
 
 ## Anti-patterns (product)
 
-- Promising features not in entitlements (share on Pro, unlimited re-check on Free beyond 1× trial)
+- Promising features not in entitlements (share on Pro, compare on Free)
 - Copy-only fix when quota/entitlement design is wrong
 - Hardcoded plan prices in marketing — derive from `getMarketingPlans()`
 - `npm run dev` without documenting worker requirement

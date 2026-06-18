@@ -8,6 +8,7 @@ import {
   Cpu,
   Copy,
   Check,
+  BarChart3,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -109,6 +110,12 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/mcp-analytics">
+              <BarChart3 className="mr-1.5 h-3 w-3" />
+              Analytics
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/settings/api-keys">
               <Settings className="mr-1.5 h-3 w-3" />

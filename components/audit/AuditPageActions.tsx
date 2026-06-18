@@ -35,8 +35,8 @@ interface Props {
   compareAuditId?: string | null
   plan?: Plan
   projectId?: string | null
-  canUseFreeRecheck?: boolean
   canExportSummary?: boolean
+  canSharePublicly?: boolean
 }
 
 export function AuditPageActions({
@@ -54,15 +54,15 @@ export function AuditPageActions({
   compareAuditId,
   plan = 'FREE',
   projectId,
-  canUseFreeRecheck = false,
   canExportSummary = false,
+  canSharePublicly = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
-  const showRecheck = isPaid || canUseFreeRecheck
-  const recheckLabel = canUseFreeRecheck && !isPaid ? 'Re-check free (1x)' : 'Re-check'
+  const showRecheck = isLoggedIn && isOwner
+  const recheckLabel = 'Re-check'
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -117,7 +117,7 @@ export function AuditPageActions({
         isOwner={isOwner}
         isPublic={isPublic}
         isAnonymous={isAnonymous}
-        canPublicShare={canExportSummary}
+        canPublicShare={canSharePublicly}
         onPublicChange={setIsPublic}
       />
       <ExportSummaryButton

@@ -74,7 +74,7 @@ export default async function ComparePage({ params }: Props) {
             description="Re-check is required to compare scores."
           />
             <ContextualUpgradeCard
-              moment="trial_exhausted"
+              moment="compare_flat"
               isLoggedIn
               currentPlan={user.plan}
             />

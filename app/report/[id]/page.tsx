@@ -290,8 +290,8 @@ export default async function ReportPage({ params }: Props) {
             }
             plan={user?.plan ?? 'FREE'}
             projectId={audit.projectId}
-            canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
             canExportSummary={entitlements?.canExportSummary ?? false}
+            canSharePublicly={entitlements?.canSharePublicly ?? false}
           />
         }
       >
@@ -302,9 +302,7 @@ export default async function ReportPage({ params }: Props) {
           viewerPlan={user?.plan ?? 'FREE'}
           isLoggedIn={isLoggedIn}
           isViewerOwner={isOwner}
-          showRecheckHint={viewerIsPaid || (entitlements?.canUseFreeRecheck ?? false)}
-          canUseFreeRecheck={entitlements?.canUseFreeRecheck ?? false}
-          hasUsedFreeRecheck={entitlements?.hasUsedFreeRecheck ?? false}
+          showRecheckHint={isLoggedIn && isOwner}
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}

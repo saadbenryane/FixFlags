@@ -9,9 +9,15 @@ const ROWS = [
   },
   {
     feature: 'What you get',
-    free: 'Full report + fix prompts on every audit',
-    pro: 'Unlimited re-checks + MCP in your editor',
-    agency: 'Public share links + up to 5 projects',
+    free: 'Full report + fix prompts on every check',
+    pro: 'Before/after compare + MCP in your editor',
+    agency: 'Public share links + proof exports + up to 5 projects',
+  },
+  {
+    feature: 'Re-checks',
+    free: 'Unlimited on reports you own',
+    pro: 'Unlimited (no quota)',
+    agency: 'Unlimited (no quota)',
   },
   {
     feature: 'Limits',
