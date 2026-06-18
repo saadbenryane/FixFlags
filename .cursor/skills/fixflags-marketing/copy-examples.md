@@ -62,7 +62,6 @@ A: Copy fix prompts from the report, or upgrade to Team for read-only share link
 | hidden_findings | +N issues your agent could fix | +N issues still costing you signups |
 | compare_improved | Score improved +N | Proof the last fix worked (+N) |
 | compare_flat | Unlock full prompts to fix what remains | Still gaps hurting conversion. See all findings. |
-| trial_recheck_available | Prove your fixes worked | Prove the redesign worked |
 
 Implementation lives in `lib/billing/upgrade-moments.ts`. Match voice, adjust nouns (agent → dev/client).
 

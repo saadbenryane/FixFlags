@@ -35,7 +35,6 @@ export async function POST(
       {
         reportId: outcome.result.auditId,
         status: outcome.result.status,
-        isTrialRecheck: outcome.result.isTrialRecheck,
       },
       { status: 201 }
     )

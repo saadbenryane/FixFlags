@@ -469,6 +469,14 @@ export const FINAL_CTA = {
 
 export const CHANGELOG_ENTRIES = [
   {
+    date: '2026-06-18',
+    title: 'Track MCP usage from your dashboard',
+    items: [
+      'See call volume, success rate, and tool breakdown on the new MCP Analytics page',
+      'Review recent failures to debug editor connection issues faster',
+    ],
+  },
+  {
     date: '2026-06-15',
     title: 'FixFlags is now in open beta',
     items: [
@@ -939,12 +947,6 @@ export const UPGRADE_MOMENTS = {
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
-  trial_recheck_available: {
-    headline: 'Prove your fixes worked',
-    body: 'Paste fix prompts into your editor, ship changes, then re-check once for free to compare before/after.',
-    cta: 'Use your free re-check',
-    plan: 'BUILDER' as const,
-  },
   compare_improved: {
     headline: (scoreDelta: number) =>
       `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
@@ -955,12 +957,6 @@ export const UPGRADE_MOMENTS = {
   compare_flat: {
     headline: 'Still Flags after your re-check',
     body: 'Pro gives unlimited re-checks and MCP so your agent can close what remains without copy-pasting URLs.',
-    cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
-  },
-  trial_exhausted: {
-    headline: "You've used your free re-check",
-    body: 'Upgrade to Pro for unlimited re-checks and before/after comparisons on every ship.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },

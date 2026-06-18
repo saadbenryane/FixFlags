@@ -149,17 +149,15 @@ export function Header({
                     {link.label}
                   </NavLink>
                 ))}
-              <ThemeToggle />
               {resolvedRight}
             </div>
 
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
-                <Button size="xs" className="shrink-0" asChild>
-                  <Link href="/#audit">{HERO.primaryCta}</Link>
+                <Button variant="ink" size="xs" className="shrink-0" asChild>
+                  <Link href="/sign-up">{HERO.primaryCta}</Link>
                 </Button>
               )}
-              <ThemeToggle />
               <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -204,7 +202,11 @@ export function Header({
                       {link.label}
                     </NavLink>
                   ))}
-                  <div className="mt-4 border-t pt-4">
+                  <div className="mt-4 space-y-3 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Theme</span>
+                      <ThemeToggle />
+                    </div>
                     <Link
                       href="/sign-in"
                       onClick={() => setOpen(false)}
@@ -212,7 +214,7 @@ export function Header({
                     >
                       Log in
                     </Link>
-                    {!isMarketing && <div className="mt-3">{resolvedRight}</div>}
+                    {!isMarketing && <div>{resolvedRight}</div>}
                   </div>
                 </nav>
               </SheetContent>

@@ -12,6 +12,7 @@ import {
 } from '../audit/rubric'
 import { canUseApiKeys } from '../auth/permissions'
 import { canAccessCompare, canAccessPaidFeatures } from '../auth/entitlements'
+import { canAccessAudit } from '../audit/access'
 import { hashApiKey } from '@/lib/security/api-keys'
 import { recordRateLimit } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
@@ -34,6 +35,16 @@ async function assertMcpAccess(user: User): Promise<User> {
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
   if (flag.checkId) return `check:${flag.checkId}`
   return buildAiFlagMatchKey(flag.problem, flag.rubric)
+}
+
+function assertAuditAccess(
+  audit: { userId: string | null; isPublic: boolean },
+  userId: string,
+  message = 'Unauthorized'
+): void {
+  if (!canAccessAudit(audit, { id: userId })) {
+    throw new Error(message)
+  }
 }
 
 export function registerAllTools(
@@ -140,10 +151,7 @@ export function registerAllTools(
         select: { id: true, status: true, url: true, createdAt: true, userId: true, isPublic: true },
       })
       if (!audit) throw new Error('Report not found')
-      const { canAccessAudit } = await import('@/lib/audit/access')
-      if (!canAccessAudit(audit, { id: user.id })) {
-        throw new Error('You do not have access to this report')
-      }
+      assertAuditAccess(audit, user.id, 'You do not have access to this report')
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(audit) }],
       }
@@ -167,9 +175,7 @@ export function registerAllTools(
         },
       })
       if (!audit) throw new Error('Report not found')
-      if (audit.userId && audit.userId !== user.id && !audit.isPublic) {
-        throw new Error('Unauthorized')
-      }
+      assertAuditAccess(audit, user.id)
       if (audit.status !== 'COMPLETED') {
         return {
           content: [
@@ -238,9 +244,7 @@ export function registerAllTools(
         select: { userId: true, isPublic: true },
       })
       if (!ownerAudit) throw new Error('Report not found')
-      if (ownerAudit.userId && ownerAudit.userId !== user.id && !ownerAudit.isPublic) {
-        throw new Error('Unauthorized')
-      }
+      assertAuditAccess(ownerAudit, user.id)
 
       const rubricRow = await prisma.reportRubric.findUnique({
         where: { auditId_name: { auditId: reportId, name: rubric as RubricName } },
@@ -310,9 +314,7 @@ export function registerAllTools(
         include: { audit: { select: { userId: true, isPublic: true } } },
       })
       if (!flag) throw new Error('Flag not found')
-      if (flag.audit.userId && flag.audit.userId !== user.id && !flag.audit.isPublic) {
-        throw new Error('Unauthorized')
-      }
+      assertAuditAccess(flag.audit, user.id)
 
       const safeFlag = sanitizeFlagForRead(flag)
 
@@ -372,7 +374,7 @@ export function registerAllTools(
       const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
         computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
 
-      const outcome = await startRecheckAudit(parentReportId, freshUser)
+      const outcome = await startRecheckAudit(parentReportId, freshUser, { delayMs })
       if (!outcome.ok) {
         throw new Error(outcome.error)
       }
@@ -432,13 +434,13 @@ export function registerAllTools(
         }),
       ])
       if (!before || !after) throw new Error('One or both reports not found')
-      if (before.userId && before.userId !== user.id && !before.isPublic) throw new Error('Unauthorized')
-      if (after.userId && after.userId !== user.id && !after.isPublic) throw new Error('Unauthorized')
+      assertAuditAccess(before, user.id)
+      assertAuditAccess(after, user.id)
 
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
       if (!canAccessCompare(freshUser, after)) {
-        throw new Error('Upgrade to Pro or complete your free re-check to compare reports')
+        throw new Error('Upgrade to Pro for before/after compare')
       }
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)

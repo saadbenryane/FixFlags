@@ -31,7 +31,7 @@ export function ShareAuditButton({
   isOwner,
   isPublic,
   isAnonymous,
-  canPublicShare = true,
+  canPublicShare = false,
   onPublicChange,
   size = 'sm',
 }: ShareAuditButtonProps) {
@@ -45,12 +45,46 @@ export function ShareAuditButton({
 
   if (!canShare && !(isLoggedIn && isOwner)) return null
 
+  async function copyLink(publicNow: boolean) {
+    const shareText =
+      score != null
+        ? `${BRAND.name} report: ${score}/100${topIssue ? ` - ${topIssue}` : ''}`
+        : `${BRAND.name} report`
+
+    if (typeof navigator.share === 'function' && publicNow) {
+      try {
+        await navigator.share({ title: `${BRAND.name} report`, text: shareText, url: shareUrl })
+        return
+      } catch {
+        // fall through to clipboard
+      }
+    }
+
+    await navigator.clipboard.writeText(shareUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+
+    if (publicNow) {
+      toast.success('Public link copied', {
+        description: 'Anyone with this link can view the report.',
+      })
+    } else {
+      toast.success('Private link copied', {
+        description:
+          'Only you can view this report while it is private. Upgrade to Agency for public share links.',
+      })
+    }
+  }
+
   async function handleShare() {
     setLoading(true)
     try {
-      let publicNow = isPublic || isAnonymous
+      if (isLoggedIn && isOwner && !isAnonymous && !isPublic && !canPublicShare) {
+        await copyLink(false)
+        return
+      }
 
-      if (isLoggedIn && isOwner && !isAnonymous && !isPublic) {
+      if (isLoggedIn && isOwner && !isAnonymous && !isPublic && canPublicShare) {
         const res = await fetch(`/api/audits/${auditId}/toggle-public`, { method: 'PATCH' })
         if (!res.ok) {
           if (res.status === 402) {
@@ -69,33 +103,12 @@ export function ShareAuditButton({
           return
         }
         const data = await res.json()
-        publicNow = data.isPublic
         onPublicChange?.(data.isPublic)
+        await copyLink(true)
+        return
       }
 
-      const url = shareUrl
-      const shareText =
-        score != null
-          ? `${BRAND.name} report: ${score}/100${topIssue ? ` - ${topIssue}` : ''}`
-          : `${BRAND.name} report`
-
-      if (typeof navigator.share === 'function') {
-        try {
-          await navigator.share({ title: `${BRAND.name} report`, text: shareText, url })
-          return
-        } catch {
-          // fall through to clipboard
-        }
-      }
-
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-      toast.success(publicNow ? 'Public link copied' : 'Link copied', {
-        description: publicNow
-          ? 'Anyone with this link can view the report and run their own check.'
-          : shareText,
-      })
+      await copyLink(isPublic || isAnonymous)
     } catch {
       toast.error('Could not copy link')
     } finally {
@@ -105,8 +118,10 @@ export function ShareAuditButton({
 
   const shareLabel =
     isOwner && !isAnonymous && !canPublicShare && !isPublic
-      ? 'Share (Agency)'
-      : 'Share report'
+      ? 'Copy private link'
+      : isOwner && !isAnonymous && !isPublic && canPublicShare
+        ? 'Make public & share'
+        : 'Share report'
 
   return (
     <div className="flex items-center gap-2">
@@ -131,7 +146,7 @@ export function ShareAuditButton({
         className="gap-2"
         title={
           isOwner && !canPublicShare && !isPublic
-            ? 'Public OG share links require an Agency plan'
+            ? 'Private reports are only visible to you'
             : undefined
         }
       >
@@ -145,7 +160,7 @@ export function ShareAuditButton({
           </>
         )}
       </Button>
-      {isOwner && !isPublic && !isAnonymous && (
+      {isOwner && !isPublic && !isAnonymous && !canPublicShare && (
         <Button variant="ghost" size="sm" asChild className="text-xs text-muted-foreground">
           <Link href="/pricing">Agency for public links</Link>
         </Button>

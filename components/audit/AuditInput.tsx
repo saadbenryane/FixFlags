@@ -128,7 +128,7 @@ export function AuditInput({
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <Surface variant="elevated" className="flex flex-col gap-2 p-1 sm:flex-row sm:items-center">
+          <Surface variant="elevated" className="flex flex-row items-center gap-0 overflow-hidden p-1">
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>
@@ -144,7 +144,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-11 flex-1 border-0 bg-transparent px-3 py-1.5 text-base shadow-none focus-visible:ring-0"
+              className="h-10 min-w-0 flex-1 border-0 bg-transparent pl-2.5 pr-1 py-0 text-base shadow-none focus-visible:ring-0"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
@@ -153,7 +153,7 @@ export function AuditInput({
               type="submit"
               size="lg"
               disabled={loading}
-              className="h-11 w-full shrink-0 gap-2 px-6 sm:w-auto"
+              className="h-10 w-auto shrink-0 gap-2 px-3 sm:px-5"
             >
               {loading ? (
                 <>

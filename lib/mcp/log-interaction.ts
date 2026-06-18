@@ -125,6 +125,49 @@ export async function logMcpInteraction(
   }
 }
 
+export function extractMcpLogMetadata(
+  responseBody: unknown,
+  httpStatus: number
+): import('@prisma/client').Prisma.InputJsonValue {
+  const record = asRecord(responseBody)
+  const metadata: Record<string, unknown> = {
+    httpStatus,
+    jsonRpcId: record?.id ?? null,
+  }
+
+  const resultText = extractToolResultText(responseBody)
+  if (resultText) {
+    try {
+      const parsed = JSON.parse(resultText) as Record<string, unknown>
+      if (parsed.queued != null) metadata.queued = parsed.queued
+      if (parsed.queueReason != null) metadata.queueReason = parsed.queueReason
+      if (parsed.estimatedWaitSeconds != null) {
+        metadata.estimatedWaitSeconds = parsed.estimatedWaitSeconds
+      }
+      if (parsed.queuePosition != null) metadata.queuePosition = parsed.queuePosition
+    } catch {
+      // ignore non-json tool payloads
+    }
+  }
+
+  return metadata as import('@prisma/client').Prisma.InputJsonValue
+}
+
+function extractToolResultText(body: unknown): string | null {
+  const record = asRecord(body)
+  const result = asRecord(record?.result)
+  const content = result?.content
+  if (!Array.isArray(content)) return null
+  const textItem = content.find(
+    (item) =>
+      item != null &&
+      typeof item === 'object' &&
+      (item as { type?: string }).type === 'text' &&
+      typeof (item as { text?: string }).text === 'string'
+  ) as { text: string } | undefined
+  return textItem?.text ?? null
+}
+
 function extractAuditIdFromArgs(args: Record<string, unknown> | null): string | null {
   if (!args) return null
 

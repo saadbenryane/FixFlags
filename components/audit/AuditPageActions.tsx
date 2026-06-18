@@ -12,7 +12,6 @@ import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
-import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 interface Props {
@@ -71,17 +70,6 @@ export function AuditPageActions({
       if (res.ok) {
         const data = await res.json()
         router.push(`/report/${data.reportId}`)
-      } else if (res.status === 402) {
-        const error = await parseApiErrorResponse(res)
-        const moment = error.code === 'UPGRADE_REQUIRED' ? 'trial_exhausted' : 'free_default'
-        const content = getUpgradeMomentContent(moment)
-        toast.error(content.headline, {
-          description: content.body,
-          action: {
-            label: 'Upgrade',
-            onClick: () => router.push('/pricing'),
-          },
-        })
       } else {
         toast.error((await parseApiErrorResponse(res)).message)
       }

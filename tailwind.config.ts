@@ -120,6 +120,14 @@ const config: Config = {
         body: 'var(--leading-body)',
         relaxed: 'var(--leading-relaxed)',
       },
+      backgroundImage: {
+        'gradient-score': 'var(--gradient-score)',
+        'gradient-peach-surface': 'var(--gradient-surface)',
+        'gradient-peach-accent': 'var(--gradient-accent-text)',
+        'gradient-orb-peach': 'var(--gradient-orb-peach)',
+        'gradient-orb-brand': 'var(--gradient-orb-brand)',
+        'gradient-orb-warm': 'var(--gradient-orb-warm)',
+      },
       boxShadow: {
         sm: '0 1px 3px 0 rgb(0 0 0 / 0.03), 0 1px 2px -1px rgb(0 0 0 / 0.03)',
         md: '0 4px 8px -2px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
@@ -182,6 +190,20 @@ const config: Config = {
           from: { opacity: '0', transform: 'scaleX(0)' },
           to: { opacity: '1', transform: 'scaleX(1)' },
         },
+        'peach-drift-a': {
+          '0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
+          '33%': { transform: 'translate(6%, -4%) scale(1.05)' },
+          '66%': { transform: 'translate(-4%, 5%) scale(0.97)' },
+        },
+        'peach-drift-b': {
+          '0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
+          '40%': { transform: 'translate(-7%, 3%) scale(1.04)' },
+          '70%': { transform: 'translate(5%, -6%) scale(0.96)' },
+        },
+        'peach-breathe': {
+          '0%, 100%': { opacity: '0.55' },
+          '50%': { opacity: '0.85' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -193,7 +215,11 @@ const config: Config = {
         'soft-reveal': 'soft-reveal 0.2s ease-out',
         'word-reveal': 'word-reveal 0.5s ease-out',
         'gradient-shift': 'gradient-shift 3s ease infinite',
+        'gradient-shift-slow': 'gradient-shift 7s ease infinite',
         'loop-progress': 'loop-progress 0.7s var(--ease-out) 0.12s both',
+        'peach-drift-a': 'peach-drift-a 28s ease-in-out infinite',
+        'peach-drift-b': 'peach-drift-b 36s ease-in-out infinite',
+        'peach-breathe': 'peach-breathe 18s ease-in-out infinite',
       },
     },
   },

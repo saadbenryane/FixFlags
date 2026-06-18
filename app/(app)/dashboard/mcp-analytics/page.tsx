@@ -2,66 +2,21 @@ import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ArrowLeft, Cpu } from 'lucide-react'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { loadMcpAnalytics } from '@/lib/mcp/analytics'
 import { Container } from '@/components/ui/container'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Surface } from '@/components/ui/surface'
 import { Callout } from '@/components/ui/callout'
 
-async function loadAnalytics(userId: string) {
-  const now = new Date()
-  const days7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const days30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  const [total, last7d, last30d, successful, failed, recentFailures, toolCounts] =
-    await Promise.all([
-      prisma.mcpInteraction.count({ where: { userId } }),
-      prisma.mcpInteraction.count({ where: { userId, createdAt: { gte: days7 } } }),
-      prisma.mcpInteraction.count({ where: { userId, createdAt: { gte: days30 } } }),
-      prisma.mcpInteraction.count({ where: { userId, success: true } }),
-      prisma.mcpInteraction.count({ where: { userId, success: false } }),
-      prisma.mcpInteraction.findMany({
-        where: { userId, success: false },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: { method: true, tool: true, errorCode: true, createdAt: true, durationMs: true },
-      }),
-      prisma.mcpInteraction.groupBy({
-        by: ['tool'],
-        where: { userId, tool: { not: null } },
-        _count: true,
-        orderBy: { _count: { tool: 'desc' } },
-      }),
-    ])
-
-  const avgDurationResult = await prisma.mcpInteraction.aggregate({
-    where: { userId, durationMs: { not: null } },
-    _avg: { durationMs: true },
-  })
-
-  return {
-    total,
-    last7d,
-    last30d,
-    successful,
-    failed,
-    recentFailures,
-    toolCounts,
-    avgDuration: avgDurationResult._avg.durationMs
-      ? Math.round(avgDurationResult._avg.durationMs)
-      : null,
-  }
-}
-
 export default async function McpAnalyticsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   const userId = session!.user.id
 
-  let analytics: Awaited<ReturnType<typeof loadAnalytics>> | null = null
+  let analytics: Awaited<ReturnType<typeof loadMcpAnalytics>> | null = null
   let loadError = false
   try {
-    analytics = await loadAnalytics(userId)
+    analytics = await loadMcpAnalytics(userId)
   } catch {
     loadError = true
   }
@@ -71,13 +26,11 @@ export default async function McpAnalyticsPage() {
   const last30d = analytics?.last30d ?? 0
   const successful = analytics?.successful ?? 0
   const failed = analytics?.failed ?? 0
+  const successRate = analytics?.successRate ?? 0
   const recentFailures = analytics?.recentFailures ?? []
   const toolCounts = analytics?.toolCounts ?? []
   const avgDuration = analytics?.avgDuration ?? null
-
   const totalOk = successful + failed
-  const successRate = totalOk > 0 ? Math.round((successful / totalOk) * 100) : 0
-  const maxToolCount = Math.max(...toolCounts.map((t) => t._count), 1)
 
   return (
     <Container variant="narrow" className="py-8 space-y-8">
@@ -167,23 +120,20 @@ export default async function McpAnalyticsPage() {
               <p className="text-xs text-muted-foreground">No tool calls recorded yet.</p>
             ) : (
               <div className="space-y-2">
-                {toolCounts.map((t) => {
-                  const pct = Math.round((t._count / maxToolCount) * 100)
-                  return (
-                    <div key={t.tool ?? 'unknown'} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <code className="font-mono">{t.tool}</code>
-                        <span className="text-muted-foreground tabular-nums">{t._count}</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted/40">
-                        <div
-                          className="h-full rounded-full bg-brand transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+                {toolCounts.map((t) => (
+                  <div key={t.tool ?? 'unknown'} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <code className="font-mono">{t.tool}</code>
+                      <span className="text-muted-foreground tabular-nums">{t.count}</span>
                     </div>
-                  )
-                })}
+                    <div className="h-2 w-full rounded-full bg-muted/40">
+                      <div
+                        className="h-full rounded-full bg-brand transition-all"
+                        style={{ width: `${t.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>

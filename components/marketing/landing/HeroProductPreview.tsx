@@ -58,7 +58,7 @@ function ScoreCard({ score }: { score?: number | null }) {
           </div>
           <div className="mt-2 h-1.5 rounded-full bg-muted/50">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-500/80 to-brand"
+              className="h-full rounded-full bg-gradient-score bg-[length:200%_100%] motion-safe:animate-gradient-shift-slow"
               style={{ width: `${score}%` }}
             />
           </div>
@@ -82,7 +82,7 @@ function ProductPagePreview() {
         </p>
         <h3 className="text-lg font-bold leading-tight">
           Build something{' '}
-          <span className="bg-gradient-to-r from-amber-600 to-brand bg-clip-text text-transparent">
+          <span className="bg-gradient-peach-accent bg-clip-text text-transparent">
             amazing
           </span>{' '}
           with AI
@@ -91,7 +91,7 @@ function ProductPagePreview() {
           The all-in-one platform for next-gen teams.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          <button className="pointer-events-none rounded-md bg-gradient-to-r from-amber-600 to-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm">
+          <button className="pointer-events-none rounded-md bg-gradient-score px-3 py-1.5 text-xs font-medium text-brand-foreground shadow-sm">
             Get started
           </button>
           <button className="pointer-events-none rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -193,7 +193,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
     <div className={cn('relative mx-auto w-full max-w-5xl', className)}>
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,rgb(139_92_246/0.18),transparent_68%)]"
+        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--peach-glow)/0.18),transparent_68%)]"
       />
 
       <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/95 shadow-2xl backdrop-blur-sm">
@@ -250,7 +250,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
                 <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
                   {currentFlag.severity}
                 </span>
-                <span className="rounded-full bg-gradient-to-r from-amber-600 to-brand px-2.5 py-0.5 text-[11px] font-bold uppercase text-white">
+                <span className="rounded-full bg-gradient-score px-2.5 py-0.5 text-[11px] font-bold uppercase text-brand-foreground">
                   {currentFlag.rubric}
                 </span>
               </div>

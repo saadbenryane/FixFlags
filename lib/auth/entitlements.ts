@@ -7,13 +7,6 @@ import {
 
 export type ReportTier = 'free' | 'paid'
 
-/** @deprecated Trial re-check model removed; column may remain in schema. */
-export function hasUsedFreeRecheck(
-  user: Pick<User, 'freeRecheckUsedAt'>
-): boolean {
-  return user.freeRecheckUsedAt !== null && user.freeRecheckUsedAt !== undefined
-}
-
 /** When true, plan gates (share, compare) behave like production. */
 export function shouldEnforcePlanGates(): boolean {
   if (process.env.DEV_SIMULATE_BILLING === 'true') return true
@@ -36,14 +29,6 @@ export function canAccessPaidFeatures(
   return user.plan !== 'FREE'
 }
 
-/** @deprecated Use canAccessRecheck; always false under unlimited owned re-check contract. */
-export function canUseFreeRecheck(
-  user: Pick<User, 'plan' | 'freeRecheckUsedAt'>
-): boolean {
-  void user
-  return false
-}
-
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
@@ -61,14 +46,14 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean
 
 /** Authenticated users can re-check reports they own; quota is not consumed. */
 export function canAccessRecheck(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
+  user: Pick<User, 'id' | 'role' | 'plan'>
 ): boolean {
   void user
   return true
 }
 
 export function canAccessCompare(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>,
+  user: Pick<User, 'id' | 'role' | 'plan'>,
   recheckAudit: { parentId: string | null; userId: string | null }
 ): boolean {
   void recheckAudit
@@ -77,8 +62,6 @@ export function canAccessCompare(
 
 export interface UserEntitlements {
   reportTier: ReportTier
-  canUseFreeRecheck: boolean
-  hasUsedFreeRecheck: boolean
   canSharePublicly: boolean
   canExportSummary: boolean
   canAccessPaidFeatures: boolean
@@ -87,14 +70,12 @@ export interface UserEntitlements {
 }
 
 export function getEntitlements(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'freeRecheckUsedAt'>
+  user: Pick<User, 'id' | 'role' | 'plan'>
 ): UserEntitlements {
   const reportTier = getReportTierForUser(user)
   const paid = canAccessPaidFeatures(user)
   return {
     reportTier,
-    canUseFreeRecheck: false,
-    hasUsedFreeRecheck: hasUsedFreeRecheck(user),
     canSharePublicly: canSharePublicly(user),
     canExportSummary: canExportSummary(user),
     canAccessPaidFeatures: paid,

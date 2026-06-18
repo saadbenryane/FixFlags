@@ -12,12 +12,21 @@ export async function applyPlanLimits(userId: string, plan: Plan): Promise<void>
   })
   if (!user) return
 
+  const update = computePlanLimitUpdate(user, plan)
+  if (!update) return
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: update,
+  })
+}
+
+export function computePlanLimitUpdate(
+  user: { role: string; auditsUsed: number; auditsLimit: number },
+  plan: Plan
+): { plan: Plan; auditsLimit: number; auditsUsed: number } | null {
   if (user.role === 'admin') {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { plan, auditsLimit: UNLIMITED_SCAN_LIMIT },
-    })
-    return
+    return { plan, auditsLimit: UNLIMITED_SCAN_LIMIT, auditsUsed: user.auditsUsed }
   }
 
   const newLimit = scanLimitForPlan(plan)
@@ -26,12 +35,9 @@ export async function applyPlanLimits(userId: string, plan: Plan): Promise<void>
       ? user.auditsUsed
       : Math.min(user.auditsUsed, newLimit)
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      plan,
-      auditsLimit: newLimit,
-      auditsUsed: cappedUsed,
-    },
-  })
+  return {
+    plan,
+    auditsLimit: newLimit,
+    auditsUsed: cappedUsed,
+  }
 }

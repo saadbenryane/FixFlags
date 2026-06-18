@@ -60,7 +60,7 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Cpu className="h-4 w-4 text-brand" />
           MCP
-          <Badge variant="outline" className="text-[10px] text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+          <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/5">
             Active
           </Badge>
         </CardTitle>

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
-import { Plus, ExternalLink, ArrowLeftRight } from 'lucide-react'
+import { Plus, ExternalLink, ArrowLeftRight, Check, X, AlertTriangle } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
@@ -24,6 +24,8 @@ import { Surface } from '@/components/ui/surface'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
+import { isAtCheckLimit } from '@/lib/audit/usage'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { rubricLabel } from '@/lib/utils'
@@ -61,7 +63,14 @@ export default async function DashboardPage() {
   const effectiveLimit = isUnlimited ? null : (user ? getEffectiveScanLimit(user) : 3)
   const pending = user ? await getPendingCheckCount(user.id) : 0
   const atAuditLimit =
-    user?.plan === 'FREE' && !isUnlimited && effectiveLimit !== null && used >= effectiveLimit
+    user?.plan === 'FREE' &&
+    !isUnlimited &&
+    effectiveLimit !== null &&
+    isAtCheckLimit(used, pending, effectiveLimit)
+
+  const canCompare = user
+    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan })
+    : false
 
   const [mcpAudits, webAudits] = await Promise.all([
     prisma.audit.count({ where: { userId, source: 'MCP' } }),
@@ -159,17 +168,19 @@ export default async function DashboardPage() {
                                 status={r.status}
                                 size="sm"
                                 label={
-                                  r.status === 'PASS'
-                                    ? '✓'
-                                    : r.status === 'BLOCKED'
-                                      ? '✗'
-                                      : '!'
+                                  r.status === 'PASS' ? (
+                                    <Check className="h-3 w-3" aria-hidden />
+                                  ) : r.status === 'BLOCKED' ? (
+                                    <X className="h-3 w-3" aria-hidden />
+                                  ) : (
+                                    <AlertTriangle className="h-3 w-3" aria-hidden />
+                                  )
                                 }
                               />
                             </span>
                           )
                         })}
-                        {audit.rechecks.length > 0 && (
+                        {audit.rechecks.length > 0 && canCompare && (
                           <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                             <ArrowLeftRight className="h-3 w-3" />
                             Compare

@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   extractAuditIdFromToolResult,
+  extractMcpLogMetadata,
   parseJsonRpcResponseOutcome,
   parseMcpRequestSummary,
   resolveInteractionAuditId,
@@ -63,6 +64,35 @@ describe('extractAuditIdFromToolResult', () => {
       parentReportId: 'parent-9',
     })
     assert.equal(auditId, 'parent-9')
+  })
+})
+
+describe('extractMcpLogMetadata', () => {
+  it('captures jsonrpc id, http status, and queue hints', () => {
+    const metadata = extractMcpLogMetadata(
+      {
+        jsonrpc: '2.0',
+        id: 42,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                queued: true,
+                queueReason: 'backlog',
+                estimatedWaitSeconds: 30,
+                queuePosition: 2,
+              }),
+            },
+          ],
+        },
+      },
+      200
+    )
+    assert.equal((metadata as { httpStatus: number }).httpStatus, 200)
+    assert.equal((metadata as { jsonRpcId: number }).jsonRpcId, 42)
+    assert.equal((metadata as { queued: boolean }).queued, true)
+    assert.equal((metadata as { queueReason: string }).queueReason, 'backlog')
   })
 })
 

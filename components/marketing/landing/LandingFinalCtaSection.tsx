@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, Check } from 'lucide-react'
+import { PeachyMeshBackdrop } from '@/components/marketing/landing/PeachyMeshBackdrop'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Button } from '@/components/ui/button'
@@ -15,13 +16,14 @@ export function LandingFinalCtaSection() {
   return (
     <Section spacing="marketing" className="pb-16 sm:pb-20">
       <Container>
-        <div className="relative overflow-hidden rounded-card border border-brand/10 bg-brand-muted/70 p-8 shadow-card sm:p-12 lg:p-16">
-          <div className="relative grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-            {/* Left */}
+        <div className="relative overflow-hidden rounded-card border border-brand/10 p-8 shadow-card sm:p-12 lg:p-16">
+          <PeachyMeshBackdrop />
+
+          <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-6">
               <h2 className="text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
                 Before you ship it,{' '}
-                <span className="relative inline-block text-brand">
+                <span className="relative inline-block bg-gradient-peach-accent bg-clip-text text-transparent">
                   flag it.
                   <svg
                     aria-hidden
@@ -34,7 +36,7 @@ export function LandingFinalCtaSection() {
                       stroke="currentColor"
                       strokeWidth="2"
                       fill="none"
-                      className="text-brand"
+                      className="text-brand/80"
                     />
                   </svg>
                 </span>
@@ -44,7 +46,7 @@ export function LandingFinalCtaSection() {
               </p>
               <Button
                 size="lg"
-                className="h-12 gap-2 px-7"
+                className="h-12 gap-2 border-0 bg-gradient-score px-7 text-brand-foreground hover:brightness-105"
                 asChild
               >
                 <Link href="/#audit">
@@ -54,12 +56,11 @@ export function LandingFinalCtaSection() {
               </Button>
             </div>
 
-            {/* Right: trust badges */}
             <div className="flex flex-col gap-4">
               {TRUST_BADGES.map((badge) => (
                 <div
                   key={badge}
-                  className="flex items-center gap-4 rounded-card bg-background/70 px-5 py-4 shadow-sm backdrop-blur-sm"
+                  className="flex items-center gap-4 rounded-card border border-brand/15 bg-background/60 px-5 py-4 shadow-sm backdrop-blur-sm"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/15">
                     <Check className="h-4 w-4 text-brand" aria-hidden />

@@ -10,7 +10,8 @@ import { Container } from '@/components/ui/container'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
-import { isAdminUser, getEffectiveScanLimit, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { isAtCheckLimit } from '@/lib/audit/usage'
 import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
@@ -139,24 +140,24 @@ export default async function ReportPage({ params }: Props) {
           id: true,
           plan: true,
           role: true,
-          freeRecheckUsedAt: true,
           auditsUsed: true,
           auditsLimit: true,
         },
       })
     : null
 
+  const pending = user ? await getPendingCheckCount(user.id) : 0
+  const effectiveLimit = user ? getEffectiveScanLimit(user) : 3
   const atAuditLimit =
     user?.plan === 'FREE' &&
-    !isUnlimitedScanLimit(getEffectiveScanLimit(user)) &&
-    user.auditsUsed >= getEffectiveScanLimit(user)
+    !isUnlimitedScanLimit(effectiveLimit) &&
+    isAtCheckLimit(user.auditsUsed, pending, effectiveLimit)
 
   const entitlements = user
     ? getEntitlements({
         id: session!.user.id,
         role: user.role,
         plan: user.plan,
-        freeRecheckUsedAt: user.freeRecheckUsedAt,
       })
     : null
 

@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Callout } from '@/components/ui/callout'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Surface } from '@/components/ui/surface'
 import { useMe } from '@/hooks/useMe'
 import { McpConnectionTest } from '@/components/dashboard/McpConnectionTest'
 import { McpToolMark } from '@/components/brand/EditorMarks'
@@ -125,7 +126,8 @@ export default function McpSetupWizard() {
           title="Connect your AI coding tool"
           description="Tell us about your setup so we can tailor the experience. You can change this later in Settings."
         />
-        <Card className="p-6 space-y-6">
+        <Surface variant="nested" className="space-y-6 sm:p-6">
+        <Card className="p-6 space-y-6 border-0 shadow-none">
           <div className="space-y-3">
             <p className="text-sm font-medium">What&apos;s your experience with AI coding tools?</p>
             <div className="space-y-2">
@@ -188,6 +190,7 @@ export default function McpSetupWizard() {
             </Button>
           </div>
         </Card>
+        </Surface>
       </Container>
     )
   }
@@ -199,6 +202,7 @@ export default function McpSetupWizard() {
           title="Pick your editor"
           description="Choose the editor you use most. We'll show the exact config for it."
         />
+        <Surface variant="nested" className="space-y-6 sm:p-6">
         <div className="space-y-2">
           {ALL_EDITORS.map((e) => (
             <button
@@ -228,6 +232,7 @@ export default function McpSetupWizard() {
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
         </div>
+        </Surface>
       </Container>
     )
   }
@@ -239,7 +244,8 @@ export default function McpSetupWizard() {
           title="Create an API key"
           description="This key lets your editor talk to FixFlags. Copy it now - you won't see it again."
         />
-        <Card className="p-6 space-y-4">
+        <Surface variant="nested" className="space-y-6 sm:p-6">
+        <Card className="p-6 space-y-4 border-0 shadow-none">
           {!newKey ? (
             <>
               <Button onClick={createApiKey} disabled={creatingKey} size="lg" className="w-full">
@@ -279,6 +285,7 @@ export default function McpSetupWizard() {
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
         </div>
+        </Surface>
       </Container>
     )
   }
@@ -294,6 +301,7 @@ export default function McpSetupWizard() {
         description={`Paste this into your ${editorLabel} config file.`}
       />
 
+      <Surface variant="nested" className="space-y-6 sm:p-6">
       <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground">
           Step 1: Copy this config
@@ -341,6 +349,7 @@ export default function McpSetupWizard() {
           </Link>
         </Button>
       </div>
+      </Surface>
 
       <p className="text-center text-xs text-muted-foreground">
         Need help?{' '}

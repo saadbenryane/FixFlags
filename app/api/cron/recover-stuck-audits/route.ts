@@ -4,6 +4,10 @@ import { getAuditQueue } from '@/lib/queue/client'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
+import {
+  resolveStuckAuditRecovery,
+  stuckAuditCutoff,
+} from '@/lib/audit/stuck-audit-recovery'
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
@@ -13,7 +17,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const cutoff = new Date(Date.now() - STUCK_AUDIT_MINUTES * 60 * 1000)
+    const cutoff = stuckAuditCutoff(Date.now(), STUCK_AUDIT_MINUTES)
     const stuckAudits = await prisma.audit.findMany({
       where: {
         status: { notIn: ['COMPLETED', 'FAILED'] },
@@ -29,6 +33,7 @@ export async function GET(req: Request) {
     for (const audit of stuckAudits) {
       const existingJob = await queue.getJob(audit.id)
       const jobState = existingJob ? await existingJob.getState() : null
+      const action = resolveStuckAuditRecovery({ status: audit.status, jobState })
 
       if (existingJob && jobState === 'active') {
         await existingJob.moveToFailed(
@@ -36,50 +41,34 @@ export async function GET(req: Request) {
           '0',
           true
         )
-        await logPipelineEvent(audit.id, {
-          stage: audit.status.toLowerCase(),
-          event: 'cron_force_failed',
-          error: 'Audit timed out, please try again',
-        })
-        await prisma.audit.update({
-          where: { id: audit.id },
-          data: {
-            status: 'FAILED',
-            errorMsg: 'Audit timed out, please try again',
-            failureCode: 'AUDIT_TIMEOUT',
-            failureStage: audit.status.toLowerCase(),
-            failureMetadata: { jobId: audit.id, source: 'cron' },
-          },
-        })
-        failed++
-        continue
       }
 
       if (existingJob && ['waiting', 'delayed'].includes(jobState ?? '')) {
         await existingJob.remove()
       }
 
-      if (audit.status === 'QUEUED') {
+      if (action === 'requeue') {
         await queue.add('audit', { auditId: audit.id }, { jobId: audit.id, attempts: 1 })
         requeued++
-      } else {
-        await logPipelineEvent(audit.id, {
-          stage: audit.status.toLowerCase(),
-          event: 'cron_force_failed',
-          error: 'Audit timed out, please try again',
-        })
-        await prisma.audit.update({
-          where: { id: audit.id },
-          data: {
-            status: 'FAILED',
-            errorMsg: 'Audit timed out, please try again',
-            failureCode: 'AUDIT_TIMEOUT',
-            failureStage: audit.status.toLowerCase(),
-            failureMetadata: { jobId: audit.id, source: 'cron' },
-          },
-        })
-        failed++
+        continue
       }
+
+      await logPipelineEvent(audit.id, {
+        stage: audit.status.toLowerCase(),
+        event: 'cron_force_failed',
+        error: 'Audit timed out, please try again',
+      })
+      await prisma.audit.update({
+        where: { id: audit.id },
+        data: {
+          status: 'FAILED',
+          errorMsg: 'Audit timed out, please try again',
+          failureCode: 'AUDIT_TIMEOUT',
+          failureStage: audit.status.toLowerCase(),
+          failureMetadata: { jobId: audit.id, source: 'cron' },
+        },
+      })
+      failed++
     }
 
     return NextResponse.json({ requeued, failed, checked: stuckAudits.length })

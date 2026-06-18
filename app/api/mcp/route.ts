@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import {
   extractAuditIdFromToolResult,
+  extractMcpLogMetadata,
   logMcpInteraction,
   parseJsonRpcResponseOutcome,
   parseMcpRequestSummary,
@@ -84,6 +85,9 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
         durationMs,
         errorCode: outcome.errorCode,
         auditId,
+        metadata: responseBody
+          ? extractMcpLogMetadata(responseBody, response.status)
+          : { httpStatus: response.status },
       },
       (data) => prisma.mcpInteraction.create({ data })
     )
@@ -100,6 +104,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
         durationMs: duration,
         errorCode,
         auditId: requestSummary.auditIdFromParams,
+        metadata: { httpStatus: 500 },
       },
       (data) => prisma.mcpInteraction.create({ data })
     )

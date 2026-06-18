@@ -35,7 +35,6 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
       status: true,
       userId: true,
       parentId: true,
-      trialRecheck: true,
       completedAt: true,
     },
   })
@@ -135,7 +134,6 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       status: true,
       userId: true,
       parentId: true,
-      trialRecheck: true,
       completedAt: true,
       verdict: true,
     },

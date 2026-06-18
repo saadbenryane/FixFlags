@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Github, Linkedin } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
+import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { NavLink } from '@/components/layout/nav-link'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
@@ -44,7 +45,11 @@ export function Footer() {
         <div className="flex flex-col gap-3 border-t border-border/30 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 {BRAND.name}</p>
           <p>{madeWith}</p>
-          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <FooterThemeToggle />
+            <span className="mx-1 select-none text-muted-foreground/50" aria-hidden>
+              ·
+            </span>
             {LEGAL_LINKS.map((link, index) => (
               <span key={link.href} className="inline-flex items-center">
                 {index > 0 && (

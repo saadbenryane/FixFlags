@@ -18,8 +18,6 @@ export interface MeUser {
   }
   entitlements: {
     reportTier: 'free' | 'paid'
-    canUseFreeRecheck: boolean
-    hasUsedFreeRecheck: boolean
     canSharePublicly: boolean
     canExportSummary: boolean
     canAccessPaidFeatures: boolean

@@ -1,28 +1,21 @@
 import { cookies } from 'next/headers'
-import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import {
-  getEffectiveScanLimit,
-  getPendingCheckCount,
-  hasUnlimitedScans,
-  isAdminUser,
-  isDevUnlimitedScans,
-  isUnlimitedScanLimit,
-} from '@/lib/auth/permissions'
+import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
+import type { UsageLimitResult } from '@/lib/audit/check-limit'
+
+export {
+  isAtCheckLimit,
+  checkUsageProgress,
+  limitErrorCodeForPlan,
+  wouldBlockNewCheck,
+  type UsageLimitAction,
+  type UsageLimitCode,
+  type UsageLimitResult,
+} from '@/lib/audit/check-limit'
 
 const ANON_COOKIE = 'ff_anon_checks'
 export const ANON_AUDIT_IDS_COOKIE = 'ff_anon_report_ids'
 export const ANON_AUDIT_LIMIT = 1
-
-export type UsageLimitCode = 'ANON_LIMIT' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
-export type UsageLimitAction = 'signup' | 'upgrade'
-
-export interface UsageLimitResult {
-  allowed: boolean
-  error?: string
-  code?: UsageLimitCode
-  action?: UsageLimitAction
-}
 
 export async function getAnonymousAuditCount(): Promise<number> {
   const cookieStore = await cookies()
@@ -72,36 +65,6 @@ export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
     }
   }
 
-  return { allowed: true }
-}
-
-export async function checkUserAuditAllowed(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'auditsUsed' | 'auditsLimit'>
-): Promise<UsageLimitResult> {
-  if (isDevUnlimitedScans()) return { allowed: true }
-
-  if (hasUnlimitedScans(user) || isAdminUser(user)) {
-    return { allowed: true }
-  }
-
-  const limit = getEffectiveScanLimit(user)
-  if (isUnlimitedScanLimit(limit)) {
-    return { allowed: true }
-  }
-
-  const pending = await getPendingCheckCount(user.id)
-
-  if (user.auditsUsed + pending >= limit) {
-    const isFree = user.plan === 'FREE'
-    return {
-      allowed: false,
-      error: isFree
-        ? 'Audit limit reached. Upgrade to continue.'
-        : 'Audit limit reached. Upgrade your plan to continue.',
-      code: isFree ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
-      action: 'upgrade',
-    }
-  }
   return { allowed: true }
 }
 
@@ -190,49 +153,5 @@ export async function incrementUsageOnCompleteForAudit(
       where: { id: userId },
       data: { auditsUsed: { increment: 1 } },
     })
-  })
-}
-
-/** Atomically verify limit and reserve a scan slot before enqueue. */
-export async function reserveUserAuditSlot(
-  userId: string
-): Promise<UsageLimitResult> {
-  if (isDevUnlimitedScans()) return { allowed: true }
-
-  return prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({ where: { id: userId } })
-    if (!user) {
-      return { allowed: false, error: 'User not found' }
-    }
-
-    if (hasUnlimitedScans(user) || isAdminUser(user)) {
-      return { allowed: true }
-    }
-
-    const limit = getEffectiveScanLimit(user)
-    if (isUnlimitedScanLimit(limit)) {
-      return { allowed: true }
-    }
-
-    const pending = await tx.audit.count({
-      where: {
-        userId,
-        status: { notIn: ['COMPLETED', 'FAILED'] },
-      },
-    })
-
-    if (user.auditsUsed + pending >= limit) {
-      const isFree = user.plan === 'FREE'
-      return {
-        allowed: false,
-        error: isFree
-          ? 'Token limit reached. Upgrade to continue scanning.'
-          : 'Token limit reached. Upgrade your plan to continue.',
-        code: isFree ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
-        action: 'upgrade',
-      }
-    }
-
-    return { allowed: true }
   })
 }

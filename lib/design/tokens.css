@@ -23,6 +23,44 @@
   --brand-muted: 12 100% 97%;
   --brand-border: 12 90% 88%;
 
+  /* Peach gradient accents (marketing) */
+  --peach-warm: 24 100% 74%;
+  --peach-glow: 18 95% 68%;
+  --peach-muted: 22 100% 96%;
+  --gradient-score: linear-gradient(
+    to right,
+    hsl(38 92% 62% / 0.85),
+    hsl(var(--peach-glow)),
+    hsl(var(--brand))
+  );
+  --gradient-surface: linear-gradient(
+    135deg,
+    hsl(var(--peach-muted)) 0%,
+    hsl(var(--brand-muted)) 55%,
+    hsl(12 80% 95%) 100%
+  );
+  --gradient-accent-text: linear-gradient(
+    to right,
+    hsl(32 95% 58%),
+    hsl(var(--peach-glow)),
+    hsl(var(--brand))
+  );
+  --gradient-orb-peach: radial-gradient(
+    circle,
+    hsl(var(--peach-glow) / 0.45) 0%,
+    transparent 70%
+  );
+  --gradient-orb-brand: radial-gradient(
+    circle,
+    hsl(var(--brand) / 0.18) 0%,
+    transparent 70%
+  );
+  --gradient-orb-warm: radial-gradient(
+    circle,
+    hsl(var(--peach-warm) / 0.35) 0%,
+    transparent 70%
+  );
+
   --primary: 12 100% 56%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 14% 96%;
@@ -138,6 +176,43 @@
   --brand-hover: 13 100% 65%;
   --brand-muted: 12 60% 12%;
   --brand-border: 12 50% 22%;
+
+  --peach-warm: 20 80% 58%;
+  --peach-glow: 16 75% 52%;
+  --peach-muted: 14 45% 14%;
+  --gradient-score: linear-gradient(
+    to right,
+    hsl(32 80% 48% / 0.9),
+    hsl(var(--peach-glow)),
+    hsl(var(--brand))
+  );
+  --gradient-surface: linear-gradient(
+    135deg,
+    hsl(var(--peach-muted)) 0%,
+    hsl(var(--brand-muted)) 55%,
+    hsl(12 40% 10%) 100%
+  );
+  --gradient-accent-text: linear-gradient(
+    to right,
+    hsl(28 85% 62%),
+    hsl(var(--peach-glow)),
+    hsl(var(--brand))
+  );
+  --gradient-orb-peach: radial-gradient(
+    circle,
+    hsl(var(--peach-glow) / 0.3) 0%,
+    transparent 70%
+  );
+  --gradient-orb-brand: radial-gradient(
+    circle,
+    hsl(var(--brand) / 0.12) 0%,
+    transparent 70%
+  );
+  --gradient-orb-warm: radial-gradient(
+    circle,
+    hsl(var(--peach-warm) / 0.22) 0%,
+    transparent 70%
+  );
 
   --primary: 12 100% 56%;
   --primary-foreground: 0 0% 100%;

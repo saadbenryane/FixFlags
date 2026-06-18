@@ -15,7 +15,6 @@ export interface CreateAuditOptions {
   userId?: string | null
   parentId?: string
   skipUsageCount?: boolean
-  trialRecheck?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   recheckMode?: 'FULL' | 'SUMMARY_ONLY'
   delayMs?: number
@@ -51,7 +50,6 @@ export async function createAndEnqueueAudit(
     userId: options.userId ?? null,
     parentId: options.parentId ?? null,
     skipUsageCount: options.skipUsageCount ?? false,
-    trialRecheck: options.trialRecheck ?? false,
     auditMode: options.auditMode ?? ('SINGLE' as const),
     recheckMode: options.recheckMode ?? ('FULL' as const),
     status: 'QUEUED' as const,
@@ -88,7 +86,9 @@ export async function createAndEnqueueAudit(
                   },
                 })
                 if (user.auditsUsed + pending >= limit) {
-                  throw new AuditLimitError('UPGRADE_REQUIRED')
+                  throw new AuditLimitError(
+                    user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT'
+                  )
                 }
               }
             }

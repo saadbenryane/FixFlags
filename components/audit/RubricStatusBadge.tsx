@@ -1,10 +1,11 @@
 'use client'
 
 import { cn, rubricStatusColor } from '@/lib/utils'
+import type { ReactNode } from 'react'
 
 interface Props {
   status: string
-  label?: string
+  label?: ReactNode
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }

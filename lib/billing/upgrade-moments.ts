@@ -3,10 +3,8 @@ import { proUpgradeCta } from '@/lib/billing/plans'
 
 export type UpgradeMoment =
   | 'audit_limit_reached'
-  | 'trial_recheck_available'
   | 'compare_improved'
   | 'compare_flat'
-  | 'trial_exhausted'
   | 'share_public'
   | 'export_locked'
   | 'free_default'
@@ -40,8 +38,6 @@ export function getUpgradeMomentContent(
   switch (moment) {
     case 'audit_limit_reached':
       return proMoment(UPGRADE_MOMENTS.audit_limit_reached)
-    case 'trial_recheck_available':
-      return { ...UPGRADE_MOMENTS.trial_recheck_available }
     case 'compare_improved':
       return proMoment({
         headline: UPGRADE_MOMENTS.compare_improved.headline(scoreDelta),
@@ -51,8 +47,6 @@ export function getUpgradeMomentContent(
       })
     case 'compare_flat':
       return proMoment(UPGRADE_MOMENTS.compare_flat)
-    case 'trial_exhausted':
-      return proMoment(UPGRADE_MOMENTS.trial_exhausted)
     case 'share_public':
       return { ...UPGRADE_MOMENTS.share_public }
     case 'export_locked':

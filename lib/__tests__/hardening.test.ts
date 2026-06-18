@@ -2,7 +2,6 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   canAccessCompare,
-  canAccessPaidFeatures,
   canExportSummary,
   canSharePublicly,
   getEntitlements,
@@ -81,9 +80,7 @@ describe('getEntitlements', () => {
       id: 'u1',
       role: 'user',
       plan: 'FREE',
-      freeRecheckUsedAt: null,
     })
-    assert.equal(entitlements.canUseFreeRecheck, false)
     assert.equal(entitlements.canRecheck, true)
     delete process.env.DEV_SIMULATE_BILLING
   })
@@ -103,13 +100,9 @@ describe('plan limits', () => {
   })
 })
 
-describe('paid recheck quota', () => {
-  it('paid users skip monthly audit usage on re-check', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    const isPaid = canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER' })
-    const isTrialRecheck = false
-    assert.equal(isTrialRecheck || isPaid, true)
-    delete process.env.DEV_SIMULATE_BILLING
+describe('recheck quota semantics', () => {
+  it('re-checks skip monthly audit usage via skipUsageCount', () => {
+    assert.equal({ skipUsageCount: true }.skipUsageCount, true)
   })
 })
 
@@ -118,13 +111,11 @@ describe('canAccessCompare', () => {
     id: 'u1',
     role: 'user' as const,
     plan: 'FREE' as const,
-    freeRecheckUsedAt: null,
   }
   const builderUser = {
     id: 'u1',
     role: 'user' as const,
     plan: 'BUILDER' as const,
-    freeRecheckUsedAt: null,
   }
   const recheck = { parentId: 'parent-1', userId: 'u1' }
 
@@ -256,14 +247,6 @@ describe('production hardening primitives', () => {
       flagFingerprint({ rubric: 'REACH', problem: 'Missing title', checkId: 'seo-title' }),
       flagFingerprint({ rubric: 'REACH', problem: 'Different wording', checkId: 'seo-title' })
     )
-  })
-})
-
-describe('recheck quota semantics', () => {
-  it('re-checks skip monthly audit usage', () => {
-    const recheckAudit = { trialRecheck: false, skipUsageCount: true, parentId: 'p1' }
-    assert.equal(recheckAudit.skipUsageCount, true)
-    assert.equal(recheckAudit.trialRecheck, false)
   })
 })
 

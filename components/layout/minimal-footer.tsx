@@ -9,6 +9,7 @@ import {
   NAV_LINK_FOOTER_BASE,
   NAV_LINK_INACTIVE,
 } from '@/lib/site/nav-styles'
+import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { Container } from '@/components/ui/container'
 
 export function MinimalFooter() {
@@ -19,7 +20,11 @@ export function MinimalFooter() {
           <Logo variant="mark" size="sm" href="/" />
           <span>© 2026 {BRAND.name}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <FooterThemeToggle />
+          <span className="mx-1 select-none text-muted-foreground/50" aria-hidden>
+            ·
+          </span>
           {LEGAL_LINKS.map((link, index) => (
             <span key={link.href} className="inline-flex items-center">
               {index > 0 && (

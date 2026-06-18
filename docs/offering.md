@@ -7,9 +7,9 @@ Finish what your AI started. FixFlags is the second pass that catches what speed
 - **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
 - **CTA flow test** (free): automated click-through on the primary CTA with before/after screenshots and flow flags.
 - **Preview cards** (free): live Google snippet and social link preview rendered in the report.
-- **AI review** (paid, 3 free trials): reads desktop + mobile screenshots, PageSpeed data, and deterministic flags. Outputs rubric scores, AI-generated flags, and fix prompts.
-- **Fix prompts** (paid after 3): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from the user's page.
-- **Re-check loop** (free, unlimited on owned reports): re-run the same URL, diff flags, show before/after comparison. This is the core habit.
+- **Full report on every check** (free): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, AI-generated flags, and fix prompts on every report.
+- **Fix prompts** (free): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from your page.
+- **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
 - **Before/after compare** (Pro+): side-by-side proof after re-checks.
 - **MCP integration** (Pro+): 6 MCP tools for Cursor and Claude Code. Lovable/Bolt MCP not supported yet.
 - **Share links and proof export** (Agency+): public report links and client-ready summaries.
