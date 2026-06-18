@@ -107,6 +107,7 @@ const config: Config = {
         xl: 'var(--radius-outer)',
         card: 'var(--radius-card)',
         nested: 'var(--radius-nested-md)',
+        pill: 'var(--radius-pill)',
       },
       letterSpacing: {
         display: 'var(--tracking-display)',
@@ -122,6 +123,7 @@ const config: Config = {
       },
       backgroundImage: {
         'gradient-score': 'var(--gradient-score)',
+        'gradient-score-bar': 'var(--gradient-score-bar)',
         'gradient-peach-surface': 'var(--gradient-surface)',
         'gradient-peach-accent': 'var(--gradient-accent-text)',
         'gradient-orb-peach': 'var(--gradient-orb-peach)',
@@ -135,6 +137,7 @@ const config: Config = {
         card: 'var(--shadow-card)',
         'card-hover': 'var(--shadow-card-hover)',
         raised: 'var(--shadow-raised)',
+        glass: 'var(--glass-shadow)',
         filterPill: '0 0 12px 0 rgb(0 0 0 / 0.06)',
       },
       zIndex: {

@@ -4,23 +4,23 @@ import { prisma } from './db'
 import { Resend } from 'resend'
 import { deleteUserProductData } from '@/lib/account/cleanup'
 import { BRAND } from '@/lib/marketing/copy'
+import {
+  getAuthBaseUrl,
+  isGoogleOAuthConfigured,
+  isGithubOAuthConfigured,
+  validateAuthEnv,
+} from '@/lib/auth/env'
+
+validateAuthEnv()
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
-
-function hasGoogleOAuth(): boolean {
-  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
-}
-
-function hasGithubOAuth(): boolean {
-  return !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET)
-}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  baseURL: getAuthBaseUrl(),
   secret: process.env.BETTER_AUTH_SECRET!,
   emailAndPassword: {
     enabled: true,
@@ -60,13 +60,13 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    ...(hasGoogleOAuth() && {
+    ...(isGoogleOAuthConfigured() && {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       },
     }),
-    ...(hasGithubOAuth() && {
+    ...(isGithubOAuthConfigured() && {
       github: {
         clientId: process.env.GITHUB_CLIENT_ID!,
         clientSecret: process.env.GITHUB_CLIENT_SECRET!,

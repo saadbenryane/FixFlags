@@ -57,7 +57,7 @@ function SignInForm() {
         </p>
       }
     >
-      <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
+      {hasOAuthEnabled() && <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />}
       {hasOAuthEnabled() && (
         <Muted className="text-center text-xs">{AUTH.signIn.oauthNote}</Muted>
       )}

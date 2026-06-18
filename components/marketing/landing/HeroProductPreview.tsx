@@ -37,6 +37,9 @@ function CircleDot({ state }: { state: string }) {
   )
 }
 
+const previewMetaPillClass =
+  'rounded-full border border-border/70 bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground'
+
 function ScoreCard({ score }: { score?: number | null }) {
   return (
     <div className="rounded-xl border border-border/40 bg-card p-3 shadow-sm">
@@ -56,10 +59,13 @@ function ScoreCard({ score }: { score?: number | null }) {
             <span className="font-mono text-3xl font-bold tabular-nums">{score}</span>
             <span className="mb-1 text-xs text-muted-foreground">/ 100</span>
           </div>
-          <div className="mt-2 h-1.5 rounded-full bg-muted/50">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
             <div
-              className="h-full rounded-full bg-gradient-score bg-[length:200%_100%] motion-safe:animate-gradient-shift-slow"
-              style={{ width: `${score}%` }}
+              className="h-full rounded-full bg-gradient-score-bar"
+              style={{
+                width: `${score}%`,
+                backgroundSize: `${(100 / score) * 100}% 100%`,
+              }}
             />
           </div>
         </>
@@ -82,16 +88,13 @@ function ProductPagePreview() {
         </p>
         <h3 className="text-lg font-bold leading-tight">
           Build something{' '}
-          <span className="bg-gradient-peach-accent bg-clip-text text-transparent">
-            amazing
-          </span>{' '}
-          with AI
+          <span className="text-brand/75">amazing</span> with AI
         </h3>
         <p className="text-xs text-muted-foreground">
           The all-in-one platform for next-gen teams.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
-          <button className="pointer-events-none rounded-md bg-gradient-score px-3 py-1.5 text-xs font-medium text-brand-foreground shadow-sm">
+          <button className="pointer-events-none rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-sm">
             Get started
           </button>
           <button className="pointer-events-none rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -151,7 +154,7 @@ function ProgressPreview() {
                     {step.label}
                   </span>
                   {step.state === 'active' ? (
-                    <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-foreground">
+                    <span className="rounded-full bg-brand px-2 py-1 text-[10px] font-bold text-brand-foreground">
                       {step.detail}
                     </span>
                   ) : (
@@ -193,7 +196,7 @@ export function HeroProductPreview({ className }: { className?: string }) {
     <div className={cn('relative mx-auto w-full max-w-5xl', className)}>
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--peach-glow)/0.18),transparent_68%)]"
+        className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--foreground)/0.04),transparent_68%)]"
       />
 
       <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/95 shadow-2xl backdrop-blur-sm">
@@ -247,12 +250,8 @@ export function HeroProductPreview({ className }: { className?: string }) {
 
             <div key={currentFlag.title} className="space-y-3 animate-soft-reveal" aria-live="polite">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-semibold text-brand">
-                  {currentFlag.severity}
-                </span>
-                <span className="rounded-full bg-gradient-score px-2.5 py-0.5 text-[11px] font-bold uppercase text-brand-foreground">
-                  {currentFlag.rubric}
-                </span>
+                <span className={previewMetaPillClass}>{currentFlag.rubric}</span>
+                <span className={previewMetaPillClass}>{currentFlag.severity}</span>
               </div>
 
               <p className="text-base font-semibold leading-snug">{currentFlag.title}</p>

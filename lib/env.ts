@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { validateAuthEnv } from '@/lib/auth/env'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -95,6 +96,7 @@ export function validateProductionEnv(): void {
   if (process.env.NODE_ENV !== 'production') return
   getEnv()
   validateAuditEnv()
+  validateAuthEnv()
   const required = [
     'BETTER_AUTH_SECRET',
     'BETTER_AUTH_URL',

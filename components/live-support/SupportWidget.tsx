@@ -4,7 +4,6 @@ import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { MessageCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { BRAND } from '@/lib/marketing/copy'
 import { extractAuditIdFromPath } from '@/lib/live-support/extract-audit-id'
 import { SupportProvider, useSupportContext } from '@/components/live-support/SupportProvider'
@@ -77,11 +76,9 @@ function SupportWidgetInner() {
       {!panelOpen && (
         <Button
           onClick={() => void openPanel()}
+          variant="ink"
           size="icon"
-          className={cn(
-            'fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] h-14 w-14 rounded-full shadow-lg',
-            'bg-brand text-brand-foreground hover:bg-brand/90'
-          )}
+          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] h-14 w-14 rounded-full shadow-lg"
           aria-label="Open live chat"
         >
           <MessageCircle className="h-6 w-6" />

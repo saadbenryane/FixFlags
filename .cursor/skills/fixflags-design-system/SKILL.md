@@ -5,13 +5,13 @@ description: FixFlags visual design tokens, kerning, spacing, border radius, 60-
 
 # FixFlags Design System
 
-UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
+UI Kit v3.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
 
 ## Color theory (60-30-10)
 
 | Share | Token | Role |
 |-------|-------|------|
-| 60% | `--background`, `--muted` | White / dark surfaces |
+| 60% | Peach mesh backdrop + glass surfaces | Page canvas, cards |
 | 30% | `--foreground` | Ink structure, headings |
 | 10% | `--brand` (`#FF4D1F`) | CTAs, flags, scores, focus |
 
@@ -20,7 +20,7 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 - Links use `--link` (info blue `#3B82F6`), not brand orange
 - Focus rings use brand orange on inputs
 - Dark mode is re-authored (`#0F1115` canvas), orange unchanged
-- Cards: `rounded-card` + border + `shadow-card`
+- Cards: `rounded-card` + `glass-surface` + `shadow-card` — **no borders**
 
 ## Typography — Satoshi
 
@@ -35,10 +35,17 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--radius-input` | 6px | Buttons, inputs |
-| `--radius-card` | 12px | Cards, panels |
+| `--radius-pill` | 9999px | Buttons, inputs, selects |
+| `--radius-card` | 12px | Glass cards, panels |
 
-**Anti-pattern:** `rounded-full` on buttons (legacy). Use `rounded-md`.
+**Required:** `rounded-full` on all buttons and inputs.
+**Anti-pattern:** `rounded-md` on controls (legacy v2).
+
+## Page canvas
+
+- Global peach mesh: `GlobalMeshBackdrop` in `SiteShell`
+- Cards use `.glass-surface` or `.glass-surface-elevated` — frosted, borderless
+- Hero URL input: concentric pill group (`InputGroup` + `AuditInput` landing variant)
 
 ## Logo
 
@@ -68,7 +75,9 @@ UI Kit v2.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 ## Pre-ship checklist
 
 - [ ] Headings use `font-sans`, balance wrap on h1–h2
-- [ ] Primary buttons: orange, `rounded-md`
+- [ ] Primary buttons: orange, `rounded-full`
+- [ ] Inputs and selects: `rounded-full`, borderless or glass fill
+- [ ] Cards: frosted glass, no borders
 - [ ] Brand orange ≤5× above fold on marketing
 - [ ] Focus rings on all interactive elements
 - [ ] Scores use `font-mono tabular-nums`

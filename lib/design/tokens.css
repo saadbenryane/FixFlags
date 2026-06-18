@@ -1,8 +1,8 @@
 /**
- * FixFlags design tokens - UI Kit v2.0
+ * FixFlags design tokens - UI Kit v3.0
  *
- * Palette: white/neutral surfaces (60%), ink structure (30%), orange accent (10%)
- * Primary: #FF4D1F | Type: Satoshi | Radius: 6–12px (not pill)
+ * Palette: peach mesh canvas, frosted glass surfaces, ink structure, orange accent (10%)
+ * Primary: #FF4D1F | Type: Satoshi | Controls: pill | Cards: 12px glass
  */
 
 :root {
@@ -24,26 +24,40 @@
   --brand-border: 12 90% 88%;
 
   /* Peach gradient accents (marketing) */
+  --peach-gold: 44 100% 68%;
   --peach-warm: 24 100% 74%;
+  --peach-coral: 22 100% 64%;
   --peach-glow: 18 95% 68%;
+  --peach-ember: 8 92% 54%;
   --peach-muted: 22 100% 96%;
   --gradient-score: linear-gradient(
-    to right,
-    hsl(38 92% 62% / 0.85),
-    hsl(var(--peach-glow)),
-    hsl(var(--brand))
+    105deg,
+    hsl(var(--peach-gold)) 0%,
+    hsl(34 100% 66%) 18%,
+    hsl(var(--peach-coral)) 45%,
+    hsl(var(--brand)) 75%,
+    hsl(var(--peach-ember)) 100%
   );
   --gradient-surface: linear-gradient(
-    135deg,
-    hsl(var(--peach-muted)) 0%,
-    hsl(var(--brand-muted)) 55%,
-    hsl(12 80% 95%) 100%
+    145deg,
+    hsl(28 100% 97%) 0%,
+    hsl(var(--brand-muted)) 42%,
+    hsl(18 90% 94%) 78%,
+    hsl(24 80% 96%) 100%
   );
   --gradient-accent-text: linear-gradient(
+    110deg,
+    hsl(38 100% 56%) 0%,
+    hsl(24 98% 58%) 35%,
+    hsl(var(--brand)) 68%,
+    hsl(6 100% 50%) 100%
+  );
+  --gradient-score-bar: linear-gradient(
     to right,
-    hsl(32 95% 58%),
-    hsl(var(--peach-glow)),
-    hsl(var(--brand))
+    hsl(var(--brand)) 0%,
+    hsl(var(--warning)) 48%,
+    hsl(var(--grade-B)) 72%,
+    hsl(var(--success)) 100%
   );
   --gradient-orb-peach: radial-gradient(
     circle,
@@ -94,8 +108,9 @@
   --grade-D: 25 95% 53%;
   --grade-F: 0 100% 63%;
 
-  /* ── Radius (6px controls, 12px cards) ── */
-  --radius-input: 0.375rem;
+  /* ── Radius (pill controls, 12px glass cards) ── */
+  --radius-pill: 9999px;
+  --radius-input: var(--radius-pill);
   --radius-inner: 0.5rem;
   --radius-modal: 0.75rem;
   --radius-outer: 0.75rem;
@@ -106,7 +121,7 @@
   --radius-nested-sm: calc(var(--radius-outer) - var(--gap-nested-sm));
   --radius-nested-md: calc(var(--radius-outer) - var(--gap-nested-md));
   --radius-nested-lg: calc(var(--radius-outer) - var(--gap-nested-lg));
-  --radius: 0.375rem;
+  --radius: var(--radius-pill);
 
   /* ── Typography (Satoshi scale) ── */
   --text-xs: 0.75rem;
@@ -132,6 +147,7 @@
   --shadow-card: 0 1px 2px rgb(15 17 21 / 0.04), 0 4px 16px -2px rgb(15 17 21 / 0.06);
   --shadow-card-hover: 0 2px 8px rgb(15 17 21 / 0.06), 0 12px 28px -4px rgb(15 17 21 / 0.1);
   --shadow-raised: 0 8px 32px -8px rgb(15 17 21 / 0.12);
+  --glass-shadow: 0 1px 3px rgb(15 17 21 / 0.05), 0 8px 24px -4px rgb(15 17 21 / 0.08);
 
   --motion-fast: 200ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
@@ -146,10 +162,10 @@
   --screenshot-mobile-aspect: 375 / 812;
   --screenshot-mobile-frame-width: 240px;
 
-  --glass-bg-subtle: rgba(255, 255, 255, 0.72);
-  --glass-bg: rgba(255, 255, 255, 0.88);
-  --glass-bg-strong: rgba(255, 255, 255, 0.94);
-  --glass-bg-elevated: rgba(255, 255, 255, 0.98);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.65);
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.94);
   --glass-border: hsl(220 13% 91%);
   --overlay-pill-bg: hsl(220 14% 96% / 0.95);
   --overlay-pill-border: hsl(220 13% 91%);
@@ -177,26 +193,39 @@
   --brand-muted: 12 60% 12%;
   --brand-border: 12 50% 22%;
 
+  --peach-gold: 36 85% 58%;
   --peach-warm: 20 80% 58%;
+  --peach-coral: 16 78% 54%;
   --peach-glow: 16 75% 52%;
+  --peach-ember: 6 85% 48%;
   --peach-muted: 14 45% 14%;
   --gradient-score: linear-gradient(
-    to right,
-    hsl(32 80% 48% / 0.9),
-    hsl(var(--peach-glow)),
-    hsl(var(--brand))
+    105deg,
+    hsl(var(--peach-gold)) 0%,
+    hsl(28 82% 56%) 20%,
+    hsl(var(--peach-coral)) 48%,
+    hsl(var(--brand)) 76%,
+    hsl(var(--peach-ember)) 100%
   );
   --gradient-surface: linear-gradient(
-    135deg,
-    hsl(var(--peach-muted)) 0%,
-    hsl(var(--brand-muted)) 55%,
-    hsl(12 40% 10%) 100%
+    145deg,
+    hsl(14 40% 11%) 0%,
+    hsl(var(--brand-muted)) 45%,
+    hsl(12 35% 9%) 100%
   );
   --gradient-accent-text: linear-gradient(
+    110deg,
+    hsl(32 90% 62%) 0%,
+    hsl(20 85% 58%) 38%,
+    hsl(var(--brand)) 70%,
+    hsl(4 95% 54%) 100%
+  );
+  --gradient-score-bar: linear-gradient(
     to right,
-    hsl(28 85% 62%),
-    hsl(var(--peach-glow)),
-    hsl(var(--brand))
+    hsl(var(--brand)) 0%,
+    hsl(var(--warning)) 48%,
+    hsl(var(--grade-B)) 72%,
+    hsl(var(--success)) 100%
   );
   --gradient-orb-peach: radial-gradient(
     circle,
@@ -248,11 +277,12 @@
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px -2px rgb(0 0 0 / 0.28);
   --shadow-card-hover: 0 2px 8px rgb(0 0 0 / 0.24), 0 12px 28px -4px rgb(0 0 0 / 0.32);
   --shadow-raised: 0 8px 32px -8px rgb(0 0 0 / 0.4);
+  --glass-shadow: 0 1px 3px rgb(0 0 0 / 0.18), 0 8px 24px -4px rgb(0 0 0 / 0.28);
 
-  --glass-bg-subtle: rgba(11, 11, 13, 0.72);
-  --glass-bg: rgba(11, 11, 13, 0.88);
-  --glass-bg-strong: rgba(11, 11, 13, 0.94);
-  --glass-bg-elevated: rgba(11, 11, 13, 0.98);
+  --glass-bg-subtle: rgba(11, 11, 13, 0.65);
+  --glass-bg: rgba(11, 11, 13, 0.78);
+  --glass-bg-strong: rgba(11, 11, 13, 0.88);
+  --glass-bg-elevated: rgba(11, 11, 13, 0.94);
   --glass-border: hsl(228 8% 13%);
   --overlay-pill-bg: hsl(220 10% 18% / 0.95);
   --overlay-pill-border: hsl(228 8% 13%);

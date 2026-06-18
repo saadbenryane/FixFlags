@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Surface } from '@/components/ui/surface'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { HERO } from '@/lib/marketing/copy'
@@ -128,7 +127,14 @@ export function AuditInput({
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <Surface variant="elevated" className="flex flex-row items-center gap-0 overflow-hidden p-1">
+          <div
+            className={cn(
+              'flex flex-col gap-1.5 overflow-hidden rounded-card bg-card p-1.5 shadow-card',
+              'transition-shadow duration-200',
+              'focus-within:shadow-card-hover focus-within:ring-2 focus-within:ring-ring/25',
+              'sm:flex-row sm:items-stretch sm:gap-0',
+            )}
+          >
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>
@@ -144,16 +150,16 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              className="h-10 min-w-0 flex-1 border-0 bg-transparent pl-2.5 pr-1 py-0 text-base shadow-none focus-visible:ring-0"
+              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-3.5 py-0 text-base shadow-none focus-visible:ring-0 sm:min-h-11"
               disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
             />
             <Button
               type="submit"
-              size="lg"
+              variant="gradient"
               disabled={loading}
-              className="h-10 w-auto shrink-0 gap-2 px-3 sm:px-5"
+              className="h-11 w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6"
             >
               {loading ? (
                 <>
@@ -167,7 +173,7 @@ export function AuditInput({
                 </>
               )}
             </Button>
-          </Surface>
+          </div>
         ) : (
           <div className="flex flex-col gap-2 sm:flex-row">
             <label htmlFor={inputId} className="sr-only">

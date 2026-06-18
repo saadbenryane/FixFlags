@@ -44,11 +44,7 @@ export function LandingFinalCtaSection() {
               <p className="max-w-md text-base leading-relaxed text-muted-foreground">
                 Run a free check on any live or preview URL. Get the issues that matter and the fixes your agent can apply.
               </p>
-              <Button
-                size="lg"
-                className="h-12 gap-2 border-0 bg-gradient-score px-7 text-brand-foreground hover:brightness-105"
-                asChild
-              >
+              <Button variant="gradient" size="lg" className="h-12 gap-2 px-7" asChild>
                 <Link href="/#audit">
                   {HERO.primaryCta}
                   <ArrowRight className="h-4 w-4" />

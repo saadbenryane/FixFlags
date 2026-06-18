@@ -1,9 +1,13 @@
 import type { NextConfig } from 'next'
+import {
+  isGoogleOAuthConfigured,
+  isGithubOAuthConfigured,
+} from './lib/auth/env'
 
 const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: process.env.GOOGLE_CLIENT_ID ? 'true' : '',
-    NEXT_PUBLIC_GITHUB_OAUTH_ENABLED: process.env.GITHUB_CLIENT_ID ? 'true' : '',
+    NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: isGoogleOAuthConfigured() ? 'true' : '',
+    NEXT_PUBLIC_GITHUB_OAUTH_ENABLED: isGithubOAuthConfigured() ? 'true' : '',
   },
   poweredByHeader: false,
   async rewrites() {

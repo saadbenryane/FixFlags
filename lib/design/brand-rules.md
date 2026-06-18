@@ -1,4 +1,4 @@
-# FixFlags Brand Rules - UI Kit v2.0
+# FixFlags Brand Rules - UI Kit v3.0
 
 Source: brand assets June 2026. Reference files in `public/brand/incoming/`.
 
@@ -9,18 +9,18 @@ Source: brand assets June 2026. Reference files in `public/brand/incoming/`.
 - **Wordmark:** Satoshi Bold, title case `FixFlags`, tracking -0.02em
 - **Tagline:** FLAG ISSUES. **FOCUS** WHAT MATTERS. (FOCUS in Flag orange)
 
-## Color palette (moodboard v2.0)
+## Color palette (moodboard v3.0)
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
 | Flag (primary) | `#FF4D1F` | `#FF4D1F` | CTAs, flags, scores, focus rings |
 | Flag hover | `#FF744D` | `#FF744D` | Button hover |
-| Background | `#FFFFFF` | `#0F1115` (Ink) | Page canvas |
+| Background | Peach mesh gradient | Dark peach mesh | Page canvas (global backdrop) |
 | Foreground | `#0F1115` (Ink) | `#FFFFFF` | Headings, body |
-| Graphite | - | `#1E1F23` | Dark cards / surfaces |
+| Graphite | - | `#1E1F23` | Dark solid surfaces (terminal) |
 | Steel | `#687380` | `#2A2D33` | Light muted text / dark muted surface |
 | Mist | `#A3A7AE` | `#A3A7AE` | Dark muted text |
-| Border | `#E5E7EB` | `#1E1F23` | Inputs, dividers |
+| Border | `#E5E7EB` | `#1E1F23` | Dividers, tables (not cards) |
 | Success | `#22C55E` | `#22C55E` | Grade A, fixed states |
 | Warning | `#FACC15` | `#FACC15` | Warnings |
 | Error | `#FF4444` | `#FF4444` | Destructive, grade F |
@@ -43,10 +43,11 @@ Mono (IBM Plex): scores, grades, labels only.
 
 ## Radius & components
 
-- Buttons: `rounded-md` (6px), primary orange fill
-- Inputs: `rounded-md`, orange border on focus
-- Cards: 12px radius, light border + shadow
-- Nav: flat header with bottom border (not glass pill)
+- **Buttons & inputs:** `rounded-full` (pill) — required for all CTAs and form controls
+- **Input groups:** outer pill + concentric inner pill button with uniform `p-1.5` inset
+- **Cards & panels:** `rounded-card` (12px) frosted glass — no borders; use `shadow-card` + blur
+- **Page canvas:** global peach mesh backdrop (`PeachyMeshBackdrop` / `GlobalMeshBackdrop`)
+- **Nav:** sticky glass header (`glass-surface-elevated`), no bottom border
 
 ## File layout
 
@@ -62,4 +63,4 @@ Mono (IBM Plex): scores, grades, labels only.
 
 ## Dark mode
 
-Re-authored, not inverted. Orange stays `#FF4D1F`. Bars and text flip to white on dark surfaces.
+Re-authored, not inverted. Orange stays `#FF4D1F`. Bars and text flip to white on dark surfaces. Glass surfaces use dark-tinted frosted fills.

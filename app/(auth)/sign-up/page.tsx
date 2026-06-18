@@ -13,7 +13,7 @@ import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { PasswordInput } from '@/components/auth/PasswordInput'
-import { OAuthButtons } from '@/components/auth/OAuthButtons'
+import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 
@@ -49,7 +49,11 @@ function SignUpForm() {
       : null
 
   const showPlanSteps = plan && plan in AUTH.signUp.planTitles
-  const subtitle = planTitle ? planTitle : AUTH.signUp.subtitleWithOAuth
+  const subtitle = planTitle
+    ? planTitle
+    : hasOAuthEnabled()
+      ? AUTH.signUp.subtitleWithOAuth
+      : AUTH.signUp.subtitle
 
   return (
     <AuthCard
@@ -65,8 +69,10 @@ function SignUpForm() {
       <div className="rounded-card bg-muted/30 p-4 shadow-none">
         <AuthValueProps />
       </div>
-      <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />
-      <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
+      {hasOAuthEnabled() && <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />}
+      {hasOAuthEnabled() && (
+        <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
+      )}
       {showPlanSteps && (
         <div className="rounded-card bg-muted/30 p-4 space-y-2">
           <p className="text-xs font-medium">What happens next</p>
