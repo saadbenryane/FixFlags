@@ -3,9 +3,14 @@ import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPr
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import { HERO } from '@/lib/marketing/copy'
 
-export function LandingHeroSection() {
+interface LandingHeroSectionProps {
+  audit?: LiveSampleAudit
+}
+
+export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
   return (
     <Section spacing="loose" className="relative pb-6 sm:pb-8 lg:pb-11">
       <Container className="relative space-y-8 lg:space-y-11">
@@ -32,7 +37,7 @@ export function LandingHeroSection() {
         </div>
 
         <div className="motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
-          <HeroProductPreview />
+          <HeroProductPreview audit={audit} />
         </div>
       </Container>
     </Section>

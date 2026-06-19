@@ -49,7 +49,7 @@ export default async function SamplesPage() {
       </Container>
 
       <Container variant="report">
-        <SampleReportExplorer report={report} variant="page" />
+        <SampleReportExplorer report={report} />
       </Container>
 
       <Container variant="report" className="pb-12 pt-8">

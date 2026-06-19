@@ -1,6 +1,8 @@
 import { RUBRIC_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
+import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type PipelineStepState = 'done' | 'active' | 'pending'
@@ -26,10 +28,14 @@ export interface ScanCheck {
   isCritical?: boolean
 }
 
-export interface UiGuidelineCheck {
+/** Normalized pin center on a screenshot (0–1). */
+export interface EvidenceHighlight {
   id: string
+  device: 'desktop' | 'mobile'
+  x: number
+  y: number
   label: string
-  passed: boolean
+  detail: string
 }
 
 export interface DesignTierSuggestion {
@@ -40,6 +46,7 @@ export interface DesignTierSuggestion {
 
 export interface SampleFlagDisplay {
   id: string
+  checkId?: string | null
   index: number
   rubric: string
   rubricLabel: string
@@ -52,9 +59,9 @@ export interface SampleFlagDisplay {
   whyItMatters: string
   fix: string
   agentPrompt: string
-  verificationSteps: string[]
+  verificationRule: string | null
   designTiers: DesignTierSuggestion[]
-  guidelines: UiGuidelineCheck[]
+  evidenceHighlights: EvidenceHighlight[]
   /** Prefer mobile screenshot for experience flags */
   preferredDevice: 'desktop' | 'mobile'
 }
@@ -71,27 +78,10 @@ export interface SampleReportDisplay {
   desktopScreenshot: string | null
   mobileScreenshot: string | null
   rubricScores: { name: string; score: number; grade: string | null }[]
+  rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
   scans: ScanCheck[]
   flags: SampleFlagDisplay[]
-}
-
-const RUBRIC_GUIDELINES: Record<string, UiGuidelineCheck[]> = {
-  MESSAGE: [
-    { id: 'clarity', label: 'Clarity', passed: true },
-    { id: 'match', label: 'Match system & real world', passed: true },
-    { id: 'recognition', label: 'Recognition over recall', passed: false },
-  ],
-  EXPERIENCE: [
-    { id: 'aesthetic', label: 'Aesthetic & minimalist design', passed: false },
-    { id: 'control', label: 'User control & freedom', passed: true },
-    { id: 'consistency', label: 'Consistency & standards', passed: true },
-  ],
-  REACH: [
-    { id: 'recognition', label: 'Recognition over recall', passed: false },
-    { id: 'help', label: 'Help & documentation', passed: true },
-    { id: 'status', label: 'Visibility of system status', passed: true },
-  ],
 }
 
 const DESIGN_TIER_LABELS: Record<DesignTier, string> = {
@@ -133,12 +123,47 @@ function buildDesignTiers(flag: RankableFlag): DesignTierSuggestion[] {
   }))
 }
 
-function buildVerificationSteps(flag: RankableFlag): string[] {
-  const steps: string[] = []
-  if (flag.evidence) steps.push(`Confirm evidence: ${flag.evidence}`)
-  if (flag.verificationRule) steps.push(flag.verificationRule)
-  if (flag.whyItMatters) steps.push(`Validate impact: ${flag.whyItMatters}`)
-  return steps
+const ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
+
+function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile' {
+  return flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'
+}
+
+function lookupAnchor(flag: RankableFlag, device: 'desktop' | 'mobile') {
+  const key = flag.checkId ?? flag.id
+  const entry = ANCHORS[key]
+  if (!entry) return null
+  return entry[device] ?? entry.desktop ?? entry.mobile ?? null
+}
+
+function buildEvidenceHighlights(flag: RankableFlag): EvidenceHighlight[] {
+  const device = preferredDeviceForFlag(flag)
+  const anchor = lookupAnchor(flag, device)
+
+  if (!anchor) {
+    if (!flag.evidence) return []
+    return [
+      {
+        id: `${flag.id}-fallback`,
+        device,
+        x: 0.5,
+        y: 0.28,
+        label: flag.problem,
+        detail: flag.evidence,
+      },
+    ]
+  }
+
+  return [
+    {
+      id: flag.checkId ?? flag.id,
+      device,
+      x: anchor.x,
+      y: anchor.y,
+      label: flag.problem,
+      detail: flag.evidence ?? flag.problem,
+    },
+  ]
 }
 
 function buildPipelineSteps(flagCount: number): PipelineStep[] {
@@ -211,13 +236,9 @@ function hostFromUrl(url: string): string {
 }
 
 function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
-  const guidelines = (RUBRIC_GUIDELINES[flag.rubric] ?? RUBRIC_GUIDELINES.MESSAGE).map((g) => ({
-    ...g,
-    passed: flag.severity === 'POLISH' ? true : g.passed,
-  }))
-
   return {
     id: flag.id,
+    checkId: flag.checkId ?? null,
     index,
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),
@@ -230,9 +251,9 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     whyItMatters: flag.whyItMatters ?? '',
     fix: flag.fix ?? '',
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
-    verificationSteps: buildVerificationSteps(flag),
+    verificationRule: flag.verificationRule ?? null,
     designTiers: buildDesignTiers(flag),
-    guidelines,
+    evidenceHighlights: buildEvidenceHighlights(flag),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
   }
 }
@@ -264,6 +285,9 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     desktopScreenshot: desktop?.url ?? null,
     mobileScreenshot: mobile?.url ?? null,
     rubricScores,
+    rubricSummaries: Object.fromEntries(
+      audit.rubricRows.map((row) => [row.name, row.summary ?? ''])
+    ),
     pipelineSteps: buildPipelineSteps(flags.length),
     scans: buildScans(flags),
     flags,

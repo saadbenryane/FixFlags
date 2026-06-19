@@ -13,6 +13,7 @@ import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics/events'
 
 export function AuditInput({
   variant = 'default',
@@ -101,6 +102,10 @@ export function AuditInput({
 
       const data = await res.json()
       const reportId = data.reportId as string
+      trackEvent('started_audit', {
+        source: auditSource,
+        is_logged_in: data.isLoggedIn ?? false,
+      })
       setActiveAudit({
         auditId: reportId,
         url: normalized,

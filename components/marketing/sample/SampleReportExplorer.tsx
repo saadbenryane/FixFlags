@@ -1,21 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Monitor,
-  Smartphone,
-  Sparkles,
-  Wand2,
-} from 'lucide-react'
-import { BrowserFrame } from '@/components/audit/BrowserFrame'
-import { PromptActionRow } from '@/components/audit/PromptActionRow'
+import { Check, ChevronLeft, ChevronRight, Sparkles, Wand2 } from 'lucide-react'
+import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { RubricDimensionHeader } from '@/components/marketing/sample/RubricDimensionHeader'
+import { RubricOverviewStrip } from '@/components/marketing/sample/RubricOverviewStrip'
 import { ScanTimeline } from '@/components/marketing/sample/ScanTimeline'
 import { ScoreRingGauge } from '@/components/marketing/sample/ScoreRingGauge'
+import { ScreenshotWithHighlights } from '@/components/marketing/sample/ScreenshotWithHighlights'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type {
   DesignTier,
   PipelineStep,
@@ -31,7 +24,6 @@ interface SampleReportExplorerProps {
   report: SampleReportDisplay
   variant?: ExplorerVariant
   className?: string
-  /** Start on a specific flag (0-based) */
   initialFlagIndex?: number
 }
 
@@ -124,31 +116,6 @@ function RubricPills({ scores }: { scores: SampleReportDisplay['rubricScores'] }
   )
 }
 
-function GuidelineChecks({ guidelines }: { guidelines: SampleFlagDisplay['guidelines'] }) {
-  return (
-    <ul className="flex flex-wrap gap-2">
-      {guidelines.map((g) => (
-        <li
-          key={g.id}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium',
-            g.passed
-              ? 'bg-success/10 text-success'
-              : 'bg-destructive/10 text-destructive'
-          )}
-        >
-          {g.passed ? (
-            <Check className="h-3 w-3 shrink-0" aria-hidden />
-          ) : (
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
-          )}
-          {g.label}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 function DesignTierPicker({
   tiers,
   activeTier,
@@ -225,69 +192,25 @@ function FlagNavigation({
   )
 }
 
-function ScreenshotPanel({
-  report,
-  preferredDevice,
-}: {
-  report: SampleReportDisplay
-  preferredDevice: 'desktop' | 'mobile'
-}) {
-  const defaultTab = preferredDevice === 'mobile' && report.mobileScreenshot ? 'mobile' : 'desktop'
-
-  return (
-    <div className="space-y-3">
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted/50 p-1">
-          <TabsTrigger value="desktop" className="gap-1.5 rounded-full text-xs">
-            <Monitor className="h-3.5 w-3.5" aria-hidden />
-            Desktop
-          </TabsTrigger>
-          <TabsTrigger value="mobile" className="gap-1.5 rounded-full text-xs">
-            <Smartphone className="h-3.5 w-3.5" aria-hidden />
-            Mobile
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="desktop" className="mt-3">
-          <BrowserFrame
-            url={report.url}
-            imageUrl={report.desktopScreenshot}
-            device="desktop"
-            alt={`Desktop screenshot of ${report.host}`}
-          />
-        </TabsContent>
-        <TabsContent value="mobile" className="mt-3">
-          <div className="mx-auto max-w-[240px]">
-            <BrowserFrame
-              url={report.url}
-              imageUrl={report.mobileScreenshot}
-              device="mobile"
-              alt={`Mobile screenshot of ${report.host}`}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
-
 function FlagDetailPanel({
   flag,
   designTier,
   onDesignTierChange,
+  compact = false,
 }: {
   flag: SampleFlagDisplay
   designTier: DesignTier
   onDesignTierChange: (tier: DesignTier) => void
+  compact?: boolean
 }) {
   const activeSuggestion =
     flag.designTiers.find((t) => t.tier === designTier) ?? flag.designTiers[0]
 
   return (
     <div key={flag.id} className="space-y-4 animate-soft-reveal" aria-live="polite">
+      <RubricDimensionHeader rubric={flag.rubric} compact={compact} />
+
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-foreground">
-          {flag.rubricLabel}
-        </span>
         <span
           className={cn(
             'rounded-full px-2.5 py-1 text-[11px] font-semibold',
@@ -311,66 +234,89 @@ function FlagDetailPanel({
         <h3 className="text-base font-semibold leading-snug text-balance sm:text-lg">
           {flag.title}
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty">
-          {flag.description}
-        </p>
+        {flag.whyItMatters && (
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty">
+            {flag.whyItMatters}
+          </p>
+        )}
       </div>
 
-      {flag.evidence && (
-        <div className="space-y-1">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Evidence
-          </p>
-          <p className="rounded-card bg-muted/40 px-3 py-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
-            {flag.evidence}
-          </p>
+      {flag.verificationRule && (
+        <p className="rounded-card border border-border/50 bg-muted/20 px-3 py-2 text-sm leading-relaxed text-muted-foreground text-pretty">
+          <span className="font-medium text-foreground">How to verify: </span>
+          {flag.verificationRule}
+        </p>
+      )}
+
+      <div className="space-y-3">
+        <DesignTierPicker
+          tiers={flag.designTiers}
+          activeTier={designTier}
+          onChange={onDesignTierChange}
+        />
+        <FixPromptBlock
+          prompt={activeSuggestion?.suggestion ?? ''}
+          label="Fix prompt"
+          rows={compact ? 3 : 4}
+          clamp={compact}
+          showCursorAction
+        />
+      </div>
+    </div>
+  )
+}
+
+function OverviewColumn({
+  report,
+  flag,
+  showProgress = true,
+  showScore = true,
+  scoreSize = 'md',
+}: {
+  report: SampleReportDisplay
+  flag: SampleFlagDisplay
+  showProgress?: boolean
+  showScore?: boolean
+  scoreSize?: 'sm' | 'md' | 'lg'
+}) {
+  return (
+    <div className="space-y-5">
+      {showScore && (
+        <div className="flex items-center gap-4">
+          <ScoreRingGauge score={report.score} size={scoreSize} />
+          <div className="min-w-0 flex-1 space-y-2">
+            {report.verdict && (
+              <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
+            )}
+            <RubricPills scores={report.rubricScores} />
+          </div>
         </div>
       )}
 
-      {flag.verificationSteps.length > 0 && (
+      {!showScore && (
         <div className="space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Steps
-          </p>
-          <ol className="space-y-1.5">
-            {flag.verificationSteps.map((step, i) => (
-              <li
-                key={i}
-                className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
-              >
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] font-semibold text-foreground">
-                  {i + 1}
-                </span>
-                <span className="text-pretty">{step}</span>
-              </li>
-            ))}
-          </ol>
+          <RubricPills scores={report.rubricScores} />
         </div>
       )}
 
-      <div className="space-y-3 rounded-card bg-muted/30 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Suggestion · upgrade yourself
+      {showProgress && (
+        <div>
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+            Review progress
           </p>
-          <DesignTierPicker
-            tiers={flag.designTiers}
-            activeTier={designTier}
-            onChange={onDesignTierChange}
-          />
+          <PipelineStepsList steps={report.pipelineSteps} />
         </div>
-        <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
-          {activeSuggestion?.suggestion}
-        </p>
-        <PromptActionRow prompt={activeSuggestion?.suggestion ?? ''} showCursorAction />
-      </div>
+      )}
 
-      <div className="space-y-2">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-          UI guidelines
-        </p>
-        <GuidelineChecks guidelines={flag.guidelines} />
-      </div>
+      <ScreenshotWithHighlights
+        url={report.url}
+        host={report.host}
+        desktopScreenshot={report.desktopScreenshot}
+        mobileScreenshot={report.mobileScreenshot}
+        preferredDevice={flag.preferredDevice}
+        highlights={flag.evidenceHighlights}
+        severity={flag.severity}
+      />
     </div>
   )
 }
@@ -406,6 +352,14 @@ export function SampleReportExplorer({
     [flagCount]
   )
 
+  const goToRubric = useCallback(
+    (rubric: string) => {
+      const idx = report.flags.findIndex((f) => f.rubric === rubric)
+      if (idx >= 0) goToFlag(idx)
+    },
+    [goToFlag, report.flags]
+  )
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'ArrowLeft') showPrevious()
@@ -426,70 +380,28 @@ export function SampleReportExplorer({
   if (variant === 'hero') {
     return (
       <div className={shellClass}>
-        <div className="flex items-center gap-2 border-b border-border/30 px-4 py-3">
-          <div className="flex gap-1.5" aria-hidden>
-            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
-            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
-            <span className="h-3 w-3 rounded-full bg-muted-foreground/20" />
-          </div>
-          <div className="mx-auto flex items-center gap-2 rounded-full bg-muted/50 px-3 py-1">
-            <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
-            <span className="font-mono text-[11px] text-muted-foreground">{report.host}</span>
-          </div>
-        </div>
-
-        <div className="grid gap-0 lg:grid-cols-[1fr_0.75fr_1.1fr]">
-          <div className="border-b border-border/30 p-4 sm:p-5 lg:border-b-0 lg:border-r">
-            <ScreenshotPanel report={report} preferredDevice={currentFlag.preferredDevice} />
-          </div>
-
-          <div className="space-y-5 border-b border-border/30 bg-muted/15 p-4 sm:p-5 lg:border-b-0 lg:border-r">
-            <div className="flex items-start gap-4">
-              <ScoreRingGauge
-                score={report.score}
-                grade={report.grade}
-                size="md"
-                label="Overall"
-              />
-              <div className="min-w-0 flex-1 space-y-2">
-                {report.verdict && (
-                  <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
-                )}
-                <RubricPills scores={report.rubricScores} />
-              </div>
-            </div>
-            <div>
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                Review progress
-              </p>
-              <PipelineStepsList steps={report.pipelineSteps} />
-            </div>
+        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="border-b border-border/30 bg-muted/10 p-4 sm:p-5 lg:border-b-0 lg:border-r">
+            <OverviewColumn report={report} flag={currentFlag} scoreSize="md" />
           </div>
 
           <div className="p-4 sm:p-5">
-            <div className="mb-4 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                  Flag detail
-                </p>
-                <FlagNavigation
-                  index={flagIndex}
-                  total={flagCount}
-                  onPrevious={showPrevious}
-                  onNext={showNext}
-                />
-              </div>
-              <ScanTimeline
-                scans={report.scans}
-                activeFlagIndex={flagIndex}
-                onSelectFlag={goToFlag}
-                compact
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                Flag detail
+              </p>
+              <FlagNavigation
+                index={flagIndex}
+                total={flagCount}
+                onPrevious={showPrevious}
+                onNext={showNext}
               />
             </div>
             <FlagDetailPanel
               flag={currentFlag}
               designTier={designTier}
               onDesignTierChange={setDesignTier}
+              compact
             />
           </div>
         </div>
@@ -502,11 +414,11 @@ export function SampleReportExplorer({
       <div className={shellClass}>
         <div className="flex flex-col gap-3 border-b border-border/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
-            <ScoreRingGauge score={report.score} grade={report.grade} size="sm" />
+            <ScoreRingGauge score={report.score} size="sm" />
             <div>
               <p className="text-sm font-semibold">{report.host}</p>
               <p className="text-[11px] text-muted-foreground">
-                {report.flagCount} flags · {report.score ?? '—'}/100
+                {report.flagCount} flags · score {report.score ?? '—'}
               </p>
             </div>
           </div>
@@ -518,46 +430,42 @@ export function SampleReportExplorer({
           />
         </div>
 
-        <div className="border-b border-border/30 px-4 py-3 sm:px-5">
-          <ScanTimeline
-            scans={report.scans}
-            activeFlagIndex={flagIndex}
-            onSelectFlag={goToFlag}
-            compact
-          />
-        </div>
-
         <div className="grid gap-0 lg:grid-cols-2">
           <div className="border-b border-border/30 p-4 lg:border-b-0 lg:border-r lg:p-5">
-            <ScreenshotPanel report={report} preferredDevice={currentFlag.preferredDevice} />
+            <OverviewColumn
+              report={report}
+              flag={currentFlag}
+              showProgress={false}
+              showScore={false}
+              scoreSize="sm"
+            />
           </div>
           <div className="p-4 lg:p-5">
-            <div className="mt-1">
-              <FlagDetailPanel
-                flag={currentFlag}
-                designTier={designTier}
-                onDesignTierChange={setDesignTier}
-              />
-            </div>
+            <FlagDetailPanel
+              flag={currentFlag}
+              designTier={designTier}
+              onDesignTierChange={setDesignTier}
+              compact
+            />
           </div>
         </div>
       </div>
     )
   }
 
-  // variant === 'page'
   return (
     <div className={cn('space-y-6', className)}>
+      <RubricOverviewStrip
+        scores={report.rubricScores}
+        summaries={report.rubricSummaries}
+        onSelectRubric={goToRubric}
+      />
+
       <div className={shellClass}>
         <div className="flex flex-col gap-4 border-b border-border/30 px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-start gap-5">
-            <ScoreRingGauge
-              score={report.score}
-              grade={report.grade}
-              size="lg"
-              label="Overall score"
-            />
-            <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-5">
+            <ScoreRingGauge score={report.score} size="lg" />
+            <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium">
                   {report.pageType ?? 'Marketing homepage'}
@@ -569,7 +477,6 @@ export function SampleReportExplorer({
                   {report.verdict}
                 </p>
               )}
-              <RubricPills scores={report.rubricScores} />
             </div>
           </div>
           <FlagNavigation
@@ -591,34 +498,28 @@ export function SampleReportExplorer({
           />
         </div>
 
-        <div className="grid gap-0 xl:grid-cols-[1.05fr_0.95fr]">
-          <div className="border-b border-border/30 p-4 sm:p-6 xl:border-b-0 xl:border-r">
-            <ScreenshotPanel report={report} preferredDevice={currentFlag.preferredDevice} />
+        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="border-b border-border/30 p-4 sm:p-6 lg:border-b-0 lg:border-r">
+            <OverviewColumn
+              report={report}
+              flag={currentFlag}
+              showScore={false}
+              scoreSize="md"
+            />
           </div>
 
-          <div className="grid gap-0 lg:grid-cols-[0.85fr_1.15fr] xl:grid-cols-1">
-            <div className="border-b border-border/30 bg-muted/10 p-4 sm:p-6 lg:border-b-0 lg:border-r xl:border-b xl:border-r-0">
-              <p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                Steps
+          <div className="p-4 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                Check {flagIndex + 1} of {flagCount}
               </p>
-              <PipelineStepsList steps={report.pipelineSteps} />
+              <span className="text-[11px] text-muted-foreground">← → to navigate</span>
             </div>
-
-            <div className="p-4 sm:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-                  Check {flagIndex + 1} of {flagCount}
-                </p>
-                <span className="text-[11px] text-muted-foreground">
-                  ← → to navigate
-                </span>
-              </div>
-              <FlagDetailPanel
-                flag={currentFlag}
-                designTier={designTier}
-                onDesignTierChange={setDesignTier}
-              />
-            </div>
+            <FlagDetailPanel
+              flag={currentFlag}
+              designTier={designTier}
+              onDesignTierChange={setDesignTier}
+            />
           </div>
         </div>
       </div>

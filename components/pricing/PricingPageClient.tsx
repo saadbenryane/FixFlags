@@ -15,8 +15,13 @@ import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy'
 import { CONTACT_PLAN } from '@/lib/billing/plans'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/hooks/useMe'
+import { useEffect } from 'react'
+import { trackEvent } from '@/lib/analytics/events'
 
 export function PricingPageClient() {
+  useEffect(() => {
+    trackEvent('viewed_pricing')
+  }, [])
   const { user } = useMe()
   const currentPlan = user?.plan ?? 'FREE'
   const isLoggedIn = !!user

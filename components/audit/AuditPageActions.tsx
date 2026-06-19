@@ -11,6 +11,8 @@ import { ShareAuditButton } from '@/components/audit/ShareAuditButton'
 import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
+import { trackEvent } from '@/lib/analytics/events'
+import { useEffect } from 'react'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
@@ -59,6 +61,10 @@ export function AuditPageActions({
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
+
+  useEffect(() => {
+    trackEvent('viewed_report', { audit_id: auditId, is_owner: isOwner })
+  }, [auditId, isOwner])
 
   const showRecheck = isLoggedIn && isOwner
   const recheckLabel = 'Re-check'

@@ -4,37 +4,6 @@ import { cn } from '@/lib/utils'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import type { ScanCheck } from '@/lib/marketing/sample-report-display'
 
-/** Orange flag pin — only for critical findings, not the logo mark. */
-function CriticalFlagPin({ active }: { active?: boolean }) {
-  return (
-    <svg
-      width={10}
-      height={16}
-      viewBox="0 0 10 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-      className={cn(
-        'shrink-0 motion-safe:transition-transform motion-safe:duration-200',
-        active && 'scale-110'
-      )}
-    >
-      <rect
-        x="4"
-        y="4"
-        width="2"
-        height="12"
-        rx="1"
-        fill={active ? 'hsl(var(--brand))' : 'hsl(var(--brand) / 0.85)'}
-      />
-      <path
-        d="M4 4 L4 1 L9 4.5 L6.5 6.5 Z"
-        fill={active ? 'hsl(var(--brand))' : 'hsl(var(--brand) / 0.85)'}
-      />
-    </svg>
-  )
-}
-
 function ScanBar({
   score,
   active,
@@ -42,7 +11,7 @@ function ScanBar({
   score: number
   active?: boolean
 }) {
-  const height = 10 + Math.round((score / 100) * 8)
+  const height = 10 + Math.round((score / 100) * 10)
   const color = scoreToScanColor(score)
 
   return (
@@ -50,13 +19,13 @@ function ScanBar({
       aria-hidden
       className={cn(
         'inline-block shrink-0 rounded-full motion-safe:transition-all motion-safe:duration-200',
-        active && 'ring-2 ring-brand/40 ring-offset-1'
+        active && 'ring-2 ring-brand/50 ring-offset-1'
       )}
       style={{
         width: 4,
         height,
         backgroundColor: color,
-        opacity: active ? 1 : 0.9,
+        opacity: active ? 1 : 0.88,
       }}
     />
   )
@@ -70,6 +39,7 @@ interface ScanTimelineProps {
   compact?: boolean
 }
 
+/** Row of colored scan bars — uniform style, color = score. Failed checks are gaps. */
 export function ScanTimeline({
   scans,
   activeFlagIndex,
@@ -82,33 +52,18 @@ export function ScanTimeline({
       <div
         className={cn(
           'flex items-end gap-1 overflow-x-auto pb-0.5',
-          compact ? 'max-h-[18px]' : 'max-h-[22px]'
+          compact ? 'max-h-[20px]' : 'max-h-[24px]'
         )}
         role="list"
         aria-label="Scan results"
       >
         {scans.map((scan) => {
-          const isFailed = scan.score == null && !scan.isCritical
-          const isActive = scan.flagIndex != null && scan.flagIndex === activeFlagIndex
-          const showFlag = scan.isCritical === true
-
-          if (isFailed) {
-            return (
-              <span
-                key={scan.id}
-                className="inline-block w-1 shrink-0"
-                aria-hidden
-              />
-            )
+          if (scan.score == null) {
+            return <span key={scan.id} className="inline-block w-1 shrink-0" aria-hidden />
           }
 
-          const content = showFlag ? (
-            <CriticalFlagPin active={isActive} />
-          ) : scan.score != null ? (
-            <ScanBar score={scan.score} active={isActive} />
-          ) : null
-
-          if (!content) return null
+          const isActive = scan.flagIndex != null && scan.flagIndex === activeFlagIndex
+          const bar = <ScanBar score={scan.score} active={isActive} />
 
           if (scan.flagIndex != null && onSelectFlag) {
             return (
@@ -119,16 +74,12 @@ export function ScanTimeline({
                 onClick={() => onSelectFlag(scan.flagIndex!)}
                 className={cn(
                   'flex shrink-0 items-end rounded-sm px-px py-0.5 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-                  isActive ? 'opacity-100' : 'opacity-80'
+                  isActive ? 'opacity-100' : 'opacity-75'
                 )}
-                aria-label={
-                  showFlag
-                    ? `Critical flag ${scan.flagIndex + 1}: ${scan.label}`
-                    : `Check: ${scan.label}, score ${scan.score}`
-                }
+                aria-label={`Check: ${scan.label}, score ${scan.score}`}
                 aria-current={isActive ? 'step' : undefined}
               >
-                {content}
+                {bar}
               </button>
             )
           }
@@ -138,19 +89,17 @@ export function ScanTimeline({
               key={scan.id}
               role="listitem"
               className="flex shrink-0 items-end px-px"
-              aria-label={`${scan.label}${scan.score != null ? `, score ${scan.score}` : ''}`}
+              aria-label={`${scan.label}, score ${scan.score}`}
             >
-              {content}
+              {bar}
             </div>
           )
         })}
       </div>
       {!compact && (
-        <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-wide text-muted-foreground/55">
-          <span>0</span>
-          <span className="text-center">24 checks · color = score</span>
-          <span>100</span>
-        </div>
+        <p className="mt-2 text-center font-mono text-[9px] uppercase tracking-wide text-muted-foreground/50">
+          24 checks · bar color = score
+        </p>
       )}
     </div>
   )

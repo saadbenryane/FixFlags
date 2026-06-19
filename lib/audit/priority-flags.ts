@@ -2,6 +2,7 @@ import { gradeRank, severityRank } from '@/lib/utils'
 
 export interface RankableFlag {
   id: string
+  checkId?: string | null
   rubric: string
   severity: string
   impactTag?: string | null

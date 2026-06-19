@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { PRICING } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM' | 'STUDIO'
@@ -25,6 +26,8 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
+    trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
+
     if (!isLoggedIn) {
       router.push(signUpHref)
       return

@@ -13,6 +13,7 @@ import { Container } from '@/components/ui/container'
 import { Callout } from '@/components/ui/callout'
 import { toast } from 'sonner'
 import { BRAND, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { QueuePosition } from '@/components/audit/QueuePosition'
@@ -63,9 +64,13 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
+      trackEvent('audit_completed', {
+        audit_id: id,
+        score: typeof audit?.score === 'number' ? audit.score : undefined,
+      })
       router.refresh()
     }
-  }, [isComplete, router])
+  }, [isComplete, router, id, audit?.score])
 
   const inProgress = !isComplete && !isFailed
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useMe } from '@/hooks/useMe'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
+import { trackEvent } from '@/lib/analytics/events'
 
 export function DashboardCheckoutToast() {
   const router = useRouter()
@@ -20,6 +21,7 @@ export function DashboardCheckoutToast() {
     if (!upgraded && !expertReview) return
 
     if (upgraded) {
+      trackEvent('completed_checkout', { plan: planParam ?? 'BUILDER' })
       refresh().then((data) => {
         const planKey = (planParam ?? data?.user?.plan ?? 'BUILDER') as Plan
         const planName = PLAN_DEFINITIONS[planKey]?.name ?? 'Pro'

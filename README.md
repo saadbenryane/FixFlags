@@ -40,6 +40,14 @@ Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wai
 npx tsx scripts/capture-sample-screenshots.ts
 ```
 
+Refresh the full marketing sample (live audit on fixflags.com, public flag, WebPs, and evidence pin anchors). Requires Postgres and API keys in `.env.local`:
+
+```bash
+DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/refresh-marketing-sample.ts
+```
+
+Set `SAMPLE_INCLUDE_AI=false` to skip the AI judge step (deterministic checks only) if the judge step fails.
+
 **Local admin:** `saadbenryane@gmail.com` / `password123` (unlimited scans, `/admin` dashboard with run costs).
 
 **Development note:** When `NODE_ENV=development`, scan limits are disabled so you can iterate without hitting billing caps.

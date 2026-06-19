@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   viewportAspectStyle,
@@ -20,6 +21,8 @@ interface Props {
   label?: string
   /** desktop = 1280×900, mobile = 375×812 (matches Puppeteer capture) */
   device?: Device
+  /** Rendered inside the image viewport (0–1 coords relative to capture) */
+  viewportOverlay?: ReactNode
 }
 
 export function BrowserFrame({
@@ -30,6 +33,7 @@ export function BrowserFrame({
   className,
   label,
   device = 'desktop',
+  viewportOverlay,
 }: Props) {
   const preset = SCREENSHOT_FRAME[device]
   const resolvedLabel = label ?? preset.label
@@ -78,6 +82,12 @@ export function BrowserFrame({
             alt={alt}
             className="absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
           />
+        )}
+
+        {resolvedState === 'loaded' && imageUrl && viewportOverlay && (
+          <div className="pointer-events-none absolute inset-0">
+            <div className="pointer-events-auto relative h-full w-full">{viewportOverlay}</div>
+          </div>
         )}
       </div>
     </div>

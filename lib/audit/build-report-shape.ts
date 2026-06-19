@@ -21,6 +21,7 @@ export function buildReportShapeFromDb(
     summary: string
     flags: Array<{
       id: string
+      checkId: string | null
       rubric: string
       severity: string
       impactTag: string | null
@@ -40,6 +41,7 @@ export function buildReportShapeFromDb(
   }>,
   flatFlags: Array<{
     id: string
+    checkId: string | null
     rubric: string
     severity: string
     impactTag: string | null
@@ -60,6 +62,7 @@ export function buildReportShapeFromDb(
 ): { rubricRows: ReportRubricRow[]; flags: RankableFlag[]; shareStatus: ShareStatus } {
   const mapFlag = (f: (typeof flatFlags)[number]): RankableFlag => ({
     id: f.id,
+    checkId: f.checkId,
     rubric: f.rubric,
     severity: f.severity,
     impactTag: f.impactTag,

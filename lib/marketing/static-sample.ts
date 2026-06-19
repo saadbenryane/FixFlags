@@ -11,6 +11,7 @@ const SAMPLE_URL = DEFAULT_SAMPLE_AUDIT_URL
 const STATIC_FLAGS: RankableFlag[] = [
   {
     id: 'flag-message-1',
+    checkId: 'h1-generic',
     rubric: 'MESSAGE',
     severity: 'IMPORTANT',
     impactTag: 'CONVERSION',
@@ -31,6 +32,7 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-experience-1',
+    checkId: 'flow-no-cta-found',
     rubric: 'EXPERIENCE',
     severity: 'CRITICAL',
     impactTag: 'CONVERSION',
@@ -51,6 +53,7 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-experience-2',
+    checkId: 'tap-targets-small',
     rubric: 'EXPERIENCE',
     severity: 'IMPORTANT',
     impactTag: 'ACCESSIBILITY',
@@ -71,6 +74,7 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-reach-1',
+    checkId: 'og-image-missing',
     rubric: 'REACH',
     severity: 'CRITICAL',
     impactTag: 'SHARING',
@@ -91,6 +95,7 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-reach-2',
+    checkId: 'description-missing',
     rubric: 'REACH',
     severity: 'IMPORTANT',
     impactTag: 'SEO',
@@ -110,6 +115,7 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-experience-3',
+    checkId: 'render-blocking',
     rubric: 'EXPERIENCE',
     severity: 'POLISH',
     impactTag: null,

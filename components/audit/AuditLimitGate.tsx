@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
+import { trackEvent } from '@/lib/analytics/events'
+import { useEffect } from 'react'
 
 interface Props {
   code?: string
@@ -16,6 +18,10 @@ export function AuditLimitGate({ code, action, message, onDismiss }: Props) {
     code === 'ANON_LIMIT' ||
     code === 'AUTH_REQUIRED' ||
     action === 'signup'
+
+  useEffect(() => {
+    trackEvent('audit_limit_reached', { reason: code ?? action })
+  }, [code, action])
 
   return (
     <Callout

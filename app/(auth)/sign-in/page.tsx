@@ -16,6 +16,7 @@ import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
+import { trackEvent } from '@/lib/analytics/events'
 
 function SignInForm() {
   const { oauthCallbackURL, navigateAfterAuth, signUpHref } = useAuthRedirect()
@@ -33,6 +34,7 @@ function SignInForm() {
         toast.error(error.message || 'Sign in failed')
         return
       }
+      trackEvent('signed_in', { method: 'email' })
       await navigateAfterAuth()
     } catch {
       toast.error('Something went wrong')
