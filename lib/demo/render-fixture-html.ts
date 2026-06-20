@@ -71,6 +71,21 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
     )
     .join('')
 
+  const signupForm = fixture.form
+    ? `<section id="signup"><h2>${escapeHtml(fixture.form.heading)}</h2><form>${fixture.form.fields
+        .map(
+          (f) =>
+            `<div><label for="form-${f.name}">${escapeHtml(f.label)}</label>${
+              f.type === 'select'
+                ? `<select id="form-${f.name}" name="${f.name}"${f.required ? ' required' : ''}>${(f.options ?? [''])
+                    .map((o) => `<option value="${escapeHtml(o.toLowerCase())}">${escapeHtml(o)}</option>`)
+                    .join('')}</select>`
+                : `<input id="form-${f.name}" name="${f.name}" type="${f.type}"${f.required ? ' required' : ''}/>`
+            }</div>`
+        )
+        .join('')}<button type="submit">${escapeHtml(fixture.form.submitLabel)}</button></form></section>`
+    : '<section id="signup" aria-hidden="true"></section>'
+
   const socialProof = fixture.socialProof
     ? `<section class="demo-social-proof">${
         fixture.socialProof.statLine
@@ -120,7 +135,7 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
     </section>
   <section id="features"><h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>${features}</section>
   ${socialProof}
-  <section id="signup" aria-hidden="true"></section>
+  ${signupForm}
   <section id="privacy" aria-hidden="true"></section>
   <section id="terms" aria-hidden="true"></section>
 </main>

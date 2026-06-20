@@ -81,4 +81,13 @@ export const originalFixture: DemoFixture = {
       },
     ],
   },
+  form: {
+    heading: 'Get started today',
+    fields: [
+      { name: 'name', type: 'text', label: 'Full name' },
+      { name: 'email', type: 'email', label: 'Email address' },
+      { name: 'plan', type: 'select', label: 'Plan', options: ['Starter', 'Pro', 'Enterprise'] },
+    ],
+    submitLabel: 'Get started',
+  },
 }

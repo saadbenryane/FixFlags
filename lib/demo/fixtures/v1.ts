@@ -56,6 +56,15 @@ export const v1Fixture: DemoFixture = {
   },
   showCookieConsent: true,
   socialProof: null,
+  form: {
+    heading: 'Get started today',
+    fields: [
+      { name: 'name', type: 'text', label: 'Full name', required: true },
+      { name: 'email', type: 'email', label: 'Work email', required: true },
+      { name: 'plan', type: 'select', label: 'Plan', options: ['Starter', 'Pro', 'Enterprise'], required: true },
+    ],
+    submitLabel: 'Start free',
+  },
   jsonLd: {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

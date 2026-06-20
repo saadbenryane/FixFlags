@@ -92,7 +92,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
   // Form field validation attributes
   let formInputsMissingValidation = 0
-  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
+  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
   const formElements = $('form')
   if (formElements.length > 0) {
     formElements.each((_, form) => {

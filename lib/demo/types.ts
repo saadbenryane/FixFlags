@@ -39,4 +39,16 @@ export interface DemoFixture {
     statLine?: string
     testimonials: { quote: string; author: string; role?: string }[]
   } | null
+  /** Signup form rendered in #signup section; baseline has no validation, v1 adds required attrs. */
+  form?: {
+    heading: string
+    fields: Array<{
+      name: string
+      type: 'text' | 'email' | 'select'
+      label: string
+      options?: string[]
+      required?: boolean
+    }>
+    submitLabel: string
+  }
 }

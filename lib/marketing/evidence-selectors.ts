@@ -129,11 +129,11 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   },
   'flow-form-no-validation': {
     device: 'both',
-    selectors: ['main form', 'form button[type="submit"]', '#audit form', 'main input[type="email"]'],
+    selectors: ['main form', 'form button[type="submit"]', '#audit form', 'main input[type="email"]', 'form select'],
   },
   'form-missing-validation': {
     device: 'both',
-    selectors: ['main form', 'form input', 'form textarea', '#audit form'],
+    selectors: ['main form', 'form input', 'form textarea', 'form select', '#audit form'],
   },
   'cta-dead-link': { device: 'both', selectors: ['nav a', '.demo-nav a', 'main a[href]', '#audit'] },
 
