@@ -45,6 +45,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     pageText: 'QA for AI-built products.',
     jsonLd: [{ '@type': 'WebSite' }],
     elementIds: ['main-content', 'features'],
+    formInputsMissingValidation: 0,
     ...overrides,
   }
 }

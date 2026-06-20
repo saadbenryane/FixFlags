@@ -792,6 +792,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
     'heading-hierarchy-missing': () =>
       checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
+    'form-missing-validation': () =>
+      checkIds(runContentChecks(healthyMeta({ forms: 1, formInputsMissingValidation: 2 }))),
     'cta-below-fold-mobile': () =>
       checkIds(
         runLayoutChecks(
@@ -919,6 +921,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
             pricingNavLabel: 'Pricing',
             pricingNavHref: '#pricing',
             mobileMenu: 'skipped',
+            formValidation: 'skipped',
           },
         })
       ),
@@ -931,6 +934,21 @@ describe('trigger matrix - one failing signal per checkId', () => {
           multiStep: {
             pricingNav: 'skipped',
             mobileMenu: 'broken',
+            formValidation: 'skipped',
+          },
+        })
+      ),
+    'flow-form-no-validation': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'broken',
+            formLabel: 'Contact form',
           },
         })
       ),

@@ -44,6 +44,21 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
     })
   }
 
+  if (probes.formValidation === 'broken') {
+    const label = probes.formLabel ? `"${probes.formLabel}"` : 'conversion form'
+    findings.push({
+      checkId: 'flow-form-no-validation',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: 'Empty form submit shows no validation feedback',
+      evidence: `Submitting ${label} with empty required fields did not show inline errors or native validation.`,
+      fix: 'Add required attributes and visible error messages on empty submit. Use aria-invalid and role="alert" for screen readers.',
+      confidence: 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }
 

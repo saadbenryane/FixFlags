@@ -13,6 +13,7 @@ describe('multi-step flow checks', () => {
         pricingNavLabel: 'Pricing',
         pricingNavHref: '#pricing',
         mobileMenu: 'skipped',
+        formValidation: 'skipped',
       },
     })
     assert.equal(flags.length, 1)
@@ -34,16 +35,19 @@ describe('multi-step flow checks', () => {
     assert.equal(flags[0].checkId, 'flow-mobile-menu-broken')
   })
 
-  it('skips when probes pass or are not applicable', () => {
+  it('flags broken form validation probe', () => {
     const flags = runFlowChecks({
       status: 'success',
       steps: [],
       finalUrl: 'https://example.com',
       multiStep: {
-        pricingNav: 'ok',
+        pricingNav: 'skipped',
         mobileMenu: 'skipped',
+        formValidation: 'broken',
+        formLabel: 'Newsletter',
       },
     })
-    assert.equal(flags.length, 0)
+    assert.equal(flags.length, 1)
+    assert.equal(flags[0].checkId, 'flow-form-no-validation')
   })
 })

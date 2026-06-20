@@ -38,6 +38,8 @@ export interface PageMetadata {
   jsonLd: unknown[]
   /** Lowercase id attributes present on the page (for hash link validation). */
   elementIds: string[]
+  /** Count of form input/textarea/select elements lacking validation attributes. */
+  formInputsMissingValidation: number
 }
 
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
@@ -87,6 +89,20 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
       inputsWithoutLabel++
     }
   })
+
+  // Form field validation attributes
+  let formInputsMissingValidation = 0
+  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
+  const formElements = $('form')
+  if (formElements.length > 0) {
+    formElements.each((_, form) => {
+      $(form).find(formValidationSelectors).each((_, field) => {
+        const el = $(field)
+        const hasPattern = el.attr('pattern') !== undefined
+        if (!hasPattern) formInputsMissingValidation++
+      })
+    })
+  }
 
   // Buttons without text
   let buttonsWithoutText = 0
@@ -236,6 +252,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     pageText,
     jsonLd,
     elementIds,
+    formInputsMissingValidation,
   }
 }
 

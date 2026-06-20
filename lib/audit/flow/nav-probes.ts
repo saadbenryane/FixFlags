@@ -1,6 +1,7 @@
 import type { Page } from 'puppeteer'
 import { MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { probeFormValidation } from './form-probes'
 
 export type ProbeOutcome = 'ok' | 'broken' | 'skipped'
 
@@ -9,6 +10,8 @@ export interface MultiStepProbeResult {
   pricingNavLabel?: string
   pricingNavHref?: string
   mobileMenu: ProbeOutcome
+  formValidation: ProbeOutcome
+  formLabel?: string
 }
 
 function isPricingLink(text: string, href: string): boolean {
@@ -18,6 +21,18 @@ function isPricingLink(text: string, href: string): boolean {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Reset desktop capture viewport after mobile probes (clears isMobile / deviceScaleFactor). */
+export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {
+  await page.setViewport({
+    width: DESKTOP_CAPTURE_PROFILE.width,
+    height: DESKTOP_CAPTURE_PROFILE.height,
+    deviceScaleFactor: 1,
+    isMobile: false,
+  })
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await sleep(200)
 }
 
 interface PricingProbeResult {
@@ -136,7 +151,6 @@ interface MobileMenuProbeResult {
 
 /** On mobile viewport, nav links hidden behind a menu toggle must become reachable after open. */
 export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult> {
-  const desktopViewport = page.viewport()
   await page.setViewport({
     width: MOBILE_VIEWPORT.width,
     height: MOBILE_VIEWPORT.height,
@@ -148,14 +162,7 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
 
   const before = await page.evaluate(countVisibleNavLinks)
   if (before.visible > 0 || before.total === 0) {
-    if (desktopViewport) {
-      await page.setViewport(desktopViewport)
-    } else {
-      await page.setViewport({
-        width: DESKTOP_CAPTURE_PROFILE.width,
-        height: DESKTOP_CAPTURE_PROFILE.height,
-      })
-    }
+    await restoreDesktopCaptureViewport(page)
     return { mobileMenu: 'skipped' as const }
   }
 
@@ -183,14 +190,7 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
   })
 
   if (!toggle) {
-    if (desktopViewport) {
-      await page.setViewport(desktopViewport)
-    } else {
-      await page.setViewport({
-        width: DESKTOP_CAPTURE_PROFILE.width,
-        height: DESKTOP_CAPTURE_PROFILE.height,
-      })
-    }
+    await restoreDesktopCaptureViewport(page)
     return { mobileMenu: 'skipped' as const }
   }
 
@@ -199,19 +199,10 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
     await sleep(400)
     const after = await page.evaluate(countVisibleNavLinks)
     const outcome: ProbeOutcome = after.visible > 0 ? 'ok' : 'broken'
-    if (desktopViewport) {
-      await page.setViewport(desktopViewport)
-    } else {
-      await page.setViewport({
-        width: DESKTOP_CAPTURE_PROFILE.width,
-        height: DESKTOP_CAPTURE_PROFILE.height,
-      })
-    }
+    await restoreDesktopCaptureViewport(page)
     return { mobileMenu: outcome }
   } catch {
-    if (desktopViewport) {
-      await page.setViewport(desktopViewport)
-    }
+    await restoreDesktopCaptureViewport(page)
     return { mobileMenu: 'broken' as const }
   }
 }
@@ -223,11 +214,20 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
     await sleep(300)
   }
 
+  const form = await probeFormValidation(page)
+  if (form.formValidation !== 'skipped' && page.url() !== landingUrl) {
+    await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
+    await sleep(300)
+  }
+
   const mobile = await probeMobileMenu(page)
+  await restoreDesktopCaptureViewport(page)
   return {
     pricingNav: pricing.pricingNav,
     pricingNavLabel: pricing.pricingNavLabel,
     pricingNavHref: pricing.pricingNavHref,
     mobileMenu: mobile.mobileMenu,
+    formValidation: form.formValidation,
+    formLabel: form.formLabel,
   }
 }

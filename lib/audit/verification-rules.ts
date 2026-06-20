@@ -140,6 +140,10 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Click the Pricing nav link; it should scroll to a #pricing section or open a /pricing page.',
   'flow-mobile-menu-broken':
     'At 375px width, open the menu toggle; nav links should become visible and tappable.',
+  'flow-form-no-validation':
+    'Submit the signup/contact form empty; inline errors or browser validation should appear.',
+  'form-missing-validation':
+    'Inspect form fields; required/aria-required/pattern attributes should be present on each mandatory field.',
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

@@ -38,6 +38,7 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'flow-cta-external-leave',
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
+  'flow-form-no-validation',
   'loading-indicator-stuck',
   'cta-dead-link',
 ])
@@ -60,6 +61,7 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'flow-cta-external-leave',
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
+  'flow-form-no-validation',
   'tap-targets-small',
   'placeholder-copy-detected',
   'template-default-copy',
@@ -237,6 +239,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Visitors who click Pricing in the nav get a dead click - they cannot compare plans.',
   'flow-mobile-menu-broken':
     'Mobile visitors cannot reach Pricing or Features when the menu toggle fails.',
+  'flow-form-no-validation':
+    'Visitors who submit an empty form get silence instead of guidance - they abandon instead of fixing typos.',
 }
 
 export function whyItMattersForCheckId(checkId: string): string {

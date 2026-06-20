@@ -80,6 +80,8 @@ export const ALL_CHECK_IDS = [
   'unreplaced-template-token',
   'cta-dead-link',
   'social-proof-unverifiable',
+  // form.ts
+  'form-missing-validation',
   // flow.ts
   'flow-no-cta-found',
   'flow-cta-unclickable',
@@ -88,6 +90,7 @@ export const ALL_CHECK_IDS = [
   'flow-cta-external-leave',
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
+  'flow-form-no-validation',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

@@ -63,5 +63,19 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
+  if (meta.forms > 0 && meta.formInputsMissingValidation > 0) {
+    findings.push({
+      checkId: 'form-missing-validation',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: `${meta.formInputsMissingValidation} form field${meta.formInputsMissingValidation > 1 ? 's' : ''} allow${meta.formInputsMissingValidation > 1 ? '' : 's'} submission without inline validation`,
+      evidence: `${meta.forms} form${meta.forms > 1 ? 's' : ''} on the page with ${meta.formInputsMissingValidation} input${meta.formInputsMissingValidation > 1 ? 's' : ''} missing required, aria-required, or pattern attributes`,
+      fix: 'Add required or aria-required to mandatory fields. Use pattern for format validation. Display inline error messages on submit so users know what to fix.',
+      confidence: 0.9,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }
