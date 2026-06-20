@@ -43,9 +43,9 @@ Mono (IBM Plex): scores, grades, labels only.
 
 ## Radius & components
 
-- **Buttons & inputs:** `rounded-full` (pill) — required for all CTAs and form controls
+- **Buttons & inputs:** `rounded-full` (pill). Required for all CTAs and form controls
 - **Input groups:** outer pill + concentric inner pill button with uniform `p-1.5` inset
-- **Cards & panels:** `rounded-card` (12px) frosted glass — no borders; use `shadow-card` + blur
+- **Cards & panels:** `rounded-card` (12px) frosted glass. No borders; use `shadow-card` + blur
 - **Page canvas:** global peach mesh backdrop (`PeachyMeshBackdrop` / `GlobalMeshBackdrop`)
 - **Nav:** sticky glass header (`glass-surface-elevated`), no bottom border
 

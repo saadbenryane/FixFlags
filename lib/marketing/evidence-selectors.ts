@@ -5,7 +5,7 @@ export interface EvidenceSelectorEntry {
   selectors: string[]
 }
 
-/** CSS selector registry for deterministic checks — first match wins per viewport. */
+/** CSS selector registry for deterministic checks. First match wins per viewport. */
 export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   // Message / content
   'h1-missing': { device: 'both', selectors: ['main', 'body'] },
@@ -16,7 +16,7 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
     selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '#audit', 'main form', 'main button', 'main a[href]'],
   },
 
-  // Metadata — invisible in DOM; pin hero / share-relevant content
+  // Metadata: invisible in DOM; pin hero / share-relevant content
   'title-missing': { device: 'both', selectors: ['main h1', 'h1', '#audit'] },
   'title-too-short': { device: 'both', selectors: ['main h1', 'h1'] },
   'title-too-long': { device: 'both', selectors: ['main h1', 'h1'] },
@@ -120,23 +120,7 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'unreplaced-template-token': { device: 'both', selectors: ['main h1', 'main p', 'main'] },
 }
 
-export const METADATA_CHECK_IDS = new Set([
-  'title-missing',
-  'title-too-short',
-  'title-too-long',
-  'description-missing',
-  'description-too-short',
-  'description-too-long',
-  'og-image-missing',
-  'og-title-missing',
-  'og-description-missing',
-  'og-image-broken',
-  'viewport-missing',
-  'lang-missing',
-  'canonical-missing',
-  'robots-blocks-indexing',
-  'favicon-missing',
-])
+export { METADATA_CHECK_IDS } from '@/lib/marketing/evidence-regions'
 
 export function getEvidenceSelectors(checkId: string): EvidenceSelectorEntry | undefined {
   return EVIDENCE_SELECTORS[checkId]

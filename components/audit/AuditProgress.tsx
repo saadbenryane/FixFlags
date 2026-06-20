@@ -142,7 +142,7 @@ export function AuditProgress({
 
         {showWorkerWarning && (
           <Callout variant="warning" title="Worker starting">
-            {getWorkerQueuedWarning()}
+            {getWorkerQueuedWarning(true)}
           </Callout>
         )}
 

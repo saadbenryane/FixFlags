@@ -100,8 +100,12 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 Deploy **two services** from this repo:
 
-1. **Web**, `npm run build && npm start` (default)
-2. **Worker**, `npm run worker:build && npm run worker:start`
+1. **Web**, `npm run build && npm start` (default). Health: `GET /api/health` (DB, Redis, storage, worker heartbeat, queue depth).
+2. **Worker**, `npm run worker:build && npm run worker:start`. Writes a Redis heartbeat every 15s; without it, audits stay QUEUED.
+
+Local dev requires both processes: `npm run dev:all` (Next.js + worker). `npm run dev` alone leaves audits queued.
+
+Both services must share the same `DATABASE_URL` and `REDIS_URL`.
 
 ### Required production env vars
 
@@ -139,17 +143,17 @@ Admin ops URLs: `/admin/leads`, `/admin/inbox`
 
 ### Cron jobs
 
-Configure Railway (or any scheduler) to POST to these routes with header `Authorization: Bearer $CRON_SECRET`:
+Configure Railway (or any scheduler) to call these routes with header `Authorization: Bearer $CRON_SECRET` (GET or POST):
 
 | Route | Purpose |
 |-------|---------|
-| `POST /api/cron/recover-stuck-audits` | Re-queue audits stuck in non-terminal states |
-| `POST /api/cron/nurture` | Send lifecycle emails to eligible users |
+| `/api/cron/recover-stuck-audits` | Re-queue audits stuck in non-terminal states |
+| `/api/cron/nurture` | Send lifecycle emails to eligible users |
 
 Example:
 
 ```bash
-curl -X POST https://fixflags.com/api/cron/recover-stuck-audits \
+curl https://fixflags.com/api/cron/recover-stuck-audits \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 

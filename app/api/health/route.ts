@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
+import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { handleRouteError } from '@/lib/api/errors'
 import { checkR2Connection, isR2Configured } from '@/lib/storage/r2'
 
@@ -17,28 +18,42 @@ export async function GET() {
       checks.db = 'error'
     }
 
+    let waiting = 0
+    let active = 0
+    let delayed = 0
+
     try {
       const counts = await Promise.race([
         getAuditQueue().getJobCounts('waiting', 'active', 'delayed'),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
       ])
       checks.redis = 'ok'
-      if (process.env.NODE_ENV !== 'production') {
-        const waiting = (counts as Record<string, number>).waiting ?? 0
-        const active = (counts as Record<string, number>).active ?? 0
-        checks.queueWaiting = String(waiting)
-        checks.queueActive = String(active)
-        checks.queueDelayed = String((counts as Record<string, number>).delayed ?? 0)
-        checks.workerLikelyIdle = String(waiting > 0 && active === 0)
-      }
+      waiting = (counts as Record<string, number>).waiting ?? 0
+      active = (counts as Record<string, number>).active ?? 0
+      delayed = (counts as Record<string, number>).delayed ?? 0
+      checks.queueWaiting = String(waiting)
+      checks.queueActive = String(active)
+      checks.queueDelayed = String(delayed)
     } catch {
       checks.redis = 'error'
     }
 
+    let workerAlive = false
+    try {
+      const heartbeat = await readWorkerHeartbeat()
+      workerAlive = heartbeat.alive
+      checks.worker = heartbeat.alive ? 'ok' : 'missing'
+      if (heartbeat.ageSeconds != null) {
+        checks.workerHeartbeatAgeSeconds = String(heartbeat.ageSeconds)
+      }
+    } catch {
+      checks.worker = 'unknown'
+    }
+
+    checks.workerLikelyIdle = String(waiting > 0 && active === 0 && !workerAlive)
+
     if (process.env.NODE_ENV === 'production') {
       if (!isR2Configured()) {
-        // R2 is optional: screenshots are disabled until it is configured, but
-        // that must not make the whole service report unhealthy.
         checks.storage = 'unconfigured'
       } else {
         try {
@@ -55,9 +70,6 @@ export async function GET() {
       }
     } else {
       checks.storage = isR2Configured() ? 'configured' : 'local'
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
       const cutoff = new Date(Date.now() - STUCK_MINUTES * 60 * 1000)
       const stuckCount = await prisma.audit.count({
         where: {
@@ -71,7 +83,9 @@ export async function GET() {
     const allOk =
       checks.db === 'ok' &&
       checks.redis === 'ok' &&
-      checks.storage !== 'error'
+      checks.storage !== 'error' &&
+      (checks.worker === 'ok' || checks.worker === 'unknown' || waiting === 0)
+
     return NextResponse.json(
       { status: allOk ? 'ok' : 'degraded', ...checks, ts: new Date().toISOString() },
       { status: allOk ? 200 : 503 }

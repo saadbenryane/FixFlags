@@ -8,10 +8,18 @@ import {
   getEvidenceSelectors,
   type EvidenceDevice,
 } from '@/lib/marketing/evidence-selectors'
+import {
+  anchorToRegion,
+  evidenceScopeForCheck,
+  type EvidenceRegionScope,
+} from '@/lib/marketing/evidence-regions'
 
 export interface EvidenceAnchor {
   x: number
   y: number
+  width?: number
+  height?: number
+  scope?: EvidenceRegionScope
 }
 
 export type EvidenceAnchorEntry = Partial<Record<EvidenceDevice, EvidenceAnchor>>
@@ -24,7 +32,23 @@ const TIMEOUT_MS = 30_000
 const ANCHOR_CLAMP_MIN = 0.02
 const ANCHOR_CLAMP_MAX = 0.98
 
-async function resolvePoint(page: Page, selectors: string[]): Promise<EvidenceAnchor | null> {
+async function resolveRect(
+  page: Page,
+  selectors: string[],
+  checkId: string
+): Promise<EvidenceAnchor | null> {
+  const scope = evidenceScopeForCheck(checkId)
+  if (scope === 'page') {
+    const region = anchorToRegion(checkId, null)
+    return {
+      x: region.x + region.width / 2,
+      y: region.y + region.height / 2,
+      width: region.width,
+      height: region.height,
+      scope: 'page',
+    }
+  }
+
   return page.evaluate(
     (sels: string[], min: number, max: number) => {
       for (const sel of sels) {
@@ -36,11 +60,25 @@ async function resolvePoint(page: Page, selectors: string[]): Promise<EvidenceAn
         const vh = window.innerHeight
         if (vw <= 0 || vh <= 0) continue
         if (rect.bottom < 0 || rect.top > vh) continue
-        const x = (rect.left + rect.width / 2) / vw
-        const y = (rect.top + rect.height / 2) / vh
+
+        const padX = Math.min(rect.width * 0.08, 12)
+        const padY = Math.min(rect.height * 0.12, 10)
+        const left = Math.max(0, rect.left - padX)
+        const top = Math.max(0, rect.top - padY)
+        const right = Math.min(vw, rect.right + padX)
+        const bottom = Math.min(vh, rect.bottom + padY)
+
+        const width = (right - left) / vw
+        const height = (bottom - top) / vh
+        const x = (left + (right - left) / 2) / vw
+        const y = (top + (bottom - top) / 2) / vh
+
         return {
-          x: Math.min(max, Math.max(min, Math.min(1, Math.max(0, x)))),
-          y: Math.min(max, Math.max(min, Math.min(1, Math.max(0, y)))),
+          x: Math.min(max, Math.max(min, x)),
+          y: Math.min(max, Math.max(min, y)),
+          width: Math.min(1, Math.max(0.06, width)),
+          height: Math.min(1, Math.max(0.05, height)),
+          scope: 'element' as const,
         }
       }
       return null
@@ -87,7 +125,7 @@ async function resolveForDevice(
       if (!entry) continue
       if (entry.device !== 'both' && entry.device !== device) continue
 
-      const point = await resolvePoint(page, entry.selectors)
+      const point = await resolveRect(page, entry.selectors, checkId)
       if (!point) continue
 
       result[checkId] = { ...result[checkId], [device]: point }

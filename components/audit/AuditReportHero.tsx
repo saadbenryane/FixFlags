@@ -3,7 +3,7 @@ import { Callout } from '@/components/ui/callout'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
-import { buildPipelineSteps, buildRubricScoreRows } from '@/lib/audit/report-pipeline-steps'
+import { buildRubricScoreRows, reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
 import { displayVerdict } from '@/lib/audit/verdict'
 import type { RubricComputed } from '@/lib/audit/rubric'
@@ -27,7 +27,6 @@ type Props = {
   rubricRows: RubricRow[]
   flagCount: number
   hasFixPrompts: boolean
-  reviewReady: boolean
   pageSpeedPartial?: boolean
   desktopPageSpeedError?: string | null
   mobilePageSpeedError?: string | null
@@ -46,7 +45,6 @@ export function AuditReportHero({
   rubricRows,
   flagCount,
   hasFixPrompts,
-  reviewReady,
   pageSpeedPartial,
   desktopPageSpeedError,
   mobilePageSpeedError,
@@ -54,13 +52,6 @@ export function AuditReportHero({
   const hasScreenshots = screenshots && screenshots.length > 0
   const userVerdict = displayVerdict(verdict)
   const rubricScores = buildRubricScoreRows(rubricRows)
-  const pipelineSteps = buildPipelineSteps({
-    flagCount,
-    pageType,
-    mode: 'audit',
-    hasFixPrompts,
-    reviewReady,
-  })
 
   return (
     <div className="space-y-6">
@@ -69,10 +60,17 @@ export function AuditReportHero({
       <ReportScoreOverview
         score={score}
         rubricScores={rubricScores}
-        pipelineSteps={pipelineSteps}
+        fixLoop={{
+          scanDetail: reportScanDetail(pageType),
+          flags: [],
+          flagCount,
+          hasFixPrompts,
+          defaultExpanded: false,
+        }}
         scoreSize="md"
         compact={false}
         showProgress
+        layout="split"
       />
 
       <div className="min-w-0 space-y-3">

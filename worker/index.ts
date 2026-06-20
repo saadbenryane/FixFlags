@@ -10,8 +10,15 @@ logger.info('Worker starting')
 
 const worker = startWorker()
 
+const heartbeatInterval = setInterval(() => {
+  void touchWorkerHeartbeat().catch((err) => {
+    logger.error('Worker heartbeat tick failed', err)
+  })
+}, 15_000)
+
 async function shutdown() {
   logger.info('Worker shutting down')
+  clearInterval(heartbeatInterval)
   await worker.close()
   await closeBrowser()
   process.exit(0)

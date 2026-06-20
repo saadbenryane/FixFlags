@@ -20,70 +20,68 @@ export interface RubricScoreRow {
 
 export type PipelineStepsMode = 'sample' | 'audit'
 
-function captureStepDetail(pageType: string | null): string {
+/** User-facing detail for the Scan step (page context, not internal pipeline jargon). */
+export function reportScanDetail(pageType: string | null): string {
   if (pageType) return pageType
-  return 'Landing page'
+  return `${CHECK_ID_COUNT} checks`
 }
 
+function scanDetail(pageType: string | null): string {
+  return reportScanDetail(pageType)
+}
+
+/**
+ * Value-driven progress aligned with the fix loop: Scan → Flag → Fix.
+ * Capture/checks are collapsed into Scan; overall score lives in the ring, not a step.
+ */
 export function buildPipelineSteps({
   flagCount,
   pageType,
   mode = 'sample',
   hasFixPrompts,
-  reviewReady,
 }: {
   flagCount: number
   pageType: string | null
   mode?: PipelineStepsMode
   hasFixPrompts?: boolean
+  /** @deprecated Score is shown in the ring; kept for call-site compatibility */
   reviewReady?: boolean
 }): PipelineStep[] {
-  const captureAndChecks: PipelineStep[] = [
-    { id: 'capture', label: 'Site captured', detail: captureStepDetail(pageType), state: 'done' },
-    {
-      id: 'checks',
-      label: 'Checks complete',
-      detail: `${CHECK_ID_COUNT} checks`,
-      state: 'done',
-    },
-  ]
+  const scan: PipelineStep = {
+    id: 'scan',
+    label: 'Scan',
+    detail: scanDetail(pageType),
+    state: 'done',
+  }
 
   if (mode === 'sample') {
     return [
-      ...captureAndChecks,
+      scan,
       {
         id: 'flags',
-        label: 'Flags found',
+        label: 'Flag',
         detail: String(flagCount),
         state: flagCount > 0 ? 'active' : 'done',
       },
-      { id: 'prompts', label: 'Fix prompts ready', detail: 'Cursor-ready', state: 'pending' },
-      { id: 'ready', label: 'Review ready', detail: 'After scoring', state: 'pending' },
+      { id: 'prompts', label: 'Fix', detail: 'Copy-ready', state: 'pending' },
     ]
   }
 
-  const promptsDone = Boolean(hasFixPrompts)
-  const readyDone = Boolean(reviewReady)
+  const fixesDone = Boolean(hasFixPrompts)
 
   return [
-    ...captureAndChecks,
+    scan,
     {
       id: 'flags',
-      label: 'Flags found',
+      label: 'Flag',
       detail: String(flagCount),
       state: 'done',
     },
     {
       id: 'prompts',
-      label: 'Fix prompts ready',
-      detail: 'Cursor-ready',
-      state: promptsDone ? 'done' : 'pending',
-    },
-    {
-      id: 'ready',
-      label: 'Review ready',
-      detail: 'After scoring',
-      state: readyDone ? 'done' : 'pending',
+      label: 'Fix',
+      detail: 'Copy-ready',
+      state: fixesDone ? 'done' : 'pending',
     },
   ]
 }

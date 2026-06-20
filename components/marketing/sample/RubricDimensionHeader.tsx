@@ -81,8 +81,7 @@ export function RubricPill({ rubric, label }: { rubric: string; label: string })
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
-        meta.border,
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
         meta.wash,
         meta.tint
       )}

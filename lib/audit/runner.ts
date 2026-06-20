@@ -269,6 +269,7 @@ async function runPage(
       desktopError: pagespeed.desktopError ?? null,
       mobileError: pagespeed.mobileError ?? null,
       screenshots: screenshots.captureStatus,
+      captureFailures: screenshots.captureFailures,
     }
 
     await prisma.$transaction([

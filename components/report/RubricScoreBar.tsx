@@ -1,7 +1,17 @@
 'use client'
 
+import { Globe2, MessageSquare, Zap } from 'lucide-react'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
+
+const BAR_META: Record<
+  string,
+  { icon: typeof MessageSquare; tint: string }
+> = {
+  Message: { icon: MessageSquare, tint: 'text-brand' },
+  Experience: { icon: Zap, tint: 'text-success' },
+  Reach: { icon: Globe2, tint: 'text-info' },
+}
 
 export function RubricScoreBar({
   name,
@@ -14,6 +24,8 @@ export function RubricScoreBar({
 }) {
   const scoreLabel = score == null ? 'N/A' : String(score)
   const barWidth = score == null ? 0 : Math.min(100, score)
+  const meta = BAR_META[name]
+  const Icon = meta?.icon
 
   return (
     <div
@@ -25,15 +37,21 @@ export function RubricScoreBar({
       <div className="flex items-baseline justify-between gap-1">
         <span
           className={cn(
-            'font-medium text-muted-foreground',
+            'flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground',
             compact ? 'text-[10px] leading-tight' : 'text-xs'
           )}
         >
-          {name}
+          {Icon ? (
+            <Icon
+              className={cn('shrink-0', meta.tint, compact ? 'h-3 w-3' : 'h-3.5 w-3.5')}
+              aria-hidden
+            />
+          ) : null}
+          <span className="truncate">{name}</span>
         </span>
         <span
           className={cn(
-            'font-mono font-bold tabular-nums',
+            'shrink-0 font-mono font-bold tabular-nums',
             compact ? 'text-xs' : 'text-sm'
           )}
         >

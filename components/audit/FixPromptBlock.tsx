@@ -31,7 +31,8 @@ export function FixPromptBlock({
   variant = 'terminal',
   nested = false,
 }: FixPromptBlockProps) {
-  const shellRadius = nested ? 'rounded-nested-lg' : 'rounded-card'
+  const shellRadius =
+    nested && variant === 'compact' ? 'rounded-[var(--radius-inner)]' : nested ? 'rounded-nested-lg' : 'rounded-card'
 
   if (variant === 'compact') {
     return (

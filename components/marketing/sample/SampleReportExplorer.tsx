@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { ScreenshotWithHighlights } from '@/components/marketing/sample/ScreenshotWithHighlights'
 import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
-import { Button } from '@/components/ui/button'
+import type { FixLoopFlagItem } from '@/components/report/ReportFixLoop'
+import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import {
   buildAllEvidenceHighlights,
   type SampleFlagDisplay,
@@ -28,7 +28,6 @@ const VARIANT_CONFIG = {
     compact: true,
     showProgress: true,
     showScoreStack: true,
-    showFlagNav: true,
     scoreSize: 'md' as const,
     showHeader: false,
   },
@@ -36,53 +35,10 @@ const VARIANT_CONFIG = {
     compact: false,
     showProgress: true,
     showScoreStack: true,
-    showFlagNav: false,
     scoreSize: 'md' as const,
     showHeader: true,
   },
 } as const
-
-function FlagNavigation({
-  index,
-  total,
-  onPrevious,
-  onNext,
-}: {
-  index: number
-  total: number
-  onPrevious: () => void
-  onNext: () => void
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-        {index + 1} / {total}
-      </span>
-      <div className="flex items-center gap-1">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-9 w-9"
-          onClick={onPrevious}
-          aria-label="Previous flag"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-9 w-9"
-          onClick={onNext}
-          aria-label="Next flag"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 function FlagDetailPanel({ flag }: { flag: SampleFlagDisplay }) {
   return (
@@ -102,7 +58,7 @@ function FlagDetailPanel({ flag }: { flag: SampleFlagDisplay }) {
           {flag.severityLabel}
         </span>
         {flag.impactTag && (
-          <span className="rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground">
+          <span className="rounded-full bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
             {flag.impactTag}
           </span>
         )}
@@ -117,10 +73,15 @@ function FlagDetailPanel({ flag }: { flag: SampleFlagDisplay }) {
             {flag.whyItMatters}
           </p>
         )}
+        {flag.evidence && (
+          <p className="mt-2 text-sm leading-relaxed text-foreground/90 text-pretty">
+            {flag.evidence}
+          </p>
+        )}
       </div>
 
       {flag.verificationRule && (
-        <div className="rounded-md border border-border/60 bg-muted/30 px-4 py-3">
+        <div className="rounded-[var(--radius-inner)] bg-muted/30 px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
             How to verify
           </p>
@@ -146,22 +107,18 @@ function ReportBody({
   report,
   flag,
   config,
-  flagIndex,
-  flagCount,
-  onPrevious,
-  onNext,
-  onPinSelect,
+  fixLoopFlags,
+  selectedFlagId,
+  onSelectFlag,
   flagDetailRef,
   flagDetailLabel = 'Flag detail',
 }: {
   report: SampleReportDisplay
   flag: SampleFlagDisplay
   config: (typeof VARIANT_CONFIG)[ExplorerVariant]
-  flagIndex: number
-  flagCount: number
-  onPrevious: () => void
-  onNext: () => void
-  onPinSelect: (flagId: string) => void
+  fixLoopFlags: FixLoopFlagItem[]
+  selectedFlagId: string
+  onSelectFlag: (flagId: string) => void
   flagDetailRef: React.RefObject<HTMLDivElement | null>
   flagDetailLabel?: string
 }) {
@@ -170,47 +127,42 @@ function ReportBody({
   const showMobile = flag.evidenceDevices.includes('mobile')
 
   return (
-    <div className="space-y-6">
+    <div
+      className={cn(
+        'flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)] lg:items-start lg:gap-8'
+      )}
+    >
       {config.showScoreStack && (
-        <ReportScoreOverview
-          score={report.score}
-          rubricScores={report.rubricScores}
-          pipelineSteps={report.pipelineSteps}
-          scoreSize={config.scoreSize}
-          compact={config.compact}
-          showProgress={config.showProgress}
-        />
+        <aside className="min-w-0 lg:sticky lg:top-[calc(var(--header-offset)+1rem)]">
+          <ReportScoreOverview
+            score={report.score}
+            rubricScores={report.rubricScores}
+            fixLoop={{
+              scanDetail: reportScanDetail(report.pageType),
+              flags: fixLoopFlags,
+              selectedFlagId,
+              onSelectFlag,
+              hasFixPrompts: true,
+              defaultExpanded: true,
+              compact: config.compact,
+            }}
+            scoreSize={config.scoreSize}
+            compact={config.compact}
+            showProgress={config.showProgress}
+            layout="stacked"
+          />
+        </aside>
       )}
 
       <div
         id="flag-detail"
         ref={flagDetailRef}
-        className="border-t border-border/30 pt-6 scroll-mt-24"
+        className="min-w-0 border-t border-border/30 pt-6 scroll-mt-24 lg:border-t-0 lg:pt-0"
       >
-        <div
-          className={cn(
-            'mb-4 flex items-center gap-3',
-            config.showFlagNav ? 'justify-between' : undefined
-          )}
-        >
+        <div className="mb-4">
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
             {flagDetailLabel}
           </p>
-          {config.showFlagNav && (
-            <div className="flex items-center gap-3">
-              {!config.compact && (
-                <span className="hidden text-[11px] text-muted-foreground sm:inline">
-                  Left and right arrow keys to navigate
-                </span>
-              )}
-              <FlagNavigation
-                index={flagIndex}
-                total={flagCount}
-                onPrevious={onPrevious}
-                onNext={onNext}
-              />
-            </div>
-          )}
         </div>
 
         <ScreenshotWithHighlights
@@ -219,7 +171,6 @@ function ReportBody({
           mobileScreenshot={report.mobileScreenshot}
           highlights={allHighlights}
           selectedFlagId={flag.id}
-          onPinSelect={onPinSelect}
           showDesktop={showDesktop}
           showMobile={showMobile}
           className="mb-5"
@@ -280,15 +231,20 @@ export function SampleReportExplorer({
     className
   )
 
+  const fixLoopFlags: FixLoopFlagItem[] = report.flags.map((f) => ({
+    id: f.id,
+    title: f.title,
+    severity: f.severity,
+    hasFixPrompt: Boolean(f.fixPrompt),
+  }))
+
   const reportBodyProps = {
     report,
     flag: currentFlag,
     config,
-    flagIndex,
-    flagCount,
-    onPrevious: showPrevious,
-    onNext: showNext,
-    onPinSelect: goToFlag,
+    fixLoopFlags,
+    selectedFlagId: currentFlag.id,
+    onSelectFlag: goToFlag,
     flagDetailRef,
     flagDetailLabel:
       variant === 'page' ? `Check ${flagIndex + 1} of ${flagCount}` : 'Flag detail',
@@ -323,12 +279,6 @@ export function SampleReportExplorer({
                 <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
               )}
             </div>
-            <FlagNavigation
-              index={flagIndex}
-              total={flagCount}
-              onPrevious={showPrevious}
-              onNext={showNext}
-            />
           </div>
         )}
 

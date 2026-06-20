@@ -3,14 +3,20 @@ import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
 import { runAiReview } from '../audit/run-ai-review'
 import { getWorkerRedisConnectionOptions } from './redis'
+import { touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
 
 export function startWorker() {
+  void touchWorkerHeartbeat().catch((err) => {
+    logger.error('Initial worker heartbeat failed', err)
+  })
+
   const worker = new Worker(
     'audit',
     async (job) => {
+      await touchWorkerHeartbeat()
       if (job.name === 'ai-review') {
         const { auditId } = job.data as { auditId: string }
         await runAiReview(auditId)
@@ -27,6 +33,7 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
+    void touchWorkerHeartbeat().catch(() => {})
     logger.info(`Audit job ${job.id} completed`, { auditId: job.data.auditId })
   })
 

@@ -1005,6 +1005,8 @@ export const AUDIT_PROGRESS = {
   workerQueuedWarningDev:
     'Check is still queued. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:
+    'Scan workers are restarting. Your check is queued and will resume automatically.',
+  workerBacklogWarningProd:
     'Your check is queued. We are processing a backlog and it will start shortly.',
   stages: [
     { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review...' },

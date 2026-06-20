@@ -17,7 +17,7 @@ const STATIC_FLAGS: RankableFlag[] = [
     impactTag: 'CONVERSION',
     problem: 'Hero headline repeats the product category instead of the outcome',
     evidence:
-      'Desktop 1280x900: headline reads "Build something amazing with AI" — describes the tool category, not the visitor outcome.',
+      'Desktop 1280x900: headline reads "Build something amazing with AI". Describes the tool category, not the visitor outcome.',
     whyItMatters:
       'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
     fix: 'Lead with the outcome: who it is for and what they get after signing up.',

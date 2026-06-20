@@ -7,7 +7,12 @@ import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage } from './browser/page-session'
+import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
 import { measureMobileLayout, type CaptureMetrics } from './capture-metrics'
+import {
+  pageCaptureFailureFromError,
+  type PageCaptureFailure,
+} from './browser/page-capture'
 
 let browser: Browser | null = null
 
@@ -44,6 +49,7 @@ export interface ScreenshotResult {
   desktopHtml: string | null
   consoleErrors: Array<{ type: string; text: string }>
   captureStatus: ScreenshotCaptureStatus
+  captureFailures: PageCaptureFailure[]
   flowResult?: FlowScanResult | null
   captureMetrics?: CaptureMetrics | null
 }
@@ -73,8 +79,7 @@ async function captureDesktopWithFlow(
   let page = null
   try {
     const session = await createAuditPage(b, targetUrl, {
-      width: DESKTOP_VIEWPORT.width,
-      height: DESKTOP_VIEWPORT.height,
+      profile: DESKTOP_CAPTURE_PROFILE,
       consoleErrors,
     })
     page = session.page
@@ -106,6 +111,7 @@ async function captureDesktopWithFlow(
     }
   } catch (err) {
     logger.error('desktop screenshot failed', err)
+    throw err
   } finally {
     if (page) {
       await page.close().catch(() => {})
@@ -115,19 +121,11 @@ async function captureDesktopWithFlow(
   return result
 }
 
-async function captureViewport(
+async function captureMobileViewport(
   b: Browser,
   targetUrl: string,
   auditId: string,
-  options: {
-    width: number
-    height: number
-    device: 'desktop' | 'mobile'
-    isMobile?: boolean
-    deviceScaleFactor?: number
-    captureHtml?: boolean
-    pageKey?: string
-  },
+  pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, html: null }
@@ -135,31 +133,20 @@ async function captureViewport(
 
   try {
     const session = await createAuditPage(b, targetUrl, {
-      width: options.width,
-      height: options.height,
-      isMobile: options.isMobile,
-      deviceScaleFactor: options.deviceScaleFactor,
+      profile: MOBILE_CAPTURE_PROFILE,
       consoleErrors,
     })
     page = session.page
 
-    if (options.captureHtml) {
-      result.html = await page.content()
-    }
-
     const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
     result.base64 = buffer.toString('base64')
-    result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)
+    result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
 
-    if (options.device === 'mobile') {
-      try {
-        result.captureMetrics = await measureMobileLayout(page)
-      } catch (err) {
-        logger.error('mobile layout metrics failed', err)
-      }
+    try {
+      result.captureMetrics = await measureMobileLayout(page)
+    } catch (err) {
+      logger.error('mobile layout metrics failed', err)
     }
-  } catch (err) {
-    logger.error(`${options.device} screenshot failed`, err)
   } finally {
     if (page) {
       await page.close().catch(() => {})
@@ -178,25 +165,33 @@ export async function captureScreenshots(
   await assertPublicAuditUrl(url)
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
+  const captureFailures: PageCaptureFailure[] = []
   const runFlow = options?.runFlow ?? true
 
-  const [desktop, mobile] = await Promise.all([
-    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow),
-    captureViewport(
+  let desktop: ViewportCapture & { flowResult: FlowScanResult | null }
+  try {
+    desktop = await captureDesktopWithFlow(
       b,
       url,
       auditId,
-      {
-        width: MOBILE_VIEWPORT.width,
-        height: MOBILE_VIEWPORT.height,
-        device: 'mobile',
-        isMobile: true,
-        deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
-        pageKey,
-      },
-      consoleErrors
-    ),
-  ])
+      pageKey,
+      consoleErrors,
+      runFlow
+    )
+  } catch (err) {
+    captureFailures.push(pageCaptureFailureFromError('desktop', err))
+    desktop = { base64: null, url: null, html: null, flowResult: null }
+  }
+
+  let mobile: ViewportCapture = { base64: null, url: null, html: null }
+  if (desktop.url) {
+    try {
+      mobile = await captureMobileViewport(b, url, auditId, pageKey, consoleErrors)
+    } catch (err) {
+      logger.error('mobile screenshot failed', err)
+      captureFailures.push(pageCaptureFailureFromError('mobile', err))
+    }
+  }
 
   return {
     desktopUrl: desktop.url,
@@ -209,6 +204,7 @@ export async function captureScreenshots(
       desktop: desktop.url ? 'ok' : 'failed',
       mobile: mobile.url ? 'ok' : 'failed',
     },
+    captureFailures,
     flowResult: desktop.flowResult,
     captureMetrics: mobile.captureMetrics ?? null,
   }
@@ -224,3 +220,5 @@ export async function closeBrowser() {
     browser = null
   }
 }
+
+export { DESKTOP_VIEWPORT, MOBILE_VIEWPORT }

@@ -16,7 +16,7 @@ export function ScoreStack({
   scoreSize?: 'sm' | 'md' | 'lg'
   compact?: boolean
 }) {
-  const ringSize = compact ? 'sm' : scoreSize
+  const ringSize = compact ? 'md' : scoreSize
 
   return (
     <div className={cn(compact ? 'space-y-2' : 'space-y-3')}>

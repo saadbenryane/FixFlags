@@ -23,7 +23,7 @@ export const MOBILE_FRAME_WIDTH_CLASS = 'w-[240px] max-w-full shrink-0'
 
 /**
  * Side-by-side desktop + mobile frames (flex row) for audit surfaces.
- * Pair with `flex` — do not include `flex` here or tailwind-merge will drop `hidden`.
+ * Pair with `flex`. Do not include `flex` here or tailwind-merge will drop `hidden`.
  */
 export const SCREENSHOT_FRAMES_ROW_CLASS =
   'w-full min-w-0 flex-row items-start gap-4 sm:gap-6'

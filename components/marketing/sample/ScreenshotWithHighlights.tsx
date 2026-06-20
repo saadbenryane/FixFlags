@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
-import { createPortal } from 'react-dom'
 import {
   mobileViewportSizeForHeight,
   viewportAspectStyle,
@@ -21,196 +20,72 @@ interface ScreenshotWithHighlightsProps {
   className?: string
 }
 
-function useNarrowViewport() {
-  const [narrow, setNarrow] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)')
-    const update = () => setNarrow(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
-
-  return narrow
-}
-
-function EvidencePin({ severity, active, selected }: { severity?: string; active?: boolean; selected?: boolean }) {
-  const isCritical = severity === 'CRITICAL'
-
-  return (
-    <span
-      className={cn(
-        'pointer-events-none relative flex items-center justify-center',
-        selected ? 'h-5 w-5' : 'h-4 w-4'
-      )}
-    >
-      <span
-        className={cn(
-          'absolute inset-0 rounded-full motion-safe:animate-pulse motion-reduce:animate-none',
-          isCritical
-            ? 'bg-destructive/30 shadow-[0_0_0_4px_hsl(var(--destructive)/0.25),0_0_16px_hsl(var(--destructive)/0.45)]'
-            : 'bg-brand/30 shadow-[0_0_0_4px_hsl(var(--brand)/0.25),0_0_16px_hsl(var(--peach-glow)/0.5)]',
-          selected && 'opacity-100'
-        )}
-        aria-hidden
-      />
-      <span
-        className={cn(
-          'relative rounded-full bg-white ring-2 transition-transform',
-          selected ? 'h-4 w-4 scale-110 ring-brand' : 'h-3.5 w-3.5',
-          isCritical ? 'ring-destructive/60' : 'ring-brand/70',
-          active && 'scale-110'
-        )}
-      />
-    </span>
-  )
-}
-
-function PinTooltipContent({
+function EvidenceRegionGlow({
   highlight,
-  className,
+  selected,
 }: {
   highlight: EvidenceHighlight
-  className?: string
+  selected?: boolean
 }) {
+  const isCritical = highlight.severity === 'CRITICAL'
+  const isPage = highlight.scope === 'page'
+
   return (
-    <div className={className}>
-      <p className="text-[11px] font-semibold text-foreground">{highlight.label}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground text-pretty">
-        {highlight.detail}
-      </p>
+    <div
+      className={cn(
+        'pointer-events-none absolute rounded-md transition-opacity duration-300',
+        selected ? 'opacity-100' : 'opacity-0',
+        isPage && 'ring-inset',
+        isCritical
+          ? cn(
+              'ring-2 ring-destructive',
+              !isPage &&
+                'shadow-[0_0_0_1px_hsl(var(--destructive)/0.35),0_0_24px_4px_hsl(var(--destructive)/0.35)] motion-safe:animate-pulse motion-reduce:animate-none'
+            )
+          : cn(
+              'ring-2 ring-brand',
+              !isPage &&
+                'shadow-[0_0_0_1px_hsl(var(--brand)/0.3),0_0_24px_4px_hsl(var(--peach-glow)/0.4)] motion-safe:animate-pulse motion-reduce:animate-none'
+            )
+      )}
+      style={{
+        left: `${highlight.x * 100}%`,
+        top: `${highlight.y * 100}%`,
+        width: `${highlight.width * 100}%`,
+        height: `${highlight.height * 100}%`,
+      }}
+      aria-hidden={!selected}
+    >
+      {selected && !isPage && (
+        <span
+          className={cn(
+            'absolute left-0 max-w-[min(100%,14rem)] -translate-y-full -top-1 px-2 py-1 text-[10px] font-semibold leading-tight text-pretty',
+            isCritical ? 'text-destructive' : 'text-brand'
+          )}
+        >
+          {highlight.visualTarget}
+        </span>
+      )}
     </div>
   )
 }
 
-function PinOverlay({
-  highlight,
-  selected,
-  onPinSelect,
-  useMobileTooltip,
-}: {
-  highlight: EvidenceHighlight
-  selected?: boolean
-  onPinSelect?: (flagId: string) => void
-  useMobileTooltip?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const narrow = useNarrowViewport()
-  const showFixedTooltip = useMobileTooltip && narrow && open
-  const pinRef = useRef<HTMLButtonElement>(null)
-
-  const close = useCallback(() => setOpen(false), [])
-
-  useEffect(() => {
-    if (!open || showFixedTooltip) return
-    const onPointerDown = (e: PointerEvent) => {
-      if (pinRef.current?.contains(e.target as Node)) return
-      close()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open, showFixedTooltip, close])
-
-  const handleClick = () => {
-    onPinSelect?.(highlight.flagId)
-    setOpen((prev) => !prev)
-  }
-
-  return (
-    <>
-      <div
-        className="absolute z-[1]"
-        style={{
-          left: `${highlight.x * 100}%`,
-          top: `${highlight.y * 100}%`,
-          transform: 'translate(-50%, -50%)',
-        }}
-      >
-        <button
-          ref={pinRef}
-          type="button"
-          className="flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          aria-label={`Evidence: ${highlight.label}`}
-          aria-expanded={open}
-          aria-current={selected ? 'true' : undefined}
-          onMouseEnter={() => !narrow && setOpen(true)}
-          onMouseLeave={() => !narrow && setOpen(false)}
-          onFocus={() => setOpen(true)}
-          onBlur={() => !narrow && setOpen(false)}
-          onClick={handleClick}
-        >
-          <EvidencePin severity={highlight.severity} active={open} selected={selected} />
-        </button>
-        {open && !showFixedTooltip && (
-          <div
-            role="tooltip"
-            className={cn(
-              'pointer-events-none absolute z-10 max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
-              highlight.y > 0.55 ? 'bottom-full mb-2' : 'top-full mt-2',
-              highlight.x > 0.5 ? 'right-0' : 'left-0'
-            )}
-          >
-            <PinTooltipContent highlight={highlight} />
-          </div>
-        )}
-      </div>
-
-      {showFixedTooltip &&
-        createPortal(
-          <>
-            <button
-              type="button"
-              className="fixed inset-0 z-[60] bg-foreground/20"
-              aria-label="Close evidence"
-              onClick={close}
-            />
-            <div
-              role="tooltip"
-              className="fixed left-1/2 top-1/2 z-[61] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-border/60 bg-card px-4 py-3 text-left shadow-raised"
-            >
-              <PinTooltipContent highlight={highlight} />
-            </div>
-          </>,
-          document.body
-        )}
-    </>
-  )
-}
-
-function HighlightLayer({
+function RegionLayer({
   highlights,
   device,
   selectedFlagId,
-  onPinSelect,
-  useMobileTooltip,
-  interactiveOnly = false,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
   selectedFlagId?: string
-  onPinSelect?: (flagId: string) => void
-  useMobileTooltip?: boolean
-  /** When true, only render pins for the selected flag (reduces duplicate a11y nodes). */
-  interactiveOnly?: boolean
 }) {
-  const visible = highlights.filter((h) => {
-    if (h.device !== device) return false
-    if (interactiveOnly && selectedFlagId && h.flagId !== selectedFlagId) return false
-    return true
-  })
+  const visible = highlights.filter((h) => h.device === device && h.flagId === selectedFlagId)
   if (visible.length === 0) return null
 
   return (
     <>
       {visible.map((h) => (
-        <PinOverlay
-          key={h.id}
-          highlight={h}
-          selected={h.flagId === selectedFlagId}
-          onPinSelect={onPinSelect}
-          useMobileTooltip={useMobileTooltip}
-        />
+        <EvidenceRegionGlow key={h.id} highlight={h} selected />
       ))}
     </>
   )
@@ -222,28 +97,24 @@ function ScreenshotPanel({
   host,
   highlights,
   selectedFlagId,
-  onPinSelect,
   className,
-  useMobileTooltip,
   containerRef,
   size,
-  interactiveOnly = false,
 }: {
   imageUrl: string
   device: 'desktop' | 'mobile'
   host: string
   highlights: EvidenceHighlight[]
   selectedFlagId?: string
-  onPinSelect?: (flagId: string) => void
   className?: string
-  useMobileTooltip?: boolean
   containerRef?: Ref<HTMLDivElement>
   size?: { width: number; height: number }
-  interactiveOnly?: boolean
 }) {
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
     : viewportAspectStyle(device)
+
+  const active = highlights.some((h) => h.device === device && h.flagId === selectedFlagId)
 
   return (
     <div
@@ -259,19 +130,13 @@ function ScreenshotPanel({
       <img
         src={imageUrl}
         alt={`${device} screenshot of ${host}`}
-        className="absolute inset-0 h-full w-full object-cover object-top"
+        className={cn(
+          'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',
+          active && 'brightness-[0.92]'
+        )}
       />
       <div className="pointer-events-none absolute inset-0">
-        <div className="pointer-events-auto relative h-full w-full">
-          <HighlightLayer
-            highlights={highlights}
-            device={device}
-            selectedFlagId={selectedFlagId}
-            onPinSelect={onPinSelect}
-            useMobileTooltip={useMobileTooltip}
-            interactiveOnly={interactiveOnly}
-          />
-        </div>
+        <RegionLayer highlights={highlights} device={device} selectedFlagId={selectedFlagId} />
       </div>
     </div>
   )
@@ -283,7 +148,6 @@ export function ScreenshotWithHighlights({
   mobileScreenshot,
   highlights,
   selectedFlagId,
-  onPinSelect,
   showDesktop = true,
   showMobile = true,
   className,
@@ -339,8 +203,6 @@ export function ScreenshotWithHighlights({
           host={host}
           highlights={highlights}
           selectedFlagId={selectedFlagId}
-          onPinSelect={onPinSelect}
-          useMobileTooltip
         />
       </div>
     )
@@ -355,8 +217,6 @@ export function ScreenshotWithHighlights({
           host={host}
           highlights={highlights}
           selectedFlagId={selectedFlagId}
-          onPinSelect={onPinSelect}
-          useMobileTooltip
         />
       </div>
     )
@@ -372,10 +232,7 @@ export function ScreenshotWithHighlights({
             host={host}
             highlights={highlights}
             selectedFlagId={selectedFlagId}
-            onPinSelect={onPinSelect}
             containerRef={desktopPanelRef}
-            useMobileTooltip
-            interactiveOnly
           />
         </div>
         {mobilePanelSize && (
@@ -385,10 +242,7 @@ export function ScreenshotWithHighlights({
             host={host}
             highlights={highlights}
             selectedFlagId={selectedFlagId}
-            onPinSelect={onPinSelect}
             size={mobilePanelSize}
-            useMobileTooltip
-            interactiveOnly
           />
         )}
       </div>

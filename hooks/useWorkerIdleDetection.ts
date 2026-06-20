@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react'
 interface HealthResponse {
   queueWaiting?: string
   queueActive?: string
-  workerLikelyIdle?: boolean
+  worker?: string
+  workerLikelyIdle?: string | boolean
 }
 
 /**
@@ -33,8 +34,11 @@ export function useWorkerIdleDetection(
 
         const waiting = Number(data.queueWaiting ?? 0)
         const active = Number(data.queueActive ?? 0)
+        const workerMissing = data.worker === 'missing'
         const idle =
-          data.workerLikelyIdle === true || (waiting > 0 && active === 0)
+          data.workerLikelyIdle === true ||
+          data.workerLikelyIdle === 'true' ||
+          (waiting > 0 && active === 0 && workerMissing)
         setWorkerIdle(idle)
       } catch {
         // ignore — health check is best-effort

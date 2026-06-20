@@ -17,21 +17,31 @@ import {
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
+import {
+  anchorToRegion,
+  formatVisualEvidence,
+  visualTargetLabel,
+  type EvidenceRegionScope,
+} from '@/lib/marketing/evidence-regions'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type { PipelineStep, PipelineStepState }
 
-/** Normalized pin center on a screenshot (0–1). */
+/** Normalized evidence region on a screenshot (0–1). */
 export interface EvidenceHighlight {
   id: string
   flagId: string
   flagIndex: number
   device: 'desktop' | 'mobile'
+  scope: EvidenceRegionScope
   x: number
   y: number
+  width: number
+  height: number
   label: string
   detail: string
   severity: string
+  visualTarget: string
 }
 
 export interface DesignTierSuggestion {
@@ -180,7 +190,7 @@ function buildDesignTiers(flag: RankableFlag): DesignTierSuggestion[] {
   const great =
     flag.agentPrompt ??
     `${good} Apply the change in the smallest surface area and verify at the flagged viewport.`
-  const award = `${great} Push beyond the minimum: tighten hierarchy, add one proof point, and make the result screenshot-worthy — the kind of polish that earns trust in the first 5 seconds.`
+  const award = `${great} Push beyond the minimum: tighten hierarchy, add one proof point, and make the result screenshot-worthy: the kind of polish that earns trust in the first 5 seconds.`
 
   return (['good', 'great', 'award'] as const).map((tier) => ({
     tier,
@@ -207,37 +217,52 @@ function buildEvidenceHighlights(flag: RankableFlag, index: number): EvidenceHig
   const preferred = preferredDeviceForFlag(flag)
   const devices = devicesForCheck(key)
   const highlights: EvidenceHighlight[] = []
+  const rawEvidence = flag.evidence ?? flag.problem
+  const visualDetail = flag.checkId
+    ? formatVisualEvidence(flag.checkId, rawEvidence)
+    : rawEvidence
 
   for (const device of devices) {
     const anchor = lookupAnchor(flag, device)
     if (!anchor) continue
+    const region = anchorToRegion(key, anchor)
     highlights.push({
       id: `${key}-${device}`,
       flagId: flag.id,
       flagIndex: index,
       device,
-      x: anchor.x,
-      y: anchor.y,
+      scope: region.scope,
+      x: region.x,
+      y: region.y,
+      width: region.width,
+      height: region.height,
       label: flag.problem,
-      detail: flag.evidence ?? flag.problem,
+      detail: visualDetail,
       severity: flag.severity,
+      visualTarget: visualTargetLabel(key),
     })
   }
 
   if (highlights.length > 0) return highlights
 
   if (!flag.evidence) return []
+
+  const fallbackRegion = anchorToRegion(key, { x: 0.5, y: 0.28 })
   return [
     {
       id: `${flag.id}-fallback`,
       flagId: flag.id,
       flagIndex: index,
       device: preferred,
-      x: 0.5,
-      y: 0.28,
+      scope: fallbackRegion.scope,
+      x: fallbackRegion.x,
+      y: fallbackRegion.y,
+      width: fallbackRegion.width,
+      height: fallbackRegion.height,
       label: flag.problem,
-      detail: flag.evidence,
+      detail: flag.checkId ? formatVisualEvidence(flag.checkId, flag.evidence) : flag.evidence,
       severity: flag.severity,
+      visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
     },
   ]
 }
@@ -266,11 +291,15 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     impactTag: impactTagLabel(flag.impactTag),
     title: flag.problem,
     description: flag.whyItMatters ?? flag.problem,
-    evidence: flag.evidence ?? '',
+    evidence: flag.checkId
+      ? formatVisualEvidence(flag.checkId, flag.evidence ?? flag.problem)
+      : (flag.evidence ?? ''),
     whyItMatters: flag.whyItMatters ?? '',
     fix: flag.fix ?? '',
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
-    fixPrompt: awardFixPrompt(flag),
+    fixPrompt: flag.checkId
+      ? `Look at ${visualTargetLabel(flag.checkId)} on the screenshot, then apply this fix:\n\n${awardFixPrompt(flag)}`
+      : awardFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
     evidenceHighlights: buildEvidenceHighlights(flag, index),
     evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),

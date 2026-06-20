@@ -5,7 +5,7 @@ import { discoverFlowCtas, flowCtaSelector, rankCtaCandidate } from './discover-
 import { resolveSameOrigin } from './link-scoring'
 import { urlsMeaningfullyChanged } from './flow-url'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
-import { DESKTOP_VIEWPORT } from '@/lib/audit/viewports'
+import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -199,8 +199,7 @@ export async function runFlowScanStandalone(
   let page: Page | null = null
   try {
     const session = await createAuditPage(browser, pageUrl, {
-      width: DESKTOP_VIEWPORT.width,
-      height: DESKTOP_VIEWPORT.height,
+      profile: DESKTOP_CAPTURE_PROFILE,
     })
     page = session.page
     return await runFlowScan(page, auditId, pageUrl)

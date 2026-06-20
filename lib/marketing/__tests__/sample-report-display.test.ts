@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import {
   AI_SUMMARY_UNAVAILABLE_VERDICT,
   DETERMINISTIC_SCAN_VERDICT,
@@ -68,12 +67,11 @@ describe('buildSampleReportDisplay', () => {
     assert.equal(report.host, 'fixflags.com')
   })
 
-  it('uses CHECK_ID_COUNT in pipeline steps', () => {
+  it('uses page type on Scan pipeline step', () => {
     const report = buildSampleReportDisplay(baseAudit({ pageType: 'Landing page' }))
-    const checksStep = report.pipelineSteps.find((s) => s.id === 'checks')
-    assert.equal(checksStep?.detail, `${CHECK_ID_COUNT} checks`)
-    const captureStep = report.pipelineSteps.find((s) => s.id === 'capture')
-    assert.equal(captureStep?.detail, 'Landing page')
+    const scanStep = report.pipelineSteps.find((s) => s.id === 'scan')
+    assert.equal(scanStep?.detail, 'Landing page')
+    assert.equal(scanStep?.label, 'Scan')
   })
 
   it('filters system stub verdicts', () => {
@@ -127,6 +125,10 @@ describe('buildSampleReportDisplay', () => {
     assert.equal(flag.evidenceHighlights[0].flagId, 'flag-message-1')
     assert.equal(flag.evidenceHighlights[0].flagIndex, 0)
     assert.equal(flag.evidenceHighlights[0].severity, 'IMPORTANT')
+    assert.equal(flag.evidenceHighlights[0].scope, 'element')
+    assert.ok(flag.evidenceHighlights[0].width > 0)
+    assert.ok(flag.evidenceHighlights[0].visualTarget.length > 0)
+    assert.match(flag.evidence, /Hero headline/i)
     assert.deepEqual(flag.evidenceDevices, ['desktop', 'mobile'])
     assert.equal(flag.evidenceHighlights[1].id, 'h1-generic-mobile')
   })

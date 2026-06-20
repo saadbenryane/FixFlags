@@ -84,7 +84,7 @@ async function main() {
     const result = await auditUrl(url)
     results.push(result)
     console.log(
-      `  → ${result.status ?? 'error'} | score=${result.score ?? '—'} | flags=${result.flagCount ?? 0} | ${Math.round((result.elapsedMs ?? 0) / 1000)}s`
+      `  -> ${result.status ?? 'error'} | score=${result.score ?? '-'} | flags=${result.flagCount ?? 0} | ${Math.round((result.elapsedMs ?? 0) / 1000)}s`
     )
     if (result.error) console.log(`  ERROR: ${result.error}`)
   }

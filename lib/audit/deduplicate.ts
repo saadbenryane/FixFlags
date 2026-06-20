@@ -23,6 +23,79 @@ function similarity(a: string, b: string): number {
   return intersection / (left.size + right.size - intersection)
 }
 
+/** Themes where AI flags often paraphrase deterministic checks across rubrics. */
+const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> = [
+  {
+    checkIds: ['cta-below-fold-mobile', 'no-cta-detected', 'flow-no-cta-found'],
+    keywords:
+      /below fold|above fold|hidden below|scroll depth|mobile cta|primary cta|cta not visible|without scrolling/i,
+  },
+  {
+    checkIds: ['og-image-missing', 'og-image-broken'],
+    keywords: /og:image|og image|link preview|social share|blank card|preview card|open graph image/i,
+  },
+  {
+    checkIds: ['description-missing', 'description-too-short', 'description-too-long'],
+    keywords: /meta description|description tag|search snippet/i,
+  },
+  {
+    checkIds: ['title-missing', 'title-too-short', 'title-too-long'],
+    keywords: /page title|title tag|document title|<title>/i,
+  },
+  {
+    checkIds: ['h1-generic', 'template-default-copy', 'placeholder-copy-detected'],
+    keywords: /generic headline|h1 heading|hero headline|template copy|placeholder copy|welcome to/i,
+  },
+  {
+    checkIds: ['robots-blocks-indexing'],
+    keywords: /noindex|robots meta|blocking indexing|search engines cannot crawl/i,
+  },
+  {
+    checkIds: ['console-errors-critical', 'console-errors-some'],
+    keywords: /console error|javascript error|js error|runtime error/i,
+  },
+  {
+    checkIds: ['mobile-perf-critical', 'mobile-perf-poor', 'mobile-lcp-critical', 'lcp-critical', 'lcp-poor'],
+    keywords: /mobile performance|pagespeed|largest contentful paint|\blcp\b|load time/i,
+  },
+  {
+    checkIds: ['tap-targets-small'],
+    keywords: /tap target|touch target|48x48|48×48/i,
+  },
+]
+
+function matchesDeterministicTheme(
+  deterministic: DeterministicFlag[],
+  candidate: JudgeOutput['newFlags'][number]
+): boolean {
+  const combined = `${candidate.problem} ${candidate.evidence} ${candidate.whyItMatters ?? ''}`
+
+  for (const theme of DETERMINISTIC_AI_THEMES) {
+    if (!theme.keywords.test(combined)) continue
+    if (deterministic.some((flag) => theme.checkIds.includes(flag.checkId))) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function isNearDuplicateOfDeterministic(
+  flag: DeterministicFlag,
+  candidate: JudgeOutput['newFlags'][number]
+): boolean {
+  if (similarity(flag.problem, candidate.problem) >= 0.5) return true
+  if (
+    similarity(
+      `${flag.problem} ${flag.evidence}`,
+      `${candidate.problem} ${candidate.evidence}`
+    ) >= 0.55
+  ) {
+    return true
+  }
+  return false
+}
+
 export function flagFingerprint(input: {
   checkId?: string | null
   pageUrl?: string | null
@@ -44,24 +117,18 @@ export function deduplicateFlags(
   const accepted: JudgeOutput['newFlags'] = []
 
   for (const candidate of aiFlags) {
-    const duplicatesDeterministic = deterministic.some(
-      (flag) =>
-        flag.rubric === candidate.rubric &&
-        (similarity(flag.problem, candidate.problem) >= 0.55 ||
-          similarity(
-            `${flag.problem} ${flag.evidence}`,
-            `${candidate.problem} ${candidate.evidence}`
-          ) >= 0.62)
-    )
+    const duplicatesDeterministic =
+      matchesDeterministicTheme(deterministic, candidate) ||
+      deterministic.some((flag) => isNearDuplicateOfDeterministic(flag, candidate))
+
     if (duplicatesDeterministic) continue
 
     const duplicatesAi = accepted.some(
       (flag) =>
-        flag.rubric === candidate.rubric &&
         similarity(
           `${flag.problem} ${flag.evidence}`,
           `${candidate.problem} ${candidate.evidence}`
-        ) >= 0.72
+        ) >= 0.65
     )
     if (!duplicatesAi) accepted.push(candidate)
   }

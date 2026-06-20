@@ -1,5 +1,7 @@
 import type { Browser, ConsoleMessage, Page } from 'puppeteer'
 import { assertPublicAuditUrl } from '../url'
+import type { CaptureProfile } from './capture-profile'
+import { applyCaptureProfile, validateNavigationResponse } from './page-capture'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -10,10 +12,7 @@ export interface AuditPageSession {
 }
 
 export interface CreateAuditPageOptions {
-  width: number
-  height: number
-  isMobile?: boolean
-  deviceScaleFactor?: number
+  profile: CaptureProfile
   consoleErrors?: Array<{ type: string; text: string }>
 }
 
@@ -32,6 +31,7 @@ export async function createAuditPage(
 ): Promise<AuditPageSession> {
   const consoleErrors = options.consoleErrors ?? []
   const page = await browser.newPage()
+  await page.setCacheEnabled(false)
 
   await page.setRequestInterception(true)
   page.on('request', (request) => {
@@ -50,25 +50,13 @@ export async function createAuditPage(
     }
   })
 
-  await page.setViewport({
-    width: options.width,
-    height: options.height,
-    isMobile: options.isMobile,
-    deviceScaleFactor: options.deviceScaleFactor,
-  })
+  await applyCaptureProfile(page, options.profile)
 
   const response = await page.goto(targetUrl, {
     waitUntil: 'domcontentloaded',
     timeout: PAGE_TIMEOUT_MS,
   })
-  const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
-  if (
-    !response?.ok() ||
-    (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml'))
-  ) {
-    await page.close().catch(() => {})
-    throw new Error('Destination did not return a successful HTML document')
-  }
+  await validateNavigationResponse(response, page.url(), page)
 
   await settleAuditPage(page)
 

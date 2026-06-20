@@ -44,6 +44,7 @@ Does the page work, feel good, and work on mobile? Layout, speed, accessibility,
 | **Screenshot capture** | agent | Desktop 1280×900, mobile 375×812 |
 | **Performance scan** | deterministic | `perf-score-critical`, `perf-score-poor`, `lcp-critical`, `lcp-poor`, `cls-critical`, `cls-poor`, `render-blocking`, `unused-js-large`, `unused-css-large`, `unoptimized-images`, `inp-critical`, `inp-poor` |
 | **Mobile scan** | deterministic | `mobile-perf-critical`, `mobile-perf-poor`, `tap-targets-small`, `mobile-lcp-critical` |
+| **Layout scan** | deterministic | `cta-below-fold-mobile` (375×812 viewport metrics during mobile capture) |
 | **Accessibility scan** | deterministic | `images-missing-alt`, `images-empty-alt`, `form-inputs-no-label`, `buttons-no-text`, `links-no-text`, `iframe-no-title`, `tabindex-positive`, `color-contrast-poor`, `skip-link-missing`, `keyboard-nav-trap`, `focus-visible-missing` |
 | **Viewport scan** | deterministic | `viewport-missing`, `lang-missing` |
 | **Flow scan** | agent | `flow-no-cta-found`, `flow-cta-unclickable`, `flow-cta-404`, `flow-cta-dead-end`, `flow-cta-external-leave` |

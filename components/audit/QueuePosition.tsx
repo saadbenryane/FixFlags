@@ -69,7 +69,7 @@ export function QueuePosition({
   if (workerIdle) {
     return (
       <Callout variant="warning" title="Waiting for worker">
-        {getWorkerQueuedWarning()}
+        {getWorkerQueuedWarning(true)}
       </Callout>
     )
   }

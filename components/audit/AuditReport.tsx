@@ -141,7 +141,6 @@ export function AuditReport({
           rubricRows={audit.rubricRows}
           flagCount={audit.flags.length}
           hasFixPrompts={showAiContent && hasFixPrompts}
-          reviewReady={audit.score != null}
           pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
           desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
           mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}

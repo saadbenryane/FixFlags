@@ -220,7 +220,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
             </h2>
             {showQueue && workerIdle && (
               <Callout variant="warning" title="Worker starting">
-                {getWorkerQueuedWarning()}
+                {getWorkerQueuedWarning(true)}
               </Callout>
             )}
             {showQueue && (

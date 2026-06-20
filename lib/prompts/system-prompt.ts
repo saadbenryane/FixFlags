@@ -90,7 +90,7 @@ export const QUALITY_REPORT_SCHEMA = {
     newFlags: {
       type: 'array',
       description:
-        '2-4 AI-only flags for things deterministic rules cannot catch (conversion, content quality, UX issues visible in screenshots)',
+        '0-2 net-new flags only for issues deterministic rules cannot catch. Never restate a deterministic flag in different words.',
       items: {
         type: 'object',
         required: ['rubric', 'impactTag', 'severity', 'problem', 'evidence', 'whyItMatters', 'fix', 'confidence'],
@@ -235,7 +235,7 @@ Write flag problems and evidence the way you would say them to a founder over co
 
 Write whyItMatters the same way. One or two sentences. The real-world consequence, not the abstract principle. "A link preview with no image gets half the clicks of one with an image. This page has no og:image." Not: "Social sharing may be suboptimal."
 
-IMPORTANT: If you grade a rubric B or below, you MUST include at least one flag in newFlags for that rubric (or rely on deterministic flags). Never give a poor grade with zero flags. The summary alone is not enough for builders to act.
+IMPORTANT: If you grade a rubric B or below, ensure builders can act: use deterministic flags already listed above when they cover the issue, or add at most one net-new flag in newFlags for that rubric. Never duplicate a deterministic finding. Never give a poor grade with zero actionable flags across deterministic + newFlags.
 
 Every newFlag and every enrichment MUST include a verificationRule: a concrete, testable check to confirm the fix. Write it as a real action: "Open Twitter card validator at cards-dev.twitter.com. Paste the URL. Confirm image appears." Not: "Verify the og:image tag is present."
 
