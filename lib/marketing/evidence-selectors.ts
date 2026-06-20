@@ -13,7 +13,18 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'h1-generic': { device: 'both', selectors: ['main h1', 'h1'] },
   'no-cta-detected': {
     device: 'both',
-    selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '#audit', 'main form', 'main button', 'main a[href]'],
+    selectors: [
+      'main a[class*="cta" i]',
+      'main button[type="submit"]',
+      'main section:first-of-type a[href]',
+      'main a.btn',
+      'main button',
+      '.demo-cta-primary',
+      'main a.demo-cta-primary',
+      '#audit',
+      'main form',
+      'main a[href]',
+    ],
   },
 
   // Metadata: invisible in DOM; pin hero / share-relevant content
@@ -39,7 +50,17 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   // Flow / CTA
   'cta-below-fold-mobile': {
     device: 'mobile',
-    selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '.demo-hero-copy a', 'main .demo-cta-primary'],
+    selectors: [
+      'main a[class*="cta" i]',
+      'main button[type="submit"]',
+      'main section:first-of-type a[href]',
+      'main a.btn',
+      'main button:not(header button):not(nav button)',
+      '.demo-cta-primary',
+      'main a.demo-cta-primary',
+      '.demo-hero-copy a',
+      'main .demo-cta-primary',
+    ],
   },
   'flow-no-cta-found': {
     device: 'both',

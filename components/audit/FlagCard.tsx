@@ -3,14 +3,22 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { FlagEvidenceScreenshot } from '@/components/audit/FlagEvidenceScreenshot'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FlagFeedback } from './FlagFeedback'
 import { Card } from '@/components/ui/card'
+import { formatFlagEvidence, formatFlagFixPrompt } from '@/lib/audit/evidence-highlights'
 import { resolveFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
+import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { rubricLabel, severityLabel, impactTagLabel } from '@/lib/utils'
 
 interface Props {
   flag: RankableFlag
+  flagIndex?: number
+  screenshots?: AuditScreenshot[]
+  reportHost?: string
+  evidenceAnchors?: EvidenceAnchorMap
   showFeedback?: boolean
   variant?: 'card' | 'row'
   defaultExpanded?: boolean
@@ -29,20 +37,32 @@ function metaLine(flag: RankableFlag): string {
 
 export function FlagCard({
   flag,
+  flagIndex = 0,
+  screenshots,
+  reportHost,
+  evidenceAnchors,
   showFeedback = true,
   variant = 'row',
   defaultExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const fixPrompt = bestFixPrompt(flag)
+  const displayFixPrompt = formatFlagFixPrompt(flag, fixPrompt)
+  const hasScreenshots = Boolean(screenshots?.length && reportHost)
 
   const content = (
     <FlagRowContent
       flag={flag}
+      flagIndex={flagIndex}
       expanded={expanded}
       onToggle={() => setExpanded(!expanded)}
-      fixPrompt={fixPrompt}
+      fixPrompt={displayFixPrompt}
+      copyPrompt={fixPrompt}
       showFeedback={showFeedback}
+      screenshots={screenshots}
+      reportHost={reportHost}
+      evidenceAnchors={evidenceAnchors}
+      hasScreenshots={hasScreenshots}
     />
   )
 
@@ -57,17 +77,31 @@ export function FlagCard({
 
 function FlagRowContent({
   flag,
+  flagIndex,
   expanded,
   onToggle,
   fixPrompt,
+  copyPrompt,
   showFeedback,
+  screenshots,
+  reportHost,
+  evidenceAnchors,
+  hasScreenshots,
 }: {
   flag: RankableFlag
+  flagIndex: number
   expanded: boolean
   onToggle: () => void
   fixPrompt: string
+  copyPrompt: string
   showFeedback: boolean
+  screenshots?: AuditScreenshot[]
+  reportHost?: string
+  evidenceAnchors?: EvidenceAnchorMap
+  hasScreenshots: boolean
 }) {
+  const evidenceText = formatFlagEvidence(flag)
+
   return (
     <div className="px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
@@ -86,7 +120,7 @@ function FlagRowContent({
           )}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-1 sm:justify-start">
-          <PromptCopyButton prompt={fixPrompt} label="Copy fix prompt" compact />
+          <PromptCopyButton prompt={copyPrompt} label="Copy fix prompt" compact />
           <button
             onClick={onToggle}
             className="min-h-11 min-w-11 p-1 text-muted-foreground transition-colors hover:text-foreground"
@@ -100,12 +134,23 @@ function FlagRowContent({
 
       {expanded && (
         <div className="mt-3 space-y-3 border-l border-border/60 pl-3 ml-0.5">
+          {hasScreenshots && screenshots && reportHost && (
+            <FlagEvidenceScreenshot
+              flag={flag}
+              flagIndex={flagIndex}
+              screenshots={screenshots}
+              host={reportHost}
+              evidenceAnchors={evidenceAnchors}
+              className="mb-1"
+            />
+          )}
+
           <div className="space-y-1">
             <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
               Where
             </p>
-            <p className="text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md leading-relaxed">
-              {flag.evidence ?? 'No evidence captured.'}
+            <p className="text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md leading-relaxed text-pretty">
+              {evidenceText || 'No evidence captured.'}
             </p>
           </div>
 

@@ -182,10 +182,10 @@
   --overlay-pill-border: hsl(220 13% 91%);
   --cover-gradient: linear-gradient(to top, #ffffff 0%, rgba(255, 255, 255, 0.92) 45%, transparent 90%);
 
-  --terminal: 220 17% 7%;
-  --terminal-foreground: 220 10% 78%;
+  --terminal: 220 14% 96%;
+  --terminal-foreground: 220 17% 7%;
   --terminal-muted: 203 14% 43%;
-  --terminal-border: 220 13% 20%;
+  --terminal-border: 220 13% 91%;
 }
 
 .dark {

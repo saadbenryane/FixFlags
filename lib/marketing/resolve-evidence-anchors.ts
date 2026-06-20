@@ -147,6 +147,27 @@ function mergeAnchorMaps(...maps: EvidenceAnchorMap[]): EvidenceAnchorMap {
   return merged
 }
 
+export async function resolveEvidenceAnchorsWithBrowser(
+  browser: Browser,
+  options: {
+    url: string
+    checkIds: string[]
+  }
+): Promise<EvidenceAnchorMap> {
+  const url = new URL(options.url).toString()
+  const checkIds = [...new Set(options.checkIds.filter(Boolean))]
+
+  const desktopIds = checkIds.filter((id) => devicesForCheck(id).includes('desktop'))
+  const mobileIds = checkIds.filter((id) => devicesForCheck(id).includes('mobile'))
+
+  const [desktop, mobile] = await Promise.all([
+    desktopIds.length > 0 ? resolveForDevice(browser, url, 'desktop', desktopIds) : {},
+    mobileIds.length > 0 ? resolveForDevice(browser, url, 'mobile', mobileIds) : {},
+  ])
+
+  return mergeAnchorMaps(desktop, mobile)
+}
+
 export async function resolveEvidenceAnchors(options: {
   url?: string
   checkIds: string[]
@@ -160,15 +181,7 @@ export async function resolveEvidenceAnchors(options: {
   })
 
   try {
-    const desktopIds = checkIds.filter((id) => devicesForCheck(id).includes('desktop'))
-    const mobileIds = checkIds.filter((id) => devicesForCheck(id).includes('mobile'))
-
-    const [desktop, mobile] = await Promise.all([
-      desktopIds.length > 0 ? resolveForDevice(browser, url, 'desktop', desktopIds) : {},
-      mobileIds.length > 0 ? resolveForDevice(browser, url, 'mobile', mobileIds) : {},
-    ])
-
-    return mergeAnchorMaps(desktop, mobile)
+    return await resolveEvidenceAnchorsWithBrowser(browser, { url, checkIds })
   } finally {
     await browser.close()
   }

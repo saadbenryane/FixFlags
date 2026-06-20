@@ -17,32 +17,15 @@ import {
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
+import { formatVisualEvidence, visualTargetLabel } from '@/lib/marketing/evidence-regions'
 import {
-  anchorToRegion,
-  formatVisualEvidence,
-  visualTargetLabel,
-  type EvidenceRegionScope,
-} from '@/lib/marketing/evidence-regions'
+  buildEvidenceHighlightsForFlag,
+  type EvidenceHighlight,
+} from '@/lib/audit/evidence-highlights'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type { PipelineStep, PipelineStepState }
-
-/** Normalized evidence region on a screenshot (0–1). */
-export interface EvidenceHighlight {
-  id: string
-  flagId: string
-  flagIndex: number
-  device: 'desktop' | 'mobile'
-  scope: EvidenceRegionScope
-  x: number
-  y: number
-  width: number
-  height: number
-  label: string
-  detail: string
-  severity: string
-  visualTarget: string
-}
+export type { EvidenceHighlight }
 
 export interface DesignTierSuggestion {
   tier: 'good' | 'great' | 'award'
@@ -201,70 +184,8 @@ function buildDesignTiers(flag: RankableFlag): DesignTierSuggestion[] {
 
 const ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
 
-function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile' {
-  return flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'
-}
-
-function lookupAnchor(flag: RankableFlag, device: 'desktop' | 'mobile') {
-  const key = flag.checkId ?? flag.id
-  const entry = ANCHORS[key]
-  if (!entry) return null
-  return entry[device] ?? null
-}
-
 function buildEvidenceHighlights(flag: RankableFlag, index: number): EvidenceHighlight[] {
-  const key = flag.checkId ?? flag.id
-  const preferred = preferredDeviceForFlag(flag)
-  const devices = devicesForCheck(key)
-  const highlights: EvidenceHighlight[] = []
-  const rawEvidence = flag.evidence ?? flag.problem
-  const visualDetail = flag.checkId
-    ? formatVisualEvidence(flag.checkId, rawEvidence)
-    : rawEvidence
-
-  for (const device of devices) {
-    const anchor = lookupAnchor(flag, device)
-    if (!anchor) continue
-    const region = anchorToRegion(key, anchor)
-    highlights.push({
-      id: `${key}-${device}`,
-      flagId: flag.id,
-      flagIndex: index,
-      device,
-      scope: region.scope,
-      x: region.x,
-      y: region.y,
-      width: region.width,
-      height: region.height,
-      label: flag.problem,
-      detail: visualDetail,
-      severity: flag.severity,
-      visualTarget: visualTargetLabel(key),
-    })
-  }
-
-  if (highlights.length > 0) return highlights
-
-  if (!flag.evidence) return []
-
-  const fallbackRegion = anchorToRegion(key, { x: 0.5, y: 0.28 })
-  return [
-    {
-      id: `${flag.id}-fallback`,
-      flagId: flag.id,
-      flagIndex: index,
-      device: preferred,
-      scope: fallbackRegion.scope,
-      x: fallbackRegion.x,
-      y: fallbackRegion.y,
-      width: fallbackRegion.width,
-      height: fallbackRegion.height,
-      label: flag.problem,
-      detail: flag.checkId ? formatVisualEvidence(flag.checkId, flag.evidence) : flag.evidence,
-      severity: flag.severity,
-      visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
-    },
-  ]
+  return buildEvidenceHighlightsForFlag(flag, index, ANCHORS)
 }
 
 export function buildAllEvidenceHighlights(flags: SampleFlagDisplay[]): EvidenceHighlight[] {

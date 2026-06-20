@@ -3,8 +3,8 @@ import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
 import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 import { RubricCard } from '@/components/audit/RubricCard'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
-import { FlagSections } from '@/components/audit/FlagSections'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
@@ -33,6 +33,8 @@ import { PreviewCards } from '@/components/audit/PreviewCards'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
+import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 
 interface RubricRow {
   id: string
@@ -72,6 +74,7 @@ interface AuditReportProps {
     }
     previewMeta?: PreviewMeta | null
     flowData?: FlowData | null
+    evidenceAnchors?: EvidenceAnchorMap
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -125,22 +128,31 @@ export function AuditReport({
       ? resolveFreeUserUpgradeMoment({ atAuditLimit })
       : null
 
+  const explorerModel =
+    audit.flags.length > 0
+      ? buildLiveExplorerModel({
+          url: audit.url,
+          pageType: audit.pageType,
+          score: audit.score,
+          verdict: audit.verdict,
+          flags: audit.flags,
+          screenshots: audit.screenshots,
+          rubricRows: audit.rubricRows,
+          evidenceAnchors: audit.evidenceAnchors,
+        })
+      : null
+
   return (
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
       <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         <AuditReportHero
           pageType={audit.pageType}
           verdict={audit.verdict}
-          score={audit.score}
           url={audit.url}
-          screenshots={audit.screenshots}
-          screenshotLimited={screenshotLimited}
-          screenshotPartial={screenshotPartial}
           shareStatus={audit.shareStatus}
           rubrics={audit.rubrics}
-          rubricRows={audit.rubricRows}
-          flagCount={audit.flags.length}
-          hasFixPrompts={showAiContent && hasFixPrompts}
+          screenshotLimited={screenshotLimited}
+          screenshotPartial={screenshotPartial}
           pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
           desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
           mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
@@ -149,7 +161,7 @@ export function AuditReport({
         <ReportMiniNav
           showPreviews={Boolean(audit.previewMeta)}
           showFlow={Boolean(audit.flowData)}
-          showFix={Boolean(topFixPrompt)}
+          showFix={Boolean(topFixPrompt && !explorerModel)}
           showLaunchGates={hasLaunchGates}
         />
 
@@ -197,11 +209,29 @@ export function AuditReport({
         {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
       </div>
 
-      <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-        <FlagSections flags={audit.flags} showFeedback={showFeedback} />
-      </section>
+      {explorerModel && (
+        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
+          <div className="overflow-hidden rounded-card glass-surface shadow-card">
+            <LiveReportExplorer
+              model={explorerModel}
+              showFeedback={showFeedback}
+              aiLocked={aiLocked}
+              signUpHref={signUpHref}
+              hasFixPrompts={showAiContent && hasFixPrompts}
+            />
+          </div>
+        </section>
+      )}
 
-      {topFixPrompt && (
+      {!explorerModel && audit.flags.length === 0 && (
+        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
+          <Callout variant="neutral" title="No flags found">
+            This scan did not surface any issues. Nice work.
+          </Callout>
+        </section>
+      )}
+
+      {topFixPrompt && !explorerModel && (
         <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
           <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>

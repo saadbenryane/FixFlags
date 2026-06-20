@@ -1,0 +1,74 @@
+import { prisma } from '@/lib/db'
+import { getAuditBrowser } from '@/lib/audit/screenshot'
+import { logger } from '@/lib/logger'
+import {
+  resolveEvidenceAnchorsWithBrowser,
+  type EvidenceAnchorMap,
+} from '@/lib/marketing/resolve-evidence-anchors'
+
+export async function persistEvidenceAnchors(
+  auditId: string,
+  anchors: EvidenceAnchorMap
+): Promise<void> {
+  if (Object.keys(anchors).length === 0) return
+
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { performanceData: true },
+  })
+  if (!audit) return
+
+  const existing =
+    audit.performanceData && typeof audit.performanceData === 'object'
+      ? (audit.performanceData as Record<string, unknown>)
+      : {}
+
+  await prisma.audit.update({
+    where: { id: auditId },
+    data: {
+      performanceData: {
+        ...existing,
+        evidenceAnchors: anchors,
+      } as never,
+    },
+  })
+
+  const pages = await prisma.auditPage.findMany({
+    where: { auditId },
+    select: { id: true, performanceData: true },
+  })
+
+  for (const page of pages) {
+    const pageExisting =
+      page.performanceData && typeof page.performanceData === 'object'
+        ? (page.performanceData as Record<string, unknown>)
+        : {}
+
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: {
+        performanceData: {
+          ...pageExisting,
+          evidenceAnchors: anchors,
+        } as never,
+      },
+    })
+  }
+}
+
+export async function tryResolveEvidenceAnchorsForAudit(
+  auditId: string,
+  url: string,
+  checkIds: Array<string | null | undefined>
+): Promise<void> {
+  const ids = [...new Set(checkIds.filter((id): id is string => Boolean(id)))]
+  if (ids.length === 0) return
+
+  try {
+    const browser = await getAuditBrowser()
+    const anchors = await resolveEvidenceAnchorsWithBrowser(browser, { url, checkIds: ids })
+    await persistEvidenceAnchors(auditId, anchors)
+  } catch (error) {
+    logger.warn('Evidence anchor resolution skipped', { auditId, error })
+  }
+}

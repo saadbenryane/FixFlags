@@ -121,7 +121,7 @@ describe('buildSampleReportDisplay', () => {
     assert.equal(flag.evidenceHighlights.length, 2)
     assert.ok(flag.evidenceHighlights.some((h) => h.device === 'desktop'))
     assert.ok(flag.evidenceHighlights.some((h) => h.device === 'mobile'))
-    assert.equal(flag.evidenceHighlights[0].id, 'h1-generic-desktop')
+    assert.equal(flag.evidenceHighlights[0].id, 'flag-message-1-desktop')
     assert.equal(flag.evidenceHighlights[0].flagId, 'flag-message-1')
     assert.equal(flag.evidenceHighlights[0].flagIndex, 0)
     assert.equal(flag.evidenceHighlights[0].severity, 'IMPORTANT')
@@ -130,7 +130,7 @@ describe('buildSampleReportDisplay', () => {
     assert.ok(flag.evidenceHighlights[0].visualTarget.length > 0)
     assert.match(flag.evidence, /Hero headline/i)
     assert.deepEqual(flag.evidenceDevices, ['desktop', 'mobile'])
-    assert.equal(flag.evidenceHighlights[1].id, 'h1-generic-mobile')
+    assert.equal(flag.evidenceHighlights[1].id, 'flag-message-1-mobile')
   })
 
   it('buildAllEvidenceHighlights merges flags', () => {

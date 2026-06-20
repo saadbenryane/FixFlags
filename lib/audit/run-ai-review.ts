@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { computeRubricScores, type DeterministicFlag } from './checks'
 import { runJudge, type JudgeResult } from './judge'
 import { persistAuditResults } from './persist'
+import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
 import { AUDIT_PROGRESS } from './progress'
 import { validateJudgeOutput, JudgeContractError } from './validate-judge-output'
@@ -131,6 +132,11 @@ export async function runAiReview(auditId: string): Promise<void> {
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'ai_review_persist' })
   await persistAuditResults(auditId, judge.output, detFlags, rubricScores)
+  await tryResolveEvidenceAnchorsForAudit(
+    auditId,
+    audit.url,
+    detFlags.map((flag) => flag.checkId)
+  )
 
   await finalizeAudit({
     auditId,

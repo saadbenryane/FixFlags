@@ -48,6 +48,7 @@ import {
   copyParentArtifacts,
   loadParentScreenshotBase64,
 } from './copy-parent-artifacts'
+import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 
 interface PageRun {
   pageId: string
@@ -668,6 +669,11 @@ export async function runAudit(auditId: string): Promise<void> {
 
     if (!ctx.includeAi) {
       await logPipelineEvent(auditId, { stage: 'finalizing', event: 'deterministic_only' })
+      await tryResolveEvidenceAnchorsForAudit(
+        auditId,
+        audit.url,
+        pageRuns.flatMap((page) => page.flags.map((flag) => flag.checkId))
+      )
       await finalizeDeterministicOnly({
         auditId,
         durationMs: Date.now() - startedAt.getTime(),
@@ -715,6 +721,11 @@ export async function runAudit(auditId: string): Promise<void> {
     const rubricScores = averageScores(pageRuns)
     await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
     await persistAuditResults(auditId, combined.output, flags, rubricScores)
+    await tryResolveEvidenceAnchorsForAudit(
+      auditId,
+      audit.url,
+      flags.map((flag) => flag.checkId)
+    )
 
     await finalizeAudit({
       auditId,

@@ -42,7 +42,7 @@ export function FixPromptBlock({
         ) : null}
         <div
           className={cn(
-            'overflow-hidden border border-terminal-border bg-terminal shadow-card',
+            'overflow-hidden bg-terminal shadow-card',
             shellRadius
           )}
         >
@@ -57,12 +57,11 @@ export function FixPromptBlock({
               clamp && 'max-h-[8.5rem] overflow-hidden'
             )}
           />
-          <div className="flex justify-end gap-2 border-t border-terminal-border/40 px-3 py-2">
+          <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
             <PromptActionRow
               prompt={prompt}
               showCursorAction={showCursorAction}
               compact
-              dark
             />
           </div>
         </div>
@@ -86,7 +85,6 @@ export function FixPromptBlock({
             prompt={prompt}
             showCursorAction={showCursorAction}
             compact
-            dark
           />
         }
       >

@@ -16,6 +16,7 @@ import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { parsePreviewMeta, type PreviewMeta } from '@/lib/audit/preview-meta'
 import { parseFlowData, type FlowData } from '@/lib/audit/flow-data'
+import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-highlights'
 
 export type { PreviewMeta, FlowData }
 import { sanitizeRubricForRead } from '@/lib/audit/sanitize-prompts'
@@ -128,6 +129,7 @@ export async function getGatedAuditForRequest(id: string) {
     ogImageOk: !ogImageBroken,
   })
   const flowData = parseFlowData(audit.flowData)
+  const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -164,6 +166,7 @@ export async function getGatedAuditForRequest(id: string) {
       pageSpeedErrors: pageSpeed,
       previewMeta,
       flowData,
+      evidenceAnchors,
     },
     isPaid,
     isLoggedIn: !!session?.user,

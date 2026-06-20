@@ -8,10 +8,15 @@ import {
   countFlags,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { severityLabel } from '@/lib/utils'
 
 interface Props {
   flags: RankableFlag[]
+  screenshots?: AuditScreenshot[]
+  reportHost?: string
+  evidenceAnchors?: EvidenceAnchorMap
   showFeedback?: boolean
   defaultCollapsed?: boolean
 }
@@ -24,6 +29,9 @@ const SEVERITY_SECTIONS = [
 
 export function FlagSections({
   flags,
+  screenshots,
+  reportHost,
+  evidenceAnchors,
   showFeedback = true,
   defaultCollapsed = true,
 }: Props) {
@@ -70,6 +78,10 @@ export function FlagSections({
                 <FlagCard
                   key={flag.id}
                   flag={flag}
+                  flagIndex={flags.indexOf(flag)}
+                  screenshots={screenshots}
+                  reportHost={reportHost}
+                  evidenceAnchors={evidenceAnchors}
                   showFeedback={showFeedback}
                   variant="row"
                   defaultExpanded={sectionExpanded && (key !== 'critical' || index === 0)}

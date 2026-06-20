@@ -203,6 +203,7 @@ export default async function ReportPage({ params }: Props) {
       summary: r.summary,
       flags: r.flags.map((f) => ({
         id: f.id,
+        checkId: f.checkId,
         rubric: f.rubric,
         severity: f.severity,
         impactTag: f.impactTag,
@@ -223,6 +224,7 @@ export default async function ReportPage({ params }: Props) {
 
     const flags = audit.flags.map((f) => ({
       id: f.id,
+      checkId: f.checkId,
       rubric: f.rubric,
       severity: f.severity,
       impactTag: f.impactTag,

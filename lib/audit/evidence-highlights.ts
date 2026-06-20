@@ -1,0 +1,121 @@
+import type { RankableFlag } from '@/lib/audit/priority-flags'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
+import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
+import {
+  anchorToRegion,
+  formatVisualEvidence,
+  visualTargetLabel,
+  type EvidenceRegionScope,
+} from '@/lib/marketing/evidence-regions'
+
+/** Normalized evidence region on a screenshot (0–1). */
+export interface EvidenceHighlight {
+  id: string
+  flagId: string
+  flagIndex: number
+  device: 'desktop' | 'mobile'
+  scope: EvidenceRegionScope
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+  detail: string
+  severity: string
+  visualTarget: string
+}
+
+export function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile' {
+  return flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'
+}
+
+export function formatFlagEvidence(flag: RankableFlag): string {
+  const raw = flag.evidence ?? flag.problem
+  if (!flag.checkId) return raw
+  return formatVisualEvidence(flag.checkId, raw)
+}
+
+export function formatFlagFixPrompt(flag: RankableFlag, fixPrompt: string): string {
+  if (!flag.checkId) return fixPrompt
+  return `Look at ${visualTargetLabel(flag.checkId)} on the screenshot, then apply this fix:\n\n${fixPrompt}`
+}
+
+function lookupAnchor(
+  flag: RankableFlag,
+  device: 'desktop' | 'mobile',
+  anchorMap?: EvidenceAnchorMap
+) {
+  const key = flag.checkId ?? flag.id
+  const entry = anchorMap?.[key]
+  if (!entry) return null
+  return entry[device] ?? null
+}
+
+export function buildEvidenceHighlightsForFlag(
+  flag: RankableFlag,
+  index: number,
+  anchorMap?: EvidenceAnchorMap
+): EvidenceHighlight[] {
+  const key = flag.checkId ?? flag.id
+  const preferred = preferredDeviceForFlag(flag)
+  const devices = flag.checkId ? devicesForCheck(flag.checkId) : [preferred]
+  const highlights: EvidenceHighlight[] = []
+  const visualDetail = formatFlagEvidence(flag)
+
+  for (const device of devices) {
+    const anchor = lookupAnchor(flag, device, anchorMap)
+    const region = anchorToRegion(key, anchor)
+    highlights.push({
+      id: `${flag.id}-${device}`,
+      flagId: flag.id,
+      flagIndex: index,
+      device,
+      scope: region.scope,
+      x: region.x,
+      y: region.y,
+      width: region.width,
+      height: region.height,
+      label: flag.problem,
+      detail: visualDetail,
+      severity: flag.severity,
+      visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
+    })
+  }
+
+  if (highlights.length > 0) return highlights
+
+  const fallbackRegion = anchorToRegion(key, { x: 0.5, y: 0.28 })
+  return [
+    {
+      id: `${flag.id}-fallback`,
+      flagId: flag.id,
+      flagIndex: index,
+      device: preferred,
+      scope: fallbackRegion.scope,
+      x: fallbackRegion.x,
+      y: fallbackRegion.y,
+      width: fallbackRegion.width,
+      height: fallbackRegion.height,
+      label: flag.problem,
+      detail: visualDetail,
+      severity: flag.severity,
+      visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
+    },
+  ]
+}
+
+export function buildAllEvidenceHighlights(
+  flags: RankableFlag[],
+  anchorMap?: EvidenceAnchorMap
+): EvidenceHighlight[] {
+  return flags.flatMap((flag, index) => buildEvidenceHighlightsForFlag(flag, index, anchorMap))
+}
+
+export function parseEvidenceAnchorsFromPerformanceData(
+  performanceData: unknown
+): EvidenceAnchorMap | undefined {
+  if (!performanceData || typeof performanceData !== 'object') return undefined
+  const anchors = (performanceData as Record<string, unknown>).evidenceAnchors
+  if (!anchors || typeof anchors !== 'object') return undefined
+  return anchors as EvidenceAnchorMap
+}
