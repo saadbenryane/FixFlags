@@ -205,7 +205,7 @@ function FlagDetailPanel({
       </div>
 
       {flag.verificationRule && (
-        <div className="rounded-card border border-border/60 bg-muted/30 px-4 py-3">
+        <div className="rounded-md border border-border/60 bg-muted/30 px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
             How to verify
           </p>

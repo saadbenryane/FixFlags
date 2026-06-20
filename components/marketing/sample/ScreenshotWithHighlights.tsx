@@ -59,7 +59,7 @@ function PinOverlay({ highlight, severity }: { highlight: EvidenceHighlight; sev
         <div
           role="tooltip"
           className={cn(
-            'pointer-events-none absolute z-10 max-w-[14rem] rounded-card border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
+            'pointer-events-none absolute z-10 max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
             highlight.y > 0.55 ? 'bottom-full mb-2' : 'top-full mt-2',
             highlight.x > 0.5 ? 'right-0' : 'left-0'
           )}
@@ -92,14 +92,6 @@ function HighlightLayer({
         <PinOverlay key={h.id} highlight={h} severity={severity} />
       ))}
     </>
-  )
-}
-
-function DeviceLabel({ children }: { children: string }) {
-  return (
-    <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
-      {children}
-    </p>
   )
 }
 
@@ -151,7 +143,7 @@ export function ScreenshotWithHighlights({
   if (!hasDesktop && hasMobile) {
     return (
       <div className={cn('space-y-3', className)}>
-        <div className="mx-auto max-w-[240px]">
+        <div className={cn('mx-auto', MOBILE_FRAME_WIDTH_CLASS)}>
           <FramedScreenshot
             url={url}
             imageUrl={mobileScreenshot}
@@ -167,14 +159,14 @@ export function ScreenshotWithHighlights({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="w-full md:hidden">
+      <div className="w-full sm:hidden">
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted/50 p-1">
-            <TabsTrigger value="desktop" className="gap-1.5 rounded-full text-xs">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-md bg-muted/50 p-1">
+            <TabsTrigger value="desktop" className="gap-1.5 rounded-sm py-2 text-xs">
               <Monitor className="h-3.5 w-3.5" aria-hidden />
               Desktop
             </TabsTrigger>
-            <TabsTrigger value="mobile" className="gap-1.5 rounded-full text-xs">
+            <TabsTrigger value="mobile" className="gap-1.5 rounded-sm py-2 text-xs">
               <Smartphone className="h-3.5 w-3.5" aria-hidden />
               Mobile
             </TabsTrigger>
@@ -190,7 +182,7 @@ export function ScreenshotWithHighlights({
             />
           </TabsContent>
           <TabsContent value="mobile" className="mt-3">
-            <div className="mx-auto max-w-[240px]">
+            <div className={cn('mx-auto', MOBILE_FRAME_WIDTH_CLASS)}>
               <FramedScreenshot
                 url={url}
                 imageUrl={mobileScreenshot}
@@ -204,9 +196,8 @@ export function ScreenshotWithHighlights({
         </Tabs>
       </div>
 
-      <div className={cn('hidden md:flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
+      <div className={cn('hidden sm:flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
         <div className={DESKTOP_FRAME_FLEX_CLASS}>
-          <DeviceLabel>Desktop</DeviceLabel>
           <FramedScreenshot
             url={url}
             imageUrl={desktopScreenshot}
@@ -217,8 +208,10 @@ export function ScreenshotWithHighlights({
           />
         </div>
         {hasMobile && (
-          <div className={MOBILE_FRAME_WIDTH_CLASS} title={`${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height} viewport`}>
-            <DeviceLabel>Mobile</DeviceLabel>
+          <div
+            className={MOBILE_FRAME_WIDTH_CLASS}
+            title={`${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height} viewport`}
+          >
             <FramedScreenshot
               url={url}
               imageUrl={mobileScreenshot}

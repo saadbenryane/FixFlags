@@ -95,7 +95,7 @@ export function AuditProgress({
 
   return (
     <div className="grid w-full gap-8 md:grid-cols-[minmax(0,1.75fr)_minmax(260px,1fr)] md:items-start">
-      <div className={SCREENSHOT_FRAMES_ROW_CLASS}>
+      <div className={cn('flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
         <div className={DESKTOP_FRAME_FLEX_CLASS}>
           <BrowserFrame
             device="desktop"

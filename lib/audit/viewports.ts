@@ -19,9 +19,13 @@ export const DESKTOP_FRAME_FLEX_CLASS = 'flex-1 min-w-0'
 
 export const MOBILE_FRAME_WIDTH_CLASS = 'w-[240px] max-w-full shrink-0'
 
-/** Side-by-side desktop + mobile frames; stacks on the narrowest viewports. */
+/**
+ * Side-by-side desktop + mobile frames; stacks on the narrowest viewports.
+ * Pair with `flex` (or `hidden sm:flex` / `hidden lg:flex`) — do not include `flex` here
+ * or tailwind-merge will drop `hidden` when both are passed to `cn()`.
+ */
 export const SCREENSHOT_FRAMES_ROW_CLASS =
-  'flex w-full min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6'
+  'w-full min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6'
 
 export function viewportAspectStyle(device: 'desktop' | 'mobile'): CSSProperties {
   const vp = device === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT
