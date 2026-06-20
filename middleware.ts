@@ -12,11 +12,11 @@ export function middleware(request: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' blob: data: https:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com ws://localhost:*",
+    "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com ws://localhost:*",
     "frame-src https://*.stripe.com https://js.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",

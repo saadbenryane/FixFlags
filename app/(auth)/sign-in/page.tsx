@@ -115,7 +115,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <SignInForm />
     </Suspense>
   )

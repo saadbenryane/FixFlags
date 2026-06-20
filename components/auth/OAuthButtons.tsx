@@ -36,7 +36,11 @@ export function OAuthButtons({ callbackURL, disabled }: Props) {
   async function handleOAuth(provider: 'google' | 'github') {
     setLoading(provider)
     try {
-      await authClient.signIn.social({ provider, callbackURL })
+      const { error } = await authClient.signIn.social({ provider, callbackURL })
+      if (error) {
+        toast.error(error.message || 'Sign in failed. Try again.')
+        setLoading(null)
+      }
     } catch {
       toast.error('Sign in failed. Try again.')
       setLoading(null)

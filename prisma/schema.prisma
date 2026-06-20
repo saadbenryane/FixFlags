@@ -176,6 +176,7 @@ model User {
   email                  String              @unique
   name                   String?
   emailVerified          Boolean             @default(false)
+  image                  String?
   role                   String              @default("user")
   plan                   Plan                @default(FREE)
   auditsUsed             Int                 @default(0)
@@ -256,6 +257,9 @@ model Account {
   accessToken          String?
   refreshToken         String?
   accessTokenExpiresAt DateTime?
+  idToken              String?
+  scope                String?
+  refreshTokenExpiresAt DateTime?
   password             String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt

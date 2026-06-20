@@ -126,7 +126,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <SignUpForm />
     </Suspense>
   )
