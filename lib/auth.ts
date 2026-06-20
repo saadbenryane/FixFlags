@@ -8,10 +8,7 @@ import {
   getAuthBaseUrl,
   isGoogleOAuthConfigured,
   isGithubOAuthConfigured,
-  validateAuthEnv,
 } from '@/lib/auth/env'
-
-validateAuthEnv()
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
