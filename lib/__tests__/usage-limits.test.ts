@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   isAtCheckLimit,
@@ -27,16 +27,18 @@ describe('product contract limits', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 
-  it('remaining AI credits subtracts used from limit', () => {
-    assert.equal(remainingAiReportCredits({ auditsUsed: 1, auditsLimit: 3 }), 2)
-    assert.equal(remainingAiReportCredits({ auditsUsed: 3, auditsLimit: 3 }), 0)
+  it('remaining AI credits subtracts used from limit', async () => {
+    const total = await remainingAiReportCredits({ id: 'test-user', auditsUsed: 1, auditsLimit: 3, role: 'user' })
+    assert.equal(total, 2)
+    const total2 = await remainingAiReportCredits({ id: 'test-user-2', auditsUsed: 3, auditsLimit: 3, role: 'user' })
+    assert.equal(total2, 0)
   })
 
   it('pro plan has 25 monthly checks', () => {
     assert.equal(scanLimitForPlan('BUILDER'), 25)
   })
 
-  it('agency plan has 100 monthly checks', () => {
+  it('max plan has 100 monthly checks', () => {
     assert.equal(scanLimitForPlan('TEAM'), 100)
   })
 })
@@ -122,7 +124,7 @@ describe('share and export entitlements', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows public share for agency', () => {
+  it('allows public share for max', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(canSharePublicly(agencyUser), true)
     assert.equal(canExportSummary(agencyUser), true)

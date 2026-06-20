@@ -1,9 +1,9 @@
 import { RUBRIC_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import {
   computeRubricScores,
-  type DeterministicFlag,
   type RubricScoreContext,
-} from '@/lib/audit/checks'
+} from '@/lib/audit/checks/rubric'
+import type { DeterministicFlag } from '@/lib/audit/checks'
 import { calculateOverallScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'

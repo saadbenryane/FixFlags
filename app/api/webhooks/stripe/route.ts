@@ -115,7 +115,16 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.processedStripeEvent.findUnique({
       where: { id: event.id },
     })
-    if (existing) return NextResponse.json({ received: true, replay: true })
+    if (existing) {
+      const currentHash = createHash('sha256').update(rawBody).digest('hex')
+      if (existing.payloadHash && existing.payloadHash !== currentHash) {
+        logger.error('Stripe webhook replay with mismatched payload hash', {
+          stripeEventId: event.id,
+        })
+        return NextResponse.json({ message: 'Payload hash mismatch' }, { status: 409 })
+      }
+      return NextResponse.json({ received: true, replay: true })
+    }
 
     await prisma.$transaction(async (tx) => {
       const alreadyProcessed = await tx.processedStripeEvent.findUnique({

@@ -1,10 +1,10 @@
 import './load-env'
-import { validateAuditEnv } from '../lib/env'
+import { validateWorkerEnv } from '../lib/env'
 import { startWorker } from '../lib/queue/worker'
 import { closeBrowser } from '../lib/audit/screenshot'
 import { logger } from '../lib/logger'
 
-validateAuditEnv()
+validateWorkerEnv()
 
 logger.info('Worker starting')
 

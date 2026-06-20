@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import {
   buildInProgressPipelineSteps,

@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'node:test'
+import { describe, it, beforeEach, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'

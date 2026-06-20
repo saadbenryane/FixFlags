@@ -1,5 +1,6 @@
 import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { getEnv } from '@/lib/env'
 import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 
 export const UNLIMITED_SCAN_LIMIT = -1
@@ -13,11 +14,7 @@ type AdminUser = Pick<User, 'id' | 'role'>
 
 export function isAdminUser(user: AdminUser): boolean {
   if (user.role === 'admin') return true
-  const adminIds = (process.env.ADMIN_USER_IDS ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-  return adminIds.includes(user.id)
+  return getEnv().ADMIN_USER_IDS.includes(user.id)
 }
 
 export function hasUnlimitedScans(user: Pick<User, 'role'>): boolean {

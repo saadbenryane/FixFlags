@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'

@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
-import type { User } from '@prisma/client'
-import { projectLimitForPlan } from '@/lib/billing/plans'
+import type { User, Prisma } from '@prisma/client'
 
 export interface CreditPack {
   id: string
@@ -45,7 +44,7 @@ export async function getTotalAvailableCredits(user: Pick<User, 'id' | 'auditsUs
   return planRemaining + purchased
 }
 
-export async function consumePurchasedCredit(tx: any, userId: string): Promise<boolean> {
+export async function consumePurchasedCredit(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
   const oldestPack = await tx.creditPurchase.findFirst({
     where: { userId, status: 'PAID', creditsRemaining: { gt: 0 } },
     orderBy: { paidAt: 'asc' },

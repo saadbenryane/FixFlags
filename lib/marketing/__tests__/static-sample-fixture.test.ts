@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 

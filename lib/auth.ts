@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from './db'
+import { getEnv } from './env'
 import { Resend } from 'resend'
 import { deleteUserProductData } from '@/lib/account/cleanup'
 import { BRAND } from '@/lib/marketing/copy'
@@ -21,7 +22,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET!,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true',
+    requireEmailVerification: getEnv().REQUIRE_EMAIL_VERIFICATION,
     sendResetPassword: async ({ user, url }) => {
       if (!resend) {
         throw new Error('Password reset email is not configured (RESEND_API_KEY missing)')

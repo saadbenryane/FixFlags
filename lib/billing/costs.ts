@@ -157,7 +157,8 @@ export async function sumEstimatedCostByPlan(since: Date): Promise<Record<Plan, 
   return { FREE: planMap['FREE'] ?? 0, BUILDER: planMap['BUILDER'] ?? 0, TEAM: planMap['TEAM'] ?? 0 }
 }
 
-export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subscriptions: number; creditPacks: number; total: number }>> {
+export async function sumRevenueByPlan(_since: Date): Promise<Record<Plan, { subscriptions: number; creditPacks: number; total: number }>> {
+  void _since
   const users = await prisma.user.findMany({
     where: { subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
     select: { plan: true, stripePriceId: true },
@@ -168,12 +169,6 @@ export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subs
     const price = def.price ? Number(def.price.replace('$', '')) : 0
     subRevenue[user.plan] = (subRevenue[user.plan] ?? 0) + price
   }
-
-  const creditRevenue = await prisma.creditPurchase.aggregate({
-    where: { status: 'PAID', paidAt: { gte: since } },
-    _sum: { priceUsdCents: true },
-  })
-  const creditTotalCents = creditRevenue._sum.priceUsdCents ?? 0
 
   return {
     FREE: { subscriptions: subRevenue['FREE'] ?? 0, creditPacks: 0, total: 0 },

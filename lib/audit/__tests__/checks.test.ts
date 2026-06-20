@@ -1,4 +1,4 @@
-import { describe, it, afterEach } from 'node:test'
+import { describe, it, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
 import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'

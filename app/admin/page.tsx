@@ -42,6 +42,7 @@ export default async function AdminPage() {
     qualifiedLeads,
     openChatSessions,
     inboxUnread,
+    costOutliers,
   ] = await Promise.all([
     prisma.audit.count(),
     prisma.audit.count({ where: { createdAt: { gte: todayStart } } }),
@@ -62,6 +63,7 @@ export default async function AdminPage() {
       where: { status: { in: ['OPEN', 'WAITING', 'ACTIVE'] } },
     }),
     getAdminUnreadCount(),
+    getCostOutliers(7),
   ])
 
   const planMap = Object.fromEntries(planCounts.map((p) => [p.plan, p._count.id]))
@@ -169,6 +171,8 @@ export default async function AdminPage() {
         </div>
       </section>
 
+      <MarginPanel />
+
       <section className="space-y-4">
         <SectionTitle>Plan breakdown</SectionTitle>
         <div className="grid grid-cols-3 gap-4">
@@ -184,6 +188,36 @@ export default async function AdminPage() {
           ))}
         </div>
       </section>
+
+      {costOutliers.length > 0 && (
+        <section className="space-y-4">
+          <SectionTitle>Most expensive scans (7d)</SectionTitle>
+          <Card className="border-0 shadow-card p-0 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left px-4 py-3 font-medium">Domain</th>
+                  <th className="text-left px-4 py-3 font-medium">Model</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-4 py-3 font-medium">Input</th>
+                  <th className="text-right px-4 py-3 font-medium">Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                {costOutliers.map((o) => (
+                  <tr key={o.auditId} className="border-b last:border-0">
+                    <td className="px-4 py-3 font-mono text-xs truncate max-w-[240px]">{o.domain}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{o.model ?? '—'}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-xs">{formatUsd(o.estimatedCostUsd)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-xs text-muted-foreground">{o.inputTokens.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-xs text-muted-foreground">{o.outputTokens.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </section>
+      )}
     </Container>
   )
 }

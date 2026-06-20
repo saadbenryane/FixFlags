@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { computePlanLimitUpdate } from '@/lib/billing/limits'
 import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'

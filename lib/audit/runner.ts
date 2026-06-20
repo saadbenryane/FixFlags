@@ -34,6 +34,7 @@ import {
 import { AUDIT_PROGRESS } from './progress'
 import { JudgeContractError, validateJudgeOutput } from './validate-judge-output'
 import { discoverCriticalPathUrls } from './critical-path'
+import { runWithContext } from '@/lib/logger/context'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import {
   finalizeAudit,
@@ -586,6 +587,7 @@ async function tryPartialFinalize(
 }
 
 export async function runAudit(auditId: string): Promise<void> {
+  return runWithContext({ auditId }, async () => {
   const audit = await prisma.audit.findUnique({ where: { id: auditId } })
   if (!audit) throw new Error(`Audit ${auditId} not found`)
   if (audit.status === 'COMPLETED') return
@@ -807,4 +809,5 @@ export async function runAudit(auditId: string): Promise<void> {
       throw error
     }
   }
+})
 }

@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { deduplicateFlags } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'

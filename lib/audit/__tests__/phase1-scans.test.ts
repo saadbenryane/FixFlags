@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { parsePreviewMeta, truncatePreview } from '@/lib/audit/preview-meta'
 import { parseFlowData } from '@/lib/audit/flow-data'
