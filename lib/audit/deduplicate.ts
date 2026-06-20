@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { DeterministicFlag } from '@/lib/audit/checks'
-import type { JudgeOutput } from '@/lib/audit/judge'
+import type { JudgeOutput } from '@/lib/audit/judge-schema'
 
 function normalizedWords(value: string): Set<string> {
   return new Set(

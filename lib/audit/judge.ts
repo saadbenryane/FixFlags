@@ -1,16 +1,20 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
-import { z } from 'zod'
 import {
+  judgeOutputSchema,
   QUALITY_REPORT_SCHEMA,
   QUALITY_REPORT_TOOL,
-  buildJudgePrompt,
-} from '../prompts/system-prompt'
+  type JudgeOutput,
+} from './judge-schema'
+import { buildJudgePrompt } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
 import { sanitizeJudgeOutput } from './sanitize-prompts'
 import { normalizeJudgeRawOutput } from './validate-judge-output'
+
+import { getProviderConfig, getJudgeProviderChain } from './judge-config'
+import { logger } from '@/lib/logger'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -20,102 +24,8 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-export const rubricNameSchema = z.enum(['MESSAGE', 'EXPERIENCE', 'REACH'])
-
-const impactTagSchema = z.enum([
-  'CONVERSION',
-  'REVENUE',
-  'TRUST',
-  'MEASUREMENT',
-  'SHARING',
-  'SEO',
-  'ACCESSIBILITY',
-])
-
-const judgeOutputSchema = z.object({
-  pageJob: z.string().min(1),
-  pageType: z.enum([
-    'homepage',
-    'pricing',
-    'landing',
-    'dashboard',
-    'portfolio',
-    'article',
-    'other',
-  ]),
-  verdict: z.string().min(1),
-  score: z.number().min(0).max(100),
-  launchReadiness: z.enum(['safe', 'fix_first', 'not_ready']),
-  launchChecklist: z.array(
-    z.object({
-      id: z.enum([
-        'https',
-        'social-preview',
-        'mobile-cta',
-        'console-errors',
-        'privacy-contact',
-      ]),
-      label: z.string().min(1),
-      passed: z.boolean(),
-    })
-  ),
-  rubrics: z.array(
-    z.object({
-      name: rubricNameSchema,
-      score: z.number().min(0).max(100).nullable(),
-      grade: z.enum(['A', 'B', 'C', 'D', 'F']),
-      status: z.enum(['EXCELLENT', 'GOOD', 'NEEDS_WORK', 'CRITICAL']),
-      assessmentState: z.enum(['ASSESSED', 'PARTIAL', 'UNKNOWN']),
-      confidence: z.number().min(0).max(1),
-      summary: z.string().min(1),
-      rubricPrompt: z.string().min(1),
-      cursorPrompt: z.string().optional(),
-      claudePrompt: z.string().optional(),
-      lovablePrompt: z.string().optional(),
-      boltPrompt: z.string().optional(),
-    })
-  ),
-  newFlags: z.array(
-    z.object({
-      rubric: rubricNameSchema,
-      impactTag: impactTagSchema,
-      severity: z.enum(['CRITICAL', 'IMPORTANT', 'POLISH']),
-      problem: z.string().min(1),
-      evidence: z.string().min(1),
-      whyItMatters: z.string().min(1),
-      fix: z.string().min(1),
-      confidence: z.number().min(0).max(1),
-      agentPrompt: z.string().optional(),
-      cursorPrompt: z.string().optional(),
-      claudePrompt: z.string().optional(),
-      lovablePrompt: z.string().optional(),
-      boltPrompt: z.string().optional(),
-      verificationRule: z.string().min(1).nullish(),
-      pageUrl: z.string().url().optional(),
-    })
-  ),
-  enrichments: z.array(
-    z.object({
-      checkId: z.string().min(1),
-      whyItMatters: z.string().min(1),
-      agentPrompt: z.string().optional(),
-      cursorPrompt: z.string().optional(),
-      claudePrompt: z.string().optional(),
-      lovablePrompt: z.string().optional(),
-      boltPrompt: z.string().optional(),
-      verificationRule: z.string().min(1).nullish(),
-    })
-  ),
-})
-
-export type JudgeOutput = z.infer<typeof judgeOutputSchema>
-
-const ANTHROPIC_JUDGE_MODEL = 'claude-sonnet-4-20250514'
-const OPENAI_JUDGE_MODEL = 'gpt-4o-mini'
-const ANTHROPIC_MAX_TOKENS = 8192
-const OPENAI_MAX_TOKENS = 4096
-const OPENAI_JUDGE_TIMEOUT_MS = 60_000
-const ANTHROPIC_JUDGE_TIMEOUT_MS = 45_000
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 2000
 
 export interface JudgeUsage {
   inputTokens: number
@@ -215,14 +125,15 @@ async function runAnthropicJudge(
     })
   }
 
+  const cfg = getProviderConfig('anthropic')
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), ANTHROPIC_JUDGE_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
     const response = await anthropic.messages.create(
       {
-        model: ANTHROPIC_JUDGE_MODEL,
-        max_tokens: ANTHROPIC_MAX_TOKENS,
+        model: cfg.model,
+        max_tokens: cfg.maxTokens,
         tools: [QUALITY_REPORT_TOOL],
         tool_choice: { type: 'tool', name: 'quality_report' },
         messages: [
@@ -255,7 +166,7 @@ async function runAnthropicJudge(
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
-        model: ANTHROPIC_JUDGE_MODEL,
+        model: cfg.model,
       },
     }
   } finally {
@@ -298,14 +209,15 @@ async function runOpenAIJudge(
     text: buildJudgePrompt({ ...context, screenshotHint }),
   })
 
+  const cfg = getProviderConfig('openai')
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), OPENAI_JUDGE_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
   try {
     const response = await openai.chat.completions.create(
       {
-        model: OPENAI_JUDGE_MODEL,
-        max_tokens: OPENAI_MAX_TOKENS,
+        model: cfg.model,
+        max_tokens: cfg.maxTokens,
         messages: [{ role: 'user', content }],
         tools: [
           {
@@ -333,7 +245,7 @@ async function runOpenAIJudge(
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,
-        model: OPENAI_JUDGE_MODEL,
+        model: cfg.model,
       },
     }
   } finally {
@@ -341,7 +253,32 @@ async function runOpenAIJudge(
   }
 }
 
-export async function runJudge(
+async function runJudgeWithProvider(
+  provider: string,
+  context: ReturnType<typeof buildJudgeContext>,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null
+): Promise<JudgeResult> {
+  switch (provider) {
+    case 'openai': {
+      if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+      return runOpenAIJudge(context, flags, desktopBase64, mobileBase64)
+    }
+    case 'anthropic': {
+      if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+      return runAnthropicJudge(context, flags, desktopBase64, mobileBase64)
+    }
+    default:
+      throw new Error(`Unknown judge provider: ${provider}`)
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export async function runJudgeWithRetry(
   url: string,
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,
@@ -351,12 +288,43 @@ export async function runJudge(
   mobileBase64: string | null
 ): Promise<JudgeResult> {
   const context = buildJudgeContext(url, metadata, desktop, mobile, flags)
+  const chain = getJudgeProviderChain()
+  let lastError: Error | null = null
 
-  if (openai) {
-    return runOpenAIJudge(context, flags, desktopBase64, mobileBase64)
+  for (const provider of chain) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const result = await runJudgeWithProvider(
+          provider,
+          context,
+          flags,
+          desktopBase64,
+          mobileBase64
+        )
+        logger.info('judge succeeded', { provider, attempt })
+        return result
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err))
+        logger.warn('judge attempt failed', { provider, attempt, err: lastError.message })
+        if (attempt < MAX_RETRIES && isRetryableJudgeError(err)) {
+          await sleep(RETRY_DELAY_MS * attempt)
+        }
+      }
+    }
   }
-  if (anthropic) {
-    return runAnthropicJudge(context, flags, desktopBase64, mobileBase64)
-  }
-  throw new Error('No LLM API key configured (set OPENAI_API_KEY or ANTHROPIC_API_KEY)')
+
+  throw lastError ?? new Error('Judge failed: no providers available')
+}
+
+/** @deprecated Use runJudgeWithRetry for automatic retry and provider fallback. */
+export async function runJudge(
+  url: string,
+  metadata: PageMetadata,
+  desktop: PageSpeedResult | null,
+  mobile: PageSpeedResult | null,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null
+): Promise<JudgeResult> {
+  return runJudgeWithRetry(url, metadata, desktop, mobile, flags, desktopBase64, mobileBase64)
 }

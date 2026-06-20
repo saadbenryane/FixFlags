@@ -1,11 +1,17 @@
 -- Drop STUDIO plan: migrate existing STUDIO users to TEAM
 UPDATE "users" SET "plan" = 'TEAM' WHERE "plan" = 'STUDIO';
 
+-- Drop default before renaming type (can't auto-cast default across type rename)
+ALTER TABLE "users" ALTER COLUMN "plan" DROP DEFAULT;
+
 -- Drop STUDIO from the Plan enum
 ALTER TYPE "Plan" RENAME TO "Plan_old";
 CREATE TYPE "Plan" AS ENUM ('FREE', 'BUILDER', 'TEAM');
 ALTER TABLE "users" ALTER COLUMN "plan" TYPE "Plan" USING "plan"::text::"Plan";
 DROP TYPE "Plan_old";
+
+-- Restore default
+ALTER TABLE "users" ALTER COLUMN "plan" SET DEFAULT 'FREE';
 
 -- Create CreditPurchaseStatus enum
 CREATE TYPE "CreditPurchaseStatus" AS ENUM ('PENDING', 'PAID', 'CANCELED', 'REFUNDED');

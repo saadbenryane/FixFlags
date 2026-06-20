@@ -1,5 +1,5 @@
 import type { DeterministicFlag } from '@/lib/audit/checks'
-import type { JudgeOutput } from '@/lib/audit/judge'
+import type { JudgeOutput } from '@/lib/audit/judge-schema'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { LAUNCH_CHECKLIST_IDS } from '@/lib/audit/rubric'
 

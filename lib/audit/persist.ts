@@ -7,7 +7,7 @@ import {
   ImpactTag,
 } from '@prisma/client'
 import { DeterministicFlag } from './checks'
-import { JudgeOutput } from './judge'
+import type { JudgeOutput } from './judge-schema'
 import { verificationRuleForCheckId } from './verify-flags'
 import { whyItMattersForCheckId, isGenericWhyItMatters } from './flag-copy'
 import {
