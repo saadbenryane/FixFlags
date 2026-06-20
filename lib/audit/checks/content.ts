@@ -49,5 +49,19 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
+  if (meta.h1s.length > 0 && meta.h2s.length === 0) {
+    findings.push({
+      checkId: 'heading-hierarchy-missing',
+      rubric: 'MESSAGE',
+      impactTag: 'CONVERSION',
+      severity: 'POLISH',
+      problem: 'Page has a headline but no section headings (H2)',
+      evidence: `H1: "${meta.h1s[0]}"; no H2 elements found`,
+      fix: 'Add H2 headings for each major section (features, pricing, FAQ) so visitors can scan the page.',
+      confidence: 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }

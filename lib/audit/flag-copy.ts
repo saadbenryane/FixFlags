@@ -35,16 +35,19 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'flow-cta-404',
   'flow-cta-dead-end',
   'flow-cta-external-leave',
+  'loading-indicator-stuck',
   'cta-dead-link',
 ])
 
 /** Visible UI/copy checks where screenshot context helps humans. */
 const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'h1-generic',
+  'heading-hierarchy-missing',
   'h1-missing',
   'h1-multiple',
   'no-cta-detected',
   'cta-below-fold-mobile',
+  'loading-indicator-stuck',
   'flow-no-cta-found',
   'flow-cta-unclickable',
   'tap-targets-small',
@@ -111,10 +114,14 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Multiple H1s dilute the main message and confuse search engines about the page topic.',
   'h1-generic':
     'Category headlines ("Build X with AI") do not tell visitors what they get - outcome-led H1s convert better.',
+  'heading-hierarchy-missing':
+    'Without section headings, the page reads as one wall of text and hurts scanability.',
   'no-cta-detected':
     'Visitors who are ready to act have no obvious next step, so intent dies on the page.',
   'cta-below-fold-mobile':
     'On phones, most visitors never scroll to a below-fold CTA - you lose signups you already earned.',
+  'loading-indicator-stuck':
+    'A skeleton or spinner that never clears makes the product look broken before anyone reads a word.',
   'tap-targets-small':
     'Cramped nav and buttons cause mis-taps and frustration on touch screens.',
   'no-structured-data':

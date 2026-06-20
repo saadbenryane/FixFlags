@@ -4,26 +4,20 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuditPolling } from '@/hooks/useAuditPolling'
 import { useWorkerIdleDetection } from '@/hooks/useWorkerIdleDetection'
-import { AuditProgress } from '@/components/audit/AuditProgress'
+import { AuditReportLoading } from '@/components/audit/AuditReportLoading'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Container } from '@/components/ui/container'
-import { Callout } from '@/components/ui/callout'
 import { toast } from 'sonner'
-import { BRAND, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
-import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
-import { QueuePosition } from '@/components/audit/QueuePosition'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
-  getActiveAudit,
   setActiveAudit,
   clearActiveAudit,
   auditHostname,
-  type ActiveAuditSnapshot,
 } from '@/lib/audit/active-audit'
 
 interface Props {
@@ -37,16 +31,13 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   const router = useRouter()
   const {
     audit,
-    isLoading,
     isComplete,
     isFailed,
     isNotFound,
     isForbidden,
     fetchError,
     status,
-    progress,
     url,
-    startedAt,
     statusPayload,
   } = useAuditPolling(id, { initialAudit, pollStatus })
   const workerIdle = useWorkerIdleDetection(status)
@@ -57,12 +48,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     action?: string
   } | null>(null)
   const refreshedRef = useRef(false)
-  const [initialQueue, setInitialQueue] = useState<ActiveAuditSnapshot | null>(null)
 
-  useEffect(() => {
-    const snap = getActiveAudit()
-    if (snap?.auditId === id) setInitialQueue(snap)
-  }, [id])
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
@@ -82,37 +68,16 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       return
     }
     if (inProgress && url) {
-      setActiveAudit({
-        auditId: id,
-        url,
-        queuePosition: statusPayload?.queuePosition ?? initialQueue?.queuePosition,
-        estimatedWaitSeconds:
-          statusPayload?.estimatedWaitSeconds ?? initialQueue?.estimatedWaitSeconds,
-        scheduledStartAt: statusPayload?.scheduledStartAt ?? initialQueue?.scheduledStartAt,
-        queueReason: statusPayload?.queueReason ?? initialQueue?.queueReason,
-      })
+      setActiveAudit({ auditId: id, url })
     }
-  }, [
-    id,
-    inProgress,
-    isComplete,
-    isFailed,
-    url,
-    statusPayload?.queuePosition,
-    statusPayload?.estimatedWaitSeconds,
-    statusPayload?.scheduledStartAt,
-    statusPayload?.queueReason,
-    initialQueue,
-  ])
+  }, [id, inProgress, isComplete, isFailed, url])
 
   useEffect(() => {
     if (isComplete || isFailed) {
       document.title = BRAND.name
       return
     }
-    if (status === 'QUEUED' && url) {
-      document.title = `Queued - ${auditHostname(url)} · ${BRAND.name}`
-    } else if (inProgress && url) {
+    if (inProgress && url) {
       document.title = `Checking ${auditHostname(url)} · ${BRAND.name}`
     }
     return () => {
@@ -208,74 +173,22 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   const finishing = isComplete && !isFailed
 
-  const queueEstimatedSeconds =
-    statusPayload?.estimatedWaitSeconds ?? initialQueue?.estimatedWaitSeconds ?? 0
-  const showQueue = status === 'QUEUED'
-
   return (
     <AuditShell session={session}>
-      <Container variant="report" className="space-y-8 py-8">
-        {inProgress && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-center md:text-left">
-              {AUDIT_PROGRESS.inProgress}
-            </h2>
-            {showQueue && workerIdle && (
-              <Callout variant="warning" title="Worker starting">
-                {getWorkerQueuedWarning(true)}
-              </Callout>
-            )}
-            {showQueue && (
-                <QueuePosition
-                  queuePosition={statusPayload?.queuePosition ?? initialQueue?.queuePosition}
-                  estimatedSeconds={queueEstimatedSeconds}
-                  scheduledStartAt={
-                    statusPayload?.scheduledStartAt ?? initialQueue?.scheduledStartAt
-                  }
-                  queueReason={statusPayload?.queueReason ?? initialQueue?.queueReason}
-                  isLoggedIn={Boolean(session?.user)}
-                  workerIdle={workerIdle}
-                />
-              )}
-            <AuditProgress
-              status={status}
-              progress={progress}
-              score={statusPayload?.score}
-              url={url}
-              startedAt={startedAt}
-              desktopScreenshotUrl={desktopScreenshot?.url}
-              mobileScreenshotUrl={mobileScreenshot?.url}
-              screenshotCapture={statusPayload?.screenshotCapture}
-              hideWorkerWarning={workerIdle}
-            />
-          </div>
-        )}
-
-        {finishing && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-center md:text-left">
-              Preparing your review...
-            </h2>
-            <AuditProgress
-              status="COMPLETED"
-              progress={100}
-              score={statusPayload?.score}
-              url={url}
-              startedAt={startedAt}
-              desktopScreenshotUrl={desktopScreenshot?.url}
-              mobileScreenshotUrl={mobileScreenshot?.url}
-            />
-          </div>
-        )}
-
-        {isLoading && !audit && inProgress && (
-          <div className="space-y-4">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        )}
-      </Container>
+      {(inProgress || finishing) && (
+        <AuditReportLoading
+          status={status}
+          url={url}
+          score={statusPayload?.score}
+          flagCount={statusPayload?.flagCount ?? statusPayload?.partialFlags?.length ?? 0}
+          rubrics={statusPayload?.rubrics}
+          desktopScreenshotUrl={desktopScreenshot?.url}
+          mobileScreenshotUrl={mobileScreenshot?.url}
+          screenshotCapture={statusPayload?.screenshotCapture}
+          workerIdle={workerIdle}
+          finishing={finishing}
+        />
+      )}
     </AuditShell>
   )
 }

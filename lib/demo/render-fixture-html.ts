@@ -105,8 +105,9 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
         <img src="${fixture.heroImageSrc}" alt="${escapeHtml(fixture.heroImageAlt ?? '')}"/>
       </div>
     </section>
-    <section id="features"><h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>${features}</section>
-  </main>
+  <section id="features"><h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>${features}</section>
+  <section id="signup" aria-hidden="true"></section>
+</main>
   <footer class="demo-footer">${footerLinks}</footer>
 </body>
 </html>`

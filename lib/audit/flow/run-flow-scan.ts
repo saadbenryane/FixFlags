@@ -38,6 +38,7 @@ export interface RunFlowScanOptions {
   deadlineMs?: number
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
   landingStep?: FlowScanStep | null
+  allowLocalhost?: boolean
 }
 
 async function captureFlowStep(
@@ -194,12 +195,14 @@ export async function runFlowScan(
 export async function runFlowScanStandalone(
   browser: Browser,
   auditId: string,
-  pageUrl: string
+  pageUrl: string,
+  options: Pick<RunFlowScanOptions, 'allowLocalhost'> = {}
 ): Promise<FlowScanResult> {
   let page: Page | null = null
   try {
     const session = await createAuditPage(browser, pageUrl, {
       profile: DESKTOP_CAPTURE_PROFILE,
+      allowLocalhost: options.allowLocalhost,
     })
     page = session.page
     return await runFlowScan(page, auditId, pageUrl)

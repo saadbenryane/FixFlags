@@ -119,6 +119,8 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
             ))}
           </div>
         </section>
+
+        <section id="signup" className="demo-signup-anchor" aria-hidden="true" />
       </main>
 
       <footer className="demo-footer">

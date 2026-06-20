@@ -10,7 +10,7 @@ import { HERO } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
-import { QueuePosition } from '@/components/audit/QueuePosition'
+import { Callout } from '@/components/ui/callout'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -108,10 +108,6 @@ export function AuditInput({
       setActiveAudit({
         auditId: reportId,
         url: normalized,
-        queuePosition: data.queuePosition,
-        estimatedWaitSeconds: data.estimatedWaitSeconds,
-        scheduledStartAt: data.scheduledStartAt,
-        queueReason: data.queueReason,
       })
       router.push(`/report/${reportId}`)
     } catch {
@@ -252,10 +248,13 @@ export function AuditInput({
       ) : null}
 
       {queueHold && (
-        <QueuePosition
-          estimatedSeconds={queueHold.estimatedWaitSeconds}
-          queueReason="rate_limit"
-        />
+        <Callout variant="info" title="Please wait a moment">
+          Too many checks in a short window. Try again in about{' '}
+          {queueHold.estimatedWaitSeconds < 60
+            ? `${queueHold.estimatedWaitSeconds} seconds`
+            : `${Math.ceil(queueHold.estimatedWaitSeconds / 60)} minutes`}
+          .
+        </Callout>
       )}
 
       {limitGate && (

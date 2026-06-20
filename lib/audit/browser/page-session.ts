@@ -5,6 +5,12 @@ import { applyCaptureProfile, validateNavigationResponse } from './page-capture'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
+const LOCALHOST_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
+
+export function isLocalhostAuditUrl(url: string): boolean {
+  return LOCALHOST_PATTERN.test(url)
+}
+
 export interface AuditPageSession {
   page: Page
   /** Shared console error buffer (mutated by page listeners). */
@@ -14,6 +20,8 @@ export interface AuditPageSession {
 export interface CreateAuditPageOptions {
   profile: CaptureProfile
   consoleErrors?: Array<{ type: string; text: string }>
+  /** Demo fixture flow on localhost; skips public-URL guard for local dev URLs. */
+  allowLocalhost?: boolean
 }
 
 export async function settleAuditPage(page: Page): Promise<void> {
@@ -37,6 +45,10 @@ export async function createAuditPage(
   page.on('request', (request) => {
     const protocol = new URL(request.url()).protocol
     if (protocol === 'data:' || protocol === 'blob:' || protocol === 'about:') {
+      void request.continue()
+      return
+    }
+    if (options.allowLocalhost && isLocalhostAuditUrl(request.url())) {
       void request.continue()
       return
     }

@@ -9,6 +9,7 @@ import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
+import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
@@ -399,28 +400,68 @@ describe('runContentChecks', () => {
   })
 })
 
+function healthyCaptureMetrics(
+  overrides: Partial<{
+    mobilePrimaryCtaTopPx: number | null
+    mobilePrimaryCtaText: string | null
+    mobileViewportHeight: number
+    stuckLoadingIndicator: boolean
+    stuckLoadingLabel: string | null
+  }> = {}
+) {
+  return {
+    mobilePrimaryCtaTopPx: 400,
+    mobilePrimaryCtaText: 'Get started',
+    mobileViewportHeight: 812,
+    stuckLoadingIndicator: false,
+    stuckLoadingLabel: null,
+    ...overrides,
+  }
+}
+
 describe('runLayoutChecks', () => {
   it('flags primary CTA below the mobile fold', () => {
     assert.ok(
       checkIds(
-        runLayoutChecks({
-          mobilePrimaryCtaTopPx: 720,
-          mobilePrimaryCtaText: 'Get started',
-          mobileViewportHeight: 812,
-        })
+        runLayoutChecks(
+          healthyCaptureMetrics({
+            mobilePrimaryCtaTopPx: 720,
+            mobilePrimaryCtaText: 'Get started',
+          })
+        )
       ).includes('cta-below-fold-mobile')
     )
   })
 
   it('passes when CTA is above the fold', () => {
     assert.equal(
-      runLayoutChecks({
-        mobilePrimaryCtaTopPx: 400,
-        mobilePrimaryCtaText: 'Get started',
-        mobileViewportHeight: 812,
-      }).length,
+      runLayoutChecks(
+        healthyCaptureMetrics({
+          mobilePrimaryCtaTopPx: 400,
+          mobilePrimaryCtaText: 'Get started',
+        })
+      ).length,
       0
     )
+  })
+})
+
+describe('runInteractionChecks', () => {
+  it('flags stuck loading UI at capture', () => {
+    assert.ok(
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            stuckLoadingIndicator: true,
+            stuckLoadingLabel: 'skeleton',
+          })
+        )
+      ).includes('loading-indicator-stuck')
+    )
+  })
+
+  it('passes when no loading UI is stuck', () => {
+    assert.equal(runInteractionChecks(healthyCaptureMetrics()).length, 0)
   })
 })
 
@@ -725,13 +766,25 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome home'] }))),
     'no-cta-detected': () =>
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
+    'heading-hierarchy-missing': () =>
+      checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
     'cta-below-fold-mobile': () =>
       checkIds(
-        runLayoutChecks({
-          mobilePrimaryCtaTopPx: 720,
-          mobilePrimaryCtaText: 'Get started',
-          mobileViewportHeight: 812,
-        })
+        runLayoutChecks(
+          healthyCaptureMetrics({
+            mobilePrimaryCtaTopPx: 720,
+            mobilePrimaryCtaText: 'Get started',
+          })
+        )
+      ),
+    'loading-indicator-stuck': () =>
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            stuckLoadingIndicator: true,
+            stuckLoadingLabel: 'hero-skeleton',
+          })
+        )
       ),
     'placeholder-copy-detected': () =>
       checkIds(runSlopChecks(healthyMeta({ pageText: 'Lorem ipsum dolor sit amet.' }))),

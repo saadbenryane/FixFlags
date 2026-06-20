@@ -106,11 +106,6 @@ export const HOW_IT_WORKS_SECTION = {
   ],
 } as const
 
-export const QUEUE_COPY = {
-  browseWhileWaiting: 'Browse while you wait. Your check continues in the background.',
-  prepMcp: 'Prep MCP while you wait: read Examples, then set up Cursor or Claude integration.',
-} as const
-
 export const SAMPLE_FINDINGS = [
   { area: 'Experience', grade: 'C', issue: 'Primary CTA below fold at 375px' },
   { area: 'Reach', grade: 'D', issue: 'Social preview image missing. Link previews show blank.' },
@@ -1002,11 +997,11 @@ export const AUDIT_PROGRESS = {
   inProgress: 'Checking your site...',
   usuallyUnder: 'Usually under 90 seconds',
   workerQueuedWarningDev:
-    'Check is still queued. In local dev, run npm run dev:all so the worker processes jobs.',
+    'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:
-    'Scan workers are restarting. Your check is queued and will resume automatically.',
+    'Scan workers are restarting. Your report will continue automatically.',
   workerBacklogWarningProd:
-    'Your check is queued. We are processing a backlog and it will start shortly.',
+    'Still preparing your report. It will continue shortly.',
   stages: [
     { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review...' },
     { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views...' },
@@ -1015,7 +1010,7 @@ export const AUDIT_PROGRESS = {
     { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results...' },
   ],
   stageActivity: {
-    QUEUED: ['Queueing your check...', 'Spinning up the pipeline...'],
+    QUEUED: ['Preparing your report...', 'Spinning up the pipeline...'],
     CAPTURING: [
       'Capturing desktop screenshot...',
       'Capturing mobile screenshot...',

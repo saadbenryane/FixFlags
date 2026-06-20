@@ -4,6 +4,9 @@ export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
   mobilePrimaryCtaText: string | null
   mobileViewportHeight: number
+  /** True when skeleton/spinner/aria-busy is still visible after load. */
+  stuckLoadingIndicator: boolean
+  stuckLoadingLabel: string | null
 }
 
 /** Measure primary CTA position on the current mobile viewport (375×812). */
@@ -56,6 +59,26 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       mobilePrimaryCtaTopPx: bestTop,
       mobilePrimaryCtaText: bestText,
       mobileViewportHeight: window.innerHeight,
+      ...detectStuckLoading(),
     }
   })
+}
+
+const LOADING_SELECTOR =
+  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
+
+function detectStuckLoading(): { stuckLoadingIndicator: boolean; stuckLoadingLabel: string | null } {
+  const candidates = Array.from(document.querySelectorAll(LOADING_SELECTOR))
+  for (const el of candidates) {
+    const rect = el.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) continue
+    const style = window.getComputedStyle(el)
+    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+    const label =
+      el.getAttribute('aria-label') ||
+      el.className.toString().split(/\s+/).find((c) => /skeleton|spinner|loading/i.test(c)) ||
+      el.tagName.toLowerCase()
+    return { stuckLoadingIndicator: true, stuckLoadingLabel: label }
+  }
+  return { stuckLoadingIndicator: false, stuckLoadingLabel: null }
 }

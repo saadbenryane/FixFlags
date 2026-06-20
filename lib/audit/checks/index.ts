@@ -9,6 +9,7 @@ import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
+import { runInteractionChecks } from './interaction'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
@@ -53,6 +54,7 @@ export async function runAllChecks(
     { name: 'content', run: () => runContentChecks(metadata) },
     { name: 'slop', run: () => runSlopChecks(metadata) },
     { name: 'layout', run: () => runLayoutChecks(captureMetrics ?? null) },
+    { name: 'interaction', run: () => runInteractionChecks(captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {
