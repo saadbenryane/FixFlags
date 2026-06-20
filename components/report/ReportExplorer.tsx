@@ -167,7 +167,7 @@ function ReportBody({
               onNext={onNext}
             />
           </div>
-          <div className="mt-3">
+          <div className="mt-1.5">
             <FlagMetaPills flag={flag} />
           </div>
         </header>
