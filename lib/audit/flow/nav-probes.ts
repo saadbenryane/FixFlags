@@ -254,7 +254,7 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
     formLabel: formResult.formLabel,
     formFeedbackMs: formResult.feedbackMs,
     ghostSections: ghost.ghostCount,
-    ghostSampleSelector: ghost.sampleSelector,
-    ghostSampleText: ghost.sampleText,
+    ghostSampleSelector: ghost.sampleSelector ?? undefined,
+    ghostSampleText: ghost.sampleText ?? undefined,
   }
 }

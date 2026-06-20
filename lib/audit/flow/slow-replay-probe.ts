@@ -11,8 +11,8 @@ export interface SlowReplayResult {
 
 const SLOW_3G = {
   offline: false,
-  downloadThroughput: 50 * 1024,
-  uploadThroughput: 20 * 1024,
+  download: 50 * 1024,
+  upload: 20 * 1024,
   latency: 400,
 }
 
@@ -46,7 +46,6 @@ export async function runSlowReplay(
   browser: Browser,
   auditId: string,
   pageUrl: string,
-  options: { allowLocalhost?: boolean } = {}
 ): Promise<SlowReplayResult> {
   let page: Page | null = null
   const screenshotUrls: string[] = []

@@ -43,9 +43,7 @@ export async function runDeterministicAudit(
     flags = flags.concat(runFlowChecks(flowResult))
 
     if (options.includeSlowReplay ?? true) {
-      const slow = await runSlowReplay(browser, options.auditId, url, {
-        allowLocalhost: options.allowLocalhost,
-      })
+      const slow = await runSlowReplay(browser, options.auditId, url)
       flags = flags.concat(runSlowReplayChecks(slow))
     }
   }
