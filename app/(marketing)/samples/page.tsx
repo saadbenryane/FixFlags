@@ -8,7 +8,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
 import { HERO, REPORT_COPY, SAMPLES_PAGE } from '@/lib/marketing/copy'
-import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
+import { DEMO_FIXTURE_CONTEXT_TAG, getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
@@ -27,7 +27,7 @@ export default async function SamplesPage() {
       : SAMPLES_PAGE.tierNote
 
   const affiliationNote = site.isDemoFixture
-    ? 'Sample report of the LaunchPad demo fixture. Automated and illustrative.'
+    ? `Sample report of the ${DEMO_FIXTURE_CONTEXT_TAG}. Automated and illustrative.`
     : site.isDogfood
       ? 'Sample report of fixflags.com. Automated and illustrative.'
       : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
@@ -41,6 +41,8 @@ export default async function SamplesPage() {
               source={sample.source}
               completedAt={sample.completedAt}
               pipelineVersion={sample.pipelineVersion}
+              isDemoFixture={site.isDemoFixture}
+              marketing
             />
           </div>
           <Body className="text-sm text-muted-foreground">{SAMPLES_PAGE.subhead}</Body>

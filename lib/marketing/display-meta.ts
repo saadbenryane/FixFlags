@@ -9,8 +9,9 @@ import { DEMO_BRAND } from '@/lib/demo/brand'
 /** Default demo URL for "Try sample", landing sample report, and marketing captures. */
 export const DEFAULT_SAMPLE_AUDIT_URL = 'https://fixflags.com/demo'
 
-/** Client-safe sample URL (server code may override via SAMPLE_AUDIT_URL). */
-export const SAMPLE_AUDIT_URL = DEFAULT_SAMPLE_AUDIT_URL
+/** Client-safe sample URL for "Try sample" (set NEXT_PUBLIC_SAMPLE_AUDIT_URL to override). */
+export const SAMPLE_AUDIT_URL =
+  process.env.NEXT_PUBLIC_SAMPLE_AUDIT_URL ?? DEFAULT_SAMPLE_AUDIT_URL
 
 export const DOGFOOD_CONTEXT_TAG = 'Dogfooding our homepage' as const
 
@@ -109,11 +110,27 @@ export function sampleStatusLabel(
     version?: string
     completedAt?: Date | string | null
     isDogfood?: boolean
+    isDemoFixture?: boolean
     marketing?: boolean
   }
 ): string {
   const isDogfood = options?.isDogfood ?? false
+  const isDemoFixture = options?.isDemoFixture ?? false
   const marketing = options?.marketing ?? false
+
+  if (marketing && isDemoFixture) {
+    const version = options?.version ?? PIPELINE_VERSION
+    const dateStr = options?.completedAt
+      ? new Date(options.completedAt).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : null
+    const parts = [DEMO_FIXTURE_CONTEXT_TAG, formatPipelineVersion(version)]
+    if (dateStr) parts.push(dateStr)
+    return parts.join(' · ')
+  }
 
   if (marketing && isDogfood) {
     const fresh = formatFreshCapturedLabel(options?.completedAt)

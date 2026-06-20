@@ -30,6 +30,7 @@ const envSchema = z.object({
   REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).optional(),
   SUPPORT_TENANT_SLUG: z.string().optional(),
   SAMPLE_AUDIT_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SAMPLE_AUDIT_URL: z.string().url().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

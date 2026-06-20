@@ -7,7 +7,10 @@ import {
   SCREENSHOT_FRAME,
   MOBILE_FRAME_WIDTH_CLASS,
   SCREENSHOT_FRAMES_ROW_CLASS,
+  SCREENSHOT_FRAMES_GRID_CLASS,
   viewportAspectStyle,
+  mobileDisplayWidthForViewportHeight,
+  mobileViewportSizeForHeight,
 } from '@/lib/audit/viewports'
 
 describe('viewports', () => {
@@ -27,11 +30,22 @@ describe('viewports', () => {
 
   it('screenshot frame layout classes', () => {
     assert.match(DESKTOP_FRAME_FLEX_CLASS, /flex-1/)
-    assert.match(SCREENSHOT_FRAMES_ROW_CLASS, /sm:flex-row/)
+    assert.match(SCREENSHOT_FRAMES_ROW_CLASS, /flex-row/)
+    assert.match(SCREENSHOT_FRAMES_GRID_CLASS, /grid-cols/)
   })
 
   it('viewportAspectStyle matches capture ratios', () => {
     assert.deepEqual(viewportAspectStyle('desktop'), { aspectRatio: '1280 / 900' })
     assert.deepEqual(viewportAspectStyle('mobile'), { aspectRatio: '375 / 812' })
+  })
+
+  it('mobileDisplayWidthForViewportHeight scales proportionally', () => {
+    const desktopViewportHeight = 225
+    const expected = desktopViewportHeight * (MOBILE_VIEWPORT.width / MOBILE_VIEWPORT.height)
+    assert.equal(mobileDisplayWidthForViewportHeight(desktopViewportHeight), expected)
+    assert.deepEqual(mobileViewportSizeForHeight(desktopViewportHeight), {
+      height: desktopViewportHeight,
+      width: expected,
+    })
   })
 })

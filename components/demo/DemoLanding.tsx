@@ -65,7 +65,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
         </div>
       </header>
 
-      <main>
+      <main id="main-content">
         <section className="demo-hero">
           <div className="demo-hero-inner">
             <div className={heroGridClass}>
@@ -92,7 +92,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
         </section>
 
         <section id="features" className="demo-features">
-          <h2>Everything you need to launch</h2>
+          <h2>{fixture.featuresSectionTitle}</h2>
           <div className="demo-features-grid">
             {fixture.features.map((feature) => (
               <article key={feature.title} className="demo-feature-card">
@@ -116,7 +116,9 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
               </a>
             ))}
           </div>
-          <DemoVersionBadge versionLabel={fixture.versionLabel} currentPath={fixture.path} />
+          {process.env.NODE_ENV === 'development' ? (
+            <DemoVersionBadge versionLabel={fixture.versionLabel} currentPath={fixture.path} />
+          ) : null}
         </div>
       </footer>
     </div>

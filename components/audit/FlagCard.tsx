@@ -127,7 +127,7 @@ function FlagRowContent({
             </div>
           )}
 
-          <FixPromptBlock prompt={fixPrompt} rows={4} clamp={false} />
+          <FixPromptBlock prompt={fixPrompt} rows={4} clamp={false} nested />
 
           {(flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT') &&
             flag.verificationRule && (

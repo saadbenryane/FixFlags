@@ -114,8 +114,11 @@ Both services need:
 - **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price IDs (see `.env.example`)
 - **Cron**: `CRON_SECRET`
 - **Email**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+- **Marketing sample**: `SAMPLE_AUDIT_URL` (server DB lookup + refresh script), `NEXT_PUBLIC_SAMPLE_AUDIT_URL` ("Try sample" button — keep both in sync)
 
 Optional: `ADMIN_NOTIFICATION_EMAIL` for Expert Review purchase alerts and live chat admin notifications.
+
+**Demo fixture SEO:** `/demo` and `/demo/v1` are `noindex` and disallowed in `robots.txt`. They are audit targets, not indexed marketing pages.
 
 Live support (production):
 

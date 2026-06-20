@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ArrowDown, ArrowRight, CheckCircle2, Flag, Globe, MousePointer2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -80,13 +81,20 @@ function LoopConnector({ direction }: { direction: 'horizontal' | 'vertical' }) 
   )
 }
 
-export function HowItWorksLoopSection() {
-  const { label, headline, steps } = LANDING_PAGE.howItWorks
+interface HowItWorksLoopSectionProps {
+  sampleHref?: string
+}
+
+export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoopSectionProps) {
+  const { headline, subhead, sampleLink, steps } = LANDING_PAGE.howItWorks
 
   return (
     <Section spacing="marketing" id="how-it-works" className="scroll-mt-[var(--header-offset)]">
       <Container className="space-y-8 sm:space-y-11">
-        <LandingSectionHeader label={label} headline={headline} />
+        <div className="mx-auto max-w-3xl space-y-3 text-center">
+          <LandingSectionHeader headline={headline} />
+          <p className="text-base leading-relaxed text-muted-foreground text-pretty">{subhead}</p>
+        </div>
 
         <div className="hidden xl:flex xl:items-stretch">
           {steps.flatMap((step, index) => {
@@ -116,6 +124,16 @@ export function HowItWorksLoopSection() {
             }
             return items
           })}
+        </div>
+
+        <div className="flex justify-center">
+          <Link
+            href={sampleHref}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
+          >
+            {sampleLink}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </Container>
     </Section>

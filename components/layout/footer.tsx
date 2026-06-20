@@ -22,7 +22,7 @@ export function Footer() {
         <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="space-y-5">
             <Logo variant="lockup" size="md" href="/" />
-            <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">{tagline}</p>
+            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{tagline}</p>
             <div className="flex items-center gap-3">
               <FooterSocialLink href={social.instagram} label="Instagram">
                 <Instagram className="h-4 w-4" aria-hidden />

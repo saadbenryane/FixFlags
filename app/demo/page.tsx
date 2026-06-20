@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { DemoLanding } from '@/components/demo/DemoLanding'
-import { originalFixture } from '@/lib/demo/fixtures/original'
+import { resolveDemoFixture } from '@/lib/demo/resolve-fixture'
 
-export const metadata: Metadata = originalFixture.metadata
+const fixture = resolveDemoFixture('')
+
+export const metadata: Metadata = fixture.metadata
 
 export default function DemoOriginalPage() {
-  return <DemoLanding fixture={originalFixture} />
+  return <DemoLanding fixture={fixture} />
 }

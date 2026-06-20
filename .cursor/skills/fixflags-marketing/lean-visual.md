@@ -40,15 +40,14 @@ Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
 
 ## Marketing page structure (lean)
 
-1. Hero — pitch, URL input, product preview (flag card on mobile)
-2. Logo cloud — “Trusted by vibecoders shipping with” + tool names + compatibility disclaimer (not partner endorsements)
-3. Three dimensions — Message, Experience (includes trust/credibility), Reach — not four cards
-4. How it works — scan → flag → fix → verify loop
-5. Live sample report — real audit when available; “Illustrative” fallback only when static
-6. FAQ + pricing teaser — compact conversion blocks before final CTA
-7. Final CTA — scroll to `#audit`
+1. Hero — pitch, URL input, **one** product preview (sample label above preview)
+2. Logo cloud — compact editor marks directly below hero report
+3. Three dimensions — Message, Experience, Reach with checklist bullets + one example finding each
+4. Grades + loop — vertical rubric scores beside scan → flag → fix → verify; link to full sample
+5. Social proof — example feedback with visible disclaimer; no unverifiable member counts
+6. Final CTA — repeat URL input + trust badges; outcome-led headline from `FINAL_CTA`
 
-Cut any section that repeats the hero promise.
+**Never** duplicate the interactive report explorer below the hero. Cut any section that repeats the hero promise.
 
 ## Pre-ship visual checklist
 

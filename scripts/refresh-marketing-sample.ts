@@ -17,13 +17,8 @@ import {
   writeEvidenceAnchorsFile,
   readEvidenceAnchorsFile,
 } from '@/lib/marketing/resolve-evidence-anchors'
-import { EVIDENCE_SELECTORS } from '@/lib/marketing/evidence-selectors'
 
 const SAMPLE_URL = process.env.SAMPLE_AUDIT_URL ?? DEFAULT_SAMPLE_AUDIT_URL
-
-const STATIC_FALLBACK_IDS = Object.keys(EVIDENCE_SELECTORS).filter((id) =>
-  id.startsWith('flag-')
-)
 
 async function main() {
   const url = new URL(SAMPLE_URL).toString()
@@ -77,10 +72,7 @@ async function main() {
   })
 
   const checkIds = [
-    ...new Set([
-      ...flags.map((f) => f.checkId ?? f.id).filter(Boolean),
-      ...STATIC_FALLBACK_IDS,
-    ]),
+    ...new Set(flags.map((f) => f.checkId ?? f.id).filter(Boolean)),
   ]
 
   const fresh = await resolveEvidenceAnchors({ url, checkIds: [...new Set(checkIds)] })

@@ -37,17 +37,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, status: 'already_subscribed' })
     }
 
-    const sendResult = await sendNewsletterConfirmation(email)
-    if (!sendResult.sent) {
-      return apiError(
-        sendResult.reason === 'RESEND_API_KEY not configured'
-          ? 'Newsletter is not configured yet. Email hello@fixflags.com instead.'
-          : 'Could not send confirmation email. Try again later.',
-        503,
-        { code: 'EMAIL_UNAVAILABLE' }
-      )
-    }
-
     await prisma.newsletterSubscriber.upsert({
       where: { email },
       create: {
@@ -63,7 +52,13 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({ ok: true, status: 'subscribed' })
+    const sendResult = await sendNewsletterConfirmation(email)
+
+    return NextResponse.json({
+      ok: true,
+      status: 'subscribed',
+      emailed: sendResult.sent,
+    })
   } catch (error) {
     return handleRouteError(error)
   }

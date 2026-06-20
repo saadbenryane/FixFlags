@@ -20,6 +20,7 @@ export interface DemoFixture {
   secondaryCta: { label: string; href: string } | null
   heroImageSrc: string
   heroImageAlt: string
+  featuresSectionTitle: string
   features: DemoFeature[]
   footerLinks: { label: string; href: string }[]
   /** Layout flags for intentional flaws vs fixes */

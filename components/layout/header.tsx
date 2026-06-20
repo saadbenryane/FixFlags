@@ -166,7 +166,7 @@ export function Header({
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
                 <Button variant="ink" size="xs" className="shrink-0" asChild>
-                  <Link href="/#audit">{HERO.primaryCta}</Link>
+                  <Link href="/sign-up">{HERO.navSignUpCta}</Link>
                 </Button>
               )}
               <Sheet open={open} onOpenChange={setOpen}>

@@ -1,15 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Monitor, Smartphone } from 'lucide-react'
-import { BrowserFrame } from '@/components/audit/BrowserFrame'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  DESKTOP_FRAME_FLEX_CLASS,
-  MOBILE_FRAME_WIDTH_CLASS,
-  MOBILE_VIEWPORT,
-  SCREENSHOT_FRAMES_ROW_CLASS,
+  mobileViewportSizeForHeight,
+  viewportAspectStyle,
 } from '@/lib/audit/viewports'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { EvidenceHighlight } from '@/lib/marketing/sample-report-display'
 import { cn } from '@/lib/utils'
 
@@ -24,53 +20,147 @@ interface ScreenshotWithHighlightsProps {
   className?: string
 }
 
-function pinColorClass(severity?: string): string {
-  if (severity === 'CRITICAL') return 'bg-destructive ring-destructive/25'
-  if (severity === 'IMPORTANT') return 'bg-brand ring-brand/25'
-  return 'bg-muted-foreground ring-muted-foreground/20'
+function useNarrowViewport() {
+  const [narrow, setNarrow] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const update = () => setNarrow(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  return narrow
 }
 
-function PinOverlay({ highlight, severity }: { highlight: EvidenceHighlight; severity?: string }) {
-  const [hovered, setHovered] = useState(false)
+function EvidencePin({ severity, active }: { severity?: string; active?: boolean }) {
+  const isCritical = severity === 'CRITICAL'
 
   return (
-    <div
-      className="absolute z-[1]"
-      style={{
-        left: `${highlight.x * 100}%`,
-        top: `${highlight.y * 100}%`,
-        transform: 'translate(-50%, -50%)',
-      }}
-    >
-      <button
-        type="button"
+    <span className="relative flex h-4 w-4 items-center justify-center">
+      <span
         className={cn(
-          'h-3 w-3 rounded-full shadow-md ring-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-          pinColorClass(severity),
-          hovered && 'scale-125'
+          'absolute inset-0 rounded-full motion-safe:animate-pulse motion-reduce:animate-none',
+          isCritical
+            ? 'bg-destructive/30 shadow-[0_0_0_4px_hsl(var(--destructive)/0.25),0_0_16px_hsl(var(--destructive)/0.45)]'
+            : 'bg-brand/30 shadow-[0_0_0_4px_hsl(var(--brand)/0.25),0_0_16px_hsl(var(--peach-glow)/0.5)]'
         )}
-        aria-label={`Evidence: ${highlight.label}`}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
+        aria-hidden
       />
-      {hovered && (
-        <div
-          role="tooltip"
-          className={cn(
-            'pointer-events-none absolute z-10 max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
-            highlight.y > 0.55 ? 'bottom-full mb-2' : 'top-full mt-2',
-            highlight.x > 0.5 ? 'right-0' : 'left-0'
-          )}
-        >
-          <p className="text-[11px] font-semibold text-foreground">{highlight.label}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground text-pretty">
-            {highlight.detail}
-          </p>
-        </div>
-      )}
+      <span
+        className={cn(
+          'relative h-3.5 w-3.5 rounded-full bg-white ring-2 transition-transform',
+          isCritical ? 'ring-destructive/60' : 'ring-brand/70',
+          active && 'scale-110'
+        )}
+      />
+    </span>
+  )
+}
+
+function PinTooltipContent({
+  highlight,
+  className,
+}: {
+  highlight: EvidenceHighlight
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <p className="text-[11px] font-semibold text-foreground">{highlight.label}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground text-pretty">
+        {highlight.detail}
+      </p>
     </div>
+  )
+}
+
+function PinOverlay({
+  highlight,
+  severity,
+  useMobileTooltip,
+}: {
+  highlight: EvidenceHighlight
+  severity?: string
+  useMobileTooltip?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const narrow = useNarrowViewport()
+  const showFixedTooltip = useMobileTooltip && narrow && open
+  const pinRef = useRef<HTMLButtonElement>(null)
+
+  const close = useCallback(() => setOpen(false), [])
+
+  useEffect(() => {
+    if (!open || showFixedTooltip) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (pinRef.current?.contains(e.target as Node)) return
+      close()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open, showFixedTooltip, close])
+
+  const toggle = () => setOpen((prev) => !prev)
+
+  return (
+    <>
+      <div
+        className="absolute z-[1]"
+        style={{
+          left: `${highlight.x * 100}%`,
+          top: `${highlight.y * 100}%`,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <button
+          ref={pinRef}
+          type="button"
+          className="touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          aria-label={`Evidence: ${highlight.label}`}
+          aria-expanded={open}
+          onMouseEnter={() => !narrow && setOpen(true)}
+          onMouseLeave={() => !narrow && setOpen(false)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => !narrow && setOpen(false)}
+          onClick={toggle}
+        >
+          <EvidencePin severity={severity} active={open} />
+        </button>
+        {open && !showFixedTooltip && (
+          <div
+            role="tooltip"
+            className={cn(
+              'pointer-events-none absolute z-10 max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
+              highlight.y > 0.55 ? 'bottom-full mb-2' : 'top-full mt-2',
+              highlight.x > 0.5 ? 'right-0' : 'left-0'
+            )}
+          >
+            <PinTooltipContent highlight={highlight} />
+          </div>
+        )}
+      </div>
+
+      {showFixedTooltip &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[60] bg-foreground/20"
+              aria-label="Close evidence"
+              onClick={close}
+            />
+            <div
+              role="tooltip"
+              className="fixed left-1/2 top-1/2 z-[61] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-border/60 bg-card px-4 py-3 text-left shadow-raised"
+            >
+              <PinTooltipContent highlight={highlight} />
+            </div>
+          </>,
+          document.body
+        )}
+    </>
   )
 }
 
@@ -78,10 +168,12 @@ function HighlightLayer({
   highlights,
   device,
   severity,
+  useMobileTooltip,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
   severity?: string
+  useMobileTooltip?: boolean
 }) {
   const visible = highlights.filter((h) => h.device === device)
   if (visible.length === 0) return null
@@ -89,146 +181,162 @@ function HighlightLayer({
   return (
     <>
       {visible.map((h) => (
-        <PinOverlay key={h.id} highlight={h} severity={severity} />
+        <PinOverlay
+          key={h.id}
+          highlight={h}
+          severity={severity}
+          useMobileTooltip={useMobileTooltip}
+        />
       ))}
     </>
   )
 }
 
-function FramedScreenshot({
-  url,
+function ScreenshotPanel({
   imageUrl,
   device,
   host,
   highlights,
   severity,
+  className,
+  useMobileTooltip,
+  containerRef,
+  size,
 }: {
-  url: string
-  imageUrl: string | null
+  imageUrl: string
   device: 'desktop' | 'mobile'
   host: string
   highlights: EvidenceHighlight[]
   severity?: string
+  className?: string
+  useMobileTooltip?: boolean
+  containerRef?: Ref<HTMLDivElement>
+  /** Fixed dimensions — mobile height must match desktop, never exceed it */
+  size?: { width: number; height: number }
 }) {
+  const panelStyle: CSSProperties = size
+    ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
+    : viewportAspectStyle(device)
+
   return (
-    <BrowserFrame
-      url={url}
-      imageUrl={imageUrl}
-      device={device}
-      alt={`${device} screenshot of ${host}`}
-      viewportOverlay={
-        imageUrl ? <HighlightLayer highlights={highlights} device={device} severity={severity} /> : undefined
-      }
-    />
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
+        size ? 'shrink-0' : 'w-full',
+        className
+      )}
+      style={panelStyle}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={`${device} screenshot of ${host}`}
+        className="absolute inset-0 h-full w-full object-cover object-top"
+      />
+      <div className="pointer-events-none absolute inset-0">
+        <div className="pointer-events-auto relative h-full w-full">
+          <HighlightLayer
+            highlights={highlights}
+            device={device}
+            severity={severity}
+            useMobileTooltip={useMobileTooltip}
+          />
+        </div>
+      </div>
+    </div>
   )
 }
 
 export function ScreenshotWithHighlights({
-  url,
   host,
   desktopScreenshot,
   mobileScreenshot,
-  preferredDevice,
   highlights,
   severity,
   className,
 }: ScreenshotWithHighlightsProps) {
-  const defaultTab =
-    preferredDevice === 'mobile' && mobileScreenshot ? 'mobile' : 'desktop'
   const hasDesktop = Boolean(desktopScreenshot)
   const hasMobile = Boolean(mobileScreenshot)
+
+  const desktopPanelRef = useRef<HTMLDivElement>(null)
+  const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(null)
+
+  const measureDesktopPanel = useCallback(() => {
+    const el = desktopPanelRef.current
+    if (!el) return
+    const height = el.getBoundingClientRect().height
+    if (height > 0) {
+      setDesktopPanelHeight(height)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!hasMobile || !hasDesktop) return
+    measureDesktopPanel()
+    const el = desktopPanelRef.current
+    if (!el) return
+    const ro = new ResizeObserver(measureDesktopPanel)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hasMobile, hasDesktop, desktopScreenshot, measureDesktopPanel])
+
+  useEffect(() => {
+    if (!hasMobile || !desktopScreenshot) return
+    const img = desktopPanelRef.current?.querySelector('img')
+    if (!img) return
+    const onLoad = () => measureDesktopPanel()
+    img.addEventListener('load', onLoad)
+    if (img.complete) onLoad()
+    return () => img.removeEventListener('load', onLoad)
+  }, [hasMobile, desktopScreenshot, measureDesktopPanel])
+
+  const mobilePanelSize =
+    desktopPanelHeight != null ? mobileViewportSizeForHeight(desktopPanelHeight) : null
 
   if (!hasDesktop && !hasMobile) return null
 
   if (!hasDesktop && hasMobile) {
     return (
-      <div className={cn('space-y-3', className)}>
-        <div className={cn('mx-auto', MOBILE_FRAME_WIDTH_CLASS)}>
-          <FramedScreenshot
-            url={url}
-            imageUrl={mobileScreenshot}
-            device="mobile"
-            host={host}
-            highlights={highlights}
-            severity={severity}
-          />
-        </div>
+      <div className={cn('w-full', className)}>
+        <ScreenshotPanel
+          imageUrl={mobileScreenshot!}
+          device="mobile"
+          host={host}
+          highlights={highlights}
+          severity={severity}
+          useMobileTooltip
+        />
       </div>
     )
   }
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="w-full sm:hidden">
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-2 rounded-md bg-muted/50 p-1">
-            <TabsTrigger value="desktop" className="gap-1.5 rounded-sm py-2 text-xs">
-              <Monitor className="h-3.5 w-3.5" aria-hidden />
-              Desktop
-            </TabsTrigger>
-            <TabsTrigger value="mobile" className="gap-1.5 rounded-sm py-2 text-xs">
-              <Smartphone className="h-3.5 w-3.5" aria-hidden />
-              Mobile
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="desktop" className="mt-3">
-            <FramedScreenshot
-              url={url}
-              imageUrl={desktopScreenshot}
-              device="desktop"
-              host={host}
-              highlights={highlights}
-              severity={severity}
-            />
-          </TabsContent>
-          <TabsContent value="mobile" className="mt-3">
-            <div className={cn('mx-auto', MOBILE_FRAME_WIDTH_CLASS)}>
-              <FramedScreenshot
-                url={url}
-                imageUrl={mobileScreenshot}
-                device="mobile"
-                host={host}
-                highlights={highlights}
-                severity={severity}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <div className={cn('hidden sm:flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
-        <div className={DESKTOP_FRAME_FLEX_CLASS}>
-          <FramedScreenshot
-            url={url}
-            imageUrl={desktopScreenshot}
+    <div className={cn('w-full', className)}>
+      <div className="flex w-full min-w-0 items-start gap-3 sm:gap-6">
+        <div className="min-w-0 flex-1">
+          <ScreenshotPanel
+            imageUrl={desktopScreenshot!}
             device="desktop"
             host={host}
             highlights={highlights}
             severity={severity}
+            containerRef={desktopPanelRef}
+            useMobileTooltip
           />
         </div>
-        {hasMobile && (
-          <div
-            className={MOBILE_FRAME_WIDTH_CLASS}
-            title={`${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height} viewport`}
-          >
-            <FramedScreenshot
-              url={url}
-              imageUrl={mobileScreenshot}
-              device="mobile"
-              host={host}
-              highlights={highlights}
-              severity={severity}
-            />
-          </div>
+        {hasMobile && mobilePanelSize && (
+          <ScreenshotPanel
+            imageUrl={mobileScreenshot!}
+            device="mobile"
+            host={host}
+            highlights={highlights}
+            severity={severity}
+            size={mobilePanelSize}
+            useMobileTooltip
+          />
         )}
       </div>
-
-      {highlights.length > 0 && (
-        <p className="text-center text-[10px] text-muted-foreground/70">
-          Hover pins for evidence
-        </p>
-      )}
     </div>
   )
 }

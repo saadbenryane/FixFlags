@@ -22,10 +22,25 @@ const SETTLE_MS = 1500
 const TIMEOUT_MS = 30_000
 const OUT_DIR = path.join(process.cwd(), 'public', 'samples')
 
-const OUTPUT_FILES = {
-  desktop: path.join(OUT_DIR, 'demo-original-desktop.webp'),
-  mobile: path.join(OUT_DIR, 'demo-original-mobile.webp'),
-} as const
+function captureBasename(rawUrl: string): string {
+  try {
+    const pathname = new URL(rawUrl).pathname.replace(/\/$/, '') || '/'
+    if (pathname === '/demo/v1') return 'demo-v1'
+    if (pathname === '/demo') return 'demo-original'
+    return 'demo-original'
+  } catch {
+    return 'demo-original'
+  }
+}
+
+function outputFilesForUrl(rawUrl: string) {
+  const basename = captureBasename(rawUrl)
+  return {
+    basename,
+    desktop: path.join(OUT_DIR, `${basename}-desktop.webp`),
+    mobile: path.join(OUT_DIR, `${basename}-mobile.webp`),
+  }
+}
 
 function isLocalCaptureUrl(raw: string): boolean {
   try {
@@ -37,6 +52,7 @@ function isLocalCaptureUrl(raw: string): boolean {
 }
 
 async function captureLocalScreenshots(targetUrl: string) {
+  const outputFiles = outputFilesForUrl(targetUrl)
   const browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: true,
@@ -76,19 +92,19 @@ async function captureLocalScreenshots(targetUrl: string) {
     await fs.mkdir(OUT_DIR, { recursive: true })
     const [desktopOk, mobileOk] = await Promise.all([
       captureViewport(
-        OUTPUT_FILES.desktop,
+        outputFiles.desktop,
         DESKTOP_VIEWPORT.width,
         DESKTOP_VIEWPORT.height
       ),
       captureViewport(
-        OUTPUT_FILES.mobile,
+        outputFiles.mobile,
         MOBILE_VIEWPORT.width,
         MOBILE_VIEWPORT.height,
         true,
         MOBILE_VIEWPORT.deviceScaleFactor
       ),
     ])
-    return { desktopOk, mobileOk }
+    return { desktopOk, mobileOk, outputFiles }
   } finally {
     await browser.close()
   }
@@ -96,7 +112,8 @@ async function captureLocalScreenshots(targetUrl: string) {
 
 async function main() {
   const target = new URL(CAPTURE_URL).toString()
-  console.log(`Capturing ${target}...`)
+  const outputFiles = outputFilesForUrl(target)
+  console.log(`Capturing ${target} → ${outputFiles.basename}-*.webp...`)
 
   if (isLocalCaptureUrl(target)) {
     const local = await captureLocalScreenshots(target)
@@ -104,7 +121,7 @@ async function main() {
       throw new Error('Desktop capture failed')
     }
     if (!local.mobileOk) {
-      console.warn('Mobile capture failed, demo-original-mobile.webp not updated')
+      console.warn(`Mobile capture failed, ${local.outputFiles.basename}-mobile.webp not updated`)
     }
     console.log('Sample screenshots written to', OUT_DIR)
     return
@@ -118,19 +135,19 @@ async function main() {
     throw new Error('Desktop capture failed')
   }
   if (!result.mobileUrl) {
-    console.warn('Mobile capture failed, demo-original-mobile.webp not updated')
+    console.warn(`Mobile capture failed, ${outputFiles.basename}-mobile.webp not updated`)
   }
   await closeBrowser()
 
   await fs.mkdir(OUT_DIR, { recursive: true })
-  await fs.copyFile(getLocalScreenshotPath(AUDIT_ID, 'desktop'), OUTPUT_FILES.desktop)
+  await fs.copyFile(getLocalScreenshotPath(AUDIT_ID, 'desktop'), outputFiles.desktop)
 
   const mobilePath = getLocalScreenshotPath(AUDIT_ID, 'mobile')
   try {
     await fs.access(mobilePath)
-    await fs.copyFile(mobilePath, OUTPUT_FILES.mobile)
+    await fs.copyFile(mobilePath, outputFiles.mobile)
   } catch {
-    console.warn('Mobile screenshot file missing, demo-original-mobile.webp not updated')
+    console.warn(`Mobile screenshot file missing, ${outputFiles.basename}-mobile.webp not updated`)
   }
 
   console.log('Sample screenshots written to', OUT_DIR)

@@ -1,5 +1,25 @@
 # Project conventions
 
+## Landing page
+
+Homepage section order (canonical):
+
+1. Hero (stable headline/subhead; one interactive report preview)
+2. Logo cloud (compact bridge below hero report)
+3. Three dimensions (Message, Experience, Reach — checklists + example findings)
+4. Fix loop (scan → flag → fix → verify cards with arrows)
+5. Example feedback (honest disclaimer; no unverifiable counts)
+6. Final CTA (URL input repeated; outcome-led copy from `FINAL_CTA`)
+
+Rules:
+
+- Do not duplicate the report explorer below the hero
+- No How-to-Start toggle, no evidence screenshots section
+- Hero copy changes only when explicitly requested
+- Marketing strings live in `lib/marketing/copy.ts`; guardrails in `lib/__tests__/homepage-message.test.ts`
+- Social proof must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts
+- Avoid banned marketing phrases: "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds"
+
 ## Changelog
 
 The public changelog (`lib/marketing/copy.ts` → `CHANGELOG_ENTRIES`) is for **users**, not internal notes.

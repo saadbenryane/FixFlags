@@ -15,6 +15,8 @@ interface FixPromptBlockProps {
   showNextStep?: boolean
   showCursorAction?: boolean
   variant?: 'terminal' | 'compact'
+  /** Use concentric inner radius when nested inside a rounded-card shell */
+  nested?: boolean
 }
 
 export function FixPromptBlock({
@@ -27,14 +29,22 @@ export function FixPromptBlock({
   showNextStep = false,
   showCursorAction = false,
   variant = 'terminal',
+  nested = false,
 }: FixPromptBlockProps) {
+  const shellRadius = nested ? 'rounded-nested-lg' : 'rounded-card'
+
   if (variant === 'compact') {
     return (
       <div className={cn('space-y-2', className)}>
         {finding ? (
           <p className="text-xs leading-snug text-muted-foreground text-pretty">{finding}</p>
         ) : null}
-        <div className="overflow-hidden rounded-card border border-terminal-border bg-terminal shadow-card">
+        <div
+          className={cn(
+            'overflow-hidden border border-terminal-border bg-terminal shadow-card',
+            shellRadius
+          )}
+        >
           <textarea
             readOnly
             value={prompt}
@@ -69,6 +79,7 @@ export function FixPromptBlock({
       ) : null}
       <TerminalShell
         label={label}
+        nested={nested}
         headerRight={
           <PromptActionRow
             prompt={prompt}

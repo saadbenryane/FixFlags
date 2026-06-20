@@ -1,15 +1,14 @@
-import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { CheckDimensionsSection } from '@/components/marketing/landing/CheckDimensionsSection'
+import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
-import { LandingSampleReportSection } from '@/components/marketing/landing/LandingSampleReportSection'
 import { LogoCloudSection } from '@/components/marketing/landing/LogoCloudSection'
-import { RealImpactSection } from '@/components/marketing/landing/RealImpactSection'
 import { TestimonialsSection } from '@/components/marketing/landing/TestimonialsSection'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+
 export const metadata = buildPageMetadata('home', '/')
 export const revalidate = 3600
 
@@ -33,14 +32,8 @@ export default async function HomePage() {
       <LandingHeroSection audit={sample.audit} />
       <LogoCloudSection />
       <CheckDimensionsSection />
-      <HowItWorksLoopSection />
-      <RealImpactSection />
+      <HowItWorksLoopSection sampleHref={sampleHref} />
       <TestimonialsSection />
-      <LandingSampleReportSection
-        audit={sample.audit}
-        sampleHref={sampleHref}
-        source={sample.source}
-      />
       <LandingFinalCtaSection />
     </>
   )

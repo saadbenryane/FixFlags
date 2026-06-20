@@ -21,7 +21,7 @@ const SIZE_CONFIG: Record<
 }
 
 /**
- * Sleek score ring — thin stroke, single score color. Arc starts at bottom, fills clockwise.
+ * Sleek score ring — thin stroke, single score color. Arc starts at top, fills clockwise.
  */
 export function ScoreRingGauge({ score, size = 'md', className }: ScoreRingGaugeProps) {
   const { box, radius, stroke, scoreText } = SIZE_CONFIG[size]
@@ -60,7 +60,7 @@ export function ScoreRingGauge({ score, size = 'md', className }: ScoreRingGauge
             strokeLinecap="round"
             strokeDasharray={`${filled} ${gap}`}
             strokeDashoffset={0}
-            transform={`rotate(90 ${center} ${center})`}
+            transform={`rotate(-90 ${center} ${center})`}
             className="motion-safe:transition-[stroke-dasharray,stroke] motion-safe:duration-700 motion-safe:ease-out"
           />
         )}

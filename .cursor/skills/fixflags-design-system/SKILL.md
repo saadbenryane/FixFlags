@@ -37,9 +37,13 @@ UI Kit v3.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.
 |-------|-------|-----|
 | `--radius-pill` | 9999px | Buttons, inputs, selects |
 | `--radius-card` | 12px | Glass cards, panels |
+| `--radius-nested-md` | outer − 0.75rem gap | Inner shells inside `rounded-card` with ~12px padding |
+| `--radius-nested-lg` | outer − 1rem gap | Inner shells inside `rounded-card` with 16px+ padding |
 
 **Required:** `rounded-full` on all buttons and inputs.
 **Anti-pattern:** `rounded-md` on controls (legacy v2).
+
+**Nested prompts:** When `FixPromptBlock` or `TerminalShell` sits inside a `rounded-card` parent (hero sample, audit cards, report fix section), pass `nested` so the outer shell uses `rounded-nested-lg` — concentric corners per `inner = outer − gap` in `tokens.css`.
 
 ## Page canvas
 

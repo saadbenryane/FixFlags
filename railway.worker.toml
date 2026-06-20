@@ -1,0 +1,10 @@
+# Audit worker service — same image as web, different start command.
+# In Railway: create a service from this repo and set Config path to /railway.worker.toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "/bin/sh -c \"npm run worker:start\""
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

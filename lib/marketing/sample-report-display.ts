@@ -9,7 +9,9 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
+import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { displayVerdict } from '@/lib/audit/verdict'
+import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type PipelineStepState = 'done' | 'active' | 'pending'
@@ -62,7 +64,12 @@ export interface SampleFlagDisplay {
 export interface SampleReportDisplay {
   id: string
   url: string
+  /** Raw hostname from the audited URL. */
   host: string
+  /** User-facing site label (e.g. LaunchPad demo). */
+  displayHost: string
+  contextTag: string
+  isDemoFixture: boolean
   pageType: string | null
   score: number | null
   grade: string | null
@@ -190,43 +197,56 @@ function lookupAnchor(flag: RankableFlag, device: 'desktop' | 'mobile') {
   const key = flag.checkId ?? flag.id
   const entry = ANCHORS[key]
   if (!entry) return null
-  return entry[device] ?? entry.desktop ?? entry.mobile ?? null
+  return entry[device] ?? null
 }
 
 function buildEvidenceHighlights(flag: RankableFlag): EvidenceHighlight[] {
-  const device = preferredDeviceForFlag(flag)
-  const anchor = lookupAnchor(flag, device)
+  const key = flag.checkId ?? flag.id
+  const preferred = preferredDeviceForFlag(flag)
+  const highlights: EvidenceHighlight[] = []
 
-  if (!anchor) {
-    if (!flag.evidence) return []
-    return [
-      {
-        id: `${flag.id}-fallback`,
-        device,
-        x: 0.5,
-        y: 0.28,
-        label: flag.problem,
-        detail: flag.evidence,
-      },
-    ]
-  }
-
-  return [
-    {
-      id: flag.checkId ?? flag.id,
+  for (const device of ['desktop', 'mobile'] as const) {
+    const anchor = lookupAnchor(flag, device)
+    if (!anchor) continue
+    highlights.push({
+      id: `${key}-${device}`,
       device,
       x: anchor.x,
       y: anchor.y,
       label: flag.problem,
       detail: flag.evidence ?? flag.problem,
+    })
+  }
+
+  if (highlights.length > 0) return highlights
+
+  if (!flag.evidence) return []
+  return [
+    {
+      id: `${flag.id}-fallback`,
+      device: preferred,
+      x: 0.5,
+      y: 0.28,
+      label: flag.problem,
+      detail: flag.evidence,
     },
   ]
 }
 
-function buildPipelineSteps(flagCount: number): PipelineStep[] {
+function captureStepDetail(pageType: string | null): string {
+  if (pageType) return pageType
+  return 'Landing page'
+}
+
+function buildPipelineSteps(flagCount: number, pageType: string | null): PipelineStep[] {
   return [
-    { id: 'capture', label: 'Site captured', detail: 'Homepage', state: 'done' },
-    { id: 'checks', label: 'Checks complete', detail: '24 checks', state: 'done' },
+    { id: 'capture', label: 'Site captured', detail: captureStepDetail(pageType), state: 'done' },
+    {
+      id: 'checks',
+      label: 'Checks complete',
+      detail: `${CHECK_ID_COUNT} checks`,
+      state: 'done',
+    },
     {
       id: 'flags',
       label: 'Flags found',
@@ -285,10 +305,15 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     }
   })
 
+  const site = getSampleSiteDisplay(audit.url)
+
   return {
     id: audit.id,
     url: audit.url,
     host: hostFromUrl(audit.url),
+    displayHost: site.displayHost,
+    contextTag: site.contextTag,
+    isDemoFixture: site.isDemoFixture,
     pageType: audit.pageType,
     score: overall,
     grade: gradeFromScore(overall),
@@ -300,7 +325,7 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     rubricSummaries: Object.fromEntries(
       audit.rubricRows.map((row) => [row.name, row.summary ?? ''])
     ),
-    pipelineSteps: buildPipelineSteps(flags.length),
+    pipelineSteps: buildPipelineSteps(flags.length, audit.pageType),
     flags,
   }
 }

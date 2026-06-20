@@ -9,18 +9,21 @@ export function SampleStatusBadge({
   completedAt,
   pipelineVersion,
   isDogfood,
+  isDemoFixture,
   marketing = false,
 }: {
   source: SampleSource
   completedAt?: Date | string | null
   pipelineVersion?: string | null
   isDogfood?: boolean
+  isDemoFixture?: boolean
   marketing?: boolean
 }) {
   const label = sampleStatusLabel(source, {
     version: pipelineVersion ?? undefined,
     completedAt,
     isDogfood,
+    isDemoFixture,
     marketing,
   })
   const variant = source === 'live' ? 'secondary' : 'outline'

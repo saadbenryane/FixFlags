@@ -21,24 +21,34 @@ export type EvidenceAnchorMap = Record<string, EvidenceAnchorEntry>
 const ANCHORS_PATH = path.join(process.cwd(), 'lib/marketing/sample-evidence-anchors.json')
 const SETTLE_MS = 1500
 const TIMEOUT_MS = 30_000
+const ANCHOR_CLAMP_MIN = 0.02
+const ANCHOR_CLAMP_MAX = 0.98
 
 async function resolvePoint(page: Page, selectors: string[]): Promise<EvidenceAnchor | null> {
-  return page.evaluate((sels: string[]) => {
-    for (const sel of sels) {
-      const el = document.querySelector(sel)
-      if (!el) continue
-      const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 && rect.height <= 0) continue
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      if (vw <= 0 || vh <= 0) continue
-      return {
-        x: Math.min(1, Math.max(0, (rect.left + rect.width / 2) / vw)),
-        y: Math.min(1, Math.max(0, (rect.top + rect.height / 2) / vh)),
+  return page.evaluate(
+    (sels: string[], min: number, max: number) => {
+      for (const sel of sels) {
+        const el = document.querySelector(sel)
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        if (rect.width <= 0 && rect.height <= 0) continue
+        const vw = window.innerWidth
+        const vh = window.innerHeight
+        if (vw <= 0 || vh <= 0) continue
+        if (rect.bottom < 0 || rect.top > vh) continue
+        const x = (rect.left + rect.width / 2) / vw
+        const y = (rect.top + rect.height / 2) / vh
+        return {
+          x: Math.min(max, Math.max(min, Math.min(1, Math.max(0, x)))),
+          y: Math.min(max, Math.max(min, Math.min(1, Math.max(0, y)))),
+        }
       }
-    }
-    return null
-  }, selectors)
+      return null
+    },
+    selectors,
+    ANCHOR_CLAMP_MIN,
+    ANCHOR_CLAMP_MAX
+  )
 }
 
 async function resolveForDevice(
@@ -70,6 +80,7 @@ async function resolveForDevice(
       throw new Error(`Navigation failed with HTTP ${response?.status() ?? 'unknown'}`)
     }
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
+    await page.evaluate(() => window.scrollTo(0, 0))
 
     for (const checkId of checkIds) {
       const entry = getEvidenceSelectors(checkId)

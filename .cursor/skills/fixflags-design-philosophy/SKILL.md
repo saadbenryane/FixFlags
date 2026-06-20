@@ -119,6 +119,8 @@ This philosophy is versioned on purpose.
 
 ### Changelog
 
+- **v1.4 (Jun 2026)** — Landing language refinement: removed How-to-Start toggle and evidence section; logo cloud below hero; dimension cards restore checklists + example findings; outcome-led final CTA; concentric nested fix prompts via `FixPromptBlock nested`.
+- **v1.3 (Jun 2026)** — Landing conversion restructure: one hero report, path-first How to Start toggle, grades+loop two-column section, slim dimension cards with proof examples, evidence screenshots, honest social proof strip; cut synthetic before/after impact section.
 - **v1.2 (Jun 2026)** — Landing completion: 3-dimension marketing model (Trust lives in Experience); live sample + wired CTAs; orphaned marketing components removed; app-wide `Card`/`Surface`/`Callout` adoption; `ui:drift-guard` script; Expert Review audit picker dialog.
 - **v1.1 (Jun 2026)** — Design completion pass: live report `#report-fix` + `FixPromptBlock` arc; terminal tokens on fix prompts; `Callout` / `Card` / `Surface` standardized across audit surfaces; layout `Container variant="report"` alignment; `EmptyState` primitive; removed `surface-raised` utility.
 - **v1.0 (Jun 2026)** — Established pillars, heuristics map, laws, report + layout doctrine, review rubric. Introduced `Callout` primitive and pull-quote verdict; standardized report radii on `rounded-card`.

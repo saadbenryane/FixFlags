@@ -33,7 +33,7 @@ const TINTS = {
 } as const
 
 export function CheckDimensionsSection() {
-  const { label, headline, cards } = LANDING_PAGE.checkDimensions
+  const { label, headline, exampleFindingLabel, cards } = LANDING_PAGE.checkDimensions
 
   return (
     <Section spacing="marketing" id="what-it-checks" className="scroll-mt-[var(--header-offset)]">
@@ -50,7 +50,7 @@ export function CheckDimensionsSection() {
                   interactive
                   variant="strong"
                   className={cn(
-                    'group relative flex h-full min-h-[19rem] flex-col overflow-hidden p-6 sm:p-7',
+                    'group relative flex h-full flex-col overflow-hidden p-6 sm:p-7',
                     'motion-safe:transition-[box-shadow,transform] motion-safe:duration-300 motion-safe:ease-out',
                     'hover:shadow-raised'
                   )}
@@ -88,7 +88,7 @@ export function CheckDimensionsSection() {
                       {d.question}
                     </p>
 
-                    <ul className="mt-6 flex flex-1 flex-col justify-end space-y-3">
+                    <ul className="mt-5 space-y-2.5">
                       {d.checks.map((check) => (
                         <li key={check} className="flex items-start gap-2.5 text-sm leading-snug">
                           <CheckCircle2
@@ -99,6 +99,18 @@ export function CheckDimensionsSection() {
                         </li>
                       ))}
                     </ul>
+
+                    <div className="mt-6 rounded-nested-md bg-muted/35 px-4 py-3.5">
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                        {exampleFindingLabel}
+                      </p>
+                      <p className="mt-1.5 text-sm font-semibold leading-snug text-foreground">
+                        {d.proofExample.finding}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty">
+                        {d.proofExample.evidence}
+                      </p>
+                    </div>
                   </div>
                 </Card>
               </RevealOnView>

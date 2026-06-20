@@ -16,6 +16,7 @@ interface RubricOverviewStripProps {
   scores: SampleReportDisplay['rubricScores']
   summaries?: Record<string, string>
   onSelectRubric?: (rubric: string) => void
+  layout?: 'horizontal' | 'vertical'
   className?: string
 }
 
@@ -23,10 +24,23 @@ export function RubricOverviewStrip({
   scores,
   summaries,
   onSelectRubric,
+  layout = 'horizontal',
   className,
 }: RubricOverviewStripProps) {
+  const isVertical = layout === 'vertical'
+  const cardClass = cn(
+    'relative overflow-hidden rounded-card bg-card p-3 sm:p-4',
+    'border-0 shadow-card',
+    isVertical && 'p-2.5 sm:p-3'
+  )
+
   return (
-    <div className={cn('grid gap-3 sm:grid-cols-3', className)}>
+    <div
+      className={cn(
+        isVertical ? 'flex flex-col gap-2' : 'grid gap-3 sm:grid-cols-3',
+        className
+      )}
+    >
       {CARD_META.map(({ rubric, icon: Icon, tint, wash }) => {
         const copy = LANDING_PAGE.checkDimensions.cards.find(
           (c) => c.id === rubric.toLowerCase()
@@ -45,21 +59,33 @@ export function RubricOverviewStrip({
                 wash
               )}
             />
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div
+              className={cn(
+                'relative flex items-start justify-between gap-2',
+                isVertical && 'items-center gap-3'
+              )}
+            >
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Icon className={cn('h-4 w-4 shrink-0', tint)} aria-hidden />
-                  <p className={cn('text-sm font-bold', tint)}>{copy?.title}</p>
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4', tint)} aria-hidden />
+                  <p className={cn('text-xs font-bold sm:text-sm', tint)}>{copy?.title}</p>
                 </div>
-                <p className="mt-1 text-xs leading-snug text-muted-foreground text-pretty">
-                  {summaries?.[rubric] ?? copy?.question}
-                </p>
+                {!isVertical ? (
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground text-pretty">
+                    {summaries?.[rubric] ?? copy?.question}
+                  </p>
+                ) : null}
               </div>
-              <span className="font-mono text-2xl font-bold tabular-nums leading-none">
+              <span
+                className={cn(
+                  'font-mono font-bold tabular-nums leading-none',
+                  isVertical ? 'text-lg sm:text-xl' : 'text-2xl'
+                )}
+              >
                 {scoreLabel}
               </span>
             </div>
-            <div className="relative mt-3 h-1 overflow-hidden rounded-full bg-muted/50">
+            <div className="relative mt-2 h-1 overflow-hidden rounded-full bg-muted/50">
               <div
                 className="h-full rounded-full"
                 style={{
@@ -77,7 +103,10 @@ export function RubricOverviewStrip({
               key={rubric}
               type="button"
               onClick={() => onSelectRubric(rubric)}
-              className="relative overflow-hidden rounded-card border border-border/50 bg-card p-4 text-left shadow-sm transition-shadow hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className={cn(
+                cardClass,
+                'text-left transition-shadow hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+              )}
             >
               {inner}
             </button>
@@ -85,10 +114,7 @@ export function RubricOverviewStrip({
         }
 
         return (
-          <div
-            key={rubric}
-            className="relative overflow-hidden rounded-card border border-border/50 bg-card p-4 shadow-sm"
-          >
+          <div key={rubric} className={cardClass}>
             {inner}
           </div>
         )

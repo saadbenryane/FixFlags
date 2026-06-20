@@ -87,7 +87,7 @@ export function ExampleAuditCard({ audit }: Props) {
 
         {topPrompt && (
           <div className="rounded-nested-md bg-muted/20 p-4">
-            <FixPromptBlock prompt={topPrompt} rows={3} clamp />
+            <FixPromptBlock prompt={topPrompt} rows={3} clamp nested />
           </div>
         )}
 

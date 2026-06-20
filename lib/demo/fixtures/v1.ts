@@ -29,10 +29,7 @@ export const v1Fixture: DemoFixture = {
     },
   },
   announcement: null,
-  navLinks: [
-    { label: 'Features', href: '#features' },
-    { label: 'Pricing', href: '#pricing' },
-  ],
+  navLinks: [{ label: 'Features', href: '#features' }],
   headline: 'Ship a landing page your customers understand in 5 seconds',
   subhead:
     'Founders use LaunchPad to turn a rough idea into a polished, conversion-ready page — no design skills required.',

@@ -13,6 +13,7 @@ Read before changing marketing copy, positioning, or GTM.
 - Voice rules: `docs/voice-and-copy.md`
 - Upgrade moment resolver: `lib/billing/upgrade-moments.ts` (strings live in `copy.ts`)
 - Design polish: `.cursor/skills/fixflags-design-system/SKILL.md`
+- Evidence & problem bars: [evidence-pack.md](evidence-pack.md)
 
 ## Two audiences (do not collapse them)
 
@@ -124,6 +125,7 @@ Full research methods: [research-workflows.md](research-workflows.md).
 | Channel | AI shipper angle | Existing site owner angle |
 |---------|------------------|---------------------------|
 | **Homepage hero** | Check before you ship | Live site — see what to fix first |
+| **Homepage post-hero** | How to start toggle → grades+loop | Same path; Fix my live site tab |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
@@ -200,6 +202,7 @@ Unlike [alternative], we [differentiator with evidence].
 - Segment deep dive: [audiences.md](audiences.md)
 - Research & competitive workflows: [research-workflows.md](research-workflows.md)
 - JTBD / switch interviews: [jtbd-research.md](jtbd-research.md)
+- Evidence pack (stats, problem bars): [evidence-pack.md](evidence-pack.md)
 - Before/after copy examples: [copy-examples.md](copy-examples.md)
 - KISS rewrite pass: [writing-simple.md](writing-simple.md)
 - Lean borderless layout: [lean-visual.md](lean-visual.md)

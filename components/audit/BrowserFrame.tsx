@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   viewportAspectStyle,
@@ -23,6 +23,10 @@ interface Props {
   device?: Device
   /** Rendered inside the image viewport (0–1 coords relative to capture) */
   viewportOverlay?: ReactNode
+  /** Ref on the screenshot viewport container (for height-matched mobile layout) */
+  viewportRef?: Ref<HTMLDivElement>
+  /** Fixed viewport dimensions (overrides aspect-ratio sizing) */
+  viewportSize?: { height: number; width: number }
 }
 
 export function BrowserFrame({
@@ -34,6 +38,8 @@ export function BrowserFrame({
   label,
   device = 'desktop',
   viewportOverlay,
+  viewportRef,
+  viewportSize,
 }: Props) {
   const preset = SCREENSHOT_FRAME[device]
   const resolvedLabel = label ?? preset.label
@@ -43,8 +49,18 @@ export function BrowserFrame({
 
   const displayUrl = url ? truncateUrl(url, 56) : 'Capturing page...'
 
+  const resolvedViewportStyle: CSSProperties = viewportSize
+    ? { height: viewportSize.height, width: viewportSize.width }
+    : viewportAspectStyle(device)
+
   return (
-    <div className={cn('w-full rounded-card bg-card shadow-card overflow-hidden', className)}>
+    <div
+      className={cn(
+        'rounded-md bg-card shadow-card overflow-hidden',
+        viewportSize ? 'w-auto max-w-full shrink-0' : 'w-full',
+        className
+      )}
+    >
       <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border/60">
         <div className="flex gap-1 shrink-0">
           <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
@@ -60,8 +76,9 @@ export function BrowserFrame({
       </div>
 
       <div
-        className="relative w-full overflow-hidden bg-muted/30"
-        style={viewportAspectStyle(device)}
+        ref={viewportRef}
+        className="relative overflow-hidden bg-muted/30"
+        style={resolvedViewportStyle}
       >
         {resolvedState === 'loading' && (
           <Skeleton className="absolute inset-0 rounded-none" />
@@ -80,7 +97,7 @@ export function BrowserFrame({
           <img
             src={imageUrl}
             alt={alt}
-            className="absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
+            className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in"
           />
         )}
 

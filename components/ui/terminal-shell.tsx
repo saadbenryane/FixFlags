@@ -7,6 +7,8 @@ interface TerminalShellProps {
   children: React.ReactNode
   className?: string
   bodyClassName?: string
+  /** Concentric radius when nested inside rounded-card */
+  nested?: boolean
 }
 
 /**
@@ -18,11 +20,13 @@ export function TerminalShell({
   children,
   className,
   bodyClassName,
+  nested = false,
 }: TerminalShellProps) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-card border border-terminal-border bg-terminal shadow-card',
+        'overflow-hidden border border-terminal-border bg-terminal shadow-card',
+        nested ? 'rounded-nested-lg' : 'rounded-card',
         className
       )}
     >

@@ -211,6 +211,7 @@ export function AuditReport({
                 showCursorAction
                 rows={5}
                 clamp={false}
+                nested
               />
             </Card>
           </ReportAiGate>

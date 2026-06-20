@@ -44,14 +44,15 @@ export const HERO = {
     'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
-  primaryCta: 'Run Free Check',
+  primaryCta: 'Show fixes',
+  navSignUpCta: 'Sign up',
   trySampleCta: 'Try sample URL',
-  urlPlaceholder: 'https://your-site.com',
-  urlHelper: "Paste any live or preview URL. We'll add https:// if needed.",
+  urlPlaceholder: 'your-site.com',
+  urlHelper: 'Paste any live or preview URL.',
   trustBadges: [
-    'Free deterministic checks',
-    'Results in seconds',
-    'Live or preview URLs',
+    'See what users see',
+    'Copy-ready fix prompts',
+    '3 Free Scans',
   ] as const,
 } as const
 
@@ -276,10 +277,10 @@ export const PROOF_SECTION = {
   nextStep: OUTPUT_LABELS.nextStep,
   cta: 'Check My Site',
   sample: {
-    name: 'FixFlags',
-    domain: 'fixflags.com',
-    finding: 'Hero teaser card missing screenshot on first paint',
-    areasFlagged: 4,
+    name: 'LaunchPad',
+    domain: 'fixflags.com/demo',
+    finding: 'Hero headline repeats the product category instead of the outcome',
+    areasFlagged: 6,
   },
 } as const
 
@@ -407,10 +408,9 @@ export const PRICING_TEASER = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Before you ship it,',
-  headlineAccent: 'flag',
-  headlineSuffix: ' it.',
-  body: 'Run a free check on any live or preview URL. Get the issues that matter and the fixes your agent can apply.',
+  headline: 'Paste your URL.',
+  headlineAccent: 'See what to fix.',
+  body: 'Run a free check on any live or preview URL. Every finding includes evidence and a fix prompt your editor can run.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -467,6 +467,7 @@ export const LANDING_PAGE = {
   checkDimensions: {
     label: 'What it checks',
     headline: 'Every product breaks in three places.',
+    exampleFindingLabel: 'Example finding',
     cards: [
       {
         id: 'message',
@@ -480,6 +481,10 @@ export const LANDING_PAGE = {
           'Copy and story that make the next step obvious',
           'CTA and proof that reduce hesitation',
         ] as const,
+        proofExample: {
+          finding: 'Hero value is unclear',
+          evidence: '"Build something amazing with AI"',
+        },
       },
       {
         id: 'experience',
@@ -493,6 +498,10 @@ export const LANDING_PAGE = {
           'Accessibility and performance blockers',
           'Trust signals like HTTPS and privacy links',
         ] as const,
+        proofExample: {
+          finding: 'Primary CTA below fold at 375px',
+          evidence: 'Main action starts at 1,200px on mobile',
+        },
       },
       {
         id: 'reach',
@@ -506,12 +515,19 @@ export const LANDING_PAGE = {
           'Indexability and shareability',
           'Search snippets people can understand',
         ] as const,
+        proofExample: {
+          finding: 'Social preview image missing',
+          evidence: 'Link previews show blank on Slack and X',
+        },
       },
     ] as const,
   },
   howItWorks: {
     label: 'How it works',
     headline: 'From scan to ship. In one loop.',
+    subhead:
+      'Paste a URL. Get findings and fix prompts. Re-check when you ship fixes.',
+    sampleLink: 'View full sample review',
     steps: [
       {
         step: 1,
@@ -535,14 +551,59 @@ export const LANDING_PAGE = {
         step: 4,
         title: 'Verify',
         body: 'We re-check and show what improved.',
-        preview: 'Score improved +32%',
+        preview: 'Re-check complete',
       },
     ] as const,
   },
   testimonials: {
     label: 'Example feedback',
-    headline: 'Built for developers shipping fast.',
-    disclaimer: 'Representative feedback from builders like you.',
+    headline: 'Example feedback from builders',
+    subhead: 'What people tend to notice after a first audit.',
+    disclaimer: 'Paraphrased examples. Not verbatim quotes or named endorsements.',
+    quotes: [
+      {
+        id: 'prelaunch-mobile',
+        quote:
+          'Mobile CTA was below the fold. I would have posted the launch link without catching it.',
+        role: 'Indie builder',
+        context: 'Pre-launch',
+      },
+      {
+        id: 'homepage-list',
+        quote:
+          'Short prioritized list I could forward to our dev. No Lighthouse dump, no SEO rabbit hole.',
+        role: 'Founder, live SaaS',
+        context: 'Homepage audit',
+      },
+      {
+        id: 'slack-preview',
+        quote:
+          'Fixed our social preview image after the first check. Slack links finally show our branding instead of blank cards.',
+        role: 'Founder, B2B SaaS',
+        context: 'Link previews',
+      },
+      {
+        id: 'client-handoff',
+        quote:
+          'I send clients the share link instead of a Loom walkthrough. They see the evidence themselves.',
+        role: 'Freelance designer',
+        context: 'Agency workflow',
+      },
+      {
+        id: 'cursor-fix',
+        quote:
+          'Copied the fix prompt into Cursor and shipped the change in one sitting. No back-and-forth in Slack.',
+        role: 'Solo dev',
+        context: 'Fix in editor',
+      },
+      {
+        id: 'hero-clarity',
+        quote:
+          'Our redesign looked polished but the hero still did not say who it was for. That was the first flag.',
+        role: 'Marketing lead',
+        context: 'Post-redesign',
+      },
+    ] as const,
   },
   sampleReport: {
     label: 'Sample review',
@@ -550,40 +611,18 @@ export const LANDING_PAGE = {
     body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
     cta: 'View full sample review',
     illustrativeLabel: 'Illustrative scores',
-    scores: {
-      total: 72,
-      rubrics: [
-        { name: 'Message', score: 61 },
-        { name: 'Experience', score: 74 },
-        { name: 'Reach', score: 78 },
-      ] as const,
-    },
-  },
-  heroPreview: {
-    siteUrl: 'fixflags.com/demo',
-    siteHeadline: 'Build something amazing with AI',
-    siteCta: 'Get started',
-    pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Review ready'] as const,
-    flag: {
-      severity: 'High impact',
-      rubric: 'Message',
-      title: 'Hero value is unclear',
-      description:
-        'Visitors can\u2019t understand what you do or why it matters in 5 seconds.',
-      evidence: '"Build something amazing with AI"',
-      impact: 'High',
-      affects: ['Conversion', 'Trust'] as const,
-      fix: 'Rewrite the hero headline to name the audience and outcome in one sentence. Replace generic AI copy with a specific value prop and a single primary CTA above the fold.',
-    },
   },
   footer: {
-    tagline: 'Finish what your AI started.',
+    tagline:
+      'Evidence-backed reviews for AI-built and live sites. Find what visitors are missing, with fix prompts your editor can run.',
     madeWith: 'Made with \u2764\ufe0f by the FixFlags team',
     newsletter: {
       title: 'Stay in the loop',
       placeholder: 'Enter your email',
       cta: 'Subscribe',
       blurb: 'Product updates and shipping tips. No spam.',
+      success: 'You\u2019re on the list.',
+      alreadySubscribed: 'You\u2019re already on the list.',
     },
     social: {
       instagram: 'https://instagram.com/fixedflax',
@@ -726,7 +765,6 @@ export const PLANS = getMarketingPlans()
 export const SAMPLES_PAGE = {
   subhead: 'This is what a completed FixFlags report looks like: full report, all Flags.',
   tierNote: 'Free includes the full report. Pro adds unlimited re-checks and MCP in your editor.',
-  bottomCta: 'Check My Site',
 } as const
 
 export const REPORT_COPY = {
@@ -1013,7 +1051,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real FixFlags report of our own homepage: evidence-backed Flags with copy-ready fix prompts.',
+      'See a real FixFlags report of our LaunchPad demo landing page: evidence-backed Flags with copy-ready fix prompts.',
   },
   examples: {
     title: 'Example Reports',

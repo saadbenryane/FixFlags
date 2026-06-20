@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { resolveDisplayScores } from '@/lib/marketing/sample-report-display'
+import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
+import {
+  AI_SUMMARY_UNAVAILABLE_VERDICT,
+  DETERMINISTIC_SCAN_VERDICT,
+} from '@/lib/audit/verdict'
+import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
+import { DEMO_BRAND } from '@/lib/demo/brand'
+import {
+  buildSampleReportDisplay,
+  resolveDisplayScores,
+} from '@/lib/marketing/sample-report-display'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 
 function baseAudit(overrides: Partial<LiveSampleAudit> = {}): LiveSampleAudit {
@@ -41,5 +51,78 @@ describe('resolveDisplayScores', () => {
   it('uses stored audit score when present', () => {
     const { overall } = resolveDisplayScores(baseAudit({ score: 72 }))
     assert.equal(overall, 72)
+  })
+})
+
+describe('buildSampleReportDisplay', () => {
+  it('sets displayHost for demo fixture URL', () => {
+    const report = buildSampleReportDisplay(
+      baseAudit({
+        url: DEFAULT_SAMPLE_AUDIT_URL,
+        pageType: 'Landing page',
+      })
+    )
+    assert.equal(report.displayHost, DEMO_BRAND.displayLabel)
+    assert.equal(report.isDemoFixture, true)
+    assert.equal(report.host, 'fixflags.com')
+  })
+
+  it('uses CHECK_ID_COUNT in pipeline steps', () => {
+    const report = buildSampleReportDisplay(baseAudit({ pageType: 'Landing page' }))
+    const checksStep = report.pipelineSteps.find((s) => s.id === 'checks')
+    assert.equal(checksStep?.detail, `${CHECK_ID_COUNT} checks`)
+    const captureStep = report.pipelineSteps.find((s) => s.id === 'capture')
+    assert.equal(captureStep?.detail, 'Landing page')
+  })
+
+  it('filters system stub verdicts', () => {
+    const report = buildSampleReportDisplay(
+      baseAudit({ verdict: DETERMINISTIC_SCAN_VERDICT })
+    )
+    assert.equal(report.verdict, null)
+
+    const userReport = buildSampleReportDisplay(
+      baseAudit({ verdict: 'Fix messaging before sharing.' })
+    )
+    assert.equal(userReport.verdict, 'Fix messaging before sharing.')
+
+    const unavailable = buildSampleReportDisplay(
+      baseAudit({ verdict: AI_SUMMARY_UNAVAILABLE_VERDICT })
+    )
+    assert.equal(unavailable.verdict, null)
+  })
+
+  it('emits per-device evidence highlights when anchors exist for both', () => {
+    const report = buildSampleReportDisplay(
+      baseAudit({
+        flags: [
+          {
+            id: 'flag-message-1',
+            checkId: 'h1-generic',
+            rubric: 'MESSAGE',
+            severity: 'IMPORTANT',
+            impactTag: 'CONVERSION',
+            problem: 'Hero headline is generic',
+            evidence: 'Headline reads a category label, not an outcome.',
+            whyItMatters: 'Outcome-driven headlines convert better.',
+            fix: 'Lead with the outcome.',
+            agentPrompt: 'Update the H1.',
+            cursorPrompt: null,
+            claudePrompt: null,
+            lovablePrompt: null,
+            boltPrompt: null,
+            verificationRule: null,
+            pageUrl: null,
+          },
+        ],
+      })
+    )
+
+    const flag = report.flags[0]
+    assert.equal(flag.evidenceHighlights.length, 2)
+    assert.ok(flag.evidenceHighlights.some((h) => h.device === 'desktop'))
+    assert.ok(flag.evidenceHighlights.some((h) => h.device === 'mobile'))
+    assert.equal(flag.evidenceHighlights[0].id, 'h1-generic-desktop')
+    assert.equal(flag.evidenceHighlights[1].id, 'h1-generic-mobile')
   })
 })

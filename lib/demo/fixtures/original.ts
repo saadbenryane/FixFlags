@@ -42,6 +42,7 @@ export const originalFixture: DemoFixture = {
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
   heroImageAlt: 'Product dashboard preview',
+  featuresSectionTitle: 'Everything you need to launch',
   features: [
     {
       title: 'AI-powered design',

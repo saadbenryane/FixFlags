@@ -7,7 +7,8 @@ import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 export function FooterNewsletter() {
-  const { title, placeholder, cta, blurb } = LANDING_PAGE.footer.newsletter
+  const { title, placeholder, cta, blurb, success: successMessage, alreadySubscribed } =
+    LANDING_PAGE.footer.newsletter
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -39,11 +40,7 @@ export function FooterNewsletter() {
       }
 
       const data = await res.json()
-      setSuccess(
-        data.status === 'already_subscribed'
-          ? 'You are already on the list.'
-          : 'Check your inbox to confirm you are subscribed.'
-      )
+      setSuccess(data.status === 'already_subscribed' ? alreadySubscribed : successMessage)
       setEmail('')
     } catch {
       setError('Could not subscribe right now. Try again later.')

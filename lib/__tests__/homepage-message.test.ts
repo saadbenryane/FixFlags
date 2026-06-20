@@ -20,6 +20,34 @@ import {
 
 const FORBIDDEN_TAXONOMY = /\b7 areas\b|\bseven areas\b/i
 
+const BANNED_LANDING_PHRASES = [
+  /second pass/i,
+  /flag it/i,
+  /ship tonight/i,
+  /fix my live site/i,
+  /start in 60 seconds/i,
+] as const
+
+function collectStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === 'string') {
+    out.push(value)
+    return out
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, out)
+    return out
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectStrings(item, out)
+  }
+  return out
+}
+
+const LANDING_MARKETING_STRINGS = [
+  ...collectStrings(LANDING_PAGE),
+  ...collectStrings(FINAL_CTA),
+]
+
 const ABOVE_FOLD_COPY = [
   HERO.headline,
   HERO.headlineLine1,
@@ -68,6 +96,19 @@ describe('homepage message guardrails', () => {
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 
+  it('trust badges are short, outcome-led, not feature jargon', () => {
+    assert.equal(HERO.trustBadges.length, 3)
+    for (const badge of HERO.trustBadges) {
+      assert.ok(badge.split(/\s+/).length <= 4, `Too long: ${badge}`)
+      assert.ok(!/\bdeterministic\b/i.test(badge), `Jargon leak: ${badge}`)
+      assert.ok(!/^results in/i.test(badge), `Feature-led speed claim: ${badge}`)
+      assert.ok(!/^live or preview/i.test(badge), `Capability-only badge: ${badge}`)
+    }
+    assert.match(HERO.trustBadges[0], /users see/i)
+    assert.match(HERO.trustBadges[1], /fix prompts/i)
+    assert.match(HERO.trustBadges[2], /3 Free Scans/)
+  })
+
   it('AI tools named once in segment proof, not repeated in hero', () => {
     assert.ok(!HERO.subhead.includes(AI_TOOLS.split(',')[0]))
     assert.ok(SEGMENT_PROOF_SECTION.tiles.some((t) => t.proof.includes('Cursor')))
@@ -101,8 +142,9 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA is a delivery promise', () => {
-    assert.equal(HERO.primaryCta, 'Run Free Check')
-    assert.match(FINAL_CTA.headlineAccent, /flag/i)
+    assert.equal(HERO.primaryCta, 'Show fixes')
+    assert.match(FINAL_CTA.headlineAccent, /fix/i)
+    assert.ok(!/flag it/i.test(FINAL_CTA.headlineAccent))
   })
 
   it('DIFFERENTIATION has at most 3 bullets and 5 comparison rows', () => {
@@ -127,12 +169,51 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('landing page exposes three-rubric check story', () => {
+  it('landing marketing strings avoid banned insider phrases', () => {
+    for (const line of LANDING_MARKETING_STRINGS) {
+      for (const pattern of BANNED_LANDING_PHRASES) {
+        assert.ok(!pattern.test(line), `Banned phrase (${pattern}) in: ${line}`)
+      }
+    }
+  })
+
+  it('how it works section has loop copy without problem bar jargon', () => {
+    assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
+    assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
+    assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
+    assert.match(LANDING_PAGE.howItWorks.sampleLink, /sample review/i)
+  })
+
+  it('verify step avoids synthetic score delta in preview', () => {
+    const verify = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Verify')
+    assert.ok(verify)
+    assert.ok(!verify!.preview.includes('+32%'))
+    assert.ok(!verify!.preview.toLowerCase().includes('score improved'))
+  })
+
+  it('dimension cards have checklists and proof examples', () => {
     assert.equal(LANDING_PAGE.checkDimensions.cards.length, 3)
+    for (const card of LANDING_PAGE.checkDimensions.cards) {
+      assert.ok('checks' in card)
+      assert.ok(card.checks.length >= 4)
+      assert.ok('proofExample' in card)
+      assert.ok(card.proofExample.finding.length > 0)
+      assert.ok(card.proofExample.evidence.length > 0)
+    }
+  })
+
+  it('testimonials avoid second-pass framing', () => {
+    assert.match(LANDING_PAGE.testimonials.headline, /example feedback/i)
+    assert.ok(!/second pass/i.test(LANDING_PAGE.testimonials.headline))
+    for (const quote of LANDING_PAGE.testimonials.quotes) {
+      assert.ok(!/second pass/i.test(quote.quote))
+    }
+  })
+
+  it('landing page exposes three-rubric check story', () => {
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
     assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
-    assert.equal(LANDING_PAGE.sampleReport.scores.rubrics.length, 3)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Cursor',
       'Codex',
@@ -141,8 +222,13 @@ describe('homepage message guardrails', () => {
       'Claude Code',
       'Windsurf',
     ])
-    assert.ok(LANDING_PAGE.checkDimensions.cards.every((card) => card.checks.length >= 4))
     assert.ok(LANDING_PAGE.logoCloud.disclaimer.length > 0)
     assert.ok(!LANDING_PAGE.testimonials.disclaimer.includes('2,000'))
+    assert.ok(LANDING_PAGE.testimonials.quotes.length >= 4)
+  })
+
+  it('samples SEO references LaunchPad demo, not homepage dogfood', () => {
+    assert.match(SEO.samples.description, /LaunchPad demo/i)
+    assert.ok(!/our own homepage/i.test(SEO.samples.description))
   })
 })

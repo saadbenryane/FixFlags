@@ -220,6 +220,7 @@ function FlagDetailPanel({
         clamp={compact}
         showCursorAction
         variant="compact"
+        nested
       />
     </div>
   )
@@ -285,7 +286,7 @@ function ReportBody({
 
       <ScreenshotWithHighlights
         url={report.url}
-        host={report.host}
+        host={report.displayHost}
         desktopScreenshot={report.desktopScreenshot}
         mobileScreenshot={report.mobileScreenshot}
         preferredDevice={flag.preferredDevice}
@@ -394,7 +395,7 @@ export function SampleReportExplorer({
           <div className="flex items-center gap-3">
             <ScoreRingGauge score={report.score} size="sm" />
             <div>
-              <p className="text-sm font-semibold">{report.host}</p>
+              <p className="text-sm font-semibold">{report.displayHost}</p>
               <p className="text-[11px] text-muted-foreground">
                 {report.flagCount} flags · score {report.score ?? '—'}
               </p>
@@ -440,12 +441,15 @@ export function SampleReportExplorer({
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium">
-                  {report.pageType ?? 'Marketing homepage'}
+                  {report.pageType ?? 'Landing page'}
                 </span>
                 <span className="font-mono text-[11px] text-muted-foreground truncate">
-                  {report.url}
+                  {report.displayHost}
                 </span>
               </div>
+              {report.verdict && (
+                <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 {report.flagCount} checks · score {report.score ?? '—'}
               </p>

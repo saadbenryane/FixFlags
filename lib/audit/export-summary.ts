@@ -1,5 +1,6 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { formatScoreInline } from '@/lib/audit/score-display'
+import { displayVerdict } from '@/lib/audit/verdict'
 import { rubricLabel, shareStatusLabel } from '@/lib/utils'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
@@ -90,7 +91,8 @@ export function buildAuditExportSummary(audit: ExportAuditInput): string {
           .join('\n')
       : 'No priority flags listed.'
 
-  const verdict = audit.verdict ? `\n**Summary:** ${audit.verdict}\n` : ''
+  const verdictText = displayVerdict(audit.verdict)
+  const verdict = verdictText ? `\n**Summary:** ${verdictText}\n` : ''
 
   return [
     `# ${BRAND.exportPrefix} - ${hostname}`,
