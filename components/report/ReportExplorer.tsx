@@ -127,9 +127,9 @@ function ReportBody({
   const showMobile = flag.evidenceDevices.includes('mobile')
 
   return (
-    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-4">
+    <div className="flex flex-col gap-6 md:grid md:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)] md:items-start md:gap-x-8 md:gap-y-4">
       {config.showScoreStack && (
-        <aside className="min-w-0 self-start lg:col-start-1 lg:row-start-1">
+        <aside className="min-w-0 self-start md:col-start-1 md:row-start-1">
           <ReportScoreOverview
             score={model.score}
             rubricScores={model.rubricScores}
@@ -153,7 +153,7 @@ function ReportBody({
       <div
         id="flag-detail"
         ref={flagDetailRef}
-        className="min-w-0 border-t border-border/30 pt-6 scroll-mt-24 lg:col-start-2 lg:row-start-1 lg:border-t-0 lg:pt-0"
+        className="min-w-0 border-t border-border/30 pt-6 scroll-mt-24 md:col-start-2 md:row-start-1 md:border-t-0 md:pt-0"
       >
         <header className="mb-5">
           <div className="flex items-start justify-between gap-4">

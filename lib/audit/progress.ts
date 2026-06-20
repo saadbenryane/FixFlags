@@ -1,5 +1,3 @@
-import { prisma } from '@/lib/db'
-
 /** Progress milestones aligned to pipeline stages (not per-check bumps). */
 export const AUDIT_PROGRESS = {
   QUEUED: 5,

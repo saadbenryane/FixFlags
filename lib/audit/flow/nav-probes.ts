@@ -14,11 +14,6 @@ export interface MultiStepProbeResult {
   formLabel?: string
 }
 
-function isPricingLink(text: string, href: string): boolean {
-  const combined = `${text} ${href}`.toLowerCase()
-  return /\bpricing\b|\bplans?\b/.test(combined)
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

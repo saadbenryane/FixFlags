@@ -31,12 +31,6 @@ import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 export type { PipelineStep, PipelineStepState }
 export type { EvidenceHighlight }
 
-export interface DesignTierSuggestion {
-  tier: 'good' | 'great' | 'award'
-  label: string
-  suggestion: string
-}
-
 export interface SampleFlagDisplay {
   id: string
   checkId?: string | null
@@ -80,12 +74,6 @@ export interface SampleReportDisplay {
   rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
   flags: SampleFlagDisplay[]
-}
-
-const DESIGN_TIER_LABELS: Record<'good' | 'great' | 'award', string> = {
-  good: 'Good design',
-  great: 'Great design',
-  award: 'Award-winning',
 }
 
 function sortFlags(flags: RankableFlag[]): RankableFlag[] {
@@ -165,25 +153,6 @@ export function resolveDisplayScores(audit: LiveSampleAudit): {
 
   const overall = audit.score ?? calculateOverallScore(rubrics) ?? calculateOverallScore(computed)!
   return { overall, rubrics }
-}
-
-function awardFixPrompt(flag: RankableFlag): string {
-  const tiers = buildDesignTiers(flag)
-  return tiers.find((t) => t.tier === 'award')?.suggestion ?? flag.agentPrompt ?? flag.fix ?? ''
-}
-
-function buildDesignTiers(flag: RankableFlag): DesignTierSuggestion[] {
-  const good = flag.fix ?? 'Address the flagged issue with a focused, shippable change.'
-  const great =
-    flag.agentPrompt ??
-    `${good} Apply the change in the smallest surface area and verify at the flagged viewport.`
-  const award = `${great} Push beyond the minimum: tighten hierarchy, add one proof point, and make the result screenshot-worthy: the kind of polish that earns trust in the first 5 seconds.`
-
-  return (['good', 'great', 'award'] as const).map((tier) => ({
-    tier,
-    label: DESIGN_TIER_LABELS[tier],
-    suggestion: tier === 'good' ? good : tier === 'great' ? great : award,
-  }))
 }
 
 const ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap

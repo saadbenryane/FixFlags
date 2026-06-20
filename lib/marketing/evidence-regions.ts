@@ -1,5 +1,3 @@
-import type { EvidenceDevice } from '@/lib/marketing/evidence-selectors'
-
 export type EvidenceRegionScope = 'page' | 'element'
 
 /** Normalized bounding box on a screenshot (0–1). */
