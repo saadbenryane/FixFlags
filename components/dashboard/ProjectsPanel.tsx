@@ -114,14 +114,14 @@ export function ProjectsPanel({ plan }: Props) {
           <div>
             <SectionTitle>Projects</SectionTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Organize audits across sites on Agency or Studio plans.
+              Organize audits across sites on the Max plan.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Agency includes up to 5 projects. Studio includes up to 20.
+            Max includes up to 5 projects.
           </p>
           <Button asChild size="sm" variant="outline">
-            <Link href="/pricing">See Agency plans</Link>
+            <Link href="/pricing">See Max plans</Link>
           </Button>
         </CardContent>
       </Card>

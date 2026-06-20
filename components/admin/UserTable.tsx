@@ -21,7 +21,6 @@ const planColors: Record<string, string> = {
   FREE: 'bg-muted text-muted-foreground',
   BUILDER: 'bg-grade-B/15 text-grade-B border-grade-B/25',
   TEAM: 'bg-brand/10 text-brand border-brand/25',
-  STUDIO: 'bg-grade-A/15 text-grade-A border-grade-A/25',
 }
 
 function formatLimit(limit: number): string {
@@ -100,7 +99,7 @@ export function UserTable({ users }: { users: User[] }) {
                     className="text-xs border rounded px-2 py-1 bg-background"
                   >
                     <option value="" disabled>Change plan…</option>
-                    {['FREE', 'BUILDER', 'TEAM', 'STUDIO'].map((p) => (
+                    {['FREE', 'BUILDER', 'TEAM'].map((p) => (
                       <option key={p} value={p}>{p}</option>
                     ))}
                   </select>

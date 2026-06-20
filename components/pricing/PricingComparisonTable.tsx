@@ -5,25 +5,25 @@ const ROWS = [
     feature: "Who it's for",
     free: PLAN_DEFINITIONS.FREE.persona,
     pro: PLAN_DEFINITIONS.BUILDER.persona,
-    agency: PLAN_DEFINITIONS.TEAM.persona,
+    max: PLAN_DEFINITIONS.TEAM.persona,
   },
   {
     feature: 'What you get',
     free: 'Full report + fix prompts on every check',
     pro: 'Before/after compare + MCP in your editor',
-    agency: 'Public share links + proof exports + up to 5 projects',
+    max: 'Public share links + proof exports + up to 5 projects',
   },
   {
     feature: 'Re-checks',
     free: 'Unlimited on reports you own',
     pro: 'Unlimited (no quota)',
-    agency: 'Unlimited (no quota)',
+    max: 'Unlimited (no quota)',
   },
   {
     feature: 'Limits',
     free: PLAN_DEFINITIONS.FREE.auditLimitLabel,
     pro: PLAN_DEFINITIONS.BUILDER.auditLimitLabel,
-    agency: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
+    max: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
   },
 ] as const
 
@@ -41,7 +41,7 @@ export function PricingComparisonTable() {
               Pro
             </th>
             <th className="p-4 text-center font-medium" scope="col">
-              Agency
+              Max
             </th>
           </tr>
         </thead>
@@ -51,7 +51,7 @@ export function PricingComparisonTable() {
               <td className="p-4 font-medium">{row.feature}</td>
               <td className="p-4 text-center text-muted-foreground">{row.free}</td>
               <td className="p-4 text-center">{row.pro}</td>
-              <td className="p-4 text-center text-muted-foreground">{row.agency}</td>
+              <td className="p-4 text-center text-muted-foreground">{row.max}</td>
             </tr>
           ))}
         </tbody>

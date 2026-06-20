@@ -11,7 +11,13 @@ enum Plan {
   FREE
   BUILDER
   TEAM
-  STUDIO
+}
+
+enum CreditPurchaseStatus {
+  PENDING
+  PAID
+  CANCELED
+  REFUNDED
 }
 
 enum AuditStatus {
@@ -202,6 +208,7 @@ model User {
   supportSessions        SupportSession[]    @relation("SupportSessionUser")
   assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
   mcpInteractions         McpInteraction[]
+  creditPurchases         CreditPurchase[]
 
   @@map("users")
 }
@@ -691,4 +698,22 @@ model McpInteraction {
   @@index([method, tool])
   @@index([success, createdAt])
   @@map("mcp_interactions")
+}
+
+model CreditPurchase {
+  id                    String               @id @default(cuid())
+  userId                String
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSessionId       String?              @unique
+  stripePaymentIntentId String?
+  packId                String
+  creditsPurchased      Int
+  creditsRemaining      Int
+  priceUsdCents         Int
+  status                CreditPurchaseStatus @default(PENDING)
+  createdAt             DateTime             @default(now())
+  paidAt                DateTime?
+
+  @@index([userId, status])
+  @@map("credit_purchases")
 }

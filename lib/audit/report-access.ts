@@ -26,7 +26,7 @@ export function canViewAiReportContent(
   return false
 }
 
-export function canViewAiViaAgencyPublicShare(
+export function canViewAiViaMaxPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
 ): boolean {

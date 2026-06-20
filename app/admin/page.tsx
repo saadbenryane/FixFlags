@@ -98,8 +98,7 @@ export default async function AdminPage() {
   const plans = [
     { label: 'Free', value: planMap['FREE'] ?? 0 },
     { label: 'Pro', value: planMap['BUILDER'] ?? 0 },
-    { label: 'Agency', value: planMap['TEAM'] ?? 0 },
-    { label: 'Studio', value: planMap['STUDIO'] ?? 0 },
+    { label: 'Max', value: planMap['TEAM'] ?? 0 },
   ]
 
   return (
@@ -171,7 +170,7 @@ export default async function AdminPage() {
 
       <section className="space-y-4">
         <SectionTitle>Plan breakdown</SectionTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {plans.map((p) => (
             <Card key={p.label} className="border-0 shadow-card">
               <CardHeader className="pb-2">

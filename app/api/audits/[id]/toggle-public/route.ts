@@ -35,7 +35,7 @@ export async function PATCH(
         select: { id: true, role: true, plan: true },
       })
       if (user && !canSharePublicly(user)) {
-        return apiError('Public share links require the Agency plan or above.', 402, {
+        return apiError('Public share links require the Max plan or above.', 402, {
           code: 'UPGRADE_REQUIRED',
           action: 'upgrade',
         })

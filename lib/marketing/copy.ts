@@ -6,7 +6,7 @@
  * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
  */
 
-import { getMarketingPlans, proUpgradeCta } from '@/lib/billing/plans'
+import { getMarketingPlans, proUpgradeCta, EXPERT_REVIEW_PRICE_USD } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'FixFlags',
@@ -193,7 +193,7 @@ export const DIFFERENTIATION = {
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
     { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
     { feature: 'Re-check proof loop', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
-    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
+    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Max)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
   comparisonRows: [
@@ -355,7 +355,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'TEAM',
       title: 'Share',
-      body: 'Client share links, proof exports, and projects for agency work.',
+      body: 'Client share links, proof exports, and projects for power users and teams.',
     },
   ],
 } as const
@@ -382,7 +382,7 @@ Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
   FREE: ['Unlimited re-checks on your reports', 'No share links', 'No export'],
   BUILDER: ['Re-check loop', 'Before/after compare', 'Editor integration (MCP)'],
-  TEAM: ['Client share links', 'Proof exports', 'Everything in Pro'],
+  TEAM: ['Public share links', 'Proof exports', 'Up to 5 projects'],
 }
 
 export const PRICING_TEASER = {
@@ -746,7 +746,7 @@ export const PRICING = {
   foundingBadge: 'Founding offer active: lock in launch-week pricing',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   expertReview: {
-    title: 'Expert Review - $500',
+    title: `Expert Review - $${EXPERT_REVIEW_PRICE_USD}`,
     body: 'A human reviews your report and writes a prioritized fix plan. Good for launch week.',
     steps: [
       'Submit your latest FixFlags report',
@@ -898,8 +898,7 @@ export const AUTH = {
     footerLink: 'Sign in',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Pro, unlimited re-checks and MCP from day one',
-      TEAM: 'You\u2019re signing up for Agency, organize checks across up to 5 projects',
-      STUDIO: 'You\u2019re signing up for Studio, check client sites at scale with up to 20 projects',
+      TEAM: 'You\u2019re signing up for Max, organize checks across up to 5 projects',
     },
     planSteps: [
       'Create your account',
@@ -969,14 +968,14 @@ export const UPGRADE_MOMENTS = {
   },
   share_public: {
     headline: 'Share reports with clients',
-    body: 'Agency includes public share links with OG previews and a Check My Site CTA for viewers.',
-    cta: 'Upgrade to Agency',
+    body: 'Max includes public share links with OG previews and a Check My Site CTA for viewers.',
+    cta: 'Upgrade to Max',
     plan: 'TEAM' as const,
   },
   export_locked: {
-    headline: 'Proof exports are on Agency',
-    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Agency to unlock exports.',
-    cta: 'Upgrade to Agency',
+    headline: 'Proof exports are on Max',
+    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Max to unlock exports.',
+    cta: 'Upgrade to Max',
     plan: 'TEAM' as const,
   },
   free_default: {

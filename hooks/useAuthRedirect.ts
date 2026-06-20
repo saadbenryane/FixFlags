@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
-const PAID_PLANS = ['BUILDER', 'TEAM', 'STUDIO'] as const
+const PAID_PLANS = ['BUILDER', 'TEAM'] as const
 const FUNNEL_SOURCES = ['pricing', 'report', 'hero'] as const
 
 export function sanitizeNextPath(next: string | null): string | null {

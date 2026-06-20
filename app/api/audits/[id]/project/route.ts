@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } })
   if (!user || projectLimitForPlan(user.plan) === 0) {
-      return apiError('Projects require the Agency or Studio plan', 402, {
+      return apiError('Projects require the Max plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })

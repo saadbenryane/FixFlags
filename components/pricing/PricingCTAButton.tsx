@@ -10,7 +10,7 @@ import { PRICING } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
-  plan: 'FREE' | 'BUILDER' | 'TEAM' | 'STUDIO'
+  plan: 'FREE' | 'BUILDER' | 'TEAM'
   cta: string
   signUpHref: string
   highlight?: boolean

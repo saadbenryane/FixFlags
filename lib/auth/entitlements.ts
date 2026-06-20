@@ -32,10 +32,10 @@ export function canAccessPaidFeatures(
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan === 'TEAM' || user.plan === 'STUDIO'
+  return user.plan === 'TEAM'
 }
 
-/** Proof export (copy summary) - Agency and Studio plans. */
+/** Proof export (copy summary) - Max plan only. */
 export function canExportSummary(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
   return canSharePublicly(user)
 }

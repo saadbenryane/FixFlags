@@ -8,7 +8,7 @@ import { applyPlanLimits } from '@/lib/billing/limits'
 import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 
 const patchSchema = z.object({
-  plan: z.enum(['FREE', 'BUILDER', 'TEAM', 'STUDIO']).optional(),
+  plan: z.enum(['FREE', 'BUILDER', 'TEAM']).optional(),
   auditsLimit: z.number().int().optional(),
 })
 
