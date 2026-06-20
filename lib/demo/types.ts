@@ -32,4 +32,6 @@ export interface DemoFixture {
     showAnnouncement: boolean
     largeHeroImageMobile: boolean
   }
+  /** Minimal GDPR-style banner when site analytics load (v1 fixed fork) */
+  showCookieConsent?: boolean
 }

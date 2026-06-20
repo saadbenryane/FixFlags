@@ -50,6 +50,17 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(fixture.jsonLd) }}
         />
       ) : null}
+      {fixture.showCookieConsent ? (
+        <div
+          id="cookie-consent"
+          className="demo-cookie-banner"
+          role="dialog"
+          aria-label="Cookie consent"
+        >
+          <p>We use cookies to improve your experience and measure site usage.</p>
+          <button type="button">Accept cookies</button>
+        </div>
+      ) : null}
       {fixture.layout.showAnnouncement && fixture.announcement ? (
         <div className="demo-announcement" role="status">
           {fixture.announcement}
@@ -58,7 +69,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
 
       <header className="demo-header">
         <div className="demo-header-inner">
-          <a href="#" className="demo-logo">
+          <a href="#main-content" className="demo-logo">
             {DEMO_BRAND.name}
           </a>
           <nav className={navClass} aria-label="Main">
