@@ -35,14 +35,15 @@ describe('evidence-highlights', () => {
     assert.equal(highlights[0]?.scope, 'page')
   })
 
-  it('formats evidence and fix prompts with visual targets', () => {
+  it('formats evidence and fix prompts with expert copy', () => {
     const evidence = formatFlagEvidence(flag)
-    assert.match(evidence, /Hero headline/i)
-    assert.match(evidence, /Headline reads/)
+    assert.match(evidence, /Headline reads|H1|category/i)
 
     const fix = formatFlagFixPrompt(flag, 'Rewrite the headline with a concrete outcome.')
-    assert.match(fix, /Look at Hero headline/i)
-    assert.match(fix, /Rewrite the headline/)
+    assert.match(fix, /Why:/)
+    assert.match(fix, /Do:/)
+    assert.match(fix, /Verify:/)
+    assert.doesNotMatch(fix, /look at Hero headline on the screenshot/i)
   })
 
   it('parses evidence anchors from performance data', () => {

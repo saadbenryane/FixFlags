@@ -17,7 +17,11 @@ import {
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
-import { formatVisualEvidence, visualTargetLabel } from '@/lib/marketing/evidence-regions'
+import {
+  buildExpertFixPrompt,
+  formatDisplayEvidence,
+  resolveWhyItMatters,
+} from '@/lib/audit/flag-copy'
 import {
   buildEvidenceHighlightsForFlag,
   type EvidenceHighlight,
@@ -211,16 +215,12 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     severityLabel: severityLabel(flag.severity),
     impactTag: impactTagLabel(flag.impactTag),
     title: flag.problem,
-    description: flag.whyItMatters ?? flag.problem,
-    evidence: flag.checkId
-      ? formatVisualEvidence(flag.checkId, flag.evidence ?? flag.problem)
-      : (flag.evidence ?? ''),
-    whyItMatters: flag.whyItMatters ?? '',
+    description: resolveWhyItMatters(flag),
+    evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
+    whyItMatters: resolveWhyItMatters(flag),
     fix: flag.fix ?? '',
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
-    fixPrompt: flag.checkId
-      ? `Look at ${visualTargetLabel(flag.checkId)} on the screenshot, then apply this fix:\n\n${awardFixPrompt(flag)}`
-      : awardFixPrompt(flag),
+    fixPrompt: buildExpertFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
     evidenceHighlights: buildEvidenceHighlights(flag, index),
     evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),

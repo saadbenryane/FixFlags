@@ -3,10 +3,13 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import {
   anchorToRegion,
-  formatVisualEvidence,
   visualTargetLabel,
   type EvidenceRegionScope,
 } from '@/lib/marketing/evidence-regions'
+import {
+  formatDisplayEvidence,
+  buildExpertFixPrompt,
+} from '@/lib/audit/flag-copy'
 
 /** Normalized evidence region on a screenshot (0–1). */
 export interface EvidenceHighlight {
@@ -30,14 +33,12 @@ export function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile'
 }
 
 export function formatFlagEvidence(flag: RankableFlag): string {
-  const raw = flag.evidence ?? flag.problem
-  if (!flag.checkId) return raw
-  return formatVisualEvidence(flag.checkId, raw)
+  return formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem)
 }
 
-export function formatFlagFixPrompt(flag: RankableFlag, fixPrompt: string): string {
-  if (!flag.checkId) return fixPrompt
-  return `Look at ${visualTargetLabel(flag.checkId)} on the screenshot, then apply this fix:\n\n${fixPrompt}`
+export function formatFlagFixPrompt(flag: RankableFlag, _legacyFix?: string): string {
+  void _legacyFix
+  return buildExpertFixPrompt(flag)
 }
 
 function lookupAnchor(

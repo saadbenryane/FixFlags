@@ -128,7 +128,7 @@ describe('buildSampleReportDisplay', () => {
     assert.equal(flag.evidenceHighlights[0].scope, 'element')
     assert.ok(flag.evidenceHighlights[0].width > 0)
     assert.ok(flag.evidenceHighlights[0].visualTarget.length > 0)
-    assert.match(flag.evidence, /Hero headline/i)
+    assert.match(flag.evidence, /Headline reads|H1|category/i)
     assert.deepEqual(flag.evidenceDevices, ['desktop', 'mobile'])
     assert.equal(flag.evidenceHighlights[1].id, 'flag-message-1-mobile')
   })

@@ -9,6 +9,7 @@ import {
 import { DeterministicFlag } from './checks'
 import { JudgeOutput } from './judge'
 import { verificationRuleForCheckId } from './verify-flags'
+import { whyItMattersForCheckId, isGenericWhyItMatters } from './flag-copy'
 import {
   calculateOverallScore,
   clampScore,
@@ -126,7 +127,7 @@ export async function persistDeterministicFlags(
       severity: f.severity as Severity,
       problem: f.problem,
       evidence: f.evidence,
-      whyItMatters: `This flag affects the ${f.rubric.toLowerCase()} quality of your page.`,
+      whyItMatters: whyItMattersForCheckId(f.checkId),
       fix: f.fix,
       confidence: f.confidence,
       verificationRule: verificationRuleForCheckId(f.checkId) ?? null,
@@ -224,8 +225,9 @@ export async function persistAuditResults(
           problem: f.problem,
           evidence: f.evidence,
           whyItMatters:
-            enrichment?.whyItMatters ??
-            `This flag affects the ${f.rubric.toLowerCase()} quality of your page.`,
+            enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
+              ? enrichment.whyItMatters
+              : whyItMattersForCheckId(f.checkId),
           fix: f.fix,
           confidence: f.confidence,
           agentPrompt: enrichment?.agentPrompt ?? null,

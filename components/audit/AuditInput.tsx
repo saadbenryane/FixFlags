@@ -27,7 +27,6 @@ export function AuditInput({
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
-  const helperId = `audit-url-helper${idSuffix}`
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -134,7 +133,7 @@ export function AuditInput({
 
   const isLanding = variant === 'landing'
   const auditSource = source ?? (isLanding ? 'homepage' : 'dashboard')
-  const describedBy = cn(isLanding && !urlError && helperId, urlError && errorId) || undefined
+  const describedBy = urlError ? errorId : undefined
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
@@ -236,11 +235,6 @@ export function AuditInput({
             {urlError}
           </p>
         )}
-        {isLanding && !urlError ? (
-          <p id={helperId} className="px-1 text-center text-xs text-muted-foreground sm:text-left">
-            {HERO.urlHelper}
-          </p>
-        ) : null}
       </form>
 
       {!isLanding ? (

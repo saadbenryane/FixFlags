@@ -1,13 +1,16 @@
 import {
-  buildAllEvidenceHighlights,
-  formatFlagEvidence,
-  formatFlagFixPrompt,
-  type EvidenceHighlight,
-} from '@/lib/audit/evidence-highlights'
+  buildExpertFixPrompt,
+  formatDisplayEvidence,
+  resolveWhyItMatters,
+} from '@/lib/audit/flag-copy'
 import {
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import {
+  buildAllEvidenceHighlights,
+  type EvidenceHighlight,
+} from '@/lib/audit/evidence-highlights'
 import {
   buildRubricScoreRows,
   type RubricScoreRow,
@@ -54,7 +57,6 @@ function sortFlags(flags: RankableFlag[]): RankableFlag[] {
 
 function mapLiveFlag(flag: RankableFlag): ExplorerFlag {
   const copyFixPrompt = resolveFixPrompt(flag) ?? flag.fix ?? flag.problem
-  const key = flag.checkId ?? flag.id
   return {
     id: flag.id,
     title: flag.problem,
@@ -63,9 +65,9 @@ function mapLiveFlag(flag: RankableFlag): ExplorerFlag {
     severity: flag.severity,
     severityLabel: severityLabel(flag.severity),
     impactTag: impactTagLabel(flag.impactTag),
-    whyItMatters: flag.whyItMatters ?? '',
-    evidence: formatFlagEvidence(flag),
-    fixPrompt: formatFlagFixPrompt(flag, copyFixPrompt),
+    whyItMatters: resolveWhyItMatters(flag),
+    evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
+    fixPrompt: buildExpertFixPrompt(flag),
     copyFixPrompt,
     verificationRule: flag.verificationRule ?? null,
     evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],

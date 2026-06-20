@@ -44,6 +44,12 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
 
   return (
     <div className="demo-root">
+      {fixture.jsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(fixture.jsonLd) }}
+        />
+      ) : null}
       {fixture.layout.showAnnouncement && fixture.announcement ? (
         <div className="demo-announcement" role="status">
           {fixture.announcement}

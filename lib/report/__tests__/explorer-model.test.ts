@@ -47,6 +47,7 @@ describe('explorer-model', () => {
     assert.equal(model.flags[0]?.severity, 'CRITICAL')
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
-    assert.match(model.flags[0]?.evidence ?? '', /call-to-action|CTA|screenshot/i)
+    assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
+    assert.match(model.flags[0]?.fixPrompt ?? '', /Why:/)
   })
 })

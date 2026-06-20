@@ -48,7 +48,6 @@ export const HERO = {
   navSignUpCta: 'Sign up',
   trySampleCta: 'Try sample URL',
   urlPlaceholder: 'your-site.com',
-  urlHelper: 'Paste any live or preview URL.',
   trustBadges: [
     'See what users see',
     'Copy-ready fix prompts',

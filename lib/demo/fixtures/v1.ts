@@ -14,7 +14,11 @@ export const v1Fixture: DemoFixture = {
   metadata: {
     title: `${DEMO_BRAND.name} - Ship landing pages in minutes`,
     description,
-    robots: { index: false, follow: false },
+    robots: { index: true, follow: true },
+    icons: {
+      icon: '/favicon.ico',
+      apple: '/favicon.ico',
+    },
     openGraph: {
       title: `${DEMO_BRAND.name} - Ship landing pages in minutes`,
       description,
@@ -41,5 +45,12 @@ export const v1Fixture: DemoFixture = {
     ctaAboveFoldMobile: true,
     showAnnouncement: false,
     largeHeroImageMobile: false,
+  },
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: DEMO_BRAND.name,
+    description,
+    url: 'https://fixflags.com/demo/v1',
   },
 }

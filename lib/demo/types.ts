@@ -12,6 +12,8 @@ export interface DemoFixture {
   versionLabel: string
   path: string
   metadata: Metadata
+  /** Optional JSON-LD object rendered in page for structured-data checks */
+  jsonLd?: Record<string, unknown>
   announcement: string | null
   navLinks: { label: string; href: string }[]
   headline: string
