@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { Plus, ExternalLink, ArrowLeftRight, Check, X, AlertTriangle } from 'lucide-react'
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
   const user = await prisma.user.findUnique({ where: { id: userId } })
 
   const audits = await prisma.audit.findMany({
-    where: { userId, status: 'COMPLETED', parentId: null },
+    where: { userId, parentId: null },
     include: {
       rubrics: {
         select: {
@@ -57,6 +58,8 @@ export default async function DashboardPage() {
     orderBy: { createdAt: 'desc' },
     take: 20,
   })
+
+  const completedAudits = audits.filter((audit) => audit.status === 'COMPLETED')
 
   const used = user?.auditsUsed ?? 0
   const isUnlimited = isDevUnlimitedScans() || (user ? isUnlimitedScanLimit(getEffectiveScanLimit(user)) : false)
@@ -82,7 +85,7 @@ export default async function DashboardPage() {
       <Suspense>
         <DashboardCheckoutToast />
         <ExpertReviewSelectDialog
-          audits={audits.map((audit) => ({
+          audits={completedAudits.map((audit) => ({
             id: audit.id,
             url: audit.url,
             score: audit.score,
@@ -135,17 +138,26 @@ export default async function DashboardPage() {
         </>
       ) : (
         <div className="space-y-3">
-          <SectionTitle>Recent audits</SectionTitle>
+          <SectionTitle>Recent checks</SectionTitle>
           {audits.map((audit) => {
-            const rubrics = computeRubricsFromRows(
-              audit.rubrics.map((r) => ({
-                name: r.name,
-                grade: r.grade,
-                score: r.score,
-                flags: r.flags.map((f) => ({ severity: f.severity })),
-              }))
-            )
+            const isCompleted = audit.status === 'COMPLETED'
+            const rubrics = isCompleted
+              ? computeRubricsFromRows(
+                  audit.rubrics.map((r) => ({
+                    name: r.name,
+                    grade: r.grade,
+                    score: r.score,
+                    flags: r.flags.map((f) => ({ severity: f.severity })),
+                  }))
+                )
+              : []
             const rubricMap = new Map(rubrics.map((r) => [r.name, r]))
+            const statusLabel =
+              audit.status === 'FAILED'
+                ? 'Failed'
+                : audit.status === 'COMPLETED'
+                  ? null
+                  : 'In progress'
 
             return (
               <Link key={audit.id} href={`/report/${audit.id}`} className="block">
@@ -155,38 +167,54 @@ export default async function DashboardPage() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{audit.url}</div>
                         <div className="text-xs text-muted-foreground">
-                          Score: {audit.score ?? '–'} · {new Date(audit.createdAt).toLocaleDateString()}
+                          {isCompleted ? (
+                            <>
+                              Score: {audit.score ?? '–'} · {new Date(audit.createdAt).toLocaleDateString()}
+                            </>
+                          ) : (
+                            new Date(audit.createdAt).toLocaleDateString()
+                          )}
                         </div>
                       </div>
-                      <div className="flex gap-1 flex-wrap">
-                        {RUBRIC_ORDER.map((name) => {
-                          const r = rubricMap.get(name)
-                          if (!r) return null
-                          return (
-                            <span key={name} title={rubricLabel(name)}>
-                              <RubricStatusBadge
-                                status={r.status}
-                                size="sm"
-                                label={
-                                  r.status === 'PASS' ? (
-                                    <Check className="h-3 w-3" aria-hidden />
-                                  ) : r.status === 'BLOCKED' ? (
-                                    <X className="h-3 w-3" aria-hidden />
-                                  ) : (
-                                    <AlertTriangle className="h-3 w-3" aria-hidden />
-                                  )
-                                }
-                              />
+                      {statusLabel ? (
+                        <Badge
+                          variant={audit.status === 'FAILED' ? 'destructive' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {statusLabel}
+                        </Badge>
+                      ) : null}
+                      {isCompleted ? (
+                        <div className="flex gap-1 flex-wrap">
+                          {RUBRIC_ORDER.map((name) => {
+                            const r = rubricMap.get(name)
+                            if (!r) return null
+                            return (
+                              <span key={name} title={rubricLabel(name)}>
+                                <RubricStatusBadge
+                                  status={r.status}
+                                  size="sm"
+                                  label={
+                                    r.status === 'PASS' ? (
+                                      <Check className="h-3 w-3" aria-hidden />
+                                    ) : r.status === 'BLOCKED' ? (
+                                      <X className="h-3 w-3" aria-hidden />
+                                    ) : (
+                                      <AlertTriangle className="h-3 w-3" aria-hidden />
+                                    )
+                                  }
+                                />
+                              </span>
+                            )
+                          })}
+                          {audit.rechecks.length > 0 && canCompare && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
+                              <ArrowLeftRight className="h-3 w-3" />
+                              Compare
                             </span>
-                          )
-                        })}
-                        {audit.rechecks.length > 0 && canCompare && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
-                            <ArrowLeftRight className="h-3 w-3" />
-                            Compare
-                          </span>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      ) : null}
                       <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                     </div>
                   </CardContent>

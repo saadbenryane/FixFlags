@@ -3,12 +3,21 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Callout } from '@/components/ui/callout'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
 export function FooterNewsletter() {
-  const { title, placeholder, cta, blurb, success: successMessage, alreadySubscribed } =
-    LANDING_PAGE.footer.newsletter
+  const {
+    title,
+    placeholder,
+    cta,
+    blurb,
+    success: successMessage,
+    alreadySubscribed,
+    emailRequired,
+    subscribeFailed,
+  } = LANDING_PAGE.footer.newsletter
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -21,7 +30,7 @@ export function FooterNewsletter() {
 
     const trimmed = email.trim()
     if (!trimmed) {
-      setError('Enter your email address')
+      setError(emailRequired)
       return
     }
 
@@ -43,18 +52,18 @@ export function FooterNewsletter() {
       setSuccess(data.status === 'already_subscribed' ? alreadySubscribed : successMessage)
       setEmail('')
     } catch {
-      setError('Could not subscribe right now. Try again later.')
+      setError(subscribeFailed)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 lg:col-span-1">
       <p className="text-sm font-semibold">{title}</p>
       <p className="text-sm text-muted-foreground">{blurb}</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
           <Input
             id="footer-newsletter-email"
@@ -68,20 +77,20 @@ export function FooterNewsletter() {
               setSuccess('')
             }}
             disabled={loading}
-            className="h-10 flex-1"
+            className="h-10"
             autoComplete="email"
             aria-invalid={Boolean(error)}
             aria-describedby={error ? 'footer-newsletter-error' : success ? 'footer-newsletter-success' : undefined}
           />
           {error ? (
-            <p id="footer-newsletter-error" role="alert" className="text-xs text-destructive">
+            <Callout id="footer-newsletter-error" variant="danger" className="text-xs">
               {error}
-            </p>
+            </Callout>
           ) : null}
           {success ? (
-            <p id="footer-newsletter-success" role="status" className="text-xs text-success">
+            <Callout id="footer-newsletter-success" variant="success" className="text-xs">
               {success}
-            </p>
+            </Callout>
           ) : null}
         </div>
         <Button type="submit" size="sm" disabled={loading} className="h-10 w-full px-5 sm:w-auto">

@@ -64,23 +64,54 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   },
   'flow-no-cta-found': {
     device: 'both',
-    selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '#audit', 'main form button', 'main a[href]'],
+    selectors: [
+      'main section:first-of-type a[href]',
+      'main h1 ~ * a[href]',
+      'main h1 ~ * button',
+      '.demo-cta-primary',
+      'main a.demo-cta-primary',
+      '#audit',
+      'main form button',
+    ],
   },
   'flow-cta-unclickable': {
     device: 'both',
-    selectors: ['.demo-cta-primary', '#audit', 'main form button', 'main button'],
+    selectors: [
+      'main section:first-of-type a[href]',
+      'main h1 ~ * button',
+      '.demo-cta-primary',
+      '#audit',
+      'main form button',
+    ],
   },
   'flow-cta-404': {
     device: 'both',
-    selectors: ['.demo-cta-primary', '#audit', 'main form button', 'main a[href]'],
+    selectors: [
+      'main section:first-of-type a[href]',
+      '.demo-cta-primary',
+      '#audit',
+      'main form button',
+    ],
   },
   'flow-cta-dead-end': {
     device: 'both',
-    selectors: ['.demo-cta-primary', '#audit', 'main form button', 'main a[href]'],
+    selectors: [
+      'main section:first-of-type a[href]',
+      'main h1 ~ * a[href]',
+      'main h1 ~ * button',
+      '.demo-cta-primary',
+      '#audit',
+      'main form button',
+    ],
   },
   'flow-cta-external-leave': {
     device: 'both',
-    selectors: ['.demo-cta-primary', '#audit', 'main form button', 'main a[href]'],
+    selectors: [
+      'main section:first-of-type a[href]',
+      '.demo-cta-primary',
+      '#audit',
+      'main form button',
+    ],
   },
   'cta-dead-link': { device: 'both', selectors: ['nav a', '.demo-nav a', 'main a[href]', '#audit'] },
 
@@ -139,6 +170,8 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'placeholder-copy-detected': { device: 'both', selectors: ['main h1', 'main p'] },
   'template-default-copy': { device: 'both', selectors: ['main h1', 'main p'] },
   'unreplaced-template-token': { device: 'both', selectors: ['main h1', 'main p', 'main'] },
+  'font-family-sprawl': { device: 'both', selectors: ['main h1', 'main p', 'main button'] },
+  'button-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button', '.demo-cta-primary'] },
 }
 
 export { METADATA_CHECK_IDS } from '@/lib/marketing/evidence-regions'

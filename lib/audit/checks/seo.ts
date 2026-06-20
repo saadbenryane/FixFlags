@@ -122,6 +122,29 @@ export async function runSeoChecks(
     })
   }
 
+  const idSet = new Set(meta.elementIds)
+  const brokenAnchors: string[] = []
+  for (const link of meta.links) {
+    if (!link.href.startsWith('#') || link.href === '#') continue
+    const target = link.href.slice(1).toLowerCase()
+    if (target && !idSet.has(target)) {
+      brokenAnchors.push(`${link.text || '(no text)'} → ${link.href}`)
+    }
+  }
+  if (brokenAnchors.length > 0) {
+    findings.push({
+      checkId: 'broken-page-anchors',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: `${brokenAnchors.length} on-page link${brokenAnchors.length > 1 ? 's' : ''} point to missing sections`,
+      evidence: brokenAnchors.slice(0, 3).join('; '),
+      fix: 'Add id attributes for each hash target or update nav/footer links to existing section ids.',
+      confidence: 1.0,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }
 

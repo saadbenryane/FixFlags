@@ -9,6 +9,7 @@ export interface FlowData {
   steps: FlowDataStep[]
   finalUrl: string
   ctaText?: string | null
+  ctaHref?: string | null
 }
 
 export function parseFlowData(raw: unknown): FlowData | null {
@@ -36,5 +37,6 @@ export function parseFlowData(raw: unknown): FlowData | null {
     steps,
     finalUrl: data.finalUrl,
     ctaText: typeof data.ctaText === 'string' ? data.ctaText : null,
+    ctaHref: typeof data.ctaHref === 'string' ? data.ctaHref : null,
   }
 }

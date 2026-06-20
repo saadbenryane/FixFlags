@@ -5,8 +5,8 @@ import { FilterPill } from '@/components/ui/filter-pill'
 import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
-  { id: 'report-overview', label: 'Overview' },
   { id: 'report-flags', label: 'Flags' },
+  { id: 'report-overview', label: 'Overview' },
   { id: 'report-rubrics', label: 'Rubrics' },
   { id: 'report-recheck', label: 'Re-check' },
 ] as const
@@ -31,7 +31,7 @@ export function ReportMiniNav({
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
     const overviewIndex = items.findIndex((s) => s.id === 'report-overview')
-    const insertAt = overviewIndex >= 0 ? overviewIndex + 1 : 0
+    const insertAt = overviewIndex >= 0 ? overviewIndex + 1 : 1
     const optional: Array<{ id: string; label: string }> = []
     if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
     if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })

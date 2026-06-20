@@ -1,9 +1,16 @@
 import type { FlowScanResult } from '../flow/run-flow-scan'
+import { isAuthUtilityLink } from '../flow/link-scoring'
 import { DeterministicFlag } from './index'
+
+function formatCtaEvidence(result: FlowScanResult): string {
+  const label = result.ctaText ? `"${result.ctaText}"` : 'Primary CTA'
+  const href = result.ctaHref ? ` (href="${result.ctaHref}")` : ''
+  return `${label}${href}`
+}
 
 export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const ctaLabel = result.ctaText ? `"${result.ctaText}"` : 'Primary CTA'
+  const ctaLabel = formatCtaEvidence(result)
 
   switch (result.status) {
     case 'no_cta':
@@ -46,6 +53,9 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
       })
       break
     case 'dead_end':
+      if (result.ctaText && result.ctaHref && isAuthUtilityLink(result.ctaHref, result.ctaText)) {
+        break
+      }
       findings.push({
         checkId: 'flow-cta-dead-end',
         rubric: 'EXPERIENCE',
@@ -53,7 +63,7 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
         severity: 'IMPORTANT',
         problem: 'Primary CTA click did not navigate anywhere',
         evidence: `Clicking ${ctaLabel} left the browser on the same URL with no meaningful page change.`,
-        fix: 'Wire the CTA to a real route or action. Replace placeholder buttons and hash-only links.',
+        fix: 'Wire the hero CTA to a real route or action. Replace placeholder buttons and hash-only links that target missing sections.',
         confidence: 0.9,
         source: 'DETERMINISTIC',
       })

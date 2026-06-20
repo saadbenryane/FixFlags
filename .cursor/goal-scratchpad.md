@@ -1,24 +1,24 @@
-STATUS: DONE (iteration 1)
-ITERATION: 1 / 8
+STATUS: DONE (iteration 2)
+ITERATION: 2 / 8
 
-# Goal: Organized audit system — copy, flow, loading, design — verifiable locally
+# Goal: World-class audit precision + design-language detection
 
 ## Done when
-- [x] `npm run audit:capabilities` — 69 checks, 29 capabilities, 0 unmapped
-- [x] `npm run demo:audit` — v1 in-scope flags = 0
-- [x] `npm run demo:audit:flow` — v1 flow flags = 0
-- [x] `npm run test:unit` — 827 pass
+- [x] Flow CTA picks hero over header Login; external booking links succeed
+- [x] Flow evidence highlights use live CTA bounding box (not generic selectors)
+- [x] Design token checks: font-family-sprawl, button-radius-inconsistent
+- [x] Mobile CTA fold scoring aligned with flow link-scoring
+- [x] Demo offline audit: v1 = 0 flags
 
-## Results
-| Check | Result |
-|-------|--------|
-| Capability matrix | 23 live, 5 planned, 1 partial (design-language AI) |
-| Demo audit (live) | original 9, v1 0 |
-| Demo flow (live) | original 1 (dead_end), v1 0 |
-| New checks | heading-hierarchy-missing, loading-indicator-stuck |
+## Iteration 2 results
+| Area | Change |
+|------|--------|
+| Flow precision | Nav/header skip, auth deprioritized, Calendly/calendar success |
+| Evidence | `ctaAnchor` captured at click time, merged after anchor resolution |
+| Design language | 2 new live checks via mobile capture metrics |
+| Capability matrix | 71 checks, design-tokens now live |
 
 ## Next iterations (from matrix)
-- Multi-step flow (pricing, mobile nav, forms)
-- Social proof slop
-- Design token sampling
-- Form validation feedback flow
+- Multi-step flow (pricing nav, mobile menu, form validation)
+- prefers-reduced-motion check
+- AI + deterministic design language fusion

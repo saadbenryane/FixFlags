@@ -120,6 +120,25 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
           </div>
         </section>
 
+        {fixture.socialProof ? (
+          <section className="demo-social-proof">
+            {fixture.socialProof.statLine ? (
+              <p className="demo-social-proof-stat">{fixture.socialProof.statLine}</p>
+            ) : null}
+            <div className="demo-testimonials">
+              {fixture.socialProof.testimonials.map((item) => (
+                <blockquote key={item.author} className="demo-testimonial">
+                  <p>&ldquo;{item.quote}&rdquo;</p>
+                  <footer>
+                    {item.author}
+                    {item.role ? `, ${item.role}` : ''}
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section id="signup" className="demo-signup-anchor" aria-hidden="true" />
       </main>
 
@@ -135,6 +154,8 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
               </a>
             ))}
           </div>
+          <section id="privacy" className="demo-footer-anchor" aria-hidden="true" />
+          <section id="terms" className="demo-footer-anchor" aria-hidden="true" />
           {process.env.NODE_ENV === 'development' ? (
             <DemoVersionBadge versionLabel={fixture.versionLabel} currentPath={fixture.path} />
           ) : null}

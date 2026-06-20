@@ -71,4 +71,14 @@ export const originalFixture: DemoFixture = {
     showAnnouncement: true,
     largeHeroImageMobile: true,
   },
+  socialProof: {
+    statLine: 'Trusted by 10,000+ happy customers',
+    testimonials: [
+      {
+        quote: 'LaunchPad helped us ship our landing page in a day.',
+        author: 'John D.',
+        role: 'CEO, Company Name',
+      },
+    ],
+  },
 }

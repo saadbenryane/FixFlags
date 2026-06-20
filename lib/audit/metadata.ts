@@ -36,6 +36,8 @@ export interface PageMetadata {
   navLandmarkCount: number
   pageText: string
   jsonLd: unknown[]
+  /** Lowercase id attributes present on the page (for hash link validation). */
+  elementIds: string[]
 }
 
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
@@ -190,6 +192,12 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const h2s: string[] = []
   $('h2').each((_, el) => { h2s.push($(el).text().trim()) })
 
+  const elementIds: string[] = []
+  $('[id]').each((_, el) => {
+    const id = $(el).attr('id')?.trim().toLowerCase()
+    if (id) elementIds.push(id)
+  })
+
   return {
     title: $('title').first().text().trim() || null,
     description: $('meta[name="description"]').attr('content') || null,
@@ -227,6 +235,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     navLandmarkCount,
     pageText,
     jsonLd,
+    elementIds,
   }
 }
 

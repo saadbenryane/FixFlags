@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { ClipboardCheck, Lightbulb, ScanSearch, Sparkles, type LucideIcon } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
-import { ReportAiGate } from '@/components/audit/ReportAiGate'
+import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import { cn } from '@/lib/utils'
@@ -64,7 +64,12 @@ export function FlagDetailPanel({
 
       {flag.hasFixPrompt && (
         <FlagDetailCard title="Fix" icon={Sparkles}>
-          <ReportAiGate locked={aiLocked} signUpHref={signUpHref}>
+          {aiLocked ? (
+            <LockedContentTeaser
+              label="Fix prompt — create a free account to view"
+              signUpHref={signUpHref}
+            />
+          ) : (
             <FixPromptBlock
               prompt={flag.fixPrompt}
               clamp={false}
@@ -72,7 +77,7 @@ export function FlagDetailPanel({
               variant="compact"
               nested
             />
-          </ReportAiGate>
+          )}
         </FlagDetailCard>
       )}
 

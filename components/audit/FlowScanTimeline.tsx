@@ -33,7 +33,8 @@ export function FlowScanTimeline({ flowData }: Props) {
           <SectionTitle id="flow-scan-heading">CTA flow test</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             FixFlags clicked your primary CTA and captured each step.
-            {flowData.ctaText ? ` Target: "${flowData.ctaText}".` : null}
+            {flowData.ctaText ? ` Target: "${flowData.ctaText}"` : null}
+            {flowData.ctaHref ? ` → ${flowData.ctaHref}` : null}.
           </p>
         </div>
         {flowData.status !== 'success' && (

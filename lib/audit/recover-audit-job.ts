@@ -24,8 +24,23 @@ export function isAuditPastDeadline(
   return nowMs - startedAt.getTime() > AUDIT_DEADLINE_MS
 }
 
+/** QUEUED audits have no startedAt until the worker picks them up. */
+export function isQueuedPastDeadline(
+  status: string,
+  startedAt: Date | null | undefined,
+  updatedAt: Date,
+  nowMs = Date.now()
+): boolean {
+  if (status !== 'QUEUED' || startedAt) return false
+  return nowMs - updatedAt.getTime() > AUDIT_DEADLINE_MS
+}
+
 async function enqueueAuditJob(auditId: string): Promise<void> {
-  await getAuditQueue().add('audit', { auditId }, { jobId: auditId })
+  await getAuditQueue().add(
+    'audit',
+    { auditId },
+    { jobId: auditId, attempts: 1, removeOnComplete: 100, removeOnFail: 500 }
+  )
 }
 
 async function forceFailAudit(
@@ -73,7 +88,7 @@ async function requeueAudit(
   })
   await prisma.audit.update({
     where: { id: auditId },
-    data: { updatedAt: new Date() },
+    data: { updatedAt: new Date(), startedAt: null },
   })
 }
 
@@ -96,6 +111,19 @@ export async function recoverAuditJobOnPoll(
   const queue = getAuditQueue()
   const job = await queue.getJob(auditId)
   const jobState = job ? await job.getState() : null
+
+  if (isQueuedPastDeadline(audit.status, audit.startedAt, audit.updatedAt)) {
+    if (!job || jobState === 'failed' || jobState === 'completed') {
+      await requeueAudit(auditId, audit, 'poll', job)
+      return 'requeued'
+    }
+    if (jobState === 'waiting' || jobState === 'delayed') {
+      await requeueAudit(auditId, audit, 'poll', job)
+      return 'requeued'
+    }
+    await forceFailAudit(auditId, audit, 'poll')
+    return 'force_failed'
+  }
 
   if (!job || jobState === 'failed' || jobState === 'completed') {
     await requeueAudit(auditId, audit, 'poll', job)
@@ -131,10 +159,25 @@ export async function recoverAuditJobOnPoll(
  */
 export async function recoverStuckAuditOnCron(
   auditId: string,
-  audit: Pick<RecoverAuditJobAudit, 'status'>
+  audit: Pick<RecoverAuditJobAudit, 'status' | 'startedAt'>
 ): Promise<RecoverAuditJobResult> {
   if (audit.status === 'COMPLETED' || audit.status === 'FAILED') {
     return 'noop'
+  }
+
+  if (isAuditPastDeadline(audit.startedAt)) {
+    const queue = getAuditQueue()
+    const job = await queue.getJob(auditId)
+    const jobState = job ? await job.getState() : null
+    if (job && jobState === 'active') {
+      await job.moveToFailed(
+        new Error('Audit timed out, force failed by recovery cron'),
+        '0',
+        true
+      )
+    }
+    await forceFailAudit(auditId, { status: audit.status, updatedAt: new Date() }, 'cron')
+    return 'force_failed'
   }
 
   const queue = getAuditQueue()
@@ -166,14 +209,3 @@ export async function recoverStuckAuditOnCron(
   await forceFailAudit(auditId, { status: audit.status, updatedAt: new Date() }, 'cron')
   return 'force_failed'
 }
-
-/** @deprecated Use recoverAuditJobOnPoll */
-export async function ensureAuditJobEnqueued(
-  auditId: string,
-  audit: { status: string; updatedAt: Date }
-): Promise<boolean> {
-  const result = await recoverAuditJobOnPoll(auditId, audit)
-  return result === 'requeued'
-}
-
-export const QUEUED_RECOVERY_SECONDS = WORKER_DEAD_RECOVERY_SECONDS

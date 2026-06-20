@@ -56,17 +56,3 @@ export function truncateUrl(url: string, max = 48): string {
     return url.slice(0, max - 1) + '…'
   }
 }
-
-export function formatFailureCode(code?: string | null, stage?: string | null): string | null {
-  if (!code) return null
-  const labels: Record<string, string> = {
-    AUDIT_TIMEOUT: 'Timed out',
-    DESKTOP_CAPTURE_FAILED: 'Screenshot capture failed',
-    AI_CONTRACT_INVALID: 'AI review failed',
-    AUDIT_PIPELINE_FAILED: 'Pipeline error',
-    AUDIT_JOB_FAILED: 'Worker error',
-    QUEUE_ENQUEUE_FAILED: 'Queue error',
-  }
-  const label = labels[code] ?? code.replace(/_/g, ' ').toLowerCase()
-  return stage ? `${label} (${stage})` : label
-}

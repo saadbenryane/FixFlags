@@ -26,6 +26,7 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
     data: {
       status: 'QUEUED',
       progress: 5,
+      startedAt: null,
       errorMsg: null,
       failureCode: null,
       failureStage: null,
@@ -44,22 +45,4 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
   })
 
   return { status: 'QUEUED' }
-}
-
-export async function retryAuditSummary(auditId: string): Promise<{ status: string }> {
-  const audit = await prisma.audit.findUnique({
-    where: { id: auditId },
-    select: { id: true, status: true, parentId: true },
-  })
-  if (!audit) throw new Error('Audit not found')
-  if (audit.status !== 'FAILED' && audit.status !== 'COMPLETED') {
-    throw new Error('Can only retry summary on terminal audits')
-  }
-
-  await prisma.audit.update({
-    where: { id: auditId },
-    data: { recheckMode: 'SUMMARY_ONLY' },
-  })
-
-  return retryAudit(auditId)
 }

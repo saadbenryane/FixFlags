@@ -22,6 +22,24 @@ const TEMPLATE_TOKEN_PATTERN = /\{\{[^}]+\}\}|\$\{[^}]+\}|%[A-Z_]+%/i
 const CTA_PATTERN =
   /get started|sign up|signup|start free|try free|book demo|contact|register|join/i
 
+const SOCIAL_PROOF_SLOP_PATTERNS = [
+  { pattern: /trusted by\s+\d[\d,]*\+?\s*(teams|customers|users|companies)?/i, label: 'unverifiable member count' },
+  { pattern: /\b\d[\d,]*\+?\s*(happy|satisfied)\s+customers/i, label: 'unverifiable customer count' },
+  { pattern: /\[company name\]/i, label: 'placeholder company name' },
+  { pattern: /your logo here/i, label: 'logo placeholder' },
+  { pattern: /\blogo\s+\d\b/i, label: 'generic logo placeholder' },
+  { pattern: /\b[A-Z][a-z]\.\s*,\s*(CEO|Founder)/, label: 'anonymous testimonial initials' },
+  { pattern: /CEO,\s*Company Name/i, label: 'template testimonial attribution' },
+  { pattern: /lorem ipsum.*testimonial/i, label: 'lorem testimonial' },
+]
+
+export function detectSocialProofSlop(text: string): string | null {
+  for (const { pattern, label } of SOCIAL_PROOF_SLOP_PATTERNS) {
+    if (pattern.test(text)) return label
+  }
+  return null
+}
+
 export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const h1Generic =
@@ -94,6 +112,21 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
       evidence: `Link "${sample.text || '(no text)'}" uses href="${sample.href}"`,
       fix: 'Point the CTA to a real route (signup, pricing, or contact). Replace href="#" with the actual destination URL.',
       confidence: 0.9,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  const socialSlop = detectSocialProofSlop(sampleText)
+  if (socialSlop) {
+    findings.push({
+      checkId: 'social-proof-unverifiable',
+      rubric: 'MESSAGE',
+      impactTag: 'TRUST',
+      severity: 'IMPORTANT',
+      problem: 'Social proof looks placeholder or unverifiable',
+      evidence: `Found ${socialSlop} in visible page text`,
+      fix: 'Replace fake stats, logo placeholders, and anonymous testimonials with real proof or remove the section until you have it.',
+      confidence: 0.85,
       source: 'DETERMINISTIC',
     })
   }

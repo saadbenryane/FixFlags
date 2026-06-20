@@ -44,17 +44,17 @@ function LoopStepCard({
 
       <div className="mt-5 flex items-center gap-2 rounded-nested-md bg-muted/45 px-3 py-2.5">
         {index === 0 && <span className="h-2 w-2 rounded-full bg-success" aria-hidden />}
-        {index === 1 && (
+        {index === 1 && 'previewBadge' in step && step.previewBadge ? (
           <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-brand-foreground">
-            7
+            {step.previewBadge}
           </span>
-        )}
+        ) : null}
         {index === 2 && <MousePointer2 className="h-3 w-3 text-muted-foreground" aria-hidden />}
-        {index === 3 && (
+        {index === 3 && 'previewBadge' in step && step.previewBadge ? (
           <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">
-            +32%
+            {step.previewBadge}
           </span>
-        )}
+        ) : null}
         <span className="font-mono text-xs text-foreground/80">{step.preview}</span>
       </div>
     </div>

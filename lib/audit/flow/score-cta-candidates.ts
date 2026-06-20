@@ -68,6 +68,9 @@ export function extractCtaElementsFromHtml(html: string): RawCtaElement[] {
   let idx = 0
 
   $('a[href], button, [role="button"]').each((_, el) => {
+    const $el = $(el)
+    if ($el.closest('nav, header, [role="navigation"]').length > 0) return
+
     const tag = el.tagName.toLowerCase()
     const href = tag === 'a' ? $(el).attr('href') ?? null : $(el).closest('a').attr('href') ?? null
     const text =

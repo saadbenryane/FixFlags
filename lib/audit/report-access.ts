@@ -1,6 +1,17 @@
 import { canSharePublicly } from '@/lib/auth/entitlements'
 import { prisma } from '@/lib/db'
 
+type AiAccessAudit = {
+  userId: string | null
+  aiReviewAt: Date | null
+  isPublic?: boolean
+}
+
+/** Public anonymous audits used as marketing samples (homepage /samples). */
+export function isPublicMarketingSample(audit: AiAccessAudit): boolean {
+  return Boolean(audit.isPublic && audit.userId === null && audit.aiReviewAt)
+}
+
 export function canViewAiReportContent(
   audit: {
     userId: string | null
@@ -15,23 +26,26 @@ export function canViewAiReportContent(
   return false
 }
 
+export function canViewAiViaAgencyPublicShare(
+  audit: AiAccessAudit,
+  ownerCanSharePublicly: boolean
+): boolean {
+  if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
+  return ownerCanSharePublicly
+}
+
 export async function canViewAiReportContentForAudit(
-  audit: {
-    userId: string | null
-    aiReviewAt: Date | null
-    isPublic?: boolean
-  },
+  audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): Promise<boolean> {
-  if (!canViewAiReportContent(audit, viewer)) {
-    if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
-    const owner = await prisma.user.findUnique({
-      where: { id: audit.userId },
-      select: { id: true, role: true, plan: true },
-    })
-    return owner ? canSharePublicly(owner) : false
-  }
-  return true
+  if (isPublicMarketingSample(audit)) return true
+  if (canViewAiReportContent(audit, viewer)) return true
+  if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
+  const owner = await prisma.user.findUnique({
+    where: { id: audit.userId },
+    select: { id: true, role: true, plan: true },
+  })
+  return owner ? canSharePublicly(owner) : false
 }
 
 type FlagLike = {

@@ -48,7 +48,8 @@ import {
   copyParentArtifacts,
   loadParentScreenshotBase64,
 } from './copy-parent-artifacts'
-import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
+import { tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors } from './persist-evidence-anchors'
+import { serializeFlowData } from './flow/flow-url'
 
 interface PageRun {
   pageId: string
@@ -61,6 +62,7 @@ interface PageRun {
   desktopScreenshot: boolean
   mobileScreenshot: boolean
   flowScan: boolean
+  flowResult?: FlowScanResult | null
   desktopBase64: string
   mobileBase64: string | null
   flags: DeterministicFlag[]
@@ -77,7 +79,14 @@ interface PipelineContext {
 }
 
 function sanitizeAuditErrorMessage(message: string): string {
-  return message.replace(/\s+/g, ' ').trim().slice(0, 500)
+  return message
+    .replace(/https?:\/\/[^\s]+/gi, '[url]')
+    .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, (match) =>
+      match.includes('API') || match.includes('KEY') ? '[config]' : match
+    )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500)
 }
 
 function assertDeadline(ctx: PipelineContext, stage: string): void {
@@ -321,12 +330,7 @@ async function runPage(
           consoleErrors: screenshots.consoleErrors as never,
           ...(flowResult
             ? {
-                flowData: {
-                  status: flowResult.status,
-                  steps: flowResult.steps,
-                  finalUrl: flowResult.finalUrl,
-                  ctaText: flowResult.ctaText ?? null,
-                } as never,
+                flowData: serializeFlowData(flowResult) as never,
               }
             : {}),
         },
@@ -354,12 +358,7 @@ async function runPage(
     await prisma.audit.update({
       where: { id: ctx.auditId },
       data: {
-        flowData: {
-          status: flowResult.status,
-          steps: flowResult.steps,
-          finalUrl: flowResult.finalUrl,
-          ctaText: flowResult.ctaText ?? null,
-        } as never,
+        flowData: serializeFlowData(flowResult) as never,
       },
     })
   }
@@ -454,6 +453,7 @@ async function runPage(
       desktopScreenshot: Boolean(desktopBase64),
       mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
       flowScan: Boolean(input.primary && input.position === 0 && flowResult),
+      flowResult: input.primary && input.position === 0 ? flowResult : null,
       desktopBase64,
       mobileBase64,
       flags,
@@ -590,7 +590,7 @@ export async function runAudit(auditId: string): Promise<void> {
   if (!audit) throw new Error(`Audit ${auditId} not found`)
   if (audit.status === 'COMPLETED') return
 
-  const startedAt = audit.startedAt ?? new Date()
+  const startedAt = new Date()
   const ctx: PipelineContext = {
     auditId,
     deadline: Date.now() + AUDIT_DEADLINE_MS,
@@ -674,6 +674,10 @@ export async function runAudit(auditId: string): Promise<void> {
         audit.url,
         pageRuns.flatMap((page) => page.flags.map((flag) => flag.checkId))
       )
+      const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
+      if (primaryFlow) {
+        await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
+      }
       await finalizeDeterministicOnly({
         auditId,
         durationMs: Date.now() - startedAt.getTime(),
@@ -726,6 +730,10 @@ export async function runAudit(auditId: string): Promise<void> {
       audit.url,
       flags.map((flag) => flag.checkId)
     )
+    const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
+    if (primaryFlow) {
+      await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
+    }
 
     await finalizeAudit({
       auditId,

@@ -184,6 +184,12 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.howItWorks.sampleLink, /sample review/i)
   })
 
+  it('flag step avoids unverifiable flag counts in preview', () => {
+    const flag = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Flag')
+    assert.ok(flag)
+    assert.ok(!/\b\d+\b/.test(flag!.preview))
+  })
+
   it('verify step avoids synthetic score delta in preview', () => {
     const verify = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Verify')
     assert.ok(verify)

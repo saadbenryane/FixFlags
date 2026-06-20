@@ -8,7 +8,7 @@ export function getAuditQueue(): Queue {
     _auditQueue = new Queue('audit', {
       connection: getRedisConnectionOptions(),
       defaultJobOptions: {
-        attempts: 2,
+        attempts: 1,
         backoff: { type: 'fixed', delay: 10_000 },
         removeOnComplete: { count: 1000, age: 7 * 24 * 3600 },
         removeOnFail: { count: 5000, age: 30 * 24 * 3600 },

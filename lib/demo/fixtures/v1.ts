@@ -55,6 +55,7 @@ export const v1Fixture: DemoFixture = {
     largeHeroImageMobile: false,
   },
   showCookieConsent: true,
+  socialProof: null,
   jsonLd: {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

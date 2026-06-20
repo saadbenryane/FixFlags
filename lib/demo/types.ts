@@ -34,4 +34,9 @@ export interface DemoFixture {
   }
   /** Minimal GDPR-style banner when site analytics load (v1 fixed fork) */
   showCookieConsent?: boolean
+  /** Intentional social-proof flaws on baseline fixture */
+  socialProof?: {
+    statLine?: string
+    testimonials: { quote: string; author: string; role?: string }[]
+  } | null
 }

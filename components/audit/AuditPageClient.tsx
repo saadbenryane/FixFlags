@@ -9,10 +9,14 @@ import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
+import {
+  ReportAccessDeniedStatus,
+  ReportNotFoundStatus,
+  ReportPollErrorStatus,
+} from '@/components/ui/status-page'
 import { toast } from 'sonner'
-import { AUDIT_PROGRESS, BRAND } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
-import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
   setActiveAudit,
@@ -46,17 +50,14 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     isNotFound,
     isForbidden,
     fetchError,
+    error: pollError,
+    isLoading,
     status,
     url,
     statusPayload,
   } = useAuditPolling(id, { initialAudit, pollStatus })
   const workerIdle = useWorkerIdleDetection(status)
   const [retryLoading, setRetryLoading] = useState(false)
-  const [limitGate, setLimitGate] = useState<{
-    message: string
-    code?: string
-    action?: string
-  } | null>(null)
   const refreshedRef = useRef(false)
 
   useEffect(() => {
@@ -131,16 +132,11 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)
-    setLimitGate(null)
     try {
       const res = await fetch(`/api/audits/${id}/retry`, { method: 'POST' })
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
-        if (res.status === 402) {
-          setLimitGate(parsed)
-        } else {
-          toast.error(parsed.message)
-        }
+        toast.error(parsed.message)
         return
       }
       router.refresh()
@@ -154,13 +150,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   if (isNotFound) {
     return (
       <AuditShell session={session}>
-        <Container variant="report" className="space-y-4 py-24 text-center">
-          <h2 className="text-xl font-semibold">Report not found</h2>
-          <p className="text-muted-foreground text-sm">This report does not exist or has been removed.</p>
-          <Button asChild>
-            <Link href="/">Check My Site</Link>
-          </Button>
-        </Container>
+        <ReportNotFoundStatus />
       </AuditShell>
     )
   }
@@ -168,43 +158,33 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   if (isForbidden) {
     return (
       <AuditShell session={session}>
-        <Container variant="report" className="space-y-4 py-24 text-center">
-          <h2 className="text-xl font-semibold">Access denied</h2>
-          <p className="text-muted-foreground text-sm">{fetchError || 'You do not have access to this report.'}</p>
-          <Button asChild>
-            <Link href="/">Go home</Link>
-          </Button>
-        </Container>
+        <ReportAccessDeniedStatus description={fetchError ?? undefined} />
+      </AuditShell>
+    )
+  }
+
+  const hasPollError = Boolean(pollError) && !isLoading && !isComplete && !isFailed
+
+  if (hasPollError) {
+    return (
+      <AuditShell session={session}>
+        <ReportPollErrorStatus onRetry={() => router.refresh()} />
       </AuditShell>
     )
   }
 
   if (isFailed) {
-    const errorMsg =
-      (audit?.errorMsg as string | undefined) ??
-      (initialAudit?.errorMsg as string | undefined) ??
-      statusPayload?.errorMsg
-
     return (
       <AuditShell session={session}>
         <Container variant="report" className="mx-auto max-w-lg space-y-4 py-24 text-center">
           <AuditFailurePanel
-            errorMsg={errorMsg}
             failureCode={statusPayload?.failureCode}
             onRetry={handleRetrySameAudit}
             retryLoading={retryLoading}
           />
           <Button asChild variant="ghost" size="sm">
-            <Link href="/">Check another site</Link>
+            <Link href="/">{AUDIT_ERRORS.checkAnotherSite}</Link>
           </Button>
-          {limitGate && (
-            <AuditLimitGate
-              message={limitGate.message}
-              code={limitGate.code}
-              action={limitGate.action}
-              onDismiss={() => setLimitGate(null)}
-            />
-          )}
         </Container>
       </AuditShell>
     )

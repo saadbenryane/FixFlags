@@ -49,6 +49,7 @@ export const ALL_CHECK_IDS = [
   'sitemap-missing',
   'robots-txt-missing',
   'broken-internal-links',
+  'broken-page-anchors',
   // trust.ts
   'no-https',
   'no-privacy-policy',
@@ -69,11 +70,15 @@ export const ALL_CHECK_IDS = [
   'cta-below-fold-mobile',
   // interaction.ts
   'loading-indicator-stuck',
+  // design-language.ts
+  'font-family-sprawl',
+  'button-radius-inconsistent',
   // slop.ts
   'placeholder-copy-detected',
   'template-default-copy',
   'unreplaced-template-token',
   'cta-dead-link',
+  'social-proof-unverifiable',
   // flow.ts
   'flow-no-cta-found',
   'flow-cta-unclickable',

@@ -14,7 +14,7 @@ export function LandingSectionHeader({
   headline,
   className,
   align = 'center',
-  showLabel = false,
+  showLabel = Boolean(label),
 }: LandingSectionHeaderProps) {
   return (
     <div

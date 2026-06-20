@@ -3,11 +3,9 @@ import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
-import {
-  deriveScreenshotCaptureStatus,
+import { deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
@@ -32,10 +30,7 @@ export async function GET(
         verdict: true,
         errorMsg: true,
         failureCode: true,
-        failureStage: true,
-        failureMetadata: true,
         pipelineVersion: true,
-        pipelineLog: true,
         reportCompleteness: true,
         startedAt: true,
         completedAt: true,
@@ -81,8 +76,6 @@ export async function GET(
             status: true,
             errorMsg: true,
             failureCode: true,
-            failureStage: true,
-            failureMetadata: true,
           },
         })
       : null
@@ -96,7 +89,6 @@ export async function GET(
       storedCapture
     )
 
-    const pipelineLog = parsePipelineLog(audit.pipelineLog)
     const flagCount = await prisma.flag.count({ where: { auditId: id } })
 
     const rubricSources = audit.rubrics.map((r) => ({
@@ -120,11 +112,8 @@ export async function GET(
       status: effectiveStatus,
       errorMsg: refreshed?.errorMsg ?? audit.errorMsg,
       failureCode: refreshed?.failureCode ?? audit.failureCode,
-      failureStage: refreshed?.failureStage ?? audit.failureStage,
-      failureMetadata: refreshed?.failureMetadata ?? audit.failureMetadata,
       screenshotCapture,
       pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
-      pipelineLog: pipelineLog.slice(-30),
       flagCount,
       shareStatus,
       partialFlags: showPartialFlags ? partialFlags : undefined,

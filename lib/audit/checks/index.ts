@@ -10,6 +10,7 @@ import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
+import { runDesignLanguageChecks } from './design-language'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
@@ -55,6 +56,7 @@ export async function runAllChecks(
     { name: 'slop', run: () => runSlopChecks(metadata) },
     { name: 'layout', run: () => runLayoutChecks(captureMetrics ?? null) },
     { name: 'interaction', run: () => runInteractionChecks(captureMetrics ?? null) },
+    { name: 'design-language', run: () => runDesignLanguageChecks(captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {

@@ -1,9 +1,11 @@
 import type { Browser, Page } from 'puppeteer'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
-import { discoverFlowCtas, flowCtaSelector, rankCtaCandidate } from './discover-cta'
-import { resolveSameOrigin } from './link-scoring'
+import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
+import { resolveSameOrigin, isIntentionalExternalCta } from './link-scoring'
 import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
+import { anchorFromViewportRect } from './flow-evidence'
+import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 
@@ -31,6 +33,9 @@ export interface FlowScanResult {
   steps: FlowScanStep[]
   finalUrl: string
   ctaText?: string
+  ctaHref?: string | null
+  /** Normalized highlight region for the clicked CTA on the landing step. */
+  ctaAnchor?: EvidenceAnchor | null
   httpStatus?: number
 }
 
@@ -88,14 +93,22 @@ export async function runFlowScan(
     steps.push(await captureFlowStep(page, auditId, 0, 'Landing'))
   }
 
-  const candidates = await discoverFlowCtas(page, pageUrl)
+  const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
   const cta = rankCtaCandidate(candidates)
   if (!cta) {
     return { status: 'no_cta', steps, finalUrl: page.url() }
   }
 
+  const ctaMeta = {
+    ctaText: cta.text,
+    ctaHref: cta.href ?? null,
+    ctaAnchor: await captureCtaAnchor(page, selector),
+  }
+
   const landingUrl = page.url()
   const selector = flowCtaSelector(cta.flowIdx)
+  const skipNavigationWait =
+    cta.opensInNewTab || isIntentionalExternalCta(origin, cta.href ?? null)
   let clicked = false
   let clickResponseStatus: number | undefined
 
@@ -113,41 +126,47 @@ export async function runFlowScan(
         status: 'unclickable',
         steps,
         finalUrl: page.url(),
-        ctaText: cta.text,
+        ...ctaMeta,
       }
     }
 
-    const navigationPromise = page
-      .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
-      .catch(() => null)
+    if (skipNavigationWait) {
+      await clickTarget.click()
+      clicked = true
+      await new Promise((r) => setTimeout(r, 800))
+    } else {
+      const navigationPromise = page
+        .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
+        .catch(() => null)
 
-    await Promise.race([
-      (async () => {
-        await clickTarget.click()
-        clicked = true
-        const response = await navigationPromise
-        if (response) {
-          clickResponseStatus = response.status()
-        } else {
-          await new Promise((r) => setTimeout(r, 1500))
-        }
-      })(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('flow_click_timeout')), FLOW_CLICK_TIMEOUT_MS)
-      ),
-    ])
+      await Promise.race([
+        (async () => {
+          await clickTarget.click()
+          clicked = true
+          const response = await navigationPromise
+          if (response) {
+            clickResponseStatus = response.status()
+          } else {
+            await new Promise((r) => setTimeout(r, 1500))
+          }
+        })(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('flow_click_timeout')), FLOW_CLICK_TIMEOUT_MS)
+        ),
+      ])
+    }
   } catch (err) {
     logger.error('Flow CTA click failed', err)
     return {
       status: clicked ? 'dead_end' : 'unclickable',
       steps,
       finalUrl: page.url(),
-      ctaText: cta.text,
+      ...ctaMeta,
     }
   }
 
   if (Date.now() - started > deadlineMs) {
-    return { status: 'timeout', steps, finalUrl: page.url(), ctaText: cta.text }
+    return { status: 'timeout', steps, finalUrl: page.url(), ...ctaMeta }
   }
 
   steps.push(await captureFlowStep(page, auditId, 1, 'After click'))
@@ -160,8 +179,8 @@ export async function runFlowScan(
       status: 'error_response',
       steps,
       finalUrl,
-      ctaText: cta.text,
       httpStatus,
+      ...ctaMeta,
     }
   }
 
@@ -171,11 +190,19 @@ export async function runFlowScan(
       status: 'external_leave',
       steps,
       finalUrl,
-      ctaText: cta.text,
+      ...ctaMeta,
     }
   }
 
   if (!urlsMeaningfullyChanged(landingUrl, finalUrl)) {
+    if (skipNavigationWait || isIntentionalExternalCta(origin, cta.href ?? null)) {
+      return {
+        status: 'success',
+        steps,
+        finalUrl,
+        ...ctaMeta,
+      }
+    }
     if (isSamePageHashHref(cta.href)) {
       const scrolledToAnchor = await page.evaluate((hash) => {
         const el = document.querySelector(hash)
@@ -188,7 +215,7 @@ export async function runFlowScan(
           status: 'success',
           steps,
           finalUrl,
-          ctaText: cta.text,
+          ...ctaMeta,
         }
       }
     }
@@ -196,7 +223,7 @@ export async function runFlowScan(
       status: 'dead_end',
       steps,
       finalUrl,
-      ctaText: cta.text,
+      ...ctaMeta,
     }
   }
 
@@ -204,8 +231,22 @@ export async function runFlowScan(
     status: 'success',
     steps,
     finalUrl,
-    ctaText: cta.text,
+    ...ctaMeta,
   }
+}
+
+async function captureCtaAnchor(page: Page, selector: string): Promise<EvidenceAnchor | null> {
+  const rect = await page.evaluate((sel) => {
+    const el = document.querySelector(sel)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) return null
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+  }, selector)
+  if (!rect) return null
+  const viewport = page.viewport()
+  if (!viewport) return null
+  return anchorFromViewportRect(rect, viewport.width, viewport.height)
 }
 
 export async function runFlowScanStandalone(

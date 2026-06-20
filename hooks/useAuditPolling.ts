@@ -1,7 +1,6 @@
 'use client'
 import useSWR from 'swr'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
@@ -24,10 +23,7 @@ export interface AuditStatusPayload {
   verdict?: string | null
   errorMsg?: string | null
   failureCode?: string | null
-  failureStage?: string | null
-  failureMetadata?: Record<string, unknown> | null
   pipelineVersion?: string | null
-  pipelineLog?: PipelineLogEvent[]
   reportCompleteness?: string | null
   startedAt?: string | null
   completedAt?: string | null

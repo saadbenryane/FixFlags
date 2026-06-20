@@ -10,6 +10,7 @@ import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
+import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
@@ -407,6 +408,9 @@ function healthyCaptureMetrics(
     mobileViewportHeight: number
     stuckLoadingIndicator: boolean
     stuckLoadingLabel: string | null
+    uniqueFontFamilies: number
+    fontFamilySample: string[]
+    buttonBorderRadii: number[]
   }> = {}
 ) {
   return {
@@ -415,6 +419,9 @@ function healthyCaptureMetrics(
     mobileViewportHeight: 812,
     stuckLoadingIndicator: false,
     stuckLoadingLabel: null,
+    uniqueFontFamilies: 2,
+    fontFamilySample: ['Inter', 'Georgia'],
+    buttonBorderRadii: [8],
     ...overrides,
   }
 }
@@ -786,6 +793,23 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
+    'font-family-sprawl': () =>
+      checkIds(
+        runDesignLanguageChecks(
+          healthyCaptureMetrics({
+            uniqueFontFamilies: 6,
+            fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'],
+          })
+        )
+      ),
+    'button-radius-inconsistent': () =>
+      checkIds(
+        runDesignLanguageChecks(
+          healthyCaptureMetrics({
+            buttonBorderRadii: [0, 8, 24],
+          })
+        )
+      ),
     'placeholder-copy-detected': () =>
       checkIds(runSlopChecks(healthyMeta({ pageText: 'Lorem ipsum dolor sit amet.' }))),
     'template-default-copy': () =>
@@ -797,6 +821,25 @@ describe('trigger matrix - one failing signal per checkId', () => {
         runSlopChecks(
           healthyMeta({
             links: [{ href: '#', text: 'Get started free', rel: null }],
+          })
+        )
+      ),
+    'social-proof-unverifiable': () =>
+      checkIds(
+        runSlopChecks(
+          healthyMeta({ pageText: 'Trusted by 10,000+ happy customers worldwide.' })
+        )
+      ),
+    'broken-page-anchors': async () =>
+      checkIds(
+        await runSeoChecks(
+          'https://example.com',
+          healthyMeta({
+            elementIds: ['features'],
+            links: [
+              { href: '#pricing', text: 'Pricing', rel: null },
+              { href: '#features', text: 'Features', rel: null },
+            ],
           })
         )
       ),

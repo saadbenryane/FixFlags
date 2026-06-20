@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
@@ -14,6 +13,10 @@ export async function GET(
   try {
     const { id } = await params
     const session = await resolveSessionUser()
+    if (!session?.user || !isAdminUser(session.user)) {
+      return apiError('Admin access required', 403)
+    }
+
     const audit = await prisma.audit.findUnique({
       where: { id },
       select: {
@@ -43,13 +46,6 @@ export async function GET(
       },
     })
     if (!audit) return apiError('Audit not found', 404)
-
-    if (!canAccessAudit(audit, session?.user)) {
-      const isAdmin = session?.user && isAdminUser(session.user)
-      if (!isAdmin) {
-        return apiError('You do not have access to this audit', 403)
-      }
-    }
 
     const log = {
       auditId: audit.id,

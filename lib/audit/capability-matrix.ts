@@ -100,9 +100,9 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'copy',
     label: 'Fake testimonials / unverifiable social proof',
     tool: 'html-parse',
-    status: 'planned',
-    checkIds: [],
-    notes: 'Extend slop.ts with testimonial/logo placeholder patterns.',
+    status: 'live',
+    checkIds: ['social-proof-unverifiable'],
+    verify: 'npm run demo:audit:offline',
   },
 
   // REACH - metadata & SEO
@@ -311,6 +311,16 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
 
   // EXPERIENCE - CTA flow
   {
+    id: 'experience-nav-anchors',
+    dimension: 'EXPERIENCE',
+    category: 'flow',
+    label: 'On-page hash links target existing sections',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['broken-page-anchors'],
+    verify: 'npm run demo:audit:offline',
+  },
+  {
     id: 'experience-cta-flow',
     dimension: 'EXPERIENCE',
     category: 'flow',
@@ -355,9 +365,10 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'design-language',
     label: 'Cross-section spacing, radius, typography consistency',
     tool: 'browser-capture',
-    status: 'planned',
-    checkIds: [],
-    notes: 'DOM style sampling or vision judge enrichment.',
+    status: 'live',
+    checkIds: ['font-family-sprawl', 'button-radius-inconsistent'],
+    verify: 'npm run test:unit -- lib/audit/__tests__/design-language.test.ts',
+    notes: 'DOM style sampling during mobile capture.',
   },
 
   // AI review layer

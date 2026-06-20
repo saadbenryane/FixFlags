@@ -31,13 +31,17 @@ export function startWorker() {
     'audit',
     async (job) => {
       await touchWorkerHeartbeat()
-      if (job.name === 'ai-review') {
+      try {
+        if (job.name === 'ai-review') {
+          const { auditId } = job.data as { auditId: string }
+          await runAiReview(auditId)
+          return
+        }
         const { auditId } = job.data as { auditId: string }
-        await runAiReview(auditId)
-        return
+        await runAudit(auditId)
+      } catch (err) {
+        throw wrapAuditJobError(err)
       }
-      const { auditId } = job.data as { auditId: string }
-      await runAudit(auditId)
     },
     {
       connection: getWorkerRedisConnectionOptions(),

@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { FlagCard } from '@/components/audit/FlagCard'
+import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { rubricLabel, cn } from '@/lib/utils'
@@ -24,12 +26,27 @@ interface Props {
   rubric: RubricComputed
   rubricRow: RubricRow
   showFeedback?: boolean
+  aiLocked?: boolean
+  signUpHref?: string
+  showFlagList?: boolean
 }
 
-export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
+export function RubricCard({
+  rubric,
+  rubricRow,
+  showFeedback = true,
+  aiLocked = false,
+  signUpHref,
+  showFlagList = true,
+}: Props) {
   const [open, setOpen] = useState(false)
   const label = rubricLabel(rubric.name)
   const flagCount = rubric.flagCount
+  const hasSummary = rubricRow.summary.trim().length > 0
+
+  if (flagCount === 0 && rubric.status === 'PASS') {
+    return null
+  }
 
   return (
     <Card
@@ -70,7 +87,7 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
                   variant="compact"
                   size="sm"
                 />
-                {!open && (
+                {!open && hasSummary && !aiLocked && (
                   <p className="text-sm leading-snug text-muted-foreground text-pretty sm:line-clamp-2">
                     {rubricRow.summary}
                   </p>
@@ -88,29 +105,46 @@ export function RubricCard({ rubric, rubricRow, showFeedback = true }: Props) {
 
       {open && (
         <CardContent id={`rubric-panel-${rubric.name}`} className="pt-0 space-y-3">
-          <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
+          {aiLocked ? (
+            <LockedContentTeaser
+              label="Rubric analysis — create a free account to view"
+              signUpHref={signUpHref}
+            />
+          ) : hasSummary ? (
+            <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
+          ) : null}
 
-          {rubricRow.flags.length > 0 ? (
-            <Surface variant="nested" className="overflow-hidden p-0">
-              {rubricRow.flags.map((flag) => (
-                <FlagCard
-                  key={flag.id}
-                  flag={flag}
-                  showFeedback={showFeedback}
-                  variant="row"
-                />
-              ))}
-            </Surface>
-          ) : rubricRow.grade === 'A' ? (
-            <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
-          ) : rubricRow.grade === null ? (
-            <p className="text-sm text-muted-foreground">
-              This rubric could not be assessed from the available evidence.
-            </p>
+          {showFlagList ? (
+            rubricRow.flags.length > 0 ? (
+              <Surface variant="nested" className="overflow-hidden p-0">
+                {rubricRow.flags.map((flag) => (
+                  <FlagCard
+                    key={flag.id}
+                    flag={flag}
+                    showFeedback={showFeedback}
+                    variant="row"
+                  />
+                ))}
+              </Surface>
+            ) : rubricRow.grade === 'A' ? (
+              <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
+            ) : rubricRow.grade === null ? (
+              <p className="text-sm text-muted-foreground">
+                This rubric could not be assessed from the available evidence.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No individual Flags listed, see the rubric summary above.
+              </p>
+            )
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No individual Flags listed, see the rubric summary above.
-            </p>
+            flagCount > 0 && (
+              <p className="text-sm text-muted-foreground">
+                <Link href="#report-flags" className="text-link underline-offset-2 hover:underline">
+                  See {flagCount} Flag{flagCount !== 1 ? 's' : ''} above
+                </Link>
+              </p>
+            )
           )}
         </CardContent>
       )}

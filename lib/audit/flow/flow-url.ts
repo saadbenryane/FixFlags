@@ -23,11 +23,13 @@ export function serializeFlowData(result: {
   steps: Array<{ label: string; screenshotUrl: string | null; url: string }>
   finalUrl: string
   ctaText?: string
+  ctaHref?: string | null
 }) {
   return {
     status: result.status,
     steps: result.steps,
     finalUrl: result.finalUrl,
     ctaText: result.ctaText ?? null,
+    ctaHref: result.ctaHref ?? null,
   }
 }

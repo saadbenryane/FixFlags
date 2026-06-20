@@ -534,7 +534,8 @@ export const LANDING_PAGE = {
         step: 2,
         title: 'Flag',
         body: 'We surface the issues that actually matter.',
-        preview: '7 high-impact flags',
+        preview: 'High-impact flags',
+        previewBadge: 'Flags',
       },
       {
         step: 3,
@@ -547,6 +548,7 @@ export const LANDING_PAGE = {
         title: 'Verify',
         body: 'We re-check and show what improved.',
         preview: 'Re-check complete',
+        previewBadge: 'Improved',
       },
     ] as const,
   },
@@ -618,6 +620,8 @@ export const LANDING_PAGE = {
       blurb: 'Product updates and shipping tips. No spam.',
       success: 'You\u2019re on the list.',
       alreadySubscribed: 'You\u2019re already on the list.',
+      emailRequired: 'Enter your email address',
+      subscribeFailed: 'Could not subscribe right now. Try again later.',
     },
     social: {
       instagram: 'https://instagram.com/fixedflax',
@@ -987,6 +991,33 @@ export const UPGRADE_MOMENTS = {
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
+} as const
+
+export const AUDIT_ERRORS = {
+  checkFailedTitle: 'Check failed',
+  retryCta: 'Retry',
+  checkAnotherSite: 'Check another site',
+  goHome: 'Go home',
+  startCheck: 'Check My Site',
+  reportNotFoundTitle: 'Report not found',
+  reportNotFoundBody: 'This report does not exist or has been removed.',
+  accessDeniedTitle: 'Access denied',
+  accessDeniedBody: 'You do not have access to this report.',
+  pollErrorTitle: 'Could not load report',
+  pollErrorBody: 'Something went wrong while loading this report. Try again in a moment.',
+  timeout:
+    'This check took longer than expected and was stopped. Please try again.',
+  generic:
+    "We couldn't complete this check. The site may be unreachable or blocking automated visits.",
+  captureFailed: 'We could not capture a screenshot of this page. Check that the URL is public and loads in a browser.',
+  siteBlocked: 'This site blocked our automated visit. Try again later or check from a public URL.',
+  rateLimited: 'This site is rate-limiting requests. Try again in a few minutes.',
+  unreachable: 'We could not reach this page. Check the URL and try again.',
+  notHtml: 'This URL did not return a normal web page. Check the link and try again.',
+  aiReviewFailed: 'AI review could not finish for this check. Please try again.',
+  partialAiReview: 'AI review could not finish. Deterministic checks are shown below.',
+  partialReport: 'This report is partial. Some checks or screenshots could not complete.',
+  pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
 } as const
 
 export const AUDIT_PROGRESS = {

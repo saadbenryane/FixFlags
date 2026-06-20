@@ -44,6 +44,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     navLandmarkCount: 0,
     pageText: 'QA for AI-built products.',
     jsonLd: [{ '@type': 'WebSite' }],
+    elementIds: ['main-content', 'features'],
     ...overrides,
   }
 }

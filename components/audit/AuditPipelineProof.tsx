@@ -1,5 +1,4 @@
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
-import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 
 interface Props {
   pipelineVersion?: string | null
@@ -10,13 +9,11 @@ interface Props {
 }
 
 export function AuditPipelineProof({
-  pipelineVersion,
   pipelineLog,
   startedAt,
   completedAt,
   durationMs,
 }: Props) {
-  const version = pipelineVersion ?? PIPELINE_VERSION
   const events = pipelineLog ?? []
 
   const captureEvent = events.find((e) => e.event === 'capture_completed')
@@ -41,9 +38,8 @@ export function AuditPipelineProof({
     const t = new Date(judgeEvent.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     parts.push(`AI review ${t}`)
   }
-  parts.push(`Pipeline v${version}`)
 
-  if (parts.length <= 1) return null
+  if (parts.length === 0) return null
 
   return (
     <p className="text-xs text-muted-foreground font-mono tabular-nums">

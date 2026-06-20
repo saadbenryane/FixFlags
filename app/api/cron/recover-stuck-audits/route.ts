@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         status: { notIn: ['COMPLETED', 'FAILED'] },
         updatedAt: { lt: cutoff },
       },
-      select: { id: true, status: true },
+      select: { id: true, status: true, startedAt: true },
     })
 
     let requeued = 0

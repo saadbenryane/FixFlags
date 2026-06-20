@@ -79,6 +79,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'robots-txt-missing': 'Open /robots.txt; it should return 200.',
   'broken-internal-links':
     'Click or HEAD each flagged internal URL; all should return 200.',
+  'broken-page-anchors':
+    'Click each flagged hash link; the target section should exist on the page.',
   'no-https': 'Open the site URL, address bar should show HTTPS with a valid certificate.',
   'no-privacy-policy':
     'Footer or legal links should include a privacy policy reachable in one click.',
@@ -108,6 +110,10 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Chrome DevTools at 375×812: primary CTA button visible without scrolling.',
   'loading-indicator-stuck':
     'After page load, no skeleton, spinner, or aria-busy overlay should remain visible over the hero.',
+  'font-family-sprawl':
+    'Inspect computed font-family on headings and body copy; limit to 2–3 families site-wide.',
+  'button-radius-inconsistent':
+    'Primary and secondary CTAs should share one border-radius token across the page.',
   'placeholder-copy-detected':
     'Page should not contain Lorem ipsum, TODO, TBD, or [object Object] in visible text.',
   'template-default-copy':
@@ -115,7 +121,9 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'unreplaced-template-token':
     'No {{token}}, ${var}, or %VAR% placeholders should appear in rendered page text.',
   'cta-dead-link':
-    'Primary CTA links should not use href="#" or empty href; point to a real destination.',
+    'Primary CTA links should not use href="#" or empty href; point to a real destination URL.',
+  'social-proof-unverifiable':
+    'Remove fake stats and placeholder testimonials, or replace with verifiable proof.',
   'flow-no-cta-found':
     'A clickable primary CTA should be visible in the desktop viewport.',
   'flow-cta-unclickable':

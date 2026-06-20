@@ -71,6 +71,19 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
     )
     .join('')
 
+  const socialProof = fixture.socialProof
+    ? `<section class="demo-social-proof">${
+        fixture.socialProof.statLine
+          ? `<p class="demo-social-proof-stat">${escapeHtml(fixture.socialProof.statLine)}</p>`
+          : ''
+      }${fixture.socialProof.testimonials
+        .map(
+          (t) =>
+            `<blockquote class="demo-testimonial"><p>&ldquo;${escapeHtml(t.quote)}&rdquo;</p><footer>${escapeHtml(t.author)}${t.role ? `, ${escapeHtml(t.role)}` : ''}</footer></blockquote>`
+        )
+        .join('')}</section>`
+    : ''
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,7 +119,10 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
       </div>
     </section>
   <section id="features"><h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>${features}</section>
+  ${socialProof}
   <section id="signup" aria-hidden="true"></section>
+  <section id="privacy" aria-hidden="true"></section>
+  <section id="terms" aria-hidden="true"></section>
 </main>
   <footer class="demo-footer">${footerLinks}</footer>
 </body>

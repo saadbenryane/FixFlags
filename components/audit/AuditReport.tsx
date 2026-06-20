@@ -5,6 +5,7 @@ import { RubricCard } from '@/components/audit/RubricCard'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
@@ -15,7 +16,6 @@ import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCar
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
-import { CompletenessHeader } from '@/components/audit/CompletenessHeader'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { RubricComputed } from '@/lib/audit/rubric'
@@ -24,8 +24,6 @@ import {
   auditHasFixPrompts,
   getTopFixPromptFromFlags,
 } from '@/lib/audit/priority-flags'
-import { SharedReportBanner } from '@/components/audit/SharedReportBanner'
-import { ReportAiGate } from '@/components/audit/ReportAiGate'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -109,19 +107,10 @@ export function AuditReport({
   const showFeedback = !isSample
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
   const aiLocked = !showAiContent
-  const hostname = (() => {
-    try {
-      return new URL(audit.url).hostname
-    } catch {
-      return audit.url
-    }
-  })()
-
-  const rubricsGradedCount = audit.rubricRows.filter((r) => r.grade !== null).length
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const topFixPrompt = getTopFixPromptFromFlags(audit.flags)
   const hasLaunchGates =
-    (audit.launchReadiness?.checklist?.length ?? 0) > 0
+    !aiLocked && (audit.launchReadiness?.checklist?.length ?? 0) > 0
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -142,74 +131,43 @@ export function AuditReport({
         })
       : null
 
-  return (
-    <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
-      <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
-        <AuditReportHero
-          pageType={audit.pageType}
-          verdict={audit.verdict}
-          url={audit.url}
-          shareStatus={audit.shareStatus}
-          rubrics={audit.rubrics}
-          screenshotLimited={screenshotLimited}
-          screenshotPartial={screenshotPartial}
-          pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
-          desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
-          mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
-        />
+  const showOverview =
+    !isSample &&
+    (aiReviewPending ||
+      audit.reportCompleteness !== 'FULL' ||
+      hasLaunchGates ||
+      Boolean(audit.previewMeta) ||
+      Boolean(audit.flowData) ||
+      !isViewerOwner)
 
+  return (
+    <Container
+      variant="report"
+      className={isSample ? 'space-y-4 py-4 sm:py-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
+    >
+      <AuditReportHero
+        variant={isSample ? 'minimal' : 'default'}
+        score={audit.score}
+        pageType={audit.pageType}
+        verdict={audit.verdict}
+        url={audit.url}
+        shareStatus={audit.shareStatus}
+        rubrics={audit.rubrics}
+        screenshotLimited={screenshotLimited}
+        screenshotPartial={screenshotPartial}
+        pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+      />
+
+      {!isSample && (
         <ReportMiniNav
           showPreviews={Boolean(audit.previewMeta)}
           showFlow={Boolean(audit.flowData)}
           showFix={Boolean(topFixPrompt && !explorerModel)}
           showLaunchGates={hasLaunchGates}
         />
+      )}
 
-        {!isSample && !isViewerOwner && (
-          <>
-            <ThirdPartyAuditDisclaimer variant="compact" />
-            <SharedReportBanner hostname={hostname} score={audit.score} />
-          </>
-        )}
-
-        <CompletenessHeader
-          hasScreenshots={(audit.screenshots?.length ?? 0) > 0}
-          rubricsGradedCount={rubricsGradedCount}
-          totalRubrics={audit.rubricRows.length}
-          hasFixPrompts={showAiContent && hasFixPrompts}
-          canRecheck={isLoggedIn && isViewerOwner}
-        />
-
-        {aiReviewPending && (
-          <Callout variant="info" title="Generating AI review">
-            Unlocking fix prompts and rubric analysis. This usually takes under a minute.
-          </Callout>
-        )}
-
-        {audit.reportCompleteness !== 'FULL' && (
-          <Callout variant="warning" title="Partial report">
-            Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
-            being inferred.
-          </Callout>
-        )}
-
-        <ReportAiGate
-          locked={aiLocked}
-          signUpHref={signUpHref}
-          headline={UPSELLS.anon.headline}
-          body={UPSELLS.anon.body}
-        >
-          {audit.launchReadiness?.checklist && audit.launchReadiness.checklist.length > 0 && (
-            <LaunchGates checklist={audit.launchReadiness.checklist} />
-          )}
-        </ReportAiGate>
-
-        {audit.previewMeta && <PreviewCards preview={audit.previewMeta} />}
-
-        {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
-      </div>
-
-      {explorerModel && (
+      {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
           <div className="overflow-hidden rounded-card glass-surface shadow-card">
             <LiveReportExplorer
@@ -221,9 +179,7 @@ export function AuditReport({
             />
           </div>
         </section>
-      )}
-
-      {!explorerModel && audit.flags.length === 0 && (
+      ) : (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
           <Callout variant="neutral" title="No flags found">
             This scan did not surface any issues. Nice work.
@@ -231,10 +187,42 @@ export function AuditReport({
         </section>
       )}
 
+      {showOverview && (
+        <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-4 sm:space-y-5">
+          {!isViewerOwner && <ThirdPartyAuditDisclaimer variant="compact" />}
+
+          {aiReviewPending && (
+            <Callout variant="info" title="Generating AI review">
+              Unlocking fix prompts and rubric analysis. This usually takes under a minute.
+            </Callout>
+          )}
+
+          {audit.reportCompleteness !== 'FULL' && (
+            <Callout variant="warning" title="Partial report">
+              Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
+              being inferred.
+            </Callout>
+          )}
+
+          {hasLaunchGates && audit.launchReadiness?.checklist && (
+            <LaunchGates checklist={audit.launchReadiness.checklist} />
+          )}
+
+          {audit.previewMeta && <PreviewCards preview={audit.previewMeta} />}
+
+          {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
+        </div>
+      )}
+
       {topFixPrompt && !explorerModel && (
         <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
-          <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>
+          {aiLocked ? (
+            <LockedContentTeaser
+              label="Fix prompt — create a free account to view"
+              signUpHref={signUpHref}
+            />
+          ) : (
             <Card className="p-4 sm:p-5">
               <FixPromptBlock
                 prompt={topFixPrompt.prompt}
@@ -246,36 +234,37 @@ export function AuditReport({
                 nested
               />
             </Card>
-          </ReportAiGate>
+          )}
         </section>
       )}
 
-      <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
-        <ReportAiGate locked={aiLocked} signUpHref={signUpHref} headline={UPSELLS.anon.headline} body={UPSELLS.anon.body}>
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <SectionTitle>Summary by rubric</SectionTitle>
-              <RubricSummaryGrid rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
-            </div>
-
-            <div className="space-y-4">
-              {RUBRIC_ORDER.map((rubricName) => {
-                const rubric = audit.rubrics.find((r) => r.name === rubricName)
-                const rubricRow = audit.rubricRows.find((r) => r.name === rubricName)
-                if (!rubric || !rubricRow) return null
-                return (
-                  <RubricCard
-                    key={rubric.name}
-                    rubric={rubric}
-                    rubricRow={rubricRow}
-                    showFeedback={showFeedback}
-                  />
-                )
-              })}
-            </div>
+      {!isSample && (
+        <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
+          <div className="space-y-3">
+            <SectionTitle>Summary by rubric</SectionTitle>
+            <RubricSummaryGrid rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
           </div>
-        </ReportAiGate>
-      </section>
+
+          <div className="space-y-4">
+            {RUBRIC_ORDER.map((rubricName) => {
+              const rubric = audit.rubrics.find((r) => r.name === rubricName)
+              const rubricRow = audit.rubricRows.find((r) => r.name === rubricName)
+              if (!rubric || !rubricRow) return null
+              return (
+                <RubricCard
+                  key={rubric.name}
+                  rubric={rubric}
+                  rubricRow={rubricRow}
+                  showFeedback={showFeedback}
+                  aiLocked={aiLocked}
+                  signUpHref={signUpHref}
+                  showFlagList={!explorerModel}
+                />
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         {showRecheckHint && isLoggedIn && isViewerOwner && (
@@ -313,6 +302,14 @@ export function AuditReport({
           </Card>
         )}
 
+        {!isSample && !isViewerOwner && (
+          <p className="text-center text-sm text-muted-foreground">
+            <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
+              Run your own audit
+            </Link>
+          </p>
+        )}
+
         {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
           <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />
         )}
@@ -326,12 +323,14 @@ export function AuditReport({
           />
         )}
 
-        <AuditPipelineProof
-          pipelineVersion={audit.pipelineVersion}
-          pipelineLog={audit.pipelineLog}
-          startedAt={audit.startedAt}
-          completedAt={audit.completedAt}
-        />
+        {!isSample && (
+          <AuditPipelineProof
+            pipelineVersion={audit.pipelineVersion}
+            pipelineLog={audit.pipelineLog}
+            startedAt={audit.startedAt}
+            completedAt={audit.completedAt}
+          />
+        )}
       </div>
     </Container>
   )

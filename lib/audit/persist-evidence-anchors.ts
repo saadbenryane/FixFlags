@@ -5,6 +5,8 @@ import {
   resolveEvidenceAnchorsWithBrowser,
   type EvidenceAnchorMap,
 } from '@/lib/marketing/resolve-evidence-anchors'
+import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
+import type { FlowScanResult } from '@/lib/audit/flow/run-flow-scan'
 
 export async function persistEvidenceAnchors(
   auditId: string,
@@ -54,6 +56,38 @@ export async function persistEvidenceAnchors(
       },
     })
   }
+}
+
+export async function mergeFlowCtaEvidenceAnchors(
+  auditId: string,
+  flowResult: FlowScanResult
+): Promise<void> {
+  if (!flowResult.ctaAnchor) return
+  const checkId = flowCheckIdForStatus(flowResult.status)
+  if (!checkId) return
+
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { performanceData: true },
+  })
+  if (!audit) return
+
+  const existing =
+    audit.performanceData && typeof audit.performanceData === 'object'
+      ? (audit.performanceData as Record<string, unknown>)
+      : {}
+  const existingAnchors =
+    existing.evidenceAnchors && typeof existing.evidenceAnchors === 'object'
+      ? (existing.evidenceAnchors as EvidenceAnchorMap)
+      : {}
+
+  await persistEvidenceAnchors(auditId, {
+    ...existingAnchors,
+    [checkId]: {
+      desktop: flowResult.ctaAnchor,
+      mobile: flowResult.ctaAnchor,
+    },
+  })
 }
 
 export async function tryResolveEvidenceAnchorsForAudit(

@@ -14,6 +14,7 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'console-errors-some',
   'external-links-unsafe',
   'broken-internal-links',
+  'broken-page-anchors',
   'no-privacy-policy',
   'no-contact-info',
   'cookie-consent-absent',
@@ -48,12 +49,17 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'no-cta-detected',
   'cta-below-fold-mobile',
   'loading-indicator-stuck',
+  'font-family-sprawl',
+  'button-radius-inconsistent',
   'flow-no-cta-found',
   'flow-cta-unclickable',
+  'flow-cta-dead-end',
+  'flow-cta-external-leave',
   'tap-targets-small',
   'placeholder-copy-detected',
   'template-default-copy',
   'unreplaced-template-token',
+  'social-proof-unverifiable',
   'images-missing-alt',
   'images-empty-alt',
   'form-inputs-no-label',
@@ -134,6 +140,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Without robots.txt you cannot declare crawl preferences or point crawlers to your sitemap.',
   'broken-internal-links':
     'Broken links break trust mid-journey and waste crawl budget on 404s.',
+  'broken-page-anchors':
+    'Broken hash links break in-page navigation and make the site feel unfinished.',
   'no-https':
     'Browsers mark HTTP sites "Not secure" - a hard stop for signup and payment flows.',
   'no-privacy-policy':
@@ -206,6 +214,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Visible {{tokens}} break trust instantly - they look like a deploy mistake.',
   'cta-dead-link':
     'A dead CTA trains visitors that clicking leads nowhere - they stop trying.',
+  'social-proof-unverifiable':
+    'Fake stats and placeholder testimonials erode trust faster than having no proof at all.',
   'flow-no-cta-found':
     'Automated flow scan found no actionable primary CTA in the viewport.',
   'flow-cta-unclickable':

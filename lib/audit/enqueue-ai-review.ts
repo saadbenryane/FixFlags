@@ -6,6 +6,7 @@ export async function enqueueAiReview(auditId: string): Promise<void> {
     { auditId },
     {
       jobId: `ai-review-${auditId}`,
+      attempts: 1,
       removeOnComplete: 100,
       removeOnFail: 500,
     }
