@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { SampleReportExplorer } from '@/components/marketing/sample/SampleReportExplorer'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
@@ -59,7 +60,7 @@ export default async function SamplesPage() {
             {REPORT_COPY.sampleCta.body}
           </p>
           <Button asChild className="mt-5">
-            <a href="/#audit">{HERO.primaryCta}</a>
+            <Link href="/#audit">{HERO.primaryCta}</Link>
           </Button>
         </div>
       </Container>

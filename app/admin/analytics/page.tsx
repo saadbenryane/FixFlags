@@ -55,7 +55,6 @@ export default async function AdminAnalyticsPage() {
     auditsWeek,
     auditsMonth,
     totalAudits,
-    completedAudits,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -69,7 +68,6 @@ export default async function AdminAnalyticsPage() {
     prisma.audit.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.audit.count({ where: { createdAt: { gte: monthAgo } } }),
     prisma.audit.count(),
-    prisma.audit.count({ where: { status: 'COMPLETED' } }),
   ])
 
   const funnelMax = Math.max(totalUsers, usersWithAudits, paidUsers, totalAudits, 1)

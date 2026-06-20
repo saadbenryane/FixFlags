@@ -3,7 +3,6 @@ import { describe, it, beforeEach, afterEach } from 'node:test'
 import {
   getAuthBaseUrl,
   isGoogleOAuthConfigured,
-  isGithubOAuthConfigured,
   oauthCallbackUrl,
   validateAuthEnv,
 } from '../auth/env'
