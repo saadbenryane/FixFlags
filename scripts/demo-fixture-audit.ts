@@ -11,6 +11,7 @@
 import { runDeterministicAudit } from '@/lib/audit/deterministic-audit'
 import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
 import { auditDemoFixturesOffline } from '@/lib/demo/audit-fixture-offline'
+import { auditDemoUrl, isDemoLocalhostUrl } from '@/lib/demo/audit-demo-local'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 
 const args = process.argv.slice(2).filter((a) => a !== '--offline')
@@ -20,7 +21,9 @@ const BASE = args[0]?.replace(/\/$/, '') ?? 'https://fixflags.com'
 async function auditFixture(label: string, path: string) {
   const url = `${BASE}${path}`
   console.log(`\n=== ${label} (${url}) ===`)
-  const { flags } = await runDeterministicAudit(url, { includeFlow: false })
+  const flags = isDemoLocalhostUrl(url)
+    ? await auditDemoUrl(url)
+    : (await runDeterministicAudit(url, { includeFlow: false })).flags
   const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId))
   console.log(`Flags: ${sorted.length}`)
   for (const f of sorted) {

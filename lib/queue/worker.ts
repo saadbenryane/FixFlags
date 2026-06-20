@@ -8,10 +8,24 @@ import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
 
+const HEARTBEAT_INTERVAL_MS = 20_000
+
+function parseWorkerConcurrency(): number {
+  const raw = process.env.AUDIT_WORKER_CONCURRENCY
+  if (!raw) return 5
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5
+}
+
 export function startWorker() {
   void touchWorkerHeartbeat().catch((err) => {
     logger.error('Initial worker heartbeat failed', err)
   })
+
+  const heartbeatTimer = setInterval(() => {
+    void touchWorkerHeartbeat().catch(() => {})
+  }, HEARTBEAT_INTERVAL_MS)
+  heartbeatTimer.unref?.()
 
   const worker = new Worker(
     'audit',
@@ -27,7 +41,7 @@ export function startWorker() {
     },
     {
       connection: getWorkerRedisConnectionOptions(),
-      concurrency: 3,
+      concurrency: parseWorkerConcurrency(),
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
     }
   )

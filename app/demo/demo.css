@@ -300,6 +300,37 @@
   }
 }
 
+.demo-cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--demo-surface);
+  border-top: 1px solid var(--demo-border);
+  font-size: 0.875rem;
+}
+
+.demo-cookie-banner button {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  background: var(--demo-accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-cookie-banner button:hover {
+  background: var(--demo-accent-hover);
+}
+
 @media (max-width: 767px) {
   .demo-nav-spacious {
     width: 100%;

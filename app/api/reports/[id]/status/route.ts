@@ -11,6 +11,7 @@ import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { getAuditQueueInfo } from '@/lib/queue/estimate'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
+import { ensureAuditJobEnqueued } from '@/lib/audit/ensure-audit-job'
 
 export async function GET(
   _req: NextRequest,
@@ -35,6 +36,7 @@ export async function GET(
         reportCompleteness: true,
         startedAt: true,
         completedAt: true,
+        updatedAt: true,
         url: true,
         userId: true,
         isPublic: true,
@@ -86,6 +88,7 @@ export async function GET(
 
     let queueInfo = null
     if (audit.status === 'QUEUED') {
+      await ensureAuditJobEnqueued(id, audit)
       queueInfo = await getAuditQueueInfo(id)
     }
 

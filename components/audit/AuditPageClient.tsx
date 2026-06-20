@@ -57,10 +57,12 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     action?: string
   } | null>(null)
   const refreshedRef = useRef(false)
-  const [initialQueue] = useState<ActiveAuditSnapshot | null>(() => {
+  const [initialQueue, setInitialQueue] = useState<ActiveAuditSnapshot | null>(null)
+
+  useEffect(() => {
     const snap = getActiveAudit()
-    return snap?.auditId === id ? snap : null
-  })
+    if (snap?.auditId === id) setInitialQueue(snap)
+  }, [id])
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true

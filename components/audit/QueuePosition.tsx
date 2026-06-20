@@ -48,11 +48,15 @@ export function QueuePosition({
   isLoggedIn,
   workerIdle = false,
 }: QueuePositionProps) {
-  const [remaining, setRemaining] = useState(() =>
-    scheduledStartAt ? secondsUntil(scheduledStartAt) : estimatedSeconds
-  )
+  const [mounted, setMounted] = useState(false)
+  const [remaining, setRemaining] = useState(estimatedSeconds)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     if (scheduledStartAt) {
       setRemaining(secondsUntil(scheduledStartAt))
       const interval = setInterval(() => {
@@ -61,9 +65,9 @@ export function QueuePosition({
       return () => clearInterval(interval)
     }
     setRemaining(estimatedSeconds)
-  }, [scheduledStartAt, estimatedSeconds])
+  }, [mounted, scheduledStartAt, estimatedSeconds])
 
-  const displaySeconds = scheduledStartAt ? remaining : estimatedSeconds
+  const displaySeconds = scheduledStartAt && mounted ? remaining : estimatedSeconds
   const isRateLimited = queueReason === 'rate_limit'
 
   if (workerIdle) {

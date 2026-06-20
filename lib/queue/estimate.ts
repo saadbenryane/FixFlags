@@ -1,6 +1,13 @@
 import { getAuditQueue } from '@/lib/queue/client'
 
-export const WORKER_CONCURRENCY = 3
+function parseWorkerConcurrency(): number {
+  const raw = process.env.AUDIT_WORKER_CONCURRENCY
+  if (!raw) return 5
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5
+}
+
+export const WORKER_CONCURRENCY = parseWorkerConcurrency()
 export const AVG_JOB_DURATION_SECONDS = 30
 
 export interface QueueEstimate {

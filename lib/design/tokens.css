@@ -40,11 +40,11 @@
   );
   --gradient-surface: linear-gradient(
     135deg,
-    hsl(32 100% 97%) 0%,
-    hsl(24 100% 95%) 28%,
+    hsl(32 70% 97.5%) 0%,
+    hsl(24 55% 96%) 28%,
     hsl(var(--brand-muted)) 52%,
-    hsl(18 95% 93%) 76%,
-    hsl(28 90% 96%) 100%
+    hsl(18 45% 94.5%) 76%,
+    hsl(28 50% 97%) 100%
   );
   --gradient-accent-text: linear-gradient(
     110deg,
@@ -62,26 +62,26 @@
   );
   --gradient-orb-peach: radial-gradient(
     circle,
-    hsl(var(--peach-coral) / 0.55) 0%,
-    hsl(var(--peach-glow) / 0.28) 42%,
+    hsl(var(--peach-coral) / 0.42) 0%,
+    hsl(var(--peach-glow) / 0.22) 42%,
     transparent 72%
   );
   --gradient-orb-brand: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.32) 0%,
-    hsl(var(--peach-ember) / 0.14) 48%,
+    hsl(var(--brand) / 0.24) 0%,
+    hsl(var(--peach-ember) / 0.1) 48%,
     transparent 72%
   );
   --gradient-orb-warm: radial-gradient(
     circle,
-    hsl(var(--peach-warm) / 0.5) 0%,
-    hsl(var(--peach-gold) / 0.22) 45%,
+    hsl(var(--peach-warm) / 0.38) 0%,
+    hsl(var(--peach-gold) / 0.16) 45%,
     transparent 72%
   );
   --gradient-orb-coral: radial-gradient(
     circle,
-    hsl(var(--peach-coral) / 0.42) 0%,
-    hsl(var(--brand) / 0.16) 50%,
+    hsl(var(--peach-coral) / 0.32) 0%,
+    hsl(var(--brand) / 0.12) 50%,
     transparent 72%
   );
 
@@ -201,28 +201,28 @@
   --brand: 12 100% 56%;
   --brand-foreground: 0 0% 100%;
   --brand-hover: 13 100% 65%;
-  --brand-muted: 12 60% 12%;
-  --brand-border: 12 50% 22%;
+  --brand-muted: 220 14% 11%;
+  --brand-border: 220 10% 20%;
 
-  --peach-gold: 36 85% 58%;
-  --peach-warm: 20 80% 58%;
-  --peach-coral: 16 78% 54%;
-  --peach-glow: 16 75% 52%;
-  --peach-ember: 6 85% 48%;
-  --peach-muted: 14 45% 14%;
+  --peach-gold: 36 70% 56%;
+  --peach-warm: 20 55% 54%;
+  --peach-coral: 16 50% 50%;
+  --peach-glow: 16 45% 48%;
+  --peach-ember: 6 55% 44%;
+  --peach-muted: 220 12% 12%;
   --gradient-score: linear-gradient(
     105deg,
     hsl(var(--peach-gold)) 0%,
-    hsl(28 82% 56%) 20%,
+    hsl(28 65% 52%) 20%,
     hsl(var(--peach-coral)) 48%,
     hsl(var(--brand)) 76%,
     hsl(var(--peach-ember)) 100%
   );
   --gradient-surface: linear-gradient(
     145deg,
-    hsl(14 40% 11%) 0%,
-    hsl(var(--brand-muted)) 45%,
-    hsl(12 35% 9%) 100%
+    hsl(220 16% 8%) 0%,
+    hsl(220 14% 10%) 45%,
+    hsl(220 15% 7%) 100%
   );
   --gradient-accent-text: linear-gradient(
     110deg,
@@ -240,23 +240,23 @@
   );
   --gradient-orb-peach: radial-gradient(
     circle,
-    hsl(var(--peach-glow) / 0.3) 0%,
+    hsl(var(--peach-glow) / 0.16) 0%,
     transparent 70%
   );
   --gradient-orb-brand: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.12) 0%,
+    hsl(var(--brand) / 0.08) 0%,
     transparent 70%
   );
   --gradient-orb-warm: radial-gradient(
     circle,
-    hsl(var(--peach-warm) / 0.22) 0%,
+    hsl(var(--peach-warm) / 0.12) 0%,
     transparent 70%
   );
   --gradient-orb-coral: radial-gradient(
     circle,
-    hsl(var(--peach-coral) / 0.24) 0%,
-    hsl(var(--brand) / 0.1) 50%,
+    hsl(var(--peach-coral) / 0.14) 0%,
+    hsl(var(--brand) / 0.06) 50%,
     transparent 72%
   );
 
