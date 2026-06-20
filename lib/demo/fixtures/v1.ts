@@ -40,7 +40,7 @@ export const v1Fixture: DemoFixture = {
   headline: 'Ship a landing page your customers understand in 5 seconds',
   subhead:
     'Founders use LaunchPad to turn a rough idea into a polished, conversion-ready page. No design skills required.',
-  primaryCta: { label: 'Start free', href: '#signup' },
+  primaryCta: { label: 'Start free', href: '/demo/v1/signup' },
   secondaryCta: null,
   heroImageSrc: '/demo/hero-v1.svg',
   footerLinks: [
@@ -53,6 +53,13 @@ export const v1Fixture: DemoFixture = {
     ctaAboveFoldMobile: true,
     showAnnouncement: false,
     largeHeroImageMobile: false,
+    slowSignupDestination: false,
+    brokenScrollReveal: false,
+    simulateSlowBundle: false,
+  },
+  signupDestination: {
+    slowReveal: false,
+    missingTrust: false,
   },
   showCookieConsent: true,
   socialProof: null,

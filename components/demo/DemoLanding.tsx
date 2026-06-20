@@ -42,8 +42,28 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
     ? 'demo-hero-image-wrap demo-hero-image-large-mobile'
     : 'demo-hero-image-wrap'
 
+  const brokenScroll = fixture.layout.brokenScrollReveal ?? false
+  const slowBundle = fixture.layout.simulateSlowBundle ?? false
+  const smallInputFont = fixture.signupDestination?.smallInputFont ?? false
+  const inputFontSize = smallInputFont ? '14px' : '16px'
+
   return (
     <div className="demo-root">
+      {slowBundle ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: 'var __ffStart=Date.now();while(Date.now()-__ffStart<4000){}',
+          }}
+        />
+      ) : null}
+      {brokenScroll ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{new IntersectionObserver(function(){}).observe(document.body)}catch(e){}',
+          }}
+        />
+      ) : null}
       {fixture.jsonLd ? (
         <script
           type="application/ld+json"
@@ -112,7 +132,15 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
           <h2>{fixture.featuresSectionTitle}</h2>
           <div className="demo-features-grid">
             {fixture.features.map((feature) => (
-              <article key={feature.title} className="demo-feature-card">
+              <article
+                key={feature.title}
+                className="demo-feature-card"
+                style={
+                  brokenScroll
+                    ? { opacity: 0, transform: 'translateY(40px)' }
+                    : undefined
+                }
+              >
                 <h3>{feature.title}</h3>
                 <p>{feature.description}</p>
               </article>
@@ -152,6 +180,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
                         id={`form-${field.name}`}
                         name={field.name}
                         required={field.required ?? false}
+                        style={{ fontSize: inputFontSize }}
                       >
                         {(field.options ?? ['']).map((opt) => (
                           <option key={opt} value={opt.toLowerCase()}>
@@ -165,6 +194,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
                         name={field.name}
                         type={field.type}
                         required={field.required ?? false}
+                        style={{ fontSize: inputFontSize }}
                       />
                     )}
                   </div>

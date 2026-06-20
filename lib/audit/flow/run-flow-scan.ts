@@ -9,6 +9,8 @@ import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
+import { measurePostClickLoading, type PostClickMetrics } from './post-click-probes'
+import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -39,6 +41,12 @@ export interface FlowScanResult {
   ctaAnchor?: EvidenceAnchor | null
   httpStatus?: number
   multiStep?: MultiStepProbeResult
+  postClickMetrics?: PostClickMetrics
+  destinationTrust?: {
+    hasPrivacyPolicy: boolean
+    hasContactInfo: boolean
+    isHttps: boolean
+  }
 }
 
 export interface RunFlowScanOptions {
@@ -72,6 +80,19 @@ function isConversionPathUrl(origin: string, url: string): boolean {
   const resolved = resolveSameOrigin(origin, url)
   if (!resolved) return false
   return /pricing|plan|signup|sign-up|register|login|contact|demo|start/i.test(resolved)
+}
+
+async function fetchDestinationTrust(finalUrl: string): Promise<FlowScanResult['destinationTrust']> {
+  try {
+    const meta = await fetchAndParseMetadata(finalUrl)
+    return {
+      hasPrivacyPolicy: meta.hasPrivacyPolicy,
+      hasContactInfo: meta.hasContactInfo,
+      isHttps: finalUrl.startsWith('https://'),
+    }
+  } catch {
+    return undefined
+  }
 }
 
 export async function runFlowScan(
@@ -174,10 +195,16 @@ export async function runFlowScan(
     return { status: 'timeout', steps, finalUrl: page.url(), ...ctaMeta }
   }
 
+  const postClickMetrics = await measurePostClickLoading(page)
   steps.push(await captureFlowStep(page, auditId, 1, 'After click'))
 
   const finalUrl = page.url()
   const httpStatus = clickResponseStatus
+
+  const destinationTrust =
+    urlsMeaningfullyChanged(landingUrl, finalUrl)
+      ? await fetchDestinationTrust(finalUrl)
+      : undefined
 
   if (httpStatus && httpStatus >= 400) {
     return {
@@ -205,6 +232,8 @@ export async function runFlowScan(
         status: 'success',
         steps,
         finalUrl,
+        postClickMetrics,
+        destinationTrust,
         ...ctaMeta,
       }
     }
@@ -220,6 +249,8 @@ export async function runFlowScan(
           status: 'success',
           steps,
           finalUrl,
+          postClickMetrics,
+          destinationTrust,
           ...ctaMeta,
         }
       }
@@ -228,6 +259,8 @@ export async function runFlowScan(
       status: 'dead_end',
       steps,
       finalUrl,
+      postClickMetrics,
+      destinationTrust,
       ...ctaMeta,
     }
   }
@@ -236,6 +269,8 @@ export async function runFlowScan(
     status: 'success',
     steps,
     finalUrl,
+    postClickMetrics,
+    destinationTrust,
     ...ctaMeta,
   }
 }

@@ -41,7 +41,7 @@ export const originalFixture: DemoFixture = {
   headline: 'Build something amazing with AI',
   subhead:
     'LaunchPad is the next-generation AI landing page builder for modern teams who want to ship faster.',
-  primaryCta: { label: 'Get started', href: '#signup' },
+  primaryCta: { label: 'Get started', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
   heroImageAlt: 'Product dashboard preview',
@@ -70,6 +70,15 @@ export const originalFixture: DemoFixture = {
     ctaAboveFoldMobile: false,
     showAnnouncement: true,
     largeHeroImageMobile: true,
+    slowSignupDestination: true,
+    brokenScrollReveal: true,
+    simulateSlowBundle: true,
+  },
+  signupDestination: {
+    slowReveal: true,
+    missingTrust: true,
+    slowValidation: true,
+    smallInputFont: true,
   },
   socialProof: {
     statLine: 'Trusted by 10,000+ happy customers',

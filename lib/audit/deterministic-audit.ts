@@ -1,9 +1,11 @@
 import { runAllChecks, type DeterministicFlag } from './checks'
 import { runFlowChecks } from './checks/flow'
+import { runSlowReplayChecks } from './checks/slow-replay'
 import { fetchAndParseMetadata } from './metadata'
 import { fetchPageSpeedData } from './pagespeed'
 import { getAuditBrowser } from './screenshot'
 import { runFlowScanStandalone, type FlowScanResult } from './flow/run-flow-scan'
+import { runSlowReplay } from './flow/slow-replay-probe'
 
 export interface DeterministicAuditResult {
   flags: DeterministicFlag[]
@@ -14,8 +16,10 @@ export async function runDeterministicAudit(
   url: string,
   options?: {
     includeFlow?: boolean
+    includeSlowReplay?: boolean
     auditId?: string
     consoleErrors?: Array<{ type: string; text: string }>
+    allowLocalhost?: boolean
   }
 ): Promise<DeterministicAuditResult> {
   const metadata = await fetchAndParseMetadata(url)
@@ -33,8 +37,17 @@ export async function runDeterministicAudit(
   let flowResult: FlowScanResult | null = null
   if (options?.includeFlow && options.auditId) {
     const browser = await getAuditBrowser()
-    flowResult = await runFlowScanStandalone(browser, options.auditId, url)
+    flowResult = await runFlowScanStandalone(browser, options.auditId, url, {
+      allowLocalhost: options.allowLocalhost,
+    })
     flags = flags.concat(runFlowChecks(flowResult))
+
+    if (options.includeSlowReplay ?? true) {
+      const slow = await runSlowReplay(browser, options.auditId, url, {
+        allowLocalhost: options.allowLocalhost,
+      })
+      flags = flags.concat(runSlowReplayChecks(slow))
+    }
   }
 
   return { flags, flowResult }

@@ -135,6 +135,38 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
     device: 'both',
     selectors: ['main form', 'form input', 'form textarea', 'form select', '#audit form'],
   },
+  'flow-cta-blank-destination': {
+    device: 'both',
+    selectors: ['main', 'main h1', '.demo-cta-primary', '#signup'],
+  },
+  'flow-cta-stuck-loading': {
+    device: 'both',
+    selectors: ['main', '[aria-busy="true"]', '[class*="skeleton" i]', '[class*="loading" i]'],
+  },
+  'scroll-ghost-sections': {
+    device: 'both',
+    selectors: ['main section', '.demo-feature-card', '#features'],
+  },
+  'flow-form-slow-feedback': {
+    device: 'both',
+    selectors: ['main form', 'form button[type="submit"]', '[role="alert"]'],
+  },
+  'form-inputs-zoom-mobile': {
+    device: 'mobile',
+    selectors: ['main input', 'main textarea', 'main select', 'form input'],
+  },
+  'flow-cta-destination-no-trust': {
+    device: 'both',
+    selectors: ['main', 'footer', 'form'],
+  },
+  'slow-3g-blank-screen': {
+    device: 'mobile',
+    selectors: ['main h1', '.demo-hero', 'main'],
+  },
+  'slow-3g-cta-delayed': {
+    device: 'mobile',
+    selectors: ['.demo-cta-primary', 'main a', 'main button'],
+  },
   'cta-dead-link': { device: 'both', selectors: ['nav a', '.demo-nav a', 'main a[href]', '#audit'] },
 
   // Experience / mobile

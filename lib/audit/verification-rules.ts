@@ -144,6 +144,22 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Submit the signup/contact form empty; inline errors or browser validation should appear.',
   'form-missing-validation':
     'Inspect form fields; required/aria-required/pattern attributes should be present on each mandatory field.',
+  'flow-cta-blank-destination':
+    'Click the primary CTA; destination content should appear within 3 seconds with no long blank screen.',
+  'flow-cta-stuck-loading':
+    'After CTA navigation, skeletons or spinners should disappear once real content loads.',
+  'scroll-ghost-sections':
+    'Scroll the page; sections should become visible when they enter the viewport.',
+  'flow-form-slow-feedback':
+    'Submit an empty form; validation feedback should appear within 1 second.',
+  'form-inputs-zoom-mobile':
+    'At 375px width, form inputs should use at least 16px font-size to avoid iOS zoom.',
+  'flow-cta-destination-no-trust':
+    'The CTA destination should include privacy policy and contact information.',
+  'slow-3g-blank-screen':
+    'On throttled 3G, meaningful content should appear within 5 seconds.',
+  'slow-3g-cta-delayed':
+    'On throttled 3G, the primary CTA should be visible within 8 seconds.',
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

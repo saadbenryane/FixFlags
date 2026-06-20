@@ -1,0 +1,82 @@
+import type { Page } from 'puppeteer'
+
+export interface PostClickMetrics {
+  timeToFirstContentMs: number
+  stuckLoading: boolean
+  blankScreenMs: number
+  stuckLoadingLabel: string | null
+}
+
+const LOADING_SELECTOR =
+  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** After CTA navigation, measure how long until meaningful content appears and loading UI clears. */
+export async function measurePostClickLoading(
+  page: Page,
+  deadlineMs = 8_000
+): Promise<PostClickMetrics> {
+  const started = Date.now()
+  let timeToFirstContentMs = deadlineMs
+  let blankScreenMs = deadlineMs
+  let stuckLoading = false
+  let stuckLoadingLabel: string | null = null
+  let stuckLoadingSinceMs: number | null = null
+
+  while (Date.now() - started < deadlineMs) {
+    const elapsed = Date.now() - started
+    const snapshot = await page.evaluate((loadingSel) => {
+      const main = document.querySelector('main')
+      const text = (main?.innerText ?? document.body.innerText).replace(/\s+/g, ' ').trim()
+      const hasContent = text.length > 20
+
+      let stuck = false
+      let label: string | null = null
+      for (const el of document.querySelectorAll(loadingSel)) {
+        const rect = el.getBoundingClientRect()
+        if (rect.width <= 0 || rect.height <= 0) continue
+        const style = window.getComputedStyle(el)
+        if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+        stuck = true
+        label =
+          el.getAttribute('aria-label') ||
+          el.className.toString().split(/\s+/).find((c) => /skeleton|spinner|loading/i.test(c)) ||
+          el.tagName.toLowerCase()
+        break
+      }
+
+      return { hasContent, stuck, label }
+    }, LOADING_SELECTOR)
+
+    if (snapshot.hasContent && timeToFirstContentMs === deadlineMs) {
+      timeToFirstContentMs = elapsed
+      blankScreenMs = elapsed
+    }
+
+    if (snapshot.stuck) {
+      if (stuckLoadingSinceMs === null) stuckLoadingSinceMs = elapsed
+      stuckLoadingLabel = snapshot.label
+      if (elapsed - stuckLoadingSinceMs >= 2_000) {
+        stuckLoading = true
+      }
+    } else {
+      stuckLoadingSinceMs = null
+    }
+
+    if (snapshot.hasContent && !snapshot.stuck) {
+      break
+    }
+
+    await sleep(100)
+  }
+
+  return {
+    timeToFirstContentMs,
+    blankScreenMs,
+    stuckLoading,
+    stuckLoadingLabel,
+  }
+}

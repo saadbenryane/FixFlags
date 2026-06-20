@@ -31,6 +31,12 @@ export interface DemoFixture {
     ctaAboveFoldMobile: boolean
     showAnnouncement: boolean
     largeHeroImageMobile: boolean
+    /** CTA destination shows blank content for several seconds after navigation. */
+    slowSignupDestination?: boolean
+    /** Feature cards stay invisible after scroll (broken IntersectionObserver). */
+    brokenScrollReveal?: boolean
+    /** Inject render-blocking delay to simulate slow JS bundle. */
+    simulateSlowBundle?: boolean
   }
   /** Minimal GDPR-style banner when site analytics load (v1 fixed fork) */
   showCookieConsent?: boolean
@@ -50,5 +56,12 @@ export interface DemoFixture {
       required?: boolean
     }>
     submitLabel: string
+  }
+  /** Signup destination page flags ( /demo/signup ). */
+  signupDestination?: {
+    slowReveal?: boolean
+    missingTrust?: boolean
+    slowValidation?: boolean
+    smallInputFont?: boolean
   }
 }

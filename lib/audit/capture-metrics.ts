@@ -13,9 +13,8 @@ export interface CaptureMetrics {
   /** True when CSS animations still run under prefers-reduced-motion: reduce. */
   motionIgnoresReducedPreference: boolean
   motionSampleLabel: string | null
+  inputsBelow16px: Array<{ selector: string; fontSize: number }>
 }
-
-/** Measure mobile layout, CTA fold position, loading state, design tokens, and motion a11y. */
 export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
   const motion = await measureMotionA11y(page)
 
@@ -53,6 +52,21 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       if (!text || text.length > 48) continue
       const px = parseFloat(window.getComputedStyle(btn).borderRadius)
       if (!Number.isNaN(px) && px >= 0) radii.add(Math.round(px))
+    }
+
+    const inputsBelow16px: Array<{ selector: string; fontSize: number }> = []
+    for (const input of document.querySelectorAll('main input, main textarea, main select')) {
+      const el = input as HTMLElement
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) continue
+      const style = window.getComputedStyle(el)
+      if (style.visibility === 'hidden' || style.display === 'none') continue
+      const fontSize = parseFloat(style.fontSize)
+      if (Number.isNaN(fontSize) || fontSize >= 16) continue
+      const id = el.id
+      const name = el.getAttribute('name')
+      const selector = id ? `#${id}` : name ? `[name="${name}"]` : el.tagName.toLowerCase()
+      inputsBelow16px.push({ selector, fontSize: Math.round(fontSize * 10) / 10 })
     }
 
     let bestScore = 0
@@ -111,6 +125,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       uniqueFontFamilies: fontSet.size,
       fontFamilySample: [...fontSet].slice(0, 6),
       buttonBorderRadii: [...radii].sort((a, b) => a - b),
+      inputsBelow16px,
     }
   })
 

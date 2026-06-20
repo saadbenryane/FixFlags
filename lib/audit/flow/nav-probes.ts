@@ -2,6 +2,7 @@ import type { Page } from 'puppeteer'
 import { MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { probeFormValidation } from './form-probes'
+import { probeGhostSections } from './scroll-probes'
 
 export type ProbeOutcome = 'ok' | 'broken' | 'skipped'
 
@@ -12,6 +13,10 @@ export interface MultiStepProbeResult {
   mobileMenu: ProbeOutcome
   formValidation: ProbeOutcome
   formLabel?: string
+  formFeedbackMs?: number | null
+  ghostSections?: number
+  ghostSampleSelector?: string
+  ghostSampleText?: string
 }
 
 function sleep(ms: number): Promise<void> {
@@ -210,7 +215,30 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
   }
 
   const form = await probeFormValidation(page)
-  if (form.formValidation !== 'skipped' && page.url() !== landingUrl) {
+  let formResult = form
+  if (form.formValidation === 'skipped') {
+    const signupPath = await page.evaluate(() => {
+      const cta = document.querySelector('a.demo-cta-primary')
+      const href = cta?.getAttribute('href') ?? ''
+      return href.includes('signup') ? href : null
+    })
+    if (signupPath) {
+      const signupUrl = new URL(signupPath, landingUrl).href
+      await page.goto(signupUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
+      await sleep(300)
+      formResult = await probeFormValidation(page)
+      await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
+      await sleep(300)
+    }
+  }
+
+  if (formResult.formValidation !== 'skipped' && page.url() !== landingUrl) {
+    await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
+    await sleep(300)
+  }
+
+  const ghost = await probeGhostSections(page)
+  if (page.url() !== landingUrl) {
     await page.goto(landingUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => {})
     await sleep(300)
   }
@@ -222,7 +250,11 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
     pricingNavLabel: pricing.pricingNavLabel,
     pricingNavHref: pricing.pricingNavHref,
     mobileMenu: mobile.mobileMenu,
-    formValidation: form.formValidation,
-    formLabel: form.formLabel,
+    formValidation: formResult.formValidation,
+    formLabel: formResult.formLabel,
+    formFeedbackMs: formResult.feedbackMs,
+    ghostSections: ghost.ghostCount,
+    ghostSampleSelector: ghost.sampleSelector,
+    ghostSampleText: ghost.sampleText,
   }
 }

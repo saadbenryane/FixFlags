@@ -4,6 +4,7 @@ import type { ProbeOutcome } from './nav-probes'
 export interface FormProbeResult {
   formValidation: ProbeOutcome
   formLabel?: string
+  feedbackMs?: number | null
 }
 
 function sleep(ms: number): Promise<void> {
@@ -77,7 +78,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
   }, formSelector)
 
   if (nativeCheck.hasValidation) {
-    return { formValidation: 'ok', formLabel: formMeta.label }
+    return { formValidation: 'ok', formLabel: formMeta.label, feedbackMs: 0 }
   }
 
   const submitSelector = `${formSelector} button[type="submit"], ${formSelector} input[type="submit"], ${formSelector} button:not([type="button"])`
@@ -88,41 +89,59 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
     if (!submit) {
       return { formValidation: 'broken', formLabel: formMeta.label }
     }
+
+    const clickStart = await page.evaluate(() => performance.now())
     await submit.click()
-    await sleep(500)
 
-    const feedback = await page.evaluate((sel) => {
-      const form = document.querySelector(sel) as HTMLFormElement | null
-      if (!form) return false
+    let feedbackMs: number | null = null
+    let hasFeedback = false
+    const deadline = 2_000
+  const pollInterval = 50
 
-      for (const input of form.querySelectorAll('input, textarea, select')) {
-        const el = input as HTMLInputElement
-        const rect = el.getBoundingClientRect()
-        const style = window.getComputedStyle(el)
-        const visible =
-          rect.width > 0 &&
-          rect.height > 0 &&
-          style.visibility !== 'hidden' &&
-          style.display !== 'none' &&
-          style.opacity !== '0'
-        if (!visible) continue
-        if (el.validity && !el.validity.valid) return true
-        if (el.getAttribute('aria-invalid') === 'true') return true
+    while (feedbackMs === null || !hasFeedback) {
+      const elapsed = await page.evaluate((start) => performance.now() - start, clickStart)
+      if (elapsed > deadline) break
+
+      hasFeedback = await page.evaluate((sel) => {
+        const form = document.querySelector(sel) as HTMLFormElement | null
+        if (!form) return false
+
+        for (const input of form.querySelectorAll('input, textarea, select')) {
+          const el = input as HTMLInputElement
+          const rect = el.getBoundingClientRect()
+          const style = window.getComputedStyle(el)
+          const visible =
+            rect.width > 0 &&
+            rect.height > 0 &&
+            style.visibility !== 'hidden' &&
+            style.display !== 'none' &&
+            style.opacity !== '0'
+          if (!visible) continue
+          if (el.validity && !el.validity.valid) return true
+          if (el.getAttribute('aria-invalid') === 'true') return true
+        }
+
+        for (const node of form.querySelectorAll(
+          '[role="alert"], [aria-live="assertive"], [class*="error" i], [id*="error" i], .invalid-feedback'
+        )) {
+          const text = (node.textContent ?? '').trim()
+          const rect = node.getBoundingClientRect()
+          if (text.length > 0 && rect.width > 0 && rect.height > 0) return true
+        }
+
+        return false
+      }, formSelector)
+
+      if (hasFeedback) {
+        feedbackMs = Math.round(elapsed)
+        break
       }
 
-      for (const node of form.querySelectorAll(
-        '[role="alert"], [aria-live="assertive"], [class*="error" i], [id*="error" i], .invalid-feedback'
-      )) {
-        const text = (node.textContent ?? '').trim()
-        const rect = node.getBoundingClientRect()
-        if (text.length > 0 && rect.width > 0 && rect.height > 0) return true
-      }
+      await sleep(pollInterval)
+    }
 
-      return false
-    }, formSelector)
-
-    if (feedback) {
-      return { formValidation: 'ok', formLabel: formMeta.label }
+    if (hasFeedback) {
+      return { formValidation: 'ok', formLabel: formMeta.label, feedbackMs }
     }
     if (page.url() !== urlBefore) {
       return { formValidation: 'broken', formLabel: formMeta.label }

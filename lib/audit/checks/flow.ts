@@ -1,5 +1,7 @@
 import type { FlowScanResult } from '../flow/run-flow-scan'
 import { isAuthUtilityLink } from '../flow/link-scoring'
+import { runPostClickFlowChecks } from './flow-post-click'
+import { runDestinationTrustChecks } from './flow-destination-trust'
 import { DeterministicFlag } from './index'
 
 function formatCtaEvidence(result: FlowScanResult): string {
@@ -59,11 +61,51 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
     })
   }
 
+  if (
+    probes.formValidation === 'ok' &&
+    probes.formFeedbackMs != null &&
+    probes.formFeedbackMs > 1_000
+  ) {
+    const label = probes.formLabel ? `"${probes.formLabel}"` : 'conversion form'
+    findings.push({
+      checkId: 'flow-form-slow-feedback',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'POLISH',
+      problem: 'Form validation feedback is too slow',
+      evidence: `Submitting ${label} with empty fields showed feedback after ${probes.formFeedbackMs}ms (expected under 1000ms).`,
+      fix: 'Show inline validation immediately on submit. Use HTML5 required attributes or synchronous client-side checks before any network call.',
+      confidence: 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (probes.ghostSections != null && probes.ghostSections > 0) {
+    const sample = probes.ghostSampleText
+      ? `"${probes.ghostSampleText}"`
+      : probes.ghostSampleSelector ?? 'section'
+    findings.push({
+      checkId: 'scroll-ghost-sections',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: `${probes.ghostSections} page section${probes.ghostSections > 1 ? 's' : ''} stay invisible after scroll`,
+      evidence: `After scrolling, ${probes.ghostSections} section${probes.ghostSections > 1 ? 's' : ''} remained at opacity 0 or offset (sample: ${sample}).`,
+      fix: 'Fix scroll-triggered animations. Ensure IntersectionObserver callbacks reveal sections when they enter the viewport.',
+      confidence: 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
   return findings
 }
 
 export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
-  const findings: DeterministicFlag[] = [...runMultiStepFlowChecks(result)]
+  const findings: DeterministicFlag[] = [
+    ...runMultiStepFlowChecks(result),
+    ...runPostClickFlowChecks(result.postClickMetrics),
+    ...runDestinationTrustChecks(result),
+  ]
   const ctaLabel = formatCtaEvidence(result)
 
   switch (result.status) {

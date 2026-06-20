@@ -39,6 +39,14 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
   'flow-form-no-validation',
+  'flow-cta-blank-destination',
+  'flow-cta-stuck-loading',
+  'scroll-ghost-sections',
+  'flow-form-slow-feedback',
+  'form-inputs-zoom-mobile',
+  'flow-cta-destination-no-trust',
+  'slow-3g-blank-screen',
+  'slow-3g-cta-delayed',
   'loading-indicator-stuck',
   'cta-dead-link',
 ])
@@ -62,6 +70,8 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
   'flow-form-no-validation',
+  'flow-cta-blank-destination',
+  'flow-cta-stuck-loading',
   'tap-targets-small',
   'placeholder-copy-detected',
   'template-default-copy',
@@ -241,6 +251,22 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Mobile visitors cannot reach Pricing or Features when the menu toggle fails.',
   'flow-form-no-validation':
     'Visitors who submit an empty form get silence instead of guidance - they abandon instead of fixing typos.',
+  'flow-cta-blank-destination':
+    'A blank screen after the CTA click makes visitors think the site is broken and they leave before signup.',
+  'flow-cta-stuck-loading':
+    'Skeleton UI that never resolves signals a broken app and kills trust at the conversion moment.',
+  'scroll-ghost-sections':
+    'Invisible sections after scroll make the page feel empty and unfinished.',
+  'flow-form-slow-feedback':
+    'Delayed validation feels broken even when errors eventually appear.',
+  'form-inputs-zoom-mobile':
+    'iOS Safari zooms the viewport when inputs are too small, breaking the form experience.',
+  'flow-cta-destination-no-trust':
+    'Signup pages without privacy or contact links feel sketchy at the moment of conversion.',
+  'slow-3g-blank-screen':
+    'Mobile visitors on slow networks see a blank screen and bounce before your product loads.',
+  'slow-3g-cta-delayed':
+    'If the CTA takes 8+ seconds on 3G, most mobile visitors never see it.',
   'form-missing-validation':
     'Forms without required or pattern attributes let bad data through and fail silently on empty submit.',
 }

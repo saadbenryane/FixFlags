@@ -91,6 +91,14 @@ export const ALL_CHECK_IDS = [
   'flow-pricing-nav-broken',
   'flow-mobile-menu-broken',
   'flow-form-no-validation',
+  'flow-cta-blank-destination',
+  'flow-cta-stuck-loading',
+  'scroll-ghost-sections',
+  'flow-form-slow-feedback',
+  'form-inputs-zoom-mobile',
+  'flow-cta-destination-no-trust',
+  'slow-3g-blank-screen',
+  'slow-3g-cta-delayed',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]
