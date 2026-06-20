@@ -1,4 +1,5 @@
 import type { RubricGrade, RubricName, RubricStatus } from '@prisma/client'
+import { GRADE_THRESHOLDS } from './rubric'
 
 export const RUBRIC_WEIGHTS: Record<RubricName, number> = {
   MESSAGE: 0.35,
@@ -20,10 +21,10 @@ export function clampScore(score: number): number {
 
 export function gradeFromScore(score: number): RubricGrade {
   const value = clampScore(score)
-  if (value >= 90) return 'A'
-  if (value >= 75) return 'B'
-  if (value >= 60) return 'C'
-  if (value >= 40) return 'D'
+  if (value >= GRADE_THRESHOLDS.A) return 'A'
+  if (value >= GRADE_THRESHOLDS.B) return 'B'
+  if (value >= GRADE_THRESHOLDS.C) return 'C'
+  if (value >= GRADE_THRESHOLDS.D) return 'D'
   return 'F'
 }
 

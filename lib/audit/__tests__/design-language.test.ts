@@ -15,6 +15,7 @@ describe('runDesignLanguageChecks', () => {
       buttonBorderRadii: [8],
       motionIgnoresReducedPreference: false,
       motionSampleLabel: null,
+      inputsBelow16px: [],
     })
     assert.equal(flags.length, 1)
     assert.equal(flags[0].checkId, 'font-family-sprawl')
@@ -32,6 +33,7 @@ describe('runDesignLanguageChecks', () => {
       buttonBorderRadii: [0, 8, 24],
       motionIgnoresReducedPreference: false,
       motionSampleLabel: null,
+      inputsBelow16px: [],
     })
     assert.equal(flags.length, 1)
     assert.equal(flags[0].checkId, 'button-radius-inconsistent')
@@ -50,6 +52,7 @@ describe('runDesignLanguageChecks', () => {
         buttonBorderRadii: [8, 8],
         motionIgnoresReducedPreference: false,
         motionSampleLabel: null,
+        inputsBelow16px: [],
       }).length,
       0
     )

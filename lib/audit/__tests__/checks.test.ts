@@ -11,6 +11,7 @@ import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
@@ -413,6 +414,7 @@ function healthyCaptureMetrics(
     buttonBorderRadii: number[]
     motionIgnoresReducedPreference: boolean
     motionSampleLabel: string | null
+    inputsBelow16px: Array<{ selector: string; fontSize: number }>
   }> = {}
 ) {
   return {
@@ -426,6 +428,7 @@ function healthyCaptureMetrics(
     buttonBorderRadii: [8],
     motionIgnoresReducedPreference: false,
     motionSampleLabel: null,
+    inputsBelow16px: [],
     ...overrides,
   }
 }
@@ -952,7 +955,93 @@ describe('trigger matrix - one failing signal per checkId', () => {
           },
         })
       ),
+    'flow-cta-blank-destination': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/destination',
+          postClickMetrics: { blankScreenMs: 5000, timeToFirstContentMs: 4000, stuckLoading: false },
+        })
+      ),
+    'flow-cta-stuck-loading': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/destination',
+          postClickMetrics: { blankScreenMs: 0, timeToFirstContentMs: 500, stuckLoading: true, stuckLoadingLabel: 'Skeleton' },
+        })
+      ),
+    'scroll-ghost-sections': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'skipped',
+            ghostSections: 2,
+            ghostSampleText: 'hero-section',
+            ghostSampleSelector: '.hero',
+          },
+        })
+      ),
+    'flow-form-slow-feedback': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'ok',
+            formFeedbackMs: 2500,
+            formLabel: 'Contact form',
+          },
+        })
+      ),
+    'form-inputs-zoom-mobile': () =>
+      checkIds(
+        runInteractionChecks(healthyCaptureMetrics({
+          inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
+        }))
+      ),
+    'flow-cta-destination-no-trust': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/destination',
+          destinationTrust: { isHttps: false, hasPrivacyPolicy: false, hasContactInfo: false },
+        })
+      ),
+    'slow-3g-blank-screen': () =>
+      checkIds(
+        runSlowReplayChecks({
+          timeToFirstTextMs: 8000,
+          timeToCtaMs: 2000,
+          screenshotUrls: [],
+        })
+      ),
+    'slow-3g-cta-delayed': () =>
+      checkIds(
+        runSlowReplayChecks({
+          timeToFirstTextMs: 1000,
+          timeToCtaMs: 12000,
+          screenshotUrls: [],
+        })
+      ),
   }
+
+  it('triggers matrix covers every checkId without extras', () => {
+    const triggerKeys = Object.keys(triggers).sort()
+    const allIds = [...ALL_CHECK_IDS].sort()
+    assert.deepEqual(triggerKeys, allIds)
+  })
 
   for (const checkId of ALL_CHECK_IDS) {
     it(`fires ${checkId}`, async () => {

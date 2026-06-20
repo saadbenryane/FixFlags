@@ -3,8 +3,8 @@ import { validateAuthEnv } from '@/lib/auth/env'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  DATABASE_URL: z.string().optional(),
+  REDIS_URL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().optional(),
