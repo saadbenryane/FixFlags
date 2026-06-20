@@ -6,11 +6,10 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { HERO } from '@/lib/marketing/copy'
+import { HERO, AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
-import { Callout } from '@/components/ui/callout'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -36,12 +35,10 @@ export function AuditInput({
     code?: string
     action?: string
   } | null>(null)
-  const [queueHold, setQueueHold] = useState<{ estimatedWaitSeconds: number } | null>(null)
 
   async function submitUrl(inputUrl?: string) {
     setUrlError('')
     setLimitGate(null)
-    setQueueHold(null)
 
     let normalized = (inputUrl ?? url).trim()
     if (!normalized) {
@@ -89,10 +86,6 @@ export function AuditInput({
           (res.status === 401 && parsed.code === 'AUTH_REQUIRED')
         ) {
           setLimitGate(parsed)
-        } else if (res.status === 429 || parsed.code === 'RATE_LIMITED') {
-          setQueueHold({
-            estimatedWaitSeconds: parsed.estimatedWaitSeconds ?? 60,
-          })
         } else {
           toast.error(parsed.message)
         }
@@ -171,7 +164,7 @@ export function AuditInput({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking…
+                  {AUDIT_PROGRESS.submitLoading}
                 </>
               ) : (
                 <>
@@ -215,7 +208,7 @@ export function AuditInput({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking…
+                  {AUDIT_PROGRESS.submitLoading}
                 </>
               ) : (
                 <>
@@ -246,16 +239,6 @@ export function AuditInput({
           <ArrowRight className="ml-1 h-3.5 w-3.5" />
         </Button>
       ) : null}
-
-      {queueHold && (
-        <Callout variant="info" title="Please wait a moment">
-          Too many checks in a short window. Try again in about{' '}
-          {queueHold.estimatedWaitSeconds < 60
-            ? `${queueHold.estimatedWaitSeconds} seconds`
-            : `${Math.ceil(queueHold.estimatedWaitSeconds / 60)} minutes`}
-          .
-        </Callout>
-      )}
 
       {limitGate && (
         <AuditLimitGate

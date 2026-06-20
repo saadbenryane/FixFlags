@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
 import { auditHostname } from '@/lib/audit/active-audit'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 export function ActiveAuditBanner() {
   const { active } = useActiveAudit()
@@ -22,7 +23,7 @@ export function ActiveAuditBanner() {
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full glass-surface-elevated px-4 py-2 text-xs text-muted-foreground shadow-raised">
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />
           <span>
-            Checking{' '}
+            {AUDIT_PROGRESS.bannerScanning}{' '}
             <span className="font-medium text-foreground">{hostname}</span>
           </span>
           <Link

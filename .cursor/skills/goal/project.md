@@ -2,53 +2,54 @@
 
 Read when running `/goal` in this repo.
 
-## Canonical regression loop (local-first)
+## Audit capability map
 
-1. **Baseline:** `/demo` → `lib/demo/fixtures/original.ts` (do not edit)
-2. **Fixed fork:** `/demo/v1` → `lib/demo/fixtures/v1.ts`
-3. **Measure locally:**
-   - **Live:** `npm run demo:audit` (needs `npm run dev`) — fetches rendered Next.js HTML
-   - **Offline:** `npm run demo:audit:offline` — static HTML from fixtures (fastest)
-4. **Apply fixes:** edit v1 fixture + `DemoLanding` as a developer would from expert prompts
-5. **Prompt quality:** `lib/audit/flag-copy.ts`
-6. **Verify:** `npm run test:unit` (includes offline + live-if-dev-server tests)
+**Source of truth:** `lib/audit/capability-matrix.ts`  
+**Report:** `npm run audit:capabilities`
 
-**Done when (local):** in-scope v1 flags = 0, original ≥ 8 flags.
+Organizes what we test by dimension (MESSAGE / EXPERIENCE / REACH), category (copy, flow, loading, design-language, etc.), and tool:
 
-**Production smoke (optional):** `npm run demo:audit:production` — full unscoped audit post-deploy.
+| Tool | What it does |
+|------|----------------|
+| `html-parse` | Cheerio metadata + deterministic checks (fast) |
+| `browser-capture` | Puppeteer screenshots + DOM metrics |
+| `flow-navigation` | CTA click + navigation trace |
+| `pagespeed` | Google PageSpeed / Lighthouse API |
+| `ai-judge` | Vision LLM rubric pass |
+| `internal-guard` | FixFlags repo CI guards only |
 
-In-scope excludes site/env noise: `no-https` (localhost), sitemap/robots.txt at domain root, PageSpeed/mobile capture checks. See `lib/demo/demo-audit-scope.ts`.
+Status per capability: `live` | `partial` | `planned`.
 
-## Common done checks
+## Local iteration loop (default)
 
-| Check | Command |
-|-------|---------|
-| Unit tests | `npm run test:unit` |
-| Demo regression (live) | `npm run demo:audit` |
-| Demo regression (offline) | `npm run demo:audit:offline` |
-| Production smoke | `npm run demo:audit:production` |
-| Real pipeline | `npm run dev:all` + audit URL (worker required) |
-| Marketing guards | `lib/__tests__/homepage-message.test.ts` |
-| Flag copy | `lib/audit/__tests__/flag-copy.test.ts` |
+| Layer | Command | Tests |
+|-------|---------|-------|
+| Copy / metadata / SEO | `npm run demo:audit:offline` | Fastest, no dev server |
+| Rendered HTML | `npm run demo:audit` | Needs `npm run dev` |
+| CTA flow | `npm run demo:audit:flow` | Puppeteer click path |
+| Unit regression | `npm run test:unit` | All checks + fixtures |
+| Capability map | `npm run audit:capabilities` | 0 unmapped checkIds |
 
-## Dev notes
+**Fixtures:** `original.ts` (baseline flaws) → `v1.ts` (fixed fork). Apply expert prompts from `lib/audit/flag-copy.ts`.
 
-- `npm run dev` alone leaves audits QUEUED — use `npm run dev:all` for real audits
-- Refresh marketing sample: `DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/refresh-marketing-sample.ts`
-- AGENTS.md: landing section order, banned phrases, changelog rules
+**Done when (local):** v1 in-scope flags = 0 on audit + flow; original ≥ 8 flags; tests pass.
+
+**Production smoke (optional):** `npm run demo:audit:production`
+
+In-scope excludes site/env noise. See `lib/demo/demo-audit-scope.ts`.
+
+## Planned next (see matrix)
+
+- Multi-step flow (pricing nav, mobile menu, form submit)
+- Design token consistency (DOM style sampling)
+- Social proof slop detection
+- Form validation feedback flow
 
 ## Expert prompt bar
 
-Each flag prompt must include:
-- **Why** — outcome (clicks, trust, indexing), never "affects reach quality"
-- **Found** — factual evidence from checks
-- **Do** — concrete change (metadata export, CSS, copy)
-- **Verify** — from `verificationRuleForCheckId` or enrichment
-
-No "look at [whole page] on the screenshot" for `<head>` / metadata / JSON-LD issues.
+Each flag prompt: Problem / Why / Found / Do / Verify. No screenshot fluff for `<head>` issues.
 
 ## Related skills
 
 - `fixflags-product` — entitlements, pipeline, dev workflow
 - `fixflags-marketing` — copy, ICP, positioning
-- `babysit` — PR merge loop (narrower scope)

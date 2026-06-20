@@ -3,6 +3,7 @@ import {
   formatDisplayEvidence,
   resolveWhyItMatters,
 } from '@/lib/audit/flag-copy'
+import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
   resolveFixPrompt,
   type RankableFlag,
@@ -108,6 +109,49 @@ export function buildLiveExplorerModel(input: {
     flags: sorted.map((flag) => mapLiveFlag(flag)),
     allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
   }
+}
+
+export interface PartialExplorerFlag {
+  id: string
+  severity: string
+  problem: string
+  rubric: string
+}
+
+/** Build explorer model from in-progress status payload; null when no flags yet. */
+export function buildPartialExplorerModel(input: {
+  url: string
+  pageType?: string | null
+  score?: number | null
+  verdict?: string | null
+  flags: PartialExplorerFlag[]
+  screenshots?: AuditScreenshot[]
+  rubrics?: Array<{ name: string; score: number | null; grade?: string | null }>
+}): ReportExplorerModel | null {
+  if (input.flags.length === 0) return null
+
+  const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
+    id: flag.id,
+    checkId: null,
+    rubric: flag.rubric,
+    severity: flag.severity,
+    problem: flag.problem,
+  }))
+
+  const rubricRows = RUBRIC_ORDER.map((name) => {
+    const row = input.rubrics?.find((r) => r.name === name)
+    return { name, score: row?.score ?? null, grade: row?.grade ?? null }
+  })
+
+  return buildLiveExplorerModel({
+    url: input.url,
+    pageType: input.pageType ?? null,
+    score: input.score ?? null,
+    verdict: input.verdict ?? null,
+    flags: rankableFlags,
+    screenshots: input.screenshots,
+    rubricRows,
+  })
 }
 
 function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {

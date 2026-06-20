@@ -990,12 +990,9 @@ export const UPGRADE_MOMENTS = {
 } as const
 
 export const AUDIT_PROGRESS = {
-  capturing: 'Taking screenshots...',
-  checking: 'Running checks across Message, Experience, and Reach...',
-  judging: 'AI is reviewing your page...',
-  completed: 'Review ready',
-  inProgress: 'Checking your site...',
-  usuallyUnder: 'Usually under 90 seconds',
+  inProgress: 'Scanning your site...',
+  submitLoading: 'Scanning…',
+  bannerScanning: 'Scanning',
   workerQueuedWarningDev:
     'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:

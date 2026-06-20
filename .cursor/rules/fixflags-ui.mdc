@@ -14,19 +14,19 @@ Tailwind + shadcn. Use semantic tokens (`bg-card`, `text-brand`, `shadow-card`, 
 
 ## Color
 
-60% paper (`background`, `muted`) · 30% ink (`foreground`, `primary`) · 10% ochre (`brand`). One accent per surface. Dark mode uses re-authored tokens in `.dark`.
+60% paper (`background`, mesh canvas) · 30% ink (`foreground`, `primary`) · 10% brand orange (`brand`). One accent per surface. Dark mode: neutral gray canvas + subtle warm orbs (see `tokens.css` `.dark`).
 
 ## Depth
 
-Shadow-first. Cards: `border-0 shadow-card`. Sections: `bg-muted/35`, not `border-y`. Borders only on inputs and table rows.
+Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/35`, not `border-y`. Borders only on inputs and table rows.
 
 ## Type
 
-`font-display` headlines · `font-sans` body (no tight tracking) · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers.
+`font-sans` body · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Reserve `font-display` for marketing hero only.
 
 ## Radius
 
-Concentric: inner = outer − padding. Scale: 6px input → 10px badge → 12px card → 14px modal.
+Concentric: inner = outer − padding. Cards/panels: `rounded-card` (~27px from `--radius-card`). Controls: `rounded-full` (pill).
 
 ## Anti-slop
 

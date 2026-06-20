@@ -15,7 +15,7 @@ Source: brand assets June 2026. Reference files in `public/brand/incoming/`.
 |-------|-------|------|-----|
 | Flag (primary) | `#FF4D1F` | `#FF4D1F` | CTAs, flags, scores, focus rings |
 | Flag hover | `#FF744D` | `#FF744D` | Button hover |
-| Background | Peach mesh gradient | Dark peach mesh | Page canvas (global backdrop) |
+| Background | Peach mesh gradient | Neutral gray mesh + subtle warm orbs | Page canvas (global backdrop) |
 | Foreground | `#0F1115` (Ink) | `#FFFFFF` | Headings, body |
 | Graphite | - | `#1E1F23` | Dark solid surfaces (terminal) |
 | Steel | `#687380` | `#2A2D33` | Light muted text / dark muted surface |
@@ -45,8 +45,8 @@ Mono (IBM Plex): scores, grades, labels only.
 
 - **Buttons & inputs:** `rounded-full` (pill). Required for all CTAs and form controls
 - **Input groups:** outer pill + concentric inner pill button with uniform `p-1.5` inset
-- **Cards & panels:** `rounded-card` (12px) frosted glass. No borders; use `shadow-card` + blur
-- **Page canvas:** global peach mesh backdrop (`PeachyMeshBackdrop` / `GlobalMeshBackdrop`)
+- **Cards & panels:** `rounded-card` (~27px) frosted glass. No borders; use `shadow-card` + blur
+- **Page canvas:** global mesh backdrop (`GlobalMeshBackdrop` in `SiteShell`)
 - **Nav:** sticky glass header (`glass-surface-elevated`), no bottom border
 
 ## File layout

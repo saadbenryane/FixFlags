@@ -3,7 +3,7 @@ import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 import { SupportWidget } from '@/components/live-support/SupportWidget'
-import { GlobalMeshBackdrop } from '@/components/marketing/landing/PeachyMeshBackdrop'
+import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
 
 interface SiteShellProps {
   children: React.ReactNode

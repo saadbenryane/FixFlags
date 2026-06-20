@@ -1,26 +1,24 @@
-STATUS: IN_PROGRESS
+STATUS: DONE (iteration 1)
 ITERATION: 1 / 8
 
-# Goal: Organized audit system that covers copy, flow, loading, and design — verifiable locally
+# Goal: Organized audit system — copy, flow, loading, design — verifiable locally
 
-## Done when (all must pass)
-- [ ] `npm run audit:capabilities` lists live matrix with 0 unmapped checks
-- [ ] `npm run demo:audit` → v1 in-scope flags = 0
-- [ ] `npm run demo:audit:flow` → v1 flow flags = 0
-- [ ] `npm run test:unit` passes
+## Done when
+- [x] `npm run audit:capabilities` — 69 checks, 29 capabilities, 0 unmapped
+- [x] `npm run demo:audit` — v1 in-scope flags = 0
+- [x] `npm run demo:audit:flow` — v1 flow flags = 0
+- [x] `npm run test:unit` — 827 pass
 
-## Out of scope (this iteration)
-- Production smoke (`demo:audit:production`)
-- Full design-token deterministic checks (planned in matrix)
-- Multi-step flow (pricing nav, form submit)
+## Results
+| Check | Result |
+|-------|--------|
+| Capability matrix | 23 live, 5 planned, 1 partial (design-language AI) |
+| Demo audit (live) | original 9, v1 0 |
+| Demo flow (live) | original 1 (dead_end), v1 0 |
+| New checks | heading-hierarchy-missing, loading-indicator-stuck |
 
-## Baseline
-- 59 deterministic checks, no capability taxonomy
-- No loading-state check, no heading hierarchy check
-- Flow audit not in local loop
-
-## Iteration 1 (this session)
-- `lib/audit/capability-matrix.ts` + `npm run audit:capabilities`
-- New checks: `heading-hierarchy-missing`, `loading-indicator-stuck`
-- `npm run demo:audit:flow` for CTA navigation on localhost
-- Demo signup anchor for hash CTA flow success
+## Next iterations (from matrix)
+- Multi-step flow (pricing, mobile nav, forms)
+- Social proof slop
+- Design token sampling
+- Form validation feedback flow

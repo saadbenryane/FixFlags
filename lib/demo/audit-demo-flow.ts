@@ -24,17 +24,21 @@ export interface DemoFlowComparison {
 }
 
 async function auditDemoFlowPath(
-  baseUrl: string,
   path: string,
-  label: string
+  label: string,
+  baseUrl: string
 ): Promise<DemoFlowAuditResult> {
   const url = `${baseUrl.replace(/\/$/, '')}${path}`
   const browser = await getAuditBrowser()
-  const scan = await runFlowScanStandalone(browser, `demo-flow-${label}`, url, {
-    allowLocalhost: true,
-  })
-  const flags = sortDemoFlags(filterDemoFixtureFlags(runFlowChecks(scan)))
-  return { path, url, flowStatus: scan.status, flags }
+  try {
+    const scan = await runFlowScanStandalone(browser, `demo-flow-${label}`, url, {
+      allowLocalhost: true,
+    })
+    const flags = sortDemoFlags(filterDemoFixtureFlags(runFlowChecks(scan)))
+    return { path, url, flowStatus: scan.status, flags }
+  } finally {
+    await browser.close().catch(() => {})
+  }
 }
 
 export async function compareDemoFlow(
@@ -45,8 +49,8 @@ export async function compareDemoFlow(
     throw new Error(`Dev server not reachable at ${baseUrl}. Start with: npm run dev`)
   }
 
-  const baseline = await auditDemoFlowPath(baseUrl, '/demo', 'original')
-  const fixed = await auditDemoFlowPath(baseUrl, '/demo/v1', 'v1')
+  const baseline = await auditDemoFlowPath('/demo', 'original', baseUrl)
+  const fixed = await auditDemoFlowPath('/demo/v1', 'v1', baseUrl)
 
   const baselineIds = new Set(baseline.flags.map((f) => f.checkId))
   const fixedIds = new Set(fixed.flags.map((f) => f.checkId))

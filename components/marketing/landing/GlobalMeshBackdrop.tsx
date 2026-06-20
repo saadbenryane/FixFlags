@@ -61,6 +61,3 @@ export function GlobalMeshBackdrop({ className, fixed = false }: GlobalMeshBackd
     </div>
   )
 }
-
-/** @deprecated Use GlobalMeshBackdrop */
-export const PeachyMeshBackdrop = GlobalMeshBackdrop

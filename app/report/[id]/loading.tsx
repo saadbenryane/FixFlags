@@ -1,10 +1,10 @@
 import { AuditShell } from '@/components/layout/audit-shell'
-import { AuditReportLoadingShell } from '@/components/audit/AuditReportLoading'
+import { AuditReportProgressiveShell } from '@/components/audit/AuditReportProgressive'
 
 export default function ReportLoading() {
   return (
     <AuditShell>
-      <AuditReportLoadingShell />
+      <AuditReportProgressiveShell />
     </AuditShell>
   )
 }

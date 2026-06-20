@@ -53,8 +53,8 @@ export function FooterNewsletter() {
     <div className="space-y-3">
       <p className="text-sm font-semibold">{title}</p>
       <p className="text-sm text-muted-foreground">{blurb}</p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-        <div className="flex-1 space-y-1">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <div className="space-y-1">
           <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
           <Input
             id="footer-newsletter-email"
@@ -84,7 +84,7 @@ export function FooterNewsletter() {
             </p>
           ) : null}
         </div>
-        <Button type="submit" size="sm" disabled={loading} className="h-10 shrink-0 px-5">
+        <Button type="submit" size="sm" disabled={loading} className="h-10 w-full px-5 sm:w-auto">
           {cta}
         </Button>
       </form>

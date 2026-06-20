@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
+import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/explorer-model'
 
 describe('explorer-model', () => {
   it('builds live explorer model with sorted flags and highlights', () => {
@@ -49,5 +49,36 @@ describe('explorer-model', () => {
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
     assert.match(model.flags[0]?.fixPrompt ?? '', /Why:/)
+  })
+
+  it('builds partial explorer model when flags exist', () => {
+    const model = buildPartialExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 55,
+      flags: [
+        {
+          id: 'f1',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          problem: 'Generic headline',
+        },
+      ],
+      rubrics: [{ name: 'MESSAGE', score: 55, grade: 'D' }],
+    })
+
+    assert.ok(model)
+    assert.equal(model?.flags.length, 1)
+    assert.equal(model?.flags[0]?.title, 'Generic headline')
+  })
+
+  it('returns null partial explorer model without flags', () => {
+    assert.equal(
+      buildPartialExplorerModel({
+        url: 'https://example.com',
+        flags: [],
+      }),
+      null
+    )
   })
 })

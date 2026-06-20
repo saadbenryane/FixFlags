@@ -101,7 +101,9 @@ See [MCP docs](/docs/mcp) for full tool reference.
 Deploy **two services** from this repo:
 
 1. **Web**, `npm run build && npm start` (default). Health: `GET /api/health` (DB, Redis, storage, worker heartbeat, queue depth).
-2. **Worker**, `npm run worker:build && npm run worker:start`. Writes a Redis heartbeat every 15s; without it, audits stay QUEUED.
+2. **Worker**, `npm run worker:build && npm run worker:start`. Heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis). `/api/health` exposes `worker`, `workerHeartbeatAgeSeconds`, and `workerLikelyIdle`. Without a running worker, audits stay in non-terminal states until recovery re-enqueues them.
+
+Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`) — parallel audit jobs per worker process.
 
 Local dev requires both processes: `npm run dev:all` (Next.js + worker). `npm run dev` alone leaves audits queued.
 

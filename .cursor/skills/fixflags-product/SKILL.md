@@ -18,7 +18,7 @@ Read before changing product logic or writing copy that promises a feature.
 | Plan definitions | `lib/billing/plans.ts` (`getMarketingPlans()`) |
 | Entitlements | `lib/auth/entitlements.ts` |
 | Scan limits (dev bypass) | `lib/auth/permissions.ts` |
-| Audit create/queue | `lib/audit/create-audit.ts`, `worker/index.ts` |
+| Audit create/queue | `lib/audit/create-audit.ts`, `lib/audit/recover-audit-job.ts`, `worker/index.ts` |
 | Re-check | `lib/audit/recheck.ts` |
 | Rubric order | `lib/audit/constants.ts` (`RUBRIC_ORDER`) |
 | MCP poll helper | `lib/audit/poll-audit.ts` |
@@ -42,7 +42,8 @@ Do not market white-label reports or priority support — not implemented.
 
 - `npm run dev` — Next.js only; audits stay **QUEUED** without worker
 - `npm run dev:all` — **required** for local audit completion (web + worker)
-- `AuditProgress` shows dev warning if `QUEUED` >30s
+- `AuditReportProgressive` shows dev Callout if `QUEUED` ~30s without worker
+- Worker heartbeat: `lib/queue/worker.ts` writes every 20s (45s TTL); optional `AUDIT_WORKER_CONCURRENCY` (default 5)
 - `DEV_SIMULATE_BILLING=true` — test plan gates locally (share, compare, API keys)
 - `instrumentation.ts` calls `validateProductionEnv()` on Node startup
 

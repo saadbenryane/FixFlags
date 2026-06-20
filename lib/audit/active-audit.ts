@@ -4,10 +4,6 @@ const LEGACY_STORAGE_KEY = 'qos:active-audit'
 export interface ActiveAuditSnapshot {
   auditId: string
   url: string
-  queuePosition?: number
-  estimatedWaitSeconds?: number
-  scheduledStartAt?: string | null
-  queueReason?: 'rate_limit' | 'backlog'
 }
 
 function migrateLegacyStorage(): void {

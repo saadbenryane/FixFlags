@@ -1,7 +1,7 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-// Hex values are the source of truth from the official FixFlags UI Kit v2.0.
-// Keep these in sync with lib/design/tokens.css (HSL) and public/brand/*.svg.
+// Hex values for non-CSS consumers (OG, email, manifest). UI Kit v3.0.
+// Mesh/orb gradients live in lib/design/tokens.css only.
 export const BRAND_HEX = {
   primary: '#FF4D1F',
   primaryLight: '#FF744D',

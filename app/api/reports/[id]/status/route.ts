@@ -9,9 +9,10 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { getAuditQueueInfo } from '@/lib/queue/estimate'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
-import { ensureAuditJobEnqueued } from '@/lib/audit/ensure-audit-job'
+import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
+
+const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
 export async function GET(
   _req: NextRequest,
@@ -27,6 +28,8 @@ export async function GET(
         status: true,
         progress: true,
         score: true,
+        pageType: true,
+        verdict: true,
         errorMsg: true,
         failureCode: true,
         failureStage: true,
@@ -67,9 +70,28 @@ export async function GET(
       return apiError('You do not have access to this report', 403)
     }
 
+    if (NON_TERMINAL.has(audit.status)) {
+      await recoverAuditJobOnPoll(id, audit)
+    }
+
+    const refreshed = NON_TERMINAL.has(audit.status)
+      ? await prisma.audit.findUnique({
+          where: { id },
+          select: {
+            status: true,
+            errorMsg: true,
+            failureCode: true,
+            failureStage: true,
+            failureMetadata: true,
+          },
+        })
+      : null
+
+    const effectiveStatus = refreshed?.status ?? audit.status
+
     const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
     const screenshotCapture = deriveScreenshotCaptureStatus(
-      audit.status,
+      effectiveStatus,
       audit.screenshots,
       storedCapture
     )
@@ -86,27 +108,26 @@ export async function GET(
     const flatFlags = audit.flags.map((f) => ({ severity: f.severity, rubric: f.rubric }))
     const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
 
-    let queueInfo = null
-    if (audit.status === 'QUEUED') {
-      await ensureAuditJobEnqueued(id, audit)
-      queueInfo = await getAuditQueueInfo(id)
-    }
+    const showPartialFlags =
+      effectiveStatus === 'CHECKING' ||
+      effectiveStatus === 'JUDGING' ||
+      effectiveStatus === 'FINALIZING'
 
     const { flags: partialFlags, ...rest } = audit
 
     return NextResponse.json({
       ...rest,
+      status: effectiveStatus,
+      errorMsg: refreshed?.errorMsg ?? audit.errorMsg,
+      failureCode: refreshed?.failureCode ?? audit.failureCode,
+      failureStage: refreshed?.failureStage ?? audit.failureStage,
+      failureMetadata: refreshed?.failureMetadata ?? audit.failureMetadata,
       screenshotCapture,
       pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
       pipelineLog: pipelineLog.slice(-30),
       flagCount,
       shareStatus,
-      queuePosition: queueInfo?.queuePosition,
-      estimatedWaitSeconds: queueInfo?.estimatedWaitSeconds,
-      scheduledStartAt: queueInfo?.scheduledStartAt,
-      queueReason: queueInfo?.isDelayed ? 'rate_limit' : queueInfo ? 'backlog' : undefined,
-      partialFlags:
-        audit.status === 'CHECKING' || audit.status === 'JUDGING' ? partialFlags : undefined,
+      partialFlags: showPartialFlags ? partialFlags : undefined,
     })
   } catch (err) {
     return handleRouteError(err)

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
@@ -38,11 +39,20 @@ export async function pollAuditUntilDone(options: PollAuditOptions): Promise<{
   while (Date.now() - start < timeoutMs && !signal?.aborted) {
     const audit = await prisma.audit.findUnique({
       where: { id: auditId },
+      select: { status: true, updatedAt: true, startedAt: true },
+    })
+
+    if (audit && !TERMINAL_STATUSES.has(audit.status)) {
+      await recoverAuditJobOnPoll(auditId, audit)
+    }
+
+    const latest = await prisma.audit.findUnique({
+      where: { id: auditId },
       select: { status: true },
     })
 
-    if (audit && TERMINAL_STATUSES.has(audit.status)) {
-      return { status: audit.status, timedOut: false }
+    if (latest && TERMINAL_STATUSES.has(latest.status)) {
+      return { status: latest.status, timedOut: false }
     }
 
     await sleep(intervalMs, signal)

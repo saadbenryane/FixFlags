@@ -2,7 +2,6 @@
 import useSWR from 'swr'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
-import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
@@ -21,6 +20,8 @@ export interface AuditStatusPayload {
   status: string
   progress: number
   score?: number | null
+  pageType?: string | null
+  verdict?: string | null
   errorMsg?: string | null
   failureCode?: string | null
   failureStage?: string | null
@@ -35,14 +36,10 @@ export interface AuditStatusPayload {
   parentId?: string | null
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
-  rubrics?: Array<{ name: string; grade: string; score: number | null }>
+  rubrics?: Array<{ name: string; grade: string; score: number | null; status?: string | null }>
   flagCount?: number
   shareStatus?: string
   partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
-  queuePosition?: number
-  estimatedWaitSeconds?: number
-  scheduledStartAt?: string | null
-  queueReason?: 'rate_limit' | 'backlog'
 }
 
 interface UseAuditPollingOptions {
@@ -69,15 +66,8 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
   )
 
   const currentStatus = (statusData?.status ?? initialAudit?.status ?? 'QUEUED') as string
-  const startedAt = (statusData?.startedAt ?? initialAudit?.startedAt) as string | null | undefined
-
-  const clientTimedOut =
-    !TERMINAL_STATUSES.has(currentStatus) &&
-    startedAt &&
-    Date.now() - new Date(startedAt).getTime() > AUDIT_DEADLINE_MS + 5000
-
-  const isFailed = currentStatus === 'FAILED' || clientTimedOut
-  const isComplete = currentStatus === 'COMPLETED' && !clientTimedOut
+  const isFailed = currentStatus === 'FAILED'
+  const isComplete = currentStatus === 'COMPLETED'
   const needsFullFetch = isComplete && !initialTerminal
 
   const { data: fullAudit, error: fullError, isLoading: fullLoading } = useSWR(
@@ -98,15 +88,7 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     (!initialTerminal && pollStatus && statusLoading && !statusData) ||
     (needsFullFetch && fullLoading && !fullAudit)
 
-  const statusPayload: AuditStatusPayload | undefined = clientTimedOut
-    ? {
-        ...(statusData as AuditStatusPayload),
-        status: 'FAILED',
-        errorMsg: 'Audit timed out, please try again',
-        failureCode: 'AUDIT_TIMEOUT',
-        failureStage: currentStatus.toLowerCase(),
-      }
-    : (statusData as AuditStatusPayload | undefined)
+  const statusPayload = statusData as AuditStatusPayload | undefined
 
   return {
     audit,
@@ -117,11 +99,10 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     isNotFound: errStatus === 404,
     isForbidden: errStatus === 403,
     fetchError: error ? (error as Error).message : null,
-    status: clientTimedOut ? 'FAILED' : currentStatus,
+    status: currentStatus,
     progress: (statusData?.progress ?? initialAudit?.progress ?? 0) as number,
     url: (statusData?.url ?? initialAudit?.url) as string | undefined,
-    startedAt,
+    startedAt: (statusData?.startedAt ?? initialAudit?.startedAt) as string | null | undefined,
     statusPayload,
-    clientTimedOut,
   }
 }

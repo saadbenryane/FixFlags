@@ -3,7 +3,7 @@ import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtas, flowCtaSelector, rankCtaCandidate } from './discover-cta'
 import { resolveSameOrigin } from './link-scoring'
-import { urlsMeaningfullyChanged } from './flow-url'
+import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 
@@ -176,6 +176,22 @@ export async function runFlowScan(
   }
 
   if (!urlsMeaningfullyChanged(landingUrl, finalUrl)) {
+    if (isSamePageHashHref(cta.href)) {
+      const scrolledToAnchor = await page.evaluate((hash) => {
+        const el = document.querySelector(hash)
+        if (!el) return false
+        const rect = el.getBoundingClientRect()
+        return rect.top < window.innerHeight && rect.bottom > 0
+      }, cta.href)
+      if (scrolledToAnchor) {
+        return {
+          status: 'success',
+          steps,
+          finalUrl,
+          ctaText: cta.text,
+        }
+      }
+    }
     return {
       status: 'dead_end',
       steps,

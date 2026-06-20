@@ -13,6 +13,11 @@ export function urlsMeaningfullyChanged(before: string, after: string): boolean 
   }
 }
 
+/** Same-page hash CTAs often scroll without updating location.href in headless Chrome. */
+export function isSamePageHashHref(href: string | null | undefined): href is string {
+  return typeof href === 'string' && href.startsWith('#') && href.length > 1
+}
+
 export function serializeFlowData(result: {
   status: string
   steps: Array<{ label: string; screenshotUrl: string | null; url: string }>
