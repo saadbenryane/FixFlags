@@ -8,6 +8,7 @@ import { anchorFromViewportRect } from './flow-evidence'
 import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -37,6 +38,7 @@ export interface FlowScanResult {
   /** Normalized highlight region for the clicked CTA on the landing step. */
   ctaAnchor?: EvidenceAnchor | null
   httpStatus?: number
+  multiStep?: MultiStepProbeResult
 }
 
 export interface RunFlowScanOptions {
@@ -93,20 +95,23 @@ export async function runFlowScan(
     steps.push(await captureFlowStep(page, auditId, 0, 'Landing'))
   }
 
+  const landingUrl = page.url()
+  const multiStep = await runMultiStepProbes(page, landingUrl)
+
   const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
   const cta = rankCtaCandidate(candidates)
   if (!cta) {
-    return { status: 'no_cta', steps, finalUrl: page.url() }
+    return { status: 'no_cta', steps, finalUrl: page.url(), multiStep }
   }
 
+  const selector = flowCtaSelector(cta.flowIdx)
   const ctaMeta = {
     ctaText: cta.text,
     ctaHref: cta.href ?? null,
     ctaAnchor: await captureCtaAnchor(page, selector),
+    multiStep,
   }
 
-  const landingUrl = page.url()
-  const selector = flowCtaSelector(cta.flowIdx)
   const skipNavigationWait =
     cta.opensInNewTab || isIntentionalExternalCta(origin, cta.href ?? null)
   let clicked = false

@@ -15,6 +15,7 @@ import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
+import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 
 interface Props {
@@ -123,6 +124,11 @@ export default async function ReportPage({ params }: Props) {
   const { audit, isLoggedIn, session, showAiContent, aiReviewPending } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
+  const isMarketingSample = isPublicMarketingSample({
+    userId: audit.userId,
+    aiReviewAt: audit.aiReviewAt,
+    isPublic: audit.isPublic,
+  })
   const topIssue = topIssueFromFlags(audit.flags)
 
   const user = session?.user
@@ -297,6 +303,7 @@ export default async function ReportPage({ params }: Props) {
           viewerPlan={user?.plan ?? 'FREE'}
           isLoggedIn={isLoggedIn}
           isViewerOwner={isOwner}
+          variant={isMarketingSample ? 'sample' : 'default'}
           showRecheckHint={isLoggedIn && isOwner}
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}

@@ -107,7 +107,7 @@ export function RubricCard({
         <CardContent id={`rubric-panel-${rubric.name}`} className="pt-0 space-y-3">
           {aiLocked ? (
             <LockedContentTeaser
-              label="Rubric analysis — create a free account to view"
+              label="Rubric analysis - create a free account to view"
               signUpHref={signUpHref}
             />
           ) : hasSummary ? (

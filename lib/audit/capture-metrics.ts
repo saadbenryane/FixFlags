@@ -10,11 +10,16 @@ export interface CaptureMetrics {
   uniqueFontFamilies: number
   fontFamilySample: string[]
   buttonBorderRadii: number[]
+  /** True when CSS animations still run under prefers-reduced-motion: reduce. */
+  motionIgnoresReducedPreference: boolean
+  motionSampleLabel: string | null
 }
 
-/** Measure mobile layout, CTA fold position, loading state, and design tokens. */
+/** Measure mobile layout, CTA fold position, loading state, design tokens, and motion a11y. */
 export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
-  return page.evaluate(() => {
+  const motion = await measureMotionA11y(page)
+
+  const base = await page.evaluate(() => {
     function scoreCtaInPage(href: string, text: string, tag: string): number {
       const combined = `${href} ${text}`.toLowerCase()
       if (/\b(login|log in|sign in|signin)\b/i.test(combined)) return 15
@@ -122,4 +127,82 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       ...sampleDesignConsistency(),
     }
   })
+
+  return {
+    ...base,
+    motionIgnoresReducedPreference: motion.motionIgnoresReducedPreference,
+    motionSampleLabel: motion.motionSampleLabel,
+  }
+}
+
+function countSignificantMotionInPage(): { count: number; sample: string | null } {
+  function parseDurationMs(raw: string): number {
+    if (!raw || raw === '0s') return 0
+    const parts = raw.split(',').map((p) => p.trim())
+    return Math.max(
+      ...parts.map((part) => {
+        const ms = part.match(/^([\d.]+)ms$/)
+        if (ms) return parseFloat(ms[1])
+        const sec = part.match(/^([\d.]+)s$/)
+        if (sec) return parseFloat(sec[1]) * 1000
+        return 0
+      })
+    )
+  }
+
+  const roots = document.querySelectorAll('main, [class*="hero" i], body')
+  let count = 0
+  let sample: string | null = null
+
+  for (const root of roots) {
+    for (const el of root.querySelectorAll('*')) {
+      const style = window.getComputedStyle(el)
+      const animName = style.animationName
+      if (!animName || animName === 'none') continue
+
+      const durationMs = parseDurationMs(style.animationDuration)
+      const iteration = style.animationIterationCount
+      const isLongOrLooping = durationMs >= 500 || iteration === 'infinite'
+      if (!isLongOrLooping) continue
+
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) continue
+      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+
+      count++
+      if (!sample) {
+        sample =
+          el.getAttribute('aria-label') ||
+          el.className.toString().split(/\s+/).find((c) => /animate|motion|fade|slide/i.test(c)) ||
+          el.tagName.toLowerCase()
+      }
+    }
+  }
+
+  return { count, sample }
+}
+
+/** Compare motion before/after emulating prefers-reduced-motion: reduce. */
+export async function measureMotionA11y(page: Page): Promise<{
+  motionIgnoresReducedPreference: boolean
+  motionSampleLabel: string | null
+}> {
+  const before = await page.evaluate(countSignificantMotionInPage)
+  if (before.count === 0) {
+    return { motionIgnoresReducedPreference: false, motionSampleLabel: null }
+  }
+
+  try {
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+    const after = await page.evaluate(countSignificantMotionInPage)
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+
+    const stillAnimating = after.count > 0 && after.count >= Math.ceil(before.count * 0.5)
+    return {
+      motionIgnoresReducedPreference: stillAnimating,
+      motionSampleLabel: stillAnimating ? before.sample : null,
+    }
+  } catch {
+    return { motionIgnoresReducedPreference: false, motionSampleLabel: null }
+  }
 }

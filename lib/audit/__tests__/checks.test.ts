@@ -411,6 +411,8 @@ function healthyCaptureMetrics(
     uniqueFontFamilies: number
     fontFamilySample: string[]
     buttonBorderRadii: number[]
+    motionIgnoresReducedPreference: boolean
+    motionSampleLabel: string | null
   }> = {}
 ) {
   return {
@@ -422,6 +424,8 @@ function healthyCaptureMetrics(
     uniqueFontFamilies: 2,
     fontFamilySample: ['Inter', 'Georgia'],
     buttonBorderRadii: [8],
+    motionIgnoresReducedPreference: false,
+    motionSampleLabel: null,
     ...overrides,
   }
 }
@@ -469,6 +473,19 @@ describe('runInteractionChecks', () => {
 
   it('passes when no loading UI is stuck', () => {
     assert.equal(runInteractionChecks(healthyCaptureMetrics()).length, 0)
+  })
+
+  it('flags motion that ignores prefers-reduced-motion', () => {
+    assert.ok(
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            motionIgnoresReducedPreference: true,
+            motionSampleLabel: 'hero-fade',
+          })
+        )
+      ).includes('motion-ignores-reduced-preference')
+    )
   })
 })
 
@@ -793,6 +810,15 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
+    'motion-ignores-reduced-preference': () =>
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            motionIgnoresReducedPreference: true,
+            motionSampleLabel: 'animate-pulse',
+          })
+        )
+      ),
     'font-family-sprawl': () =>
       checkIds(
         runDesignLanguageChecks(
@@ -880,6 +906,32 @@ describe('trigger matrix - one failing signal per checkId', () => {
           steps: [],
           finalUrl: 'https://other.com/signup',
           ctaText: 'Sign up',
+        })
+      ),
+    'flow-pricing-nav-broken': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com',
+          multiStep: {
+            pricingNav: 'broken',
+            pricingNavLabel: 'Pricing',
+            pricingNavHref: '#pricing',
+            mobileMenu: 'skipped',
+          },
+        })
+      ),
+    'flow-mobile-menu-broken': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'broken',
+          },
         })
       ),
   }

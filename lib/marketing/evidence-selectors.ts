@@ -113,6 +113,20 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
       'main form button',
     ],
   },
+  'flow-pricing-nav-broken': {
+    device: 'both',
+    selectors: ['header nav a', 'nav[aria-label] a', '.demo-nav a', 'nav a[href*="pricing" i]'],
+  },
+  'flow-mobile-menu-broken': {
+    device: 'mobile',
+    selectors: [
+      'header button',
+      'button[aria-label*="menu" i]',
+      'button[aria-expanded]',
+      'header nav',
+      '.demo-nav',
+    ],
+  },
   'cta-dead-link': { device: 'both', selectors: ['nav a', '.demo-nav a', 'main a[href]', '#audit'] },
 
   // Experience / mobile
@@ -172,6 +186,10 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'unreplaced-template-token': { device: 'both', selectors: ['main h1', 'main p', 'main'] },
   'font-family-sprawl': { device: 'both', selectors: ['main h1', 'main p', 'main button'] },
   'button-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button', '.demo-cta-primary'] },
+  'motion-ignores-reduced-preference': {
+    device: 'both',
+    selectors: ['main h1', '.demo-hero', 'main section:first-of-type', '[class*="animate" i]'],
+  },
 }
 
 export { METADATA_CHECK_IDS } from '@/lib/marketing/evidence-regions'

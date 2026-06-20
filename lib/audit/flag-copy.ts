@@ -36,6 +36,8 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'flow-cta-404',
   'flow-cta-dead-end',
   'flow-cta-external-leave',
+  'flow-pricing-nav-broken',
+  'flow-mobile-menu-broken',
   'loading-indicator-stuck',
   'cta-dead-link',
 ])
@@ -49,12 +51,15 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'no-cta-detected',
   'cta-below-fold-mobile',
   'loading-indicator-stuck',
+  'motion-ignores-reduced-preference',
   'font-family-sprawl',
   'button-radius-inconsistent',
   'flow-no-cta-found',
   'flow-cta-unclickable',
   'flow-cta-dead-end',
   'flow-cta-external-leave',
+  'flow-pricing-nav-broken',
+  'flow-mobile-menu-broken',
   'tap-targets-small',
   'placeholder-copy-detected',
   'template-default-copy',
@@ -128,6 +133,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'On phones, most visitors never scroll to a below-fold CTA - you lose signups you already earned.',
   'loading-indicator-stuck':
     'A skeleton or spinner that never clears makes the product look broken before anyone reads a word.',
+  'motion-ignores-reduced-preference':
+    'Vestibular disorders and focus needs make looping hero motion a hard stop - OS reduce-motion must be honored.',
   'tap-targets-small':
     'Cramped nav and buttons cause mis-taps and frustration on touch screens.',
   'no-structured-data':
@@ -226,6 +233,10 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'The CTA click goes nowhere meaningful, wasting paid traffic.',
   'flow-cta-external-leave':
     'Primary CTA sends visitors off-domain before they understand your offer.',
+  'flow-pricing-nav-broken':
+    'Visitors who click Pricing in the nav get a dead click - they cannot compare plans.',
+  'flow-mobile-menu-broken':
+    'Mobile visitors cannot reach Pricing or Features when the menu toggle fails.',
 }
 
 export function whyItMattersForCheckId(checkId: string): string {

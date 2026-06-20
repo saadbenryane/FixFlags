@@ -70,6 +70,7 @@ export const ALL_CHECK_IDS = [
   'cta-below-fold-mobile',
   // interaction.ts
   'loading-indicator-stuck',
+  'motion-ignores-reduced-preference',
   // design-language.ts
   'font-family-sprawl',
   'button-radius-inconsistent',
@@ -85,6 +86,8 @@ export const ALL_CHECK_IDS = [
   'flow-cta-404',
   'flow-cta-dead-end',
   'flow-cta-external-leave',
+  'flow-pricing-nav-broken',
+  'flow-mobile-menu-broken',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

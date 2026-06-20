@@ -8,8 +8,47 @@ function formatCtaEvidence(result: FlowScanResult): string {
   return `${label}${href}`
 }
 
-export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
+function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const probes = result.multiStep
+  if (!probes) return findings
+
+  if (probes.pricingNav === 'broken') {
+    const label = probes.pricingNavLabel ? `"${probes.pricingNavLabel}"` : 'Pricing'
+    const href = probes.pricingNavHref ? ` (href="${probes.pricingNavHref}")` : ''
+    findings.push({
+      checkId: 'flow-pricing-nav-broken',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: 'Pricing nav link does not reach a pricing section or page',
+      evidence: `Clicking ${label}${href} in the header nav did not scroll to a valid section or open a pricing page.`,
+      fix: 'Add an id="pricing" section on the page or link the nav item to your real /pricing route.',
+      confidence: 0.9,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  if (probes.mobileMenu === 'broken') {
+    findings.push({
+      checkId: 'flow-mobile-menu-broken',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: 'Mobile menu does not reveal navigation links',
+      evidence:
+        'At 375px width, header nav links were hidden and the menu toggle did not make them reachable.',
+      fix: 'Wire the hamburger/menu button to open the nav drawer. Confirm Pricing and Features links are tappable on mobile.',
+      confidence: 0.85,
+      source: 'DETERMINISTIC',
+    })
+  }
+
+  return findings
+}
+
+export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
+  const findings: DeterministicFlag[] = [...runMultiStepFlowChecks(result)]
   const ctaLabel = formatCtaEvidence(result)
 
   switch (result.status) {

@@ -305,8 +305,10 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'interaction',
     label: 'prefers-reduced-motion & excessive animation',
     tool: 'browser-capture',
-    status: 'planned',
-    checkIds: [],
+    status: 'live',
+    checkIds: ['motion-ignores-reduced-preference'],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+    notes: 'Emulates prefers-reduced-motion during mobile capture; flags animations that still run.',
   },
 
   // EXPERIENCE - CTA flow
@@ -342,9 +344,10 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'flow',
     label: 'Pricing nav, mobile menu, multi-step signup',
     tool: 'flow-navigation',
-    status: 'planned',
-    checkIds: [],
-    notes: 'Extend run-flow-scan.ts beyond primary CTA.',
+    status: 'live',
+    checkIds: ['flow-pricing-nav-broken', 'flow-mobile-menu-broken'],
+    verify: 'npm run demo:audit:flow',
+    notes: 'Nav probes run before primary CTA click on landing page.',
   },
 
   // EXPERIENCE - design language (mostly AI today)

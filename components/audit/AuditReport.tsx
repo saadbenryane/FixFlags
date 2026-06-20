@@ -143,7 +143,7 @@ export function AuditReport({
   return (
     <Container
       variant="report"
-      className={isSample ? 'space-y-4 py-4 sm:py-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
+      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
     >
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
@@ -219,7 +219,7 @@ export function AuditReport({
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Fix prompt — create a free account to view"
+              label="Fix prompt - create a free account to view"
               signUpHref={signUpHref}
             />
           ) : (

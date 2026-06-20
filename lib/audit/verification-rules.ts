@@ -110,6 +110,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Chrome DevTools at 375×812: primary CTA button visible without scrolling.',
   'loading-indicator-stuck':
     'After page load, no skeleton, spinner, or aria-busy overlay should remain visible over the hero.',
+  'motion-ignores-reduced-preference':
+    'Enable prefers-reduced-motion in OS settings; hero animations and loops should stop or shorten to near-zero.',
   'font-family-sprawl':
     'Inspect computed font-family on headings and body copy; limit to 2–3 families site-wide.',
   'button-radius-inconsistent':
@@ -134,6 +136,10 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Clicking the primary CTA should navigate or update the page meaningfully.',
   'flow-cta-external-leave':
     'Primary CTA should lead to signup, pricing, or contact on your domain when possible.',
+  'flow-pricing-nav-broken':
+    'Click the Pricing nav link; it should scroll to a #pricing section or open a /pricing page.',
+  'flow-mobile-menu-broken':
+    'At 375px width, open the menu toggle; nav links should become visible and tappable.',
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

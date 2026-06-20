@@ -13,6 +13,8 @@ describe('runDesignLanguageChecks', () => {
       uniqueFontFamilies: 5,
       fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica'],
       buttonBorderRadii: [8],
+      motionIgnoresReducedPreference: false,
+      motionSampleLabel: null,
     })
     assert.equal(flags.length, 1)
     assert.equal(flags[0].checkId, 'font-family-sprawl')
@@ -28,6 +30,8 @@ describe('runDesignLanguageChecks', () => {
       uniqueFontFamilies: 2,
       fontFamilySample: ['Inter'],
       buttonBorderRadii: [0, 8, 24],
+      motionIgnoresReducedPreference: false,
+      motionSampleLabel: null,
     })
     assert.equal(flags.length, 1)
     assert.equal(flags[0].checkId, 'button-radius-inconsistent')
@@ -44,6 +48,8 @@ describe('runDesignLanguageChecks', () => {
         uniqueFontFamilies: 3,
         fontFamilySample: ['Inter', 'Georgia'],
         buttonBorderRadii: [8, 8],
+        motionIgnoresReducedPreference: false,
+        motionSampleLabel: null,
       }).length,
       0
     )

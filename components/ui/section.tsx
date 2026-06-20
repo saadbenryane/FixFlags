@@ -8,6 +8,8 @@ const sectionVariants = cva("", {
       default: 'py-11 sm:py-14 lg:py-16',
       tight: 'py-8 sm:py-11 lg:py-14',
       compact: 'py-6 sm:py-8',
+      /** Report-style marketing pages (samples) - minimal top chrome */
+      report: 'pt-4 pb-8 sm:pt-5 sm:pb-10',
       loose: 'py-16 sm:py-20 lg:py-24',
       marketing: 'py-14 sm:py-20 lg:py-24',
     },

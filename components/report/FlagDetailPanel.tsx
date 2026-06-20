@@ -66,7 +66,7 @@ export function FlagDetailPanel({
         <FlagDetailCard title="Fix" icon={Sparkles}>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Fix prompt — create a free account to view"
+              label="Fix prompt - create a free account to view"
               signUpHref={signUpHref}
             />
           ) : (

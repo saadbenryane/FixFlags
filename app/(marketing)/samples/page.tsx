@@ -20,7 +20,7 @@ export default async function SamplesPage() {
   )
 
   return (
-    <Section spacing="marketing">
+    <Section spacing="report">
       <DevSampleMetaLogger
         source={sample.source}
         completedAt={sample.completedAt}
