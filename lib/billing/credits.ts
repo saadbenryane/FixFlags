@@ -1,0 +1,81 @@
+import { prisma } from '@/lib/db'
+import type { User } from '@prisma/client'
+import { projectLimitForPlan } from '@/lib/billing/plans'
+
+export interface CreditPack {
+  id: string
+  credits: number
+  priceUsdCents: number
+  stripePriceId?: string
+  label: string
+  popular?: boolean
+}
+
+function envPriceId(key: string): string | undefined {
+  const value = process.env[key]
+  return value && value.length > 0 ? value : undefined
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
+  { id: 'pack_10', credits: 10, priceUsdCents: 1500, stripePriceId: envPriceId('STRIPE_CREDIT_PACK_10_ID'), label: '+10 audits', popular: true },
+  { id: 'pack_25', credits: 25, priceUsdCents: 3000, stripePriceId: envPriceId('STRIPE_CREDIT_PACK_25_ID'), label: '+25 audits' },
+  { id: 'pack_50', credits: 50, priceUsdCents: 5000, stripePriceId: envPriceId('STRIPE_CREDIT_PACK_50_ID'), label: '+50 audits' },
+]
+
+export function getCreditPack(packId: string): CreditPack | undefined {
+  return CREDIT_PACKS.find((p) => p.id === packId)
+}
+
+export function getCredPackStripePriceId(packId: string): string | undefined {
+  const pack = getCreditPack(packId)
+  return pack?.stripePriceId
+}
+
+export async function getPurchasedCreditsRemaining(userId: string): Promise<number> {
+  const result = await prisma.creditPurchase.aggregate({
+    where: { userId, status: 'PAID' },
+    _sum: { creditsRemaining: true },
+  })
+  return result._sum.creditsRemaining ?? 0
+}
+
+export async function getTotalAvailableCredits(user: Pick<User, 'id' | 'auditsUsed' | 'auditsLimit' | 'role'>): Promise<number> {
+  const planRemaining = Math.max(0, user.auditsLimit - user.auditsUsed)
+  const purchased = await getPurchasedCreditsRemaining(user.id)
+  return planRemaining + purchased
+}
+
+export async function consumePurchasedCredit(tx: any, userId: string): Promise<boolean> {
+  const oldestPack = await tx.creditPurchase.findFirst({
+    where: { userId, status: 'PAID', creditsRemaining: { gt: 0 } },
+    orderBy: { paidAt: 'asc' },
+  })
+  if (!oldestPack) return false
+
+  await tx.creditPurchase.update({
+    where: { id: oldestPack.id },
+    data: { creditsRemaining: { decrement: 1 } },
+  })
+  return true
+}
+
+export async function wouldBlockNewCheckWithCredits(
+  user: Pick<User, 'id' | 'plan' | 'role' | 'auditsUsed' | 'auditsLimit'>,
+  pending: number
+): Promise<{ allowed: boolean; code?: string; action?: string; error?: string }> {
+  const limit = user.auditsLimit
+  const planAvailable = limit - user.auditsUsed
+  if (planAvailable > pending) return { allowed: true }
+
+  const purchased = await getPurchasedCreditsRemaining(user.id)
+  if (purchased > 0) return { allowed: true }
+
+  return {
+    allowed: false,
+    code: user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
+    action: 'upgrade',
+    error: user.plan === 'FREE'
+      ? 'Audit limit reached. Upgrade to continue.'
+      : 'Audit limit reached. Upgrade your plan or buy more credits to continue.',
+  }
+}

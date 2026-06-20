@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
+import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 
@@ -94,7 +95,10 @@ export async function createAndEnqueueAudit(
                 })
                 const atAiCap = isAtCheckLimit(user.auditsUsed, pendingAi, limit)
                 if (atAiCap && user.plan !== 'FREE') {
-                  throw new AuditLimitError('TOKEN_LIMIT')
+                  const purchased = await getPurchasedCreditsRemaining(user.id)
+                  if (purchased <= 0) {
+                    throw new AuditLimitError('TOKEN_LIMIT')
+                  }
                 }
               }
             }

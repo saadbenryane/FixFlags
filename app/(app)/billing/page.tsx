@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { Button } from '@/components/ui/button'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { CREDIT_PACKS, getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 import {
   getEffectiveScanLimit,
   getPendingCheckCount,
@@ -13,6 +14,7 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
+import { CreditPackButton } from '@/components/billing/CreditPackButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Card } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
@@ -27,6 +29,10 @@ const EXPERT_STATUS_LABELS = {
   DELIVERED: 'Delivered',
   FULFILLED: 'Delivered',
 } as const
+
+function formatUsdCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
 
 export default async function BillingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -59,6 +65,14 @@ export default async function BillingPage() {
     },
   })
 
+  const creditPurchases = await prisma.creditPurchase.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  })
+
+  const purchasedCreditsRemaining = await getPurchasedCreditsRemaining(user.id)
+
   const planDef = PLAN_DEFINITIONS[user.plan]
   const isUnlimited =
     isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
@@ -89,6 +103,7 @@ export default async function BillingPage() {
           limit={effectiveLimit}
           pending={pending}
           plan={user.plan}
+          purchasedCredits={purchasedCreditsRemaining}
         />
         {isActivating && (
           <p className="text-xs text-muted-foreground">
@@ -112,6 +127,60 @@ export default async function BillingPage() {
           </Button>
         )}
       </Card>
+
+      {isPaid && (
+        <Card className="space-y-4 p-6" id="credit-packs">
+          <SectionTitle>Credit packs</SectionTitle>
+          {purchasedCreditsRemaining > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {purchasedCreditsRemaining} purchased audit{purchasedCreditsRemaining !== 1 ? 's' : ''} available
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Buy extra audits without upgrading your plan. Purchased credits never expire.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {CREDIT_PACKS.map((pack) => (
+              <Surface key={pack.id} variant={pack.popular ? 'elevated' : 'flat'} className="p-4 space-y-3">
+                <div>
+                  <p className="font-medium text-sm">{pack.label}</p>
+                  <p className="text-lg font-semibold">{formatUsdCents(pack.priceUsdCents)}</p>
+                </div>
+                <CreditPackButton
+                  packId={pack.id}
+                  label={pack.label}
+                  price={formatUsdCents(pack.priceUsdCents)}
+                  popular={pack.popular}
+                />
+              </Surface>
+            ))}
+          </div>
+
+          {creditPurchases.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Purchase history</p>
+              <div className="space-y-1">
+                {creditPurchases.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between text-xs text-muted-foreground py-1 border-b border-border/20 last:border-0">
+                    <span>
+                      {p.creditsPurchased} credits — {p.packId.replace('_', ' ')}
+                    </span>
+                    <span>
+                      {formatUsdCents(p.priceUsdCents)}
+                    </span>
+                    <span className={p.status === 'PAID' ? 'text-success' : ''}>
+                      {p.status === 'PAID' ? 'Paid' : p.status === 'PENDING' ? 'Pending' : p.status.toLowerCase()}
+                    </span>
+                    {p.paidAt && (
+                      <span>{new Date(p.paidAt).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {expertOrders.length > 0 && (
         <Card className="space-y-4 p-6">

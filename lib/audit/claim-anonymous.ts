@@ -44,7 +44,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
   })
 
   if (user && !hasUnlimitedScans(user)) {
-    let credits = remainingAiReportCredits(user)
+    let credits = await remainingAiReportCredits(user)
     const unlockCandidates = audits
       .filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)
       .map((a) => a.id)

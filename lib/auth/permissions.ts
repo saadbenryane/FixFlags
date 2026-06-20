@@ -1,5 +1,6 @@
 import { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 
 export const UNLIMITED_SCAN_LIMIT = -1
 
@@ -52,18 +53,25 @@ export async function getCheckUsage(
       pending,
       limit: null,
       isUnlimited: true,
+      purchasedCredits: 0,
+      totalAvailable: null,
     }
   }
 
   const pending = await getPendingCheckCount(user.id)
   const limit = getEffectiveScanLimit(user)
   const isUnlimited = isUnlimitedScanLimit(limit)
+  const purchasedCredits = await getPurchasedCreditsRemaining(user.id)
+  const planRemaining = isUnlimited ? null : Math.max(0, user.auditsLimit - user.auditsUsed)
+  const totalAvailable = isUnlimited ? null : (planRemaining ?? 0) + purchasedCredits
 
   return {
     used: user.auditsUsed,
     pending,
     limit: isUnlimited ? null : limit,
     isUnlimited,
+    purchasedCredits,
+    totalAvailable,
   }
 }
 

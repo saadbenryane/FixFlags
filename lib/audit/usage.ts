@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
 import type { UsageLimitResult } from '@/lib/audit/check-limit'
+import { consumePurchasedCredit } from '@/lib/billing/credits'
 
 export {
   isAtCheckLimit,
@@ -107,13 +108,23 @@ export async function incrementUsageOnCompleteForAudit(
       return
     }
 
-    await tx.audit.update({
-      where: { id: auditId },
-      data: { usageCountedAt: new Date() },
-    })
-    await tx.user.update({
+    const userForLimit = await tx.user.findUnique({
       where: { id: userId },
-      data: { auditsUsed: { increment: 1 } },
+      select: { auditsUsed: true, auditsLimit: true },
     })
+    if (userForLimit && userForLimit.auditsUsed < userForLimit.auditsLimit) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { auditsUsed: { increment: 1 } },
+      })
+    } else {
+      const consumed = await consumePurchasedCredit(tx, userId)
+      if (!consumed) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { auditsUsed: { increment: 1 } },
+        })
+      }
+    }
   })
 }

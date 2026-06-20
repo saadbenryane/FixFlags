@@ -62,7 +62,7 @@ export async function runAiReview(auditId: string): Promise<void> {
     select: { id: true, role: true, plan: true, auditsUsed: true, auditsLimit: true },
   })
   if (!user) throw new Error('Audit owner not found')
-  if (!hasUnlimitedScans(user) && remainingAiReportCredits(user) <= 0) {
+  if (!hasUnlimitedScans(user) && (await remainingAiReportCredits(user)) <= 0) {
     throw new Error('AI report limit reached')
   }
 

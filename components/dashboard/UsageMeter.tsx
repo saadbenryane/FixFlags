@@ -11,9 +11,10 @@ interface Props {
   limit: number | null
   pending?: number
   plan: string
+  purchasedCredits?: number
 }
 
-export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
+export function UsageMeter({ used, limit, pending = 0, plan, purchasedCredits = 0 }: Props) {
   const isUnlimited = limit === null || limit === Infinity
   const { atLimit, pct } = checkUsageProgress(used, pending, isUnlimited ? null : limit)
   const nearLimit = !isUnlimited && pct >= 80
@@ -38,6 +39,12 @@ export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
           </p>
         )}
 
+        {purchasedCredits > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {purchasedCredits} purchased credit{purchasedCredits !== 1 ? 's' : ''} available
+          </p>
+        )}
+
         {!isUnlimited && (
           <Progress
             value={pct}
@@ -48,11 +55,20 @@ export function UsageMeter({ used, limit, pending = 0, plan }: Props) {
           />
         )}
 
-        {atLimit && plan === 'FREE' && (
+        {atLimit && plan === 'FREE' && purchasedCredits === 0 && (
           <p className="text-xs text-muted-foreground">
             {UPSELLS.atLimit}{' '}
             <Link href="/pricing" className="text-brand hover:underline">
               Upgrade to Pro
+            </Link>
+          </p>
+        )}
+
+        {atLimit && plan !== 'FREE' && purchasedCredits === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Plan limit reached.{' '}
+            <Link href="/billing#credit-packs" className="text-brand hover:underline">
+              Buy +10 audits
             </Link>
           </p>
         )}

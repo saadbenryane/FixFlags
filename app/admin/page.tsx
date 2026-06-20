@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
-import { formatUsd, sumEstimatedCost } from '@/lib/billing/costs'
+import { formatUsd, sumEstimatedCost, getCostOutliers } from '@/lib/billing/costs'
 import { getAdminUnreadCount } from '@/lib/live-support/sessions'
+import { MarginPanel } from '@/components/admin/MarginPanel'
 
 function StatValue({ children }: { children: React.ReactNode }) {
   return (

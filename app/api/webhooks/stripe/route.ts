@@ -141,6 +141,11 @@ export async function POST(req: NextRequest) {
               where: { stripeSessionId: session.id, status: 'PENDING' },
             })
           }
+          if (session.metadata?.type === 'credit_pack') {
+            await tx.creditPurchase.deleteMany({
+              where: { stripeSessionId: session.id, status: 'PENDING' },
+            })
+          }
           break
         }
 
@@ -161,6 +166,26 @@ export async function POST(req: NextRequest) {
               auditId: order.auditId,
               orderId: order.id,
             })
+          }
+
+          if (session.metadata?.type === 'credit_pack') {
+            const existing = await tx.creditPurchase.findUnique({
+              where: { stripeSessionId: session.id },
+            })
+            if (existing && existing.status === 'PAID') {
+              break
+            }
+            if (existing) {
+              await tx.creditPurchase.update({
+                where: { id: existing.id },
+                data: {
+                  status: 'PAID',
+                  creditsRemaining: existing.creditsPurchased,
+                  paidAt: new Date(),
+                  stripePaymentIntentId: session.payment_intent as string,
+                },
+              })
+            }
           }
 
           const userId = session.metadata?.userId

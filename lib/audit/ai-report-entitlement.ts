@@ -6,6 +6,8 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/check-limit'
+import { getTotalAvailableCredits, getPurchasedCreditsRemaining } from '@/lib/billing/credits'
+import type { User } from '@prisma/client'
 
 /** Whether a new audit for this user should run the LLM judge stage. */
 export async function resolveIncludeAiForNewAudit(userId: string | null): Promise<boolean> {
@@ -30,12 +32,12 @@ export async function resolveIncludeAiForNewAudit(userId: string | null): Promis
     },
   })
 
-  return !isAtCheckLimit(user.auditsUsed, pendingAi, limit)
+  if (!isAtCheckLimit(user.auditsUsed, pendingAi, limit)) return true
+
+  const purchased = await getPurchasedCreditsRemaining(user.id)
+  return purchased > pendingAi
 }
 
-export function remainingAiReportCredits(user: {
-  auditsUsed: number
-  auditsLimit: number
-}): number {
-  return Math.max(0, user.auditsLimit - user.auditsUsed)
+export async function remainingAiReportCredits(user: Pick<User, 'id' | 'auditsUsed' | 'auditsLimit' | 'role'>): Promise<number> {
+  return getTotalAvailableCredits(user)
 }
