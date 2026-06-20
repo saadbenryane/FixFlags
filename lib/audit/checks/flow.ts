@@ -3,6 +3,137 @@ import { isAuthUtilityLink } from '../flow/link-scoring'
 import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { DeterministicFlag } from './index'
+import { registerCheck } from './registry'
+
+registerCheck({
+  id: 'flow-cta-missing',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'CRITICAL',
+  tags: ['requiresBrowser', 'cta-flow'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-cta-not-visible',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'cta-flow'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-conversion-ext',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'cta-flow'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-cta-no-click',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'CRITICAL',
+  tags: ['requiresBrowser', 'cta-flow'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-form-slow',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'cta-flow'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-blank-destination',
+  rubric: 'EXPERIENCE',
+  impactTag: 'TRUST',
+  severity: 'CRITICAL',
+  tags: ['requiresBrowser', 'post-click'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-stuck-loading',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'CRITICAL',
+  tags: ['requiresBrowser', 'post-click'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-internal-broken-link',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'post-click'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-external-redirect',
+  rubric: 'REACH',
+  impactTag: 'TRUST',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'destination-trust'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-untrusted-destination',
+  rubric: 'REACH',
+  impactTag: 'TRUST',
+  severity: 'CRITICAL',
+  tags: ['requiresBrowser', 'destination-trust'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-pricing-nav-broken',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'multi-step'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-blog-nav-broken',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'multi-step'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
+
+registerCheck({
+  id: 'flow-consecutive-empty',
+  rubric: 'EXPERIENCE',
+  impactTag: 'CONVERSION',
+  severity: 'IMPORTANT',
+  tags: ['requiresBrowser', 'multi-step'],
+  requiresBrowser: true,
+  evaluate: () => null,
+})
 
 function formatCtaEvidence(result: FlowScanResult): string {
   const label = result.ctaText ? `"${result.ctaText}"` : 'Primary CTA'

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
+import { ScoreSparkline } from '@/components/audit/ScoreSparkline'
 import { Plus, ExternalLink, ArrowLeftRight, Check, X, AlertTriangle } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
@@ -50,9 +51,8 @@ export default async function DashboardPage() {
       },
       rechecks: {
         where: { status: 'COMPLETED' },
-        select: { id: true },
-        take: 1,
-        orderBy: { createdAt: 'desc' },
+        select: { id: true, score: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -159,6 +159,13 @@ export default async function DashboardPage() {
                   ? null
                   : 'In progress'
 
+            const trendScores = isCompleted
+              ? [
+                  audit.score,
+                  ...audit.rechecks.map((r) => r.score),
+                ].filter((s): s is number => s !== null)
+              : []
+
             return (
               <Link key={audit.id} href={`/report/${audit.id}`} className="block">
                 <Card interactive>
@@ -175,6 +182,9 @@ export default async function DashboardPage() {
                             new Date(audit.createdAt).toLocaleDateString()
                           )}
                         </div>
+                        {trendScores.length > 1 && (
+                          <ScoreSparkline scores={trendScores} className="mt-1" />
+                        )}
                       </div>
                       {statusLabel ? (
                         <Badge

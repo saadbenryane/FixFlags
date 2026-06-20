@@ -136,7 +136,7 @@ export const judgeOutputSchema = z.object({
 
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>
 
-const generatedSchema = zodToJsonSchema(judgeOutputSchema, {
+const generatedSchema = zodToJsonSchema(judgeOutputSchema as any, {
   target: 'openApi3',
   $refStrategy: 'none',
 })

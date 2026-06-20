@@ -18,6 +18,8 @@ export interface CheckDescriptor {
   impactTag?: ImpactTagName
   severity: SeverityName
   tags: string[]
+  requiresBrowser?: boolean
+  criticalPathConcurrency?: number
   evaluate(ctx: CheckContext): DeterministicFlag | DeterministicFlag[] | null
   messageKey?: string
 }
