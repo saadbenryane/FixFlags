@@ -2,23 +2,31 @@
 
 Read when running `/goal` in this repo.
 
-## Canonical regression loop
+## Canonical regression loop (local-first)
 
-1. **Baseline:** `https://fixflags.com/demo` → `lib/demo/fixtures/original.ts` (do not edit)
-2. **Fixed fork:** `https://fixflags.com/demo/v1` → `lib/demo/fixtures/v1.ts`
-3. **Measure:** `tsx scripts/demo-fixture-audit.ts [baseUrl]`
-4. **Prompt quality:** `lib/audit/flag-copy.ts` (`buildExpertFixPrompt`, `whyItMattersForCheckId`)
-5. **Apply fixes:** edit v1 fixture / checks as a developer would from expert prompts
-6. **Verify:** re-run script + `npm run test:unit`
+1. **Baseline:** `/demo` → `lib/demo/fixtures/original.ts` (do not edit)
+2. **Fixed fork:** `/demo/v1` → `lib/demo/fixtures/v1.ts`
+3. **Measure locally:**
+   - **Live:** `npm run demo:audit` (needs `npm run dev`) — fetches rendered Next.js HTML
+   - **Offline:** `npm run demo:audit:offline` — static HTML from fixtures (fastest)
+4. **Apply fixes:** edit v1 fixture + `DemoLanding` as a developer would from expert prompts
+5. **Prompt quality:** `lib/audit/flag-copy.ts`
+6. **Verify:** `npm run test:unit` (includes offline + live-if-dev-server tests)
 
-Success: applying every FixFlags prompt on a fork should drive flags → 0 (minus documented site-level exceptions: sitemap, robots.txt at domain root, cookie consent if analytics loads).
+**Done when (local):** in-scope v1 flags = 0, original ≥ 8 flags.
+
+**Production smoke (optional):** `npm run demo:audit:production` — full unscoped audit post-deploy.
+
+In-scope excludes site/env noise: `no-https` (localhost), sitemap/robots.txt at domain root, PageSpeed/mobile capture checks. See `lib/demo/demo-audit-scope.ts`.
 
 ## Common done checks
 
 | Check | Command |
 |-------|---------|
 | Unit tests | `npm run test:unit` |
-| Demo regression | `tsx scripts/demo-fixture-audit.ts http://localhost:3000` (needs `npm run dev`) |
+| Demo regression (live) | `npm run demo:audit` |
+| Demo regression (offline) | `npm run demo:audit:offline` |
+| Production smoke | `npm run demo:audit:production` |
 | Real pipeline | `npm run dev:all` + audit URL (worker required) |
 | Marketing guards | `lib/__tests__/homepage-message.test.ts` |
 | Flag copy | `lib/audit/__tests__/flag-copy.test.ts` |

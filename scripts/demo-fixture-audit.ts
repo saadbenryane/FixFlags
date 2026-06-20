@@ -1,44 +1,44 @@
 /**
- * Compare deterministic flags between demo baseline (/demo) and fixed fork (/demo/v1).
+ * Demo fixture regression loop — compare baseline (/demo) vs fixed fork (/demo/v1).
  *
- * Run: tsx scripts/demo-fixture-audit.ts [baseUrl] [--offline]
+ * Local-first (default): fetches rendered Next.js pages from dev server.
+ * Offline: static HTML from fixture definitions (no dev server; fastest).
  *
- * Examples:
- *   tsx scripts/demo-fixture-audit.ts https://fixflags.com
- *   tsx scripts/demo-fixture-audit.ts https://fixflags.com --offline  (pre-deploy fixture HTML)
- *   tsx scripts/demo-fixture-audit.ts http://localhost:3000  (needs npm run dev)
+ * Run:
+ *   npm run demo:audit              # live localhost (needs npm run dev)
+ *   npm run demo:audit:offline      # offline fixture HTML
+ *   tsx scripts/demo-fixture-audit.ts [baseUrl] [--offline] [--production]
+ *
+ * Scoped flags exclude site-level noise (no-https on localhost, sitemap, PageSpeed, etc.).
+ * Use --production for full production audit against fixflags.com (post-deploy smoke test).
  */
 import { runDeterministicAudit } from '@/lib/audit/deterministic-audit'
 import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
-import { auditDemoFixturesOffline } from '@/lib/demo/audit-fixture-offline'
-import { auditDemoUrl, isDemoLocalhostUrl } from '@/lib/demo/audit-demo-local'
+import { compareDemoFixtures } from '@/lib/demo/audit-demo-fixtures'
+import { DEMO_LOCAL_DEV_BASE } from '@/lib/demo/demo-audit-scope'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 
-const args = process.argv.slice(2).filter((a) => a !== '--offline')
-const OFFLINE = process.argv.includes('--offline')
-const BASE = args[0]?.replace(/\/$/, '') ?? 'https://fixflags.com'
+const argv = process.argv.slice(2)
+const OFFLINE = argv.includes('--offline')
+const PRODUCTION = argv.includes('--production')
+const args = argv.filter((a) => !a.startsWith('--'))
+const BASE = args[0]?.replace(/\/$/, '') ?? DEMO_LOCAL_DEV_BASE
 
-async function auditFixture(label: string, path: string) {
-  const url = `${BASE}${path}`
-  console.log(`\n=== ${label} (${url}) ===`)
-  const flags = isDemoLocalhostUrl(url)
-    ? await auditDemoUrl(url)
-    : (await runDeterministicAudit(url, { includeFlow: false })).flags
-  const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId))
-  console.log(`Flags: ${sorted.length}`)
-  for (const f of sorted) {
+function printFlags(label: string, url: string, flags: DeterministicFlag[], modeLabel: string) {
+  console.log(`\n=== ${label} (${url}) [${modeLabel}] ===`)
+  console.log(`Flags: ${flags.length}`)
+  for (const f of flags) {
     console.log(`  [${f.severity}] ${f.checkId}: ${f.problem}`)
   }
-  return sorted
 }
 
-function printSummary(baseline: DeterministicFlag[], fixed: DeterministicFlag[]) {
-  const baselineIds = new Set(baseline.map((f) => f.checkId))
-  const fixedIds = new Set(fixed.map((f) => f.checkId))
-  const cleared = [...baselineIds].filter((id) => !fixedIds.has(id))
-  const remaining = [...fixedIds]
-
-  console.log('\n=== Regression summary ===')
+function printSummary(
+  baseline: DeterministicFlag[],
+  fixed: DeterministicFlag[],
+  cleared: string[],
+  remaining: string[]
+) {
+  console.log('\n=== Regression summary (in-scope fixture flags) ===')
   console.log(`Baseline flags: ${baseline.length}`)
   console.log(`v1 flags: ${fixed.length}`)
   console.log(`Cleared by v1: ${cleared.length}`)
@@ -50,33 +50,55 @@ function printSummary(baseline: DeterministicFlag[], fixed: DeterministicFlag[])
   }
 }
 
-async function main() {
-  console.log('Batch audit test\n')
+async function auditProductionFixture(label: string, path: string) {
+  const url = `${BASE}${path}`
+  console.log(`\n=== ${label} (${url}) [production full audit] ===`)
+  const { flags } = await runDeterministicAudit(url, { includeFlow: false })
+  const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId))
+  console.log(`Flags: ${sorted.length}`)
+  for (const f of sorted) {
+    console.log(`  [${f.severity}] ${f.checkId}: ${f.problem}`)
+  }
+  return sorted
+}
 
-  if (OFFLINE) {
-    console.log(`Mode: offline fixture HTML (origin ${BASE})\n`)
-    const results = await auditDemoFixturesOffline(BASE)
-    const baseline = results.original ?? []
-    const fixed = results.v1 ?? []
-    for (const [key, flags] of Object.entries(results)) {
-      const path = key === 'original' ? '/demo' : '/demo/v1'
-      console.log(`\n=== ${key} (${BASE}${path}) [offline] ===`)
-      console.log(`Flags: ${flags.length}`)
-      for (const f of flags.sort((a, b) => a.checkId.localeCompare(b.checkId))) {
-        console.log(`  [${f.severity}] ${f.checkId}: ${f.problem}`)
-      }
-    }
-    printSummary(baseline, fixed)
+async function main() {
+  console.log('Demo fixture audit\n')
+
+  if (PRODUCTION) {
+    console.log('Mode: production full audit (unscoped; for post-deploy smoke test)\n')
+    const baseline = await auditProductionFixture('Baseline (original)', '/demo')
+    const fixed = await auditProductionFixture('Fixed (v1)', '/demo/v1')
+    const baselineIds = new Set(baseline.map((f) => f.checkId))
+    const fixedIds = new Set(fixed.map((f) => f.checkId))
+    printSummary(baseline, fixed, [...baselineIds].filter((id) => !fixedIds.has(id)), [...fixedIds])
+    if (fixed.length > 0) process.exitCode = 1
     return
   }
 
-  const baseline = await auditFixture('Baseline (original)', '/demo')
-  const fixed = await auditFixture('Fixed (v1)', '/demo/v1')
-  printSummary(baseline, fixed)
+  const mode = OFFLINE ? 'offline' : 'live'
+  const modeLabel = OFFLINE ? 'offline fixture HTML' : 'live localhost'
+  console.log(`Mode: ${modeLabel}`)
+  if (mode === 'live') console.log(`Base: ${BASE} (start with npm run dev)\n`)
+  else console.log('Base: fixture definitions (no dev server)\n')
 
-  if (baseline.length > 0) {
+  const comparison = await compareDemoFixtures({
+    mode,
+    baseUrl: mode === 'live' ? BASE : undefined,
+  })
+
+  printFlags('Baseline (original)', comparison.baseline.url, comparison.baseline.flags, modeLabel)
+  printFlags('Fixed (v1)', comparison.fixed.url, comparison.fixed.flags, modeLabel)
+  printSummary(
+    comparison.baseline.flags,
+    comparison.fixed.flags,
+    comparison.clearedCheckIds,
+    comparison.remainingCheckIds
+  )
+
+  if (comparison.baseline.flags.length > 0) {
     console.log('\n=== Sample expert prompt (first baseline flag) ===')
-    const sample = baseline[0]
+    const sample = comparison.baseline.flags[0]
     console.log(
       buildExpertFixPrompt({
         id: 'sample',
@@ -88,6 +110,10 @@ async function main() {
         fix: sample.fix,
       })
     )
+  }
+
+  if (comparison.fixed.flags.length > 0) {
+    process.exitCode = 1
   }
 }
 

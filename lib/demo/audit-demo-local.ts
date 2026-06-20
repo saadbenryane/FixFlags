@@ -1,5 +1,5 @@
-import { parseMetadataFromHtml } from '@/lib/audit/metadata'
-import { runAllChecks, type DeterministicFlag } from '@/lib/audit/checks'
+import { auditDemoFixture } from '@/lib/demo/audit-demo-fixtures'
+import type { DemoFixtureKey } from '@/lib/demo/audit-demo-fixtures'
 
 const LOCALHOST_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
 
@@ -29,12 +29,9 @@ export async function fetchDemoPageHtml(url: string): Promise<{ html: string; fi
   }
 }
 
-export async function auditDemoUrl(url: string): Promise<DeterministicFlag[]> {
-  if (!isDemoLocalhostUrl(url)) {
-    throw new Error('auditDemoUrl is only for localhost demo fixture verification')
-  }
-  const { html, finalUrl } = await fetchDemoPageHtml(url)
-  const metadata = parseMetadataFromHtml(html, finalUrl)
-  const { flags } = await runAllChecks(finalUrl, metadata, null, null, [])
-  return flags
+export async function auditDemoUrl(url: string, key: DemoFixtureKey = 'v1') {
+  const path = key === 'original' ? '/demo' : '/demo/v1'
+  const base = url.replace(path, '')
+  const result = await auditDemoFixture(key, { mode: 'live', baseUrl: base })
+  return result.flags
 }
