@@ -9,6 +9,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
+import { displayVerdict } from '@/lib/audit/verdict'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type PipelineStepState = 'done' | 'active' | 'pending'
@@ -18,18 +19,6 @@ export interface PipelineStep {
   label: string
   detail: string
   state: PipelineStepState
-}
-
-/** One automated check in the scan timeline. */
-export interface ScanCheck {
-  id: string
-  label: string
-  /** null = check failed or skipped — render nothing */
-  score: number | null
-  /** Links to a flag for prev/next navigation */
-  flagIndex?: number
-  /** Critical finding — show orange flag pin instead of a bar */
-  isCritical?: boolean
 }
 
 /** Normalized pin center on a screenshot (0–1). */
@@ -84,7 +73,6 @@ export interface SampleReportDisplay {
   rubricScores: { name: string; score: number | null; grade: string | null }[]
   rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
-  scans: ScanCheck[]
   flags: SampleFlagDisplay[]
 }
 
@@ -250,52 +238,6 @@ function buildPipelineSteps(flagCount: number): PipelineStep[] {
   ]
 }
 
-function buildScans(flags: SampleFlagDisplay[]): ScanCheck[] {
-  /**
-   * 24 illustrative checks — deterministic layout.
-   * Failed checks (null) render as gaps. Critical flags get orange pins; others get colored bars.
-   */
-  const slots: Array<Omit<ScanCheck, 'id'>> = [
-    { label: 'HTTPS', score: 100 },
-    { label: 'Page load', score: 86 },
-    { label: 'Headline clarity', score: 72 },
-    { label: 'Font loading', score: null },
-    { label: 'Meta title', score: 91 },
-    { label: 'Mobile CTA', score: 32, flagIndex: 0, isCritical: true },
-    { label: 'Tap targets', score: 84 },
-    { label: 'Color contrast', score: 88 },
-    { label: 'Hero hierarchy', score: 68 },
-    { label: 'Third-party scripts', score: 74, flagIndex: 5 },
-    { label: 'Nav height', score: 58, flagIndex: 2 },
-    { label: 'Social preview', score: 28, flagIndex: 1, isCritical: true },
-    { label: 'og:title', score: 82 },
-    { label: 'Meta description', score: 54, flagIndex: 4 },
-    { label: 'Analytics tag', score: null },
-    { label: 'Heading order', score: 90 },
-    { label: 'CTA copy', score: 76, flagIndex: 3 },
-    { label: 'Trust signals', score: 85 },
-    { label: 'Mobile layout', score: 61 },
-    { label: 'Link previews', score: 79 },
-    { label: 'Favicon', score: 95 },
-    { label: 'Console errors', score: 93 },
-    { label: 'Privacy links', score: 97 },
-    { label: 'Share card', score: 88 },
-  ]
-
-  return slots.map((slot, i) => {
-    const flagIndex = slot.flagIndex
-    const isCritical =
-      slot.isCritical ??
-      (flagIndex != null && flags[flagIndex]?.severity === 'CRITICAL')
-
-    return {
-      id: `scan-${i + 1}`,
-      ...slot,
-      isCritical: isCritical || undefined,
-    }
-  })
-}
-
 function hostFromUrl(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, '')
@@ -350,7 +292,7 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     pageType: audit.pageType,
     score: overall,
     grade: gradeFromScore(overall),
-    verdict: audit.verdict,
+    verdict: displayVerdict(audit.verdict),
     flagCount: flags.length,
     desktopScreenshot: desktop?.url ?? null,
     mobileScreenshot: mobile?.url ?? null,
@@ -359,7 +301,6 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
       audit.rubricRows.map((row) => [row.name, row.summary ?? ''])
     ),
     pipelineSteps: buildPipelineSteps(flags.length),
-    scans: buildScans(flags),
     flags,
   }
 }

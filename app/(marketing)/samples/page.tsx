@@ -26,9 +26,11 @@ export default async function SamplesPage() {
       ? 'Last published sample. A newer live sample may be regenerating.'
       : SAMPLES_PAGE.tierNote
 
-  const affiliationNote = site.isDogfood
-    ? 'Sample report of fixflags.com. Automated and illustrative.'
-    : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
+  const affiliationNote = site.isDemoFixture
+    ? 'Sample report of the LaunchPad demo fixture. Automated and illustrative.'
+    : site.isDogfood
+      ? 'Sample report of fixflags.com. Automated and illustrative.'
+      : `Not affiliated with ${site.displayHost}. Automated audit for illustration only.`
 
   return (
     <Section spacing="marketing">

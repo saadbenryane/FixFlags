@@ -5,7 +5,6 @@ import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { RubricOverviewStrip } from '@/components/marketing/sample/RubricOverviewStrip'
-import { ScanTimeline } from '@/components/marketing/sample/ScanTimeline'
 import { ScoreRingGauge } from '@/components/marketing/sample/ScoreRingGauge'
 import { ScreenshotWithHighlights } from '@/components/marketing/sample/ScreenshotWithHighlights'
 import { Button } from '@/components/ui/button'
@@ -231,13 +230,13 @@ function ReportBody({
   flag,
   showProgress = true,
   showScore = true,
+  showRubricPills = true,
+  showFlagNav = true,
   scoreSize = 'md',
-  showScanTimeline = false,
   flagIndex,
   flagCount,
   onPrevious,
   onNext,
-  onSelectFlag,
   compact = false,
   flagDetailLabel = 'Flag detail',
 }: {
@@ -245,13 +244,13 @@ function ReportBody({
   flag: SampleFlagDisplay
   showProgress?: boolean
   showScore?: boolean
+  showRubricPills?: boolean
+  showFlagNav?: boolean
   scoreSize?: 'sm' | 'md' | 'lg'
-  showScanTimeline?: boolean
   flagIndex: number
   flagCount: number
   onPrevious: () => void
   onNext: () => void
-  onSelectFlag?: (index: number) => void
   compact?: boolean
   flagDetailLabel?: string
 }) {
@@ -264,27 +263,14 @@ function ReportBody({
             {report.verdict && (
               <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
             )}
-            <RubricPills scores={report.rubricScores} />
+            {showRubricPills && <RubricPills scores={report.rubricScores} />}
           </div>
         </div>
       )}
 
-      {!showScore && (
+      {!showScore && showRubricPills && (
         <div className="space-y-2">
           <RubricPills scores={report.rubricScores} />
-        </div>
-      )}
-
-      {showScanTimeline && (
-        <div>
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Scans
-          </p>
-          <ScanTimeline
-            scans={report.scans}
-            activeFlagIndex={flagIndex}
-            onSelectFlag={onSelectFlag}
-          />
         </div>
       )}
 
@@ -308,23 +294,30 @@ function ReportBody({
       />
 
       <div className="border-t border-border/30 pt-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div
+          className={cn(
+            'mb-4 flex items-center gap-3',
+            showFlagNav ? 'justify-between' : undefined
+          )}
+        >
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
             {flagDetailLabel}
           </p>
-          <div className="flex items-center gap-3">
-            {!compact && (
-              <span className="hidden text-[11px] text-muted-foreground sm:inline">
-                ← → to navigate
-              </span>
-            )}
-            <FlagNavigation
-              index={flagIndex}
-              total={flagCount}
-              onPrevious={onPrevious}
-              onNext={onNext}
-            />
-          </div>
+          {showFlagNav && (
+            <div className="flex items-center gap-3">
+              {!compact && (
+                <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                  ← → to navigate
+                </span>
+              )}
+              <FlagNavigation
+                index={flagIndex}
+                total={flagCount}
+                onPrevious={onPrevious}
+                onNext={onNext}
+              />
+            </div>
+          )}
         </div>
         <FlagDetailPanel flag={flag} compact={compact} />
       </div>
@@ -350,21 +343,12 @@ export function SampleReportExplorer({
     setFlagIndex((i) => (i + 1) % flagCount)
   }, [flagCount])
 
-  const goToFlag = useCallback(
-    (index: number) => {
-      if (index >= 0 && index < flagCount) {
-        setFlagIndex(index)
-      }
-    },
-    [flagCount]
-  )
-
   const goToRubric = useCallback(
     (rubric: string) => {
       const idx = report.flags.findIndex((f) => f.rubric === rubric)
-      if (idx >= 0) goToFlag(idx)
+      if (idx >= 0) setFlagIndex(idx)
     },
-    [goToFlag, report.flags]
+    [report.flags]
   )
 
   useEffect(() => {
@@ -450,23 +434,29 @@ export function SampleReportExplorer({
       />
 
       <div className={shellClass}>
-        <div className="flex flex-col gap-4 border-b border-border/30 px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-5">
+        <div className="flex flex-col gap-4 border-b border-border/30 px-4 py-4 sm:px-6 sm:py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-5">
             <ScoreRingGauge score={report.score} size="lg" />
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium">
                   {report.pageType ?? 'Marketing homepage'}
                 </span>
-                <span className="font-mono text-[11px] text-muted-foreground">{report.url}</span>
+                <span className="font-mono text-[11px] text-muted-foreground truncate">
+                  {report.url}
+                </span>
               </div>
-              {report.verdict && (
-                <p className="max-w-prose border-l-2 border-brand pl-3 text-base font-medium leading-snug text-balance sm:text-lg">
-                  {report.verdict}
-                </p>
-              )}
+              <p className="text-[11px] text-muted-foreground">
+                {report.flagCount} checks · score {report.score ?? '—'}
+              </p>
             </div>
           </div>
+          <FlagNavigation
+            index={flagIndex}
+            total={flagCount}
+            onPrevious={showPrevious}
+            onNext={showNext}
+          />
         </div>
 
         <div className="p-4 sm:p-6">
@@ -474,12 +464,12 @@ export function SampleReportExplorer({
             report={report}
             flag={currentFlag}
             showScore={false}
-            showScanTimeline
+            showRubricPills={false}
+            showFlagNav={false}
             flagIndex={flagIndex}
             flagCount={flagCount}
             onPrevious={showPrevious}
             onNext={showNext}
-            onSelectFlag={goToFlag}
             flagDetailLabel={`Check ${flagIndex + 1} of ${flagCount}`}
           />
         </div>

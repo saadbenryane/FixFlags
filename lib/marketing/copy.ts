@@ -415,6 +415,14 @@ export const FINAL_CTA = {
 
 export const CHANGELOG_ENTRIES = [
   {
+    date: '2026-06-20',
+    title: 'Sample report uses a demo landing page',
+    items: [
+      'The sample report now audits a fictional startup landing page instead of our marketing homepage',
+      'Try the sample URL to see a realistic first-pass review on a typical AI-built page',
+    ],
+  },
+  {
     date: '2026-06-18',
     title: 'Track MCP usage from your dashboard',
     items: [
@@ -552,7 +560,7 @@ export const LANDING_PAGE = {
     },
   },
   heroPreview: {
-    siteUrl: 'fixflags.com',
+    siteUrl: 'fixflags.com/demo',
     siteHeadline: 'Build something amazing with AI',
     siteCta: 'Get started',
     pipeline: ['Scanning', 'Analyzing', 'Flags found (7)', 'Generating fixes', 'Review ready'] as const,

@@ -1,5 +1,5 @@
 /**
- * Refresh marketing sample: audit fixflags.com, mark public, capture WebPs, resolve pin anchors.
+ * Refresh marketing sample: audit demo fixture, mark public, capture WebPs, resolve pin anchors.
  *
  * Prerequisites: Postgres + Redis running, `.env.local` with API keys, `npm run dev:all` optional
  * (this script runs the audit pipeline inline — no worker required).

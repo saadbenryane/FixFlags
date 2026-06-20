@@ -6,6 +6,7 @@ import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ScoringLegend } from '@/components/audit/ScoringLegend'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
+import { displayVerdict } from '@/lib/audit/verdict'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 type Props = {
@@ -25,7 +26,6 @@ type Props = {
 }
 
 export function AuditReportHero({
-  pageJob,
   pageType,
   verdict,
   score,
@@ -41,6 +41,7 @@ export function AuditReportHero({
 }: Props) {
   const hasScreenshots = screenshots && screenshots.length > 0
   const scoreGrade = score === null ? null : gradeFromScore(score)
+  const userVerdict = displayVerdict(verdict)
 
   return (
     <div className="space-y-6">
@@ -53,15 +54,13 @@ export function AuditReportHero({
             <Badge variant="secondary" className="text-xs capitalize">
               {pageType ?? 'Page type unavailable'}
             </Badge>
-            <span className="text-sm text-muted-foreground text-pretty">
-              Page job:{' '}
-              <span className="font-medium text-foreground">{pageJob ?? 'Unavailable'}</span>
-            </span>
+            <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
           </div>
-          <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
-            {verdict ?? 'The available evidence was insufficient for a reliable verdict.'}
-          </blockquote>
-          <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+          {userVerdict && (
+            <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
+              {userVerdict}
+            </blockquote>
+          )}
         </div>
       </div>
 

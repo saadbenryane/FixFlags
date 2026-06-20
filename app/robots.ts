@@ -4,6 +4,7 @@ import { SITE_URL } from '@/lib/marketing/copy'
 const PRIVATE_PREFIXES = [
   '/admin',
   '/api',
+  '/demo',
   '/dashboard',
   '/settings',
   '/billing',

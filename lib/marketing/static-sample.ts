@@ -17,12 +17,12 @@ const STATIC_FLAGS: RankableFlag[] = [
     impactTag: 'CONVERSION',
     problem: 'Hero headline repeats the product category instead of the outcome',
     evidence:
-      'Desktop 1280x900: headline describes the tool, not what the visitor gets after pasting a URL.',
+      'Desktop 1280x900: headline reads "Build something amazing with AI" — describes the tool category, not the visitor outcome.',
     whyItMatters:
       'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
-    fix: 'Lead with the report output: scores, screenshots, and fix prompts.',
+    fix: 'Lead with the outcome: who it is for and what they get after signing up.',
     agentPrompt:
-      'In `HeroSection`, update the H1 to lead with outcome: "Paste a URL. Get fix prompts." Keep under 10 words at 1280px viewport.',
+      'Update the H1 to lead with outcome: "Ship a landing page your customers understand in 5 seconds." Keep under 12 words at 1280px viewport.',
     cursorPrompt: null,
     claudePrompt: null,
     lovablePrompt: null,
@@ -181,11 +181,11 @@ export function getStaticSampleAudit(): LiveSampleAudit {
   return {
     id: 'static-sample',
     url: SAMPLE_URL,
-    pageJob: 'Marketing homepage',
-    pageType: 'Marketing homepage',
+    pageJob: 'Landing page',
+    pageType: 'Landing page',
     score: 78,
     verdict:
-      'Solid foundation with gaps in mobile hero layout and social preview metadata.',
+      'Solid foundation with gaps in mobile hero layout, vague messaging, and social preview metadata.',
     completedAt: new Date('2026-06-10T14:30:00Z'),
     createdAt: new Date('2026-06-10T14:29:00Z'),
     pipelineVersion: PIPELINE_VERSION,
@@ -208,13 +208,13 @@ export function getStaticSampleAudit(): LiveSampleAudit {
     screenshots: [
       {
         device: 'DESKTOP',
-        url: `${SCREENSHOT_BASE}/fixflags-desktop.webp`,
+        url: `${SCREENSHOT_BASE}/demo-original-desktop.webp`,
         width: 1280,
         height: 900,
       },
       {
         device: 'MOBILE',
-        url: `${SCREENSHOT_BASE}/fixflags-mobile.webp`,
+        url: `${SCREENSHOT_BASE}/demo-original-mobile.webp`,
         width: 375,
         height: 812,
       },

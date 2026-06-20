@@ -34,16 +34,17 @@ Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wai
 
 **Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
 
-**Sample report assets:** Regenerate static sample WebPs with:
+**Sample report assets:** Demo fixture lives at `/demo` (original) and `/demo/v1` (improved fork). Regenerate static sample WebPs with:
 
 ```bash
-npx tsx scripts/capture-sample-screenshots.ts
+# Dev server must be running on port 3000
+SAMPLE_CAPTURE_URL=http://localhost:3000/demo npx tsx scripts/capture-sample-screenshots.ts
 ```
 
-Refresh the full marketing sample (live audit on fixflags.com, public flag, WebPs, and evidence pin anchors). Requires Postgres and API keys in `.env.local`:
+Refresh the full marketing sample (live audit on `fixflags.com/demo`, public flag, WebPs, and evidence pin anchors). Requires Postgres and API keys in `.env.local`:
 
 ```bash
-DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/refresh-marketing-sample.ts
+DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/refresh-marketing-sample.ts
 ```
 
 Set `SAMPLE_INCLUDE_AI=false` to skip the AI judge step (deterministic checks only) if the judge step fails.

@@ -2,7 +2,7 @@
  * Capture marketing sample screenshots into public/samples/.
  * Run: npx tsx scripts/capture-sample-screenshots.ts
  *
- * Defaults to the marketing sample URL (fixflags.com).
+ * Defaults to the demo fixture URL (fixflags.com/demo).
  */
 import fs from 'fs/promises'
 import path from 'path'
@@ -12,7 +12,7 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../lib/audit/viewports'
 import { getLocalScreenshotPath } from '../lib/storage/screenshots'
 import { DEFAULT_SAMPLE_AUDIT_URL } from '../lib/marketing/display-meta'
 
-const AUDIT_ID = 'sample-fixflags-capture'
+const AUDIT_ID = 'sample-demo-capture'
 const CAPTURE_URL =
   process.env.SAMPLE_CAPTURE_URL ??
   process.env.SAMPLE_AUDIT_URL ??
@@ -23,8 +23,8 @@ const TIMEOUT_MS = 30_000
 const OUT_DIR = path.join(process.cwd(), 'public', 'samples')
 
 const OUTPUT_FILES = {
-  desktop: path.join(OUT_DIR, 'fixflags-desktop.webp'),
-  mobile: path.join(OUT_DIR, 'fixflags-mobile.webp'),
+  desktop: path.join(OUT_DIR, 'demo-original-desktop.webp'),
+  mobile: path.join(OUT_DIR, 'demo-original-mobile.webp'),
 } as const
 
 function isLocalCaptureUrl(raw: string): boolean {
@@ -104,7 +104,7 @@ async function main() {
       throw new Error('Desktop capture failed')
     }
     if (!local.mobileOk) {
-      console.warn('Mobile capture failed, fixflags-mobile.webp not updated')
+      console.warn('Mobile capture failed, demo-original-mobile.webp not updated')
     }
     console.log('Sample screenshots written to', OUT_DIR)
     return
@@ -118,7 +118,7 @@ async function main() {
     throw new Error('Desktop capture failed')
   }
   if (!result.mobileUrl) {
-    console.warn('Mobile capture failed, fixflags-mobile.webp not updated')
+    console.warn('Mobile capture failed, demo-original-mobile.webp not updated')
   }
   await closeBrowser()
 
@@ -130,7 +130,7 @@ async function main() {
     await fs.access(mobilePath)
     await fs.copyFile(mobilePath, OUTPUT_FILES.mobile)
   } catch {
-    console.warn('Mobile screenshot file missing, fixflags-mobile.webp not updated')
+    console.warn('Mobile screenshot file missing, demo-original-mobile.webp not updated')
   }
 
   console.log('Sample screenshots written to', OUT_DIR)

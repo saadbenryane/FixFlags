@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480" role="img" aria-label="Product dashboard preview">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#eef2ff"/>
+      <stop offset="100%" style="stop-color:#faf9f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="480" fill="url(#bg)"/>
+  <rect x="32" y="32" width="736" height="40" rx="8" fill="#fff" opacity="0.95"/>
+  <rect x="32" y="96" width="280" height="20" rx="4" fill="#6366f1" opacity="0.35"/>
+  <rect x="32" y="128" width="360" height="14" rx="4" fill="#94a3b8" opacity="0.35"/>
+  <rect x="32" y="160" width="120" height="36" rx="8" fill="#6366f1"/>
+  <rect x="420" y="96" width="348" height="352" rx="12" fill="#fff" opacity="0.9"/>
+  <rect x="440" y="116" width="308" height="180" rx="8" fill="#c7d2fe"/>
+  <rect x="440" y="312" width="140" height="120" rx="8" fill="#ddd6fe"/>
+  <rect x="596" y="312" width="152" height="120" rx="8" fill="#e0e7ff"/>
+</svg>

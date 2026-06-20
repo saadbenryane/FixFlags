@@ -4,18 +4,27 @@ import type { SampleSource } from '@/lib/marketing/live-sample'
 
 export const TRUST_LINE = HERO.trustLine
 
+import { DEMO_BRAND } from '@/lib/demo/brand'
+
 /** Default demo URL for "Try sample", landing sample report, and marketing captures. */
-export const DEFAULT_SAMPLE_AUDIT_URL = 'https://fixflags.com'
+export const DEFAULT_SAMPLE_AUDIT_URL = 'https://fixflags.com/demo'
 
 /** Client-safe sample URL (server code may override via SAMPLE_AUDIT_URL). */
 export const SAMPLE_AUDIT_URL = DEFAULT_SAMPLE_AUDIT_URL
 
 export const DOGFOOD_CONTEXT_TAG = 'Dogfooding our homepage' as const
 
+export const DEMO_FIXTURE_CONTEXT_TAG = `${DEMO_BRAND.displayLabel} fixture` as const
+
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 const MARKETING_HOST = 'fixflags.com'
+const DEMO_PATH_PREFIX = '/demo'
 
 const FRESH_CAPTURE_DAYS = 7
+
+function isDemoFixturePath(pathname: string): boolean {
+  return pathname === DEMO_PATH_PREFIX || pathname.startsWith(`${DEMO_PATH_PREFIX}/`)
+}
 
 export function getSampleSiteDisplay(auditUrl: string) {
   try {
@@ -30,21 +39,36 @@ export function getSampleSiteDisplay(auditUrl: string) {
         return MARKETING_HOST
       }
     })()
-    const isDogfood =
+    const isSameHost =
       isLocal || hostname === MARKETING_HOST || hostname === envHost
+    const isDemoFixture = isSameHost && isDemoFixturePath(parsed.pathname)
+
+    if (isDemoFixture) {
+      return {
+        displayHost: DEMO_BRAND.displayLabel,
+        contextTag: DEMO_FIXTURE_CONTEXT_TAG,
+        browserUrl: parsed.toString(),
+        isDogfood: false,
+        isDemoFixture: true,
+      }
+    }
+
+    const isDogfood = isSameHost
 
     return {
       displayHost: isDogfood ? DOGFOOD_CONTEXT_TAG : hostname,
       contextTag: isDogfood ? DOGFOOD_CONTEXT_TAG : hostname,
       browserUrl: isDogfood ? `https://${MARKETING_HOST}` : parsed.toString(),
       isDogfood,
+      isDemoFixture: false,
     }
   } catch {
     return {
-      displayHost: DOGFOOD_CONTEXT_TAG,
-      contextTag: DOGFOOD_CONTEXT_TAG,
-      browserUrl: `https://${MARKETING_HOST}`,
-      isDogfood: true,
+      displayHost: DEMO_BRAND.displayLabel,
+      contextTag: DEMO_FIXTURE_CONTEXT_TAG,
+      browserUrl: DEFAULT_SAMPLE_AUDIT_URL,
+      isDogfood: false,
+      isDemoFixture: true,
     }
   }
 }
