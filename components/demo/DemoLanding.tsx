@@ -139,7 +139,41 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
           </section>
         ) : null}
 
-        <section id="signup" className="demo-signup-anchor" aria-hidden="true" />
+        <section id="signup" className="demo-signup">
+          {fixture.form ? (
+            <>
+              <h2>{fixture.form.heading}</h2>
+              <form>
+                {fixture.form.fields.map((field) => (
+                  <div key={field.name}>
+                    <label htmlFor={`form-${field.name}`}>{field.label}</label>
+                    {field.type === 'select' ? (
+                      <select
+                        id={`form-${field.name}`}
+                        name={field.name}
+                        required={field.required ?? false}
+                      >
+                        {(field.options ?? ['']).map((opt) => (
+                          <option key={opt} value={opt.toLowerCase()}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id={`form-${field.name}`}
+                        name={field.name}
+                        type={field.type}
+                        required={field.required ?? false}
+                      />
+                    )}
+                  </div>
+                ))}
+                <button type="submit">{fixture.form.submitLabel}</button>
+              </form>
+            </>
+          ) : null}
+        </section>
       </main>
 
       <footer className="demo-footer">

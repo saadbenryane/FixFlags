@@ -39,7 +39,7 @@ describe('lib/auth/env', () => {
   })
 
   it('validateAuthEnv rejects weak production secret', () => {
-    process.env.NODE_ENV = 'production'
+    process.env = { ...ORIGINAL_ENV, NODE_ENV: 'production' }
     process.env.BETTER_AUTH_SECRET = 'generate-a-random-32-char-secret'
     process.env.BETTER_AUTH_URL = 'https://fixflags.com'
     process.env.NEXT_PUBLIC_APP_URL = 'https://fixflags.com'
@@ -47,7 +47,7 @@ describe('lib/auth/env', () => {
   })
 
   it('validateAuthEnv rejects mismatched URLs in production', () => {
-    process.env.NODE_ENV = 'production'
+    process.env = { ...ORIGINAL_ENV, NODE_ENV: 'production' }
     process.env.BETTER_AUTH_SECRET = 'a'.repeat(32)
     process.env.BETTER_AUTH_URL = 'https://fixflags.com'
     process.env.NEXT_PUBLIC_APP_URL = 'https://www.fixflags.com'

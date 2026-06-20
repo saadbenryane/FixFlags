@@ -8,9 +8,15 @@ const LOCAL_SCREENSHOTS_DIR = path.join(process.cwd(), '.data', 'screenshots')
 function getAppBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL
   if (!url) {
-    throw new Error(
-      'NEXT_PUBLIC_APP_URL (or BETTER_AUTH_URL) is required for local screenshot storage'
-    )
+    // CLI scripts (tsx) and tests don't load .env.local, so the local screenshot
+    // API is unreachable by env. In non-production we can safely assume the dev
+    // origin; production still throws because R2 is required there.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEXT_PUBLIC_APP_URL (or BETTER_AUTH_URL) is required for local screenshot storage'
+      )
+    }
+    return 'http://localhost:3000'
   }
   return url.replace(/\/$/, '')
 }
