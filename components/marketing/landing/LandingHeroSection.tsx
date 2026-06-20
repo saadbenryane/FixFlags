@@ -37,6 +37,9 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
         </div>
 
         <div className="motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
+          <p className="mb-3 text-center text-sm text-muted-foreground">
+            {HERO.samplePreviewCue}
+          </p>
           <HeroProductPreview audit={audit} />
         </div>
       </Container>

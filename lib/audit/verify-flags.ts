@@ -103,9 +103,11 @@ const CHECK_ID_TO_RULE: Record<string, string> = {
   'mobile-lcp-critical':
     'PageSpeed Insights mobile LCP should be under 2.5s.',
   'h1-generic':
-    'H1 should describe a specific product outcome, not a generic welcome message.',
+    'H1 should describe a specific product outcome, not a generic welcome or AI-builder category headline.',
   'no-cta-detected':
     'A primary CTA button or link should be visible above the fold.',
+  'cta-below-fold-mobile':
+    'Chrome DevTools at 375×812: primary CTA button visible without scrolling.',
   'placeholder-copy-detected':
     'Page should not contain Lorem ipsum, TODO, TBD, or [object Object] in visible text.',
   'template-default-copy':

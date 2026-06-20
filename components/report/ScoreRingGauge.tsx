@@ -20,9 +20,6 @@ const SIZE_CONFIG: Record<
   lg: { box: 104, radius: 42, stroke: 3.5, scoreText: 'text-4xl' },
 }
 
-/**
- * Sleek score ring — thin stroke, single score color. Arc starts at top, fills clockwise.
- */
 export function ScoreRingGauge({ score, size = 'md', className }: ScoreRingGaugeProps) {
   const { box, radius, stroke, scoreText } = SIZE_CONFIG[size]
   const center = box / 2
@@ -68,8 +65,8 @@ export function ScoreRingGauge({ score, size = 'md', className }: ScoreRingGauge
 
       <div className="absolute inset-0 flex items-center justify-center">
         {score == null ? (
-          <span className={cn('font-mono font-bold tabular-nums text-muted-foreground', scoreText)}>
-            —
+          <span className={cn('font-mono text-xs font-bold tabular-nums text-muted-foreground', scoreText)}>
+            N/A
           </span>
         ) : (
           <span

@@ -2,15 +2,19 @@ import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { ScreenshotViewer } from '@/components/audit/ScreenshotViewer'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
-import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
-import { ScoringLegend } from '@/components/audit/ScoringLegend'
-import { gradeFromScore } from '@/lib/audit/scoring'
+import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
+import { buildPipelineSteps, buildRubricScoreRows } from '@/lib/audit/report-pipeline-steps'
 import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
 import { displayVerdict } from '@/lib/audit/verdict'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
+type RubricRow = {
+  name: string
+  score: number | null
+  grade?: string | null
+}
+
 type Props = {
-  pageJob: string | null
   pageType: string | null
   verdict: string | null
   score: number | null
@@ -20,6 +24,10 @@ type Props = {
   screenshotPartial?: boolean
   shareStatus: string
   rubrics: RubricComputed[]
+  rubricRows: RubricRow[]
+  flagCount: number
+  hasFixPrompts: boolean
+  reviewReady: boolean
   pageSpeedPartial?: boolean
   desktopPageSpeedError?: string | null
   mobilePageSpeedError?: string | null
@@ -35,36 +43,51 @@ export function AuditReportHero({
   screenshotPartial,
   shareStatus,
   rubrics,
+  rubricRows,
+  flagCount,
+  hasFixPrompts,
+  reviewReady,
   pageSpeedPartial,
   desktopPageSpeedError,
   mobilePageSpeedError,
 }: Props) {
   const hasScreenshots = screenshots && screenshots.length > 0
-  const scoreGrade = score === null ? null : gradeFromScore(score)
   const userVerdict = displayVerdict(verdict)
+  const rubricScores = buildRubricScoreRows(rubricRows)
+  const pipelineSteps = buildPipelineSteps({
+    flagCount,
+    pageType,
+    mode: 'audit',
+    hasFixPrompts,
+    reviewReady,
+  })
 
   return (
     <div className="space-y-6">
       <ShareStatusBanner shareStatus={shareStatus} rubrics={rubrics} />
 
-      <div className="flex items-start gap-4 sm:gap-6">
-        <ScoreDisplay grade={scoreGrade} score={score} variant="hero" />
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            <Badge variant="secondary" className="text-xs capitalize">
-              {pageType ?? 'Page type unavailable'}
-            </Badge>
-            <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
-          </div>
-          {userVerdict && (
-            <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
-              {userVerdict}
-            </blockquote>
-          )}
-        </div>
-      </div>
+      <ReportScoreOverview
+        score={score}
+        rubricScores={rubricScores}
+        pipelineSteps={pipelineSteps}
+        scoreSize="md"
+        compact={false}
+        showProgress
+      />
 
-      <ScoringLegend compact className="max-sm:text-[11px] max-sm:leading-snug" />
+      <div className="min-w-0 space-y-3">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+          <Badge variant="secondary" className="text-xs capitalize">
+            {pageType ?? 'Page type unavailable'}
+          </Badge>
+          <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+        </div>
+        {userVerdict && (
+          <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
+            {userVerdict}
+          </blockquote>
+        )}
+      </div>
 
       {screenshotLimited && (
         <Callout variant="neutral">

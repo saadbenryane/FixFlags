@@ -64,6 +64,8 @@ export const ALL_CHECK_IDS = [
   // content.ts
   'h1-generic',
   'no-cta-detected',
+  // layout.ts
+  'cta-below-fold-mobile',
   // slop.ts
   'placeholder-copy-detected',
   'template-default-copy',

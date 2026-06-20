@@ -54,6 +54,7 @@ export const HERO = {
     'Copy-ready fix prompts',
     '3 Free Scans',
   ] as const,
+  samplePreviewCue: 'Live sample from our demo site. Use the arrows to browse 8 real flags.',
 } as const
 
 export const SEGMENT_PROOF_SECTION = {

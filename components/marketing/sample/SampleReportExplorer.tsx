@@ -1,23 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
-import { RubricOverviewStrip } from '@/components/marketing/sample/RubricOverviewStrip'
-import { ScoreRingGauge } from '@/components/marketing/sample/ScoreRingGauge'
 import { ScreenshotWithHighlights } from '@/components/marketing/sample/ScreenshotWithHighlights'
+import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
 import { Button } from '@/components/ui/button'
 import {
   buildAllEvidenceHighlights,
-  type PipelineStep,
   type SampleFlagDisplay,
   type SampleReportDisplay,
 } from '@/lib/marketing/sample-report-display'
-import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 
-type ExplorerVariant = 'page' | 'embedded' | 'hero'
+type ExplorerVariant = 'page' | 'hero'
 
 interface SampleReportExplorerProps {
   report: SampleReportDisplay
@@ -26,145 +23,24 @@ interface SampleReportExplorerProps {
   initialFlagIndex?: number
 }
 
-function StepDot({ state }: { state: PipelineStep['state'] }) {
-  if (state === 'done') {
-    return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
-        <Check className="h-3 w-3" aria-hidden />
-      </span>
-    )
-  }
-  if (state === 'active') {
-    return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15">
-        <span className="h-2 w-2 rounded-full bg-brand motion-safe:animate-pulse" />
-      </span>
-    )
-  }
-  return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted">
-      <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-    </span>
-  )
-}
-
-function PipelineStepIndicator({ step }: { step: PipelineStep }) {
-  if (step.id === 'flags' && step.state === 'active') {
-    return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold leading-none text-brand-foreground">
-        {step.detail}
-      </span>
-    )
-  }
-  return <StepDot state={step.state} />
-}
-
-function PipelineStepsList({ steps }: { steps: PipelineStep[] }) {
-  return (
-    <ol className="space-y-3">
-      {steps.map((step) => (
-        <li key={step.id} className="flex items-center gap-3">
-          <PipelineStepIndicator step={step} />
-          <span
-            className={cn(
-              'text-sm',
-              step.state === 'done' && 'text-muted-foreground line-through',
-              step.state === 'active' && 'font-semibold text-foreground',
-              step.state === 'pending' && 'text-muted-foreground/50'
-            )}
-          >
-            {step.label}
-          </span>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function RubricScoreRow({
-  name,
-  score,
-  compact = false,
-}: {
-  name: string
-  score: number | null
-  compact?: boolean
-}) {
-  const scoreLabel = score == null ? '—' : String(score)
-  const barWidth = score == null ? 0 : Math.min(100, score)
-
-  return (
-    <div
-      className={cn(
-        'w-full rounded-md bg-muted/30 shadow-sm',
-        compact ? 'px-2 py-1.5' : 'px-3 py-2.5'
-      )}
-    >
-      <div className="flex items-baseline justify-between gap-1">
-        <span
-          className={cn(
-            'font-medium text-muted-foreground',
-            compact ? 'text-[10px] leading-tight' : 'text-xs'
-          )}
-        >
-          {name}
-        </span>
-        <span
-          className={cn(
-            'font-mono font-bold tabular-nums',
-            compact ? 'text-xs' : 'text-sm'
-          )}
-        >
-          {scoreLabel}
-        </span>
-      </div>
-      <div className={cn('overflow-hidden rounded-full bg-muted/50', compact ? 'mt-1 h-0.5' : 'mt-1.5 h-1')}>
-        <div
-          className="h-full rounded-full motion-safe:transition-all motion-safe:duration-500"
-          style={{
-            width: `${barWidth}%`,
-            backgroundColor: score != null ? scoreToScanColor(score) : undefined,
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function ScoreStack({
-  report,
-  scoreSize = 'md',
-  compact = false,
-}: {
-  report: SampleReportDisplay
-  scoreSize?: 'sm' | 'md' | 'lg'
-  compact?: boolean
-}) {
-  const ringSize = compact ? 'sm' : scoreSize
-
-  return (
-    <div className={cn(compact ? 'space-y-2' : 'space-y-3')}>
-      <div className="flex w-full justify-center">
-        <ScoreRingGauge score={report.score} size={ringSize} />
-      </div>
-      {report.verdict && !compact && (
-        <p className="text-center text-sm font-medium leading-snug text-balance text-muted-foreground">
-          {report.verdict}
-        </p>
-      )}
-      <div className={cn(compact ? 'space-y-1' : 'space-y-2')}>
-        {report.rubricScores.map((rubric) => (
-          <RubricScoreRow
-            key={rubric.name}
-            name={rubric.name}
-            score={rubric.score}
-            compact={compact}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
+const VARIANT_CONFIG = {
+  hero: {
+    compact: true,
+    showProgress: true,
+    showScoreStack: true,
+    showFlagNav: true,
+    scoreSize: 'md' as const,
+    showHeader: false,
+  },
+  page: {
+    compact: false,
+    showProgress: true,
+    showScoreStack: true,
+    showFlagNav: false,
+    scoreSize: 'md' as const,
+    showHeader: true,
+  },
+} as const
 
 function FlagNavigation({
   index,
@@ -208,13 +84,7 @@ function FlagNavigation({
   )
 }
 
-function FlagDetailPanel({
-  flag,
-  compact = false,
-}: {
-  flag: SampleFlagDisplay
-  compact?: boolean
-}) {
+function FlagDetailPanel({ flag }: { flag: SampleFlagDisplay }) {
   return (
     <div key={flag.id} className="space-y-4 animate-soft-reveal" aria-live="polite">
       <div className="flex flex-wrap items-center gap-2">
@@ -262,8 +132,8 @@ function FlagDetailPanel({
 
       <FixPromptBlock
         prompt={flag.fixPrompt}
-        rows={compact ? 3 : 4}
-        clamp={compact}
+        rows={4}
+        clamp={false}
         showCursorAction
         variant="compact"
         nested
@@ -275,32 +145,24 @@ function FlagDetailPanel({
 function ReportBody({
   report,
   flag,
-  showProgress = true,
-  showScoreStack = true,
-  showFlagNav = true,
-  scoreSize = 'md',
+  config,
   flagIndex,
   flagCount,
   onPrevious,
   onNext,
   onPinSelect,
   flagDetailRef,
-  compact = false,
   flagDetailLabel = 'Flag detail',
 }: {
   report: SampleReportDisplay
   flag: SampleFlagDisplay
-  showProgress?: boolean
-  showScoreStack?: boolean
-  showFlagNav?: boolean
-  scoreSize?: 'sm' | 'md' | 'lg'
+  config: (typeof VARIANT_CONFIG)[ExplorerVariant]
   flagIndex: number
   flagCount: number
   onPrevious: () => void
   onNext: () => void
   onPinSelect: (flagId: string) => void
   flagDetailRef: React.RefObject<HTMLDivElement | null>
-  compact?: boolean
   flagDetailLabel?: string
 }) {
   const allHighlights = buildAllEvidenceHighlights(report.flags)
@@ -309,27 +171,15 @@ function ReportBody({
 
   return (
     <div className="space-y-6">
-      {(showScoreStack || showProgress) && (
-        <div
-          className={cn(
-            'grid items-start gap-x-6 gap-y-3 sm:gap-x-10',
-            showScoreStack && showProgress
-              ? 'grid-cols-[minmax(5.5rem,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(6.5rem,8.5rem)_minmax(0,1fr)]'
-              : 'grid-cols-1'
-          )}
-        >
-          {showScoreStack && (
-            <ScoreStack report={report} scoreSize={scoreSize} compact={compact} />
-          )}
-          {showProgress && (
-            <div className="min-w-0">
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 sm:mb-3">
-                Review progress
-              </p>
-              <PipelineStepsList steps={report.pipelineSteps} />
-            </div>
-          )}
-        </div>
+      {config.showScoreStack && (
+        <ReportScoreOverview
+          score={report.score}
+          rubricScores={report.rubricScores}
+          pipelineSteps={report.pipelineSteps}
+          scoreSize={config.scoreSize}
+          compact={config.compact}
+          showProgress={config.showProgress}
+        />
       )}
 
       <div
@@ -340,17 +190,17 @@ function ReportBody({
         <div
           className={cn(
             'mb-4 flex items-center gap-3',
-            showFlagNav ? 'justify-between' : undefined
+            config.showFlagNav ? 'justify-between' : undefined
           )}
         >
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
             {flagDetailLabel}
           </p>
-          {showFlagNav && (
+          {config.showFlagNav && (
             <div className="flex items-center gap-3">
-              {!compact && (
+              {!config.compact && (
                 <span className="hidden text-[11px] text-muted-foreground sm:inline">
-                  ← → to navigate
+                  Left and right arrow keys to navigate
                 </span>
               )}
               <FlagNavigation
@@ -375,7 +225,7 @@ function ReportBody({
           className="mb-5"
         />
 
-        <FlagDetailPanel flag={flag} compact={compact} />
+        <FlagDetailPanel flag={flag} />
       </div>
     </div>
   )
@@ -387,6 +237,7 @@ export function SampleReportExplorer({
   className,
   initialFlagIndex = 0,
 }: SampleReportExplorerProps) {
+  const config = VARIANT_CONFIG[variant]
   const [flagIndex, setFlagIndex] = useState(initialFlagIndex)
   const flagDetailRef = useRef<HTMLDivElement>(null)
   const flagCount = report.flags.length
@@ -412,14 +263,6 @@ export function SampleReportExplorer({
     [report.flags]
   )
 
-  const goToRubric = useCallback(
-    (rubric: string) => {
-      const idx = report.flags.findIndex((f) => f.rubric === rubric)
-      if (idx >= 0) setFlagIndex(idx)
-    },
-    [report.flags]
-  )
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'ArrowLeft') showPrevious()
@@ -440,69 +283,32 @@ export function SampleReportExplorer({
   const reportBodyProps = {
     report,
     flag: currentFlag,
+    config,
     flagIndex,
     flagCount,
     onPrevious: showPrevious,
     onNext: showNext,
     onPinSelect: goToFlag,
     flagDetailRef,
+    flagDetailLabel:
+      variant === 'page' ? `Check ${flagIndex + 1} of ${flagCount}` : 'Flag detail',
   }
 
   if (variant === 'hero') {
     return (
       <div className={shellClass}>
         <div className="bg-muted/10 p-4 sm:p-5">
-          <ReportBody {...reportBodyProps} scoreSize="md" compact />
-        </div>
-      </div>
-    )
-  }
-
-  if (variant === 'embedded') {
-    return (
-      <div className={shellClass}>
-        <div className="flex flex-col gap-3 border-b border-border/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-          <div className="flex items-center gap-3">
-            <ScoreRingGauge score={report.score} size="sm" />
-            <div>
-              <p className="text-sm font-semibold">{report.displayHost}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {report.flagCount} flags · score {report.score ?? '—'}
-              </p>
-            </div>
-          </div>
-          <FlagNavigation
-            index={flagIndex}
-            total={flagCount}
-            onPrevious={showPrevious}
-            onNext={showNext}
-          />
-        </div>
-
-        <div className="p-4 sm:p-5">
-          <ReportBody
-            {...reportBodyProps}
-            showScoreStack={false}
-            showProgress={false}
-            compact
-          />
+          <ReportBody {...reportBodyProps} />
         </div>
       </div>
     )
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
-      <RubricOverviewStrip
-        scores={report.rubricScores}
-        summaries={report.rubricSummaries}
-        onSelectRubric={goToRubric}
-      />
-
+    <div className={cn(className)}>
       <div className={shellClass}>
-        <div className="flex flex-col gap-4 border-b border-border/30 px-4 py-4 sm:px-6 sm:py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-            <ScoreRingGauge score={report.score} size="lg" />
+        {config.showHeader && (
+          <div className="flex flex-col gap-3 border-b border-border/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium">
@@ -512,29 +318,22 @@ export function SampleReportExplorer({
                   {report.displayHost}
                 </span>
               </div>
+              <p className="text-[11px] text-muted-foreground">{report.flagCount} checks</p>
               {report.verdict && (
                 <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
               )}
-              <p className="text-[11px] text-muted-foreground">
-                {report.flagCount} checks · score {report.score ?? '—'}
-              </p>
             </div>
+            <FlagNavigation
+              index={flagIndex}
+              total={flagCount}
+              onPrevious={showPrevious}
+              onNext={showNext}
+            />
           </div>
-          <FlagNavigation
-            index={flagIndex}
-            total={flagCount}
-            onPrevious={showPrevious}
-            onNext={showNext}
-          />
-        </div>
+        )}
 
         <div className="p-4 sm:p-6">
-          <ReportBody
-            {...reportBodyProps}
-            showScoreStack={false}
-            showFlagNav={false}
-            flagDetailLabel={`Check ${flagIndex + 1} of ${flagCount}`}
-          />
+          <ReportBody {...reportBodyProps} />
         </div>
       </div>
     </div>

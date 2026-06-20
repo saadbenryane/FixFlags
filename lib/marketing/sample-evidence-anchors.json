@@ -113,6 +113,12 @@
       "y": 0.49616319444444446
     }
   },
+  "cta-below-fold-mobile": {
+    "mobile": {
+      "x": 0.5,
+      "y": 0.92
+    }
+  },
   "h1-generic": {
     "desktop": {
       "x": 0.275,

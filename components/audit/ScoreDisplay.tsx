@@ -2,7 +2,7 @@ import { cn, rubricLabel, gradeColor } from '@/lib/utils'
 import { resolveScoreDisplay } from '@/lib/audit/score-display'
 import { Card } from '@/components/ui/card'
 
-export type ScoreDisplayVariant = 'card' | 'compact' | 'hero' | 'inline' | 'pill'
+export type ScoreDisplayVariant = 'card' | 'compact' | 'inline' | 'pill'
 
 interface ScoreDisplayProps {
   rubricName?: string
@@ -70,25 +70,6 @@ export function ScoreDisplay({
         )}
       >
         <span>{resolved.primary}</span>
-      </div>
-    )
-  }
-
-  if (variant === 'hero') {
-    return (
-      <div
-        className={cn(
-          'w-fit min-w-[5.5rem] shrink-0 self-start rounded-card border-0 p-3 text-center shadow-card sm:min-w-[5.5rem] sm:p-4',
-          resolved.grade ? gradeColor(resolved.grade) : 'bg-muted/50 text-muted-foreground',
-          className
-        )}
-      >
-        <div className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">{resolved.primary}</div>
-        <div className="mt-1 font-mono text-[10px] text-muted-foreground sm:text-xs">
-          {resolved.score == null
-            ? 'Unavailable'
-            : `${resolved.caption ?? '/ 100'} · ${resolved.secondary}`}
-        </div>
       </div>
     )
   }

@@ -32,16 +32,16 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
   {
     id: 'flag-experience-1',
-    checkId: 'flow-no-cta-found',
+    checkId: 'cta-below-fold-mobile',
     rubric: 'EXPERIENCE',
     severity: 'CRITICAL',
     impactTag: 'CONVERSION',
-    problem: 'Primary CTA starts 1,200px below top on 375px viewport',
+    problem: 'Primary CTA is hidden below the fold on mobile',
     evidence:
-      'Mobile viewport 375x812: hero image pushes CTA to 1,200px scroll depth. Button hidden below fold.',
+      'Mobile viewport 375x812: hero image pushes CTA below the fold. Button hidden without scrolling.',
     whyItMatters:
-      'At 375x812, the primary CTA starts at ~1,200px scroll depth, hidden below the fold on mobile.',
-    fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within first 700px of page height.',
+      'At 375x812, the primary CTA starts below the first screen, so mobile visitors may never see how to sign up.',
+    fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within the first 700px of page height.',
     agentPrompt:
       'Add media query for max-width: 375px. Set hero image to 40vh max-height. Stack headline, subhead, and CTA vertically so CTA appears within first 700px.',
     cursorPrompt: null,

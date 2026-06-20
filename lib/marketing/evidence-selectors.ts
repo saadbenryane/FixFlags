@@ -37,6 +37,10 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'favicon-missing': { device: 'both', selectors: ['header', '.demo-header', 'nav'] },
 
   // Flow / CTA
+  'cta-below-fold-mobile': {
+    device: 'mobile',
+    selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '.demo-hero-copy a', 'main .demo-cta-primary'],
+  },
   'flow-no-cta-found': {
     device: 'both',
     selectors: ['.demo-cta-primary', 'main a.demo-cta-primary', '#audit', 'main form button', 'main a[href]'],

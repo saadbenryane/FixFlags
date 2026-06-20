@@ -8,7 +8,9 @@ import { runTrustChecks } from './trust'
 import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
+import { runLayoutChecks } from './layout'
 import { logger } from '@/lib/logger'
+import type { CaptureMetrics } from '../capture-metrics'
 
 export interface DeterministicFlag {
   checkId: string
@@ -34,7 +36,8 @@ export async function runAllChecks(
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>,
-  onAreaComplete?: (index: number) => void
+  onAreaComplete?: (index: number) => void,
+  captureMetrics?: CaptureMetrics | null
 ): Promise<RunAllChecksResult> {
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
@@ -49,6 +52,7 @@ export async function runAllChecks(
     { name: 'mobile', run: () => runMobileChecks(mobile) },
     { name: 'content', run: () => runContentChecks(metadata) },
     { name: 'slop', run: () => runSlopChecks(metadata) },
+    { name: 'layout', run: () => runLayoutChecks(captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {

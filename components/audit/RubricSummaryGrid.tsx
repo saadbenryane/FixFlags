@@ -3,19 +3,32 @@
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel, rubricDescription, rubricStatusColor, cn } from '@/lib/utils'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
+import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Card } from '@/components/ui/card'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 interface RubricData extends RubricComputed {
   label: string
   description: string
+  score: number | null
+}
+
+interface RubricRowInput {
+  name: string
+  score: number | null
+  grade?: string | null
 }
 
 interface Props {
   rubrics: RubricComputed[]
+  rubricRows?: RubricRowInput[]
 }
 
-export function RubricSummaryGrid({ rubrics }: Props) {
+export function RubricSummaryGrid({ rubrics, rubricRows }: Props) {
+  const scoreByName = new Map(
+    (rubricRows ?? []).map((row) => [row.name, row.score] as const)
+  )
+
   const ordered: RubricData[] = RUBRIC_ORDER.map((name) => {
     const r = rubrics.find((r) => r.name === name)
     return {
@@ -26,6 +39,7 @@ export function RubricSummaryGrid({ rubrics }: Props) {
       importantCount: r?.importantCount ?? 0,
       label: rubricLabel(name),
       description: rubricDescription(name),
+      score: scoreByName.get(name) ?? null,
     }
   })
 
@@ -59,6 +73,9 @@ export function RubricSummaryGrid({ rubrics }: Props) {
           <div className="mb-2 flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">{rubric.label}</h3>
             <RubricStatusBadge status={rubric.status} size="sm" />
+          </div>
+          <div className="mb-3">
+            <RubricScoreBar name={rubric.label} score={rubric.score} compact />
           </div>
           <p className="mb-3 text-xs leading-snug text-muted-foreground text-pretty">
             {rubric.description}

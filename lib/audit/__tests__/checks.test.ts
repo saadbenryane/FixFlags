@@ -8,6 +8,7 @@ import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
+import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
@@ -384,12 +385,42 @@ describe('runContentChecks', () => {
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome to our site'] }))).includes('h1-generic')
     )
     assert.ok(
+      checkIds(runContentChecks(healthyMeta({ h1s: ['Build something amazing with AI'] }))).includes(
+        'h1-generic'
+      )
+    )
+    assert.ok(
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))).includes('no-cta-detected')
     )
   })
 
   it('passes descriptive H1 with CTA', () => {
     assert.equal(runContentChecks(healthyMeta()).length, 0)
+  })
+})
+
+describe('runLayoutChecks', () => {
+  it('flags primary CTA below the mobile fold', () => {
+    assert.ok(
+      checkIds(
+        runLayoutChecks({
+          mobilePrimaryCtaTopPx: 720,
+          mobilePrimaryCtaText: 'Get started',
+          mobileViewportHeight: 812,
+        })
+      ).includes('cta-below-fold-mobile')
+    )
+  })
+
+  it('passes when CTA is above the fold', () => {
+    assert.equal(
+      runLayoutChecks({
+        mobilePrimaryCtaTopPx: 400,
+        mobilePrimaryCtaText: 'Get started',
+        mobileViewportHeight: 812,
+      }).length,
+      0
+    )
   })
 })
 
@@ -694,6 +725,14 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ h1s: ['Welcome home'] }))),
     'no-cta-detected': () =>
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
+    'cta-below-fold-mobile': () =>
+      checkIds(
+        runLayoutChecks({
+          mobilePrimaryCtaTopPx: 720,
+          mobilePrimaryCtaText: 'Get started',
+          mobileViewportHeight: 812,
+        })
+      ),
     'placeholder-copy-detected': () =>
       checkIds(runSlopChecks(healthyMeta({ pageText: 'Lorem ipsum dolor sit amet.' }))),
     'template-default-copy': () =>

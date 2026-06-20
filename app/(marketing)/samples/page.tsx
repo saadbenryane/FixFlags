@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { SampleReportExplorer } from '@/components/marketing/sample/SampleReportExplorer'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
-import { SampleStatusBadge } from '@/components/marketing/SampleStatusBadge'
+import { DevSampleMetaLogger } from '@/components/marketing/DevSampleMetaLogger'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -36,15 +36,13 @@ export default async function SamplesPage() {
     <Section spacing="marketing">
       <Container variant="report" className="pt-8 pb-2">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <SampleStatusBadge
-              source={sample.source}
-              completedAt={sample.completedAt}
-              pipelineVersion={sample.pipelineVersion}
-              isDemoFixture={site.isDemoFixture}
-              marketing
-            />
-          </div>
+          <DevSampleMetaLogger
+            source={sample.source}
+            completedAt={sample.completedAt}
+            pipelineVersion={sample.pipelineVersion}
+            isDemoFixture={site.isDemoFixture}
+            isDogfood={site.isDogfood}
+          />
           <Body className="text-sm text-muted-foreground">{SAMPLES_PAGE.subhead}</Body>
           <Body className="text-xs text-muted-foreground">{statusNote}</Body>
           <Body className="text-xs text-muted-foreground">{affiliationNote}</Body>

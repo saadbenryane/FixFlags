@@ -7,6 +7,7 @@ import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage } from './browser/page-session'
+import { measureMobileLayout, type CaptureMetrics } from './capture-metrics'
 
 let browser: Browser | null = null
 
@@ -44,12 +45,14 @@ export interface ScreenshotResult {
   consoleErrors: Array<{ type: string; text: string }>
   captureStatus: ScreenshotCaptureStatus
   flowResult?: FlowScanResult | null
+  captureMetrics?: CaptureMetrics | null
 }
 
 interface ViewportCapture {
   base64: string | null
   url: string | null
   html: string | null
+  captureMetrics?: CaptureMetrics | null
 }
 
 async function captureDesktopWithFlow(
@@ -147,6 +150,14 @@ async function captureViewport(
     const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, options.device, buffer, options.pageKey)
+
+    if (options.device === 'mobile') {
+      try {
+        result.captureMetrics = await measureMobileLayout(page)
+      } catch (err) {
+        logger.error('mobile layout metrics failed', err)
+      }
+    }
   } catch (err) {
     logger.error(`${options.device} screenshot failed`, err)
   } finally {
@@ -199,6 +210,7 @@ export async function captureScreenshots(
       mobile: mobile.url ? 'ok' : 'failed',
     },
     flowResult: desktop.flowResult,
+    captureMetrics: mobile.captureMetrics ?? null,
   }
 }
 

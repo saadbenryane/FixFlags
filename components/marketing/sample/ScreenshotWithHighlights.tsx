@@ -41,7 +41,7 @@ function EvidencePin({ severity, active, selected }: { severity?: string; active
   return (
     <span
       className={cn(
-        'relative flex items-center justify-center',
+        'pointer-events-none relative flex items-center justify-center',
         selected ? 'h-5 w-5' : 'h-4 w-4'
       )}
     >
@@ -130,7 +130,7 @@ function PinOverlay({
         <button
           ref={pinRef}
           type="button"
-          className="touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           aria-label={`Evidence: ${highlight.label}`}
           aria-expanded={open}
           aria-current={selected ? 'true' : undefined}
@@ -184,14 +184,21 @@ function HighlightLayer({
   selectedFlagId,
   onPinSelect,
   useMobileTooltip,
+  interactiveOnly = false,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
   selectedFlagId?: string
   onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
+  /** When true, only render pins for the selected flag (reduces duplicate a11y nodes). */
+  interactiveOnly?: boolean
 }) {
-  const visible = highlights.filter((h) => h.device === device)
+  const visible = highlights.filter((h) => {
+    if (h.device !== device) return false
+    if (interactiveOnly && selectedFlagId && h.flagId !== selectedFlagId) return false
+    return true
+  })
   if (visible.length === 0) return null
 
   return (
@@ -220,6 +227,7 @@ function ScreenshotPanel({
   useMobileTooltip,
   containerRef,
   size,
+  interactiveOnly = false,
 }: {
   imageUrl: string
   device: 'desktop' | 'mobile'
@@ -231,6 +239,7 @@ function ScreenshotPanel({
   useMobileTooltip?: boolean
   containerRef?: Ref<HTMLDivElement>
   size?: { width: number; height: number }
+  interactiveOnly?: boolean
 }) {
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
@@ -260,6 +269,7 @@ function ScreenshotPanel({
             selectedFlagId={selectedFlagId}
             onPinSelect={onPinSelect}
             useMobileTooltip={useMobileTooltip}
+            interactiveOnly={interactiveOnly}
           />
         </div>
       </div>
@@ -365,6 +375,7 @@ export function ScreenshotWithHighlights({
             onPinSelect={onPinSelect}
             containerRef={desktopPanelRef}
             useMobileTooltip
+            interactiveOnly
           />
         </div>
         {mobilePanelSize && (
@@ -377,6 +388,7 @@ export function ScreenshotWithHighlights({
             onPinSelect={onPinSelect}
             size={mobilePanelSize}
             useMobileTooltip
+            interactiveOnly
           />
         )}
       </div>

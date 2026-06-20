@@ -7,15 +7,28 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
   if (meta.h1s.length > 0) {
     const h1 = meta.h1s[0]
     const genericPhrases = ['home', 'welcome', 'welcome to', 'untitled', 'coming soon', 'hello world']
-    if (genericPhrases.some((p) => h1.toLowerCase().includes(p))) {
+    const categoryHeadlinePatterns = [
+      /build something (amazing|great|beautiful|incredible|awesome)/i,
+      /create something (amazing|great|beautiful)/i,
+      /make something (amazing|great|beautiful)/i,
+      /\bthe next-generation\b/i,
+      /\bship faster\.?$/i,
+      /\bwith AI\.?$/i,
+      /\bpowered by AI\.?$/i,
+    ]
+    const isGeneric =
+      genericPhrases.some((p) => h1.toLowerCase().includes(p)) ||
+      categoryHeadlinePatterns.some((p) => p.test(h1))
+
+    if (isGeneric) {
       findings.push({
         checkId: 'h1-generic',
         rubric: 'MESSAGE',
-        impactTag: 'TRUST',
+        impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
-        problem: 'H1 heading is generic and non-descriptive',
+        problem: 'Hero headline is generic and does not lead with a visitor outcome',
         evidence: `H1: "${h1}"`,
-        fix: 'Replace the generic H1 with a benefit-driven headline that communicates your unique value proposition.',
+        fix: 'Replace the generic H1 with a benefit-driven headline that names who it is for and what they get after signing up.',
         confidence: 0.9,
         source: 'DETERMINISTIC',
       })

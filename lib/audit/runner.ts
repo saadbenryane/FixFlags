@@ -379,7 +379,8 @@ async function runPage(
             event: `check_${index + 1}`,
           })
         }
-      : undefined
+      : undefined,
+    screenshots?.captureMetrics ?? null
   )
 
   for (const mod of failedModules) {

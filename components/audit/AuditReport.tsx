@@ -129,7 +129,6 @@ export function AuditReport({
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
       <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         <AuditReportHero
-          pageJob={audit.pageJob}
           pageType={audit.pageType}
           verdict={audit.verdict}
           score={audit.score}
@@ -139,6 +138,10 @@ export function AuditReport({
           screenshotPartial={screenshotPartial}
           shareStatus={audit.shareStatus}
           rubrics={audit.rubrics}
+          rubricRows={audit.rubricRows}
+          flagCount={audit.flags.length}
+          hasFixPrompts={showAiContent && hasFixPrompts}
+          reviewReady={audit.score != null}
           pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
           desktopPageSpeedError={audit.pageSpeedErrors?.desktopError}
           mobilePageSpeedError={audit.pageSpeedErrors?.mobileError}
@@ -223,7 +226,7 @@ export function AuditReport({
           <div className="space-y-6">
             <div className="space-y-3">
               <SectionTitle>Summary by rubric</SectionTitle>
-              <RubricSummaryGrid rubrics={audit.rubrics} />
+              <RubricSummaryGrid rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
             </div>
 
             <div className="space-y-4">
