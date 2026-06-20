@@ -19,6 +19,9 @@ export const v1Fixture: DemoFixture = {
       icon: '/favicon.ico',
       apple: '/favicon.ico',
     },
+    alternates: {
+      canonical: 'https://fixflags.com/demo/v1',
+    },
     openGraph: {
       title: `${DEMO_BRAND.name} - Ship landing pages in minutes`,
       description,
@@ -40,6 +43,11 @@ export const v1Fixture: DemoFixture = {
   primaryCta: { label: 'Start free', href: '#signup' },
   secondaryCta: null,
   heroImageSrc: '/demo/hero-v1.svg',
+  footerLinks: [
+    { label: 'Privacy', href: '#privacy' },
+    { label: 'Terms', href: '#terms' },
+    { label: 'Contact', href: '#signup' },
+  ],
   layout: {
     compactMobileNav: true,
     ctaAboveFoldMobile: true,

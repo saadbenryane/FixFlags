@@ -1,6 +1,6 @@
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 
-/** Client-safe lookup — no server-only audit imports. */
+/** Client-safe lookup - no server-only audit imports. */
 export const CHECK_ID_TO_RULE: Record<string, string> = {
   'title-missing':
     'View page source or DevTools Elements, confirm a non-empty <title> tag.',

@@ -233,7 +233,9 @@ Flag severity guide:
 
 Write flag problems and evidence the way you would say them to a founder over coffee. Short sentences. Specific. No hedging. Name what you actually see: "The headline says X. It does not say who this is for or what changes for them." Not: "The value proposition could potentially be strengthened."
 
-Write whyItMatters the same way. One or two sentences. The real-world consequence, not the abstract principle. "A link preview with no image gets half the clicks of one with an image. This page has no og:image." Not: "Social sharing may be suboptimal."
+Write whyItMatters the same way. One or two sentences. The real-world consequence, not the abstract principle. "A link preview with no image gets half the clicks of one with an image. This page has no og:image." Not: "Social sharing may be suboptimal." Never write "this flag affects the reach/message/experience quality of your page."
+
+For enrichments and agentPrompt fields: write a self-contained developer brief (Problem, why, found evidence, do this change, verify how). For meta tags, JSON-LD, robots, and head code: tell them exactly what to add in layout or metadata export. Do not say "look at the screenshot" or "whole page" for invisible head issues. Screenshot references are only for visible hero, CTA, or layout problems.
 
 IMPORTANT: If you grade a rubric B or below, ensure builders can act: use deterministic flags already listed above when they cover the issue, or add at most one net-new flag in newFlags for that rubric. Never duplicate a deterministic finding. Never give a poor grade with zero actionable flags across deterministic + newFlags.
 

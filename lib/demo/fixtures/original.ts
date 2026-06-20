@@ -1,10 +1,13 @@
 /**
  * Demo fixture regression baseline. DO NOT edit in place for improvements.
  *
- * Workflow:
- * 1. Pipeline regression: audit https://fixflags.com/demo (this fixture).
- * 2. Fix validation: audit https://fixflags.com/demo/v1 (fork from original).
- * 3. New variant: copy original.ts → v1.2.ts, apply fixes, add route. Never chain variants.
+ * Autonomous improvement loop:
+ * 1. Audit baseline: tsx scripts/demo-fixture-audit.ts [baseUrl]  (/demo = this fixture)
+ * 2. Copy original.ts to vN.ts, apply FixFlags expert prompts as a developer would
+ * 3. Re-audit /demo/vN until flag count hits zero (or only acceptable site-level noise)
+ * 4. Upgrade flag copy in lib/audit/flag-copy.ts when prompts are weak
+ *
+ * Fixed fork: /demo/v1 (v1Fixture)
  */
 import type { DemoFixture } from '@/lib/demo/types'
 import { DEMO_BRAND } from '@/lib/demo/brand'
