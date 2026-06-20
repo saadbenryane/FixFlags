@@ -29,6 +29,7 @@ describe('multi-step flow checks', () => {
       multiStep: {
         pricingNav: 'skipped',
         mobileMenu: 'broken',
+        formValidation: 'skipped',
       },
     })
     assert.equal(flags.length, 1)

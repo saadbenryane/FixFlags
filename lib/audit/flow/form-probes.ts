@@ -20,6 +20,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
     for (let fi = 0; fi < forms.length; fi++) {
       const form = forms[fi] as HTMLFormElement
       if (form.closest('header, nav, [role="navigation"], [role="search"]')) continue
+      if (form.hasAttribute('novalidate')) continue
 
       const searchInput = form.querySelector('input[type="search"], [role="searchbox"]')
       if (searchInput && !form.querySelector('input[type="email"], input[required], textarea[required]')) {
@@ -47,7 +48,6 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
       if (!submit) continue
 
       form.setAttribute('data-fixflags-form-probe', String(fi))
-      submit.setAttribute('data-fixflags-form-submit', '1')
 
       const label =
         form.getAttribute('aria-label') ||
@@ -65,54 +65,66 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
   }
 
   const formSelector = `form[data-fixflags-form-probe="${formMeta.index}"]`
-  const submitSelector = `${formSelector} [data-fixflags-form-submit="1"]`
+
+  const nativeCheck = await page.evaluate((sel) => {
+    const form = document.querySelector(sel) as HTMLFormElement | null
+    if (!form) return { hasValidation: false }
+    // Empty required fields should fail constraint validation when rules exist.
+    if (!form.checkValidity()) {
+      return { hasValidation: true }
+    }
+    return { hasValidation: false }
+  }, formSelector)
+
+  if (nativeCheck.hasValidation) {
+    return { formValidation: 'ok', formLabel: formMeta.label }
+  }
+
+  const submitSelector = `${formSelector} button[type="submit"], ${formSelector} input[type="submit"], ${formSelector} button:not([type="button"])`
   const urlBefore = page.url()
 
   try {
-    await page.click(submitSelector)
+    const submit = await page.$(submitSelector)
+    if (!submit) {
+      return { formValidation: 'broken', formLabel: formMeta.label }
+    }
+    await submit.click()
     await sleep(500)
 
     const feedback = await page.evaluate((sel) => {
       const form = document.querySelector(sel) as HTMLFormElement | null
-      if (!form) return { hasFeedback: false, reason: 'form missing' }
+      if (!form) return false
 
-      function isVisible(el: Element): boolean {
+      for (const input of form.querySelectorAll('input, textarea, select')) {
+        const el = input as HTMLInputElement
         const rect = el.getBoundingClientRect()
         const style = window.getComputedStyle(el)
-        return (
+        const visible =
           rect.width > 0 &&
           rect.height > 0 &&
           style.visibility !== 'hidden' &&
           style.display !== 'none' &&
           style.opacity !== '0'
-        )
+        if (!visible) continue
+        if (el.validity && !el.validity.valid) return true
+        if (el.getAttribute('aria-invalid') === 'true') return true
       }
 
-      for (const input of form.querySelectorAll('input, textarea, select')) {
-        const el = input as HTMLInputElement
-        if (!isVisible(el)) continue
-        if (el.validity && !el.validity.valid) return { hasFeedback: true, reason: 'native invalid' }
-        if (el.getAttribute('aria-invalid') === 'true') return { hasFeedback: true, reason: 'aria-invalid' }
-      }
-
-      const errorNodes = form.querySelectorAll(
+      for (const node of form.querySelectorAll(
         '[role="alert"], [aria-live="assertive"], [class*="error" i], [id*="error" i], .invalid-feedback'
-      )
-      for (const node of errorNodes) {
+      )) {
         const text = (node.textContent ?? '').trim()
-        if (text.length > 0 && isVisible(node)) {
-          return { hasFeedback: true, reason: 'error message' }
-        }
+        const rect = node.getBoundingClientRect()
+        if (text.length > 0 && rect.width > 0 && rect.height > 0) return true
       }
 
-      return { hasFeedback: false, reason: 'no feedback' }
+      return false
     }, formSelector)
 
-    const navigatedAway = page.url() !== urlBefore
-    if (feedback.hasFeedback) {
+    if (feedback) {
       return { formValidation: 'ok', formLabel: formMeta.label }
     }
-    if (navigatedAway) {
+    if (page.url() !== urlBefore) {
       return { formValidation: 'broken', formLabel: formMeta.label }
     }
     return { formValidation: 'broken', formLabel: formMeta.label }

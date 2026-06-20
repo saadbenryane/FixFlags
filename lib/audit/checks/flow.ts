@@ -52,7 +52,7 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',
       problem: 'Empty form submit shows no validation feedback',
-      evidence: `Submitting ${label} with empty required fields did not show inline errors or native validation.`,
+      evidence: `Submitting ${label} with empty fields did not trigger HTML5 validation or visible error messages.`,
       fix: 'Add required attributes and visible error messages on empty submit. Use aria-invalid and role="alert" for screen readers.',
       confidence: 0.85,
       source: 'DETERMINISTIC',

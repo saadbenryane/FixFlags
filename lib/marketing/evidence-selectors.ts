@@ -131,6 +131,10 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
     device: 'both',
     selectors: ['main form', 'form button[type="submit"]', '#audit form', 'main input[type="email"]'],
   },
+  'form-missing-validation': {
+    device: 'both',
+    selectors: ['main form', 'form input', 'form textarea', '#audit form'],
+  },
   'cta-dead-link': { device: 'both', selectors: ['nav a', '.demo-nav a', 'main a[href]', '#audit'] },
 
   // Experience / mobile

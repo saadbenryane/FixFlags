@@ -278,7 +278,7 @@ export function AuditReport({
         )}
 
         {isSample && (
-          <Card className="space-y-3 p-6 text-center">
+          <Card className="space-y-3 p-5 text-center sm:p-6">
             <CardTitle>{REPORT_COPY.sampleCta.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
             <Button asChild>

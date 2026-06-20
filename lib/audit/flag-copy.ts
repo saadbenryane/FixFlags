@@ -241,6 +241,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Mobile visitors cannot reach Pricing or Features when the menu toggle fails.',
   'flow-form-no-validation':
     'Visitors who submit an empty form get silence instead of guidance - they abandon instead of fixing typos.',
+  'form-missing-validation':
+    'Forms without required or pattern attributes let bad data through and fail silently on empty submit.',
 }
 
 export function whyItMattersForCheckId(checkId: string): string {
