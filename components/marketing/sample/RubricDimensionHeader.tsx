@@ -73,3 +73,22 @@ export function rubricTintClass(rubric: string): string {
   const meta = RUBRIC_META[rubric as RubricKey]
   return meta?.tint ?? 'text-brand'
 }
+
+export function RubricPill({ rubric, label }: { rubric: string; label: string }) {
+  const meta = RUBRIC_META[rubric as RubricKey] ?? RUBRIC_META.MESSAGE
+  const Icon = meta.icon
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+        meta.border,
+        meta.wash,
+        meta.tint
+      )}
+    >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden />
+      {label}
+    </span>
+  )
+}

@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import { Monitor, Smartphone } from 'lucide-react'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
+import {
+  DESKTOP_FRAME_FLEX_CLASS,
+  MOBILE_FRAME_WIDTH_CLASS,
+  MOBILE_VIEWPORT,
+  SCREENSHOT_FRAMES_ROW_CLASS,
+} from '@/lib/audit/viewports'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { EvidenceHighlight } from '@/lib/marketing/sample-report-display'
 import { cn } from '@/lib/utils'
@@ -89,6 +95,14 @@ function HighlightLayer({
   )
 }
 
+function DeviceLabel({ children }: { children: string }) {
+  return (
+    <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
+      {children}
+    </p>
+  )
+}
+
 function FramedScreenshot({
   url,
   imageUrl,
@@ -129,21 +143,70 @@ export function ScreenshotWithHighlights({
 }: ScreenshotWithHighlightsProps) {
   const defaultTab =
     preferredDevice === 'mobile' && mobileScreenshot ? 'mobile' : 'desktop'
+  const hasDesktop = Boolean(desktopScreenshot)
+  const hasMobile = Boolean(mobileScreenshot)
+
+  if (!hasDesktop && !hasMobile) return null
+
+  if (!hasDesktop && hasMobile) {
+    return (
+      <div className={cn('space-y-3', className)}>
+        <div className="mx-auto max-w-[240px]">
+          <FramedScreenshot
+            url={url}
+            imageUrl={mobileScreenshot}
+            device="mobile"
+            host={host}
+            highlights={highlights}
+            severity={severity}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn('space-y-3', className)}>
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted/50 p-1">
-          <TabsTrigger value="desktop" className="gap-1.5 rounded-full text-xs">
-            <Monitor className="h-3.5 w-3.5" aria-hidden />
-            Desktop
-          </TabsTrigger>
-          <TabsTrigger value="mobile" className="gap-1.5 rounded-full text-xs">
-            <Smartphone className="h-3.5 w-3.5" aria-hidden />
-            Mobile
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="desktop" className="mt-3">
+      <div className="w-full md:hidden">
+        <Tabs defaultValue={defaultTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted/50 p-1">
+            <TabsTrigger value="desktop" className="gap-1.5 rounded-full text-xs">
+              <Monitor className="h-3.5 w-3.5" aria-hidden />
+              Desktop
+            </TabsTrigger>
+            <TabsTrigger value="mobile" className="gap-1.5 rounded-full text-xs">
+              <Smartphone className="h-3.5 w-3.5" aria-hidden />
+              Mobile
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="desktop" className="mt-3">
+            <FramedScreenshot
+              url={url}
+              imageUrl={desktopScreenshot}
+              device="desktop"
+              host={host}
+              highlights={highlights}
+              severity={severity}
+            />
+          </TabsContent>
+          <TabsContent value="mobile" className="mt-3">
+            <div className="mx-auto max-w-[240px]">
+              <FramedScreenshot
+                url={url}
+                imageUrl={mobileScreenshot}
+                device="mobile"
+                host={host}
+                highlights={highlights}
+                severity={severity}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <div className={cn('hidden md:flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
+        <div className={DESKTOP_FRAME_FLEX_CLASS}>
+          <DeviceLabel>Desktop</DeviceLabel>
           <FramedScreenshot
             url={url}
             imageUrl={desktopScreenshot}
@@ -152,9 +215,10 @@ export function ScreenshotWithHighlights({
             highlights={highlights}
             severity={severity}
           />
-        </TabsContent>
-        <TabsContent value="mobile" className="mt-3">
-          <div className="mx-auto max-w-[240px]">
+        </div>
+        {hasMobile && (
+          <div className={MOBILE_FRAME_WIDTH_CLASS} title={`${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height} viewport`}>
+            <DeviceLabel>Mobile</DeviceLabel>
             <FramedScreenshot
               url={url}
               imageUrl={mobileScreenshot}
@@ -164,8 +228,9 @@ export function ScreenshotWithHighlights({
               severity={severity}
             />
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
+
       {highlights.length > 0 && (
         <p className="text-center text-[10px] text-muted-foreground/70">
           Hover pins for evidence

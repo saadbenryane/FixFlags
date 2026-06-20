@@ -412,7 +412,14 @@ async function runPage(
   const partialRubricScores = computeRubricScores(
     flags,
     pagespeed?.desktop ?? null,
-    pagespeed?.mobile ?? null
+    pagespeed?.mobile ?? null,
+    {
+      pageSpeedAvailable: {
+        desktop: Boolean(pagespeed?.desktop),
+        mobile: Boolean(pagespeed?.mobile),
+      },
+      failedModules,
+    }
   )
   if (input.primary) {
     await persistDeterministicFlags(ctx.auditId, flags, partialRubricScores)

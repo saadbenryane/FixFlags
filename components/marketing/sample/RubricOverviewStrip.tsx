@@ -32,7 +32,9 @@ export function RubricOverviewStrip({
           (c) => c.id === rubric.toLowerCase()
         )
         const row = scores.find((s) => s.name === copy?.title)
-        const score = row?.score ?? 0
+        const score = row?.score ?? null
+        const scoreLabel = score == null ? '—' : String(score)
+        const barWidth = score == null ? 0 : Math.min(100, score)
 
         const inner = (
           <>
@@ -53,12 +55,17 @@ export function RubricOverviewStrip({
                   {summaries?.[rubric] ?? copy?.question}
                 </p>
               </div>
-              <span className="font-mono text-2xl font-bold tabular-nums leading-none">{score}</span>
+              <span className="font-mono text-2xl font-bold tabular-nums leading-none">
+                {scoreLabel}
+              </span>
             </div>
             <div className="relative mt-3 h-1 overflow-hidden rounded-full bg-muted/50">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${Math.min(100, score)}%`, backgroundColor: scoreToScanColor(score) }}
+                style={{
+                  width: `${barWidth}%`,
+                  backgroundColor: score != null ? scoreToScanColor(score) : undefined,
+                }}
               />
             </div>
           </>

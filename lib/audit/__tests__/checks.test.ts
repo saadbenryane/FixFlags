@@ -458,8 +458,26 @@ describe('computeRubricScores', () => {
       healthyMobilePs({ score: 77 })
     )
     assert.equal(scores.EXPERIENCE, 68)
-    assert.equal(scores.MESSAGE, null)
-    assert.equal(scores.REACH, null)
+    assert.equal(scores.MESSAGE, 100)
+    assert.equal(scores.REACH, 100)
+  })
+
+  it('penalizes experience when PageSpeed is unavailable', () => {
+    const scores = computeRubricScores([], null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+    })
+    assert.equal(scores.EXPERIENCE, 75)
+    assert.equal(scores.MESSAGE, 100)
+    assert.equal(scores.REACH, 100)
+  })
+
+  it('penalizes rubrics when their check modules fail', () => {
+    const scores = computeRubricScores([], null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+      failedModules: ['content', 'seo'],
+    })
+    assert.equal(scores.MESSAGE, 75)
+    assert.equal(scores.REACH, 75)
   })
 })
 

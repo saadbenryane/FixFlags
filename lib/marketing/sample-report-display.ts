@@ -1,4 +1,10 @@
 import { RUBRIC_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
+import {
+  computeRubricScores,
+  type DeterministicFlag,
+  type RubricScoreContext,
+} from '@/lib/audit/checks'
+import { calculateOverallScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
@@ -6,8 +12,6 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type PipelineStepState = 'done' | 'active' | 'pending'
-
-export type DesignTier = 'good' | 'great' | 'award'
 
 export interface PipelineStep {
   id: string
@@ -39,7 +43,7 @@ export interface EvidenceHighlight {
 }
 
 export interface DesignTierSuggestion {
-  tier: DesignTier
+  tier: 'good' | 'great' | 'award'
   label: string
   suggestion: string
 }
@@ -59,8 +63,8 @@ export interface SampleFlagDisplay {
   whyItMatters: string
   fix: string
   agentPrompt: string
+  fixPrompt: string
   verificationRule: string | null
-  designTiers: DesignTierSuggestion[]
   evidenceHighlights: EvidenceHighlight[]
   /** Prefer mobile screenshot for experience flags */
   preferredDevice: 'desktop' | 'mobile'
@@ -77,14 +81,14 @@ export interface SampleReportDisplay {
   flagCount: number
   desktopScreenshot: string | null
   mobileScreenshot: string | null
-  rubricScores: { name: string; score: number; grade: string | null }[]
+  rubricScores: { name: string; score: number | null; grade: string | null }[]
   rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
   scans: ScanCheck[]
   flags: SampleFlagDisplay[]
 }
 
-const DESIGN_TIER_LABELS: Record<DesignTier, string> = {
+const DESIGN_TIER_LABELS: Record<'good' | 'great' | 'award', string> = {
   good: 'Good design',
   great: 'Great design',
   award: 'Award-winning',
@@ -107,6 +111,71 @@ function gradeFromScore(score: number | null): string | null {
   if (score >= 70) return 'C'
   if (score >= 60) return 'D'
   return 'F'
+}
+
+function flagToDeterministic(flag: RankableFlag): DeterministicFlag | null {
+  if (!flag.checkId) return null
+  return {
+    checkId: flag.checkId,
+    rubric: flag.rubric as DeterministicFlag['rubric'],
+    severity: flag.severity as DeterministicFlag['severity'],
+    problem: flag.problem,
+    evidence: flag.evidence ?? '',
+    fix: flag.fix ?? '',
+    confidence: flag.confidence ?? 0.8,
+    impactTag: flag.impactTag as DeterministicFlag['impactTag'],
+    pageUrl: flag.pageUrl ?? undefined,
+    source: 'DETERMINISTIC',
+  }
+}
+
+function evidenceCoverageContext(audit: LiveSampleAudit): RubricScoreContext {
+  const evidence = audit.evidenceCoverage as {
+    desktopPageSpeed?: boolean
+    mobilePageSpeed?: boolean
+  } | null
+
+  const perf = audit.performanceData as {
+    desktop?: { score: number | null } | null
+    mobile?: { score: number | null } | null
+  } | null
+
+  return {
+    pageSpeedAvailable: {
+      desktop:
+        evidence?.desktopPageSpeed ??
+        (perf?.desktop != null && perf.desktop.score != null),
+      mobile:
+        evidence?.mobilePageSpeed ?? (perf?.mobile != null && perf.mobile.score != null),
+    },
+  }
+}
+
+export function resolveDisplayScores(audit: LiveSampleAudit): {
+  overall: number
+  rubrics: Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
+} {
+  const detFlags = audit.flags
+    .map(flagToDeterministic)
+    .filter((f): f is DeterministicFlag => f !== null)
+
+  const computed = computeRubricScores(detFlags, null, null, evidenceCoverageContext(audit))
+
+  const rubrics = { ...computed }
+  for (const name of RUBRIC_ORDER) {
+    const stored = audit.rubricRows.find((r) => r.name === name)
+    if (stored?.score != null) {
+      rubrics[name] = stored.score
+    }
+  }
+
+  const overall = audit.score ?? calculateOverallScore(rubrics) ?? calculateOverallScore(computed)!
+  return { overall, rubrics }
+}
+
+function awardFixPrompt(flag: RankableFlag): string {
+  const tiers = buildDesignTiers(flag)
+  return tiers.find((t) => t.tier === 'award')?.suggestion ?? flag.agentPrompt ?? flag.fix ?? ''
 }
 
 function buildDesignTiers(flag: RankableFlag): DesignTierSuggestion[] {
@@ -251,8 +320,8 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     whyItMatters: flag.whyItMatters ?? '',
     fix: flag.fix ?? '',
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
+    fixPrompt: awardFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
-    designTiers: buildDesignTiers(flag),
     evidenceHighlights: buildEvidenceHighlights(flag),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
   }
@@ -263,13 +332,14 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
   const flags = sorted.map((flag, index) => mapFlag(flag, index))
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
+  const { overall, rubrics } = resolveDisplayScores(audit)
 
   const rubricScores = RUBRIC_ORDER.map((name) => {
-    const row = audit.rubricRows.find((r) => r.name === name)
+    const score = rubrics[name]
     return {
       name: rubricLabel(name),
-      score: row?.score ?? 0,
-      grade: row?.grade ?? null,
+      score,
+      grade: gradeFromScore(score),
     }
   })
 
@@ -278,8 +348,8 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     url: audit.url,
     host: hostFromUrl(audit.url),
     pageType: audit.pageType,
-    score: audit.score,
-    grade: gradeFromScore(audit.score),
+    score: overall,
+    grade: gradeFromScore(overall),
     verdict: audit.verdict,
     flagCount: flags.length,
     desktopScreenshot: desktop?.url ?? null,

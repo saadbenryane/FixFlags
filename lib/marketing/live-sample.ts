@@ -41,6 +41,7 @@ export type LiveSampleAudit = {
   pipelineVersion: string | null
   reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
   evidenceCoverage?: unknown
+  performanceData?: unknown
   screenshotCapture?: ScreenshotCaptureStatus
   parentId?: string | null
   pageSpeedErrors?: { desktopError?: string; mobileError?: string; pageSpeedPartial?: boolean }

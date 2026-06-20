@@ -112,10 +112,21 @@ export async function runAiReview(auditId: string): Promise<void> {
     throw error
   }
 
+  const evidence = audit.evidenceCoverage as {
+    desktopPageSpeed?: boolean
+    mobilePageSpeed?: boolean
+  } | null
+
   const rubricScores = computeRubricScores(
     detFlags,
     perf?.desktop ?? null,
-    perf?.mobile ?? null
+    perf?.mobile ?? null,
+    {
+      pageSpeedAvailable: {
+        desktop: evidence?.desktopPageSpeed ?? Boolean(perf?.desktop),
+        mobile: evidence?.mobilePageSpeed ?? Boolean(perf?.mobile),
+      },
+    }
   )
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'ai_review_persist' })
