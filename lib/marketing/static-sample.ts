@@ -133,6 +133,27 @@ const STATIC_FLAGS: RankableFlag[] = [
     verificationRule: 'Run Lighthouse. Main-thread blocking time should be under 30ms.',
     pageUrl: null,
   },
+  {
+    id: 'flag-reach-3',
+    checkId: 'favicon-missing',
+    rubric: 'REACH',
+    severity: 'POLISH',
+    impactTag: null,
+    problem: 'No favicon linked in the page head',
+    evidence:
+      'HTML head has no favicon link. Browser tab shows a generic document icon on desktop and mobile.',
+    whyItMatters:
+      'A missing favicon makes the site look unfinished in browser tabs and bookmarks.',
+    fix: 'Add a favicon.ico or PNG favicon link in the document head.',
+    agentPrompt:
+      'Add `<link rel="icon" href="/favicon.ico" sizes="any" />` to the site metadata or layout head.',
+    cursorPrompt: null,
+    claudePrompt: null,
+    lovablePrompt: null,
+    boltPrompt: null,
+    verificationRule: 'Browser tab shows brand icon after hard refresh.',
+    pageUrl: null,
+  },
 ]
 
 const STATIC_RUBRIC_ROWS: ReportRubricRow[] = [

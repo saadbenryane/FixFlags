@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
@@ -8,10 +8,11 @@ import { RubricOverviewStrip } from '@/components/marketing/sample/RubricOvervie
 import { ScoreRingGauge } from '@/components/marketing/sample/ScoreRingGauge'
 import { ScreenshotWithHighlights } from '@/components/marketing/sample/ScreenshotWithHighlights'
 import { Button } from '@/components/ui/button'
-import type {
-  PipelineStep,
-  SampleFlagDisplay,
-  SampleReportDisplay,
+import {
+  buildAllEvidenceHighlights,
+  type PipelineStep,
+  type SampleFlagDisplay,
+  type SampleReportDisplay,
 } from '@/lib/marketing/sample-report-display'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
@@ -47,75 +48,120 @@ function StepDot({ state }: { state: PipelineStep['state'] }) {
   )
 }
 
+function PipelineStepIndicator({ step }: { step: PipelineStep }) {
+  if (step.id === 'flags' && step.state === 'active') {
+    return (
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold leading-none text-brand-foreground">
+        {step.detail}
+      </span>
+    )
+  }
+  return <StepDot state={step.state} />
+}
+
 function PipelineStepsList({ steps }: { steps: PipelineStep[] }) {
   return (
     <ol className="space-y-3">
       {steps.map((step) => (
         <li key={step.id} className="flex items-center gap-3">
-          <StepDot state={step.state} />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <span
-                className={cn(
-                  'text-sm',
-                  step.state === 'done' && 'text-muted-foreground line-through',
-                  step.state === 'active' && 'font-semibold text-foreground',
-                  step.state === 'pending' && 'text-muted-foreground/50'
-                )}
-              >
-                {step.label}
-              </span>
-              {step.state === 'active' ? (
-                <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-foreground">
-                  {step.detail}
-                </span>
-              ) : (
-                <span
-                  className={cn(
-                    'shrink-0 text-[11px]',
-                    step.state === 'done' ? 'text-muted-foreground' : 'text-muted-foreground/40'
-                  )}
-                >
-                  {step.detail}
-                </span>
-              )}
-            </div>
-          </div>
+          <PipelineStepIndicator step={step} />
+          <span
+            className={cn(
+              'text-sm',
+              step.state === 'done' && 'text-muted-foreground line-through',
+              step.state === 'active' && 'font-semibold text-foreground',
+              step.state === 'pending' && 'text-muted-foreground/50'
+            )}
+          >
+            {step.label}
+          </span>
         </li>
       ))}
     </ol>
   )
 }
 
-function RubricPills({ scores }: { scores: SampleReportDisplay['rubricScores'] }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {scores.map((rubric) => {
-        const scoreLabel = rubric.score == null ? '—' : String(rubric.score)
-        const barWidth = rubric.score == null ? 0 : Math.min(100, rubric.score)
+function RubricScoreRow({
+  name,
+  score,
+  compact = false,
+}: {
+  name: string
+  score: number | null
+  compact?: boolean
+}) {
+  const scoreLabel = score == null ? '—' : String(score)
+  const barWidth = score == null ? 0 : Math.min(100, score)
 
-        return (
-          <div
+  return (
+    <div
+      className={cn(
+        'w-full rounded-md bg-muted/30 shadow-sm',
+        compact ? 'px-2 py-1.5' : 'px-3 py-2.5'
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-1">
+        <span
+          className={cn(
+            'font-medium text-muted-foreground',
+            compact ? 'text-[10px] leading-tight' : 'text-xs'
+          )}
+        >
+          {name}
+        </span>
+        <span
+          className={cn(
+            'font-mono font-bold tabular-nums',
+            compact ? 'text-xs' : 'text-sm'
+          )}
+        >
+          {scoreLabel}
+        </span>
+      </div>
+      <div className={cn('overflow-hidden rounded-full bg-muted/50', compact ? 'mt-1 h-0.5' : 'mt-1.5 h-1')}>
+        <div
+          className="h-full rounded-full motion-safe:transition-all motion-safe:duration-500"
+          style={{
+            width: `${barWidth}%`,
+            backgroundColor: score != null ? scoreToScanColor(score) : undefined,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ScoreStack({
+  report,
+  scoreSize = 'md',
+  compact = false,
+}: {
+  report: SampleReportDisplay
+  scoreSize?: 'sm' | 'md' | 'lg'
+  compact?: boolean
+}) {
+  const ringSize = compact ? 'sm' : scoreSize
+
+  return (
+    <div className={cn(compact ? 'space-y-2' : 'space-y-3')}>
+      <div className="flex w-full justify-center">
+        <ScoreRingGauge score={report.score} size={ringSize} />
+      </div>
+      {report.verdict && !compact && (
+        <p className="text-center text-sm font-medium leading-snug text-balance text-muted-foreground">
+          {report.verdict}
+        </p>
+      )}
+      <div className={cn(compact ? 'space-y-1' : 'space-y-2')}>
+        {report.rubricScores.map((rubric) => (
+          <RubricScoreRow
             key={rubric.name}
-            className="min-w-[4.5rem] rounded-card bg-muted/30 px-2.5 py-2 shadow-sm"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-mono text-sm font-bold tabular-nums">{scoreLabel}</span>
-              <span className="text-[10px] font-medium text-muted-foreground">{rubric.name}</span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted/50">
-              <div
-                className="h-full rounded-full motion-safe:transition-all motion-safe:duration-500"
-                style={{
-                  width: `${barWidth}%`,
-                  backgroundColor:
-                    rubric.score != null ? scoreToScanColor(rubric.score) : undefined,
-                }}
-              />
-            </div>
-          </div>
-        )
-      })}
+            name={rubric.name}
+            score={rubric.score}
+            compact={compact}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -230,71 +276,67 @@ function ReportBody({
   report,
   flag,
   showProgress = true,
-  showScore = true,
-  showRubricPills = true,
+  showScoreStack = true,
   showFlagNav = true,
   scoreSize = 'md',
   flagIndex,
   flagCount,
   onPrevious,
   onNext,
+  onPinSelect,
+  flagDetailRef,
   compact = false,
   flagDetailLabel = 'Flag detail',
 }: {
   report: SampleReportDisplay
   flag: SampleFlagDisplay
   showProgress?: boolean
-  showScore?: boolean
-  showRubricPills?: boolean
+  showScoreStack?: boolean
   showFlagNav?: boolean
   scoreSize?: 'sm' | 'md' | 'lg'
   flagIndex: number
   flagCount: number
   onPrevious: () => void
   onNext: () => void
+  onPinSelect: (flagId: string) => void
+  flagDetailRef: React.RefObject<HTMLDivElement | null>
   compact?: boolean
   flagDetailLabel?: string
 }) {
+  const allHighlights = buildAllEvidenceHighlights(report.flags)
+  const showDesktop = flag.evidenceDevices.includes('desktop')
+  const showMobile = flag.evidenceDevices.includes('mobile')
+
   return (
     <div className="space-y-6">
-      {showScore && (
-        <div className="flex items-center gap-4">
-          <ScoreRingGauge score={report.score} size={scoreSize} />
-          <div className="min-w-0 flex-1 space-y-2">
-            {report.verdict && (
-              <p className="text-sm font-medium leading-snug text-balance">{report.verdict}</p>
-            )}
-            {showRubricPills && <RubricPills scores={report.rubricScores} />}
-          </div>
+      {(showScoreStack || showProgress) && (
+        <div
+          className={cn(
+            'grid items-start gap-x-6 gap-y-3 sm:gap-x-10',
+            showScoreStack && showProgress
+              ? 'grid-cols-[minmax(5.5rem,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(6.5rem,8.5rem)_minmax(0,1fr)]'
+              : 'grid-cols-1'
+          )}
+        >
+          {showScoreStack && (
+            <ScoreStack report={report} scoreSize={scoreSize} compact={compact} />
+          )}
+          {showProgress && (
+            <div className="min-w-0">
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 sm:mb-3">
+                Review progress
+              </p>
+              <PipelineStepsList steps={report.pipelineSteps} />
+            </div>
+          )}
         </div>
       )}
 
-      {!showScore && showRubricPills && (
-        <div className="space-y-2">
-          <RubricPills scores={report.rubricScores} />
-        </div>
-      )}
-
-      {showProgress && (
-        <div>
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
-            Review progress
-          </p>
-          <PipelineStepsList steps={report.pipelineSteps} />
-        </div>
-      )}
-
-      <ScreenshotWithHighlights
-        url={report.url}
-        host={report.displayHost}
-        desktopScreenshot={report.desktopScreenshot}
-        mobileScreenshot={report.mobileScreenshot}
-        preferredDevice={flag.preferredDevice}
-        highlights={flag.evidenceHighlights}
-        severity={flag.severity}
-      />
-
-      <div className="border-t border-border/30 pt-6">
+      <div
+        id="flag-detail"
+        ref={flagDetailRef}
+        className="border-t border-border/30 pt-6 scroll-mt-24"
+      >
         <div
           className={cn(
             'mb-4 flex items-center gap-3',
@@ -320,6 +362,19 @@ function ReportBody({
             </div>
           )}
         </div>
+
+        <ScreenshotWithHighlights
+          host={report.displayHost}
+          desktopScreenshot={report.desktopScreenshot}
+          mobileScreenshot={report.mobileScreenshot}
+          highlights={allHighlights}
+          selectedFlagId={flag.id}
+          onPinSelect={onPinSelect}
+          showDesktop={showDesktop}
+          showMobile={showMobile}
+          className="mb-5"
+        />
+
         <FlagDetailPanel flag={flag} compact={compact} />
       </div>
     </div>
@@ -333,6 +388,7 @@ export function SampleReportExplorer({
   initialFlagIndex = 0,
 }: SampleReportExplorerProps) {
   const [flagIndex, setFlagIndex] = useState(initialFlagIndex)
+  const flagDetailRef = useRef<HTMLDivElement>(null)
   const flagCount = report.flags.length
   const currentFlag = report.flags[flagIndex]
 
@@ -343,6 +399,18 @@ export function SampleReportExplorer({
   const showNext = useCallback(() => {
     setFlagIndex((i) => (i + 1) % flagCount)
   }, [flagCount])
+
+  const goToFlag = useCallback(
+    (flagId: string) => {
+      const idx = report.flags.findIndex((f) => f.id === flagId)
+      if (idx < 0) return
+      setFlagIndex(idx)
+      requestAnimationFrame(() => {
+        flagDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    },
+    [report.flags]
+  )
 
   const goToRubric = useCallback(
     (rubric: string) => {
@@ -369,20 +437,22 @@ export function SampleReportExplorer({
     className
   )
 
+  const reportBodyProps = {
+    report,
+    flag: currentFlag,
+    flagIndex,
+    flagCount,
+    onPrevious: showPrevious,
+    onNext: showNext,
+    onPinSelect: goToFlag,
+    flagDetailRef,
+  }
+
   if (variant === 'hero') {
     return (
       <div className={shellClass}>
         <div className="bg-muted/10 p-4 sm:p-5">
-          <ReportBody
-            report={report}
-            flag={currentFlag}
-            scoreSize="md"
-            flagIndex={flagIndex}
-            flagCount={flagCount}
-            onPrevious={showPrevious}
-            onNext={showNext}
-            compact
-          />
+          <ReportBody {...reportBodyProps} scoreSize="md" compact />
         </div>
       </div>
     )
@@ -411,14 +481,9 @@ export function SampleReportExplorer({
 
         <div className="p-4 sm:p-5">
           <ReportBody
-            report={report}
-            flag={currentFlag}
+            {...reportBodyProps}
+            showScoreStack={false}
             showProgress={false}
-            showScore={false}
-            flagIndex={flagIndex}
-            flagCount={flagCount}
-            onPrevious={showPrevious}
-            onNext={showNext}
             compact
           />
         </div>
@@ -465,15 +530,9 @@ export function SampleReportExplorer({
 
         <div className="p-4 sm:p-6">
           <ReportBody
-            report={report}
-            flag={currentFlag}
-            showScore={false}
-            showRubricPills={false}
+            {...reportBodyProps}
+            showScoreStack={false}
             showFlagNav={false}
-            flagIndex={flagIndex}
-            flagCount={flagCount}
-            onPrevious={showPrevious}
-            onNext={showNext}
             flagDetailLabel={`Check ${flagIndex + 1} of ${flagCount}`}
           />
         </div>

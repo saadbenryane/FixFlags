@@ -15,4 +15,9 @@ describe('static sample vs original fixture', () => {
     const audit = getStaticSampleAudit()
     assert.ok(audit.url.endsWith('/demo'))
   })
+
+  it('includes at least seven flags', () => {
+    const audit = getStaticSampleAudit()
+    assert.ok(audit.flags.length >= 7)
+  })
 })

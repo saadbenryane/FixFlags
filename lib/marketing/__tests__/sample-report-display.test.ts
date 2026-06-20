@@ -8,6 +8,7 @@ import {
 import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 import {
+  buildAllEvidenceHighlights,
   buildSampleReportDisplay,
   resolveDisplayScores,
 } from '@/lib/marketing/sample-report-display'
@@ -123,6 +124,62 @@ describe('buildSampleReportDisplay', () => {
     assert.ok(flag.evidenceHighlights.some((h) => h.device === 'desktop'))
     assert.ok(flag.evidenceHighlights.some((h) => h.device === 'mobile'))
     assert.equal(flag.evidenceHighlights[0].id, 'h1-generic-desktop')
+    assert.equal(flag.evidenceHighlights[0].flagId, 'flag-message-1')
+    assert.equal(flag.evidenceHighlights[0].flagIndex, 0)
+    assert.equal(flag.evidenceHighlights[0].severity, 'IMPORTANT')
+    assert.deepEqual(flag.evidenceDevices, ['desktop', 'mobile'])
     assert.equal(flag.evidenceHighlights[1].id, 'h1-generic-mobile')
+  })
+
+  it('buildAllEvidenceHighlights merges flags', () => {
+    const report = buildSampleReportDisplay(
+      baseAudit({
+        flags: [
+          {
+            id: 'flag-message-1',
+            checkId: 'h1-generic',
+            rubric: 'MESSAGE',
+            severity: 'IMPORTANT',
+            impactTag: null,
+            problem: 'Generic headline',
+            evidence: 'evidence',
+            whyItMatters: 'matters',
+            fix: 'fix',
+            agentPrompt: 'prompt',
+            cursorPrompt: null,
+            claudePrompt: null,
+            lovablePrompt: null,
+            boltPrompt: null,
+            verificationRule: null,
+            pageUrl: null,
+          },
+          {
+            id: 'flag-experience-1',
+            checkId: 'tap-targets-small',
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: null,
+            problem: 'Small tap targets',
+            evidence: 'mobile evidence',
+            whyItMatters: 'matters',
+            fix: 'fix',
+            agentPrompt: 'prompt',
+            cursorPrompt: null,
+            claudePrompt: null,
+            lovablePrompt: null,
+            boltPrompt: null,
+            verificationRule: null,
+            pageUrl: null,
+          },
+        ],
+      })
+    )
+
+    const merged = buildAllEvidenceHighlights(report.flags)
+    assert.ok(merged.length >= 3)
+    assert.ok(merged.some((h) => h.flagId === 'flag-message-1'))
+    assert.ok(merged.some((h) => h.flagId === 'flag-experience-1'))
+    assert.ok(report.flags[1].evidenceDevices.includes('mobile'))
+    assert.equal(report.flags[1].evidenceDevices.includes('desktop'), false)
   })
 })

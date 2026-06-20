@@ -12,6 +12,7 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
+import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 
 export type PipelineStepState = 'done' | 'active' | 'pending'
@@ -26,11 +27,14 @@ export interface PipelineStep {
 /** Normalized pin center on a screenshot (0–1). */
 export interface EvidenceHighlight {
   id: string
+  flagId: string
+  flagIndex: number
   device: 'desktop' | 'mobile'
   x: number
   y: number
   label: string
   detail: string
+  severity: string
 }
 
 export interface DesignTierSuggestion {
@@ -57,6 +61,7 @@ export interface SampleFlagDisplay {
   fixPrompt: string
   verificationRule: string | null
   evidenceHighlights: EvidenceHighlight[]
+  evidenceDevices: ('desktop' | 'mobile')[]
   /** Prefer mobile screenshot for experience flags */
   preferredDevice: 'desktop' | 'mobile'
 }
@@ -200,21 +205,25 @@ function lookupAnchor(flag: RankableFlag, device: 'desktop' | 'mobile') {
   return entry[device] ?? null
 }
 
-function buildEvidenceHighlights(flag: RankableFlag): EvidenceHighlight[] {
+function buildEvidenceHighlights(flag: RankableFlag, index: number): EvidenceHighlight[] {
   const key = flag.checkId ?? flag.id
   const preferred = preferredDeviceForFlag(flag)
+  const devices = devicesForCheck(key)
   const highlights: EvidenceHighlight[] = []
 
-  for (const device of ['desktop', 'mobile'] as const) {
+  for (const device of devices) {
     const anchor = lookupAnchor(flag, device)
     if (!anchor) continue
     highlights.push({
       id: `${key}-${device}`,
+      flagId: flag.id,
+      flagIndex: index,
       device,
       x: anchor.x,
       y: anchor.y,
       label: flag.problem,
       detail: flag.evidence ?? flag.problem,
+      severity: flag.severity,
     })
   }
 
@@ -224,13 +233,20 @@ function buildEvidenceHighlights(flag: RankableFlag): EvidenceHighlight[] {
   return [
     {
       id: `${flag.id}-fallback`,
+      flagId: flag.id,
+      flagIndex: index,
       device: preferred,
       x: 0.5,
       y: 0.28,
       label: flag.problem,
       detail: flag.evidence,
+      severity: flag.severity,
     },
   ]
+}
+
+export function buildAllEvidenceHighlights(flags: SampleFlagDisplay[]): EvidenceHighlight[] {
+  return flags.flatMap((flag) => flag.evidenceHighlights)
 }
 
 function captureStepDetail(pageType: string | null): string {
@@ -284,7 +300,8 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
     fixPrompt: awardFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
-    evidenceHighlights: buildEvidenceHighlights(flag),
+    evidenceHighlights: buildEvidenceHighlights(flag, index),
+    evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
   }
 }

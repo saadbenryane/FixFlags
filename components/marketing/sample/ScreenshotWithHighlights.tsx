@@ -10,13 +10,14 @@ import type { EvidenceHighlight } from '@/lib/marketing/sample-report-display'
 import { cn } from '@/lib/utils'
 
 interface ScreenshotWithHighlightsProps {
-  url: string
   host: string
   desktopScreenshot: string | null
   mobileScreenshot: string | null
-  preferredDevice: 'desktop' | 'mobile'
   highlights: EvidenceHighlight[]
-  severity?: string
+  selectedFlagId?: string
+  onPinSelect?: (flagId: string) => void
+  showDesktop?: boolean
+  showMobile?: boolean
   className?: string
 }
 
@@ -34,23 +35,30 @@ function useNarrowViewport() {
   return narrow
 }
 
-function EvidencePin({ severity, active }: { severity?: string; active?: boolean }) {
+function EvidencePin({ severity, active, selected }: { severity?: string; active?: boolean; selected?: boolean }) {
   const isCritical = severity === 'CRITICAL'
 
   return (
-    <span className="relative flex h-4 w-4 items-center justify-center">
+    <span
+      className={cn(
+        'relative flex items-center justify-center',
+        selected ? 'h-5 w-5' : 'h-4 w-4'
+      )}
+    >
       <span
         className={cn(
           'absolute inset-0 rounded-full motion-safe:animate-pulse motion-reduce:animate-none',
           isCritical
             ? 'bg-destructive/30 shadow-[0_0_0_4px_hsl(var(--destructive)/0.25),0_0_16px_hsl(var(--destructive)/0.45)]'
-            : 'bg-brand/30 shadow-[0_0_0_4px_hsl(var(--brand)/0.25),0_0_16px_hsl(var(--peach-glow)/0.5)]'
+            : 'bg-brand/30 shadow-[0_0_0_4px_hsl(var(--brand)/0.25),0_0_16px_hsl(var(--peach-glow)/0.5)]',
+          selected && 'opacity-100'
         )}
         aria-hidden
       />
       <span
         className={cn(
-          'relative h-3.5 w-3.5 rounded-full bg-white ring-2 transition-transform',
+          'relative rounded-full bg-white ring-2 transition-transform',
+          selected ? 'h-4 w-4 scale-110 ring-brand' : 'h-3.5 w-3.5',
           isCritical ? 'ring-destructive/60' : 'ring-brand/70',
           active && 'scale-110'
         )}
@@ -78,11 +86,13 @@ function PinTooltipContent({
 
 function PinOverlay({
   highlight,
-  severity,
+  selected,
+  onPinSelect,
   useMobileTooltip,
 }: {
   highlight: EvidenceHighlight
-  severity?: string
+  selected?: boolean
+  onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -102,7 +112,10 @@ function PinOverlay({
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [open, showFixedTooltip, close])
 
-  const toggle = () => setOpen((prev) => !prev)
+  const handleClick = () => {
+    onPinSelect?.(highlight.flagId)
+    setOpen((prev) => !prev)
+  }
 
   return (
     <>
@@ -120,13 +133,14 @@ function PinOverlay({
           className="touch-manipulation rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           aria-label={`Evidence: ${highlight.label}`}
           aria-expanded={open}
+          aria-current={selected ? 'true' : undefined}
           onMouseEnter={() => !narrow && setOpen(true)}
           onMouseLeave={() => !narrow && setOpen(false)}
           onFocus={() => setOpen(true)}
           onBlur={() => !narrow && setOpen(false)}
-          onClick={toggle}
+          onClick={handleClick}
         >
-          <EvidencePin severity={severity} active={open} />
+          <EvidencePin severity={highlight.severity} active={open} selected={selected} />
         </button>
         {open && !showFixedTooltip && (
           <div
@@ -167,12 +181,14 @@ function PinOverlay({
 function HighlightLayer({
   highlights,
   device,
-  severity,
+  selectedFlagId,
+  onPinSelect,
   useMobileTooltip,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
-  severity?: string
+  selectedFlagId?: string
+  onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
 }) {
   const visible = highlights.filter((h) => h.device === device)
@@ -184,7 +200,8 @@ function HighlightLayer({
         <PinOverlay
           key={h.id}
           highlight={h}
-          severity={severity}
+          selected={h.flagId === selectedFlagId}
+          onPinSelect={onPinSelect}
           useMobileTooltip={useMobileTooltip}
         />
       ))}
@@ -197,7 +214,8 @@ function ScreenshotPanel({
   device,
   host,
   highlights,
-  severity,
+  selectedFlagId,
+  onPinSelect,
   className,
   useMobileTooltip,
   containerRef,
@@ -207,11 +225,11 @@ function ScreenshotPanel({
   device: 'desktop' | 'mobile'
   host: string
   highlights: EvidenceHighlight[]
-  severity?: string
+  selectedFlagId?: string
+  onPinSelect?: (flagId: string) => void
   className?: string
   useMobileTooltip?: boolean
   containerRef?: Ref<HTMLDivElement>
-  /** Fixed dimensions — mobile height must match desktop, never exceed it */
   size?: { width: number; height: number }
 }) {
   const panelStyle: CSSProperties = size
@@ -239,7 +257,8 @@ function ScreenshotPanel({
           <HighlightLayer
             highlights={highlights}
             device={device}
-            severity={severity}
+            selectedFlagId={selectedFlagId}
+            onPinSelect={onPinSelect}
             useMobileTooltip={useMobileTooltip}
           />
         </div>
@@ -253,11 +272,14 @@ export function ScreenshotWithHighlights({
   desktopScreenshot,
   mobileScreenshot,
   highlights,
-  severity,
+  selectedFlagId,
+  onPinSelect,
+  showDesktop = true,
+  showMobile = true,
   className,
 }: ScreenshotWithHighlightsProps) {
-  const hasDesktop = Boolean(desktopScreenshot)
-  const hasMobile = Boolean(mobileScreenshot)
+  const showDesktopPanel = showDesktop && Boolean(desktopScreenshot)
+  const showMobilePanel = showMobile && Boolean(mobileScreenshot)
 
   const desktopPanelRef = useRef<HTMLDivElement>(null)
   const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(null)
@@ -271,32 +293,50 @@ export function ScreenshotWithHighlights({
     }
   }, [])
 
+  const sideBySide = showDesktopPanel && showMobilePanel
+
   useLayoutEffect(() => {
-    if (!hasMobile || !hasDesktop) return
+    if (!sideBySide) return
     measureDesktopPanel()
     const el = desktopPanelRef.current
     if (!el) return
     const ro = new ResizeObserver(measureDesktopPanel)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [hasMobile, hasDesktop, desktopScreenshot, measureDesktopPanel])
+  }, [sideBySide, desktopScreenshot, measureDesktopPanel])
 
   useEffect(() => {
-    if (!hasMobile || !desktopScreenshot) return
+    if (!sideBySide || !desktopScreenshot) return
     const img = desktopPanelRef.current?.querySelector('img')
     if (!img) return
     const onLoad = () => measureDesktopPanel()
     img.addEventListener('load', onLoad)
     if (img.complete) onLoad()
     return () => img.removeEventListener('load', onLoad)
-  }, [hasMobile, desktopScreenshot, measureDesktopPanel])
+  }, [sideBySide, desktopScreenshot, measureDesktopPanel])
 
   const mobilePanelSize =
     desktopPanelHeight != null ? mobileViewportSizeForHeight(desktopPanelHeight) : null
 
-  if (!hasDesktop && !hasMobile) return null
+  if (!showDesktopPanel && !showMobilePanel) return null
 
-  if (!hasDesktop && hasMobile) {
+  if (showDesktopPanel && !showMobilePanel) {
+    return (
+      <div className={cn('w-full', className)}>
+        <ScreenshotPanel
+          imageUrl={desktopScreenshot!}
+          device="desktop"
+          host={host}
+          highlights={highlights}
+          selectedFlagId={selectedFlagId}
+          onPinSelect={onPinSelect}
+          useMobileTooltip
+        />
+      </div>
+    )
+  }
+
+  if (!showDesktopPanel && showMobilePanel) {
     return (
       <div className={cn('w-full', className)}>
         <ScreenshotPanel
@@ -304,7 +344,8 @@ export function ScreenshotWithHighlights({
           device="mobile"
           host={host}
           highlights={highlights}
-          severity={severity}
+          selectedFlagId={selectedFlagId}
+          onPinSelect={onPinSelect}
           useMobileTooltip
         />
       </div>
@@ -320,18 +361,20 @@ export function ScreenshotWithHighlights({
             device="desktop"
             host={host}
             highlights={highlights}
-            severity={severity}
+            selectedFlagId={selectedFlagId}
+            onPinSelect={onPinSelect}
             containerRef={desktopPanelRef}
             useMobileTooltip
           />
         </div>
-        {hasMobile && mobilePanelSize && (
+        {mobilePanelSize && (
           <ScreenshotPanel
             imageUrl={mobileScreenshot!}
             device="mobile"
             host={host}
             highlights={highlights}
-            severity={severity}
+            selectedFlagId={selectedFlagId}
+            onPinSelect={onPinSelect}
             size={mobilePanelSize}
             useMobileTooltip
           />
