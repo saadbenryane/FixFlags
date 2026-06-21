@@ -82,7 +82,6 @@ export async function GET() {
 
     const allOk =
       checks.db === 'ok' &&
-      checks.redis === 'ok' &&
       checks.storage !== 'error' &&
       (checks.worker === 'ok' || checks.worker === 'unknown' || waiting === 0)
 

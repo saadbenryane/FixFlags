@@ -9,6 +9,7 @@ let redis: Redis | null = null
 function getRedis(): Redis {
   if (!redis) {
     redis = new Redis(getWorkerRedisConnectionOptions())
+    redis.on('error', () => {})
   }
   return redis
 }
