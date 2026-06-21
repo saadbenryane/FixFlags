@@ -16,7 +16,8 @@ function getAuditRedis(): Redis {
 export function getAuditQueue(): Queue {
   if (!_auditQueue) {
     _auditQueue = new Queue('audit', {
-      connection: getAuditRedis(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      connection: getAuditRedis() as any,
       defaultJobOptions: {
         attempts: 1,
         backoff: { type: 'fixed', delay: 10_000 },
