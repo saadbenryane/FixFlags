@@ -136,10 +136,13 @@ export const judgeOutputSchema = z.object({
 
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const generatedSchema = zodToJsonSchema(judgeOutputSchema as any, {
   target: 'openApi3',
   $refStrategy: 'none',
 })
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type Check = typeof generatedSchema
 
 export const QUALITY_REPORT_SCHEMA = generatedSchema
 

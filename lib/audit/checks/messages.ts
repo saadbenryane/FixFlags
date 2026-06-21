@@ -1,4 +1,3 @@
-import type { SeverityName, RubricName, ImpactTagName } from '../constants'
 
 export interface CheckMessageEntry {
   problem: string
