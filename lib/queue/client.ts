@@ -25,6 +25,7 @@ export function getAuditQueue(): Queue {
         removeOnFail: { count: 5000, age: 30 * 24 * 3600 },
       },
     })
+    _auditQueue.on('error', () => {})
   }
   return _auditQueue
 }
