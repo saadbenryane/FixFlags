@@ -86,6 +86,8 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         </div>
         <div
           style={{
+            display: 'flex',
+            flexWrap: 'wrap',
             fontSize: 20,
             color: p.mutedForeground,
             lineHeight: 1.5,
