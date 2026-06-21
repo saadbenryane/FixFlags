@@ -10,13 +10,12 @@ export function getRedisConnectionOptions() {
   }
 }
 
-/** Worker connection. */
+/** Worker connection, no lazy connect so jobs process immediately. */
 export function getWorkerRedisConnectionOptions() {
   const url = getRedisUrl()
   return {
     url: url.includes('?') ? url : `${url}?family=0`,
     maxRetriesPerRequest: null as unknown as undefined,
     enableReadyCheck: false,
-    lazyConnect: true,
   }
 }
