@@ -82,7 +82,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             letterSpacing: '-0.02em',
           }}
         >
-          {HERO.headlineLine1} {HERO.headlineLine2}
+          {`${HERO.headlineLine1} ${HERO.headlineLine2}`}
         </div>
         <div
           style={{
@@ -93,9 +93,12 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             lineHeight: 1.5,
             maxWidth: 480,
             fontFamily: ogFontFamilies.sans,
+            gap: 4,
           }}
         >
-          FLAG ISSUES. <span style={{ color: p.brand, fontWeight: 700 }}>FOCUS</span> WHAT MATTERS.
+          <span>FLAG ISSUES.</span>
+          <span style={{ color: p.brand, fontWeight: 700 }}>FOCUS</span>
+          <span>WHAT MATTERS.</span>
         </div>
       </div>
 
