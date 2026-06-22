@@ -6,10 +6,13 @@ let redis: Redis | null = null
 function getRateLimitRedis(): Redis {
   if (!redis) {
     redis = new Redis(getRedisUrl(), {
+      // family: 0 resolves IPv4 + IPv6 (Railway's internal Redis is IPv6-only).
+      family: 0,
       maxRetriesPerRequest: 1,
       enableReadyCheck: true,
       lazyConnect: true,
     })
+    redis.on('error', () => {})
   }
   return redis
 }

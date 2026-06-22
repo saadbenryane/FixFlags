@@ -2,7 +2,7 @@ import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
 import { runAiReview } from '../audit/run-ai-review'
-import { getWorkerRedisConnectionOptions } from './redis'
+import { createWorkerRedis } from './redis'
 import { touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
@@ -44,7 +44,8 @@ export function startWorker() {
       }
     },
     {
-      connection: getWorkerRedisConnectionOptions(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      connection: createWorkerRedis() as any,
       concurrency: parseWorkerConcurrency(),
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
     }

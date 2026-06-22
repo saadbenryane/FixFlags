@@ -1,14 +1,13 @@
 import { Queue } from 'bullmq'
-import { getRedisConnectionOptions } from './redis'
-import Redis from 'ioredis'
+import { createQueueRedis } from './redis'
+import type Redis from 'ioredis'
 
 let _auditQueue: Queue | null = null
 let _auditRedis: Redis | null = null
 
 function getAuditRedis(): Redis {
   if (!_auditRedis) {
-    _auditRedis = new Redis(getRedisConnectionOptions())
-    _auditRedis.on('error', () => {})
+    _auditRedis = createQueueRedis()
   }
   return _auditRedis
 }

@@ -1,5 +1,5 @@
-import { getWorkerRedisConnectionOptions } from './redis'
-import Redis from 'ioredis'
+import { createWorkerRedis } from './redis'
+import type Redis from 'ioredis'
 
 const HEARTBEAT_KEY = 'fixflags:worker:heartbeat'
 const HEARTBEAT_TTL_SECONDS = 45
@@ -8,8 +8,7 @@ let redis: Redis | null = null
 
 function getRedis(): Redis {
   if (!redis) {
-    redis = new Redis(getWorkerRedisConnectionOptions())
-    redis.on('error', () => {})
+    redis = createWorkerRedis()
   }
   return redis
 }
