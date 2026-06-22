@@ -25,6 +25,7 @@ export const DEMO_FIXTURE_OUT_OF_SCOPE_CHECK_IDS = new Set([
   'tap-targets-small',
   'mobile-lcp-critical',
   'cta-below-fold-mobile', // needs browser capture metrics
+  'og-image-broken', // needs a live HTTP fetch of the og:image; offline fixture audit can't validate it
 ])
 
 export const DEMO_FIXTURE_ORIGIN = 'https://fixflags.com'

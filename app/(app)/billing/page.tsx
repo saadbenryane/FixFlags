@@ -163,7 +163,7 @@ export default async function BillingPage() {
                 {creditPurchases.map((p) => (
                   <div key={p.id} className="flex items-center justify-between text-xs text-muted-foreground py-1 border-b border-border/20 last:border-0">
                     <span>
-                      {p.creditsPurchased} credits — {p.packId.replace('_', ' ')}
+                      {p.creditsPurchased} credits - {p.packId.replace('_', ' ')}
                     </span>
                     <span>
                       {formatUsdCents(p.priceUsdCents)}

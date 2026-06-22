@@ -207,7 +207,7 @@ export default async function AdminPage() {
                 {costOutliers.map((o) => (
                   <tr key={o.auditId} className="border-b last:border-0">
                     <td className="px-4 py-3 font-mono text-xs truncate max-w-[240px]">{o.domain}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{o.model ?? '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{o.model ?? '-'}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-xs">{formatUsd(o.estimatedCostUsd)}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-xs text-muted-foreground">{o.inputTokens.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-xs text-muted-foreground">{o.outputTokens.toLocaleString()}</td>

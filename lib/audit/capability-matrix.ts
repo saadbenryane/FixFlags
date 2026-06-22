@@ -285,7 +285,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Stuck loading / skeleton UI after page load',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['loading-indicator-stuck', 'flow-cta-blank-destination', 'flow-cta-stuck-loading'],
+    checkIds: ['loading-indicator-stuck'],
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Detects visible skeleton/spinner/[aria-busy] after capture.',
   },

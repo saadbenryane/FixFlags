@@ -54,7 +54,7 @@ export function CreditPackButton({ packId, label, price, popular }: Props) {
       className="w-full"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-      {label} — {price}
+      {label} - {price}
     </Button>
   )
 }

@@ -5,7 +5,7 @@ import { resolveDemoFixture } from '@/lib/demo/resolve-fixture'
 const fixture = resolveDemoFixture('v1')
 
 export const metadata: Metadata = {
-  title: `${fixture.metadata.title} — Sign up`,
+  title: `${fixture.metadata.title} - Sign up`,
   robots: { index: false, follow: false },
 }
 
