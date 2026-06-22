@@ -961,7 +961,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
           status: 'success',
           steps: [],
           finalUrl: 'https://example.com/destination',
-          postClickMetrics: { blankScreenMs: 5000, timeToFirstContentMs: 4000, stuckLoading: false },
+          postClickMetrics: { blankScreenMs: 5000, timeToFirstContentMs: 4000, stuckLoading: false, stuckLoadingLabel: null },
         })
       ),
     'flow-cta-stuck-loading': () =>

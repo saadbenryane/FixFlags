@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
   canViewAiReportContent,
-  canViewAiViaAgencyPublicShare,
+  canViewAiViaMaxPublicShare,
   isPublicMarketingSample,
   stripAiFromFlags,
 } from '@/lib/audit/report-access'
@@ -66,23 +66,23 @@ describe('report-access', () => {
     )
   })
 
-  it('allows Agency public share when owner can share publicly', () => {
+  it('allows Max public share when owner can share publicly', () => {
     assert.equal(
-      canViewAiViaAgencyPublicShare(
+      canViewAiViaMaxPublicShare(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         true
       ),
       true
     )
     assert.equal(
-      canViewAiViaAgencyPublicShare(
+      canViewAiViaMaxPublicShare(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         false
       ),
       false
     )
     assert.equal(
-      canViewAiViaAgencyPublicShare(
+      canViewAiViaMaxPublicShare(
         { userId: null, aiReviewAt, isPublic: true },
         true
       ),

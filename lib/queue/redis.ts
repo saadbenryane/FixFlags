@@ -4,7 +4,7 @@ import { getRedisUrl } from '@/lib/env'
 /**
  * ioredis only parses connection details (host, port, auth, TLS) when the URL
  * is passed as the first *string* argument. A `url` key inside the options
- * object is silently ignored, and the client falls back to localhost:6379 —
+ * object is silently ignored, and the client falls back to localhost:6379,
  * which fails in production with "Connection is closed.". Always build clients
  * from the URL string.
  *
@@ -28,7 +28,7 @@ export function createQueueRedis(): Redis {
   })
 }
 
-/** Worker connection — eager so jobs process immediately. */
+/** Worker connection: eager so jobs process immediately. */
 export function createWorkerRedis(): Redis {
   return createRedis({
     maxRetriesPerRequest: null,
