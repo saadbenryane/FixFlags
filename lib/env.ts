@@ -77,7 +77,14 @@ export function validateWorkerEnv(): void {
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
   }
   if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    throw new Error('Missing required env var: OPENAI_API_KEY or ANTHROPIC_API_KEY')
+    // Deterministic (anonymous/free) audits do not call the LLM judge, so the
+    // worker must still boot and process jobs without an AI key. Only AI review
+    // degrades: audits finalize with deterministic results instead of hanging.
+    // Crashing here would take the whole worker down and stall every scan.
+    console.warn(
+      '[env] No OPENAI_API_KEY or ANTHROPIC_API_KEY set. AI review is disabled; ' +
+        'audits will complete with deterministic checks only.'
+    )
   }
   if (process.env.NODE_ENV === 'production') {
     const r2Required = [

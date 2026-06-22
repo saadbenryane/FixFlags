@@ -35,6 +35,7 @@ export async function GET(
         startedAt: true,
         completedAt: true,
         updatedAt: true,
+        createdAt: true,
         url: true,
         userId: true,
         isPublic: true,

@@ -2,8 +2,10 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   WORKER_DEAD_RECOVERY_SECONDS,
+  WORKER_DOWN_GIVEUP_SECONDS,
   isAuditPastDeadline,
   isQueuedPastDeadline,
+  isWorkerDownGiveUp,
 } from '@/lib/audit/recover-audit-job'
 import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
 import { wrapAuditJobError } from '@/lib/queue/worker'
@@ -34,6 +36,17 @@ describe('recover audit job', () => {
     assert.equal(isQueuedPastDeadline('QUEUED', null, fresh, now), false)
     assert.equal(isQueuedPastDeadline('CAPTURING', null, stale, now), false)
     assert.equal(isQueuedPastDeadline('QUEUED', fresh, stale, now), false)
+  })
+
+  it('gives up on a down worker once past the bound, not before', () => {
+    const now = Date.parse('2026-06-22T12:00:00.000Z')
+    const old = new Date(now - (WORKER_DOWN_GIVEUP_SECONDS * 1000 + 1))
+    const recent = new Date(now - (WORKER_DOWN_GIVEUP_SECONDS * 1000 - 1000))
+
+    assert.equal(isWorkerDownGiveUp(old, now), true)
+    assert.equal(isWorkerDownGiveUp(recent, now), false)
+    assert.equal(isWorkerDownGiveUp(null, now), false)
+    assert.equal(isWorkerDownGiveUp(undefined, now), false)
   })
 })
 

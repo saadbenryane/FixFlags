@@ -8,12 +8,24 @@ import { resolveStuckAuditRecovery } from '@/lib/audit/stuck-audit-recovery'
 /** Re-enqueue when worker heartbeat is dead and job has waited this long. */
 export const WORKER_DEAD_RECOVERY_SECONDS = 90
 
+/**
+ * Once an audit has been waiting on a dead worker longer than this, stop
+ * re-enqueuing and fail it with a clear message. Without this bound, a worker
+ * that never comes up (not deployed, missing env, crash-looping) makes the UI
+ * loop on "scanning" forever because each poll just requeues the job.
+ */
+export const WORKER_DOWN_GIVEUP_SECONDS = 180
+
+const WORKER_DOWN_MESSAGE =
+  'Our scanner is temporarily unavailable. Please try again in a few minutes.'
+
 export type RecoverAuditJobResult = 'requeued' | 'force_failed' | 'noop'
 
 export interface RecoverAuditJobAudit {
   status: string
   updatedAt: Date
   startedAt?: Date | null
+  createdAt?: Date | null
 }
 
 export function isAuditPastDeadline(
@@ -22,6 +34,18 @@ export function isAuditPastDeadline(
 ): boolean {
   if (!startedAt) return false
   return nowMs - startedAt.getTime() > AUDIT_DEADLINE_MS
+}
+
+/**
+ * True once an audit has been waiting on a down worker long enough that we
+ * should stop re-enqueuing and fail it with a clear message.
+ */
+export function isWorkerDownGiveUp(
+  createdAt: Date | null | undefined,
+  nowMs = Date.now()
+): boolean {
+  if (!createdAt) return false
+  return nowMs - createdAt.getTime() > WORKER_DOWN_GIVEUP_SECONDS * 1000
 }
 
 /** QUEUED audits have no startedAt until the worker picks them up. */
@@ -111,6 +135,21 @@ export async function recoverAuditJobOnPoll(
   const queue = getAuditQueue()
   const job = await queue.getJob(auditId)
   const jobState = job ? await job.getState() : null
+
+  // If the audit has been alive far longer than a normal run and the worker
+  // heartbeat is dead, stop re-enqueuing (which loops the UI on "scanning")
+  // and fail with a clear message. Checked before the requeue branches so it
+  // applies whether the audit is QUEUED or mid-run.
+  if (isWorkerDownGiveUp(audit.createdAt)) {
+    const heartbeat = await readWorkerHeartbeat()
+    if (!heartbeat.alive) {
+      if (job && jobState === 'active') {
+        await job.moveToFailed(new Error('Worker unavailable during recovery'), '0', true)
+      }
+      await forceFailAudit(auditId, audit, 'poll', WORKER_DOWN_MESSAGE)
+      return 'force_failed'
+    }
+  }
 
   if (isQueuedPastDeadline(audit.status, audit.startedAt, audit.updatedAt)) {
     if (!job || jobState === 'failed' || jobState === 'completed') {
