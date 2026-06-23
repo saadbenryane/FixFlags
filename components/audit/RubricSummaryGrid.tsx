@@ -7,7 +7,8 @@ import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Card } from '@/components/ui/card'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
-interface RubricData extends RubricComputed {
+interface RubricData extends Omit<RubricComputed, 'status'> {
+  status: RubricComputed['status'] | 'SCANNING'
   label: string
   description: string
   score: number | null
@@ -22,24 +23,29 @@ interface RubricRowInput {
 interface Props {
   rubrics: RubricComputed[]
   rubricRows?: RubricRowInput[]
+  /** Audit still running: render rubrics with no data yet as pending, not failing. */
+  loading?: boolean
 }
 
-export function RubricSummaryGrid({ rubrics, rubricRows }: Props) {
+export function RubricSummaryGrid({ rubrics, rubricRows, loading = false }: Props) {
   const scoreByName = new Map(
     (rubricRows ?? []).map((row) => [row.name, row.score] as const)
   )
 
   const ordered: RubricData[] = RUBRIC_ORDER.map((name) => {
     const r = rubrics.find((r) => r.name === name)
+    const score = scoreByName.get(name) ?? null
+    const flagCount = r?.flagCount ?? 0
+    const pending = loading && flagCount === 0 && score == null
     return {
       name,
-      status: r?.status ?? 'NEEDS_ATTENTION',
-      flagCount: r?.flagCount ?? 0,
+      status: pending ? 'SCANNING' : r?.status ?? 'NEEDS_ATTENTION',
+      flagCount,
       criticalCount: r?.criticalCount ?? 0,
       importantCount: r?.importantCount ?? 0,
       label: rubricLabel(name),
       description: rubricDescription(name),
-      score: scoreByName.get(name) ?? null,
+      score,
     }
   })
 
@@ -90,6 +96,8 @@ export function RubricSummaryGrid({ rubrics, rubricRows }: Props) {
                   </span>
                 )}
               </span>
+            ) : rubric.status === 'SCANNING' ? (
+              <span>Scanning…</span>
             ) : (
               <span>No Flags</span>
             )}

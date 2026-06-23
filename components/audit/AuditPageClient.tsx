@@ -121,7 +121,6 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       verdict: statusPayload?.verdict ?? (initialAudit?.verdict as string | null) ?? null,
       score: statusPayload?.score ?? (initialAudit?.score as number | null) ?? null,
       flagCount: statusPayload?.flagCount ?? 0,
-      shareStatus: statusPayload?.shareStatus,
       rubrics,
       partialFlags: statusPayload?.partialFlags ?? [],
       screenshots,

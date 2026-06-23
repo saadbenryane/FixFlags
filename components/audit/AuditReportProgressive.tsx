@@ -32,7 +32,6 @@ interface AuditReportProgressiveProps {
   verdict?: string | null
   score?: number | null
   flagCount?: number
-  shareStatus?: string
   rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
   partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
   screenshots?: AuditScreenshot[]
@@ -71,7 +70,6 @@ export function AuditReportProgressive({
   verdict = null,
   score = null,
   flagCount = 0,
-  shareStatus,
   rubrics = [],
   partialFlags = [],
   screenshots = [],
@@ -82,6 +80,7 @@ export function AuditReportProgressive({
   const stageIdx = statusToStageIndex(status)
   const activeStage = AUDIT_PROGRESS.stages[stageIdx]?.status ?? status
   const activityMessage = getActivityMessage(activeStage, tick)
+  const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
 
   const showWorkerWarning =
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && tick >= 12
@@ -151,8 +150,6 @@ export function AuditReportProgressive({
           pageType={pageType}
           verdict={verdict}
           activityMessage={activityMessage}
-          shareStatus={shareStatus}
-          rubrics={rubricsComputed}
         />
 
         {(workerIdle || showWorkerWarning) && (
@@ -183,6 +180,7 @@ export function AuditReportProgressive({
                     scoreSize="md"
                     showProgress
                     layout="stacked"
+                    loading={isLoading}
                   />
                 </aside>
                 <div className="min-w-0 lg:col-start-2 lg:row-start-1">
@@ -219,7 +217,7 @@ export function AuditReportProgressive({
 
       <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-3">
         <SectionTitle>Summary by rubric</SectionTitle>
-        <RubricSummaryGrid rubrics={rubricsComputed} rubricRows={rubricRowsForGrid} />
+        <RubricSummaryGrid rubrics={rubricsComputed} rubricRows={rubricRowsForGrid} loading={isLoading} />
       </section>
     </Container>
   )

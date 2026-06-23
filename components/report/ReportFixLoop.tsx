@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, ChevronDown, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type FixLoopFlagItem = {
@@ -21,6 +21,8 @@ export type ReportFixLoopProps = {
   hasFixPrompts?: boolean
   defaultExpanded?: boolean
   compact?: boolean
+  /** Audit still running: show a scanning state instead of a completed summary. */
+  loading?: boolean
 }
 
 function SeverityDot({ severity }: { severity: string }) {
@@ -48,6 +50,7 @@ export function ReportFixLoop({
   hasFixPrompts = true,
   defaultExpanded = true,
   compact = false,
+  loading = false,
 }: ReportFixLoopProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const count = flagCount ?? flags.length
@@ -55,10 +58,15 @@ export function ReportFixLoop({
 
   return (
     <div className={cn('space-y-3', compact && 'space-y-2.5')}>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+      <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-live="polite">
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 shrink-0 text-brand motion-safe:animate-spin" aria-hidden />
+        ) : (
+          <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+        )}
         <span>
-          Scanned<span className="text-muted-foreground/50"> · </span>
+          {loading ? 'Scanning' : 'Scanned'}
+          <span className="text-muted-foreground/50"> · </span>
           <span className="text-foreground/80">{scanDetail}</span>
         </span>
       </div>
@@ -90,7 +98,9 @@ export function ReportFixLoop({
         {expanded && (
           <div className="space-y-1 px-1.5 pb-2 pt-1">
             {count === 0 ? (
-              <p className="px-2 py-2 text-xs text-muted-foreground">No flags. Nice work.</p>
+              <p className="px-2 py-2 text-xs text-muted-foreground">
+                {loading ? 'Checking for issues…' : 'No flags. Nice work.'}
+              </p>
             ) : interactive ? (
               <ul className="space-y-1" role="listbox" aria-label="Report flags">
                 {flags.map((flag) => {
