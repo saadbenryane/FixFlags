@@ -18,12 +18,6 @@ import { getActivityMessage, statusToStageIndex } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
-import { cn } from '@/lib/utils'
-import {
-  DESKTOP_FRAME_FLEX_CLASS,
-  MOBILE_FRAME_WIDTH_CLASS,
-  SCREENSHOT_FRAMES_ROW_CLASS,
-} from '@/lib/audit/viewports'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -164,50 +158,48 @@ export function AuditReportProgressive({
           {explorerModel ? (
             <LiveReportExplorer model={explorerModel} hasFixPrompts={false} />
           ) : (
-            <div className="p-4 sm:p-6">
-              <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-4">
-                <aside className="min-w-0 self-start lg:col-start-1 lg:row-start-1">
-                  <ReportScoreOverview
-                    score={score}
-                    rubricScores={rubricScores}
-                    fixLoop={{
-                      scanDetail: reportScanDetail(pageType),
-                      flags: fixLoopFlags,
-                      flagCount,
-                      hasFixPrompts: false,
-                      defaultExpanded: true,
-                    }}
-                    scoreSize="md"
-                    showProgress
-                    layout="stacked"
-                    loading={isLoading}
-                  />
-                </aside>
-                <div className="min-w-0 lg:col-start-2 lg:row-start-1">
-                  <div className="mb-4 space-y-1">
-                    <Skeleton className="h-5 w-3/4 max-w-sm" />
-                    <Skeleton className="h-3 w-24" />
+            <div className="space-y-6 p-4 sm:p-6">
+              <ReportScoreOverview
+                score={score}
+                rubricScores={rubricScores}
+                fixLoop={{
+                  scanDetail: reportScanDetail(pageType),
+                  flags: fixLoopFlags,
+                  flagCount,
+                  hasFixPrompts: false,
+                  defaultExpanded: true,
+                }}
+                scoreSize="md"
+                showProgress
+                layout="split"
+                loading={isLoading}
+              />
+              <div>
+                <div className="mb-4 space-y-1">
+                  <Skeleton className="h-5 w-3/4 max-w-sm" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                {/* Desktop screenshot leads; the tall mobile frame only joins it
+                    side-by-side on large screens so it can't dominate on phones. */}
+                <div className="flex flex-row items-start gap-4 sm:gap-6">
+                  <div className="min-w-0 flex-1">
+                    <BrowserFrame
+                      device="desktop"
+                      url={hostname}
+                      imageUrl={desktopScreenshotUrl}
+                      state={desktopScreenshotUrl ? 'loaded' : 'loading'}
+                    />
                   </div>
-                  <div className={cn('flex', SCREENSHOT_FRAMES_ROW_CLASS)}>
-                    <div className={DESKTOP_FRAME_FLEX_CLASS}>
+                  {showMobileFrame && (
+                    <div className="hidden w-[200px] max-w-full shrink-0 lg:block">
                       <BrowserFrame
-                        device="desktop"
+                        device="mobile"
                         url={hostname}
-                        imageUrl={desktopScreenshotUrl}
-                        state={desktopScreenshotUrl ? 'loaded' : 'loading'}
+                        imageUrl={mobileScreenshotUrl}
+                        state={mobileScreenshotUrl ? 'loaded' : 'loading'}
                       />
                     </div>
-                    {showMobileFrame && (
-                      <div className={MOBILE_FRAME_WIDTH_CLASS}>
-                        <BrowserFrame
-                          device="mobile"
-                          url={hostname}
-                          imageUrl={mobileScreenshotUrl}
-                          state={mobileScreenshotUrl ? 'loaded' : 'loading'}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
