@@ -24,6 +24,7 @@
     "demo:audit:flow": "tsx scripts/demo-fixture-flow-audit.ts",
     "demo:audit:production": "tsx scripts/demo-fixture-audit.ts https://fixflags.com --production",
     "audit:capabilities": "tsx scripts/audit-capability-report.ts",
+    "signups": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/signup-count.ts",
     "worker": "tsx watch worker/index.ts",
     "worker:build": "tsc --project tsconfig.worker.json",
     "preworker:start": "npm run db:deploy && npm run db:check",
