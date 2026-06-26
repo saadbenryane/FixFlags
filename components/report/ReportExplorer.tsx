@@ -127,33 +127,34 @@ function ReportBody({
   const showMobile = flag.evidenceDevices.includes('mobile')
 
   return (
-    <div className="flex flex-col gap-6 md:grid md:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)] md:items-start md:gap-x-8 md:gap-y-4">
+    <div className="space-y-6">
       {config.showScoreStack && (
-        <aside className="min-w-0 self-start md:col-start-1 md:row-start-1">
-          <ReportScoreOverview
-            score={model.score}
-            rubricScores={model.rubricScores}
-            fixLoop={{
-              scanDetail: reportScanDetail(model.pageType),
-              flags: fixLoopFlags,
-              selectedFlagId,
-              onSelectFlag,
-              hasFixPrompts: hasFixPrompts ?? true,
-              defaultExpanded: true,
-              compact: config.compact,
-            }}
-            scoreSize={config.scoreSize}
-            compact={config.compact}
-            showProgress={config.showProgress}
-            layout="stacked"
-          />
-        </aside>
+        <ReportScoreOverview
+          score={model.score}
+          rubricScores={model.rubricScores}
+          fixLoop={{
+            scanDetail: reportScanDetail(model.pageType),
+            flags: fixLoopFlags,
+            selectedFlagId,
+            onSelectFlag,
+            hasFixPrompts: hasFixPrompts ?? true,
+            defaultExpanded: true,
+            compact: config.compact,
+          }}
+          scoreSize={config.scoreSize}
+          compact={config.compact}
+          showProgress={config.showProgress}
+          layout="split"
+        />
       )}
 
       <div
         id="flag-detail"
         ref={flagDetailRef}
-        className="min-w-0 border-t border-border/30 pt-6 scroll-mt-24 md:col-start-2 md:row-start-1 md:border-t-0 md:pt-0"
+        className={cn(
+          'min-w-0 scroll-mt-24',
+          config.showScoreStack && 'border-t border-border/30 pt-6'
+        )}
       >
         <header className="mb-5">
           <div className="flex items-start justify-between gap-4">

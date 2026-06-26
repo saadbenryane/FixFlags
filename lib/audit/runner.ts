@@ -42,7 +42,11 @@ import {
   finalizeDeterministicOnly,
   persistFailedAuditCost,
 } from './finalize'
-import { AUDIT_DEADLINE_MS } from './pipeline-config'
+import {
+  AUDIT_DEADLINE_MS,
+  FINALIZE_RESERVE_MS,
+  MIN_JUDGE_BUDGET_MS,
+} from './pipeline-config'
 import { AuditDeadlineError, isNonRetryableAuditError } from './pipeline-errors'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import {
@@ -117,11 +121,20 @@ async function runValidatedJudge(
   }
 ): Promise<JudgeResult> {
   assertDeadline(ctx, 'judging')
+  // Don't start a judge call we can't finish within the remaining budget; let
+  // the audit fall back to deterministic results instead of timing out at the
+  // finish line. The thrown deadline error is caught by tryPartialFinalize.
+  if (ctx.deadline - Date.now() < MIN_JUDGE_BUDGET_MS) {
+    throw new AuditDeadlineError('judging')
+  }
   const judgeStart = Date.now()
   await logPipelineEvent(ctx.auditId, { stage: 'judging', event: 'judge_started' })
 
   const execute = async () => {
     assertDeadline(ctx, 'judging')
+    // Clamp the judge timeout to the time left (minus a buffer to persist and
+    // finalize) so it can never consume the whole deadline.
+    const maxTimeoutMs = Math.max(0, ctx.deadline - Date.now() - FINALIZE_RESERVE_MS)
     const result = await runJudge(
       input.url,
       input.metadata,
@@ -129,7 +142,8 @@ async function runValidatedJudge(
       input.mobile,
       input.flags,
       input.desktopBase64,
-      input.mobileBase64
+      input.mobileBase64,
+      maxTimeoutMs
     )
     result.output = validateJudgeOutput(result.output, input.flags)
     return result

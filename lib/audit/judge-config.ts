@@ -22,9 +22,14 @@ const DEFAULTS: Record<string, ProviderConfig> = {
   },
 }
 
-export function getProviderConfig(provider: string): ProviderConfig {
+/**
+ * @param maxTimeoutMs When set, clamps the provider timeout so a judge call can
+ *   never exceed the audit's remaining deadline budget.
+ */
+export function getProviderConfig(provider: string, maxTimeoutMs?: number): ProviderConfig {
   const env = getEnv()
   const defaults = DEFAULTS[provider] ?? DEFAULTS.openai
+  const configuredTimeout = Number(env.JUDGE_TIMEOUT_MS) || defaults.timeoutMs
 
   return {
     model:
@@ -37,7 +42,10 @@ export function getProviderConfig(provider: string): ProviderConfig {
       provider === 'openai'
         ? Number(env.OPENAI_JUDGE_MAX_TOKENS) || defaults.maxTokens
         : defaults.maxTokens,
-    timeoutMs: Number(env.JUDGE_TIMEOUT_MS) || defaults.timeoutMs,
+    timeoutMs:
+      maxTimeoutMs != null && maxTimeoutMs > 0
+        ? Math.min(configuredTimeout, maxTimeoutMs)
+        : configuredTimeout,
     imageDetail:
       provider === 'openai'
         ? (env.OPENAI_JUDGE_IMAGE_DETAIL ?? defaults.imageDetail)

@@ -62,7 +62,7 @@ export function ReportScoreOverview({
         className={cn(
           'grid items-start gap-x-6 gap-y-3 sm:gap-x-10',
           showProgress
-            ? 'grid-cols-[minmax(5.5rem,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(6.5rem,8.5rem)_minmax(0,1fr)]'
+            ? 'grid-cols-[minmax(7.5rem,9rem)_minmax(0,1fr)] sm:grid-cols-[minmax(8.5rem,10rem)_minmax(0,1fr)]'
             : 'grid-cols-1',
           className
         )}

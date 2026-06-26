@@ -107,7 +107,8 @@ async function runAnthropicJudge(
   context: ReturnType<typeof buildJudgeContext>,
   flags: DeterministicFlag[],
   desktopBase64: string | null,
-  mobileBase64: string | null
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
 ): Promise<JudgeResult> {
   if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
 
@@ -125,7 +126,7 @@ async function runAnthropicJudge(
     })
   }
 
-  const cfg = getProviderConfig('anthropic')
+  const cfg = getProviderConfig('anthropic', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -178,7 +179,8 @@ async function runOpenAIJudge(
   context: ReturnType<typeof buildJudgeContext>,
   flags: DeterministicFlag[],
   desktopBase64: string | null,
-  mobileBase64: string | null
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
 ): Promise<JudgeResult> {
   if (!openai) throw new Error('OPENAI_API_KEY is not configured')
 
@@ -209,7 +211,7 @@ async function runOpenAIJudge(
     text: buildJudgePrompt({ ...context, screenshotHint }),
   })
 
-  const cfg = getProviderConfig('openai')
+  const cfg = getProviderConfig('openai', maxTimeoutMs)
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
 
@@ -258,16 +260,17 @@ async function runJudgeWithProvider(
   context: ReturnType<typeof buildJudgeContext>,
   flags: DeterministicFlag[],
   desktopBase64: string | null,
-  mobileBase64: string | null
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
 ): Promise<JudgeResult> {
   switch (provider) {
     case 'openai': {
       if (!openai) throw new Error('OPENAI_API_KEY is not configured')
-      return runOpenAIJudge(context, flags, desktopBase64, mobileBase64)
+      return runOpenAIJudge(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
     }
     case 'anthropic': {
       if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
-      return runAnthropicJudge(context, flags, desktopBase64, mobileBase64)
+      return runAnthropicJudge(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
     }
     default:
       throw new Error(`Unknown judge provider: ${provider}`)
@@ -285,7 +288,8 @@ export async function runJudgeWithRetry(
   mobile: PageSpeedResult | null,
   flags: DeterministicFlag[],
   desktopBase64: string | null,
-  mobileBase64: string | null
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
 ): Promise<JudgeResult> {
   const context = buildJudgeContext(url, metadata, desktop, mobile, flags)
   const chain = getJudgeProviderChain()
@@ -299,7 +303,8 @@ export async function runJudgeWithRetry(
           context,
           flags,
           desktopBase64,
-          mobileBase64
+          mobileBase64,
+          maxTimeoutMs
         )
         logger.info('judge succeeded', { provider, attempt })
         return result
@@ -324,7 +329,17 @@ export async function runJudge(
   mobile: PageSpeedResult | null,
   flags: DeterministicFlag[],
   desktopBase64: string | null,
-  mobileBase64: string | null
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
 ): Promise<JudgeResult> {
-  return runJudgeWithRetry(url, metadata, desktop, mobile, flags, desktopBase64, mobileBase64)
+  return runJudgeWithRetry(
+    url,
+    metadata,
+    desktop,
+    mobile,
+    flags,
+    desktopBase64,
+    mobileBase64,
+    maxTimeoutMs
+  )
 }
