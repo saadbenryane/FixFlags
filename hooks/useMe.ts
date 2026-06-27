@@ -23,6 +23,7 @@ export interface MeUser {
     canAccessPaidFeatures: boolean
     canRecheck: boolean
     canUseMcp: boolean
+    canScanRepositories: boolean
   }
   vibecodingLevel: string | null
   preferredTools: string[]

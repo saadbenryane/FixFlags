@@ -2,6 +2,7 @@ import { Worker, UnrecoverableError } from 'bullmq'
 import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
 import { runAiReview } from '../audit/run-ai-review'
+import { runRepoScan } from '../repo-scan/runner'
 import { createWorkerRedis } from './redis'
 import { touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
@@ -31,6 +32,11 @@ export function startWorker() {
     'audit',
     async (job) => {
       await touchWorkerHeartbeat()
+      if (job.name === 'repo-scan') {
+        const { repoScanId } = job.data as { repoScanId: string }
+        await runRepoScan(repoScanId)
+        return
+      }
       try {
         if (job.name === 'ai-review') {
           const { auditId } = job.data as { auditId: string }
@@ -59,6 +65,14 @@ export function startWorker() {
   worker.on('failed', async (job, err) => {
     logger.error(`Audit job ${job?.id} failed`, err)
     if (!job) return
+    if (job.name === 'repo-scan') {
+      const { repoScanId } = job.data as { repoScanId: string }
+      await prisma.repoScan.updateMany({
+        where: { id: repoScanId, status: { notIn: ['COMPLETED', 'FAILED'] } },
+        data: { status: 'FAILED', errorMsg: err.message || 'Repo scan failed', completedAt: new Date() },
+      })
+      return
+    }
 
     const auditId = (job.data as { auditId: string }).auditId
     const audit = await prisma.audit.findUnique({

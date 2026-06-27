@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   canAccessCompare,
   canExportSummary,
+  canScanRepositories,
   canSharePublicly,
   getEntitlements,
   getReportTierForUser,
@@ -90,6 +91,22 @@ describe('getEntitlements', () => {
     const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const }
     assert.equal(canSharePublicly(user), false)
     assert.equal(canExportSummary(user), false)
+    delete process.env.DEV_SIMULATE_BILLING
+  })
+})
+
+describe('canScanRepositories', () => {
+  it('blocks FREE and BUILDER plans', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'FREE' }), false)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'BUILDER' }), false)
+    delete process.env.DEV_SIMULATE_BILLING
+  })
+
+  it('allows TEAM plan and admins', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'TEAM' }), true)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'admin', plan: 'FREE' }), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })
