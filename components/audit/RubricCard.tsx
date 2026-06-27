@@ -29,6 +29,9 @@ interface Props {
   aiLocked?: boolean
   signUpHref?: string
   showFlagList?: boolean
+  /** Controlled open state. Omit to let the card manage its own (uncontrolled). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function RubricCard({
@@ -38,8 +41,12 @@ export function RubricCard({
   aiLocked = false,
   signUpHref,
   showFlagList = true,
+  open: openProp,
+  onOpenChange,
 }: Props) {
-  const [open, setOpen] = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = onOpenChange ?? setOpenState
   const label = rubricLabel(rubric.name)
   const flagCount = rubric.flagCount
   const hasSummary = rubricRow.summary.trim().length > 0

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
+import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ScoreSparkline } from '@/components/audit/ScoreSparkline'
 import { Plus, ExternalLink, ArrowLeftRight, Check, X, AlertTriangle } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
@@ -23,6 +24,7 @@ import { VibecodingProfilePrompt } from '@/components/dashboard/VibecodingProfil
 import { Container } from '@/components/ui/container'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
@@ -94,39 +96,25 @@ export default async function DashboardPage() {
         />
       </Suspense>
       <ClaimAnonymousAudits />
-      <div className="space-y-6">
-        <PageHeader title="Dashboard">
-          <Button asChild>
-            <Link href="/">
-              <Plus className="h-4 w-4 mr-2" />
-              New audit
-            </Link>
-          </Button>
-          {user?.plan === 'FREE' && !isUnlimited && <UpgradeButton />}
-        </PageHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <UsageMeter
-            used={used}
-            limit={isUnlimited ? null : effectiveLimit}
-            pending={pending}
-            plan={user?.plan ?? 'FREE'}
-          />
-          <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
-        </div>
-      </div>
+
+      <PageHeader title="Dashboard">
+        <Button asChild>
+          <Link href="/">
+            <Plus className="h-4 w-4 mr-2" />
+            New audit
+          </Link>
+        </Button>
+        {user?.plan === 'FREE' && !isUnlimited && <UpgradeButton />}
+      </PageHeader>
 
       {atAuditLimit && (
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
       )}
 
-      <VibecodingProfilePrompt />
-
       <Surface variant="nested" className="sm:p-6">
         <SectionTitle className="mb-4">Audit a new URL</SectionTitle>
         <AuditInput />
       </Surface>
-
-      <ProjectsPanel plan={user?.plan ?? 'FREE'} />
 
       {audits.length === 0 ? (
         <>
@@ -171,16 +159,19 @@ export default async function DashboardPage() {
                 <Card interactive>
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center gap-3 flex-wrap">
+                      {isCompleted && (
+                        <ScoreDisplay
+                          score={audit.score}
+                          grade={null}
+                          variant="compact"
+                          size="sm"
+                          className="shrink-0"
+                        />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{audit.url}</div>
+                        <div className="text-base font-semibold truncate">{audit.url}</div>
                         <div className="text-xs text-muted-foreground">
-                          {isCompleted ? (
-                            <>
-                              Score: {audit.score ?? '–'} · {new Date(audit.createdAt).toLocaleDateString()}
-                            </>
-                          ) : (
-                            new Date(audit.createdAt).toLocaleDateString()
-                          )}
+                          {new Date(audit.createdAt).toLocaleDateString()}
                         </div>
                         {trendScores.length > 1 && (
                           <ScoreSparkline scores={trendScores} className="mt-1" />
@@ -189,7 +180,8 @@ export default async function DashboardPage() {
                       {statusLabel ? (
                         <Badge
                           variant={audit.status === 'FAILED' ? 'destructive' : 'secondary'}
-                          className="text-xs"
+                          size="sm"
+                          className={audit.status !== 'FAILED' ? 'text-muted-foreground' : undefined}
                         >
                           {statusLabel}
                         </Badge>
@@ -234,6 +226,27 @@ export default async function DashboardPage() {
           })}
         </div>
       )}
+
+      <Accordion type="single" collapsible className="border-t border-border-subtle">
+        <AccordionItem value="account" className="border-b-0">
+          <AccordionTrigger>Account & projects</AccordionTrigger>
+          <AccordionContent className="max-w-none text-foreground">
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <UsageMeter
+                  used={used}
+                  limit={isUnlimited ? null : effectiveLimit}
+                  pending={pending}
+                  plan={user?.plan ?? 'FREE'}
+                />
+                <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
+              </div>
+              <VibecodingProfilePrompt />
+              <ProjectsPanel plan={user?.plan ?? 'FREE'} />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Container>
   )
 }

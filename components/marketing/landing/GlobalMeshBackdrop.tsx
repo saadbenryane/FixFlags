@@ -3,9 +3,36 @@ import { cn } from '@/lib/utils'
 interface GlobalMeshBackdropProps {
   className?: string
   fixed?: boolean
+  /**
+   * `full` drifts/breathes continuously (marketing). `minimal` is a static
+   * tinted backdrop with no looping motion (dense app/admin screens). `off`
+   * renders nothing.
+   */
+  intensity?: 'full' | 'minimal' | 'off'
 }
 
-export function GlobalMeshBackdrop({ className, fixed = false }: GlobalMeshBackdropProps) {
+export function GlobalMeshBackdrop({
+  className,
+  fixed = false,
+  intensity = 'full',
+}: GlobalMeshBackdropProps) {
+  if (intensity === 'off') return null
+
+  if (intensity === 'minimal') {
+    return (
+      <div
+        aria-hidden
+        className={cn(
+          'pointer-events-none overflow-hidden',
+          fixed ? 'fixed inset-0 -z-10' : 'absolute inset-0',
+          className
+        )}
+      >
+        <div className="absolute inset-0 bg-gradient-peach-surface opacity-60 dark:opacity-40" />
+      </div>
+    )
+  }
+
   return (
     <div
       aria-hidden
