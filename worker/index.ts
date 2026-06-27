@@ -1,6 +1,7 @@
 import './load-env'
 import { validateWorkerEnv } from '../lib/env'
 import { startWorker } from '../lib/queue/worker'
+import { startRecoveryScheduler } from '../lib/queue/recovery-scheduler'
 import { closeBrowser } from '../lib/audit/screenshot'
 import { logger } from '../lib/logger'
 
@@ -9,6 +10,8 @@ validateWorkerEnv()
 logger.info('Worker starting')
 
 const worker = startWorker()
+// Self-hosted periodic recovery (lock-guarded; safe across many workers).
+startRecoveryScheduler()
 
 async function shutdown() {
   logger.info('Worker shutting down')

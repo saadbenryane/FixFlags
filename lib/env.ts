@@ -38,6 +38,10 @@ const envSchema = z.object({
   JUDGE_TIMEOUT_MS: z.string().optional(),
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
+  AUDIT_WORKER_CONCURRENCY: z.string().optional(),
+  // Run the audit worker in-process with the web server (default). Set to
+  // 'false' on the web service when running dedicated worker services.
+  INLINE_WORKER: z.enum(['true', 'false']).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

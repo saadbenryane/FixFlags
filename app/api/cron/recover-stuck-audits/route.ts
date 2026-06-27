@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
-import { STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
-import { recoverStuckAuditOnCron } from '@/lib/audit/recover-audit-job'
-import { stuckAuditCutoff } from '@/lib/audit/stuck-audit-recovery'
+import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
 
+// Optional manual/external trigger. The internal recovery scheduler
+// (lib/queue/recovery-scheduler.ts) runs the same sweep automatically inside
+// every worker, so this endpoint is no longer required for production.
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
@@ -13,25 +13,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const cutoff = stuckAuditCutoff(Date.now(), STUCK_AUDIT_MINUTES)
-    const stuckAudits = await prisma.audit.findMany({
-      where: {
-        status: { notIn: ['COMPLETED', 'FAILED'] },
-        updatedAt: { lt: cutoff },
-      },
-      select: { id: true, status: true, startedAt: true },
-    })
-
-    let requeued = 0
-    let failed = 0
-
-    for (const audit of stuckAudits) {
-      const result = await recoverStuckAuditOnCron(audit.id, audit)
-      if (result === 'requeued') requeued++
-      if (result === 'force_failed') failed++
-    }
-
-    return NextResponse.json({ requeued, failed, checked: stuckAudits.length })
+    return NextResponse.json(await runStuckAuditRecoverySweep())
   } catch (err) {
     return handleRouteError(err)
   }

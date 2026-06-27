@@ -1,5 +1,10 @@
-# Audit worker service — same image as web, different start command.
-# In Railway: create a service from this repo and set Config path to /railway.worker.toml
+# Dedicated audit worker service. Same image as web, different start command.
+# OPTIONAL: only needed to scale scanning beyond the web service's in-process
+# worker. In Railway: create a service from this repo, set Config path to
+# /railway.worker.toml, and set INLINE_WORKER=false on the web service so it
+# stops running its own inline worker. Deploy as many of these as you need;
+# they all consume the same Redis queue and one runs recovery (lock-guarded).
+# Requires the same env as web: DATABASE_URL, REDIS_URL (and optionally an AI key).
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

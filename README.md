@@ -24,8 +24,8 @@ docker compose up -d
 npm run db:migrate
 npm run db:seed
 
-# 5. Run web app + audit worker together
-npm run dev:all
+# 5. Run the app (the web server runs the audit worker in-process)
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
@@ -57,9 +57,9 @@ Set `SAMPLE_INCLUDE_AI=false` to skip the AI judge step (deterministic checks on
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Next.js only (audits stay queued without worker) |
-| `npm run worker` | Audit worker only |
-| `npm run dev:all` | Next.js + worker concurrently |
+| `npm run dev` | Next.js + inline audit worker (audits process end-to-end) |
+| `npm run worker` | Standalone audit worker only |
+| `npm run dev:all` | Next.js + a separate worker process concurrently |
 | `npm run dev:full` | Alias for `dev:all` |
 | `npm run setup` | Docker up + migrate + generate + seed |
 | `npm run db:migrate` | Apply Prisma migrations |
@@ -98,16 +98,21 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 ## Production deployment (Railway)
 
-Deploy **two services** from this repo:
+**One service is enough.** Deploy the **Web** service (`npm run build && npm start`, the default). By default it also runs the audit worker in-process (`INLINE_WORKER` defaults on) plus a self-hosted scheduler that recovers stuck audits and sends nurture emails; no separate worker and no external cron required.
 
-1. **Web**, `npm run build && npm start` (default). Health: `GET /api/health` (DB, Redis, storage, worker heartbeat, queue depth).
-2. **Worker**, `npm run worker:build && npm run worker:start`. Heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis). `/api/health` exposes `worker`, `workerHeartbeatAgeSeconds`, and `workerLikelyIdle`. Without a running worker, audits stay in non-terminal states until recovery re-enqueues them.
+- Deploy healthcheck: `GET /api/health` (DB only, stays lenient).
+- Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.
+- Worker heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis).
 
-Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`) — parallel audit jobs per worker process.
+**Scaling scanning** (optional): set `INLINE_WORKER=false` on the web service and deploy one or more dedicated **Worker** services (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). All workers consume the same Redis queue; recovery runs in whichever workers are alive, guarded by a Redis lock, so it scales to any number of workers.
 
-Local dev requires both processes: `npm run dev:all` (Next.js + worker). `npm run dev` alone leaves audits queued.
+Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`; use ~`2` on a small single-service instance).
 
-Both services must share the same `DATABASE_URL` and `REDIS_URL`.
+All services share the same `DATABASE_URL` and `REDIS_URL`.
+
+> CI is not on GitHub Actions. Run `npm run verify` locally before pushing; Railway's Docker build (`npm run build` + `npm run worker:build`) is the deploy-time gate.
+
+Local dev: `npm run dev` runs Next.js **and** the inline worker, so audits process end-to-end with a single command (set `INLINE_WORKER=false` to use `npm run dev:all` with a separate worker instead).
 
 ### Required production env vars
 
@@ -143,16 +148,19 @@ npm run backfill:leads
 
 Admin ops URLs: `/admin/leads`, `/admin/inbox`
 
-### Cron jobs
+### Scheduled jobs
 
-Configure Railway (or any scheduler) to call these routes with header `Authorization: Bearer $CRON_SECRET` (GET or POST):
+These run **automatically inside the worker** via a self-hosted scheduler
+(`lib/queue/recovery-scheduler.ts`), guarded by a Redis lock so exactly one
+worker runs each per window. No external cron is required.
 
-| Route | Purpose |
-|-------|---------|
-| `/api/cron/recover-stuck-audits` | Re-queue audits stuck in non-terminal states |
-| `/api/cron/nurture` | Send lifecycle emails to eligible users |
+| Job | Cadence | Purpose |
+|-----|---------|---------|
+| Stuck-audit recovery | ~2 min | Re-queue or fail audits stuck in non-terminal states |
+| Nurture emails | daily | Lifecycle emails to eligible users |
 
-Example:
+The matching HTTP routes (`/api/cron/recover-stuck-audits`, `/api/cron/nurture`)
+remain for manual/external triggering, guarded by `Authorization: Bearer $CRON_SECRET`:
 
 ```bash
 curl https://fixflags.com/api/cron/recover-stuck-audits \

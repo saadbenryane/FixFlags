@@ -2,8 +2,8 @@ import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
-import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
-import { resolveStuckAuditRecovery } from '@/lib/audit/stuck-audit-recovery'
+import { AUDIT_DEADLINE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
+import { resolveStuckAuditRecovery, stuckAuditCutoff } from '@/lib/audit/stuck-audit-recovery'
 
 /** Re-enqueue when worker heartbeat is dead and job has waited this long. */
 export const WORKER_DEAD_RECOVERY_SECONDS = 90
@@ -247,4 +247,36 @@ export async function recoverStuckAuditOnCron(
 
   await forceFailAudit(auditId, { status: audit.status, updatedAt: new Date() }, 'cron')
   return 'force_failed'
+}
+
+export interface StuckAuditSweepResult {
+  requeued: number
+  failed: number
+  checked: number
+}
+
+/**
+ * Find audits stuck beyond STUCK_AUDIT_MINUTES and recover each. Single source
+ * of truth shared by the HTTP endpoint (/api/cron/recover-stuck-audits) and the
+ * internal recovery scheduler, so both behave identically.
+ */
+export async function runStuckAuditRecoverySweep(): Promise<StuckAuditSweepResult> {
+  const cutoff = stuckAuditCutoff(Date.now(), STUCK_AUDIT_MINUTES)
+  const stuckAudits = await prisma.audit.findMany({
+    where: {
+      status: { notIn: ['COMPLETED', 'FAILED'] },
+      updatedAt: { lt: cutoff },
+    },
+    select: { id: true, status: true, startedAt: true },
+  })
+
+  let requeued = 0
+  let failed = 0
+  for (const audit of stuckAudits) {
+    const result = await recoverStuckAuditOnCron(audit.id, audit)
+    if (result === 'requeued') requeued++
+    if (result === 'force_failed') failed++
+  }
+
+  return { requeued, failed, checked: stuckAudits.length }
 }
