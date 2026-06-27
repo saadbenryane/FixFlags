@@ -61,5 +61,6 @@ export const SUPPORT_LINK = {
 export const SETTINGS_NAV = [
   { href: '/settings', label: 'Settings' },
   { href: '/settings/api-keys', label: 'API Keys' },
+  { href: '/settings/integrations', label: 'Integrations' },
   { href: '/billing', label: 'Billing' },
 ] as const

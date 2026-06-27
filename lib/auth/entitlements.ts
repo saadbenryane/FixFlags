@@ -44,6 +44,11 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean
   return canAccessPaidFeatures(user)
 }
 
+/** Codebase (GitHub repo) scanning - Max plan only, same tier as public sharing. */
+export function canScanRepositories(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+  return canSharePublicly(user)
+}
+
 /** Authenticated users can re-check reports they own; quota is not consumed. */
 export function canAccessRecheck(
   user: Pick<User, 'id' | 'role' | 'plan'>
@@ -67,6 +72,7 @@ export interface UserEntitlements {
   canAccessPaidFeatures: boolean
   canRecheck: boolean
   canUseMcp: boolean
+  canScanRepositories: boolean
 }
 
 export function getEntitlements(
@@ -81,6 +87,7 @@ export function getEntitlements(
     canAccessPaidFeatures: paid,
     canRecheck: canAccessRecheck(user),
     canUseMcp: canUseApiKeys(user),
+    canScanRepositories: canScanRepositories(user),
   }
 }
 
