@@ -6,16 +6,7 @@ const isDev = process.env.NODE_ENV !== 'production'
 const baseLogger = pino({
   level: process.env.LOG_LEVEL ?? (isDev ? 'debug' : 'info'),
   ...(isDev
-    ? {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'HH:MM:ss.l',
-            ignore: 'pid,hostname',
-          },
-        },
-      }
+    ? {}
     : {
         formatters: {
           level(label) {
