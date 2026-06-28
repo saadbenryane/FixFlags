@@ -14,6 +14,7 @@ import { sanitizeJudgeOutput } from './sanitize-prompts'
 import { normalizeJudgeRawOutput } from './validate-judge-output'
 
 import { getProviderConfig, getJudgeProviderChain } from './judge-config'
+import { validateJudgeOutput, JudgeContractError } from './validate-judge-output'
 import { logger } from '@/lib/logger'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
@@ -50,6 +51,19 @@ export function isRetryableJudgeError(err: unknown): boolean {
     message.includes('503') ||
     message.includes('529') ||
     message.includes('429')
+  )
+}
+
+/**
+ * Retry if the transport failed (overloaded/rate-limit/timeout) or the model
+ * returned a well-formed response that violated the judge contract or schema.
+ * A second attempt against the same or next provider usually fixes both.
+ */
+function isJudgeAttemptRetryable(err: unknown): boolean {
+  return (
+    isRetryableJudgeError(err) ||
+    err instanceof JudgeContractError ||
+    (err instanceof Error && err.message.startsWith('Invalid judge output:'))
   )
 }
 
@@ -306,12 +320,15 @@ export async function runJudgeWithRetry(
           mobileBase64,
           maxTimeoutMs
         )
+        // Validate here so a contract violation triggers the same retry/provider
+        // fallback as a transport error, instead of failing the whole audit.
+        result.output = validateJudgeOutput(result.output, flags)
         logger.info('judge succeeded', { provider, attempt })
         return result
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err))
         logger.warn('judge attempt failed', { provider, attempt, err: lastError.message })
-        if (attempt < MAX_RETRIES && isRetryableJudgeError(err)) {
+        if (attempt < MAX_RETRIES && isJudgeAttemptRetryable(err)) {
           await sleep(RETRY_DELAY_MS * attempt)
         }
       }
@@ -319,27 +336,4 @@ export async function runJudgeWithRetry(
   }
 
   throw lastError ?? new Error('Judge failed: no providers available')
-}
-
-/** @deprecated Use runJudgeWithRetry for automatic retry and provider fallback. */
-export async function runJudge(
-  url: string,
-  metadata: PageMetadata,
-  desktop: PageSpeedResult | null,
-  mobile: PageSpeedResult | null,
-  flags: DeterministicFlag[],
-  desktopBase64: string | null,
-  mobileBase64: string | null,
-  maxTimeoutMs?: number
-): Promise<JudgeResult> {
-  return runJudgeWithRetry(
-    url,
-    metadata,
-    desktop,
-    mobile,
-    flags,
-    desktopBase64,
-    mobileBase64,
-    maxTimeoutMs
-  )
 }
