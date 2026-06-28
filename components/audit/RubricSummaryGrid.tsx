@@ -25,9 +25,13 @@ interface Props {
   rubricRows?: RubricRowInput[]
   /** Audit still running: render rubrics with no data yet as pending, not failing. */
   loading?: boolean
+  /** Name of the rubric currently expanded below the grid, if any. */
+  activeName?: string | null
+  /** When provided, cards become selectable tiles that expand detail in place instead of jump-scrolling. */
+  onSelect?: (name: string) => void
 }
 
-export function RubricSummaryGrid({ rubrics, rubricRows, loading = false }: Props) {
+export function RubricSummaryGrid({ rubrics, rubricRows, loading = false, activeName, onSelect }: Props) {
   const scoreByName = new Map(
     (rubricRows ?? []).map((row) => [row.name, row.score] as const)
   )
@@ -54,25 +58,24 @@ export function RubricSummaryGrid({ rubrics, rubricRows, loading = false }: Prop
       {ordered.map((rubric) => (
         <Card
           key={rubric.name}
-          interactive
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            const el = document.getElementById(`rubric-${rubric.name}`)
-            if (el) {
-              window.history.replaceState(null, '', `#rubric-${rubric.name}`)
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              const el = document.getElementById(`rubric-${rubric.name}`)
-              el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }}
+          interactive={Boolean(onSelect)}
+          role={onSelect ? 'button' : undefined}
+          tabIndex={onSelect ? 0 : undefined}
+          onClick={onSelect ? () => onSelect(rubric.name) : undefined}
+          onKeyDown={
+            onSelect
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelect(rubric.name)
+                  }
+                }
+              : undefined
+          }
           className={cn(
-            'cursor-pointer p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            'p-4 text-left',
+            onSelect && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            activeName === rubric.name && 'ring-2 ring-brand/50',
             rubricStatusColor(rubric.status)
           )}
         >

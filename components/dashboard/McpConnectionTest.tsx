@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, XCircle, Loader2, Zap } from 'lucide-react'
+import { Loader2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
 
 interface Props {
   endpoint: string
@@ -80,31 +81,23 @@ export function McpConnectionTest({ endpoint, apiKey }: Props) {
       </Button>
 
       {state === 'success' && (
-        <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
-          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
-          <div className="text-xs text-green-800 dark:text-green-300">
-            <p className="font-medium">Connected!</p>
-            <p>
-              {toolCount > 0
-                ? `Found ${toolCount} tools available.`
-                : 'MCP server responded successfully.'}{' '}
-              Your editor is ready to run FixFlags checks.
-            </p>
-          </div>
-        </div>
+        <Callout variant="success" title="Connected!" className="text-xs">
+          <p>
+            {toolCount > 0
+              ? `Found ${toolCount} tools available.`
+              : 'MCP server responded successfully.'}{' '}
+            Your editor is ready to run FixFlags checks.
+          </p>
+        </Callout>
       )}
 
       {state === 'error' && (
-        <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800 dark:bg-red-950/30">
-          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-          <div className="text-xs text-red-800 dark:text-red-300">
-            <p className="font-medium">Connection failed</p>
-            <p className="font-mono break-all">{errorMsg}</p>
-            <p className="mt-1">
-              Make sure your endpoint URL and API key are correct, then try again.
-            </p>
-          </div>
-        </div>
+        <Callout variant="danger" title="Connection failed" className="text-xs">
+          <p className="font-mono break-all">{errorMsg}</p>
+          <p className="mt-1">
+            Make sure your endpoint URL and API key are correct, then try again.
+          </p>
+        </Callout>
       )}
     </div>
   )

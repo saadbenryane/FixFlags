@@ -83,6 +83,9 @@ export default async function BillingPage() {
 
   return (
     <Container variant="narrow" className="space-y-8 py-8">
+      <TextLink href="/settings" className="text-xs">
+        ← Settings
+      </TextLink>
       <PageHeader title="Billing" description="Manage your plan and subscription" />
 
       <Card className="space-y-4 p-6">

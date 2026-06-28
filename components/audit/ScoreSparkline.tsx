@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { GRADE_THRESHOLDS } from '@/lib/audit/rubric'
 
 interface ScoreSparklineProps {
   scores: number[]
@@ -33,7 +34,13 @@ export function ScoreSparkline({
 
   const latest = scores[scores.length - 1]
   const latestColor =
-    latest >= 90 ? '#22c55e' : latest >= 75 ? '#eab308' : latest >= 60 ? '#f97316' : '#ef4444'
+    latest >= GRADE_THRESHOLDS.A
+      ? 'hsl(var(--grade-A))'
+      : latest >= GRADE_THRESHOLDS.B
+        ? 'hsl(var(--grade-B))'
+        : latest >= GRADE_THRESHOLDS.C
+          ? 'hsl(var(--grade-C))'
+          : 'hsl(var(--grade-D))'
 
   return (
     <svg

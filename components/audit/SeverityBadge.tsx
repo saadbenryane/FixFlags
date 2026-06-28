@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge'
 import { cn, severityColor, severityLabel } from '@/lib/utils'
 
 interface Props {
@@ -7,14 +8,16 @@ interface Props {
 
 export function SeverityBadge({ severity, className }: Props) {
   return (
-    <span
+    <Badge
+      variant="outline"
+      size="sm"
       className={cn(
-        'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-label border border-transparent',
+        'shrink-0 border-transparent font-mono uppercase tracking-label',
         severityColor(severity),
         className
       )}
     >
       {severityLabel(severity)}
-    </span>
+    </Badge>
   )
 }

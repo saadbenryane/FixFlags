@@ -32,7 +32,7 @@ export function SiteShell({
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      <GlobalMeshBackdrop fixed />
+      <GlobalMeshBackdrop fixed intensity={variant === 'marketing' ? 'full' : 'minimal'} />
       <div className="relative z-0 flex min-h-screen flex-col">
         <Header
           variant={variant}

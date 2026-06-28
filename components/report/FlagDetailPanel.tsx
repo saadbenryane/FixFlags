@@ -5,6 +5,7 @@ import { ClipboardCheck, Lightbulb, ScanSearch, Sparkles, type LucideIcon } from
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
+import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import { cn } from '@/lib/utils'
@@ -13,16 +14,23 @@ function FlagDetailCard({
   title,
   icon: Icon,
   children,
+  emphasis = false,
 }: {
   title: string
   icon: LucideIcon
   children: ReactNode
+  emphasis?: boolean
 }) {
   return (
-    <section className="rounded-[var(--radius-inner)] border border-border/40 bg-muted/15 p-4 sm:p-5">
+    <section
+      className={cn(
+        'rounded-[var(--radius-inner)] border p-4 sm:p-5',
+        emphasis ? 'border-brand/20 bg-brand/5' : 'border-border/40 bg-muted/15'
+      )}
+    >
       <div className="mb-2.5 flex items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-        <h4 className="text-sm font-medium text-foreground">{title}</h4>
+        <Icon className={cn('h-4 w-4 shrink-0', emphasis ? 'text-brand' : 'text-muted-foreground')} aria-hidden />
+        <h4 className={cn('text-sm font-medium', emphasis ? 'text-brand' : 'text-foreground')}>{title}</h4>
       </div>
       {children}
     </section>
@@ -63,7 +71,7 @@ export function FlagDetailPanel({
       )}
 
       {flag.hasFixPrompt && (
-        <FlagDetailCard title="Fix" icon={Sparkles}>
+        <FlagDetailCard title="Fix" icon={Sparkles} emphasis>
           {aiLocked ? (
             <LockedContentTeaser
               label="Fix prompt - create a free account to view"
@@ -90,18 +98,7 @@ export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <RubricPill rubric={flag.rubric} label={flag.rubricLabel} />
-      <span
-        className={cn(
-          'rounded-full px-2.5 py-1 text-[11px] font-semibold',
-          flag.severity === 'CRITICAL'
-            ? 'bg-destructive/10 text-destructive'
-            : flag.severity === 'IMPORTANT'
-              ? 'bg-brand/10 text-brand'
-              : 'bg-muted text-muted-foreground'
-        )}
-      >
-        {flag.severityLabel}
-      </span>
+      <SeverityBadge severity={flag.severity} />
       {flag.impactTag && (
         <span className="rounded-full bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
           {flag.impactTag}
