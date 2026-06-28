@@ -15,7 +15,11 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
     <Section spacing="loose" className="relative pb-6 sm:pb-8 lg:pb-11">
       <Container className="relative space-y-8 lg:space-y-11">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up sm:text-5xl lg:text-6xl">
+          <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-[var(--glass-bg)] px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-glass backdrop-blur-md motion-safe:animate-fade-in-up">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+            {HERO.audienceLine}
+          </span>
+          <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
             <span className="bg-gradient-peach-accent bg-clip-text text-transparent">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
             <br className="hidden sm:block" />
