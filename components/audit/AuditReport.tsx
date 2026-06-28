@@ -295,15 +295,10 @@ export function AuditReport({
         )}
 
         {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
-          <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />
-        )}
-
-        {upgradeMoment && upgradeMoment !== 'free_default' && (
           <ContextualUpgradeCard
-            moment={upgradeMoment}
+            moment={upgradeMoment && upgradeMoment !== 'free_default' ? upgradeMoment : 'report_completed'}
             isLoggedIn
             currentPlan={viewerPlan}
-            showCta={true}
           />
         )}
 

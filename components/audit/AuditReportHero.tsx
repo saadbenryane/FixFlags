@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getUserFacingPageSpeedError } from '@/lib/audit/user-facing-errors'
-import { rubricLabel } from '@/lib/utils'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 type Props = {
@@ -131,16 +129,6 @@ export function AuditReportHero({
 
           <div className={isReady ? 'text-sm text-grade-A' : 'text-sm text-grade-C'}>
             <p className="font-medium text-pretty">{shareMessage}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {rubrics.map((r) => (
-                <RubricStatusBadge
-                  key={r.name}
-                  status={r.status}
-                  label={rubricLabel(r.name)}
-                  size="sm"
-                />
-              ))}
-            </div>
           </div>
         </div>
       </div>
