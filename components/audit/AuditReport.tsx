@@ -158,6 +158,7 @@ export function AuditReport({
 
       {!isSample && (
         <ReportMiniNav
+          showOverview={showOverview}
           showPreviews={Boolean(audit.previewMeta)}
           showFlow={Boolean(audit.flowData)}
           showFix={Boolean(topFixPrompt && !explorerModel)}

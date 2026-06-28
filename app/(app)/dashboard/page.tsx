@@ -119,8 +119,8 @@ export default async function DashboardPage() {
       {audits.length === 0 ? (
         <>
           <EmptyState
-            title="No audits yet"
-            description="Paste a URL above to run your first check and get fix prompts."
+            title="Run your first audit"
+            description="See the Flags your AI editor missed, with fix prompts it can run."
           />
           <FirstAuditPrompt />
         </>
