@@ -2,6 +2,10 @@ import fs from 'fs/promises'
 import path from 'path'
 import { uploadScreenshot as uploadToR2, isR2Configured } from './r2'
 import { deleteAuditScreenshots as deleteFromR2 } from './r2'
+import {
+  StorageNotConfiguredError,
+  StorageUploadError,
+} from '@/lib/audit/pipeline-errors'
 
 const LOCAL_SCREENSHOTS_DIR = path.join(process.cwd(), '.data', 'screenshots')
 
@@ -39,11 +43,18 @@ export async function uploadScreenshot(
 ): Promise<string> {
   if (process.env.NODE_ENV === 'production') {
     if (!isR2Configured()) {
-      throw new Error(
+      throw new StorageNotConfiguredError(
         'R2 storage is not configured. Set R2_BUCKET_NAME, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL.'
       )
     }
-    return uploadToR2(auditId, device, imageBuffer, pageKey)
+    try {
+      return await uploadToR2(auditId, device, imageBuffer, pageKey)
+    } catch (err) {
+      throw new StorageUploadError(
+        `Failed to upload ${device} screenshot to R2: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err }
+      )
+    }
   }
 
   const dir = path.join(LOCAL_SCREENSHOTS_DIR, auditId)

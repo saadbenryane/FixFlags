@@ -102,7 +102,12 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 - Deploy healthcheck: `GET /api/health` (DB only, stays lenient).
 - Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.
+- Scanning diagnostics: `GET /api/health/browser` (launches Chromium + screenshots, checks R2 connectivity). If every scan fails with "scanner temporarily unavailable", curl this first — it pinpoints whether the browser or storage subsystem is broken.
 - Worker heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis).
+
+> If R2 is missing in production the service **fails to boot** (deploy is rejected) rather than silently failing every scan at the screenshot step. Set all `R2_*` vars before deploying.
+
+**SSO:** Google/GitHub buttons appear automatically once `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (or the GitHub pair) are set on the deployed service — availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed**. Register the callback `https://fixflags.com/api/auth/callback/google` and run `npm run auth:check` to verify.
 
 **Scaling scanning** (optional): set `INLINE_WORKER=false` on the web service and deploy one or more dedicated **Worker** services (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). All workers consume the same Redis queue; recovery runs in whichever workers are alive, guarded by a Redis lock, so it scales to any number of workers.
 

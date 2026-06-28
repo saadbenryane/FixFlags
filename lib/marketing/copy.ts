@@ -1008,6 +1008,8 @@ export const AUDIT_ERRORS = {
     'This check took longer than expected and was stopped. Please try again.',
   generic:
     "We couldn't complete this check. The site may be unreachable or blocking automated visits.",
+  scannerUnavailable:
+    'Our scanner is temporarily unavailable. Please try again in a few minutes.',
   captureFailed: 'We could not capture a screenshot of this page. Check that the URL is public and loads in a browser.',
   siteBlocked: 'This site blocked our automated visit. Try again later or check from a public URL.',
   rateLimited: 'This site is rate-limiting requests. Try again in a few minutes.',

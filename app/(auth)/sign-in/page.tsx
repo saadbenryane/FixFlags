@@ -13,14 +13,16 @@ import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { PasswordInput } from '@/components/auth/PasswordInput'
-import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
+import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
+import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignInForm() {
   const { oauthCallbackURL, navigateAfterAuth, signUpHref } = useAuthRedirect()
   useRedirectIfAuthenticated()
+  const oauth = useOAuthProviders()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -43,7 +45,7 @@ function SignInForm() {
     }
   }
 
-  const subtitle = hasOAuthEnabled()
+  const subtitle = oauth.anyEnabled
     ? AUTH.signIn.subtitleWithOAuth
     : AUTH.signIn.subtitle
 
@@ -59,8 +61,15 @@ function SignInForm() {
         </p>
       }
     >
-      {hasOAuthEnabled() && <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />}
-      {hasOAuthEnabled() && (
+      {oauth.anyEnabled && (
+        <OAuthButtons
+          callbackURL={oauthCallbackURL}
+          google={oauth.google}
+          github={oauth.github}
+          disabled={loading}
+        />
+      )}
+      {oauth.anyEnabled && (
         <Muted className="text-center text-xs">{AUTH.signIn.oauthNote}</Muted>
       )}
       <FormContainer onSubmit={handleSubmit} className="space-y-5">

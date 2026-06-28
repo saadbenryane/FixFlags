@@ -9,25 +9,16 @@ import { authClient } from '@/lib/auth-client'
 
 interface Props {
   callbackURL: string
+  /** Which providers to render. Resolved at runtime via useOAuthProviders(). */
+  google?: boolean
+  github?: boolean
   disabled?: boolean
 }
 
-export function hasGoogleOAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === 'true'
-}
-
-export function hasGithubOAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_GITHUB_OAUTH_ENABLED === 'true'
-}
-
-export function hasOAuthEnabled(): boolean {
-  return hasGoogleOAuthEnabled() || hasGithubOAuthEnabled()
-}
-
-export function OAuthButtons({ callbackURL, disabled }: Props) {
+export function OAuthButtons({ callbackURL, google, github, disabled }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
-  const showGoogle = hasGoogleOAuthEnabled()
-  const showGithub = hasGithubOAuthEnabled()
+  const showGoogle = !!google
+  const showGithub = !!github
 
   if (!showGoogle && !showGithub) {
     return null

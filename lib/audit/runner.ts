@@ -35,6 +35,7 @@ import { AUDIT_PROGRESS } from './progress'
 import { JudgeContractError, validateJudgeOutput } from './validate-judge-output'
 import { discoverCriticalPathUrls } from './critical-path'
 import { runWithContext } from '@/lib/logger/context'
+import { logger } from '@/lib/logger'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
 import {
   finalizeAudit,
@@ -47,7 +48,11 @@ import {
   FINALIZE_RESERVE_MS,
   MIN_JUDGE_BUDGET_MS,
 } from './pipeline-config'
-import { AuditDeadlineError, isNonRetryableAuditError } from './pipeline-errors'
+import {
+  AuditDeadlineError,
+  auditFailureCodeFromError,
+  isNonRetryableAuditError,
+} from './pipeline-errors'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import {
   copyParentArtifacts,
@@ -565,11 +570,9 @@ async function tryPartialFinalize(
     error instanceof Error ? error.message : String(error)
   )
   const failureCode =
-    error instanceof AuditDeadlineError
-      ? 'AUDIT_TIMEOUT'
-      : error instanceof JudgeContractError
-        ? 'AI_CONTRACT_INVALID'
-        : 'AUDIT_PIPELINE_FAILED'
+    error instanceof JudgeContractError
+      ? 'AI_CONTRACT_INVALID'
+      : auditFailureCodeFromError(error)
   const failureStage =
     error instanceof AuditDeadlineError
       ? error.stage
@@ -781,15 +784,23 @@ export async function runAudit(auditId: string): Promise<void> {
 
     if (current?.status !== 'FINALIZING' && current?.status !== 'COMPLETED') {
       const failureCode =
-        error instanceof AuditDeadlineError
-          ? 'AUDIT_TIMEOUT'
-          : error instanceof JudgeContractError
-            ? 'AI_CONTRACT_INVALID'
-            : 'AUDIT_PIPELINE_FAILED'
+        error instanceof JudgeContractError
+          ? 'AI_CONTRACT_INVALID'
+          : auditFailureCodeFromError(error)
       const failureStage =
         error instanceof AuditDeadlineError
           ? error.stage
           : (current?.status?.toLowerCase() ?? 'unknown')
+
+      // Infrastructure failures (browser/storage) are operator-actionable and
+      // would otherwise hide behind the generic "site unreachable" copy, so log
+      // them at error level with the code and full cause for visibility.
+      if (failureCode !== 'AUDIT_PIPELINE_FAILED' && failureCode !== 'AI_CONTRACT_INVALID') {
+        logger.error(
+          `Audit ${auditId} failed: ${failureCode} (stage=${failureStage})`,
+          error instanceof Error ? error : new Error(String(error))
+        )
+      }
 
       await logPipelineEvent(auditId, {
         stage: failureStage,
