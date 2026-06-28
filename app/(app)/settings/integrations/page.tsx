@@ -1,13 +1,13 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Github, Trash2 } from 'lucide-react'
+import { Github, Trash2, Loader2, ScanSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -17,6 +17,26 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 interface GithubRepo {
   fullName: string
   private: boolean
+}
+
+interface RecentScan {
+  id: string
+  repoFullName: string
+  status: string
+  createdAt: string
+  _count: { findings: number }
+}
+
+const SCAN_STATUS_LABEL: Record<string, string> = {
+  QUEUED: 'Queued',
+  CLONING: 'Cloning',
+  SCANNING: 'Scanning',
+  COMPLETED: 'Completed',
+  FAILED: 'Failed',
+}
+
+function isScanInProgress(status: string): boolean {
+  return status !== 'COMPLETED' && status !== 'FAILED'
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -37,16 +57,52 @@ export default function IntegrationsPage() {
 function IntegrationsPageContent() {
   const { user, isLoading: meLoading } = useMe()
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const [connected, setConnected] = useState(false)
   const [githubLogin, setGithubLogin] = useState<string | null>(null)
   const [repos, setRepos] = useState<GithubRepo[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [savedRepos, setSavedRepos] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([])
+  const [scanning, setScanning] = useState<string | null>(null)
 
   const canScan = user?.entitlements?.canScanRepositories ?? false
+
+  const loadRecentScans = useCallback(async () => {
+    try {
+      const res = await fetch('/api/repo-scans')
+      if (!res.ok) return
+      const data = await res.json()
+      setRecentScans(data.scans ?? [])
+    } catch {
+      // Non-critical: the scans list just stays empty.
+    }
+  }, [])
+
+  async function startScan(repoFullName: string) {
+    setScanning(repoFullName)
+    try {
+      const res = await fetch('/api/repo-scans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repoFullName }),
+      })
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message)
+        return
+      }
+      const { repoScanId } = await res.json()
+      router.push(`/report/repo/${repoScanId}`)
+    } catch {
+      toast.error('Could not start the scan. Try again.')
+    } finally {
+      setScanning(null)
+    }
+  }
 
   useEffect(() => {
     const error = searchParams.get('error')
@@ -73,11 +129,13 @@ function IntegrationsPageContent() {
         setConnected(true)
         setRepos(data.repos ?? [])
         setSelected(new Set(data.selectedRepos ?? []))
+        setSavedRepos(new Set(data.selectedRepos ?? []))
         setGithubLogin(data.githubLogin ?? null)
+        void loadRecentScans()
       })
       .catch(() => toast.error('Failed to load GitHub repositories'))
       .finally(() => setLoading(false))
-  }, [meLoading, canScan])
+  }, [meLoading, canScan, loadRecentScans])
 
   const sortedRepos = useMemo(
     () => [...repos].sort((a, b) => a.fullName.localeCompare(b.fullName)),
@@ -105,6 +163,7 @@ function IntegrationsPageContent() {
         toast.error((await parseApiErrorResponse(res)).message)
         return
       }
+      setSavedRepos(new Set(selected))
       toast.success('Allow-listed repositories updated')
     } catch {
       toast.error('Could not save your selection. Try again.')
@@ -244,6 +303,74 @@ function IntegrationsPageContent() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="border-0 shadow-card">
+            <CardHeader>
+              <CardTitle className="text-base">Scan a repository</CardTitle>
+              <CardDescription>
+                Run a codebase scan on an allow-listed repository. Save your selection above first.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {savedRepos.size === 0 ? (
+                <EmptyState
+                  title="No repositories allow-listed yet"
+                  description="Check a repository above and save your selection to scan it."
+                />
+              ) : (
+                [...savedRepos].sort((a, b) => a.localeCompare(b)).map((repo) => (
+                  <div
+                    key={repo}
+                    className="flex items-center justify-between gap-3 rounded px-2 py-2 hover:bg-muted/50"
+                  >
+                    <span className="min-w-0 truncate font-mono text-sm">{repo}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => startScan(repo)}
+                      disabled={scanning !== null}
+                    >
+                      {scanning === repo ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ScanSearch className="mr-2 h-4 w-4" />
+                      )}
+                      Scan
+                    </Button>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {recentScans.length > 0 && (
+            <Card className="border-0 shadow-card">
+              <CardHeader>
+                <CardTitle className="text-base">Recent scans</CardTitle>
+                <CardDescription>Your latest codebase scans.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {recentScans.map((scan) => (
+                  <TextLink
+                    key={scan.id}
+                    href={`/report/repo/${scan.id}`}
+                    className="flex items-center justify-between gap-3 rounded px-2 py-2 no-underline hover:bg-muted/50"
+                  >
+                    <span className="min-w-0 flex-1 truncate font-mono text-sm">
+                      {scan.repoFullName}
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+                      {isScanInProgress(scan.status) && (
+                        <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                      )}
+                      {SCAN_STATUS_LABEL[scan.status] ?? scan.status}
+                      {scan.status === 'COMPLETED' && ` · ${scan._count.findings} findings`}
+                    </span>
+                  </TextLink>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>
