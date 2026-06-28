@@ -33,7 +33,13 @@ export function ScoreSparkline({
 
   const latest = scores[scores.length - 1]
   const latestColor =
-    latest >= 90 ? '#22c55e' : latest >= 75 ? '#eab308' : latest >= 60 ? '#f97316' : '#ef4444'
+    latest >= 90
+      ? 'hsl(var(--grade-A))'
+      : latest >= 75
+        ? 'hsl(var(--grade-B))'
+        : latest >= 60
+          ? 'hsl(var(--grade-C))'
+          : 'hsl(var(--grade-F))'
 
   return (
     <svg

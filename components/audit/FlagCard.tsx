@@ -106,7 +106,7 @@ function FlagRowContent({
     <div className="px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+          <p className="meta-label text-muted-foreground/80">
             {metaLine(flag)}
           </p>
           <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>

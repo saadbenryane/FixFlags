@@ -31,7 +31,7 @@ export function RepoFindingCard({ finding, defaultExpanded = false }: Props) {
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <SeverityBadge severity={finding.severity} />
-              <span className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+              <span className="meta-label text-muted-foreground/80">
                 {finding.category}
               </span>
             </div>
@@ -56,7 +56,7 @@ export function RepoFindingCard({ finding, defaultExpanded = false }: Props) {
         {expanded && (
           <div className="mt-3 ml-0.5 space-y-3 border-l border-border/60 pl-3">
             <div className="space-y-1">
-              <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+              <p className="meta-label text-muted-foreground">
                 Where
               </p>
               <p className="rounded-md bg-muted/50 px-2 py-1.5 font-mono text-xs leading-relaxed text-pretty text-muted-foreground">
@@ -66,7 +66,7 @@ export function RepoFindingCard({ finding, defaultExpanded = false }: Props) {
 
             {finding.fix && (
               <div className="space-y-1">
-                <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+                <p className="meta-label text-muted-foreground">
                   Fix
                 </p>
                 <p className="text-sm text-pretty text-foreground/90">{finding.fix}</p>

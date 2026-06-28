@@ -10,6 +10,9 @@ const ROOT = process.cwd()
 const ALLOWED = new Set([
   'lib/design/tokens.css',
   'lib/design/brand-spec.ts',
+  // The demo page is a simulated third-party site for the scanner to audit; it
+  // deliberately uses its own off-brand palette, not FixFlags brand tokens.
+  'app/demo/demo.css',
 ])
 
 const SCAN_DIRS = ['app', 'components', 'lib']

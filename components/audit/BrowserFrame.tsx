@@ -70,7 +70,7 @@ export function BrowserFrame({
         <div className="flex-1 min-w-0 rounded-md bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground truncate">
           {displayUrl}
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-label text-muted-foreground shrink-0">
+        <span className="meta-label text-muted-foreground shrink-0">
           {resolvedLabel}
         </span>
       </div>

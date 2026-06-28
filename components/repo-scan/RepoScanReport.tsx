@@ -84,7 +84,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
 
       {findings.length > 0 && (
         <>
-          <div className="flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+          <div className="flex flex-wrap gap-2 meta-label text-muted-foreground">
             <span>{findings.length} findings</span>
             {counts.critical > 0 && <span className="text-destructive">{counts.critical} critical</span>}
             {counts.important > 0 && <span className="text-warning">{counts.important} important</span>}

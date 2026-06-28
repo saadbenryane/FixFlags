@@ -359,7 +359,7 @@ function IntegrationsPageContent() {
                     <span className="min-w-0 flex-1 truncate font-mono text-sm">
                       {scan.repoFullName}
                     </span>
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+                    <span className="shrink-0 meta-label text-muted-foreground">
                       {isScanInProgress(scan.status) && (
                         <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
                       )}
