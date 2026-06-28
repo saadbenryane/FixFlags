@@ -29,6 +29,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'View page source, confirm robots meta does not include noindex.',
   'favicon-missing':
     'Confirm link rel="icon" or apple-touch-icon exists and the icon loads in the browser tab.',
+  'analytics-missing':
+    'Open DevTools Network tab and reload; confirm an analytics request (GA4, Plausible, PostHog, etc.) fires.',
   'perf-score-critical':
     'Run PageSpeed Insights; desktop performance score should be 50 or above.',
   'perf-score-poor':

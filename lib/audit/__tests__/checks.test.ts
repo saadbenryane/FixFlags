@@ -11,6 +11,7 @@ import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
+import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
@@ -795,6 +796,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
     'heading-hierarchy-missing': () =>
       checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
+    'analytics-missing': () =>
+      checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
     'form-missing-validation': () =>
       checkIds(runContentChecks(healthyMeta({ forms: 1, formInputsMissingValidation: 2 }))),
     'cta-below-fold-mobile': () =>

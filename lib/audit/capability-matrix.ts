@@ -30,6 +30,7 @@ export interface AuditCapability {
     | 'flow'
     | 'loading'
     | 'design-language'
+    | 'measurement'
     | 'ai-review'
   label: string
   tool: AuditTool
@@ -190,6 +191,16 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'cookie-consent-absent',
     ],
     verify: 'npm run demo:audit',
+  },
+  {
+    id: 'reach-measurement',
+    dimension: 'REACH',
+    category: 'measurement',
+    label: 'Analytics / conversion measurement',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['analytics-missing'],
+    verify: 'npm run demo:audit:offline',
   },
   {
     id: 'reach-console-errors',

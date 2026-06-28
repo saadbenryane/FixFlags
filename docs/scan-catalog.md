@@ -75,6 +75,7 @@ Can people find, share, trust, and measure the site? SEO, previews, legal, analy
 | **Metadata scan** | deterministic | `title-missing`, `title-too-short`, `title-too-long`, `description-missing`, `description-too-short`, `description-too-long`, `og-image-missing`, `og-image-broken`, `og-title-missing`, `og-description-missing`, `canonical-missing`, `robots-blocks-indexing`, `favicon-missing` |
 | **SEO scan** | deterministic | `h1-missing`, `h1-multiple`, `no-structured-data`, `external-links-unsafe`, `sitemap-missing`, `robots-txt-missing`, `broken-internal-links` |
 | **Trust scan** | deterministic | `no-https`, `no-privacy-policy`, `no-contact-info`, `cookie-consent-absent` |
+| **Measurement scan** | deterministic | `analytics-missing` |
 | **Preview cards UI** | UI | Rendered Google snippet + social card from metadata |
 | **AI reach review** | AI | Share tags, indexability, privacy/contact, analytics |
 | **Launch gates** | mixed | `https`, `social-preview`, `privacy-contact` |
@@ -83,7 +84,6 @@ Can people find, share, trust, and measure the site? SEO, previews, legal, analy
 
 | Scan family | Method | Notes |
 |-------------|--------|-------|
-| **Measurement scan** | deterministic | GA4/GTM/PostHog presence, conversion events, consent blocking |
 | **Secret leak scan** | deterministic | API keys in page source or bundles |
 | **Security basics scan** | deterministic | Mixed content, CSP headers |
 | **Expanded critical path** | deterministic | Cross-page OG consistency |

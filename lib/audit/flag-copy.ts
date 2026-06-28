@@ -101,6 +101,8 @@ export function isGenericWhyItMatters(text: string | null | undefined): boolean 
 }
 
 const WHY_IT_MATTERS: Record<string, string> = {
+  'analytics-missing':
+    'Without analytics you are shipping blind - you cannot tell whether a change increased signups or quietly broke them.',
   'title-missing':
     'Search results and browser tabs show an untitled page - visitors skip links that look broken or generic.',
   'title-too-short':

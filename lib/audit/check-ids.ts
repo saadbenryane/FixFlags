@@ -66,6 +66,8 @@ export const ALL_CHECK_IDS = [
   'h1-generic',
   'no-cta-detected',
   'heading-hierarchy-missing',
+  // measurement.ts
+  'analytics-missing',
   // layout.ts
   'cta-below-fold-mobile',
   // interaction.ts

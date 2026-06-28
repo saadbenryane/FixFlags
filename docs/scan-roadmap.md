@@ -52,12 +52,12 @@ flowchart TD
 
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
+| Measurement scan | Reach | GA4/GTM/PostHog/Plausible presence (`analytics-missing`) — **Shipped** |
 | CTA focus scan | Message / Experience | Annotated mobile screenshot, contrast, competing CTAs |
 | Flow scan (message layer) | Message | CTA destination matches headline promise |
-| Measurement scan | Reach | GA4/GTM/PostHog, conversion events, consent |
 | Auth & checkout smoke | Experience | Login loads, OAuth wired, Stripe links resolve |
 
-**Exit criteria:** 3 new scan modules; re-check verifies measurement-related flags.
+**Exit criteria:** 3 new scan modules; re-check verifies measurement-related flags. Measurement scan shipped (`analytics-missing`, verified on re-check).
 
 ---
 
