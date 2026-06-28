@@ -28,7 +28,7 @@ export function CompletenessHeader({
 
   return (
     <Card className="space-y-3 p-4" role="status" aria-label="Report completeness">
-      <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+      <p className="meta-label text-muted-foreground">
         Report completeness
       </p>
       <div className="grid gap-2 sm:grid-cols-2">

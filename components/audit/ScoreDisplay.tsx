@@ -129,7 +129,7 @@ export function ScoreDisplay({
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">{resolved.secondary}</p>
         ) : null}
         {resolved.mode === 'grade' && resolved.caption ? (
-          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+          <p className="mt-0.5 meta-label text-muted-foreground">
             {resolved.caption}
           </p>
         ) : null}

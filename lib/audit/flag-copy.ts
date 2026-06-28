@@ -101,6 +101,14 @@ export function isGenericWhyItMatters(text: string | null | undefined): boolean 
 }
 
 const WHY_IT_MATTERS: Record<string, string> = {
+  'analytics-missing':
+    'Without analytics you are shipping blind - you cannot tell whether a change increased signups or quietly broke them.',
+  'checkout-link-dead':
+    'A dead checkout or payment link means visitors who want to pay literally cannot - every click here is lost revenue.',
+  'auth-page-broken':
+    'If sign-up or login is broken, motivated visitors hit a wall at the exact moment they were ready to convert.',
+  'competing-ctas':
+    'Too many equally-weighted CTAs above the fold split attention, so visitors hesitate instead of taking the one action that matters.',
   'title-missing':
     'Search results and browser tabs show an untitled page - visitors skip links that look broken or generic.',
   'title-too-short':

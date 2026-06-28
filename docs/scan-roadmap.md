@@ -52,12 +52,12 @@ flowchart TD
 
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
-| CTA focus scan | Message / Experience | Annotated mobile screenshot, contrast, competing CTAs |
+| Measurement scan | Reach | GA4/GTM/PostHog/Plausible presence (`analytics-missing`) — **Shipped** |
+| CTA focus scan | Message | Competing primary CTAs above the fold (`competing-ctas`) — **Shipped** |
+| Auth & checkout smoke | Experience | Auth/checkout links resolve, incl. cross-origin Stripe (`auth-page-broken`, `checkout-link-dead`) — **Shipped** |
 | Flow scan (message layer) | Message | CTA destination matches headline promise |
-| Measurement scan | Reach | GA4/GTM/PostHog, conversion events, consent |
-| Auth & checkout smoke | Experience | Login loads, OAuth wired, Stripe links resolve |
 
-**Exit criteria:** 3 new scan modules; re-check verifies measurement-related flags.
+**Exit criteria:** 3 new scan modules — **met** (measurement, CTA focus, auth & checkout smoke), each verified on re-check. CTA contrast deferred: reliable in-browser contrast needs background/gradient resolution that is error-prone, so it was omitted rather than shipped flaky.
 
 ---
 

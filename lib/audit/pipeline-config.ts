@@ -1,5 +1,5 @@
 /** Pipeline version, bump when audit logic changes materially. */
-export const PIPELINE_VERSION = '2.1.0'
+export const PIPELINE_VERSION = '2.3.0'
 
 /**
  * Hard end-to-end deadline for a single audit run (ms). Real sites can spend

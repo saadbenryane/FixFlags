@@ -11,6 +11,9 @@ import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runDesignLanguageChecks } from './design-language'
+import { runMeasurementChecks } from './measurement'
+import { runAuthCheckoutChecks } from './auth-checkout'
+import { runCtaFocusChecks } from './cta-focus'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
@@ -57,6 +60,9 @@ export async function runAllChecks(
     { name: 'layout', run: () => runLayoutChecks(captureMetrics ?? null) },
     { name: 'interaction', run: () => runInteractionChecks(captureMetrics ?? null) },
     { name: 'design-language', run: () => runDesignLanguageChecks(captureMetrics ?? null) },
+    { name: 'measurement', run: () => runMeasurementChecks(metadata) },
+    { name: 'auth-checkout', run: () => runAuthCheckoutChecks(url, metadata) },
+    { name: 'cta-focus', run: () => runCtaFocusChecks(captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {

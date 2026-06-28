@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { BRAND, HERO } from '@/lib/marketing/copy'
+import { BRAND_HEX } from '@/lib/design/brand-spec'
 
 export const runtime = 'edge'
 export const alt = `${BRAND.name} - ${HERO.headlineLine2}`
@@ -17,7 +18,7 @@ export default function Image() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#fff',
+          backgroundColor: BRAND_HEX.background,
           padding: '80px',
         }}
       >
@@ -25,7 +26,7 @@ export default function Image() {
           style={{
             fontSize: 64,
             fontWeight: 700,
-            color: '#1a1a2e',
+            color: BRAND_HEX.foreground,
             fontFamily: 'system-ui',
             letterSpacing: '-0.02em',
             marginBottom: 16,
@@ -37,7 +38,7 @@ export default function Image() {
           style={{
             display: 'flex',
             fontSize: 28,
-            color: '#6b7280',
+            color: BRAND_HEX.mutedForeground,
             fontFamily: 'system-ui',
           }}
         >
