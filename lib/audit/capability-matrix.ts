@@ -287,6 +287,26 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     verify: 'npm run dev:all + full audit',
     notes: 'Uses CaptureMetrics from mobile Puppeteer viewport.',
   },
+  {
+    id: 'message-cta-focus',
+    dimension: 'MESSAGE',
+    category: 'copy',
+    label: 'Single primary CTA focus',
+    tool: 'browser-capture',
+    status: 'live',
+    checkIds: ['competing-ctas'],
+    notes: 'Counts competing high-intent CTAs above the fold from CaptureMetrics.',
+  },
+  {
+    id: 'experience-auth-checkout',
+    dimension: 'EXPERIENCE',
+    category: 'flow',
+    label: 'Auth & checkout links resolve',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['checkout-link-dead', 'auth-page-broken'],
+    notes: 'HEAD-checks login/sign-up and checkout/payment links, incl. cross-origin.',
+  },
 
   // EXPERIENCE - interaction & loading
   {

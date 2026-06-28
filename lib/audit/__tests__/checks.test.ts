@@ -12,6 +12,8 @@ import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
+import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
+import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
@@ -407,6 +409,8 @@ function healthyCaptureMetrics(
   overrides: Partial<{
     mobilePrimaryCtaTopPx: number | null
     mobilePrimaryCtaText: string | null
+    competingPrimaryCtaCount: number
+    competingPrimaryCtaLabels: string[]
     mobileViewportHeight: number
     stuckLoadingIndicator: boolean
     stuckLoadingLabel: string | null
@@ -421,6 +425,8 @@ function healthyCaptureMetrics(
   return {
     mobilePrimaryCtaTopPx: 400,
     mobilePrimaryCtaText: 'Get started',
+    competingPrimaryCtaCount: 1,
+    competingPrimaryCtaLabels: ['Get started'],
     mobileViewportHeight: 812,
     stuckLoadingIndicator: false,
     stuckLoadingLabel: null,
@@ -798,6 +804,33 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
     'analytics-missing': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
+    'checkout-link-dead': async () => {
+      restoreFetch = mockFetchHead({ '/checkout': 404 })
+      return checkIds(
+        await runAuthCheckoutChecks(
+          'https://example.com',
+          healthyMeta({ links: [{ href: 'https://example.com/checkout', text: 'Subscribe', rel: null }] })
+        )
+      )
+    },
+    'auth-page-broken': async () => {
+      restoreFetch = mockFetchHead({ '/login': 404 })
+      return checkIds(
+        await runAuthCheckoutChecks(
+          'https://example.com',
+          healthyMeta({ links: [{ href: 'https://example.com/login', text: 'Log in', rel: null }] })
+        )
+      )
+    },
+    'competing-ctas': () =>
+      checkIds(
+        runCtaFocusChecks(
+          healthyCaptureMetrics({
+            competingPrimaryCtaCount: 3,
+            competingPrimaryCtaLabels: ['Get started', 'Book a demo', 'Start free trial'],
+          })
+        )
+      ),
     'form-missing-validation': () =>
       checkIds(runContentChecks(healthyMeta({ forms: 1, formInputsMissingValidation: 2 }))),
     'cta-below-fold-mobile': () =>

@@ -21,6 +21,7 @@ Does the page communicate clearly and convert? Copy, positioning, CTAs, credibil
 | **Content scan** | deterministic | `h1-generic`, `no-cta-detected` |
 | **Console error scan** | deterministic | `console-errors-critical`, `console-errors-some` |
 | **Slop scan** | deterministic | `placeholder-copy-detected`, `template-default-copy`, `unreplaced-template-token`, `cta-dead-link` |
+| **CTA focus scan** | deterministic | `competing-ctas` |
 | **AI message review** | AI | Headline specificity, audience fit, benefit hierarchy, CTA copy, social proof, copy hierarchy |
 | **Launch gate: mobile CTA** | AI + evidence | Primary CTA visible above fold on 375px |
 
@@ -28,7 +29,6 @@ Does the page communicate clearly and convert? Copy, positioning, CTAs, credibil
 
 | Scan family | Method | Notes |
 |-------------|--------|-------|
-| **CTA focus scan** | agent + AI | Annotated mobile screenshot, CTA contrast, competing CTAs |
 | **Social proof scan** | AI | Testimonial credibility, pricing confidence |
 
 ---
@@ -48,6 +48,7 @@ Does the page work, feel good, and work on mobile? Layout, speed, accessibility,
 | **Accessibility scan** | deterministic | `images-missing-alt`, `images-empty-alt`, `form-inputs-no-label`, `buttons-no-text`, `links-no-text`, `iframe-no-title`, `tabindex-positive`, `color-contrast-poor`, `skip-link-missing`, `keyboard-nav-trap`, `focus-visible-missing` |
 | **Viewport scan** | deterministic | `viewport-missing`, `lang-missing` |
 | **Flow scan** | agent | `flow-no-cta-found`, `flow-cta-unclickable`, `flow-cta-404`, `flow-cta-dead-end`, `flow-cta-external-leave` |
+| **Auth & checkout smoke** | deterministic | `auth-page-broken`, `checkout-link-dead` |
 | **AI experience review** | AI | CTA above fold, layout, mobile usability, keyboard/contrast, CWV, broken interactions |
 | **Launch gate: console errors** | deterministic | No critical console errors |
 | **Critical path scan** (Pro) | agent + deterministic | Same checks on up to 3 pages: home + pricing + primary CTA |
@@ -56,7 +57,6 @@ Does the page work, feel good, and work on mobile? Layout, speed, accessibility,
 
 | Scan family | Method | Notes |
 |-------------|--------|-------|
-| **Auth & checkout smoke** | agent | Login/signup loads, OAuth wired, Stripe links resolve |
 | **Real device mobile scan** | agent | iPhone Safari + Android Chrome |
 | **Interaction scan** | agent | Modals, sticky nav, form validation |
 | **Visual polish scan** | AI + agent | Dark mode, empty states, font flash |

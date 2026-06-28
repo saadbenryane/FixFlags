@@ -31,6 +31,12 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Confirm link rel="icon" or apple-touch-icon exists and the icon loads in the browser tab.',
   'analytics-missing':
     'Open DevTools Network tab and reload; confirm an analytics request (GA4, Plausible, PostHog, etc.) fires.',
+  'checkout-link-dead':
+    'Click each checkout/payment link; confirm it loads a working payment page (no 404 or server error).',
+  'auth-page-broken':
+    'Click the login/sign-up link; confirm the auth page renders without a 404 or server error.',
+  'competing-ctas':
+    'On mobile, confirm there is one clear primary CTA above the fold; demote competing buttons to secondary styling.',
   'perf-score-critical':
     'Run PageSpeed Insights; desktop performance score should be 50 or above.',
   'perf-score-poor':

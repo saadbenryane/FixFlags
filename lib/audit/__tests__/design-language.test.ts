@@ -7,6 +7,8 @@ describe('runDesignLanguageChecks', () => {
     const flags = runDesignLanguageChecks({
       mobilePrimaryCtaTopPx: 100,
       mobilePrimaryCtaText: 'Start',
+      competingPrimaryCtaCount: 1,
+      competingPrimaryCtaLabels: ['Start'],
       mobileViewportHeight: 812,
       stuckLoadingIndicator: false,
       stuckLoadingLabel: null,
@@ -25,6 +27,8 @@ describe('runDesignLanguageChecks', () => {
     const flags = runDesignLanguageChecks({
       mobilePrimaryCtaTopPx: 100,
       mobilePrimaryCtaText: 'Start',
+      competingPrimaryCtaCount: 1,
+      competingPrimaryCtaLabels: ['Start'],
       mobileViewportHeight: 812,
       stuckLoadingIndicator: false,
       stuckLoadingLabel: null,
@@ -44,6 +48,8 @@ describe('runDesignLanguageChecks', () => {
       runDesignLanguageChecks({
         mobilePrimaryCtaTopPx: 100,
         mobilePrimaryCtaText: 'Start',
+        competingPrimaryCtaCount: 1,
+        competingPrimaryCtaLabels: ['Start'],
         mobileViewportHeight: 812,
         stuckLoadingIndicator: false,
         stuckLoadingLabel: null,

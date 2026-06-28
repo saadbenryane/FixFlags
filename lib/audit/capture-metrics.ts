@@ -3,6 +3,9 @@ import type { Page } from 'puppeteer'
 export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
   mobilePrimaryCtaText: string | null
+  /** Distinct high-intent CTAs visible above the mobile fold (focus dilution). */
+  competingPrimaryCtaCount: number
+  competingPrimaryCtaLabels: string[]
   mobileViewportHeight: number
   /** True when skeleton/spinner/aria-busy is still visible after load. */
   stuckLoadingIndicator: boolean
@@ -72,6 +75,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     let bestScore = 0
     let bestTop: number | null = null
     let bestText: string | null = null
+    const competingCtas = new Set<string>()
 
     for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
       if (el.closest('nav, header, [role="navigation"]')) continue
@@ -109,6 +113,12 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       const rect = el.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) continue
 
+      // High-intent CTA visible within the first mobile screen.
+      if (score >= 85 && rect.top >= 0 && rect.top <= window.innerHeight) {
+        const label = text.slice(0, 80) || tag
+        competingCtas.add(label)
+      }
+
       if (score >= bestScore) {
         bestScore = score
         bestTop = Math.round(rect.top)
@@ -116,9 +126,13 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       }
     }
 
+    const competingLabels = [...competingCtas]
+
     return {
       mobilePrimaryCtaTopPx: bestTop,
       mobilePrimaryCtaText: bestText,
+      competingPrimaryCtaCount: competingLabels.length,
+      competingPrimaryCtaLabels: competingLabels.slice(0, 6),
       mobileViewportHeight: window.innerHeight,
       stuckLoadingIndicator,
       stuckLoadingLabel,
