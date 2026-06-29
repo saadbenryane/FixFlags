@@ -43,7 +43,7 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, useFounding: false }),
+        body: JSON.stringify({ plan }),
       })
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
@@ -95,7 +95,7 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
       </Button>
       {isPaidPlan && !isCurrent && (
         <p className="text-[10px] text-center text-muted-foreground leading-snug">
-          {PRICING.upgradeSteps}
+          {isLoggedIn ? PRICING.upgradeStepsLoggedIn : PRICING.upgradeSteps}
         </p>
       )}
       {isPaidPlan && !isLoggedIn && (

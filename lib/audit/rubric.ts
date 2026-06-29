@@ -116,6 +116,10 @@ export interface RubricComputed {
   flagCount: number
   criticalCount: number
   importantCount: number
+  /** Numeric score (0-100) derived from flags. */
+  score?: number
+  /** Letter grade (A/B/C/D/F) derived from score. */
+  grade?: string
 }
 
 export type ShareStatus = 'good_to_share' | 'fix_before_sharing'

@@ -1,3 +1,5 @@
+import { auditCache } from './cache'
+
 export interface LighthouseAuditSummary {
   id: string
   title: string
@@ -142,17 +144,59 @@ export async function fetchPageSpeedData(url: string): Promise<{
   desktopError?: string
   mobileError?: string
 }> {
-  const [desktop, mobile] = await Promise.allSettled([
-    runPageSpeed(url, 'desktop'),
-    runPageSpeed(url, 'mobile'),
-  ])
+  const desktopKey = auditCache.cacheKeyForPageSpeed(url, 'desktop', 'desktop')
+  const mobileKey = auditCache.cacheKeyForPageSpeed(url, 'mobile', 'mobile')
 
-  return {
-    desktop: desktop.status === 'fulfilled' ? desktop.value : null,
-    mobile: mobile.status === 'fulfilled' ? mobile.value : null,
-    desktopError:
-      desktop.status === 'rejected' ? formatPageSpeedError(desktop.reason) : undefined,
-    mobileError:
-      mobile.status === 'rejected' ? formatPageSpeedError(mobile.reason) : undefined,
+  const desktopCached = auditCache.get<PageSpeedResult>(desktopKey)
+  const mobileCached = auditCache.get<PageSpeedResult>(mobileKey)
+
+  const cachedDesktop = desktopCached
+  const cachedMobile = mobileCached
+
+  const promises: Promise<{ strategy: string; result: PageSpeedResult }>[] = []
+
+  if (!cachedDesktop) {
+    promises.push(
+      runPageSpeed(url, 'desktop').then((result) => {
+        auditCache.set(desktopKey, result, 60 * 60 * 1000)
+        return { strategy: 'desktop', result }
+      })
+    )
   }
+
+  if (!cachedMobile) {
+    promises.push(
+      runPageSpeed(url, 'mobile').then((result) => {
+        auditCache.set(mobileKey, result, 60 * 60 * 1000)
+        return { strategy: 'mobile', result }
+      })
+    )
+  }
+
+  const output: {
+    desktop: PageSpeedResult | null
+    mobile: PageSpeedResult | null
+    desktopError?: string
+    mobileError?: string
+  } = {
+    desktop: cachedDesktop ?? null,
+    mobile: cachedMobile ?? null,
+    desktopError: undefined,
+    mobileError: undefined,
+  }
+
+  if (promises.length > 0) {
+    const settled = await Promise.allSettled(promises)
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        output[result.value.strategy as 'desktop' | 'mobile'] = result.value.result
+      } else {
+        const error = formatPageSpeedError(result.reason)
+        output.desktopError = output.desktop === null ? error : output.desktopError
+        output.mobileError = output.mobile === null ? error : output.mobileError
+      }
+    }
+  }
+
+  return output
 }

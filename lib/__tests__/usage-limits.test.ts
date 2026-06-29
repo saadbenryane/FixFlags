@@ -141,7 +141,7 @@ describe('re-check entitlements', () => {
       plan: 'FREE',
     })
     assert.equal(entitlements.canRecheck, true)
-    assert.equal(canAccessRecheck({ id: 'u1', role: 'user', plan: 'FREE' }), true)
+    assert.equal(canAccessRecheck(), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

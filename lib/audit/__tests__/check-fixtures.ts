@@ -46,6 +46,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     jsonLd: [{ '@type': 'WebSite' }],
     elementIds: ['main-content', 'features'],
     formInputsMissingValidation: 0,
+    totalFormInputs: 1,
     ...overrides,
   }
 }

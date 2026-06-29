@@ -21,6 +21,7 @@ import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
+import { formatUsd } from '@/lib/billing/costs'
 
 const EXPERT_STATUS_LABELS = {
   PENDING: 'Pending payment',
@@ -29,10 +30,6 @@ const EXPERT_STATUS_LABELS = {
   DELIVERED: 'Delivered',
   FULFILLED: 'Delivered',
 } as const
-
-function formatUsdCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
-}
 
 export default async function BillingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -94,9 +91,11 @@ export default async function BillingPage() {
             {planDef.price}
             {planDef.period} · {planDef.auditLimitLabel}
           </Muted>
-          <p className="text-xs text-muted-foreground">
-            Subscription status: {user.subscriptionStatus.toLowerCase().replace('_', ' ')}
-          </p>
+          {user.subscriptionStatus !== 'NONE' && (
+            <p className="text-xs text-muted-foreground">
+              Subscription status: {user.subscriptionStatus.toLowerCase().replace('_', ' ')}
+            </p>
+          )}
         </div>
         <UsageMeter
           used={user.auditsUsed}
@@ -144,12 +143,12 @@ export default async function BillingPage() {
               <Surface key={pack.id} variant={pack.popular ? 'elevated' : 'flat'} className="p-4 space-y-3">
                 <div>
                   <p className="font-medium text-sm">{pack.label}</p>
-                  <p className="text-lg font-semibold">{formatUsdCents(pack.priceUsdCents)}</p>
+                  <p className="text-lg font-semibold">{formatUsd(pack.priceUsdCents / 100)}</p>
                 </div>
                 <CreditPackButton
                   packId={pack.id}
                   label={pack.label}
-                  price={formatUsdCents(pack.priceUsdCents)}
+                  price={formatUsd(pack.priceUsdCents / 100)}
                   popular={pack.popular}
                 />
               </Surface>
@@ -166,7 +165,7 @@ export default async function BillingPage() {
                       {p.creditsPurchased} credits - {p.packId.replace('_', ' ')}
                     </span>
                     <span>
-                      {formatUsdCents(p.priceUsdCents)}
+                      {formatUsd(p.priceUsdCents / 100)}
                     </span>
                     <span className={p.status === 'PAID' ? 'text-success' : ''}>
                       {p.status === 'PAID' ? 'Paid' : p.status === 'PENDING' ? 'Pending' : p.status.toLowerCase()}

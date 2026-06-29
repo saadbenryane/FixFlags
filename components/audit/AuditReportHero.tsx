@@ -1,13 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
-import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { displayVerdict } from '@/lib/audit/verdict'
-import { getUserFacingPageSpeedError } from '@/lib/audit/user-facing-errors'
-import { rubricLabel } from '@/lib/utils'
+import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 type Props = {
@@ -18,62 +15,29 @@ type Props = {
   url: string
   shareStatus: string
   rubrics: RubricComputed[]
-  screenshotLimited?: boolean
-  screenshotPartial?: boolean
-  pageSpeedPartial?: boolean
+  screenshots?: AuditScreenshot[]
+  durationMs?: number | null
+  startedAt?: string | Date | null
+  completedAt?: string | Date | null
+}
+
+function gradeLetter(score: number | null | undefined): string {
+  if (score == null) return '–'
+  if (score >= 90) return 'A'
+  if (score >= 75) return 'B'
+  if (score >= 60) return 'C'
+  if (score >= 40) return 'D'
+  return 'F'
 }
 
 function shareStatusMessage(shareStatus: string, criticalCount: number): string {
   if (shareStatus === 'good_to_share') {
-    return 'No critical Flags found. Good to share.'
+    return 'No critical flags found. Good to share.'
   }
   if (criticalCount === 1) {
     return '1 critical. Fix this before sharing.'
   }
   return `${criticalCount} critical. Fix these before sharing.`
-}
-
-function ScanNotes({
-  screenshotLimited,
-  screenshotPartial,
-  pageSpeedPartial,
-}: Pick<Props, 'screenshotLimited' | 'screenshotPartial' | 'pageSpeedPartial'>) {
-  const [open, setOpen] = useState(false)
-
-  const notes: string[] = []
-  if (screenshotLimited) {
-    notes.push('Visual review limited. The desktop screenshot could not be captured.')
-  } else if (screenshotPartial) {
-    notes.push('Mobile screenshot could not be captured. Desktop viewport review is shown.')
-  }
-  if (pageSpeedPartial) {
-    notes.push(getUserFacingPageSpeedError())
-  }
-
-  if (notes.length === 0) return null
-
-  return (
-    <div className="rounded-[var(--radius-inner)] border border-border/30 bg-muted/15">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs text-muted-foreground"
-        aria-expanded={open}
-      >
-        <span>Scan notes ({notes.length})</span>
-        {open ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
-      </button>
-      {open && (
-        <ul className="space-y-1 border-t border-border/20 px-3 py-2 text-xs text-muted-foreground">
-          {notes.map((note) => (
-            <li key={note} className="text-pretty">
-              {note}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
 }
 
 export function AuditReportHero({
@@ -84,9 +48,10 @@ export function AuditReportHero({
   url,
   shareStatus,
   rubrics,
-  screenshotLimited,
-  screenshotPartial,
-  pageSpeedPartial,
+  screenshots,
+  durationMs,
+  startedAt,
+  completedAt,
 }: Props) {
   const isMinimal = variant === 'minimal'
   const userVerdict = displayVerdict(verdict ?? null)
@@ -102,6 +67,17 @@ export function AuditReportHero({
     }
   })()
 
+  const firstScreenshot = screenshots?.[0]
+
+  const durationSec =
+    durationMs != null
+      ? Math.round(durationMs / 1000)
+      : startedAt && completedAt
+        ? Math.round(
+            (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000
+          )
+        : null
+
   if (isMinimal) {
     return (
       <div className="space-y-1">
@@ -113,34 +89,65 @@ export function AuditReportHero({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
-        <ScoreRingGauge score={score} size="sm" className="mx-auto sm:mx-0" />
+      <div className="flex gap-4">
+        {firstScreenshot && (
+          <div className="hidden sm:block shrink-0">
+            <Image
+              src={firstScreenshot.url}
+              alt={`Screenshot of ${hostname}`}
+              width={80}
+              height={56}
+              className="w-20 rounded-[var(--radius-inner)] border border-border/40 object-cover"
+              style={{ aspectRatio: '1280 / 900' }}
+            />
+          </div>
+        )}
 
         <div className="min-w-0 flex-1 space-y-3">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-semibold tracking-tight text-foreground">{hostname}</h1>
-              {pageType ? (
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {pageType}
-                </Badge>
-              ) : null}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">{hostname}</h1>
+                {pageType ? (
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {pageType}
+                  </Badge>
+                ) : null}
+                {score != null && (
+                  <span className="text-xs text-muted-foreground font-medium tabular-nums">
+                    {score}/100
+                  </span>
+                )}
+              </div>
+              <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
             </div>
-            <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+            {score != null && (
+              <ScoreRingGauge score={score} size="sm" className="shrink-0 sm:hidden" />
+            )}
           </div>
 
           <div className={isReady ? 'text-sm text-grade-A' : 'text-sm text-grade-C'}>
             <p className="font-medium text-pretty">{shareMessage}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {rubrics.map((r) => (
-                <RubricStatusBadge
-                  key={r.name}
-                  status={r.status}
-                  label={rubricLabel(r.name)}
-                  size="sm"
-                />
-              ))}
-            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {rubrics.map((r) => (
+              <Badge
+                key={r.name}
+                variant="secondary"
+                className="gap-1.5 px-2.5 py-1 text-xs font-semibold"
+              >
+                <span className="text-muted-foreground font-medium">{r.name.charAt(0).toUpperCase() + r.name.slice(1).toLowerCase()}:</span>
+                <span className={
+                  r.grade === 'A' ? 'text-grade-A' :
+                  r.grade === 'B' ? 'text-grade-B' :
+                  r.grade === 'F' ? 'text-grade-F' :
+                  'text-foreground'
+                }>
+                  {r.grade ?? r.score != null ? gradeLetter(r.score) : '–'}
+                </span>
+              </Badge>
+            ))}
           </div>
         </div>
       </div>
@@ -151,11 +158,11 @@ export function AuditReportHero({
         </blockquote>
       ) : null}
 
-      <ScanNotes
-        screenshotLimited={screenshotLimited}
-        screenshotPartial={screenshotPartial}
-        pageSpeedPartial={pageSpeedPartial}
-      />
+      {durationSec != null && (
+        <p className="text-xs text-muted-foreground font-mono tabular-nums">
+          Audited in {durationSec}s
+        </p>
+      )}
     </div>
   )
 }

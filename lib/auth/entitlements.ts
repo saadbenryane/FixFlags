@@ -45,10 +45,7 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean
 }
 
 /** Authenticated users can re-check reports they own; quota is not consumed. */
-export function canAccessRecheck(
-  user: Pick<User, 'id' | 'role' | 'plan'>
-): boolean {
-  void user
+export function canAccessRecheck(): boolean {
   return true
 }
 
@@ -79,7 +76,7 @@ export function getEntitlements(
     canSharePublicly: canSharePublicly(user),
     canExportSummary: canExportSummary(user),
     canAccessPaidFeatures: paid,
-    canRecheck: canAccessRecheck(user),
+    canRecheck: canAccessRecheck(),
     canUseMcp: canUseApiKeys(user),
   }
 }

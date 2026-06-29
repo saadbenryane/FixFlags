@@ -2,18 +2,36 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
-import { auditHostname } from '@/lib/audit/active-audit'
+import { auditHostname, clearActiveAudit } from '@/lib/audit/active-audit'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 export function ActiveAuditBanner() {
   const { active } = useActiveAudit()
   const pathname = usePathname()
+  const [stillRunning, setStillRunning] = useState(true)
 
-  if (!active) return null
-  if (pathname === `/report/${active.auditId}`) return null
+  useEffect(() => {
+    if (!active) return
+    if (pathname === `/report/${active.auditId}`) {
+      setStillRunning(false)
+      return
+    }
+    fetch(`/api/reports/${active.auditId}/status`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+          clearActiveAudit(active.auditId)
+          setStillRunning(false)
+        }
+      })
+      .catch(() => {})
+  }, [active, pathname])
+
+  if (!active || !stillRunning) return null
 
   const hostname = auditHostname(active.url)
 

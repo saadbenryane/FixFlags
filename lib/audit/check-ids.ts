@@ -99,6 +99,14 @@ export const ALL_CHECK_IDS = [
   'flow-cta-destination-no-trust',
   'slow-3g-blank-screen',
   'slow-3g-cta-delayed',
+  // measurement.ts
+  'measurement-ga-gtm-posthog-missing',
+  'measurement-consent-blocking-incomplete',
+  // security.ts
+  'security-mixed-content',
+  // visual-polish.ts
+  'visual-radius-inconsistent',
+  'visual-typography-sprawl',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

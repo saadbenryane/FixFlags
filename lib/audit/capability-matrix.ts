@@ -105,6 +105,50 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     verify: 'npm run demo:audit:offline',
   },
 
+  // REACH - measurement & security
+  {
+    id: 'measurement-consent-scan',
+    dimension: 'REACH',
+    category: 'loading',
+    label: 'Privacy consent controls',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['measurement-consent-blocking-incomplete'],
+    verify: 'npm run demo:audit:offline',
+  },
+  {
+    id: 'measurement-analytics-scan',
+    dimension: 'REACH',
+    category: 'loading',
+    label: 'Web analytics (GA4, GTM, PostHog)',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['measurement-ga-gtm-posthog-missing'],
+    verify: 'npm run demo:audit:offline',
+  },
+  {
+    id: 'ai-measurement-review',
+    dimension: 'REACH',
+    category: 'ai-review',
+    label: 'AI review of measurement setup',
+    tool: 'ai-judge',
+    status: 'live',
+    checkIds: [],
+    verify: 'npm run dev:all + audit URL',
+  },
+
+  // REACH - security basics
+  {
+    id: 'security-basics-scan',
+    dimension: 'REACH',
+    category: 'loading',
+    label: 'Mixed content detection',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['security-mixed-content'],
+    verify: 'npm run demo:audit:offline',
+  },
+
   // REACH - metadata & SEO
   {
     id: 'reach-title-description',
@@ -404,7 +448,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Cross-section spacing, radius, typography consistency',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['font-family-sprawl', 'button-radius-inconsistent'],
+    checkIds: ['font-family-sprawl', 'button-radius-inconsistent', 'visual-radius-inconsistent', 'visual-typography-sprawl'],
     verify: 'npm run test:unit -- lib/audit/__tests__/design-language.test.ts',
     notes: 'DOM style sampling during mobile capture.',
   },

@@ -1,6 +1,5 @@
 import { Plan, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
@@ -157,24 +156,62 @@ export async function sumEstimatedCostByPlan(since: Date): Promise<Record<Plan, 
   return { FREE: planMap['FREE'] ?? 0, BUILDER: planMap['BUILDER'] ?? 0, TEAM: planMap['TEAM'] ?? 0 }
 }
 
-export async function sumRevenueByPlan(_since: Date): Promise<Record<Plan, { subscriptions: number; creditPacks: number; total: number }>> {
-  void _since
-  const users = await prisma.user.findMany({
+const PLAN_MONTHLY_PRICE: Record<Plan, number> = {
+  FREE: 0,
+  BUILDER: 29,
+  TEAM: 99,
+}
+
+export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subscriptions: number; creditPacks: number; total: number }>> {
+  const activeUsers = await prisma.user.findMany({
     where: { subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
-    select: { plan: true, stripePriceId: true },
+    select: { plan: true },
   })
+
   const subRevenue: Record<string, number> = {}
-  for (const user of users) {
-    const def = PLAN_DEFINITIONS[user.plan]
-    const price = def.price ? Number(def.price.replace('$', '')) : 0
-    subRevenue[user.plan] = (subRevenue[user.plan] ?? 0) + price
+  for (const user of activeUsers) {
+    subRevenue[user.plan] = (subRevenue[user.plan] ?? 0) + PLAN_MONTHLY_PRICE[user.plan]
   }
 
-  return {
-    FREE: { subscriptions: subRevenue['FREE'] ?? 0, creditPacks: 0, total: 0 },
-    BUILDER: { subscriptions: subRevenue['BUILDER'] ?? 0, creditPacks: 0, total: subRevenue['BUILDER'] ?? 0 },
-    TEAM: { subscriptions: subRevenue['TEAM'] ?? 0, creditPacks: 0, total: subRevenue['TEAM'] ?? 0 },
+  const creditPurchases = await prisma.creditPurchase.findMany({
+    where: { status: 'PAID', paidAt: { gte: since } },
+    select: { userId: true, priceUsdCents: true },
+  })
+
+  const userIds = [...new Set(creditPurchases.map((p) => p.userId))]
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, plan: true },
+  })
+  const userPlanMap = new Map(users.map((u) => [u.id, u.plan]))
+
+  const creditRevenueMap: Record<string, number> = {}
+  for (const purchase of creditPurchases) {
+    const plan = userPlanMap.get(purchase.userId)
+    if (!plan) continue
+    creditRevenueMap[plan] = (creditRevenueMap[plan] ?? 0) + purchase.priceUsdCents / 100
   }
+
+  const zero = { subscriptions: 0, creditPacks: 0, total: 0 }
+  const result = {
+    FREE: { ...zero },
+    BUILDER: { ...zero },
+    TEAM: { ...zero },
+  } as Record<Plan, { subscriptions: number; creditPacks: number; total: number }>
+
+  for (const plan of Object.keys(subRevenue) as Plan[]) {
+    const subs = subRevenue[plan] ?? 0
+    const credits = creditRevenueMap[plan] ?? 0
+    result[plan] = { subscriptions: subs, creditPacks: credits, total: subs + credits }
+  }
+
+  for (const plan of Object.keys(creditRevenueMap) as Plan[]) {
+    if (!result[plan]) {
+      result[plan] = { subscriptions: 0, creditPacks: creditRevenueMap[plan], total: creditRevenueMap[plan] }
+    }
+  }
+
+  return result
 }
 
 export async function getCostOutliers(days: number = 7): Promise<Array<{ auditId: string; domain: string; model: string | null; estimatedCostUsd: number; inputTokens: number; outputTokens: number }>> {

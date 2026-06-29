@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { FilterPill } from '@/components/ui/filter-pill'
+import { Container } from '@/components/ui/container'
 import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
@@ -19,6 +20,7 @@ interface Props {
   showFlow?: boolean
   showFix?: boolean
   showLaunchGates?: boolean
+  siteUrl?: string
 }
 
 export function ReportMiniNav({
@@ -27,6 +29,7 @@ export function ReportMiniNav({
   showFlow,
   showFix,
   showLaunchGates,
+  siteUrl,
 }: Props) {
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
@@ -80,25 +83,38 @@ export function ReportMiniNav({
     }
   }
 
+  const hostname = (() => {
+    if (!siteUrl) return null
+    try {
+      return new URL(siteUrl).hostname
+    } catch {
+      return null
+    }
+  })()
+
   return (
-    <nav
-      aria-label="Report sections"
-      className={cn(
-        'sticky z-10 -mx-5 flex gap-2 overflow-x-auto bg-background/95 px-5 pb-2 pt-1 backdrop-blur-sm scrollbar-thin',
-        'top-[var(--header-offset)]',
-        'max-sm:border-b max-sm:border-border/40',
-        className
-      )}
-    >
-      {sections.map((section) => (
-        <FilterPill
-          key={section.id}
-          active={active === section.id}
-          onClick={() => scrollTo(section.id)}
+    <div className="sticky top-14 z-navbar border-0 glass-nav">
+      <Container className="flex items-center gap-4 overflow-x-auto scrollbar-thin">
+        {hostname && (
+          <span className="shrink-0 text-xs font-medium text-muted-foreground truncate max-w-[160px]">
+            {hostname}
+          </span>
+        )}
+        <nav
+          aria-label="Report sections"
+          className={cn('flex items-center gap-2 py-2', className)}
         >
-          {section.label}
-        </FilterPill>
-      ))}
-    </nav>
+          {sections.map((section) => (
+            <FilterPill
+              key={section.id}
+              active={active === section.id}
+              onClick={() => scrollTo(section.id)}
+            >
+              {section.label}
+            </FilterPill>
+          ))}
+        </nav>
+      </Container>
+    </div>
   )
 }

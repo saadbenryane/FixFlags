@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getStripe } from '@/lib/stripe'
-import { getCreditPack, getCredPackStripePriceId } from '@/lib/billing/credits'
+import { getCreditPack, getCredPackStripePriceId, CREDIT_PACKS } from '@/lib/billing/credits'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 
+const PACK_IDS = CREDIT_PACKS.map((p) => p.id) as [string, ...string[]]
 const schema = z.object({
-  packId: z.enum(['pack_10', 'pack_25', 'pack_50']),
+  packId: z.enum(PACK_IDS),
 })
 
 export async function POST(req: NextRequest) {
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
     if (!priceId) return apiError('Credit packs are not configured', 503, { code: 'BILLING_NOT_CONFIGURED' })
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!user || user.plan === 'FREE') return apiError('Upgrade to a paid plan before purchasing credits', 403, { code: 'PLAN_UPGRADE_REQUIRED', action: 'view_pricing' })
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
     const checkoutSession = await getStripe().checkout.sessions.create({

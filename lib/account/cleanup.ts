@@ -8,15 +8,15 @@ export async function deleteUserProductData(userId: string): Promise<void> {
     select: { stripeSubscriptionId: true, stripeCustomerId: true },
   })
 
-  if (user?.stripeSubscriptionId) {
-    try {
+  try {
+    if (user?.stripeSubscriptionId) {
       const stripe = getStripe()
       await stripe.subscriptions.update(user.stripeSubscriptionId, {
         cancel_at_period_end: true,
       })
-    } catch {
-      // Stripe may not be configured or sub already cancelled, proceed with cleanup
     }
+  } catch {
+    // Stripe may not be configured or sub already cancelled, proceed with cleanup
   }
 
   const audits = await prisma.audit.findMany({

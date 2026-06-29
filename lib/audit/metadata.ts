@@ -40,6 +40,8 @@ export interface PageMetadata {
   elementIds: string[]
   /** Count of form input/textarea/select elements lacking validation attributes. */
   formInputsMissingValidation: number
+  /** Total number of form input/textarea/select elements. */
+  totalFormInputs: number
 }
 
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
@@ -81,21 +83,29 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
   // Forms and inputs
   let inputsWithoutLabel = 0
-  $('input:not([type="hidden"]):not([type="submit"]):not([type="button"])').each((_, el) => {
-    const id = $(el).attr('id')
-    const ariaLabel = $(el).attr('aria-label')
-    const ariaLabelledby = $(el).attr('aria-labelledby')
+  $('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), textarea, select').each((_, el) => {
+    const $el = $(el)
+    if ($el.attr('aria-hidden') === 'true') return
+    const id = $el.attr('id')
+    const ariaLabel = $el.attr('aria-label')
+    const ariaLabelledby = $el.attr('aria-labelledby')
     if (!ariaLabel && !ariaLabelledby && (!id || !$(`label[for="${id}"]`).length)) {
+      if ($el.closest('label').length) return
       inputsWithoutLabel++
     }
   })
 
   // Form field validation attributes
   let formInputsMissingValidation = 0
+  let totalFormInputs = 0
+  const formInputSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]), textarea, select'
   const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
   const formElements = $('form')
   if (formElements.length > 0) {
     formElements.each((_, form) => {
+      $(form).find(formInputSelectors).each(() => {
+        totalFormInputs++
+      })
       $(form).find(formValidationSelectors).each((_, field) => {
         const el = $(field)
         const hasPattern = el.attr('pattern') !== undefined
@@ -253,6 +263,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     jsonLd,
     elementIds,
     formInputsMissingValidation,
+    totalFormInputs,
   }
 }
 

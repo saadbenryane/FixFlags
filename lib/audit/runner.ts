@@ -47,7 +47,7 @@ import {
   FINALIZE_RESERVE_MS,
   MIN_JUDGE_BUDGET_MS,
 } from './pipeline-config'
-import { AuditDeadlineError, isNonRetryableAuditError } from './pipeline-errors'
+import { AuditDeadlineError, isNonRetryableAuditError, sanitizeAuditErrorMessage } from './pipeline-errors'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import {
   copyParentArtifacts,
@@ -83,18 +83,7 @@ interface PipelineContext {
   includeAi: boolean
 }
 
-function sanitizeAuditErrorMessage(message: string): string {
-  return message
-    .replace(/https?:\/\/[^\s]+/gi, '[url]')
-    .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, (match) =>
-      match.includes('API') || match.includes('KEY') ? '[config]' : match
-    )
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 500)
-}
-
-function assertDeadline(ctx: PipelineContext, stage: string): void {
+export function assertDeadline(ctx: PipelineContext, stage: string): void {
   if (Date.now() > ctx.deadline) {
     throw new AuditDeadlineError(stage)
   }
@@ -672,15 +661,36 @@ export async function runAudit(auditId: string): Promise<void> {
         ? discoverCriticalPathUrls(audit.url, primary.metadata)
         : [audit.url]
 
-    for (const [index, pageUrl] of urls.slice(1).entries()) {
-      pageRuns.push(
-        await runPage(ctx, {
-          url: pageUrl,
-          position: index + 1,
-          role: index === 0 ? 'pricing-or-plan' : 'primary-cta',
-          primary: false,
-        })
-      )
+    const remainingUrls = urls.slice(1)
+    if (audit.auditMode === 'CRITICAL_PATH' && !isSummaryOnly) {
+      const concurrency = Math.min(remainingUrls.length, 2)
+      const results: PageRun[] = []
+      for (let i = 0; i < remainingUrls.length; i += concurrency) {
+        const batch = remainingUrls.slice(i, i + concurrency)
+        const batchResults = await Promise.all(
+          batch.map((pageUrl, batchIndex) =>
+            runPage(ctx, {
+              url: pageUrl,
+              position: i + batchIndex + 1,
+              role: batchIndex === 0 ? 'pricing-or-plan' : 'primary-cta',
+              primary: false,
+            })
+          )
+        )
+        results.push(...batchResults)
+      }
+      pageRuns.push(...results)
+    } else {
+      for (const [index, pageUrl] of remainingUrls.entries()) {
+        pageRuns.push(
+          await runPage(ctx, {
+            url: pageUrl,
+            position: index + 1,
+            role: index === 0 ? 'pricing-or-plan' : 'primary-cta',
+            primary: false,
+          })
+        )
+      }
     }
 
     if (!ctx.includeAi) {

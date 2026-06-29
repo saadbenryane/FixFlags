@@ -13,6 +13,9 @@ import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
+import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
+import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
+import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
@@ -1035,6 +1038,19 @@ describe('trigger matrix - one failing signal per checkId', () => {
           screenshotUrls: [],
         })
       ),
+    'measurement-ga-gtm-posthog-missing': () =>
+      checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
+    'measurement-consent-blocking-incomplete': () =>
+      checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: true, hasCookieConsent: false }))),
+    'security-mixed-content': () =>
+      checkIds(runSecurityBasicsChecks('https://example.com', healthyMeta({
+        images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
+        links: [{ href: 'http://oldcdn.example.com/style.css', text: 'Stylesheet', rel: null }],
+      }))),
+    'visual-radius-inconsistent': () =>
+      checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
+    'visual-typography-sprawl': () =>
+      checkIds(runVisualPolishChecks(healthyCaptureMetrics({ uniqueFontFamilies: 6, fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'] }))),
   }
 
   it('triggers matrix covers every checkId without extras', () => {

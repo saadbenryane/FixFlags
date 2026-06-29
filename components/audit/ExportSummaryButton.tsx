@@ -69,7 +69,7 @@ export function ExportSummaryButton({
       await navigator.clipboard.writeText(summary)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-      toast.success('Summary copied', {
+      toast.success('Report exported', {
         description: 'Paste into Slack, email, or your client handoff doc.',
       })
     } catch {
@@ -85,11 +85,11 @@ export function ExportSummaryButton({
         </>
       ) : canExport ? (
         <>
-          <FileText className="h-4 w-4" /> Copy summary
+          <FileText className="h-4 w-4" /> Export
         </>
       ) : (
         <>
-          <Lock className="h-4 w-4" /> Copy summary
+          <Lock className="h-4 w-4" /> Export
         </>
       )}
     </Button>

@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db'
 import {
   RubricName,
   Severity,
-  FlagSource,
   RubricGrade,
   ImpactTag,
 } from '@prisma/client'
@@ -20,7 +19,129 @@ import {
 import { RUBRIC_ORDER } from './constants'
 import { deduplicateFlags, flagFingerprint } from './deduplicate'
 
-function aiSeverityToEnum(severity: string): Severity {
+export interface DeterministicFlagRow {
+  auditId: string
+  pageId: string | null
+  rubricId: string | null
+  source: 'DETERMINISTIC'
+  rubric: string
+  impactTag: ImpactTag | null
+  severity: Severity
+  problem: string
+  evidence: string
+  whyItMatters: string
+  fix: string
+  confidence: number
+  verificationRule: string | null
+  checkId: string
+  pageUrl: string | null
+  fingerprint: string
+  position: number
+  agentPrompt?: string | null
+  cursorPrompt?: string | null
+  claudePrompt?: string | null
+  lovablePrompt?: string | null
+  boltPrompt?: string | null
+}
+
+export interface AiFlagRow {
+  auditId: string
+  pageId: string | null
+  rubricId: string | null
+  source: 'AI'
+  rubric: string
+  impactTag: ImpactTag | null
+  severity: Severity
+  problem: string
+  evidence: string
+  whyItMatters: string
+  fix: string
+  confidence: number
+  verificationRule: string
+  checkId: null
+  pageUrl: string | null
+  fingerprint: string
+  position: number
+  agentPrompt?: string | null
+  cursorPrompt?: string | null
+  claudePrompt?: string | null
+  lovablePrompt?: string | null
+  boltPrompt?: string | null
+}
+
+export function buildDeterministicFlagRow(
+  flag: DeterministicFlag,
+  i: number,
+  pageIdByUrl: Map<string, string>,
+  rubricIdByName: Map<string, string>,
+  enrichment?: JudgeOutput['enrichments'][number]
+): DeterministicFlagRow {
+  return {
+    auditId: '', // filled by caller
+    pageId: flag.pageUrl ? pageIdByUrl.get(new URL(flag.pageUrl).toString()) ?? null : null,
+    rubricId: rubricIdByName.get(flag.rubric) ?? null,
+    source: 'DETERMINISTIC',
+    rubric: flag.rubric,
+    impactTag: flag.impactTag ? (flag.impactTag as ImpactTag) : null,
+    severity: flag.severity as Severity,
+    problem: flag.problem,
+    evidence: flag.evidence,
+    whyItMatters:
+      enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
+        ? enrichment.whyItMatters
+        : whyItMattersForCheckId(flag.checkId),
+    fix: flag.fix,
+    confidence: flag.confidence,
+    agentPrompt: enrichment?.agentPrompt ?? null,
+    cursorPrompt: enrichment?.cursorPrompt ?? null,
+    claudePrompt: enrichment?.claudePrompt ?? null,
+    lovablePrompt: enrichment?.lovablePrompt ?? null,
+    boltPrompt: enrichment?.boltPrompt ?? null,
+    verificationRule:
+      enrichment?.verificationRule ??
+      verificationRuleForCheckId(flag.checkId) ??
+      null,
+    checkId: flag.checkId,
+    pageUrl: flag.pageUrl ?? null,
+    fingerprint: flagFingerprint(flag),
+    position: i,
+  }
+}
+
+export function buildAiFlagRow(
+  flag: JudgeOutput['newFlags'][number],
+  i: number,
+  pageIdByUrl: Map<string, string>,
+  rubricIdByName: Map<string, string>,
+  positionOffset: number
+): AiFlagRow {
+  return {
+    auditId: '',
+    pageId: flag.pageUrl ? pageIdByUrl.get(new URL(flag.pageUrl).toString()) ?? null : null,
+    rubricId: rubricIdByName.get(flag.rubric) ?? null,
+    source: 'AI',
+    rubric: flag.rubric,
+    impactTag: aiImpactToEnum(flag.impactTag),
+    severity: aiSeverityToEnum(flag.severity),
+    problem: flag.problem,
+    evidence: flag.evidence,
+    whyItMatters: flag.whyItMatters ?? flag.evidence,
+    fix: flag.fix,
+    confidence: flag.confidence,
+    agentPrompt: flag.agentPrompt ?? null,
+    cursorPrompt: flag.cursorPrompt ?? null,
+    claudePrompt: flag.claudePrompt ?? null,
+    lovablePrompt: flag.lovablePrompt ?? null,
+    boltPrompt: flag.boltPrompt ?? null,
+    verificationRule: flag.verificationRule ?? 'Confirm the issue described in evidence on the live page.',
+    checkId: null,
+    pageUrl: flag.pageUrl ?? null,
+    fingerprint: flagFingerprint(flag),
+    position: positionOffset + i,
+  }
+}
+
+export function aiSeverityToEnum(severity: string): Severity {
   const map: Record<string, Severity> = {
     CRITICAL: 'CRITICAL',
     IMPORTANT: 'IMPORTANT',
@@ -33,7 +154,7 @@ function aiSeverityToEnum(severity: string): Severity {
   return map[severity] ?? 'POLISH'
 }
 
-function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null {
+export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null {
   if (!tag) return null
   const valid: ImpactTag[] = [
     'CONVERSION',
@@ -118,23 +239,8 @@ export async function persistDeterministicFlags(
     const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
     const flagRows = deterministicFlags.map((f, i) => ({
+      ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName),
       auditId,
-      pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-      rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
-      source: 'DETERMINISTIC' as FlagSource,
-      rubric: f.rubric,
-      impactTag: f.impactTag ? (f.impactTag as ImpactTag) : null,
-      severity: f.severity as Severity,
-      problem: f.problem,
-      evidence: f.evidence,
-      whyItMatters: whyItMattersForCheckId(f.checkId),
-      fix: f.fix,
-      confidence: f.confidence,
-      verificationRule: verificationRuleForCheckId(f.checkId) ?? null,
-      checkId: f.checkId,
-      pageUrl: f.pageUrl ?? null,
-      fingerprint: flagFingerprint(f),
-      position: i,
     }))
 
     if (flagRows.length > 0) {
@@ -215,59 +321,13 @@ export async function persistAuditResults(
       ...deterministicFlags.map((f, i) => {
         const enrichment = enrichmentMap.get(f.checkId)
         return {
+          ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName, enrichment),
           auditId,
-          pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-          rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
-          source: 'DETERMINISTIC' as FlagSource,
-          rubric: f.rubric,
-          impactTag: f.impactTag ? (f.impactTag as ImpactTag) : null,
-          severity: f.severity as Severity,
-          problem: f.problem,
-          evidence: f.evidence,
-          whyItMatters:
-            enrichment?.whyItMatters && !isGenericWhyItMatters(enrichment.whyItMatters)
-              ? enrichment.whyItMatters
-              : whyItMattersForCheckId(f.checkId),
-          fix: f.fix,
-          confidence: f.confidence,
-          agentPrompt: enrichment?.agentPrompt ?? null,
-          cursorPrompt: enrichment?.cursorPrompt ?? null,
-          claudePrompt: enrichment?.claudePrompt ?? null,
-          lovablePrompt: enrichment?.lovablePrompt ?? null,
-          boltPrompt: enrichment?.boltPrompt ?? null,
-          verificationRule:
-            enrichment?.verificationRule ??
-            verificationRuleForCheckId(f.checkId) ??
-            null,
-          checkId: f.checkId,
-          pageUrl: f.pageUrl ?? null,
-          fingerprint: flagFingerprint(f),
-          position: i,
         }
       }),
       ...aiFlags.map((f, i) => ({
+        ...buildAiFlagRow(f, i, pageIdByUrl, rubricIdByName, deterministicFlags.length),
         auditId,
-        pageId: f.pageUrl ? pageIdByUrl.get(new URL(f.pageUrl).toString()) ?? null : null,
-        rubricId: rubricIdByName.get(f.rubric as RubricName) ?? null,
-        source: 'AI' as FlagSource,
-        rubric: f.rubric,
-        impactTag: aiImpactToEnum(f.impactTag),
-        severity: aiSeverityToEnum(f.severity),
-        problem: f.problem,
-        evidence: f.evidence,
-        whyItMatters: f.whyItMatters ?? f.evidence,
-        fix: f.fix,
-        confidence: f.confidence,
-        agentPrompt: f.agentPrompt ?? null,
-        cursorPrompt: f.cursorPrompt ?? null,
-        claudePrompt: f.claudePrompt ?? null,
-        lovablePrompt: f.lovablePrompt ?? null,
-        boltPrompt: f.boltPrompt ?? null,
-        verificationRule: f.verificationRule ?? 'Confirm the issue described in evidence on the live page.',
-        checkId: null,
-        pageUrl: f.pageUrl ?? null,
-        fingerprint: flagFingerprint(f),
-        position: deterministicFlags.length + i,
       })),
     ]
 

@@ -102,7 +102,7 @@ export function AuditInput({
         auditId: reportId,
         url: normalized,
       })
-      router.push(`/report/${reportId}`)
+      router.push('/reports')
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {

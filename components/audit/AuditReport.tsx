@@ -15,7 +15,6 @@ import { UPSELLS, REPORT_COPY, HERO, OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { RubricComputed } from '@/lib/audit/rubric'
@@ -98,10 +97,12 @@ export function AuditReport({
   variant = 'default',
   showRecheckHint = false,
   atAuditLimit = false,
-  screenshotLimited = false,
-  screenshotPartial = false,
   showAiContent = true,
   aiReviewPending = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  screenshotLimited,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  screenshotPartial,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -134,17 +135,26 @@ export function AuditReport({
   const showOverview =
     !isSample &&
     (aiReviewPending ||
-      audit.reportCompleteness !== 'FULL' ||
       hasLaunchGates ||
       Boolean(audit.previewMeta) ||
       Boolean(audit.flowData) ||
       !isViewerOwner)
 
   return (
-    <Container
-      variant="report"
-      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
-    >
+    <>
+      {!isSample && (
+        <ReportMiniNav
+          showPreviews={Boolean(audit.previewMeta)}
+          showFlow={Boolean(audit.flowData)}
+          showFix={Boolean(topFixPrompt && !explorerModel)}
+          showLaunchGates={hasLaunchGates}
+          siteUrl={audit.url}
+        />
+      )}
+      <Container
+        variant="report"
+        className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 pt-4 sm:space-y-8 sm:pt-6 pb-4 sm:pb-6'}
+      >
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
         score={audit.score}
@@ -153,19 +163,15 @@ export function AuditReport({
         url={audit.url}
         shareStatus={audit.shareStatus}
         rubrics={audit.rubrics}
-        screenshotLimited={screenshotLimited}
-        screenshotPartial={screenshotPartial}
-        pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+        screenshots={audit.screenshots}
+        durationMs={
+          audit.startedAt && audit.completedAt
+            ? new Date(audit.completedAt).getTime() - new Date(audit.startedAt).getTime()
+            : null
+        }
+        startedAt={audit.startedAt}
+        completedAt={audit.completedAt}
       />
-
-      {!isSample && (
-        <ReportMiniNav
-          showPreviews={Boolean(audit.previewMeta)}
-          showFlow={Boolean(audit.flowData)}
-          showFix={Boolean(topFixPrompt && !explorerModel)}
-          showLaunchGates={hasLaunchGates}
-        />
-      )}
 
       {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
@@ -194,13 +200,6 @@ export function AuditReport({
           {aiReviewPending && (
             <Callout variant="info" title="Generating AI review">
               Unlocking fix prompts and rubric analysis. This usually takes under a minute.
-            </Callout>
-          )}
-
-          {audit.reportCompleteness !== 'FULL' && (
-            <Callout variant="warning" title="Partial report">
-              Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
-              being inferred.
             </Callout>
           )}
 
@@ -323,15 +322,8 @@ export function AuditReport({
           />
         )}
 
-        {!isSample && (
-          <AuditPipelineProof
-            pipelineVersion={audit.pipelineVersion}
-            pipelineLog={audit.pipelineLog}
-            startedAt={audit.startedAt}
-            completedAt={audit.completedAt}
-          />
-        )}
       </div>
     </Container>
+    </>
   )
 }

@@ -72,9 +72,7 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
   }
 
   const completeness =
-    input.evidence.mobileScreenshot &&
-    input.evidence.desktopPageSpeed &&
-    input.evidence.mobilePageSpeed
+    input.evidence.desktopScreenshot && input.evidence.metadata
       ? 'FULL'
       : 'PARTIAL'
 
@@ -228,9 +226,7 @@ export async function finalizeDeterministicOnly(
   })
 
   const completeness =
-    input.evidence.mobileScreenshot &&
-    input.evidence.desktopPageSpeed &&
-    input.evidence.mobilePageSpeed
+    input.evidence.desktopScreenshot && input.evidence.metadata
       ? 'FULL'
       : 'PARTIAL'
 

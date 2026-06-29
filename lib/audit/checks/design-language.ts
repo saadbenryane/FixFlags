@@ -25,7 +25,8 @@ export function runDesignLanguageChecks(metrics: CaptureMetrics | null): Determi
     })
   }
 
-  const radii = metrics.buttonBorderRadii
+  const radii = metrics.buttonBorderRadii.filter((r) => r < 100)
+  const allRadii = metrics.buttonBorderRadii
   if (
     radii.length > BUTTON_RADIUS_VARIANT_LIMIT &&
     radii[radii.length - 1] - radii[0] >= BUTTON_RADIUS_SPREAD_PX
@@ -36,7 +37,7 @@ export function runDesignLanguageChecks(metrics: CaptureMetrics | null): Determi
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: 'Button corner radius varies across CTAs',
-      evidence: `CTA buttons use ${radii.length} different border-radius values (${radii.join('px, ')}px).`,
+      evidence: `CTA buttons use ${allRadii.length} different border-radius values (${allRadii.join('px, ')}px).`,
       fix: 'Pick one button radius token (e.g. 8px or 9999px pill) and apply it to every primary and secondary CTA.',
       confidence: 0.8,
       source: 'DETERMINISTIC',

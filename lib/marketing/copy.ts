@@ -745,6 +745,7 @@ export const PRICING = {
     'Start free with the full report. Upgrade when you ship weekly and need unlimited re-checks and MCP.',
   foundingBadge: 'Founding offer active: lock in launch-week pricing',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
+  upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   expertReview: {
     title: `Expert Review - $${EXPERT_REVIEW_PRICE_USD}`,
     body: 'A human reviews your report and writes a prioritized fix plan. Good for launch week.',

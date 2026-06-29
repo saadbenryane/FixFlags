@@ -1,4 +1,5 @@
 import { Plan } from '@prisma/client'
+import { envPriceId, envPriceUsd } from '@/lib/billing/env'
 
 export type PaidPlan = Exclude<Plan, 'FREE'>
 
@@ -20,11 +21,6 @@ export interface PlanDefinition {
   highlight: boolean
   cta: string
   href: string
-}
-
-function envPriceId(key: string): string | undefined {
-  const value = process.env[key]
-  return value && value.length > 0 ? value : undefined
 }
 
 export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
@@ -166,7 +162,7 @@ export const CONTACT_PLAN = {
   accountModel: 'Talk to us about your workflow.',
 } as const
 
-export const EXPERT_REVIEW_PRICE_USD = 500
+export const EXPERT_REVIEW_PRICE_USD = envPriceUsd('STRIPE_EXPERT_REVIEW_PRICE_USD', 500)
 
 export function getExpertReviewStripePriceId(): string | undefined {
   return envPriceId('STRIPE_EXPERT_REVIEW_PRICE_ID')

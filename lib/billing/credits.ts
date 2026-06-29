@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import type { User, Prisma } from '@prisma/client'
+import { envPriceId } from '@/lib/billing/env'
 
 export interface CreditPack {
   id: string
@@ -8,11 +9,6 @@ export interface CreditPack {
   stripePriceId?: string
   label: string
   popular?: boolean
-}
-
-function envPriceId(key: string): string | undefined {
-  const value = process.env[key]
-  return value && value.length > 0 ? value : undefined
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
@@ -67,7 +63,7 @@ export async function wouldBlockNewCheckWithCredits(
   if (planAvailable > pending) return { allowed: true }
 
   const purchased = await getPurchasedCreditsRemaining(user.id)
-  if (purchased > 0) return { allowed: true }
+  if (purchased > pending) return { allowed: true }
 
   return {
     allowed: false,

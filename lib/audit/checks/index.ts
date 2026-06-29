@@ -11,6 +11,9 @@ import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runDesignLanguageChecks } from './design-language'
+import { runMeasurementChecks } from './measurement'
+import { runSecurityBasicsChecks } from './security'
+import { runVisualPolishChecks } from './visual-polish'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
@@ -44,19 +47,22 @@ export async function runAllChecks(
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
 
-  const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'metadata', run: () => runMetadataChecks(metadata) },
-    { name: 'og-image', run: () => runOgImageUrlCheck(url, metadata) },
-    { name: 'performance', run: () => runPerformanceChecks(desktop, mobile) },
-    { name: 'accessibility', run: () => runAccessibilityChecks(metadata, desktop ?? mobile) },
-    { name: 'seo', run: () => runSeoChecks(url, metadata) },
-    { name: 'trust', run: () => runTrustChecks(url, metadata, consoleErrors) },
-    { name: 'mobile', run: () => runMobileChecks(mobile) },
-    { name: 'content', run: () => runContentChecks(metadata) },
-    { name: 'slop', run: () => runSlopChecks(metadata) },
-    { name: 'layout', run: () => runLayoutChecks(captureMetrics ?? null) },
-    { name: 'interaction', run: () => runInteractionChecks(captureMetrics ?? null) },
+const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
+    { name: 'metadata',        run: () => runMetadataChecks(metadata) },
+    { name: 'og-image',        run: () => runOgImageUrlCheck(url, metadata) },
+    { name: 'performance',     run: () => runPerformanceChecks(desktop, mobile) },
+    { name: 'accessibility',   run: () => runAccessibilityChecks(metadata, desktop ?? mobile) },
+    { name: 'seo',             run: () => runSeoChecks(url, metadata) },
+    { name: 'trust',           run: () => runTrustChecks(url, metadata, consoleErrors) },
+    { name: 'mobile',          run: () => runMobileChecks(mobile) },
+    { name: 'content',         run: () => runContentChecks(metadata) },
+    { name: 'slop',            run: () => runSlopChecks(metadata) },
+    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
+    { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
     { name: 'design-language', run: () => runDesignLanguageChecks(captureMetrics ?? null) },
+    { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
+    { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
+    { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {

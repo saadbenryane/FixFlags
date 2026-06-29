@@ -17,8 +17,11 @@ export async function probeGhostSections(page: Page): Promise<GhostSectionProbeR
 
   for (const scrollY of [0, vh, vh * 2, vh * 3]) {
     await page.evaluate((y) => window.scrollTo(0, y), scrollY)
-    await sleep(300)
+    await sleep(500)
   }
+
+  // Extra wait for scroll-triggered animations to settle
+  await sleep(500)
 
   const result = await page.evaluate(() => {
     const ghosts: Array<{ selector: string; text: string }> = []

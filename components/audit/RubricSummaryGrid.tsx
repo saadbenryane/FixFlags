@@ -7,7 +7,7 @@ import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Card } from '@/components/ui/card'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
-interface RubricData extends Omit<RubricComputed, 'status'> {
+interface RubricData extends Omit<RubricComputed, 'status' | 'score'> {
   status: RubricComputed['status'] | 'SCANNING'
   label: string
   description: string
