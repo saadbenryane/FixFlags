@@ -134,17 +134,16 @@ describe('canAccessCompare', () => {
     role: 'user' as const,
     plan: 'BUILDER' as const,
   }
-  const recheck = { parentId: 'parent-1', userId: 'u1' }
 
   it('allows paid users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(builderUser, recheck), true)
+    assert.equal(canAccessCompare(builderUser), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
   it('blocks free users from compare', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(freeUser, recheck), false)
+    assert.equal(canAccessCompare(freeUser), false)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

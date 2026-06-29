@@ -887,8 +887,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
         }))
       ),
-    'measurement-ga-gtm-posthog-missing': () =>
-      checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
     'measurement-consent-blocking-incomplete': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: true, hasCookieConsent: false }))),
     'security-mixed-content': () =>

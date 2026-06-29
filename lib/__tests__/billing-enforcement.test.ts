@@ -369,12 +369,12 @@ describe('canUseApiKeys', () => {
 describe('canAccessCompare', () => {
   it('blocks free users when gates enforce', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE' }, { parentId: 'p1', userId: 'u1' }), false)
+    assert.equal(canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE' }), false)
   })
 
   it('allows paid users', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER' }, { parentId: 'p1', userId: 'u2' }), true)
+    assert.equal(canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER' }), true)
   })
 })
 
