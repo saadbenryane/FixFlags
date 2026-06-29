@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { displayVerdict } from '@/lib/audit/verdict'
+import { getUserFacingPageSpeedError } from '@/lib/audit/user-facing-errors'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
@@ -128,26 +129,6 @@ export function AuditReportHero({
 
           <div className={isReady ? 'text-sm text-grade-A' : 'text-sm text-grade-C'}>
             <p className="font-medium text-pretty">{shareMessage}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {rubrics.map((r) => (
-              <Badge
-                key={r.name}
-                variant="secondary"
-                className="gap-1.5 px-2.5 py-1 text-xs font-semibold"
-              >
-                <span className="text-muted-foreground font-medium">{r.name.charAt(0).toUpperCase() + r.name.slice(1).toLowerCase()}:</span>
-                <span className={
-                  r.grade === 'A' ? 'text-grade-A' :
-                  r.grade === 'B' ? 'text-grade-B' :
-                  r.grade === 'F' ? 'text-grade-F' :
-                  'text-foreground'
-                }>
-                  {r.grade ?? r.score != null ? gradeLetter(r.score) : '–'}
-                </span>
-              </Badge>
-            ))}
           </div>
         </div>
       </div>

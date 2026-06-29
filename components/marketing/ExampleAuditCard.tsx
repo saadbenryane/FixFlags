@@ -49,7 +49,7 @@ export function ExampleAuditCard({ audit }: Props) {
       <CardHeader className="pb-0">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">
-            <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+            <p className="meta-label text-muted-foreground">
               {audit.tags.map((t) => TAG_LABELS[t] ?? t).join(' · ')}
             </p>
             <Heading as="h2" className="text-xl">
@@ -69,7 +69,7 @@ export function ExampleAuditCard({ audit }: Props) {
 
       <CardContent className="space-y-5 pt-5">
         <div className="space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+          <p className="meta-label text-muted-foreground">
             Top flags
           </p>
           <ul className="space-y-2">
@@ -97,7 +97,7 @@ export function ExampleAuditCard({ audit }: Props) {
               &ldquo;{audit.verdict}&rdquo;
             </p>
             <div className="space-y-2">
-              <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground">
+              <p className="meta-label text-muted-foreground">
                 Rubrics · Pipeline v{PIPELINE_VERSION}
               </p>
               <RubricSummaryGrid rubrics={rubrics} />

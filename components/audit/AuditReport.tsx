@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
-import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
-import { RubricCard } from '@/components/audit/RubricCard'
+import { RubricsPanel } from '@/components/audit/RubricsPanel'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
@@ -15,8 +14,8 @@ import { UPSELLS, REPORT_COPY, HERO, OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
-import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
@@ -97,12 +96,10 @@ export function AuditReport({
   variant = 'default',
   showRecheckHint = false,
   atAuditLimit = false,
+  screenshotLimited = false,
+  screenshotPartial = false,
   showAiContent = true,
   aiReviewPending = false,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  screenshotLimited,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  screenshotPartial,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -135,26 +132,17 @@ export function AuditReport({
   const showOverview =
     !isSample &&
     (aiReviewPending ||
+      audit.reportCompleteness !== 'FULL' ||
       hasLaunchGates ||
       Boolean(audit.previewMeta) ||
       Boolean(audit.flowData) ||
       !isViewerOwner)
 
   return (
-    <>
-      {!isSample && (
-        <ReportMiniNav
-          showPreviews={Boolean(audit.previewMeta)}
-          showFlow={Boolean(audit.flowData)}
-          showFix={Boolean(topFixPrompt && !explorerModel)}
-          showLaunchGates={hasLaunchGates}
-          siteUrl={audit.url}
-        />
-      )}
-      <Container
-        variant="report"
-        className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 pt-4 sm:space-y-8 sm:pt-6 pb-4 sm:pb-6'}
-      >
+    <Container
+      variant="report"
+      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
+    >
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
         score={audit.score}
@@ -163,15 +151,20 @@ export function AuditReport({
         url={audit.url}
         shareStatus={audit.shareStatus}
         rubrics={audit.rubrics}
-        screenshots={audit.screenshots}
-        durationMs={
-          audit.startedAt && audit.completedAt
-            ? new Date(audit.completedAt).getTime() - new Date(audit.startedAt).getTime()
-            : null
-        }
-        startedAt={audit.startedAt}
-        completedAt={audit.completedAt}
+        screenshotLimited={screenshotLimited}
+        screenshotPartial={screenshotPartial}
+        pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
       />
+
+      {!isSample && (
+        <ReportMiniNav
+          showOverview={showOverview}
+          showPreviews={Boolean(audit.previewMeta)}
+          showFlow={Boolean(audit.flowData)}
+          showFix={Boolean(topFixPrompt && !explorerModel)}
+          showLaunchGates={hasLaunchGates}
+        />
+      )}
 
       {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
@@ -200,6 +193,13 @@ export function AuditReport({
           {aiReviewPending && (
             <Callout variant="info" title="Generating AI review">
               Unlocking fix prompts and rubric analysis. This usually takes under a minute.
+            </Callout>
+          )}
+
+          {audit.reportCompleteness !== 'FULL' && (
+            <Callout variant="warning" title="Partial report">
+              Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
+              being inferred.
             </Callout>
           )}
 
@@ -238,30 +238,16 @@ export function AuditReport({
       )}
 
       {!isSample && (
-        <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-6">
-          <div className="space-y-3">
-            <SectionTitle>Summary by rubric</SectionTitle>
-            <RubricSummaryGrid rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
-          </div>
-
-          <div className="space-y-4">
-            {RUBRIC_ORDER.map((rubricName) => {
-              const rubric = audit.rubrics.find((r) => r.name === rubricName)
-              const rubricRow = audit.rubricRows.find((r) => r.name === rubricName)
-              if (!rubric || !rubricRow) return null
-              return (
-                <RubricCard
-                  key={rubric.name}
-                  rubric={rubric}
-                  rubricRow={rubricRow}
-                  showFeedback={showFeedback}
-                  aiLocked={aiLocked}
-                  signUpHref={signUpHref}
-                  showFlagList={!explorerModel}
-                />
-              )
-            })}
-          </div>
+        <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-3">
+          <SectionTitle>Summary by rubric</SectionTitle>
+          <RubricsPanel
+            rubrics={audit.rubrics}
+            rubricRows={audit.rubricRows}
+            showFeedback={showFeedback}
+            aiLocked={aiLocked}
+            signUpHref={signUpHref}
+            showFlagList={!explorerModel}
+          />
         </section>
       )}
 
@@ -310,20 +296,22 @@ export function AuditReport({
         )}
 
         {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
-          <ContextualUpgradeCard moment="report_completed" isLoggedIn currentPlan={viewerPlan} />
-        )}
-
-        {upgradeMoment && upgradeMoment !== 'free_default' && (
           <ContextualUpgradeCard
-            moment={upgradeMoment}
+            moment={upgradeMoment && upgradeMoment !== 'free_default' ? upgradeMoment : 'report_completed'}
             isLoggedIn
             currentPlan={viewerPlan}
-            showCta={true}
           />
         )}
 
+        {!isSample && (
+          <AuditPipelineProof
+            pipelineVersion={audit.pipelineVersion}
+            pipelineLog={audit.pipelineLog}
+            startedAt={audit.startedAt}
+            completedAt={audit.completedAt}
+          />
+        )}
       </div>
     </Container>
-    </>
   )
 }

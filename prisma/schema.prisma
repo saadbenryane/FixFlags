@@ -209,8 +209,76 @@ model User {
   assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
   mcpInteractions         McpInteraction[]
   creditPurchases         CreditPurchase[]
+  githubConnection        GithubConnection?
+  repoScans               RepoScan[]
 
   @@map("users")
+}
+
+enum RepoScanStatus {
+  QUEUED
+  CLONING
+  SCANNING
+  COMPLETED
+  FAILED
+}
+
+/** App-level GitHub repo access for codebase scanning, separate from GitHub login (Account). */
+model GithubConnection {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubUserId         String
+  githubLogin          String
+  encryptedAccessToken String    @db.Text
+  scope                String
+  selectedRepos        String[]
+  connectedAt          DateTime  @default(now())
+  revokedAt            DateTime?
+  repoScans            RepoScan[]
+
+  @@map("github_connections")
+}
+
+model RepoScan {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubConnectionId String
+  githubConnection   GithubConnection @relation(fields: [githubConnectionId], references: [id], onDelete: Cascade)
+  repoFullName       String
+  commitSha          String?
+  status             RepoScanStatus   @default(QUEUED)
+  errorMsg           String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  findings           RepoScanFinding[]
+  createdAt          DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([githubConnectionId])
+  @@map("repo_scans")
+}
+
+model RepoScanFinding {
+  id           String   @id @default(cuid())
+  repoScanId   String
+  repoScan     RepoScan @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+  severity     Severity
+  category     String
+  filePath     String
+  lineStart    Int?
+  lineEnd      Int?
+  problem      String
+  evidence     String   @db.Text
+  fix          String   @db.Text
+  agentPrompt  String?  @db.Text
+  cursorPrompt String?  @db.Text
+  claudePrompt String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([repoScanId])
+  @@map("repo_scan_findings")
 }
 
 model EmailLog {

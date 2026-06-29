@@ -103,9 +103,13 @@ export function validateWorkerEnv(): void {
     ] as const
     const missingR2 = r2Required.filter((k) => !process.env[k])
     if (missingR2.length > 0) {
-      console.warn(
-        `[env] R2 storage not configured (missing: ${missingR2.join(', ')}). ` +
-          'Audits will fail at the screenshot step until R2 is set.'
+      // Hard fail, not a warning: without R2 every scan dies at the screenshot
+      // step and surfaces the misleading "site unreachable" error. Fail fast at
+      // boot so the misconfiguration is obvious in deploy logs instead.
+      throw new Error(
+        `R2 screenshot storage is not configured (missing: ${missingR2.join(', ')}). ` +
+          'Every scan fails at the screenshot step without it. Set all R2_* vars ' +
+          '(R2_BUCKET_NAME, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_PUBLIC_URL).'
       )
     }
   } else {

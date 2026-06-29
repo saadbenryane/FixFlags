@@ -7,6 +7,7 @@ import { Section } from '@/components/ui/section'
 import { Body, Heading } from '@/components/ui/typography'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { McpApiKeyLink } from '@/components/marketing/McpApiKeyLink'
+import { McpInstallButtons } from '@/components/marketing/McpInstallButtons'
 import { HERO, MCP_DOCS, MCP_SECTION, SITE_URL } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import {
@@ -66,6 +67,14 @@ export default function McpDocsPage() {
               <li key={step}>{step}</li>
             ))}
           </ol>
+          <div className="space-y-2">
+            <p className="text-xs font-medium">One-click install</p>
+            <McpInstallButtons />
+            <p className="text-xs text-muted-foreground">
+              Mints a fresh API key and opens your editor to add the server automatically. Not
+              supported? Use the manual config below.
+            </p>
+          </div>
           <div className="space-y-3">
             <p className="text-xs font-medium">Cursor config (paste into .cursor/mcp.json)</p>
             <pre className="overflow-x-auto rounded-nested-md bg-muted/40 p-4 font-mono text-xs">

@@ -35,7 +35,7 @@ export function TerminalShell({
           <span className="h-2 w-2 shrink-0 rounded-full bg-destructive/80" aria-hidden />
           <span className="h-2 w-2 shrink-0 rounded-full bg-warning/80" aria-hidden />
           <span className="h-2 w-2 shrink-0 rounded-full bg-success/80" aria-hidden />
-          <span className="truncate font-mono text-[10px] uppercase tracking-label text-terminal-muted sm:text-[11px]">
+          <span className="truncate meta-label text-terminal-muted sm:text-[11px]">
             {label}
           </span>
         </div>

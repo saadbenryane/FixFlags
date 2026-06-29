@@ -13,14 +13,16 @@ import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { PasswordInput } from '@/components/auth/PasswordInput'
-import { OAuthButtons, hasOAuthEnabled } from '@/components/auth/OAuthButtons'
+import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
+import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignUpForm() {
   const { oauthCallbackURL, navigateAfterAuth, signInHref, plan, from } = useAuthRedirect()
   useRedirectIfAuthenticated()
+  const oauth = useOAuthProviders()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,7 +57,7 @@ function SignUpForm() {
     ? planTitle
     : from === 'pricing'
       ? AUTH.signUp.fromPricing
-      : hasOAuthEnabled()
+      : oauth.anyEnabled
         ? AUTH.signUp.subtitleWithOAuth
         : AUTH.signUp.subtitle
 
@@ -73,8 +75,15 @@ function SignUpForm() {
       <div className="rounded-card bg-muted/30 p-4 shadow-none">
         <AuthValueProps />
       </div>
-      {hasOAuthEnabled() && <OAuthButtons callbackURL={oauthCallbackURL} disabled={loading} />}
-      {hasOAuthEnabled() && (
+      {oauth.anyEnabled && (
+        <OAuthButtons
+          callbackURL={oauthCallbackURL}
+          google={oauth.google}
+          github={oauth.github}
+          disabled={loading}
+        />
+      )}
+      {oauth.anyEnabled && (
         <p className="text-center text-xs text-muted-foreground">{AUTH.signUp.oauthNote}</p>
       )}
       {showPlanSteps && (

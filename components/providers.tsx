@@ -6,7 +6,7 @@ import { OfflineNotice } from '@/components/system/OfflineNotice'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
       {children}
       <OfflineNotice />
       <Toaster richColors position="bottom-right" />

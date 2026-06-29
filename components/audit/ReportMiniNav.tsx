@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
   { id: 'report-flags', label: 'Flags' },
-  { id: 'report-overview', label: 'Overview' },
   { id: 'report-rubrics', label: 'Rubrics' },
   { id: 'report-recheck', label: 'Re-check' },
 ] as const
@@ -16,6 +15,7 @@ type NavSection = { id: string; label: string }
 
 interface Props {
   className?: string
+  showOverview?: boolean
   showPreviews?: boolean
   showFlow?: boolean
   showFix?: boolean
@@ -25,6 +25,7 @@ interface Props {
 
 export function ReportMiniNav({
   className,
+  showOverview,
   showPreviews,
   showFlow,
   showFix,
@@ -33,9 +34,9 @@ export function ReportMiniNav({
 }: Props) {
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
-    const overviewIndex = items.findIndex((s) => s.id === 'report-overview')
-    const insertAt = overviewIndex >= 0 ? overviewIndex + 1 : 1
+    const insertAt = 1
     const optional: Array<{ id: string; label: string }> = []
+    if (showOverview) optional.push({ id: 'report-overview', label: 'Overview' })
     if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
     if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })
     if (showLaunchGates) optional.push({ id: 'report-launch-gates', label: 'Launch' })
@@ -47,7 +48,7 @@ export function ReportMiniNav({
       items.splice(flagsIndex + 1, 0, { id: 'report-fix', label: 'Fix prompt' })
     }
     return items
-  }, [showPreviews, showFlow, showFix, showLaunchGates])
+  }, [showOverview, showPreviews, showFlow, showFix, showLaunchGates])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
 

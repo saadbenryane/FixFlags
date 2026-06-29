@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/db'
 import { computeRubricScores, type DeterministicFlag } from './checks'
-import { runJudge, type JudgeResult } from './judge'
+import { runJudgeWithRetry, type JudgeResult } from './judge'
 import { persistAuditResults } from './persist'
 import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
 import { AUDIT_PROGRESS } from './progress'
-import { validateJudgeOutput, JudgeContractError } from './validate-judge-output'
+import { JudgeContractError } from './validate-judge-output'
 import { loadParentScreenshotBase64 } from './copy-parent-artifacts'
 import type { PageSpeedResult } from './pagespeed'
 import type { PageMetadata } from './metadata'
@@ -90,7 +90,7 @@ export async function runAiReview(auditId: string): Promise<void> {
 
   let judge: JudgeResult
   try {
-    judge = await runJudge(
+    judge = await runJudgeWithRetry(
       audit.url,
       metadata,
       perf?.desktop ?? null,
@@ -99,7 +99,6 @@ export async function runAiReview(auditId: string): Promise<void> {
       desktopBase64,
       mobileBase64
     )
-    judge.output = validateJudgeOutput(judge.output, detFlags)
   } catch (error) {
     await prisma.audit.update({
       where: { id: auditId },

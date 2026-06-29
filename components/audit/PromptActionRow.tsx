@@ -1,9 +1,14 @@
 'use client'
 
-import Link from 'next/link'
-import { MousePointer2 } from 'lucide-react'
+import { useState } from 'react'
+import { MousePointer2, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Button } from '@/components/ui/button'
+import { useMe } from '@/hooks/useMe'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
+import { SITE_URL } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface PromptActionRowProps {
@@ -23,6 +28,28 @@ export function PromptActionRow({
   compact = false,
   dark = false,
 }: PromptActionRowProps) {
+  const { user } = useMe()
+  const [installing, setInstalling] = useState(false)
+
+  async function sendToCursor() {
+    if (!user) {
+      window.location.href = '/sign-in?next=/docs/mcp'
+      return
+    }
+
+    setInstalling(true)
+    try {
+      const res = await fetch('/api/api-keys', { method: 'PUT' })
+      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
+      const data = await res.json()
+      window.location.href = buildCursorInstallLink({ baseUrl: SITE_URL, apiKey: data.key })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not connect to Cursor')
+    } finally {
+      setInstalling(false)
+    }
+  }
+
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {showCursorAction && (
@@ -34,12 +61,15 @@ export function PromptActionRow({
             dark &&
               'border border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'
           )}
-          asChild
+          disabled={installing}
+          onClick={sendToCursor}
         >
-          <Link href="/docs/mcp">
+          {installing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
             <MousePointer2 className="h-3.5 w-3.5" aria-hidden />
-            Send to Cursor
-          </Link>
+          )}
+          Send to Cursor
         </Button>
       )}
       <PromptCopyButton

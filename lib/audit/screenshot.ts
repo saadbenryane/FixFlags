@@ -13,32 +13,77 @@ import {
   pageCaptureFailureFromError,
   type PageCaptureFailure,
 } from './browser/page-capture'
+import { BrowserLaunchError, isInfrastructureAuditError } from './pipeline-errors'
 
 let browser: Browser | null = null
 
-function getChromePath(): string | undefined {
-  const paths = [
+const BROWSER_LAUNCH_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+]
+
+export function getChromePath(): string | undefined {
+  const candidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    process.env.PUPPETEER_EXECUTABLE_PATH,
   ]
-  for (const p of paths) {
+  for (const p of candidates) {
     if (p && fs.existsSync(p)) return p
   }
   return undefined
 }
 
+async function launchBrowser(): Promise<Browser> {
+  const executablePath = getChromePath()
+  // Production images skip Puppeteer's bundled download (PUPPETEER_SKIP_DOWNLOAD),
+  // so if no system binary resolves there's nothing to launch. Fail loudly with
+  // the path we looked for instead of Puppeteer's cryptic "Could not find Chrome".
+  if (!executablePath && process.env.NODE_ENV === 'production') {
+    throw new BrowserLaunchError(
+      'No Chromium executable found. Set PUPPETEER_EXECUTABLE_PATH to a valid binary ' +
+        `(looked at: ${process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium (unset)'}).`
+    )
+  }
+  try {
+    const launched = await puppeteer.launch({
+      args: BROWSER_LAUNCH_ARGS,
+      headless: true,
+      executablePath,
+    })
+    launched.on('disconnected', () => {
+      if (browser === launched) browser = null
+    })
+    return launched
+  } catch (err) {
+    throw new BrowserLaunchError(
+      `Failed to launch Chromium${executablePath ? ` (${executablePath})` : ''}: ` +
+        `${err instanceof Error ? err.message : String(err)}`,
+      { cause: err }
+    )
+  }
+}
+
 async function getBrowser(): Promise<Browser> {
   if (browser && browser.connected) return browser
-  browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    headless: true,
-    executablePath: getChromePath(),
-  })
-  browser.on('disconnected', () => {
+  // Drop any stale/crashed handle before relaunching.
+  if (browser) {
+    await browser.close().catch(() => {})
     browser = null
-  })
-  return browser
+  }
+  try {
+    browser = await launchBrowser()
+    return browser
+  } catch (err) {
+    // Retry once for a transient launch failure (crashed handle, race). A missing
+    // executable throws without a cause and won't benefit from a retry.
+    if (err instanceof BrowserLaunchError && err.cause !== undefined) {
+      browser = await launchBrowser()
+      return browser
+    }
+    throw err
+  }
 }
 
 export interface ScreenshotResult {
@@ -179,6 +224,10 @@ export async function captureScreenshots(
       runFlow
     )
   } catch (err) {
+    // Browser/storage failures are our infrastructure, not the target site, so
+    // let them abort the audit so they surface with their own failure code
+    // instead of being mis-reported as "this site blocked our visit".
+    if (isInfrastructureAuditError(err)) throw err
     captureFailures.push(pageCaptureFailureFromError('desktop', err))
     desktop = { base64: null, url: null, html: null, flowResult: null }
   }

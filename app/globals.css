@@ -89,6 +89,13 @@
     letter-spacing: var(--tracking-label);
   }
 
+  /* Micro meta-label (10px) used on flag/score/report meta lines. Color is left
+     to the caller so each surface keeps its own muted shade. */
+  .meta-label {
+    @apply font-mono text-[10px] uppercase;
+    letter-spacing: var(--tracking-label);
+  }
+
   .rounded-nested-md {
     border-radius: var(--radius-nested-md);
   }

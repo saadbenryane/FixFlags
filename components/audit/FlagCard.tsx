@@ -106,17 +106,17 @@ function FlagRowContent({
     <div className="px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="font-mono text-[10px] uppercase tracking-label text-muted-foreground/80">
+          <p className="font-mono text-xs uppercase tracking-label text-muted-foreground/80">
             {metaLine(flag)}
           </p>
           <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>
           {flag.confidence != null && flag.confidence < 0.8 && (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Lower confidence ({Math.round(flag.confidence * 100)}%), verify before acting
             </p>
           )}
           {flag.pageUrl && (
-            <p className="break-all text-[10px] text-muted-foreground sm:truncate">{flag.pageUrl}</p>
+            <p className="break-all text-xs text-muted-foreground sm:truncate">{flag.pageUrl}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center justify-end gap-1 sm:justify-start">

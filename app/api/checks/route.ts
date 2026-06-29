@@ -11,7 +11,7 @@ import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/u
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
-import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
 
@@ -72,6 +72,25 @@ export async function POST(req: NextRequest) {
         })
       }
     }
+
+    // Hard abuse ceilings, on separate counters from the soft delay limits below.
+    // Normal bursts stay delay-queued; only egregious flooding from a single
+    // client or against a single target is rejected outright (429). This stops a
+    // free/anonymous caller from filling the worker queue and screenshot storage.
+    await Promise.all([
+      enforceRateLimit({
+        scope: session?.user ? 'audit-user-hard' : 'audit-client-hard',
+        identifier: session?.user?.id ?? clientId,
+        limit: session?.user ? 120 : 60,
+        windowSeconds: 3600,
+      }),
+      enforceRateLimit({
+        scope: 'audit-host-hard',
+        identifier: new URL(url).hostname,
+        limit: 120,
+        windowSeconds: 3600,
+      }),
+    ])
 
     const [userLimit, hostLimit, workerEstimate] = await Promise.all([
       recordRateLimit({

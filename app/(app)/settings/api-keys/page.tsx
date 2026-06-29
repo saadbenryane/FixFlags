@@ -116,6 +116,9 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-8">
+      <TextLink href="/settings" className="text-xs">
+        ← Settings
+      </TextLink>
       <PageHeader
         title="API Keys"
         description={`Use API keys to connect ${BRAND.name} to Claude Code, Cursor, or Windsurf via MCP.`}
