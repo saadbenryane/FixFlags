@@ -24,7 +24,7 @@ export function getStripe(): Stripe {
     if (!key) {
       throw new Error('STRIPE_SECRET_KEY is not configured')
     }
-    _stripe = new Stripe(key, { apiVersion: (process.env.STRIPE_API_VERSION || '2025-02-24.acacia') as any })
+    _stripe = new Stripe(key, { apiVersion: (process.env.STRIPE_API_VERSION || '2025-02-24.acacia') as Stripe.StripeConfig['apiVersion'] })
   }
   return _stripe
 }

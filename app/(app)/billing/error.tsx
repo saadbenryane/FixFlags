@@ -4,7 +4,6 @@ import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading, Muted } from '@/components/ui/typography'
-import { logger } from '@/lib/logger'
 
 export default function BillingError({
   error,
@@ -14,7 +13,7 @@ export default function BillingError({
   reset: () => void
 }) {
   useEffect(() => {
-    logger.error(`Billing page error: ${error.message}`)
+    console.error(JSON.stringify({ level: 'error', event: 'ui.billing.error', digest: error.digest, message: error.message }))
   }, [error])
 
   return (

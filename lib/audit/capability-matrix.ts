@@ -1,4 +1,4 @@
-import { ALL_CHECK_IDS, type CheckId } from '@/lib/audit/check-ids'
+import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 
 /** How a capability is evaluated in the FixFlags pipeline. */
 export type AuditTool =
@@ -35,7 +35,7 @@ export interface AuditCapability {
   label: string
   tool: AuditTool
   status: CapabilityStatus
-  checkIds: CheckId[]
+  checkIds: string[]
   /** npm script or command to verify locally. */
   verify?: string
   notes?: string
@@ -237,16 +237,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     verify: 'npm run demo:audit',
   },
   {
-    id: 'reach-measurement',
-    dimension: 'REACH',
-    category: 'measurement',
-    label: 'Analytics / conversion measurement',
-    tool: 'html-parse',
-    status: 'live',
-    checkIds: ['analytics-missing'],
-    verify: 'npm run demo:audit:offline',
-  },
-  {
     id: 'reach-console-errors',
     dimension: 'MESSAGE',
     category: 'trust',
@@ -337,9 +327,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'copy',
     label: 'Single primary CTA focus',
     tool: 'browser-capture',
-    status: 'live',
-    checkIds: ['competing-ctas'],
-    notes: 'Counts competing high-intent CTAs above the fold from CaptureMetrics.',
+    status: 'partial',
+    checkIds: [],
   },
   {
     id: 'experience-auth-checkout',
@@ -520,8 +509,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
 ]
 
 /** All check IDs registered in the capability matrix (live capabilities only). */
-export function liveCheckIdsFromMatrix(): CheckId[] {
-  const ids = new Set<CheckId>()
+export function liveCheckIdsFromMatrix(): string[] {
+  const ids = new Set<string>()
   for (const cap of AUDIT_CAPABILITIES) {
     if (cap.status === 'live') {
       for (const id of cap.checkIds) ids.add(id)

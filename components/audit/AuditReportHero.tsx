@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { displayVerdict } from '@/lib/audit/verdict'
-import { getUserFacingPageSpeedError } from '@/lib/audit/user-facing-errors'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
@@ -17,18 +16,12 @@ type Props = {
   shareStatus: string
   rubrics: RubricComputed[]
   screenshots?: AuditScreenshot[]
+  screenshotLimited?: boolean
+  screenshotPartial?: boolean
+  pageSpeedPartial?: boolean
   durationMs?: number | null
   startedAt?: string | Date | null
   completedAt?: string | Date | null
-}
-
-function gradeLetter(score: number | null | undefined): string {
-  if (score == null) return '–'
-  if (score >= 90) return 'A'
-  if (score >= 75) return 'B'
-  if (score >= 60) return 'C'
-  if (score >= 40) return 'D'
-  return 'F'
 }
 
 function shareStatusMessage(shareStatus: string, criticalCount: number): string {

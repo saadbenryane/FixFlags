@@ -69,7 +69,10 @@ async function fetchAuditRow(id: string) {
 
 /** Remove large JSON blobs not used by the report UI. */
 export function stripInternalAuditFields<T extends Record<string, unknown>>(audit: T) {
-  const { htmlMetadata: _htmlMetadata, performanceData: _performanceData, consoleErrors: _consoleErrors, ...rest } = audit
+  const { htmlMetadata, performanceData, consoleErrors, ...rest } = audit
+  void htmlMetadata
+  void performanceData
+  void consoleErrors
   return rest
 }
 
@@ -78,8 +81,7 @@ export async function resolveSessionUser() {
 }
 
 export async function resolveIsPaidForAudit(
-  audit: { userId: string | null; isPublic: boolean },
-  sessionUser?: { id: string } | null
+  audit: { userId: string | null; isPublic: boolean }
 ): Promise<boolean> {
   const tier = await resolveReportTierForAudit(audit)
   return tier === 'paid'
@@ -97,7 +99,7 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'forbidden' as const }
   }
 
-  const isPaid = await resolveIsPaidForAudit(audit, session?.user)
+  const isPaid = await resolveIsPaidForAudit(audit)
   const showAiContent = await canViewAiReportContentForAudit(
     {
       userId: audit.userId,

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { describe, it, beforeEach, vi } from 'vitest'
+import { describe, it, beforeEach } from 'vitest'
 import { auditCache } from '../cache'
 import { toStoredPageSpeedResult, type PageSpeedResult } from '../pagespeed'
 

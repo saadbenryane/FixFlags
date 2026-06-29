@@ -28,7 +28,8 @@ const ACCESSIBILITY_AUDIT_IDS = [
 ] as const
 
 export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeedResult, 'raw'> {
-  const { raw: _raw, ...stored } = result
+  const { raw, ...stored } = result
+  void raw
   return stored
 }
 

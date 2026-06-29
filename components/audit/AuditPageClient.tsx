@@ -33,7 +33,7 @@ interface Props {
 }
 
 function isAuditScreenshot(val: unknown): val is AuditScreenshot {
-  return typeof val === 'object' && val !== null && (val as Record<string, unknown>).device in { DESKTOP: 1, MOBILE: 1 }
+  return val !== null && typeof val === 'object' && 'device' in val
 }
 
 function mergeScreenshots(

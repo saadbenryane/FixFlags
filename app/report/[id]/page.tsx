@@ -24,15 +24,15 @@ interface Props {
 
 function parseScreenshots(val: unknown): AuditScreenshot[] {
   if (!Array.isArray(val)) return []
-  return val.filter(
-    (s): s is AuditScreenshot =>
-      typeof s === 'object' && s !== null && (s as Record<string, unknown>).device in { DESKTOP: 1, MOBILE: 1 }
+  return val.filter((s): s is AuditScreenshot =>
+    s !== null && typeof s === 'object' && 'device' in s
   )
 }
 
 function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined {
   if (typeof audit !== 'object' || audit === null) return undefined
-  const capture = (audit as Record<string, unknown>).screenshotCapture
+  const rec = audit as Record<string, unknown>
+  const capture = rec.screenshotCapture
   if (typeof capture !== 'object' || capture === null) return undefined
   const c = capture as Record<string, unknown>
   return typeof c.desktop === 'string' && typeof c.mobile === 'string'
