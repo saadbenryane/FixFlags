@@ -612,7 +612,7 @@ export const LANDING_PAGE = {
   footer: {
     tagline:
       'Evidence-backed reviews for AI-built and live sites. Find what visitors are missing, with fix prompts your editor can run.',
-    madeWith: 'Made with \u2764\ufe0f by the FixFlags team',
+    madeWith: 'Built for people shipping with AI.',
     newsletter: {
       title: 'Stay in the loop',
       placeholder: 'Enter your email',
