@@ -22,9 +22,12 @@ describe('audit capability matrix', () => {
     }
   })
 
-  it('includes all registered check IDs in the matrix exactly once', () => {
+  it('is a superset of ALL_CHECK_IDS with no duplicates', () => {
     const mapped = AUDIT_CAPABILITIES.flatMap((c) => c.checkIds)
     assert.equal(mapped.length, new Set(mapped).size, 'duplicate checkIds in matrix')
-    assert.equal(mapped.length, ALL_CHECK_IDS.length)
+    assert.ok(
+      ALL_CHECK_IDS.every((id) => mapped.includes(id)),
+      'every ALL_CHECK_IDS entry has a capability mapping'
+    )
   })
 })

@@ -65,7 +65,7 @@ export default async function ComparePage({ params }: Props) {
 
   const showAdmin = isAdminUser(user)
 
-  if (!canAccessCompare(user, recheckAudit)) {
+  if (!canAccessCompare(user)) {
     return (
       <AuditShell session={session} showAdmin={showAdmin}>
         <Container variant="report" className="space-y-8 py-8">

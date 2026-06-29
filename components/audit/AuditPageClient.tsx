@@ -32,12 +32,16 @@ interface Props {
   session?: { user: { id: string } } | null
 }
 
+function isAuditScreenshot(val: unknown): val is AuditScreenshot {
+  return typeof val === 'object' && val !== null && (val as Record<string, unknown>).device in { DESKTOP: 1, MOBILE: 1 }
+}
+
 function mergeScreenshots(
   fromStatus?: AuditScreenshot[],
   fromInitial?: unknown
 ): AuditScreenshot[] {
   if (fromStatus?.length) return fromStatus
-  if (Array.isArray(fromInitial)) return fromInitial as AuditScreenshot[]
+  if (Array.isArray(fromInitial)) return fromInitial.filter(isAuditScreenshot)
   return []
 }
 
@@ -78,7 +82,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       clearActiveAudit(id)
       return
     }
-    const resolvedUrl = url ?? (initialAudit?.url as string | undefined)
+    const resolvedUrl = url ?? (typeof initialAudit?.url === 'string' ? initialAudit.url : undefined)
     if (inProgress && resolvedUrl) {
       setActiveAudit({ auditId: id, url: resolvedUrl })
     }
@@ -89,7 +93,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       document.title = BRAND.name
       return
     }
-    const resolvedUrl = url ?? (initialAudit?.url as string | undefined)
+    const resolvedUrl = url ?? (typeof initialAudit?.url === 'string' ? initialAudit.url : undefined)
     if (inProgress && resolvedUrl) {
       document.title = `${AUDIT_PROGRESS.inProgress.replace(/\.$/, '')} - ${auditHostname(resolvedUrl)} · ${BRAND.name}`
     }
@@ -99,27 +103,42 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   }, [url, inProgress, isComplete, isFailed, initialAudit?.url])
 
   const progressiveProps = useMemo(() => {
-    const resolvedUrl = (statusPayload?.url ?? initialAudit?.url ?? '') as string
+    const raw = initialAudit as Record<string, unknown> | null
+    const resolvedUrl = typeof statusPayload?.url === 'string'
+      ? statusPayload.url
+      : typeof raw?.url === 'string'
+        ? raw.url
+        : ''
     const screenshots = mergeScreenshots(
       statusPayload?.screenshots,
-      initialAudit?.screenshots
+      raw?.screenshots
     )
-    const rubrics =
-      statusPayload?.rubrics ??
-      (Array.isArray(initialAudit?.rubrics)
-        ? (initialAudit.rubrics as Array<{
-            name: string
-            grade: string | null
-            score: number | null
-          }>)
-        : [])
+    const rawRubrics = statusPayload?.rubrics ?? raw?.rubrics
+    const rubrics = Array.isArray(rawRubrics)
+      ? rawRubrics.filter(
+          (r): r is { name: string; grade: string | null; score: number | null } =>
+            typeof r === 'object' && r !== null && typeof (r as Record<string, unknown>).name === 'string'
+        )
+      : []
 
     return {
       status,
       url: resolvedUrl,
-      pageType: statusPayload?.pageType ?? (initialAudit?.pageType as string | null) ?? null,
-      verdict: statusPayload?.verdict ?? (initialAudit?.verdict as string | null) ?? null,
-      score: statusPayload?.score ?? (initialAudit?.score as number | null) ?? null,
+      pageType: typeof statusPayload?.pageType === 'string'
+        ? statusPayload.pageType
+        : typeof raw?.pageType === 'string'
+          ? raw.pageType
+          : null,
+      verdict: typeof statusPayload?.verdict === 'string'
+        ? statusPayload.verdict
+        : typeof raw?.verdict === 'string'
+          ? raw.verdict
+          : null,
+      score: typeof statusPayload?.score === 'number'
+        ? statusPayload.score
+        : typeof raw?.score === 'number'
+          ? raw.score
+          : null,
       flagCount: statusPayload?.flagCount ?? 0,
       rubrics,
       partialFlags: statusPayload?.partialFlags ?? [],

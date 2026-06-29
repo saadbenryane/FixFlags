@@ -47,7 +47,7 @@ export function FlagCard({
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const fixPrompt = bestFixPrompt(flag)
-  const displayFixPrompt = formatFlagFixPrompt(flag, fixPrompt)
+  const displayFixPrompt = formatFlagFixPrompt(flag)
   const hasScreenshots = Boolean(screenshots?.length && reportHost)
 
   const content = (

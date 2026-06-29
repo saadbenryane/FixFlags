@@ -26,7 +26,9 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
-    trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
+    if (plan !== 'FREE') {
+      trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
+    }
 
     if (!isLoggedIn) {
       router.push(signUpHref)

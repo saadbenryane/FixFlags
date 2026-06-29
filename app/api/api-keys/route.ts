@@ -10,23 +10,27 @@ import {
 import { apiError, handleRouteError } from '@/lib/api/errors'
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
-  const keys = await prisma.apiKey.findMany({
-    where: { userId: session.user.id, revokedAt: null },
-    select: {
-      id: true,
-      name: true,
-      prefix: true,
-      lastFour: true,
-      lastUsed: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+    const keys = await prisma.apiKey.findMany({
+      where: { userId: session.user.id, revokedAt: null },
+      select: {
+        id: true,
+        name: true,
+        prefix: true,
+        lastFour: true,
+        lastUsed: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
-  return NextResponse.json(keys)
+    return NextResponse.json(keys)
+  } catch (err) {
+    return handleRouteError(err, 'Failed to list API keys')
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -131,17 +135,21 @@ export async function PUT() {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
-  const { searchParams } = new URL(req.url)
-  const id = searchParams.get('id')
-  if (!id) return apiError('Missing API key id', 400, { code: 'INVALID_REQUEST' })
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return apiError('Missing API key id', 400, { code: 'INVALID_REQUEST' })
 
-  await prisma.apiKey.updateMany({
-    where: { id, userId: session.user.id },
-    data: { revokedAt: new Date() },
-  })
+    await prisma.apiKey.updateMany({
+      where: { id, userId: session.user.id },
+      data: { revokedAt: new Date() },
+    })
 
-  return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    return handleRouteError(err, 'Failed to revoke API key')
+  }
 }

@@ -54,6 +54,22 @@ export async function consumePurchasedCredit(tx: Prisma.TransactionClient, userI
   return true
 }
 
+export async function refundPurchasedCredit(
+  tx: Prisma.TransactionClient,
+  stripePaymentIntentId: string
+): Promise<boolean> {
+  const purchase = await tx.creditPurchase.findFirst({
+    where: { stripePaymentIntentId, status: 'PAID', creditsRemaining: { gt: 0 } },
+  })
+  if (!purchase) return false
+
+  await tx.creditPurchase.update({
+    where: { id: purchase.id },
+    data: { status: 'REFUNDED', creditsRemaining: 0 },
+  })
+  return true
+}
+
 export async function wouldBlockNewCheckWithCredits(
   user: Pick<User, 'id' | 'plan' | 'role' | 'auditsUsed' | 'auditsLimit'>,
   pending: number

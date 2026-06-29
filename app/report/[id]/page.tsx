@@ -11,7 +11,7 @@ import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
-import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import type { ScreenshotCaptureStatus, AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
@@ -20,6 +20,24 @@ import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 
 interface Props {
   params: Promise<{ id: string }>
+}
+
+function parseScreenshots(val: unknown): AuditScreenshot[] {
+  if (!Array.isArray(val)) return []
+  return val.filter(
+    (s): s is AuditScreenshot =>
+      typeof s === 'object' && s !== null && (s as Record<string, unknown>).device in { DESKTOP: 1, MOBILE: 1 }
+  )
+}
+
+function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined {
+  if (typeof audit !== 'object' || audit === null) return undefined
+  const capture = (audit as Record<string, unknown>).screenshotCapture
+  if (typeof capture !== 'object' || capture === null) return undefined
+  const c = capture as Record<string, unknown>
+  return typeof c.desktop === 'string' && typeof c.mobile === 'string'
+    ? (capture as ScreenshotCaptureStatus)
+    : undefined
 }
 
 function topIssueFromFlags(
@@ -180,7 +198,7 @@ export default async function ReportPage({ params }: Props) {
 
   const canAccessCompareView =
     user && compareRecheckAudit
-      ? canAccessCompare(user, compareRecheckAudit)
+      ? canAccessCompare(user)
       : false
 
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
@@ -247,13 +265,8 @@ export default async function ReportPage({ params }: Props) {
       shareStatus: audit.shareStatus,
     }
 
-    const screenshots = (audit.screenshots ?? []) as Array<{
-      device: 'DESKTOP' | 'MOBILE'
-      url: string
-      width: number
-      height: number
-    }>
-    const captureStatus = (audit as { screenshotCapture?: ScreenshotCaptureStatus }).screenshotCapture
+    const screenshots = parseScreenshots(audit.screenshots)
+    const captureStatus = parseCaptureStatus(audit)
     const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
 
     return (

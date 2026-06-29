@@ -3,7 +3,7 @@ interface CacheEntry<T> {
   expiresAt: number
 }
 
-class AuditCache {
+export class AuditCache {
   private cache: Map<string, CacheEntry<unknown>>
   private maxSize: number
 

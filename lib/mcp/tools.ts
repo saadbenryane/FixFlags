@@ -439,7 +439,7 @@ export function registerAllTools(
 
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')
-      if (!canAccessCompare(freshUser, after)) {
+      if (!canAccessCompare(freshUser)) {
         throw new Error('Upgrade to Pro for before/after compare')
       }
 

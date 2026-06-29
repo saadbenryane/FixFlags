@@ -66,13 +66,6 @@ export const ALL_CHECK_IDS = [
   'h1-generic',
   'no-cta-detected',
   'heading-hierarchy-missing',
-  // measurement.ts
-  'analytics-missing',
-  // auth-checkout.ts
-  'checkout-link-dead',
-  'auth-page-broken',
-  // cta-focus.ts
-  'competing-ctas',
   // layout.ts
   'cta-below-fold-mobile',
   // interaction.ts
@@ -89,27 +82,11 @@ export const ALL_CHECK_IDS = [
   'social-proof-unverifiable',
   // form.ts
   'form-missing-validation',
-  // flow.ts
-  'flow-no-cta-found',
-  'flow-cta-unclickable',
-  'flow-cta-404',
-  'flow-cta-dead-end',
-  'flow-cta-external-leave',
-  'flow-pricing-nav-broken',
-  'flow-mobile-menu-broken',
-  'flow-form-no-validation',
-  'flow-cta-blank-destination',
-  'flow-cta-stuck-loading',
-  'scroll-ghost-sections',
-  'flow-form-slow-feedback',
+  // interaction.ts (continued)
   'form-inputs-zoom-mobile',
-  'flow-cta-destination-no-trust',
-  'slow-3g-blank-screen',
-  'slow-3g-cta-delayed',
   // measurement.ts
   'measurement-ga-gtm-posthog-missing',
   'measurement-consent-blocking-incomplete',
-  // security.ts
   'security-mixed-content',
   // visual-polish.ts
   'visual-radius-inconsistent',

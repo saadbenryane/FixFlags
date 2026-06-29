@@ -69,10 +69,7 @@ async function fetchAuditRow(id: string) {
 
 /** Remove large JSON blobs not used by the report UI. */
 export function stripInternalAuditFields<T extends Record<string, unknown>>(audit: T) {
-  const { htmlMetadata, performanceData, consoleErrors, ...rest } = audit
-  void htmlMetadata
-  void performanceData
-  void consoleErrors
+  const { htmlMetadata: _htmlMetadata, performanceData: _performanceData, consoleErrors: _consoleErrors, ...rest } = audit
   return rest
 }
 
@@ -84,7 +81,7 @@ export async function resolveIsPaidForAudit(
   audit: { userId: string | null; isPublic: boolean },
   sessionUser?: { id: string } | null
 ): Promise<boolean> {
-  const tier = await resolveReportTierForAudit(audit, sessionUser)
+  const tier = await resolveReportTierForAudit(audit)
   return tier === 'paid'
 }
 

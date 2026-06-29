@@ -17,6 +17,9 @@ export async function POST(
   try {
     const { id: flagId } = await params
 
+    const flag = await prisma.flag.findUnique({ where: { id: flagId }, select: { id: true } })
+    if (!flag) return apiError('Flag not found', 404, { code: 'NOT_FOUND' })
+
     const body = await req.json().catch(() => ({}))
     const parsed = feedbackSchema.safeParse(body)
     if (!parsed.success) {

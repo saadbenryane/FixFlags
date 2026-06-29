@@ -84,7 +84,7 @@ export default async function DashboardPage() {
 
   return (
     <Container variant="report" className="py-8 space-y-8">
-      <Suspense>
+      <Suspense fallback={null}>
         <DashboardCheckoutToast />
         <ExpertReviewSelectDialog
           audits={completedAudits.map((audit) => ({

@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
+import { getAppUrl } from '@/lib/get-app-url'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL =
@@ -63,7 +64,7 @@ export async function notifyExpertReviewPaid(params: {
   if (!params.userId) throw new Error('Expert Review order is missing a user')
   if (!params.auditId) throw new Error('Expert Review order is missing an audit')
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getAppUrl()
   const auditLink = `${appUrl}/report/${params.auditId}`
   await sendOnce({
     userId: params.userId,
@@ -99,7 +100,7 @@ export async function sendExpertReviewDelivered(params: {
   email: string
   orderId: string
 }): Promise<void> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getAppUrl()
   await sendOnce({
     userId: params.userId,
     emailType: `expert-review-delivered:${params.orderId}`,

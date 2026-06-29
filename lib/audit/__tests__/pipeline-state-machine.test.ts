@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import { AuditDeadlineError, isNonRetryableAuditError, isNonRetryablePipelineError, determineFailureCode, determineFailureStage, sanitizeAuditErrorMessage, canTryPartialFinalize } from '@/lib/audit/pipeline-errors'
-import { assertDeadline } from '@/lib/audit/runner'
+import { assertDeadline } from '@/lib/audit/pipeline/context'
 import { AUDIT_DEADLINE_MS, MIN_JUDGE_BUDGET_MS, FINALIZE_RESERVE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
 

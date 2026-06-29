@@ -21,6 +21,7 @@ import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
+import { ExpertReviewButton } from '@/components/pricing/ExpertReviewButton'
 import { formatUsd } from '@/lib/billing/costs'
 
 const EXPERT_STATUS_LABELS = {
@@ -129,6 +130,16 @@ export default async function BillingPage() {
           </Button>
         )}
       </Card>
+
+      {isPaid && (
+        <Card className="space-y-4 p-6" id="expert-review">
+          <SectionTitle>Expert Review</SectionTitle>
+          <p className="text-xs text-muted-foreground">
+            Get a detailed manual review of any completed audit from our team.
+          </p>
+          <ExpertReviewButton isLoggedIn label="Purchase Expert Review" />
+        </Card>
+      )}
 
       {isPaid && (
         <Card className="space-y-4 p-6" id="credit-packs">

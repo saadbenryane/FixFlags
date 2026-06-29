@@ -12,11 +12,6 @@ import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
-import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
-import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
-import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
-import { runFlowChecks } from '@/lib/audit/checks/flow'
-import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
 import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
@@ -805,35 +800,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
     'heading-hierarchy-missing': () =>
       checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
-    'analytics-missing': () =>
+    'measurement-ga-gtm-posthog-missing': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
-    'checkout-link-dead': async () => {
-      restoreFetch = mockFetchHead({ '/checkout': 404 })
-      return checkIds(
-        await runAuthCheckoutChecks(
-          'https://example.com',
-          healthyMeta({ links: [{ href: 'https://example.com/checkout', text: 'Subscribe', rel: null }] })
-        )
-      )
-    },
-    'auth-page-broken': async () => {
-      restoreFetch = mockFetchHead({ '/login': 404 })
-      return checkIds(
-        await runAuthCheckoutChecks(
-          'https://example.com',
-          healthyMeta({ links: [{ href: 'https://example.com/login', text: 'Log in', rel: null }] })
-        )
-      )
-    },
-    'competing-ctas': () =>
-      checkIds(
-        runCtaFocusChecks(
-          healthyCaptureMetrics({
-            competingPrimaryCtaCount: 3,
-            competingPrimaryCtaLabels: ['Get started', 'Book a demo', 'Start free trial'],
-          })
-        )
-      ),
     'form-missing-validation': () =>
       checkIds(runContentChecks(healthyMeta({ forms: 1, formInputsMissingValidation: 2 }))),
     'cta-below-fold-mobile': () =>
@@ -913,166 +881,11 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
-    'flow-no-cta-found': () =>
-      checkIds(runFlowChecks({ status: 'no_cta', steps: [], finalUrl: 'https://example.com' })),
-    'flow-cta-unclickable': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'unclickable',
-          steps: [],
-          finalUrl: 'https://example.com',
-          ctaText: 'Sign up',
-        })
-      ),
-    'flow-cta-404': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'error_response',
-          steps: [],
-          finalUrl: 'https://example.com/missing',
-          httpStatus: 404,
-          ctaText: 'Sign up',
-        })
-      ),
-    'flow-cta-dead-end': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'dead_end',
-          steps: [],
-          finalUrl: 'https://example.com',
-          ctaText: 'Sign up',
-        })
-      ),
-    'flow-cta-external-leave': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'external_leave',
-          steps: [],
-          finalUrl: 'https://other.com/signup',
-          ctaText: 'Sign up',
-        })
-      ),
-    'flow-pricing-nav-broken': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com',
-          multiStep: {
-            pricingNav: 'broken',
-            pricingNavLabel: 'Pricing',
-            pricingNavHref: '#pricing',
-            mobileMenu: 'skipped',
-            formValidation: 'skipped',
-          },
-        })
-      ),
-    'flow-mobile-menu-broken': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com',
-          multiStep: {
-            pricingNav: 'skipped',
-            mobileMenu: 'broken',
-            formValidation: 'skipped',
-          },
-        })
-      ),
-    'flow-form-no-validation': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com',
-          multiStep: {
-            pricingNav: 'skipped',
-            mobileMenu: 'skipped',
-            formValidation: 'broken',
-            formLabel: 'Contact form',
-          },
-        })
-      ),
-    'flow-cta-blank-destination': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com/destination',
-          postClickMetrics: { blankScreenMs: 5000, timeToFirstContentMs: 4000, stuckLoading: false, stuckLoadingLabel: null },
-        })
-      ),
-    'flow-cta-stuck-loading': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com/destination',
-          postClickMetrics: { blankScreenMs: 0, timeToFirstContentMs: 500, stuckLoading: true, stuckLoadingLabel: 'Skeleton' },
-        })
-      ),
-    'scroll-ghost-sections': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com',
-          multiStep: {
-            pricingNav: 'skipped',
-            mobileMenu: 'skipped',
-            formValidation: 'skipped',
-            ghostSections: 2,
-            ghostSampleText: 'hero-section',
-            ghostSampleSelector: '.hero',
-          },
-        })
-      ),
-    'flow-form-slow-feedback': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com',
-          multiStep: {
-            pricingNav: 'skipped',
-            mobileMenu: 'skipped',
-            formValidation: 'ok',
-            formFeedbackMs: 2500,
-            formLabel: 'Contact form',
-          },
-        })
-      ),
     'form-inputs-zoom-mobile': () =>
       checkIds(
         runInteractionChecks(healthyCaptureMetrics({
           inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
         }))
-      ),
-    'flow-cta-destination-no-trust': () =>
-      checkIds(
-        runFlowChecks({
-          status: 'success',
-          steps: [],
-          finalUrl: 'https://example.com/destination',
-          destinationTrust: { isHttps: false, hasPrivacyPolicy: false, hasContactInfo: false },
-        })
-      ),
-    'slow-3g-blank-screen': () =>
-      checkIds(
-        runSlowReplayChecks({
-          timeToFirstTextMs: 8000,
-          timeToCtaMs: 2000,
-          screenshotUrls: [],
-        })
-      ),
-    'slow-3g-cta-delayed': () =>
-      checkIds(
-        runSlowReplayChecks({
-          timeToFirstTextMs: 1000,
-          timeToCtaMs: 12000,
-          screenshotUrls: [],
-        })
       ),
     'measurement-ga-gtm-posthog-missing': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),

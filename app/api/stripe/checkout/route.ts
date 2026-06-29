@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { getAppUrl } from '@/lib/get-app-url'
 import { Plan } from '@prisma/client'
 
 const PAID_PLANS = Object.values(PLAN_DEFINITIONS).filter(
@@ -18,6 +20,12 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await enforceRateLimit({
+      scope: 'stripe_checkout',
+      identifier: requestClientId(req.headers),
+      limit: 10,
+      windowSeconds: 60,
+    })
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to start checkout', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
@@ -30,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!priceId) return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'subscription',

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { getAppUrl } from '@/lib/get-app-url'
 
 export async function POST() {
   try {
@@ -19,7 +20,7 @@ export async function POST() {
       return apiError('No active subscription was found', 400, { code: 'NO_ACTIVE_SUBSCRIPTION', action: 'view_pricing' })
     }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = getAppUrl()
   const portalSession = await getStripe().billingPortal.sessions.create({
     customer: user.stripeCustomerId,
     return_url: `${appUrl}/billing`,

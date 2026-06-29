@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
 import { logger } from '@/lib/logger'
+import { getAppUrl } from '@/lib/get-app-url'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL =
@@ -43,7 +44,7 @@ export async function notifyAdminOfVisitorMessage(
     return
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getAppUrl()
   const inboxLink = `${appUrl}/admin/inbox?session=${sessionId}`
   const visitorLabel =
     session.visitorEmail ??

@@ -269,10 +269,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
 /** Persist only summary fields, large arrays are only needed during checks. */
 export function trimMetadataForStorage(metadata: PageMetadata) {
-  const { images, links, jsonLd, pageText, h2s, ...compact } = metadata
-  void images
-  void links
-  void jsonLd
+  const { images: _images, links: _links, jsonLd: _jsonLd, pageText, h2s, ...compact } = metadata
   return {
     ...compact,
     h2s: h2s.slice(0, 10),

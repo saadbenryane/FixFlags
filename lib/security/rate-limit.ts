@@ -1,5 +1,6 @@
 import Redis from 'ioredis'
 import { getRedisUrl } from '@/lib/env'
+import { logger } from '@/lib/logger'
 
 let redis: Redis | null = null
 
@@ -15,6 +16,16 @@ function getRateLimitRedis(): Redis {
     redis.on('error', () => {})
   }
   return redis
+}
+
+/** Run a Redis operation, falling open if the connection fails. */
+async function redisFailOpen<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    logger.warn('Rate-limit Redis unavailable, allowing request', err instanceof Error ? err.message : String(err))
+    return fallback
+  }
 }
 
 export class RateLimitError extends Error {
@@ -39,24 +50,26 @@ async function incrementRateLimit(input: {
   limit: number
   windowSeconds: number
 }): Promise<RateLimitResult> {
-  const client = getRateLimitRedis()
-  if (client.status === 'wait') await client.connect()
+  return redisFailOpen(async () => {
+    const client = getRateLimitRedis()
+    if (client.status === 'wait') await client.connect()
 
-  const window = Math.floor(Date.now() / (input.windowSeconds * 1000))
-  const key = `qos:rate:${input.scope}:${input.identifier}:${window}`
-  const count = await client.incr(key)
-  if (count === 1) await client.expire(key, input.windowSeconds + 5)
+    const window = Math.floor(Date.now() / (input.windowSeconds * 1000))
+    const key = `qos:rate:${input.scope}:${input.identifier}:${window}`
+    const count = await client.incr(key)
+    if (count === 1) await client.expire(key, input.windowSeconds + 5)
 
-  if (count > input.limit) {
-    const ttl = await client.ttl(key)
-    return {
-      exceeded: true,
-      retryAfterSeconds: Math.max(1, ttl),
-      currentCount: count,
+    if (count > input.limit) {
+      const ttl = await client.ttl(key)
+      return {
+        exceeded: true,
+        retryAfterSeconds: Math.max(1, ttl),
+        currentCount: count,
+      }
     }
-  }
 
-  return { exceeded: false, retryAfterSeconds: 0, currentCount: count }
+    return { exceeded: false, retryAfterSeconds: 0, currentCount: count }
+  }, { exceeded: false, retryAfterSeconds: 0, currentCount: 0 })
 }
 
 /** Record a hit and return whether the limit is exceeded (does not throw). */

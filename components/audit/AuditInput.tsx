@@ -93,7 +93,7 @@ export function AuditInput({
       }
 
       const data = await res.json()
-      const reportId = data.reportId as string
+      const reportId = typeof data.reportId === 'string' ? data.reportId : ''
       trackEvent('started_audit', {
         source: auditSource,
         is_logged_in: data.isLoggedIn ?? false,

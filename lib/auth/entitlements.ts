@@ -55,10 +55,8 @@ export function canAccessRecheck(): boolean {
 }
 
 export function canAccessCompare(
-  user: Pick<User, 'id' | 'role' | 'plan'>,
-  recheckAudit: { parentId: string | null; userId: string | null }
+  user: Pick<User, 'id' | 'role' | 'plan'>
 ): boolean {
-  void recheckAudit
   return canAccessPaidFeatures(user)
 }
 
@@ -90,10 +88,8 @@ export function getEntitlements(
 
 /** Which report tier applies when rendering this audit (owner plan for public shares). */
 export async function resolveReportTierForAudit(
-  audit: { userId: string | null; isPublic: boolean },
-  _sessionUser?: { id: string } | null
+  audit: { userId: string | null; isPublic: boolean }
 ): Promise<ReportTier> {
-  void _sessionUser
   if (!audit.userId) return 'free'
 
   const owner = await prisma.user.findUnique({

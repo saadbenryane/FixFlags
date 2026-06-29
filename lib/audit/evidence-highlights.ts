@@ -36,8 +36,7 @@ export function formatFlagEvidence(flag: RankableFlag): string {
   return formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem)
 }
 
-export function formatFlagFixPrompt(flag: RankableFlag, _legacyFix?: string): string {
-  void _legacyFix
+export function formatFlagFixPrompt(flag: RankableFlag): string {
   return buildExpertFixPrompt(flag)
 }
 

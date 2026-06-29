@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { getAppUrl } from '@/lib/get-app-url'
 
 const PACK_IDS = CREDIT_PACKS.map((p) => p.id) as [string, ...string[]]
 const schema = z.object({
@@ -14,6 +16,12 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await enforceRateLimit({
+      scope: 'stripe_credit_pack',
+      identifier: requestClientId(req.headers),
+      limit: 10,
+      windowSeconds: 60,
+    })
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to purchase credits', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
@@ -30,7 +38,7 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user || user.plan === 'FREE') return apiError('Upgrade to a paid plan before purchasing credits', 403, { code: 'PLAN_UPGRADE_REQUIRED', action: 'view_pricing' })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'payment',

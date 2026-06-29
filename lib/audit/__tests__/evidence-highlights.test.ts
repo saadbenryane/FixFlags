@@ -39,7 +39,7 @@ describe('evidence-highlights', () => {
     const evidence = formatFlagEvidence(flag)
     assert.match(evidence, /Headline reads|H1|category/i)
 
-    const fix = formatFlagFixPrompt(flag, 'Rewrite the headline with a concrete outcome.')
+    const fix = formatFlagFixPrompt(flag)
     assert.match(fix, /Why:/)
     assert.match(fix, /Do:/)
     assert.match(fix, /Verify:/)

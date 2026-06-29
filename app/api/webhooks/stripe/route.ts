@@ -4,6 +4,7 @@ import type Stripe from 'stripe'
 import type { Plan, SubscriptionStatus } from '@prisma/client'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
+import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { prisma } from '@/lib/db'
 import { notifyExpertReviewPaid } from '@/lib/email/expert-review'
 import { logger } from '@/lib/logger'
@@ -158,6 +159,15 @@ export async function POST(req: NextRequest) {
           break
         }
 
+        case 'charge.refunded': {
+          const charge = event.data.object as Stripe.Charge
+          const paymentIntent = charge.payment_intent
+          if (typeof paymentIntent === 'string') {
+            await refundPurchasedCredit(tx, paymentIntent)
+          }
+          break
+        }
+
         case 'checkout.session.completed': {
           const session = event.data.object
           if (session.metadata?.type === 'expert_review') {
@@ -194,6 +204,10 @@ export async function POST(req: NextRequest) {
                   stripePaymentIntentId: session.payment_intent as string,
                 },
               })
+            } else {
+              logger.error(
+                `Credit pack payment completed but no local purchase record found (session: ${session.id}, user: ${session.metadata?.userId})`
+              )
             }
           }
 
