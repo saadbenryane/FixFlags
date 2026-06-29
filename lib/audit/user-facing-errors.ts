@@ -7,6 +7,10 @@ const FAILURE_CODE_MESSAGES: Record<string, string> = {
   AUDIT_PIPELINE_FAILED: AUDIT_ERRORS.generic,
   AUDIT_JOB_FAILED: AUDIT_ERRORS.generic,
   QUEUE_ENQUEUE_FAILED: AUDIT_ERRORS.generic,
+  // Our infrastructure, not the target site; never blame the user's site.
+  BROWSER_LAUNCH_FAILED: AUDIT_ERRORS.scannerUnavailable,
+  STORAGE_NOT_CONFIGURED: AUDIT_ERRORS.scannerUnavailable,
+  STORAGE_UPLOAD_FAILED: AUDIT_ERRORS.scannerUnavailable,
 }
 
 const CAPTURE_CODE_MESSAGES: Record<string, string> = {

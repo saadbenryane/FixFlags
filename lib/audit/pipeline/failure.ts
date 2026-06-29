@@ -1,4 +1,8 @@
-import { AuditDeadlineError } from '../pipeline-errors'
+import {
+  AuditDeadlineError,
+  auditFailureCodeFromError,
+  isInfrastructureAuditError,
+} from '../pipeline-errors'
 import { JudgeContractError } from '../validate-judge-output'
 
 export interface AuditFailure {
@@ -17,6 +21,12 @@ export function deriveAuditFailure(error: unknown, fallbackStage: string): Audit
   }
   if (error instanceof JudgeContractError) {
     return { failureCode: 'AI_CONTRACT_INVALID', failureStage: fallbackStage }
+  }
+  // Browser/storage failures are our infrastructure, not the target site, so
+  // they get distinct codes (BROWSER_LAUNCH_FAILED / STORAGE_*) and never show
+  // the "site unreachable" copy.
+  if (isInfrastructureAuditError(error)) {
+    return { failureCode: auditFailureCodeFromError(error), failureStage: fallbackStage }
   }
   return { failureCode: 'AUDIT_PIPELINE_FAILED', failureStage: fallbackStage }
 }

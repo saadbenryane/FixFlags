@@ -15,6 +15,11 @@ const ALLOWED = new Set([
   'app/demo/demo.css',
 ])
 
+// Path prefixes exempt from the brand palette. The /demo route is an
+// intentionally non-brand sample site (a noindex audit target styled to look
+// like a generic third-party page), so its raw colors are deliberate.
+const ALLOWED_PREFIXES = ['app/demo/']
+
 const SCAN_DIRS = ['app', 'components', 'lib']
 const SKIP = new Set(['node_modules', '.next', 'dist'])
 
@@ -38,6 +43,7 @@ for (const dir of SCAN_DIRS) {
   for (const file of walk(base)) {
     const rel = relative(ROOT, file)
     if (ALLOWED.has(rel)) continue
+    if (ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue
     const content = readFileSync(file, 'utf8')
     const matches = content.match(HEX_RE)
     if (matches?.length) {

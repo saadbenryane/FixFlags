@@ -1,14 +1,11 @@
 import type { NextConfig } from 'next'
-import {
-  isGoogleOAuthConfigured,
-  isGithubOAuthConfigured,
-} from './lib/auth/env'
+
+// OAuth provider availability is resolved at runtime via GET /api/auth/providers
+// (see hooks/useOAuthProviders), not baked in at build time. Build-time gating
+// kept the buttons hidden in production because the OAuth credentials aren't
+// present at `next build`, only as runtime env on the deployed service.
 
 const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: isGoogleOAuthConfigured() ? 'true' : '',
-    NEXT_PUBLIC_GITHUB_OAUTH_ENABLED: isGithubOAuthConfigured() ? 'true' : '',
-  },
   poweredByHeader: false,
   async rewrites() {
     return [
