@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { BRAND_HEX, brandLight } from '@/lib/design/brand-spec'
 
 interface ScoreSparklineProps {
   scores: number[]
@@ -33,7 +34,13 @@ export function ScoreSparkline({
 
   const latest = scores[scores.length - 1]
   const latestColor =
-    latest >= 90 ? '#22c55e' : latest >= 75 ? '#eab308' : latest >= 60 ? '#f97316' : '#ef4444'
+    latest >= 90
+      ? BRAND_HEX.success
+      : latest >= 75
+        ? BRAND_HEX.warning
+        : latest >= 60
+          ? brandLight.grades.D
+          : BRAND_HEX.error
 
   return (
     <svg
