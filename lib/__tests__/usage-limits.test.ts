@@ -1,5 +1,17 @@
-import { describe, it } from 'vitest'
+import { describe, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
+
+// These are pure-logic contract tests; they must run without a database (CI has
+// no DATABASE_URL). The only path that touches the DB is the purchased-credit
+// lookup behind getTotalAvailableCredits, so stub it at the prisma boundary to
+// return zero purchased credits and exercise the plan limit - used math.
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    creditPurchase: {
+      aggregate: vi.fn().mockResolvedValue({ _sum: { creditsRemaining: 0 } }),
+    },
+  },
+}))
 import {
   isAtCheckLimit,
   checkUsageProgress,

@@ -7,7 +7,7 @@
     "dev": "next dev",
     "dev:all": "concurrently -n web,worker -c blue,green \"npm run dev\" \"npm run worker\"",
     "dev:full": "npm run dev:all",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "prestart": "npm run db:deploy && npm run db:check",
     "start": "next start",
     "typecheck": "tsc --noEmit --incremental false",

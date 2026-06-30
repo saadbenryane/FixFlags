@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest'
+import { describe, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
 import { AuditDeadlineError, isNonRetryableAuditError, isNonRetryablePipelineError, determineFailureCode, determineFailureStage, sanitizeAuditErrorMessage, canTryPartialFinalize } from '@/lib/audit/pipeline-errors'
 import { assertDeadline } from '@/lib/audit/pipeline/context'
@@ -51,9 +51,18 @@ describe('assertDeadline', () => {
   })
 
   it('does not throw at the exact deadline boundary', () => {
-    // If Date.now() is exactly the deadline, it's not > deadline
-    const ctx = { auditId: 'test', deadline: Date.now(), startedAt: new Date(), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
-    assert.doesNotThrow(() => assertDeadline(ctx, 'checking'))
+    // Freeze the clock so deadline === Date.now() inside assertDeadline; the
+    // check is `>`, not `>=`, so the exact boundary must not throw. (Without
+    // freezing, the wall clock can advance past the captured deadline between
+    // building ctx and the call, making this test flaky.)
+    const now = Date.now()
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(now)
+    try {
+      const ctx = { auditId: 'test', deadline: now, startedAt: new Date(now), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
+      assert.doesNotThrow(() => assertDeadline(ctx, 'checking'))
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

@@ -78,10 +78,29 @@ export function getEnv(): Env {
   return _env
 }
 
+const R2_STORAGE_VARS = [
+  'R2_BUCKET_NAME',
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_PUBLIC_URL',
+] as const
+
+function missingStorageVars(): string[] {
+  return R2_STORAGE_VARS.filter((k) => !process.env[k])
+}
+
+/** Whether production screenshot storage (R2) is fully configured. */
+export function isProdStorageConfigured(): boolean {
+  return missingStorageVars().length === 0
+}
+
 export function validateWorkerEnv(): void {
   const required = ['DATABASE_URL', 'REDIS_URL'] as const
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
+    // Fatal: the worker cannot process a single job without the database and
+    // queue. There is nothing to degrade to.
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
   }
   if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
@@ -95,22 +114,19 @@ export function validateWorkerEnv(): void {
     )
   }
   if (process.env.NODE_ENV === 'production') {
-    const r2Required = [
-      'R2_BUCKET_NAME',
-      'R2_ACCOUNT_ID',
-      'R2_ACCESS_KEY_ID',
-      'R2_SECRET_ACCESS_KEY',
-      'R2_PUBLIC_URL',
-    ] as const
-    const missingR2 = r2Required.filter((k) => !process.env[k])
-    if (missingR2.length > 0) {
-      // Hard fail, not a warning: without R2 every scan dies at the screenshot
-      // step and surfaces the misleading "site unreachable" error. Fail fast at
-      // boot so the misconfiguration is obvious in deploy logs instead.
-      throw new Error(
-        `R2 screenshot storage is not configured (missing: ${missingR2.join(', ')}). ` +
-          'Every scan fails at the screenshot step without it. Set all R2_* vars ' +
-          '(R2_BUCKET_NAME, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_PUBLIC_URL).'
+    if (!isProdStorageConfigured()) {
+      // Non-fatal by design. Throwing here crashes the web service (it runs the
+      // worker in-process) and crash-loops dedicated workers; on a platform that
+      // rolls back on a failed healthcheck that silently freezes the deploy and
+      // leaves the previous (also-broken) image serving. Instead we log loudly,
+      // keep booting, and let each scan fail with STORAGE_NOT_CONFIGURED -> the
+      // clear "scanner temporarily unavailable" message. /api/health and
+      // /api/health/browser report the misconfiguration for operators.
+      console.error(
+        '[env] R2 screenshot storage is NOT configured in production ' +
+          `(missing: ${missingStorageVars().join(', ')}). Scans will fail at the ` +
+          'screenshot step until R2_BUCKET_NAME, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, ' +
+          'R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL are set. See /api/health/browser.'
       )
     }
   } else {
@@ -126,25 +142,32 @@ export function validateWorkerEnv(): void {
 export function validateProductionEnv(): void {
   if (process.env.NODE_ENV !== 'production') return
   getEnv()
+  // Fatal prerequisites: the service genuinely cannot serve without these, so
+  // they throw and abort boot: DATABASE_URL/REDIS_URL (validateWorkerEnv) and a
+  // strong, matching auth secret/url (validateAuthEnv).
   validateWorkerEnv()
   validateAuthEnv()
-  const required = [
-    'BETTER_AUTH_SECRET',
-    'BETTER_AUTH_URL',
-    'NEXT_PUBLIC_APP_URL',
+  // Recommended-but-degradable: missing these disables a feature (transactional
+  // email, cron auth, the sample report) but must NOT crash the service or
+  // freeze the deploy. Log loudly so it is obvious in deploy logs, then boot.
+  const recommended = [
     'CRON_SECRET',
     'RESEND_API_KEY',
     'RESEND_FROM_EMAIL',
     'ADMIN_NOTIFICATION_EMAIL',
     'SAMPLE_AUDIT_URL',
   ] as const
-  const missing = required.filter((k) => !process.env[k])
+  const missing = recommended.filter((k) => !process.env[k])
   if (missing.length > 0) {
-    throw new Error(`Missing required production env vars: ${missing.join(', ')}`)
+    console.error(
+      `[env] Missing recommended production env vars: ${missing.join(', ')}. ` +
+        'The app will boot, but the related features are degraded until they are set.'
+    )
   }
   if (!!process.env.STRIPE_SECRET_KEY !== !!process.env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error(
-      'Stripe is partially configured: set BOTH STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET, or neither.'
+    console.error(
+      '[env] Stripe is partially configured: set BOTH STRIPE_SECRET_KEY and ' +
+        'STRIPE_WEBHOOK_SECRET, or neither. Billing stays disabled until resolved.'
     )
   }
 }

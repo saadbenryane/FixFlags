@@ -40,9 +40,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  typedRoutes: true,
   experimental: {
     optimizePackageImports: ['lucide-react'],
-    typedRoutes: true,
   },
 }
 

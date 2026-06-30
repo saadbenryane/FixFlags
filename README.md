@@ -105,7 +105,7 @@ See [MCP docs](/docs/mcp) for full tool reference.
 - Scanning diagnostics: `GET /api/health/browser` (launches Chromium + screenshots, checks R2 connectivity). If every scan fails with "scanner temporarily unavailable", curl this first — it pinpoints whether the browser or storage subsystem is broken.
 - Worker heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis).
 
-> If R2 is missing in production the service **fails to boot** (deploy is rejected) rather than silently failing every scan at the screenshot step. Set all `R2_*` vars before deploying.
+> R2 is **required for scanning** in production. If it is missing the service still boots (so deploys land and diagnostics stay reachable) and `/api/health` reports `storageConfigured: false`, but every scan fails fast with the clear "scanner temporarily unavailable" message until all `R2_*` vars are set. Boot is only blocked by genuinely fatal config (database, Redis, auth secret).
 
 **SSO:** Google/GitHub buttons appear automatically once `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (or the GitHub pair) are set on the deployed service — availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed**. Register the callback `https://fixflags.com/api/auth/callback/google` and run `npm run auth:check` to verify.
 
