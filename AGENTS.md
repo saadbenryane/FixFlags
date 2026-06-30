@@ -1,5 +1,12 @@
 # Project conventions
 
+## Git workflow
+
+During development, push work **directly to `origin/main`** so it deploys to the live
+environment for testing. Do **not** create feature branches or open pull requests unless
+explicitly asked. Production (Railway) deploys from `main`, so anything that needs to be
+tested on the deployed app must land on `main`.
+
 ## Landing page
 
 Homepage section order (canonical):
