@@ -1,7 +1,8 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { signInUrl } from '@/lib/auth/redirect-path'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,10 @@ import { PageHeader } from '@/components/layout/PageHeader'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) redirect(signInUrl('/settings'))
+
   const user = await prisma.user.findUnique({
-    where: { id: session!.user.id },
+    where: { id: session.user.id },
     select: { name: true, email: true, emailVerified: true, plan: true },
   })
 

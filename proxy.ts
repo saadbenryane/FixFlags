@@ -5,6 +5,21 @@ function isProtectedPath(pathname: string): boolean {
   return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
 }
 
+/**
+ * Edge-safe presence check for the better-auth session cookie. Middleware runs
+ * on the edge runtime, so it must NOT import '@/lib/auth' (that pulls Prisma /
+ * node:path into the edge bundle and crashes at runtime). This is only a UX
+ * gate to bounce logged-out users to sign-in; every protected page/route still
+ * validates the session server-side, so a present-but-invalid cookie is caught
+ * there. Matches both the dev name (`better-auth.session_token`) and the
+ * production `__Secure-`/`__Host-` prefixed variants.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((c) => c.name.endsWith('better-auth.session_token') && c.value.length > 0)
+}
+
 export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   const pathname = request.nextUrl.pathname + request.nextUrl.search
@@ -37,17 +52,10 @@ export async function middleware(request: NextRequest) {
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   )
 
-  if (isProtectedPath(request.nextUrl.pathname)) {
-    const { auth: authInstance } = await import('@/lib/auth')
-    const session = await authInstance.api.getSession({
-      headers: requestHeaders,
-    }).catch(() => null)
-
-    if (!session?.user) {
-      const signInUrl = new URL('/sign-in', request.url)
-      signInUrl.searchParams.set('next', request.nextUrl.pathname)
-      return NextResponse.redirect(signInUrl)
-    }
+  if (isProtectedPath(request.nextUrl.pathname) && !hasSessionCookie(request)) {
+    const signInUrl = new URL('/sign-in', request.url)
+    signInUrl.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(signInUrl)
   }
 
   return response
