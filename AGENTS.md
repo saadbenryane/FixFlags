@@ -2,6 +2,9 @@
 
 ## Git workflow
 
+**Always work on `main`.** This is a solo development setup — there is no need for
+feature branches, and we keep only one branch (`main`) locally and on the remote.
+
 During development, push work **directly to `origin/main`** so it deploys to the live
 environment for testing. Do **not** create feature branches or open pull requests unless
 explicitly asked. Production (Railway) deploys from `main`, so anything that needs to be
