@@ -1,6 +1,11 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { uploadScreenshot as uploadToR2, isR2Configured } from './r2'
+import {
+  uploadScreenshot as uploadToR2,
+  isR2Configured,
+  getScreenshotKey,
+  getScreenshotBytes,
+} from './r2'
 import { deleteAuditScreenshots as deleteFromR2 } from './r2'
 import {
   StorageNotConfiguredError,
@@ -34,7 +39,15 @@ export function getLocalScreenshotPath(
   return path.join(LOCAL_SCREENSHOTS_DIR, auditId, filename)
 }
 
-/** Persist screenshot bytes and return a public URL (R2 in production, local API in dev). */
+/**
+ * Persist screenshot bytes and return the URL the report renders.
+ *
+ * In both production and dev the URL points at the app's access-controlled
+ * /api/screenshots route — object stores (Railway bucket / private R2) are not
+ * publicly readable, so bytes are streamed back through the app rather than
+ * served from a public bucket URL. Only the backing store differs: the bucket
+ * in production, local disk in dev.
+ */
 export async function uploadScreenshot(
   auditId: string,
   device: 'desktop' | 'mobile',
@@ -48,21 +61,40 @@ export async function uploadScreenshot(
       )
     }
     try {
-      return await uploadToR2(auditId, device, imageBuffer, pageKey)
+      await uploadToR2(auditId, device, imageBuffer, pageKey)
     } catch (err) {
       throw new StorageUploadError(
         `Failed to upload ${device} screenshot to R2: ${err instanceof Error ? err.message : String(err)}`,
         { cause: err }
       )
     }
+  } else {
+    const dir = path.join(LOCAL_SCREENSHOTS_DIR, auditId)
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(getLocalScreenshotPath(auditId, device, pageKey), imageBuffer)
   }
 
-  const dir = path.join(LOCAL_SCREENSHOTS_DIR, auditId)
-  await fs.mkdir(dir, { recursive: true })
-  const filePath = getLocalScreenshotPath(auditId, device, pageKey)
-  await fs.writeFile(filePath, imageBuffer)
   const query = pageKey ? `?page=${encodeURIComponent(pageKey)}` : ''
   return `${getAppBaseUrl()}/api/screenshots/${auditId}/${device}${query}`
+}
+
+/**
+ * Read stored screenshot bytes for the /api/screenshots route: the bucket in
+ * production, local disk in dev. Returns null when the object is absent.
+ */
+export async function readScreenshot(
+  auditId: string,
+  device: string,
+  pageKey?: string | null
+): Promise<Buffer | null> {
+  if (process.env.NODE_ENV === 'production') {
+    return getScreenshotBytes(getScreenshotKey(auditId, device, pageKey))
+  }
+  try {
+    return await fs.readFile(getLocalScreenshotPath(auditId, device, pageKey))
+  } catch {
+    return null
+  }
 }
 
 export async function deleteAuditScreenshotAssets(auditIds: string[]): Promise<void> {
