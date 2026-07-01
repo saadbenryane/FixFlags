@@ -26,25 +26,29 @@ function readAnonAuditIds(raw: string | undefined): string[] {
   }
 }
 
-/** Anonymous users get unlimited deterministic checks; only block concurrent in-progress audits. */
+/**
+ * Anonymous users get one free scan (the "teaser"). After they've used it, any
+ * further scan requires a free account, which also unlocks the AI fix prompts.
+ */
 export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   if (isDevUnlimitedScans()) return { allowed: true }
 
   const cookieStore = await cookies()
   const ids = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
   if (ids.length > 0) {
-    const pending = await prisma.audit.count({
+    // Confirm at least one tracked audit still exists so a stale/garbage cookie
+    // can't permanently lock a first-time visitor.
+    const used = await prisma.audit.count({
       where: {
         id: { in: ids },
         userId: null,
-        status: { notIn: ['COMPLETED', 'FAILED'] },
       },
     })
-    if (pending > 0) {
+    if (used > 0) {
       return {
         allowed: false,
-        error: 'An audit is already in progress. Wait for it to finish or create a free account.',
-        code: 'ANON_LIMIT',
+        error: 'You’ve used your free scan. Create a free account to keep scanning and unlock the fix prompts.',
+        code: 'AUTH_REQUIRED',
         action: 'signup',
       }
     }

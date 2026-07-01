@@ -106,7 +106,7 @@ describe('homepage message guardrails', () => {
     }
     assert.match(HERO.trustBadges[0], /users see/i)
     assert.match(HERO.trustBadges[1], /fix prompts/i)
-    assert.match(HERO.trustBadges[2], /3 Free Scans/)
+    assert.match(HERO.trustBadges[2], /free scan/i)
   })
 
   it('AI tools named once in segment proof, not repeated in hero', () => {

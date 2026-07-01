@@ -51,7 +51,7 @@ export const HERO = {
   trustBadges: [
     'See what users see',
     'Copy-ready fix prompts',
-    '3 Free Scans',
+    '1 free scan',
   ] as const,
   samplePreviewCue: 'Live sample from our demo site. Use the arrows to browse 7 real flags.',
 } as const
@@ -669,7 +669,7 @@ export const FAQ = [
   {
     question: 'Do I need an account for my first check?',
     answer:
-      'No, on the homepage or any shared report. Run unlimited deterministic checks without an account. Sign up for 3 AI reports with fix prompts and saved history.',
+      'No. Your first scan is free, no account needed. Create a free account to keep scanning and to unlock 3 AI reports with fix prompts and saved history.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
@@ -721,7 +721,7 @@ export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
     answer:
-      'Yes. Run unlimited deterministic checks without an account. Sign up for 3 AI reports with fix prompts, then upgrade to Pro when you need unlimited re-checks and MCP.',
+      'Yes. Your first scan is free without an account. Create a free account to keep scanning and unlock 3 AI reports with fix prompts, then upgrade to Pro when you need unlimited re-checks and MCP.',
   },
   {
     question: 'What happens when I hit my check limit?',
