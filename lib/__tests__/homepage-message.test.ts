@@ -90,7 +90,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
-    assert.match(HERO.subhead, /paste a url/i)
+    assert.match(HERO.subhead, /run an audit/i)
     assert.match(HERO.subhead, /fix prompts/i)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
@@ -141,8 +141,8 @@ describe('homepage message guardrails', () => {
     assert.ok(MCP_SECTION.closing.length > 0)
   })
 
-  it('primary CTA is a delivery promise', () => {
-    assert.equal(HERO.primaryCta, 'Show fixes')
+  it('primary CTA invites running the audit', () => {
+    assert.equal(HERO.primaryCta, 'Run your first audit')
     assert.match(FINAL_CTA.headlineAccent, /fix/i)
     assert.ok(!/flag it/i.test(FINAL_CTA.headlineAccent))
   })

@@ -1,5 +1,5 @@
 import localFont from 'next/font/local'
-import { IBM_Plex_Mono } from 'next/font/google'
+import { IBM_Plex_Mono, Fraunces } from 'next/font/google'
 
 export const satoshi = localFont({
   src: [
@@ -12,6 +12,19 @@ export const satoshi = localFont({
   display: 'swap',
 })
 
+/**
+ * Fraunces — editorial serif for headlines + wordmark. Free, high-quality
+ * stand-in for Canela per the brand guideline. Soft optical setting; used at
+ * medium/semibold weights for display type only. UI/body stays on Satoshi.
+ */
+export const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+  display: 'swap',
+})
+
 export const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
@@ -19,11 +32,12 @@ export const ibmPlexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
-/** Satoshi for display + body; mono for scores/labels */
-export const fontVariables = `${satoshi.variable} ${ibmPlexMono.variable}`
+/** Fraunces serif for display; Satoshi for UI/body; mono for scores/labels */
+export const fontVariables = `${satoshi.variable} ${fraunces.variable} ${ibmPlexMono.variable}`
 
 export const ogFontFamilies = {
-  display: 'Satoshi, system-ui, sans-serif',
+  display: 'Fraunces, Georgia, serif',
+  serif: 'Fraunces, Georgia, serif',
   sans: 'Satoshi, system-ui, sans-serif',
   mono: 'ui-monospace, monospace',
 } as const

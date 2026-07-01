@@ -11,9 +11,9 @@ import { getMarketingPlans, proUpgradeCta, EXPERT_REVIEW_PRICE_USD } from '@/lib
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'Your AI built it. FixFlags shows what to fix.',
-  category: 'FixFlags finishes what your AI started.',
-  oneLiner: 'Your AI shipped a site. FixFlags finds what it missed, with fix prompts your agent can run.',
+  tagline: 'The QA layer for AI-built products.',
+  category: 'The QA layer for AI-built products.',
+  oneLiner: 'FixFlags is the QA layer for AI-built products.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -41,12 +41,12 @@ export const HERO = {
   audienceLine: 'Second pass for AI-built sites.',
   headlineAccentLegacy: false,
   subhead:
-    'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run.',
+    'FixFlags is the QA layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
-  primaryCta: 'Show fixes',
+  primaryCta: 'Run your first audit',
   navSignUpCta: 'Sign up',
-  trySampleCta: 'Try sample URL',
+  trySampleCta: 'View sample report',
   urlPlaceholder: 'your-site.com',
   trustBadges: [
     'See what users see',
@@ -85,13 +85,13 @@ export const HERO_FIX_PROMPT = {
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'Check, fix, prove',
-  subhead: 'Three steps: check, fix, re-check.',
+  headline: 'Flag, fix, re-check',
+  subhead: 'Three steps: flag, fix, re-check.',
   steps: [
     {
       step: 1,
-      title: 'Check',
-      body: 'Paste a URL. Get Flags across Message, Experience, and Reach with desktop and mobile screenshots.',
+      title: 'Flag',
+      body: 'Paste a URL and run an audit. Get Flags across Message, Experience, and Reach with desktop and mobile screenshots.',
     },
     {
       step: 2,
@@ -101,7 +101,7 @@ export const HOW_IT_WORKS_SECTION = {
     {
       step: 3,
       title: 'Re-check',
-      body: 'Run a second pass on the same URL to confirm Flags cleared.',
+      body: 'Run the audit again on the same URL to confirm Flags cleared before users find the problems.',
     },
   ],
 } as const

@@ -421,6 +421,7 @@ model Audit {
   reportCompleteness   ReportCompleteness   @default(UNKNOWN)
   evidenceCoverage     Json?
   includeAi            Boolean              @default(true)
+  triageAt             DateTime?
   aiReviewAt           DateTime?
 
   startedAt       DateTime?
@@ -582,6 +583,18 @@ model AuditRunCost {
   llmCostUsd       Decimal  @db.Decimal(10, 6)
   pagespeedCalls   Int      @default(0)
   estimatedCostUsd Decimal  @db.Decimal(10, 6)
+
+  // Per-phase LLM breakdown (triage = anonymous teaser pass, prescription = post-signup fixes).
+  // llm* columns above stay the running total across phases.
+  triageInputTokens        Int      @default(0)
+  triageOutputTokens       Int      @default(0)
+  triageModel              String?
+  triageCostUsd            Decimal  @default(0) @db.Decimal(10, 6)
+  prescriptionInputTokens  Int      @default(0)
+  prescriptionOutputTokens Int      @default(0)
+  prescriptionModel        String?
+  prescriptionCostUsd      Decimal  @default(0) @db.Decimal(10, 6)
+
   createdAt        DateTime @default(now())
 
   @@map("audit_run_costs")

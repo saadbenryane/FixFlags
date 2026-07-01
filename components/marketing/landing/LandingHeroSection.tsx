@@ -19,7 +19,7 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
             <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
             {HERO.audienceLine}
           </span>
-          <h1 className="max-w-[20ch] text-balance text-4xl font-bold leading-[1.1] tracking-tight motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-[1.1] tracking-tight motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
             <span className="bg-gradient-peach-accent bg-clip-text text-transparent">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
             <br className="hidden sm:block" />

@@ -17,10 +17,8 @@ interface LogoProps {
 }
 
 /**
- * FixFlags mark: equalizer with a flag at center. Pattern (L→R): short bar,
- * tall bar, [orange flagpole + pennant], tall bar, short bar. Bars use
- * currentColor so they invert with the theme (Ink in light, white in dark);
- * the center pole + flag stay Flag orange. Traced from the official UI Kit art.
+ * FixFlags mark: a clean waving flag — rounded orange flagpole flying a soft
+ * wavy pennant. Flat, optically balanced. Per the Final Brand Guideline.
  */
 function Mark({ px }: { px: number }) {
   return (
@@ -33,12 +31,11 @@ function Mark({ px }: { px: number }) {
       className="shrink-0"
       aria-hidden
     >
-      <rect x="0.5" y="15" width="5" height="18" rx="1.6" fill="currentColor" />
-      <rect x="10.5" y="8" width="5" height="32" rx="1.6" fill="currentColor" />
-      <rect x="32.5" y="8" width="5" height="32" rx="1.6" fill="currentColor" />
-      <rect x="42.5" y="15" width="5" height="18" rx="1.6" fill="currentColor" />
-      <rect x="21.5" y="4" width="5" height="43" rx="1.6" fill={BRAND_HEX.primary} />
-      <path d="M21.5 4 L21.5 0.5 L33 4.5 L26.5 9 Z" fill={BRAND_HEX.primary} />
+      <rect x="9.5" y="4" width="5" height="40" rx="2.5" fill={BRAND_HEX.primary} />
+      <path
+        d="M14.5 6C23 2.5 30 10 41 6C39 12 39 18.5 41 24.5C30 28.5 23 21 14.5 25Z"
+        fill={BRAND_HEX.primary}
+      />
     </svg>
   )
 }
@@ -52,7 +49,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
       {showText && (
         <span
           className={cn(
-            'font-sans font-bold leading-none tracking-[-0.02em] text-foreground',
+            'font-serif font-medium leading-none tracking-[-0.01em] text-foreground',
             TEXT_CLASS[size]
           )}
         >

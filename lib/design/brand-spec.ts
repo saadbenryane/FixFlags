@@ -1,15 +1,15 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-// Hex values for non-CSS consumers (OG, email, manifest). UI Kit v3.0.
+// Hex values for non-CSS consumers (OG, email, manifest). Final Brand Guideline.
 // Mesh/orb gradients live in lib/design/tokens.css only.
 export const BRAND_HEX = {
-  primary: '#FF4D1F',
-  primaryLight: '#FF744D',
-  background: '#FFFFFF',
-  foreground: '#0F1115',
-  muted: '#F3F4F6',
-  mutedForeground: '#687380',
-  border: '#E5E7EB',
+  primary: '#FF4B00',
+  primaryLight: '#FF7A4D',
+  background: '#FAF8F4',
+  foreground: '#080808',
+  muted: '#EEEAE3',
+  mutedForeground: '#6D6A64',
+  border: '#E6E1D8',
   success: '#22C55E',
   warning: '#FACC15',
   error: '#FF4444',
@@ -17,13 +17,13 @@ export const BRAND_HEX = {
 } as const
 
 export const BRAND_HEX_DARK = {
-  primary: '#FF4D1F',
-  primaryLight: '#FF744D',
-  background: '#0F1115',
-  foreground: '#FFFFFF',
-  muted: '#2A2D33',
-  mutedForeground: '#A3A7AE',
-  border: '#1E1F23',
+  primary: '#FF5C1A',
+  primaryLight: '#FF7A4D',
+  background: '#111111',
+  foreground: '#F5F3EF',
+  muted: '#1E1E1E',
+  mutedForeground: '#A7A29A',
+  border: '#292929',
   success: '#22C55E',
   warning: '#FACC15',
   error: '#FF4444',

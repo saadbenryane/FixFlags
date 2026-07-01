@@ -1,6 +1,7 @@
 import { BRAND_HEX } from '@/lib/design/brand-spec'
 
 type LogoMarkProps = {
+  /** Retained for call-site compatibility; the mark is a single-color flag. */
   barColor?: string
   flagColor?: string
   width?: number
@@ -8,13 +9,12 @@ type LogoMarkProps = {
 }
 
 /**
- * FixFlags mark: an equalizer with a flag at its center.
- * Pattern (L→R): short bar, tall bar, [orange flagpole + pennant], tall bar, short bar.
- * The center pole is the tallest element, extends below the bars, and flies a
- * right-pointing flag from its top. Geometry traced from the official UI Kit v2.0 art.
+ * FixFlags mark: a clean waving flag. A rounded orange flagpole on the left
+ * flies a soft wavy pennant to the right. Flat (no 3D), optically balanced
+ * curves. Per the Final Brand Guideline; extracted from the brand art.
+ * `barColor` is accepted for backward compatibility but the flag is one color.
  */
 export function LogoMarkSvg({
-  barColor = BRAND_HEX.foreground,
   flagColor = BRAND_HEX.primary,
   width = 40,
   height = 40,
@@ -28,12 +28,13 @@ export function LogoMarkSvg({
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <rect x="0.5" y="15" width="5" height="18" rx="1.6" fill={barColor} />
-      <rect x="10.5" y="8" width="5" height="32" rx="1.6" fill={barColor} />
-      <rect x="32.5" y="8" width="5" height="32" rx="1.6" fill={barColor} />
-      <rect x="42.5" y="15" width="5" height="18" rx="1.6" fill={barColor} />
-      <rect x="21.5" y="4" width="5" height="43" rx="1.6" fill={flagColor} />
-      <path d="M21.5 4 L21.5 0.5 L33 4.5 L26.5 9 Z" fill={flagColor} />
+      {/* Flagpole */}
+      <rect x="9.5" y="4" width="5" height="40" rx="2.5" fill={flagColor} />
+      {/* Waving pennant */}
+      <path
+        d="M14.5 6C23 2.5 30 10 41 6C39 12 39 18.5 41 24.5C30 28.5 23 21 14.5 25Z"
+        fill={flagColor}
+      />
     </svg>
   )
 }

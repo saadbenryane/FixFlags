@@ -1,5 +1,5 @@
 import { BRAND, HERO } from '@/lib/marketing/copy'
-import { BRAND_HEX, brandDark, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
+import { BRAND_HEX, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg } from '@/lib/design/logo-mark'
 import { rubricLabel } from '@/lib/utils'
@@ -11,18 +11,17 @@ type RubricOgRow = {
 
 function OgLogoRow({ mode }: { mode: BrandMode }) {
   const p = getBrandPalette(mode)
-  const barColor = mode === 'dark' ? brandDark.foreground : BRAND_HEX.foreground
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-      <LogoMarkSvg barColor={barColor} flagColor={p.brand} width={48} height={48} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+      <LogoMarkSvg flagColor={p.brand} width={44} height={44} />
       <div
         style={{
-          fontSize: 28,
-          fontWeight: 700,
+          fontSize: 30,
+          fontWeight: 500,
           color: p.foreground,
-          fontFamily: ogFontFamilies.sans,
-          letterSpacing: '-0.02em',
+          fontFamily: ogFontFamilies.serif,
+          letterSpacing: '-0.01em',
         }}
       >
         {BRAND.name}
@@ -65,8 +64,8 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             color: p.brand,
             lineHeight: 1.15,
             marginBottom: 16,
-            fontFamily: ogFontFamilies.sans,
-            letterSpacing: '-0.02em',
+            fontFamily: ogFontFamilies.serif,
+            letterSpacing: '-0.01em',
           }}
         >
           {HERO.headlineAccent}
@@ -78,8 +77,8 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
             color: p.foreground,
             lineHeight: 1.15,
             marginBottom: 28,
-            fontFamily: ogFontFamilies.sans,
-            letterSpacing: '-0.02em',
+            fontFamily: ogFontFamilies.serif,
+            letterSpacing: '-0.01em',
           }}
         >
           {`${HERO.headlineLine1} ${HERO.headlineLine2}`}
@@ -87,18 +86,14 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
         <div
           style={{
             display: 'flex',
-            flexWrap: 'wrap',
             fontSize: 20,
             color: p.mutedForeground,
             lineHeight: 1.5,
             maxWidth: 480,
             fontFamily: ogFontFamilies.sans,
-            gap: 4,
           }}
         >
-          <span>FLAG ISSUES.</span>
-          <span style={{ color: p.brand, fontWeight: 700 }}>FOCUS</span>
-          <span>WHAT MATTERS.</span>
+          {BRAND.oneLiner}
         </div>
       </div>
 
@@ -170,12 +165,7 @@ export function IconOgImage({ size = 32 }: { size?: number }) {
         backgroundColor: 'transparent',
       }}
     >
-      <LogoMarkSvg
-        barColor={BRAND_HEX.foreground}
-        flagColor={BRAND_HEX.primary}
-        width={markSize}
-        height={markSize}
-      />
+      <LogoMarkSvg flagColor={BRAND_HEX.primary} width={markSize} height={markSize} />
     </div>
   )
 }
@@ -223,7 +213,7 @@ export function ReportOgImage({
             fontWeight: 500,
             color: p.foreground,
             textAlign: 'center',
-            fontFamily: ogFontFamilies.sans,
+            fontFamily: ogFontFamilies.serif,
             letterSpacing: '-0.01em',
           }}
         >

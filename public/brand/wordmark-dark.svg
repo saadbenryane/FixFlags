@@ -1,9 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 213 48" fill="none" role="img" aria-label="FixFlags">
-  <rect x="0.5" y="15" width="5" height="18" rx="1.6" fill="#FFFFFF"/>
-  <rect x="10.5" y="8" width="5" height="32" rx="1.6" fill="#FFFFFF"/>
-  <rect x="32.5" y="8" width="5" height="32" rx="1.6" fill="#FFFFFF"/>
-  <rect x="42.5" y="15" width="5" height="18" rx="1.6" fill="#FFFFFF"/>
-  <rect x="21.5" y="4" width="5" height="43" rx="1.6" fill="#FF4D1F"/>
-  <path d="M21.5 4 L21.5 0.5 L33 4.5 L26.5 9 Z" fill="#FF4D1F"/>
-  <text x="62" y="34" fill="#FFFFFF" font-family="Satoshi, Arial, system-ui, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.02em">FixFlags</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 48" fill="none" role="img" aria-label="FixFlags">
+  <rect x="9.5" y="4" width="5" height="40" rx="2.5" fill="#FF5C1A"/>
+  <path d="M14.5 6C23 2.5 30 10 41 6C39 12 39 18.5 41 24.5C30 28.5 23 21 14.5 25Z" fill="#FF5C1A"/>
+  <text x="60" y="35" fill="#F5F3EF" font-family="Fraunces, Georgia, serif" font-size="34" font-weight="500" letter-spacing="-0.01em">FixFlags</text>
 </svg>
