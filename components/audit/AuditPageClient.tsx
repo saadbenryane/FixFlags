@@ -57,6 +57,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     error: pollError,
     isLoading,
     status,
+    progress,
     url,
     statusPayload,
   } = useAuditPolling(id, { initialAudit, pollStatus })
@@ -123,6 +124,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
 
     return {
       status,
+      progress,
       url: resolvedUrl,
       pageType: typeof statusPayload?.pageType === 'string'
         ? statusPayload.pageType
@@ -146,7 +148,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       screenshotCapture: statusPayload?.screenshotCapture,
       workerIdle,
     }
-  }, [status, statusPayload, initialAudit, workerIdle])
+  }, [status, progress, statusPayload, initialAudit, workerIdle])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)

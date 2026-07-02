@@ -38,6 +38,32 @@ export function getActivityMessage(status: string, tick: number): string {
   return messages[tick % messages.length]
 }
 
+/**
+ * Short, value-framed subcategory labels shown inline next to "Scanning ·".
+ * Deliberately reveals no check counts or the exact recipe - just the area of
+ * the review currently in focus. Keyed by pipeline stage so it tracks reality.
+ */
+const SCAN_PHASE_LABELS: Record<string, string[]> = {
+  QUEUED: ['Starting your review'],
+  CAPTURING: ['Loading your page', 'Capturing desktop & mobile'],
+  CHECKING: [
+    'Analyzing message clarity',
+    'Checking your calls to action',
+    'Reviewing mobile experience',
+    'Measuring load speed',
+    'Checking share previews',
+    'Reviewing trust signals',
+  ],
+  JUDGING: ['Turning issues into flags', 'Prioritizing by launch impact'],
+  FINALIZING: ['Packaging your review'],
+}
+
+/** Rotating subcategory label for the in-progress "Scanning · …" line. */
+export function getScanningLabel(status: string, tick: number): string {
+  const labels = SCAN_PHASE_LABELS[status] ?? SCAN_PHASE_LABELS.CHECKING
+  return labels[tick % labels.length]
+}
+
 export function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
   const mins = Math.floor(seconds / 60)

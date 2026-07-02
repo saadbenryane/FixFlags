@@ -20,7 +20,7 @@ export function runDestinationTrustChecks(result: FlowScanResult): Deterministic
       severity: 'IMPORTANT',
       problem: 'CTA destination page lacks trust signals',
       evidence: `After clicking the primary CTA, the destination at ${result.finalUrl} is missing: ${missing.join(', ')}.`,
-      fix: 'Add privacy policy, contact email, and HTTPS on signup/checkout pages. Visitors need reassurance before entering personal data.',
+      fix: '1. Add a privacy policy link on signup/checkout pages\n2. Add contact information (email or form) on the destination page\n3. Ensure the destination page uses HTTPS',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     },

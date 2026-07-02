@@ -17,7 +17,7 @@ export function runPostClickFlowChecks(metrics: PostClickMetrics | undefined): D
       severity: 'CRITICAL',
       problem: 'Primary CTA destination stayed blank too long after click',
       evidence: `After clicking the primary CTA, meaningful content appeared after ${metrics.timeToFirstContentMs}ms (blank for ${metrics.blankScreenMs}ms).`,
-      fix: 'Show hero copy, form, or a loading state within 3 seconds on the CTA destination. Avoid long blank screens while JavaScript bundles load.',
+      fix: '1. Show hero copy, form, or a loading state within 3 seconds\n2. Avoid long blank screens while JavaScript bundles load\n3. Use server-side rendering or static HTML for the CTA destination',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })
@@ -32,7 +32,7 @@ export function runPostClickFlowChecks(metrics: PostClickMetrics | undefined): D
       severity: 'IMPORTANT',
       problem: 'Loading or skeleton UI persisted on the CTA destination',
       evidence: `Visible ${label} remained on the destination page for more than ${STUCK_LOADING_MS}ms after navigation.`,
-      fix: 'Hide skeletons and spinners once the destination content loads. Swap loading placeholders for real copy and CTAs.',
+      fix: '1. Hide skeletons and spinners once the destination content loads\n2. Swap loading placeholders for real copy and CTAs\n3. Test with throttled network to verify timing',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })

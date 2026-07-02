@@ -15,7 +15,7 @@ export async function runSeoChecks(
       severity: 'IMPORTANT',
       problem: 'No H1 heading found',
       evidence: 'No <h1> element found in the page',
-      fix: 'Add exactly one H1 tag containing the primary keyword for this page.',
+      fix: '1. Add exactly one H1 tag containing the primary keyword\n2. Place it at the top of the main content area\n3. Make it descriptive, not generic ("Build X for Y" not "Welcome")',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -27,7 +27,7 @@ export async function runSeoChecks(
       severity: 'POLISH',
       problem: `Multiple H1 headings found (${meta.h1s.length})`,
       evidence: `H1 tags found: ${meta.h1s.slice(0, 3).map((h) => `"${h}"`).join(', ')}`,
-      fix: 'Use only one H1 per page. Make secondary headings H2 or H3.',
+      fix: '1. Keep only one H1 as the main page heading\n2. Change additional H1s to H2 or H3\n3. Maintain a logical heading hierarchy throughout the page',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -41,7 +41,7 @@ export async function runSeoChecks(
       severity: 'POLISH',
       problem: 'No structured data (JSON-LD) found',
       evidence: 'No <script type="application/ld+json"> found in the page',
-      fix: 'Add JSON-LD structured data. For SaaS landing pages, use WebSite + SoftwareApplication schema.',
+      fix: '1. Add JSON-LD structured data to the page head\n2. For SaaS landing pages, use WebSite + SoftwareApplication schema\n3. Test with Google Rich Results Test tool',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -55,7 +55,7 @@ export async function runSeoChecks(
       severity: 'POLISH',
       problem: `${meta.externalLinksWithoutNoopener} external link${meta.externalLinksWithoutNoopener > 1 ? 's' : ''} without rel="noopener"`,
       evidence: `External links found without rel="noopener noreferrer"`,
-      fix: 'Add rel="noopener noreferrer" to all external links to prevent security issues.',
+      fix: '1. Add rel="noopener noreferrer" to every external link\n2. Apply this to links opening in new tabs (target=_blank)\n3. Verify with DevTools that the attribute is present on external links',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -75,7 +75,7 @@ export async function runSeoChecks(
         severity: 'POLISH',
         problem: 'XML sitemap not found at /sitemap.xml',
         evidence: `HEAD ${sitemapUrl} returned 404`,
-        fix: 'Generate and submit a sitemap.xml. Next.js can auto-generate one with the sitemap.ts convention.',
+        fix: '1. Generate a sitemap.xml listing all public pages\n2. In Next.js, create a sitemap.ts file for auto-generation\n3. Submit the sitemap to Google Search Console',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
@@ -98,7 +98,7 @@ export async function runSeoChecks(
         severity: 'POLISH',
         problem: 'robots.txt not found',
         evidence: `HEAD ${robotsUrl} returned 404`,
-        fix: 'Create a robots.txt file. At minimum: User-agent: * / Allow: /',
+        fix: '1. Create a robots.txt file at the root of your domain\n2. Add: User-agent: * / Allow: /\n3. Optionally point to your sitemap: Sitemap: https://yourdomain.com/sitemap.xml',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
@@ -116,7 +116,7 @@ export async function runSeoChecks(
       severity: 'IMPORTANT',
       problem: `${brokenLinks.length} internal link${brokenLinks.length > 1 ? 's' : ''} return errors`,
       evidence: brokenLinks.slice(0, 3).join('; '),
-      fix: 'Fix or remove broken internal links. Update hrefs to valid routes or add redirects.',
+      fix: '1. Identify the broken internal links from the evidence\n2. Update href values to valid routes or correct URLs\n3. Add server-side redirects if the target URL has changed',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -139,7 +139,7 @@ export async function runSeoChecks(
       severity: 'IMPORTANT',
       problem: `${brokenAnchors.length} on-page link${brokenAnchors.length > 1 ? 's' : ''} point to missing sections`,
       evidence: brokenAnchors.slice(0, 3).join('; '),
-      fix: 'Add id attributes for each hash target or update nav/footer links to existing section ids.',
+      fix: '1. Add matching id attributes for each hash link target (#section-name)\n2. Update nav or footer links to point to existing section ids\n3. Test each anchor link by clicking and verifying it scrolls correctly',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

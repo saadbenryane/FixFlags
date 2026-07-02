@@ -35,7 +35,7 @@ export function runSlowReplayChecks(result: SlowReplayResult | null): Determinis
       severity: 'CRITICAL',
       problem: 'Page stays blank too long on slow 3G',
       evidence: `On simulated 3G, meaningful text appeared after ${result.timeToFirstTextMs}ms (threshold 5000ms).`,
-      fix: 'Reduce JavaScript bundle size, defer non-critical scripts, and show static hero HTML before JS hydrates.',
+      fix: '1. Reduce JavaScript bundle size with code splitting\n2. Defer non-critical scripts using async or defer\n3. Show static hero HTML before JavaScript hydrates',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })
@@ -49,7 +49,7 @@ export function runSlowReplayChecks(result: SlowReplayResult | null): Determinis
       severity: 'IMPORTANT',
       problem: 'Primary CTA is not visible within 8 seconds on slow 3G',
       evidence: `On simulated 3G, the primary CTA became visible after ${result.timeToCtaMs}ms.`,
-      fix: 'Render the primary CTA in the initial HTML or inline critical CSS so mobile visitors on slow networks can act immediately.',
+      fix: '1. Render the primary CTA in the initial server HTML (not JS-dependent)\n2. Inline critical CSS for the hero section including the CTA\n3. Test on simulated 3G to confirm CTA appears before full JS load',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

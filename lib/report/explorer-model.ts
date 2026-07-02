@@ -16,7 +16,10 @@ import {
   buildRubricScoreRows,
   type RubricScoreRow,
 } from '@/lib/audit/report-pipeline-steps'
-import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import {
+  normalizeInternalScreenshotUrl,
+  type AuditScreenshot,
+} from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { severityRank, impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
@@ -57,7 +60,9 @@ function sortFlags(flags: RankableFlag[]): RankableFlag[] {
 }
 
 function mapLiveFlag(flag: RankableFlag): ExplorerFlag {
-  const copyFixPrompt = resolveFixPrompt(flag) ?? flag.fix ?? flag.problem
+  const fixPrompt = buildExpertFixPrompt(flag)
+  const copyFixPrompt = fixPrompt
+  const sourceFix = resolveFixPrompt(flag)
   return {
     id: flag.id,
     title: flag.problem,
@@ -68,11 +73,11 @@ function mapLiveFlag(flag: RankableFlag): ExplorerFlag {
     impactTag: impactTagLabel(flag.impactTag),
     whyItMatters: resolveWhyItMatters(flag),
     evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
-    fixPrompt: buildExpertFixPrompt(flag),
+    fixPrompt,
     copyFixPrompt,
     verificationRule: flag.verificationRule ?? null,
     evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],
-    hasFixPrompt: Boolean(copyFixPrompt),
+    hasFixPrompt: Boolean(sourceFix),
   }
 }
 
@@ -87,8 +92,10 @@ export function buildLiveExplorerModel(input: {
   evidenceAnchors?: EvidenceAnchorMap
 }): ReportExplorerModel {
   const sorted = sortFlags(input.flags)
-  const desktop = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
-  const mobile = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
+  const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
+  const mobileScreenshot = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
+  const desktop = desktopScreenshot ? normalizeInternalScreenshotUrl(desktopScreenshot) : null
+  const mobile = mobileScreenshot ? normalizeInternalScreenshotUrl(mobileScreenshot) : null
   const displayHost = (() => {
     try {
       return new URL(input.url).hostname.replace(/^www\./, '')
@@ -166,7 +173,7 @@ function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
     whyItMatters: flag.whyItMatters,
     evidence: flag.evidence,
     fixPrompt: flag.fixPrompt,
-    copyFixPrompt: flag.agentPrompt || flag.fix,
+    copyFixPrompt: flag.fixPrompt,
     verificationRule: flag.verificationRule,
     evidenceDevices: flag.evidenceDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),

@@ -71,9 +71,12 @@ export const ALL_CHECK_IDS = [
   // interaction.ts
   'loading-indicator-stuck',
   'motion-ignores-reduced-preference',
-  // design-language.ts
+  'form-inputs-zoom-mobile',
+  // design-language.ts (legacy standalone compatibility)
   'font-family-sprawl',
   'button-radius-inconsistent',
+  // cta-focus.ts
+  'competing-ctas',
   // slop.ts
   'placeholder-copy-detected',
   'template-default-copy',
@@ -82,15 +85,34 @@ export const ALL_CHECK_IDS = [
   'social-proof-unverifiable',
   // form.ts
   'form-missing-validation',
-  // interaction.ts (continued)
-  'form-inputs-zoom-mobile',
   // measurement.ts
   'measurement-ga-gtm-posthog-missing',
   'measurement-consent-blocking-incomplete',
+  // auth-checkout.ts
+  'checkout-link-dead',
+  'auth-page-broken',
+  // security.ts
   'security-mixed-content',
   // visual-polish.ts
   'visual-radius-inconsistent',
   'visual-typography-sprawl',
+  // flow.ts
+  'flow-no-cta-found',
+  'flow-cta-unclickable',
+  'flow-cta-404',
+  'flow-cta-dead-end',
+  'flow-cta-external-leave',
+  'flow-pricing-nav-broken',
+  'flow-mobile-menu-broken',
+  'flow-form-no-validation',
+  'flow-form-slow-feedback',
+  'scroll-ghost-sections',
+  'flow-cta-blank-destination',
+  'flow-cta-stuck-loading',
+  'flow-cta-destination-no-trust',
+  // slow-replay.ts
+  'slow-3g-blank-screen',
+  'slow-3g-cta-delayed',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

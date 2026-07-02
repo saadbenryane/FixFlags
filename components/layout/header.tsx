@@ -17,7 +17,8 @@ import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignOutButton } from '@/components/auth/SignOutButton'
-import { HERO } from '@/lib/marketing/copy'
+import { AvatarMenu } from '@/components/layout/AvatarMenu'
+import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 import {
   Sheet,
   SheetContent,
@@ -35,7 +36,6 @@ interface HeaderProps {
   logoHref?: string
   right?: React.ReactNode
   className?: string
-  userEmail?: string | null
   showAdmin?: boolean
   adminInboxUnread?: number
 }
@@ -45,7 +45,6 @@ export function Header({
   logoHref,
   right,
   className,
-  userEmail,
   showAdmin,
   adminInboxUnread = 0,
 }: HeaderProps) {
@@ -62,7 +61,7 @@ export function Header({
 
   const defaultRight =
     variant === 'app' ? (
-      <AppHeaderRight userEmail={userEmail} showAdmin={showAdmin} />
+      <AppHeaderRight showAdmin={showAdmin} />
     ) : variant === 'admin' ? (
       <AdminHeaderRight />
     ) : null
@@ -165,9 +164,7 @@ export function Header({
 
             <div className="flex items-center gap-1 md:hidden">
               {isMarketing && (
-                <Button variant="ink" size="xs" className="shrink-0" asChild>
-                  <Link href="/sign-up">{HERO.navSignUpCta}</Link>
-                </Button>
+                <MarketingHeaderAuth mode="mobileTop" />
               )}
               <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
@@ -218,13 +215,12 @@ export function Header({
                       <span className="text-sm text-muted-foreground">Theme</span>
                       <ThemeToggle />
                     </div>
-                    <Link
-                      href="/sign-in"
-                      onClick={() => setOpen(false)}
-                      className="block text-sm text-muted-foreground hover:text-foreground"
-                    >
-                      Log in
-                    </Link>
+                    {isMarketing && (
+                      <MarketingHeaderAuth
+                        mode="mobileSheet"
+                        onNavigate={() => setOpen(false)}
+                      />
+                    )}
                     {!isMarketing && <div>{resolvedRight}</div>}
                   </div>
                 </nav>
@@ -239,10 +235,8 @@ export function Header({
 }
 
 function AppHeaderRight({
-  userEmail,
   showAdmin,
 }: {
-  userEmail?: string | null
   showAdmin?: boolean
 }) {
   return (
@@ -252,12 +246,7 @@ function AppHeaderRight({
           <Link href="/admin">Admin</Link>
         </Button>
       )}
-      {userEmail && (
-        <span className="hidden max-w-[160px] truncate text-xs text-muted-foreground lg:inline">
-          {userEmail}
-        </span>
-      )}
-      <SignOutButton />
+      <AvatarMenu />
     </div>
   )
 }

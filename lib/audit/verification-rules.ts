@@ -29,8 +29,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'View page source, confirm robots meta does not include noindex.',
   'favicon-missing':
     'Confirm link rel="icon" or apple-touch-icon exists and the icon loads in the browser tab.',
-  'analytics-missing':
-    'Open DevTools Network tab and reload; confirm an analytics request (GA4, Plausible, PostHog, etc.) fires.',
   'checkout-link-dead':
     'Click each checkout/payment link; confirm it loads a working payment page (no 404 or server error).',
   'auth-page-broken':
@@ -170,14 +168,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'On throttled 3G, the primary CTA should be visible within 8 seconds.',
 }
 
-export function verificationRuleForCheckId(checkId: string): string | null {
-  return CHECK_ID_TO_RULE[checkId] ??
-         MEASUREMENT_VERIFICATION_RULES[checkId as keyof typeof MEASUREMENT_VERIFICATION_RULES] ??
-         SECURITY_VERIFICATION_RULES[checkId as keyof typeof SECURITY_VERIFICATION_RULES] ??
-         VISUAL_POLISH_VERIFICATION_RULES[checkId as keyof typeof VISUAL_POLISH_VERIFICATION_RULES] ??
-         null
-}
-
 /**
  * Verification rule for measurement scan
  */
@@ -240,16 +230,25 @@ export const VISUAL_POLISH_VERIFICATION_RULES = {
     'Apply aesthetic improvements based on AI judge feedback. Consider refining spacing, contrast, and visual hierarchy.',
 }
 
+export const ALL_VERIFICATION_RULES: Record<string, string> = {
+  ...CHECK_ID_TO_RULE,
+  ...MEASUREMENT_VERIFICATION_RULES,
+  ...SECURITY_VERIFICATION_RULES,
+  ...VISUAL_POLISH_VERIFICATION_RULES,
+}
+
+export function verificationRuleForCheckId(checkId: string): string | null {
+  return ALL_VERIFICATION_RULES[checkId] ?? null
+}
+
+export function verifiableCheckIds(): string[] {
+  return Object.keys(ALL_VERIFICATION_RULES)
+}
+
 export function getVerificationRule(checkId: string): string | null {
   return verificationRuleForCheckId(checkId)
 }
 
 export function allCheckIdsHaveVerificationRules(): boolean {
-  const allRules: Record<string, string> = {
-    ...CHECK_ID_TO_RULE,
-    ...MEASUREMENT_VERIFICATION_RULES,
-    ...SECURITY_VERIFICATION_RULES,
-    ...VISUAL_POLISH_VERIFICATION_RULES,
-  }
-  return ALL_CHECK_IDS.every((id) => allRules[id] !== undefined)
+  return ALL_CHECK_IDS.every((id) => ALL_VERIFICATION_RULES[id] !== undefined)
 }

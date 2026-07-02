@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   ...(googleSiteVerification
     ? { verification: { google: googleSiteVerification } }
     : {}),
+  manifest: '/manifest.webmanifest',
   openGraph: {
     title: BRAND.name,
     description: HERO.subhead,

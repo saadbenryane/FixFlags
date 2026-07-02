@@ -1,5 +1,6 @@
 import { SiteShell } from '@/components/layout/site-shell'
 import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
+import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 import { Container } from '@/components/ui/container'
 
 interface AuditShellProps {
@@ -10,10 +11,12 @@ interface AuditShellProps {
 }
 
 export function AuditShell({ children, actions, session, showAdmin = false }: AuditShellProps) {
+  const variant = session ? 'app' : 'marketing'
+
   return (
     <SiteShell
-      variant={session ? 'app' : 'marketing'}
-      userEmail={session?.user?.email}
+      variant={variant}
+      headerRight={variant === 'marketing' ? <MarketingHeaderAuth /> : undefined}
       showAdmin={showAdmin}
     >
       {session && <ClaimAnonymousAudits />}

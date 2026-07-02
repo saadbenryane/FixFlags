@@ -9,19 +9,14 @@ import { cn } from '@/lib/utils'
 function ProgressPanel({
   fixLoop,
   pipelineSteps,
-  label,
   loading,
 }: {
   fixLoop?: ReportFixLoopProps
   pipelineSteps?: PipelineStep[]
-  label: string
   loading?: boolean
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 sm:mb-3">
-        {label}
-      </p>
       {fixLoop ? (
         <ReportFixLoop {...fixLoop} loading={loading} />
       ) : pipelineSteps ? (
@@ -41,6 +36,7 @@ export function ReportScoreOverview({
   showProgress = true,
   layout = 'stacked',
   loading = false,
+  progress,
   className,
 }: {
   score: number | null
@@ -54,6 +50,8 @@ export function ReportScoreOverview({
   layout?: 'stacked' | 'split'
   /** Render score + fix loop in an in-progress scanning state. */
   loading?: boolean
+  /** Determinate scan progress (0-100) for the ring while loading. */
+  progress?: number
   className?: string
 }) {
   if (layout === 'split') {
@@ -73,12 +71,12 @@ export function ReportScoreOverview({
           scoreSize={scoreSize}
           compact={compact}
           loading={loading}
+          progress={progress}
         />
         {showProgress && (
           <ProgressPanel
             fixLoop={fixLoop}
             pipelineSteps={pipelineSteps}
-            label="Fix loop"
             loading={loading}
           />
         )}
@@ -94,9 +92,10 @@ export function ReportScoreOverview({
         scoreSize={scoreSize}
         compact={compact}
         loading={loading}
+        progress={progress}
       />
       {showProgress && (
-        <ProgressPanel fixLoop={fixLoop} pipelineSteps={pipelineSteps} label="Fix loop" loading={loading} />
+        <ProgressPanel fixLoop={fixLoop} pipelineSteps={pipelineSteps} loading={loading} />
       )}
     </div>
   )

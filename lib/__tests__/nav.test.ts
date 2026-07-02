@@ -1,10 +1,20 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { MARKETING_LINKS, ADMIN_NAV } from '@/lib/site/nav'
+import { MARKETING_LINKS, FOOTER_COLUMNS, ADMIN_NAV } from '@/lib/site/nav'
 
 describe('marketing nav labels', () => {
-  it('changelog nav points to changelog route', () => {
-    const changelog = MARKETING_LINKS.find((link) => link.label === 'Changelog')
+  it('keeps marketing nav compact', () => {
+    assert.deepEqual(
+      MARKETING_LINKS.map((link) => [link.label, link.href]),
+      [
+        ['How it works', '/how-it-works'],
+        ['Pricing', '/pricing'],
+      ]
+    )
+  })
+
+  it('keeps changelog in the footer', () => {
+    const changelog = FOOTER_COLUMNS.product.find((link) => link.label === 'Changelog')
     assert.ok(changelog)
     assert.equal(changelog.href, '/changelog')
   })

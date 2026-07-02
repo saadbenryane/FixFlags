@@ -77,9 +77,9 @@ export const judgeOutputSchema = z.object({
         .describe(
           'A holistic prompt that fixes ALL flags in this rubric at once. Must be specific, actionable, reference actual content from the page, and be ready to paste into an AI coding agent.'
         ),
-      cursorPrompt: z.string().optional(),
+      cursorPrompt: z.string().optional().describe('Tool-specific prompt with file-path references when inferable from the page'),
       claudePrompt: z.string().optional(),
-      lovablePrompt: z.string().optional(),
+      lovablePrompt: z.string().optional().describe('Tool-specific prompt describing visual and component changes'),
       boltPrompt: z.string().optional(),
     })
   ),
@@ -95,7 +95,7 @@ export const judgeOutputSchema = z.object({
           .string()
           .min(1)
           .describe('1-2 sentences explaining the real-world business impact'),
-        fix: z.string().min(1),
+        fix: z.string().min(1).describe('Numbered steps for fixing the issue (e.g. "1. Open metadata export\\n2. Add og:image\\n3. Verify")'),
         confidence: z.number().min(0).max(1),
         agentPrompt: z.string().optional(),
         cursorPrompt: z.string().optional(),

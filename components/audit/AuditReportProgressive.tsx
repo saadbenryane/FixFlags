@@ -14,7 +14,7 @@ import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
 import { buildRubricScoreRows, reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { getActivityMessage, statusToStageIndex } from '@/lib/audit/progress-ui'
+import { getScanningLabel, statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -25,6 +25,7 @@ interface AuditReportProgressiveProps {
   pageType?: string | null
   verdict?: string | null
   score?: number | null
+  progress?: number
   flagCount?: number
   rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
   partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
@@ -63,6 +64,7 @@ export function AuditReportProgressive({
   pageType = null,
   verdict = null,
   score = null,
+  progress = 0,
   flagCount = 0,
   rubrics = [],
   partialFlags = [],
@@ -73,8 +75,13 @@ export function AuditReportProgressive({
   const [tick, setTick] = useState(0)
   const stageIdx = statusToStageIndex(status)
   const activeStage = AUDIT_PROGRESS.stages[stageIdx]?.status ?? status
-  const activityMessage = getActivityMessage(activeStage, tick)
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
+
+  // Target progress from real backend state; eased client-side so the ring
+  // advances continuously between 2s polls instead of jumping. Never exceeds
+  // the backend value and never moves backward.
+  const targetProgress = getProgressPercent(progress, status)
+  const [displayProgress, setDisplayProgress] = useState(targetProgress)
 
   const showWorkerWarning =
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && tick >= 12
@@ -83,6 +90,15 @@ export function AuditReportProgressive({
     const interval = setInterval(() => setTick((t) => t + 1), 2500)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    setDisplayProgress((prev) => {
+      if (targetProgress <= prev) return prev
+      // Ease ~40% of the remaining gap toward target each tick.
+      const next = prev + Math.max(1, (targetProgress - prev) * 0.4)
+      return Math.min(targetProgress, Math.round(next))
+    })
+  }, [tick, targetProgress])
 
   const rubricsComputed = useMemo(
     () => buildPartialRubricsComputed(rubrics, partialFlags),
@@ -143,7 +159,6 @@ export function AuditReportProgressive({
           url={url}
           pageType={pageType}
           verdict={verdict}
-          activityMessage={activityMessage}
         />
 
         {(workerIdle || showWorkerWarning) && (
@@ -162,8 +177,11 @@ export function AuditReportProgressive({
               <ReportScoreOverview
                 score={score}
                 rubricScores={rubricScores}
+                progress={displayProgress}
                 fixLoop={{
-                  scanDetail: reportScanDetail(pageType),
+                  scanDetail: isLoading
+                    ? getScanningLabel(activeStage, tick)
+                    : reportScanDetail(pageType),
                   flags: fixLoopFlags,
                   flagCount,
                   hasFixPrompts: false,

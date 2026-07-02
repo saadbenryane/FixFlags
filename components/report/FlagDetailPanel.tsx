@@ -50,23 +50,15 @@ export function FlagDetailPanel({
 }) {
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
-      {flag.whyItMatters && (
-        <FlagDetailCard title="Why it matters" icon={Lightbulb}>
-          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
-        </FlagDetailCard>
-      )}
-
       {flag.evidence && (
         <FlagDetailCard title="Evidence" icon={ScanSearch}>
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
         </FlagDetailCard>
       )}
 
-      {flag.verificationRule && (
-        <FlagDetailCard title="How to verify" icon={ClipboardCheck}>
-          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
-            {flag.verificationRule}
-          </p>
+      {flag.whyItMatters && (
+        <FlagDetailCard title="Why it matters" icon={Lightbulb}>
+          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
         </FlagDetailCard>
       )}
 
@@ -86,6 +78,14 @@ export function FlagDetailPanel({
               nested
             />
           )}
+        </FlagDetailCard>
+      )}
+
+      {flag.verificationRule && (
+        <FlagDetailCard title="How to verify" icon={ClipboardCheck}>
+          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
+            {flag.verificationRule}
+          </p>
         </FlagDetailCard>
       )}
 

@@ -3,6 +3,7 @@ import { FLOW_SCAN_STATUS } from '@/lib/marketing/copy'
 import { Card } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
 import { ArrowRight } from 'lucide-react'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -53,37 +54,47 @@ export function FlowScanTimeline({ flowData }: Props) {
         <Card className="p-4 text-sm text-muted-foreground">{status.description}</Card>
       ) : (
         <ol className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          {flowData.steps.map((step, index) => (
-            <li
-              key={`${step.label}-${index}`}
-              className="flex min-w-0 flex-1 items-start gap-3 sm:flex-col"
-            >
-              {index > 0 && (
-                <ArrowRight
-                  className="mt-24 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block"
-                  aria-hidden
-                />
-              )}
-              <div className="w-full min-w-0 flex-1 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">{step.label}</p>
-                <Card className="overflow-hidden p-0">
-                  {step.screenshotUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={step.screenshotUrl}
-                      alt={step.label}
-                      className="aspect-video w-full bg-muted object-cover object-top"
-                    />
-                  ) : (
-                    <div className="flex aspect-video w-full items-center justify-center bg-muted text-xs text-muted-foreground">
-                      No capture
-                    </div>
-                  )}
-                </Card>
-                <p className="truncate font-mono text-[10px] text-muted-foreground">{step.url}</p>
-              </div>
-            </li>
-          ))}
+          {flowData.steps.map((step, index) => {
+            const screenshotUrl = step.screenshotUrl
+              ? normalizeInternalScreenshotUrl(step.screenshotUrl)
+              : null
+
+            return (
+              <li
+                key={`${step.label}-${index}`}
+                className="flex min-w-0 flex-1 items-start gap-3 sm:flex-col"
+              >
+                {index > 0 && (
+                  <ArrowRight
+                    className="mt-24 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block"
+                    aria-hidden
+                  />
+                )}
+                <div className="w-full min-w-0 flex-1 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">{step.label}</p>
+                  <Card className="overflow-hidden p-0">
+                    {screenshotUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={screenshotUrl}
+                          alt={step.label}
+                          className="aspect-video w-full bg-muted object-cover object-top"
+                        />
+                      </>
+                    ) : (
+                      <div className="flex aspect-video w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+                        No capture
+                      </div>
+                    )}
+                  </Card>
+                  <p className="truncate font-mono text-[10px] text-muted-foreground">
+                    {step.url}
+                  </p>
+                </div>
+              </li>
+            )
+          })}
         </ol>
       )}
 

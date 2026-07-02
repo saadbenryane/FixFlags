@@ -21,7 +21,7 @@ export const flagPrescriptionSchema = z.object({
     .string()
     .min(1)
     .describe('1-2 sentences on real-world business impact'),
-  fix: z.string().min(1).describe('Concrete fix instruction'),
+  fix: z.string().min(1).describe('1-3 numbered steps for fixing the issue, each starting with an action verb'),
   agentPrompt: z.string().optional(),
   cursorPrompt: z.string().optional(),
   claudePrompt: z.string().optional(),

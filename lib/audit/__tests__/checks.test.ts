@@ -11,9 +11,13 @@ import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
+import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
+import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
 import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
+import { runFlowChecks } from '@/lib/audit/checks/flow'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
@@ -541,6 +545,27 @@ describe('runAllChecks', () => {
       )
     }
   })
+
+  it('runs CTA focus and auth/checkout checks in the production pipeline', async () => {
+    restoreFetch = mockFetchHead({ '/checkout': 404, 'sitemap.xml': 200, 'robots.txt': 200 })
+    const { flags } = await runAllChecks(
+      'https://example.com',
+      healthyMeta({
+        links: [{ href: '/checkout', text: 'Subscribe', rel: null }],
+      }),
+      healthyDesktopPs(),
+      healthyMobilePs(),
+      [],
+      undefined,
+      healthyCaptureMetrics({
+        competingPrimaryCtaCount: 3,
+        competingPrimaryCtaLabels: ['Get started', 'Book a demo', 'Subscribe'],
+      })
+    )
+    const ids = checkIds(flags)
+    assert.ok(ids.includes('competing-ctas'))
+    assert.ok(ids.includes('checkout-link-dead'))
+  })
 })
 
 describe('computeRubricScores', () => {
@@ -831,6 +856,12 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
+    'form-inputs-zoom-mobile': () =>
+      checkIds(
+        runInteractionChecks(healthyCaptureMetrics({
+          inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
+        }))
+      ),
     'font-family-sprawl': () =>
       checkIds(
         runDesignLanguageChecks(
@@ -845,6 +876,15 @@ describe('trigger matrix - one failing signal per checkId', () => {
         runDesignLanguageChecks(
           healthyCaptureMetrics({
             buttonBorderRadii: [0, 8, 24],
+          })
+        )
+      ),
+    'competing-ctas': () =>
+      checkIds(
+        runCtaFocusChecks(
+          healthyCaptureMetrics({
+            competingPrimaryCtaCount: 3,
+            competingPrimaryCtaLabels: ['Get started', 'Book a demo', 'Subscribe'],
           })
         )
       ),
@@ -881,14 +921,26 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
-    'form-inputs-zoom-mobile': () =>
-      checkIds(
-        runInteractionChecks(healthyCaptureMetrics({
-          inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
-        }))
-      ),
     'measurement-consent-blocking-incomplete': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: true, hasCookieConsent: false }))),
+    'checkout-link-dead': async () => {
+      restoreFetch = mockFetchHead({ '/checkout': 404 })
+      return checkIds(
+        await runAuthCheckoutChecks(
+          'https://example.com',
+          healthyMeta({ links: [{ href: '/checkout', text: 'Subscribe', rel: null }] })
+        )
+      )
+    },
+    'auth-page-broken': async () => {
+      restoreFetch = mockFetchHead({ '/login': 500 })
+      return checkIds(
+        await runAuthCheckoutChecks(
+          'https://example.com',
+          healthyMeta({ links: [{ href: '/login', text: 'Log in', rel: null }] })
+        )
+      )
+    },
     'security-mixed-content': () =>
       checkIds(runSecurityBasicsChecks('https://example.com', healthyMeta({
         images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
@@ -898,6 +950,161 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
     'visual-typography-sprawl': () =>
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ uniqueFontFamilies: 6, fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'] }))),
+    'flow-no-cta-found': () =>
+      checkIds(runFlowChecks({ status: 'no_cta', steps: [], finalUrl: 'https://example.com' })),
+    'flow-cta-unclickable': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'unclickable',
+          steps: [],
+          finalUrl: 'https://example.com',
+          ctaText: 'Get started',
+        })
+      ),
+    'flow-cta-404': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'error_response',
+          steps: [],
+          finalUrl: 'https://example.com/missing',
+          ctaText: 'Get started',
+          httpStatus: 404,
+        })
+      ),
+    'flow-cta-dead-end': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'dead_end',
+          steps: [],
+          finalUrl: 'https://example.com',
+          ctaText: 'Get started',
+        })
+      ),
+    'flow-cta-external-leave': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'external_leave',
+          steps: [],
+          finalUrl: 'https://checkout.example.net',
+          ctaText: 'Buy now',
+        })
+      ),
+    'flow-pricing-nav-broken': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          multiStep: {
+            pricingNav: 'broken',
+            pricingNavLabel: 'Pricing',
+            pricingNavHref: '#pricing',
+            mobileMenu: 'skipped',
+            formValidation: 'skipped',
+          },
+        })
+      ),
+    'flow-mobile-menu-broken': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'broken',
+            formValidation: 'skipped',
+          },
+        })
+      ),
+    'flow-form-no-validation': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'broken',
+            formLabel: 'Signup form',
+          },
+        })
+      ),
+    'flow-form-slow-feedback': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'ok',
+            formFeedbackMs: 1500,
+          },
+        })
+      ),
+    'scroll-ghost-sections': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          multiStep: {
+            pricingNav: 'skipped',
+            mobileMenu: 'skipped',
+            formValidation: 'skipped',
+            ghostSections: 1,
+            ghostSampleSelector: 'section.features',
+          },
+        })
+      ),
+    'flow-cta-blank-destination': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          postClickMetrics: {
+            timeToFirstContentMs: 4000,
+            blankScreenMs: 3500,
+            stuckLoading: false,
+            stuckLoadingLabel: null,
+          },
+        })
+      ),
+    'flow-cta-stuck-loading': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'https://example.com/signup',
+          postClickMetrics: {
+            timeToFirstContentMs: 1000,
+            blankScreenMs: 1000,
+            stuckLoading: true,
+            stuckLoadingLabel: 'skeleton',
+          },
+        })
+      ),
+    'flow-cta-destination-no-trust': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/signup',
+          destinationTrust: {
+            hasPrivacyPolicy: false,
+            hasContactInfo: false,
+            isHttps: false,
+          },
+        })
+      ),
+    'slow-3g-blank-screen': () =>
+      checkIds(runSlowReplayChecks({ timeToFirstTextMs: 6000, timeToCtaMs: 1000, screenshotUrls: [] })),
+    'slow-3g-cta-delayed': () =>
+      checkIds(runSlowReplayChecks({ timeToFirstTextMs: 1000, timeToCtaMs: 9000, screenshotUrls: [] })),
   }
 
   it('triggers matrix covers every checkId without extras', () => {

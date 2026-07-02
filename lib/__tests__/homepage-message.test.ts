@@ -84,13 +84,16 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience line avoids the old all-caps finish badge', () => {
+  it('audience line frames a pre-share review without blame', () => {
     assert.ok(!/YOUR AI BUILT IT/i.test(HERO.audienceLine))
     assert.match(HERO.audienceLine, /AI-built/i)
+    assert.match(HERO.audienceLine, /pre-share review/i)
+    assert.ok(!/skipped/i.test(HERO.audienceLine))
   })
 
   it('hero subhead adds mechanism and deliverables, not headline echo', () => {
-    assert.match(HERO.subhead, /run an audit/i)
+    assert.match(HERO.subhead, /review/i)
+    assert.match(HERO.subhead, /before you share/i)
     assert.match(HERO.subhead, /fix prompts/i)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
@@ -141,8 +144,9 @@ describe('homepage message guardrails', () => {
     assert.ok(MCP_SECTION.closing.length > 0)
   })
 
-  it('primary CTA invites running the audit', () => {
-    assert.equal(HERO.primaryCta, 'Run your first audit')
+  it('primary CTA uses visitor-facing review language', () => {
+    assert.equal(HERO.primaryCta, 'Review my site')
+    assert.ok(!/audit/i.test(HERO.primaryCta))
     assert.match(FINAL_CTA.headlineAccent, /fix/i)
     assert.ok(!/flag it/i.test(FINAL_CTA.headlineAccent))
   })

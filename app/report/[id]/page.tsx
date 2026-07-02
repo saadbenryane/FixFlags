@@ -10,7 +10,7 @@ import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
-import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
+import { normalizeInternalScreenshotUrl, resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus, AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
@@ -24,9 +24,15 @@ interface Props {
 
 function parseScreenshots(val: unknown): AuditScreenshot[] {
   if (!Array.isArray(val)) return []
-  return val.filter((s): s is AuditScreenshot =>
-    s !== null && typeof s === 'object' && 'device' in s
-  )
+  return val
+    .filter((s): s is AuditScreenshot =>
+      s !== null && typeof s === 'object' && 'device' in s && 'url' in s
+    )
+    .map((s) => ({
+      ...s,
+      url: typeof s.url === 'string' ? normalizeInternalScreenshotUrl(s.url) : '',
+    }))
+    .filter((s) => s.url.length > 0)
 }
 
 function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined {
@@ -273,41 +279,6 @@ export default async function ReportPage({ params }: Props) {
       <AuditShell
         session={session}
         showAdmin={user ? isAdminUser({ id: session!.user.id, role: user.role }) : false}
-        actions={
-          <AuditPageActions
-            auditId={id}
-            url={audit.url}
-            score={audit.score}
-            verdict={audit.verdict}
-            topIssue={topIssue}
-            rubrics={rubricRows.map((r) => ({
-              name: r.name,
-              grade: r.grade,
-              score: r.score,
-              flags: r.flags.map((f) => ({
-                severity: f.severity,
-                problem: f.problem,
-                rubric: f.rubric,
-              })),
-            }))}
-            isPaid={viewerIsPaid}
-            isLoggedIn={isLoggedIn}
-            isOwner={isOwner}
-            isAnonymous={isAnonymous}
-            isPublic={audit.isPublic}
-            compareAuditId={
-              canAccessCompareView
-                ? audit.parentId
-                  ? id
-                  : latestRecheck?.id ?? null
-                : null
-            }
-            plan={user?.plan ?? 'FREE'}
-            projectId={audit.projectId}
-            canExportSummary={entitlements?.canExportSummary ?? false}
-            canSharePublicly={entitlements?.canSharePublicly ?? false}
-          />
-        }
       >
         <AuditReport
           audit={reportAudit}
@@ -323,6 +294,41 @@ export default async function ReportPage({ params }: Props) {
           screenshotPartial={partial}
           showAiContent={showAiContent}
           aiReviewPending={aiReviewPending}
+          actions={
+            <AuditPageActions
+              auditId={id}
+              url={audit.url}
+              score={audit.score}
+              verdict={audit.verdict}
+              topIssue={topIssue}
+              rubrics={rubricRows.map((r) => ({
+                name: r.name,
+                grade: r.grade,
+                score: r.score,
+                flags: r.flags.map((f) => ({
+                  severity: f.severity,
+                  problem: f.problem,
+                  rubric: f.rubric,
+                })),
+              }))}
+              isPaid={viewerIsPaid}
+              isLoggedIn={isLoggedIn}
+              isOwner={isOwner}
+              isAnonymous={isAnonymous}
+              isPublic={audit.isPublic}
+              compareAuditId={
+                canAccessCompareView
+                  ? audit.parentId
+                    ? id
+                    : latestRecheck?.id ?? null
+                  : null
+              }
+              plan={user?.plan ?? 'FREE'}
+              projectId={audit.projectId}
+              canExportSummary={entitlements?.canExportSummary ?? false}
+              canSharePublicly={entitlements?.canSharePublicly ?? false}
+            />
+          }
         />
         <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
       </AuditShell>

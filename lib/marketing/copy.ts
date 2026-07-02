@@ -38,13 +38,13 @@ export const HERO = {
   headlineLine1: 'what your',
   headlineLine2: 'AI started.',
   headlineAccent: 'Finish',
-  audienceLine: 'The review your AI build skipped.',
+  audienceLine: 'A pre-share review for AI-built sites.',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your URL. We find what’s quietly costing you visitors — unclear copy, mobile friction, blank link previews — and hand you the exact fixes to paste into Cursor, Claude, or Lovable.',
+    'Review your AI-built site before you share the link. See broken messaging, rough mobile moments, and missing link previews. Get fix prompts your builder can use.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
-  primaryCta: 'Run your first audit',
+  primaryCta: 'Review my site',
   navSignUpCta: 'Sign up',
   trySampleCta: 'View sample report',
   urlPlaceholder: 'your-site.com',
@@ -379,6 +379,104 @@ Claude: calls ff_recheck
 Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`,
 } as const
 
+export const HOW_IT_WORKS_PAGE = {
+  hero: {
+    eyebrow: 'How FixFlags works',
+    headline: 'Check your site from the browser or your coding agent.',
+    subhead:
+      'Paste a URL for an instant report, or connect FixFlags through MCP so Cursor, Claude Code, and Windsurf can find issues, fetch fix prompts, and re-check the page.',
+    primaryCta: 'Run a browser check',
+    secondaryCta: 'Set up MCP',
+  },
+  modes: [
+    {
+      label: 'On the site',
+      title: 'Paste a URL and get the report',
+      body: 'Use the web app when you want a fast outside-in review of a live page, preview deploy, or client URL.',
+      bullets: [
+        'Message, Experience, and Reach rubrics',
+        'Desktop and mobile evidence',
+        'Pass / Needs Attention / Blocked status',
+      ],
+      cta: 'Review my site',
+      href: '/#audit',
+    },
+    {
+      label: 'In your editor',
+      title: 'Let your agent call FixFlags with MCP',
+      body: 'Use MCP when you want the fix loop to stay inside Cursor, Claude Code, or Windsurf.',
+      bullets: [
+        'Check a URL from chat',
+        'Fetch the exact flag and fix prompt',
+        'Re-check after the agent applies changes',
+      ],
+      cta: 'View MCP setup',
+      href: '/docs/mcp',
+    },
+  ],
+  reportPreview: {
+    label: 'What the report gives you',
+    title: 'Not a score dump. A fix queue.',
+    body: 'Each Flag explains what broke, where we saw it, why it matters, and what to paste into your builder.',
+    flags: [
+      {
+        rubric: 'Experience',
+        status: 'Needs Attention',
+        finding: 'Primary action starts below the first mobile viewport.',
+        evidence: '375px screenshot shows the CTA after 1,080px of scrolling.',
+      },
+      {
+        rubric: 'Reach',
+        status: 'Blocked',
+        finding: 'The page has no share preview image.',
+        evidence: 'Social and Slack previews render as a blank card.',
+      },
+      {
+        rubric: 'Message',
+        status: 'Needs Attention',
+        finding: 'Hero copy says what the product is, not who it helps.',
+        evidence: 'Headline and subhead do not name the buyer, task, or outcome.',
+      },
+    ],
+  },
+  loop: {
+    label: 'The operating loop',
+    title: 'Scan, fix, verify. Repeat when the page changes.',
+    steps: [
+      {
+        title: 'Scan the public page',
+        body: 'FixFlags loads the page like a user, captures evidence, and grades the three rubrics.',
+      },
+      {
+        title: 'Send the fix to your builder',
+        body: 'Copy the prompt manually or let MCP hand the exact Flag to your coding agent.',
+      },
+      {
+        title: 'Re-check the shipped change',
+        body: 'Run the same URL again and keep the history in your dashboard.',
+      },
+    ],
+  },
+  mcp: {
+    label: 'MCP workflow',
+    title: 'The agent can use the same product API you do.',
+    body: 'MCP turns FixFlags into a tool your agent can call, so site QA is part of the coding loop instead of a separate tab.',
+    transcript: `User: "Check the landing page and fix the highest-impact issue"
+
+Agent calls: ff_check_url
+Agent reads: Experience rubric and top Flag
+Agent applies: mobile CTA layout fix
+Agent calls: ff_recheck
+Agent reports: "Experience moved to Pass. One Flag cleared."`,
+  },
+  finalCta: {
+    headline: 'Start in the browser. Graduate to MCP when the loop is working.',
+    body: 'The same report powers both workflows, so your team can review manually today and automate the fix loop tomorrow.',
+    primaryCta: 'Review my site',
+    secondaryCta: 'Connect MCP',
+  },
+} as const
+
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
   FREE: ['Unlimited re-checks on your reports', 'No share links', 'No export'],
   BUILDER: ['Re-check loop', 'Before/after compare', 'Editor integration (MCP)'],
@@ -410,45 +508,14 @@ export const FINAL_CTA = {
 
 export const CHANGELOG_ENTRIES = [
   {
-    date: '2026-06-20',
-    title: 'Sample report uses a demo landing page',
-    items: [
-      'The sample report now audits a fictional startup landing page instead of our marketing homepage',
-      'Try the sample URL to see a realistic first-pass review on a typical AI-built page',
-    ],
-  },
-  {
-    date: '2026-06-18',
-    title: 'Track MCP usage from your dashboard',
-    items: [
-      'See call volume, success rate, and tool breakdown on the new MCP Analytics page',
-      'Review recent failures to debug editor connection issues faster',
-    ],
-  },
-  {
-    date: '2026-06-15',
-    title: 'FixFlags is now in open beta',
+    date: '2026-07-02',
+    title: 'FixFlags launches in open beta',
     items: [
       'Sign up and create your account to start testing your sites',
       'Run free checks on any live or preview URL',
       'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
-      "We'd love your feedback - use the chat button to tell us what you think",
-    ],
-  },
-  {
-    date: '2026-06-01',
-    title: 'Check your URLs from Cursor and Claude Code',
-    items: [
-      'Run FixFlags checks directly from your editor without leaving your workflow',
-      'Fetch fix prompts and verify your fixes landed - all from your terminal',
-    ],
-  },
-  {
-    date: '2026-05-15',
-    title: 'Agent-ready fix prompts on every flag',
-    items: [
-      'Copy-ready fixes with evidence and verification rules for each issue found',
-      'Desktop and mobile screenshots included on every check result',
+      'Fix-ready prompts for Cursor, Claude Code, Lovable, Bolt, and Windsurf',
+      'Track scan history and MCP usage from your dashboard',
     ],
   },
 ] as const
@@ -1074,6 +1141,11 @@ export const SEO = {
     title: 'Pricing',
     description:
       'Start free with the full report and 3 checks. Upgrade to Pro for unlimited re-checks and MCP. Founding offer active.',
+  },
+  howItWorks: {
+    title: 'How FixFlags Works',
+    description:
+      'Run FixFlags from the website or through MCP in Cursor, Claude Code, and Windsurf. Find Flags, copy fix prompts, and re-check shipped changes.',
   },
   samples: {
     title: 'Sample Report',

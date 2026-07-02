@@ -100,11 +100,13 @@ export function AuditInput({
         source: auditSource,
         is_logged_in: data.isLoggedIn ?? false,
       })
-      setActiveAudit({
-        auditId: reportId,
-        url: normalized,
-      })
-      router.push('/reports')
+      if (reportId) {
+        setActiveAudit({
+          auditId: reportId,
+          url: normalized,
+        })
+      }
+      router.push(reportId ? `/report/${reportId}` : '/dashboard')
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
@@ -155,7 +157,7 @@ export function AuditInput({
             />
             <Button
               type="submit"
-              variant="gradient"
+              variant="default"
               size="lg"
               disabled={loading}
               className={cn(

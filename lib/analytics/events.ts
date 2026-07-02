@@ -27,7 +27,7 @@ type FunnelEvent =
 
 type EventParams = {
   started_audit: { source?: string; is_logged_in?: boolean }
-  signed_up: { method?: string; plan?: string; email?: string }
+  signed_up: { method?: string; plan?: string; email?: string; user_id?: string }
   signed_in: { method?: string }
   audit_completed: { audit_id?: string; score?: number }
   viewed_pricing: { from?: string; plan?: string }
@@ -55,7 +55,10 @@ export function trackEvent<T extends FunnelEvent>(
     fireGoogleAdsConversion(getGoogleAdsSignupLabel(), {
       email: signupParams?.email,
     })
-    fireMetaPixelEvent('CompleteRegistration')
+    // Shared deterministic eventID lets Meta dedupe this pixel event against
+    // the server-side CAPI event fired from the better-auth user.create hook.
+    const eventID = signupParams?.user_id ? `signup_${signupParams.user_id}` : undefined
+    fireMetaPixelEvent('CompleteRegistration', undefined, eventID)
   }
 
   if (event === 'started_audit') {
@@ -65,27 +68,5 @@ export function trackEvent<T extends FunnelEvent>(
 
   if (event === 'viewed_report') {
     fireMetaPixelEvent('ViewContent', params as Record<string, unknown>)
-  }
-}
-
-export async function trackSignupServerSide(input: {
-  email?: string
-  eventSourceUrl?: string
-}): Promise<void> {
-  try {
-    const fbc = document.cookie.match(/(?:^|; )_fbc=([^;]+)/)?.[1]
-    const fbp = document.cookie.match(/(?:^|; )_fbp=([^;]+)/)?.[1]
-    await fetch('/api/conversions/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: input.email,
-        fbc: fbc ? decodeURIComponent(fbc) : undefined,
-        fbp: fbp ? decodeURIComponent(fbp) : undefined,
-        eventSourceUrl: input.eventSourceUrl ?? window.location.href,
-      }),
-    })
-  } catch {
-    /* server conversion is best-effort */
   }
 }

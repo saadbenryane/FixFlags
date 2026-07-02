@@ -4,6 +4,7 @@ import { prisma } from './db'
 import { getEnv } from './env'
 import { Resend } from 'resend'
 import { deleteUserProductData } from '@/lib/account/cleanup'
+import { recordSignupConversion } from '@/lib/analytics/signup-conversion'
 import { BRAND } from '@/lib/marketing/copy'
 import {
   getAuthBaseUrl,
@@ -18,6 +19,18 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        // Fires once per signup (email + OAuth). Fire-and-forget: signup must
+        // never fail or slow down for analytics. recordSignupConversion never
+        // throws and does its own error logging.
+        after: async (user) => {
+          void recordSignupConversion({ id: user.id, email: user.email })
+        },
+      },
+    },
+  },
   baseURL: getAuthBaseUrl(),
   secret: process.env.BETTER_AUTH_SECRET!,
   emailAndPassword: {

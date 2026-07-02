@@ -15,6 +15,7 @@ import {
   viewportAspectStyle,
 } from '@/lib/audit/viewports'
 import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
 
 interface ScreenshotWithHighlightsProps {
@@ -453,6 +454,7 @@ function ScreenshotPanel({
   containerRef?: Ref<HTMLDivElement>
   size?: { width: number; height: number }
 }) {
+  const resolvedImageUrl = normalizeInternalScreenshotUrl(imageUrl)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
     : viewportAspectStyle(device)
@@ -471,7 +473,7 @@ function ScreenshotPanel({
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={imageUrl}
+        src={resolvedImageUrl}
         alt={`${device} screenshot of ${host}`}
         className={cn(
           'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',

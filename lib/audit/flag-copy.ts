@@ -60,8 +60,9 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'no-cta-detected',
   'cta-below-fold-mobile',
   'motion-ignores-reduced-preference',
-  'font-family-sprawl',
-  'button-radius-inconsistent',
+  'visual-typography-sprawl',
+  'visual-radius-inconsistent',
+  'competing-ctas',
   'flow-no-cta-found',
   'flow-cta-unclickable',
   'tap-targets-small',
@@ -93,8 +94,18 @@ export function isGenericWhyItMatters(text: string | null | undefined): boolean 
 }
 
 const WHY_IT_MATTERS: Record<string, string> = {
-  'analytics-missing':
+  'measurement-ga-gtm-posthog-missing':
     'Without analytics you are shipping blind - you cannot tell whether a change increased signups or quietly broke them.',
+  'measurement-consent-blocking-incomplete':
+    'Analytics and consent need to work together. Missing privacy controls create trust and compliance risk before users even sign up.',
+  'security-mixed-content':
+    'Mixed HTTP resources on an HTTPS page can trigger browser warnings or blocked assets, making the launch URL look unsafe.',
+  'visual-typography-sprawl':
+    'Too many font families make an AI-built page feel assembled from fragments instead of a coherent product.',
+  'visual-radius-inconsistent':
+    'Inconsistent CTA corner radius makes key actions feel visually unrelated, which reduces polish and trust.',
+  'form-missing-validation':
+    'Forms without validation allow broken submissions and leave visitors guessing when required information is missing.',
   'checkout-link-dead':
     'A dead checkout or payment link means visitors who want to pay literally cannot - every click here is lost revenue.',
   'auth-page-broken':
@@ -267,8 +278,6 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Mobile visitors on slow networks see a blank screen and bounce before your product loads.',
   'slow-3g-cta-delayed':
     'If the CTA takes 8+ seconds on 3G, most mobile visitors never see it.',
-  'form-missing-validation':
-    'Forms without required or pattern attributes let bad data through and fail silently on empty submit.',
 }
 
 export function whyItMattersForCheckId(checkId: string): string {
@@ -298,23 +307,23 @@ export function formatDisplayEvidence(checkId: string | null | undefined, eviden
   if (!checkId || isCodeOrHeadCheck(checkId)) return raw
   if (!VISUAL_EVIDENCE_CHECKS.has(checkId)) return raw
   if (/screenshot|viewport|visible|above the fold|below the fold/i.test(raw)) return raw
-  return raw
+  return `Visible page evidence: ${raw}`
 }
 
 export function buildExpertFixPrompt(flag: RankableFlag): string {
   const why = resolveWhyItMatters(flag)
   const evidence = (flag.evidence ?? flag.problem).trim()
-  const fix = (flag.fix ?? resolveFixPrompt(flag) ?? flag.problem).trim()
+  const fix = resolveFixPrompt(flag) ?? flag.problem
   const verify = resolveVerificationRule(flag)
 
   const lines = [
     flag.problem.trim(),
     '',
-    `Why: ${why}`,
+    `Why it matters: ${why}`,
     '',
-    `Found: ${evidence}`,
+    `Evidence: ${evidence}`,
     '',
-    `Do: ${fix}`,
+    `Fix:\n${fix}`,
   ]
 
   if (verify) {

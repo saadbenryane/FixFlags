@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import {
   buildInProgressPipelineSteps,
   buildPipelineSteps,
@@ -45,12 +44,14 @@ describe('buildPipelineSteps', () => {
     assert.equal(complete.find((s) => s.id === 'prompts')?.state, 'done')
   })
 
-  it('puts page type or check count on Scan step detail', () => {
+  it('puts page type or a neutral label on Scan step detail (never a check count)', () => {
     const withType = buildPipelineSteps({ flagCount: 0, pageType: 'Landing page', mode: 'sample' })
     assert.equal(withType.find((s) => s.id === 'scan')?.detail, 'Landing page')
 
     const fallback = buildPipelineSteps({ flagCount: 0, pageType: null, mode: 'sample' })
-    assert.equal(fallback.find((s) => s.id === 'scan')?.detail, `${CHECK_ID_COUNT} checks`)
+    const detail = fallback.find((s) => s.id === 'scan')?.detail
+    assert.equal(detail, 'Full review')
+    assert.doesNotMatch(detail ?? '', /checks?/i)
   })
 })
 
@@ -78,9 +79,10 @@ describe('buildInProgressPipelineSteps', () => {
 })
 
 describe('reportScanDetail', () => {
-  it('returns page type or check count fallback', () => {
+  it('returns page type, or a neutral label that never reveals a check count', () => {
     assert.equal(reportScanDetail('Landing page'), 'Landing page')
-    assert.equal(reportScanDetail(null), `${CHECK_ID_COUNT} checks`)
+    assert.equal(reportScanDetail(null), 'Full review')
+    assert.doesNotMatch(reportScanDetail(null), /checks?/i)
   })
 })
 

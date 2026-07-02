@@ -148,10 +148,10 @@
   --tracking-body: 0;
   --tracking-label: 0.08em;
 
-  --shadow-card: inset 0 0 0 1px hsl(240 13% 91% / 0.7), 0 1px 2px rgb(15 17 21 / 0.04), 0 4px 16px -2px rgb(15 17 21 / 0.06);
-  --shadow-card-hover: inset 0 0 0 1px hsl(240 13% 88% / 0.8), 0 2px 8px rgb(15 17 21 / 0.06), 0 12px 28px -4px rgb(15 17 21 / 0.1);
-  --shadow-raised: 0 8px 32px -8px rgb(15 17 21 / 0.12);
-  --glass-shadow: inset 0 0 0 1px hsl(240 13% 91% / 0.6), 0 1px 3px rgb(15 17 21 / 0.05), 0 8px 24px -4px rgb(15 17 21 / 0.08);
+  --shadow-card: inset 0 0 0 1px hsl(38 18% 88% / 0.72), 0 1px 2px hsl(40 9% 18% / 0.04), 0 8px 26px -14px hsl(40 9% 18% / 0.18);
+  --shadow-card-hover: inset 0 0 0 1px hsl(38 18% 84% / 0.84), 0 2px 8px hsl(40 9% 18% / 0.06), 0 18px 36px -18px hsl(40 9% 18% / 0.22);
+  --shadow-raised: 0 16px 44px -24px hsl(40 9% 18% / 0.28);
+  --glass-shadow: inset 0 0 0 1px hsl(38 18% 88% / 0.62), inset 0 1px 0 hsl(42 40% 98% / 0.8), 0 1px 3px hsl(40 9% 18% / 0.05), 0 14px 34px -22px hsl(40 9% 18% / 0.22);
 
   --motion-fast: 200ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);

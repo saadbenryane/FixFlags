@@ -28,7 +28,7 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
         severity: 'IMPORTANT',
         problem: 'Hero headline is generic and does not lead with a visitor outcome',
         evidence: `H1: "${h1}"`,
-        fix: 'Replace the generic H1 with a benefit-driven headline that names who it is for and what they get after signing up.',
+        fix: '1. Replace the generic H1 with a benefit-driven headline\n2. Name the audience and the outcome ("Build X for Y teams")\n3. Test that the headline communicates value within 3 seconds',
         confidence: 0.9,
         source: 'DETERMINISTIC',
       })
@@ -43,7 +43,7 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'IMPORTANT',
       problem: 'No call-to-action buttons found',
       evidence: 'No buttons or links with CTA text found',
-      fix: 'Add a primary CTA button above the fold. Common CTAs: "Get started free", "Start your trial", "See how it works".',
+      fix: '1. Add a primary CTA button above the fold\n2. Use an outcome-led label: "Get started free", "Start your trial"\n3. Make it visually distinct (high contrast, larger touch target)',
       confidence: 0.8,
       source: 'DETERMINISTIC',
     })
@@ -57,7 +57,7 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'Page has a headline but no section headings (H2)',
       evidence: `H1: "${meta.h1s[0]}"; no H2 elements found`,
-      fix: 'Add H2 headings for each major section (features, pricing, FAQ) so visitors can scan the page.',
+      fix: '1. Add H2 headings for each major section (features, pricing, FAQ)\n2. Make H2s scannable and descriptive\n3. Maintain a logical heading hierarchy (H1 → H2 → H3)',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })
@@ -74,7 +74,7 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: missingRatio >= 0.5 ? 'IMPORTANT' : 'POLISH',
       problem: `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} form field${meta.totalFormInputs > 1 ? 's' : ''} allow${meta.formInputsMissingValidation === 1 ? 's' : ''} submission without inline validation`,
       evidence: `${meta.forms} form${meta.forms > 1 ? 's' : ''} on the page with ${meta.formInputsMissingValidation} input${meta.formInputsMissingValidation > 1 ? 's' : ''} missing required, aria-required, or pattern attributes`,
-      fix: 'Add required or aria-required to mandatory fields. Use pattern for format validation. Display inline error messages on submit so users know what to fix.',
+      fix: '1. Add required or aria-required to mandatory form fields\n2. Use pattern attribute for format validation (email, phone, etc.)\n3. Display inline error messages on submit so users know what to fix',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })

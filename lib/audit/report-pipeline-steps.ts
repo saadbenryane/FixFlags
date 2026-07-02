@@ -1,4 +1,3 @@
-import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { rubricLabel } from '@/lib/utils'
@@ -20,10 +19,14 @@ export interface RubricScoreRow {
 
 export type PipelineStepsMode = 'sample' | 'audit'
 
-/** User-facing detail for the Scan step (page context, not internal pipeline jargon). */
+/**
+ * User-facing detail for the Scan step (page context, not internal pipeline
+ * jargon). Never exposes the number of checks - we surface the page context or a
+ * neutral label instead.
+ */
 export function reportScanDetail(pageType: string | null): string {
   if (pageType) return pageType
-  return `${CHECK_ID_COUNT} checks`
+  return 'Full review'
 }
 
 function scanDetail(pageType: string | null): string {

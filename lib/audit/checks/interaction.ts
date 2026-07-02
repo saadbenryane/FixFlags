@@ -15,7 +15,7 @@ export function runInteractionChecks(metrics: CaptureMetrics | null): Determinis
       severity: 'IMPORTANT',
       problem: 'Loading or skeleton UI is still visible after the page finished loading',
       evidence: `Visible ${label} remained on screen at capture time (skeleton, spinner, or aria-busy).`,
-      fix: 'Hide skeletons and spinners once content loads. Use a short loading state, then swap to real hero copy and CTAs.',
+      fix: '1. Hide skeletons and spinners once content loads\n2. Use a short loading state, then swap to real hero copy and CTAs\n3. Test by throttling the network to verify the timing',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })
@@ -30,7 +30,7 @@ export function runInteractionChecks(metrics: CaptureMetrics | null): Determinis
       severity: 'IMPORTANT',
       problem: 'Page animations ignore prefers-reduced-motion',
       evidence: `CSS animations on ${label} still run when the browser requests reduced motion.`,
-      fix: 'Wrap motion in @media (prefers-reduced-motion: no-preference) or add motion-reduce:animate-none (Tailwind). Respect reduce for infinite loops and hero fades.',
+      fix: '1. Wrap CSS animations in @media (prefers-reduced-motion: no-preference)\n2. Or add motion-reduce:animate-none (Tailwind utility)\n3. Apply to infinite loops, hero fades, and any decorative motion',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })
@@ -48,7 +48,7 @@ export function runInteractionChecks(metrics: CaptureMetrics | null): Determinis
       severity: 'IMPORTANT',
       problem: `${metrics.inputsBelow16px.length} form input${metrics.inputsBelow16px.length > 1 ? 's' : ''} trigger iOS zoom on focus`,
       evidence: `Mobile inputs below 16px font-size: ${sample}`,
-      fix: 'Set font-size to at least 16px on all form inputs and textareas to prevent iOS Safari from zooming the viewport on focus.',
+      fix: '1. Set font-size to at least 16px on all form inputs and textareas\n2. Apply to both <input> and <textarea> elements\n3. Test on iOS Safari to confirm the viewport no longer zooms on focus',
       confidence: 0.95,
       source: 'DETERMINISTIC',
     })

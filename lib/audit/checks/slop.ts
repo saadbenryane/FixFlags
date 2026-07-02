@@ -59,7 +59,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
         severity: 'IMPORTANT',
         problem: 'Placeholder or unfinished copy detected on the page',
         evidence: `Found ${label} in visible page text`,
-        fix: 'Replace placeholder text with product-specific copy before sharing the link publicly.',
+        fix: '1. Replace placeholder text with product-specific copy\n2. Review the entire page for any remaining placeholder content\n3. Test the live page to confirm no placeholder text is visible',
         confidence: 0.95,
         source: 'DETERMINISTIC',
       })
@@ -76,7 +76,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
         severity: 'IMPORTANT',
         problem: 'Template or generic default copy detected',
         evidence: `Found "${label}" pattern in page text`,
-        fix: 'Replace generic template copy with a specific headline that names your product, audience, and outcome.',
+        fix: '1. Replace generic template copy with a specific headline\n2. Name the product, audience, and outcome in the headline\n3. Review other sections for template defaults (CTAs, subheadings)',
         confidence: 0.85,
         source: 'DETERMINISTIC',
       })
@@ -92,7 +92,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'CRITICAL',
       problem: 'Unreplaced template token visible on the page',
       evidence: 'Found {{…}}, ${…}, or %VAR% style token in visible text',
-      fix: 'Replace template tokens with real values. Check env vars and CMS fields did not leak into the rendered page.',
+      fix: '1. Replace template tokens ({{…}}, ${…}, %VAR%) with real values\n2. Check env vars and CMS fields did not leak into the rendered page\n3. Set fallback values for any optional template variables',
       confidence: 0.95,
       source: 'DETERMINISTIC',
     })
@@ -110,7 +110,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'CRITICAL',
       problem: 'Primary CTA link points to a dead or empty destination',
       evidence: `Link "${sample.text || '(no text)'}" uses href="${sample.href}"`,
-      fix: 'Point the CTA to a real route (signup, pricing, or contact). Replace href="#" with the actual destination URL.',
+      fix: '1. Point the CTA to a real route (signup, pricing, or contact)\n2. Replace href="#" with the actual destination URL\n3. Test the CTA link after the change',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })
@@ -125,7 +125,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'IMPORTANT',
       problem: 'Social proof looks placeholder or unverifiable',
       evidence: `Found ${socialSlop} in visible page text`,
-      fix: 'Replace fake stats, logo placeholders, and anonymous testimonials with real proof or remove the section until you have it.',
+      fix: '1. Replace fake stats with real, verifiable numbers\n2. Replace logo placeholders with actual customer logos\n3. Replace anonymous testimonials with real quotes with named attribution',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

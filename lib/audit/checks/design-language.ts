@@ -19,7 +19,7 @@ export function runDesignLanguageChecks(metrics: CaptureMetrics | null): Determi
       severity: 'POLISH',
       problem: 'Too many font families on one page',
       evidence: `${metrics.uniqueFontFamilies} distinct font families detected (${sample}).`,
-      fix: 'Limit the page to 2–3 font families: one for headings, one for body, optional accent. Remove stray imports from widgets and embeds.',
+      fix: '1. Limit the page to 2–3 font families (headings, body, optional accent)\n2. Remove stray font imports from widgets and embeds\n3. Check that all pages in the app use the same font stack',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })
@@ -38,7 +38,7 @@ export function runDesignLanguageChecks(metrics: CaptureMetrics | null): Determi
       severity: 'POLISH',
       problem: 'Button corner radius varies across CTAs',
       evidence: `CTA buttons use ${allRadii.length} different border-radius values (${allRadii.join('px, ')}px).`,
-      fix: 'Pick one button radius token (e.g. 8px or 9999px pill) and apply it to every primary and secondary CTA.',
+      fix: '1. Pick one border-radius token for all CTAs (e.g. 8px or 9999px pill)\n2. Apply the same token to both primary and secondary CTAs\n3. Remove per-button radius overrides from CSS or inline styles',
       confidence: 0.8,
       source: 'DETERMINISTIC',
     })

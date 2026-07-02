@@ -2,6 +2,7 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   deriveScreenshotCaptureStatus,
+  normalizeInternalScreenshotUrl,
   parseScreenshotCaptureStatus,
   resolveScreenshotUx,
 } from '@/lib/audit/screenshot-types'
@@ -29,6 +30,26 @@ describe('resolveScreenshotUx', () => {
       { desktop: 'ok', mobile: 'pending' }
     )
     assert.equal(ux.partial, false)
+  })
+})
+
+describe('normalizeInternalScreenshotUrl', () => {
+  it('keeps internal screenshot requests on the current report origin', () => {
+    assert.equal(
+      normalizeInternalScreenshotUrl('http://localhost:3000/api/screenshots/audit-1/desktop'),
+      '/api/screenshots/audit-1/desktop'
+    )
+    assert.equal(
+      normalizeInternalScreenshotUrl('http://192.168.11.138:3000/api/screenshots/audit-1/mobile?page=flow-1'),
+      '/api/screenshots/audit-1/mobile?page=flow-1'
+    )
+  })
+
+  it('leaves external images untouched', () => {
+    assert.equal(
+      normalizeInternalScreenshotUrl('https://cdn.example.com/screenshots/audit-1.png'),
+      'https://cdn.example.com/screenshots/audit-1.png'
+    )
   })
 })
 

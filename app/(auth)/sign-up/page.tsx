@@ -17,7 +17,7 @@ import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
-import { trackEvent, trackSignupServerSide } from '@/lib/analytics/events'
+import { trackEvent } from '@/lib/analytics/events'
 
 function SignUpForm() {
   const { oauthCallbackURL, navigateAfterAuth, signInHref, plan, from } = useAuthRedirect()
@@ -32,14 +32,18 @@ function SignUpForm() {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await authClient.signUp.email({ name: '', email, password })
+      const { data, error } = await authClient.signUp.email({ name: '', email, password })
       if (error) {
         toast.error(error.message || 'Sign up failed')
         return
       }
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
-      trackEvent('signed_up', { method: 'email', plan: plan ?? undefined, email })
-      trackSignupServerSide({ email, eventSourceUrl: window.location.href }).catch(() => {})
+      trackEvent('signed_up', {
+        method: 'email',
+        plan: plan ?? undefined,
+        email,
+        user_id: data?.user?.id,
+      })
       await navigateAfterAuth()
     } catch {
       toast.error('Something went wrong')

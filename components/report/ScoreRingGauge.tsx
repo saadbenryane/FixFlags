@@ -10,6 +10,11 @@ interface ScoreRingGaugeProps {
   size?: ScoreRingGaugeSize
   /** Render an indeterminate scanning animation instead of a static "N/A". */
   loading?: boolean
+  /**
+   * Determinate scan progress (0-100). When provided during loading, the ring
+   * fills to this value and grows smoothly instead of spinning indeterminately.
+   */
+  progress?: number
   className?: string
 }
 
@@ -22,7 +27,7 @@ const SIZE_CONFIG: Record<
   lg: { box: 104, radius: 42, stroke: 3.5, scoreText: 'text-4xl' },
 }
 
-export function ScoreRingGauge({ score, size = 'md', loading = false, className }: ScoreRingGaugeProps) {
+export function ScoreRingGauge({ score, size = 'md', loading = false, progress, className }: ScoreRingGaugeProps) {
   const { box, radius, stroke, scoreText } = SIZE_CONFIG[size]
   const center = box / 2
   const circumference = 2 * Math.PI * radius
@@ -32,6 +37,11 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, className 
   const fillColor = score != null ? scoreToScanColor(score) : undefined
   const trackColor = 'hsl(var(--muted-foreground) / 0.18)'
   const isScanning = loading && score == null
+  // When a real progress value is available, show a determinate arc that grows;
+  // otherwise fall back to the indeterminate spinning arc.
+  const isDeterminate = isScanning && typeof progress === 'number'
+  const scanNormalized = Math.min(100, Math.max(0, progress ?? 0))
+  const scanFilled = circumference * (scanNormalized / 100)
 
   return (
     <div
@@ -39,14 +49,20 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, className 
       style={{ width: box, height: box }}
       role="img"
       aria-label={
-        isScanning ? 'Scanning' : score == null ? 'Score unavailable' : `Score ${score} percent`
+        isScanning
+          ? isDeterminate
+            ? `Scanning, ${Math.round(scanNormalized)} percent`
+            : 'Scanning'
+          : score == null
+            ? 'Score unavailable'
+            : `Score ${score} percent`
       }
       aria-busy={isScanning || undefined}
     >
       <svg
         width={box}
         height={box}
-        className={cn('block', isScanning && 'origin-center motion-safe:animate-spin')}
+        className={cn('block', isScanning && !isDeterminate && 'origin-center motion-safe:animate-spin')}
         aria-hidden
       >
         <circle
@@ -66,8 +82,13 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, className 
             stroke="hsl(var(--brand))"
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={`${circumference * 0.25} ${circumference * 0.75}`}
+            strokeDasharray={
+              isDeterminate
+                ? `${scanFilled} ${circumference - scanFilled}`
+                : `${circumference * 0.25} ${circumference * 0.75}`
+            }
             transform={`rotate(-90 ${center} ${center})`}
+            className={cn(isDeterminate && 'motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out')}
           />
         )}
         {score != null && fillColor && (

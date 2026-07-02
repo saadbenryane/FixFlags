@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { DeterministicFlag } from './checks'
 import { runDeterministicAudit } from './deterministic-audit'
 import { serializeFlowData } from './flow/flow-url'
-import { CHECK_ID_TO_RULE } from './verification-rules'
+import { verifiableCheckIds } from './verification-rules'
 import type { FlagStatus, Severity } from '@prisma/client'
 
 export {
@@ -10,7 +10,7 @@ export {
   verificationRuleForCheckId,
 } from './verification-rules'
 
-const VERIFIABLE_CHECK_IDS = new Set(Object.keys(CHECK_ID_TO_RULE))
+const VERIFIABLE_CHECK_IDS = new Set(verifiableCheckIds())
 
 const severityRank: Record<Severity, number> = {
   CRITICAL: 3,

@@ -10,10 +10,11 @@ import { runContentChecks } from './content'
 import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
-import { runDesignLanguageChecks } from './design-language'
 import { runMeasurementChecks } from './measurement'
 import { runSecurityBasicsChecks } from './security'
 import { runVisualPolishChecks } from './visual-polish'
+import { runCtaFocusChecks } from './cta-focus'
+import { runAuthCheckoutChecks } from './auth-checkout'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
@@ -59,8 +60,9 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'slop',            run: () => runSlopChecks(metadata) },
     { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
     { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
-    { name: 'design-language', run: () => runDesignLanguageChecks(captureMetrics ?? null) },
+    { name: 'cta-focus',       run: () => runCtaFocusChecks(captureMetrics ?? null) },
     { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
+    { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
   ]

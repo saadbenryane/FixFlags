@@ -213,33 +213,33 @@ export async function captureScreenshots(
   const captureFailures: PageCaptureFailure[] = []
   const runFlow = options?.runFlow ?? true
 
+  // Desktop and mobile use independent pages in the shared browser, so capture
+  // them concurrently. Sequential capture doubled the wall-clock cost of the
+  // slowest step (each page carries a 30s navigation timeout), which is what
+  // pushed slow sites past the audit deadline.
+  const [desktopSettled, mobileSettled] = await Promise.allSettled([
+    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow),
+    captureMobileViewport(b, url, auditId, pageKey, consoleErrors),
+  ])
+
   let desktop: ViewportCapture & { flowResult: FlowScanResult | null }
-  try {
-    desktop = await captureDesktopWithFlow(
-      b,
-      url,
-      auditId,
-      pageKey,
-      consoleErrors,
-      runFlow
-    )
-  } catch (err) {
+  if (desktopSettled.status === 'fulfilled') {
+    desktop = desktopSettled.value
+  } else {
     // Browser/storage failures are our infrastructure, not the target site, so
     // let them abort the audit so they surface with their own failure code
     // instead of being mis-reported as "this site blocked our visit".
-    if (isInfrastructureAuditError(err)) throw err
-    captureFailures.push(pageCaptureFailureFromError('desktop', err))
+    if (isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
+    captureFailures.push(pageCaptureFailureFromError('desktop', desktopSettled.reason))
     desktop = { base64: null, url: null, html: null, flowResult: null }
   }
 
   let mobile: ViewportCapture = { base64: null, url: null, html: null }
-  if (desktop.url) {
-    try {
-      mobile = await captureMobileViewport(b, url, auditId, pageKey, consoleErrors)
-    } catch (err) {
-      logger.error('mobile screenshot failed', err)
-      captureFailures.push(pageCaptureFailureFromError('mobile', err))
-    }
+  if (mobileSettled.status === 'fulfilled') {
+    mobile = mobileSettled.value
+  } else {
+    logger.error('mobile screenshot failed', mobileSettled.reason)
+    captureFailures.push(pageCaptureFailureFromError('mobile', mobileSettled.reason))
   }
 
   return {

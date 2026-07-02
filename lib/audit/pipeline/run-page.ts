@@ -16,7 +16,7 @@ import { runFlowChecks } from '../checks/flow'
 import { runFlowScanStandalone, type FlowScanResult } from '../flow/run-flow-scan'
 import { serializeFlowData } from '../flow/flow-url'
 import { persistDeterministicFlags } from '../persist'
-import { AUDIT_PROGRESS } from '../progress'
+import { AUDIT_PROGRESS, AUDIT_PROGRESS_SUBSTEP } from '../progress'
 import { logPipelineEvent } from '../pipeline-log'
 import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
@@ -274,6 +274,15 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     event: 'checks_completed',
     durationMs: Date.now() - checksStart,
   })
+
+  // Nudge progress mid-CHECKING so the ring keeps moving through the (opaque)
+  // gap between deterministic checks finishing and the AI judge starting.
+  if (input.primary) {
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: { progress: AUDIT_PROGRESS_SUBSTEP.CHECKS_DONE },
+    })
+  }
 
   const partialRubricScores = computeRubricScores(
     flags,

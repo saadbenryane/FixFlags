@@ -16,6 +16,14 @@ export const WORKER_DEAD_RECOVERY_SECONDS = 90
  */
 export const WORKER_DOWN_GIVEUP_SECONDS = 180
 
+/**
+ * Grace window past the hard deadline before the poll force-fails a still-active
+ * run. The worker enforces its own deadline (AuditDeadlineError → graceful
+ * partial finalize); this grace lets that path win so a near-complete run isn't
+ * clobbered into FAILED by a poll firing at the exact same moment.
+ */
+export const POLL_FORCE_FAIL_GRACE_MS = 15_000
+
 const WORKER_DOWN_MESSAGE =
   'Our scanner is temporarily unavailable. Please try again in a few minutes.'
 
@@ -127,14 +135,24 @@ export async function recoverAuditJobOnPoll(
     return 'noop'
   }
 
-  if (isAuditPastDeadline(audit.startedAt)) {
-    await forceFailAudit(auditId, audit, 'poll')
-    return 'force_failed'
-  }
-
   const queue = getAuditQueue()
   const job = await queue.getJob(auditId)
   const jobState = job ? await job.getState() : null
+
+  // Past the deadline (plus a grace window so the worker's own graceful finalize
+  // can win): force-fail AND kill the still-active job so the DB status and the
+  // queue stay consistent - otherwise a lingering active job makes Retry throw
+  // "Audit is already running". Never fire while the worker is finalizing.
+  if (
+    audit.status !== 'FINALIZING' &&
+    isAuditPastDeadline(audit.startedAt, Date.now() - POLL_FORCE_FAIL_GRACE_MS)
+  ) {
+    if (job && jobState === 'active') {
+      await job.moveToFailed(new Error('Audit exceeded deadline'), '0', true)
+    }
+    await forceFailAudit(auditId, audit, 'poll')
+    return 'force_failed'
+  }
 
   // If the audit has been alive far longer than a normal run and the worker
   // heartbeat is dead, stop re-enqueuing (which loops the UI on "scanning")

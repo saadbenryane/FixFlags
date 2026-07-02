@@ -15,8 +15,8 @@ const GRID_LAYER =
   '[background-image:linear-gradient(to_right,hsl(var(--border-subtle)/0.6)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border-subtle)/0.6)_1px,transparent_1px)] [background-size:64px_64px]'
 
 /**
- * Quiet, premium canvas. A single restrained brand glow at the top,
- * a faint hairline grid, and a soft vignette. No busy drifting orbs.
+ * Quiet, premium canvas. A restrained brand wash at the top,
+ * a faint hairline grid, and soft stone-toned depth.
  */
 export function GlobalMeshBackdrop({
   className,
@@ -64,20 +64,20 @@ export function GlobalMeshBackdrop({
         )}
       />
 
-      {/* Single brand glow, centered above the fold */}
+      {/* Broad brand wash, centered above the fold */}
       <div
         className={cn(
-          'absolute left-1/2 top-[-12rem] h-[34rem] w-[60rem] -translate-x-1/2 rounded-full blur-[120px]',
-          'bg-gradient-orb-brand opacity-90 dark:opacity-100',
+          'absolute left-1/2 top-[-18rem] h-[38rem] w-[88rem] -translate-x-1/2 blur-[120px]',
+          '[background:radial-gradient(ellipse_72%_48%_at_50%_48%,hsl(var(--brand)/0.14),hsl(28_80%_72%/0.08)_38%,transparent_72%)] opacity-95 dark:opacity-100',
           'motion-safe:animate-peach-breathe motion-safe:will-change-[opacity,transform]'
         )}
       />
 
-      {/* Soft secondary glow, low and offset, barely there */}
+      {/* Soft stone reflection, low and offset, barely there */}
       <div
         className={cn(
-          'absolute bottom-[-8rem] right-[-6rem] h-[26rem] w-[26rem] rounded-full blur-[110px]',
-          'bg-gradient-orb-warm opacity-70 dark:opacity-60'
+          'absolute bottom-[-11rem] right-[-16rem] h-[28rem] w-[48rem] -rotate-6 blur-[110px]',
+          '[background:radial-gradient(ellipse_70%_46%_at_50%_50%,hsl(38_22%_74%/0.2),transparent_70%)] opacity-70 dark:opacity-45'
         )}
       />
     </div>

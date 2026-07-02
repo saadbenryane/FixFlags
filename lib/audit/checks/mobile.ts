@@ -13,7 +13,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       severity: 'CRITICAL',
       problem: `Mobile performance is critically low (${mobile.score}/100)`,
       evidence: `Google PageSpeed mobile score: ${mobile.score}/100`,
-      fix: 'Mobile performance needs urgent attention. Prioritize: image optimization, code splitting, and reducing JavaScript execution time.',
+      fix: '1. Optimize images for mobile (WebP, responsive sizes)\n2. Enable code splitting to reduce initial JavaScript\n3. Reduce JavaScript execution time with lazy loading and defer',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -24,7 +24,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       severity: 'IMPORTANT',
       problem: `Mobile performance needs improvement (${mobile.score}/100)`,
       evidence: `Google PageSpeed mobile score: ${mobile.score}/100`,
-      fix: 'Improve mobile performance: compress images, lazy load below-the-fold content, and minimize render-blocking resources.',
+      fix: '1. Compress images and serve responsive sizes for mobile\n2. Lazy load below-the-fold content (IntersectionObserver)\n3. Minimize render-blocking resources with defer and async',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -43,7 +43,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       severity: 'IMPORTANT',
       problem: 'Tap targets are too small for mobile users',
       evidence: `Lighthouse: ${tapTargets.title}`,
-      fix: 'Ensure all interactive elements have at least 48×48px touch area. Add padding to small buttons.',
+      fix: '1. Identify interactive elements smaller than 48x48px\n2. Add padding or increase size to meet the 48x48px minimum\n3. Use min-height and min-width instead of fixed sizes for flexibility',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -56,7 +56,7 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       severity: 'CRITICAL',
       problem: `Mobile LCP is critically slow (${(mobile.lcp / 1000).toFixed(1)}s)`,
       evidence: `Mobile Largest Contentful Paint: ${(mobile.lcp / 1000).toFixed(2)}s`,
-      fix: 'Optimize the hero image for mobile: use responsive images, WebP format, and preload the LCP element.',
+      fix: '1. Serve different image sizes for mobile viewports (srcset + sizes)\n2. Convert the hero image to WebP or AVIF format\n3. Preload the hero image with <link rel="preload"> as image',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

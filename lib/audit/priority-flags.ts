@@ -56,15 +56,15 @@ export function countFlags(flags: RankableFlag[]): {
 }
 
 export function resolveFixPrompt(flag: RankableFlag): string | null {
-  return (
-    flag.lovablePrompt ??
-    flag.boltPrompt ??
-    flag.cursorPrompt ??
-    flag.claudePrompt ??
-    flag.agentPrompt ??
-    flag.fix ??
-    null
-  )
+  const candidates = [
+    flag.fix,
+    flag.lovablePrompt,
+    flag.boltPrompt,
+    flag.cursorPrompt,
+    flag.claudePrompt,
+    flag.agentPrompt,
+  ]
+  return candidates.find((prompt) => prompt?.trim())?.trim() ?? null
 }
 
 export function flagHasFixPrompt(flag: RankableFlag): boolean {

@@ -38,4 +38,46 @@ describe('verify-flags', () => {
     const passingIds = buildCurrentVerifiableCheckIds(passingFlags)
     assert.equal(isCheckStillFailing('flow-cta-dead-end', passingIds), false)
   })
+
+  it('treats all rule-backed deterministic modules as verifiable on re-check', () => {
+    const currentIds = buildCurrentVerifiableCheckIds([
+      {
+        checkId: 'measurement-ga-gtm-posthog-missing',
+        rubric: 'REACH',
+        impactTag: 'MEASUREMENT',
+        severity: 'IMPORTANT',
+        problem: 'No analytics detected',
+        evidence: 'No analytics script tags found.',
+        fix: '1. Add analytics',
+        confidence: 0.9,
+        source: 'DETERMINISTIC',
+      },
+      {
+        checkId: 'security-mixed-content',
+        rubric: 'REACH',
+        impactTag: 'TRUST',
+        severity: 'CRITICAL',
+        problem: 'Mixed content',
+        evidence: 'HTTP resource found.',
+        fix: '1. Use HTTPS',
+        confidence: 1,
+        source: 'DETERMINISTIC',
+      },
+      {
+        checkId: 'visual-radius-inconsistent',
+        rubric: 'EXPERIENCE',
+        impactTag: 'TRUST',
+        severity: 'POLISH',
+        problem: 'Radius varies',
+        evidence: '0px, 8px, 24px.',
+        fix: '1. Pick one radius',
+        confidence: 0.8,
+        source: 'DETERMINISTIC',
+      },
+    ])
+
+    assert.ok(isCheckStillFailing('measurement-ga-gtm-posthog-missing', currentIds))
+    assert.ok(isCheckStillFailing('security-mixed-content', currentIds))
+    assert.ok(isCheckStillFailing('visual-radius-inconsistent', currentIds))
+  })
 })

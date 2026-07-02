@@ -19,6 +19,21 @@ export interface ScreenshotUxState {
   partial: boolean
 }
 
+export function normalizeInternalScreenshotUrl(url: string): string {
+  if (url.startsWith('/api/screenshots/')) return url
+
+  try {
+    const parsed = new URL(url)
+    if (parsed.pathname.startsWith('/api/screenshots/')) {
+      return `${parsed.pathname}${parsed.search}`
+    }
+  } catch {
+    return url
+  }
+
+  return url
+}
+
 export function resolveScreenshotUx(
   screenshots: AuditScreenshot[],
   captureStatus?: ScreenshotCaptureStatus | null

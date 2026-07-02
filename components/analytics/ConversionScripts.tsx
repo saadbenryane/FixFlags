@@ -1,11 +1,42 @@
 'use client'
 
+import { useEffect } from 'react'
 import Script from 'next/script'
 import { getGoogleAdsId, getMetaPixelId } from '@/lib/analytics/ad-conversions'
+import {
+  CLICK_IDS_COOKIE,
+  CLICK_IDS_MAX_AGE,
+  parseClickIds,
+  serializeClickIds,
+} from '@/lib/analytics/click-ids'
+
+/**
+ * Capture ad click ids (gclid/fbclid) from the landing URL into a first-party
+ * cookie so the server-side signup hook can attribute the account to the click,
+ * even for visitors who sign up without running a scan.
+ */
+function useCaptureClickIds() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const gclid = params.get('gclid')
+    const fbclid = params.get('fbclid')
+    if (!gclid && !fbclid) return
+
+    const existingRaw = document.cookie
+      .match(new RegExp(`(?:^|; )${CLICK_IDS_COOKIE}=([^;]+)`))?.[1]
+    const existing = parseClickIds(existingRaw ? decodeURIComponent(existingRaw) : null)
+    const value = serializeClickIds({
+      gclid: gclid ?? existing.gclid,
+      fbclid: fbclid ?? existing.fbclid,
+    })
+    document.cookie = `${CLICK_IDS_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=${CLICK_IDS_MAX_AGE}; SameSite=Lax`
+  }, [])
+}
 
 export function ConversionScripts() {
   const adsId = getGoogleAdsId()
   const pixelId = getMetaPixelId()
+  useCaptureClickIds()
 
   return (
     <>

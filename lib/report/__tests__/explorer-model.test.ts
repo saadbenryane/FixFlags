@@ -48,7 +48,8 @@ describe('explorer-model', () => {
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
-    assert.match(model.flags[0]?.fixPrompt ?? '', /Why:/)
+    assert.match(model.flags[0]?.fixPrompt ?? '', /Why it matters:/)
+    assert.equal(model.flags[0]?.copyFixPrompt, model.flags[0]?.fixPrompt)
   })
 
   it('builds partial explorer model when flags exist', () => {

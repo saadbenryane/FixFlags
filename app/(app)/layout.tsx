@@ -31,7 +31,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <SiteShell
       variant="app"
-      userEmail={session.user.email}
       showAdmin={showAdmin}
     >
       {children}

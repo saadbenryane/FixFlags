@@ -84,7 +84,7 @@ export async function runAuthCheckoutChecks(
       severity: 'CRITICAL',
       problem: `${deadCheckout.length} checkout or payment link${deadCheckout.length > 1 ? 's' : ''} did not resolve`,
       evidence: deadCheckout.slice(0, 3).join('; '),
-      fix: 'Fix the checkout/payment link so customers can actually pay. Verify the Stripe/PayPal/Paddle URL or your /checkout route returns a working page, and update any expired payment links.',
+      fix: '1. Fix the checkout/payment link so customers can actually pay\n2. Verify the Stripe/PayPal/Paddle URL or /checkout route returns a working page\n3. Update any expired payment links or re-activate the subscription plan',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -98,7 +98,7 @@ export async function runAuthCheckoutChecks(
       severity: 'IMPORTANT',
       problem: `${deadAuth.length} login or sign-up link${deadAuth.length > 1 ? 's' : ''} did not resolve`,
       evidence: deadAuth.slice(0, 3).join('; '),
-      fix: 'Repair the auth entry point so visitors can sign up or log in. Point the link at a live route and confirm the page renders without an error.',
+      fix: '1. Repair the auth entry point so visitors can sign up or log in\n2. Point the link at a live route and confirm the page renders\n3. Test the full auth flow (sign up → confirm → log in)',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

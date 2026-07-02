@@ -25,7 +25,7 @@ export function runLayoutChecks(metrics: CaptureMetrics | null): DeterministicFl
       severity: scrollDepth > metrics.mobileViewportHeight ? 'CRITICAL' : 'IMPORTANT',
       problem: 'Primary CTA is hidden below the fold on mobile',
       evidence: `Mobile ${metrics.mobileViewportHeight}px viewport: ${ctaLabel} starts at ${scrollDepth}px scroll depth.`,
-      fix: 'Move the primary CTA above the fold on mobile. Reduce hero image height, collapse nav, and stack headline + CTA within the first screen.',
+      fix: '1. Move the primary CTA above the fold on mobile\n2. Reduce hero image height or collapse the nav\n3. Stack headline + CTA within the first screen (~850px)',
       confidence: 0.95,
       source: 'DETERMINISTIC',
     },

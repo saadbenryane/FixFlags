@@ -12,7 +12,6 @@ interface SiteShellProps {
   headerRight?: React.ReactNode
   showFooter?: boolean
   footer?: 'default' | 'minimal'
-  userEmail?: string | null
   showAdmin?: boolean
   adminInboxUnread?: number
 }
@@ -24,7 +23,6 @@ export function SiteShell({
   headerRight,
   showFooter = true,
   footer = 'default',
-  userEmail,
   showAdmin,
   adminInboxUnread = 0,
 }: SiteShellProps) {
@@ -38,7 +36,6 @@ export function SiteShell({
           variant={variant}
           logoHref={logoHref}
           right={headerRight}
-          userEmail={userEmail}
           showAdmin={showAdmin}
           adminInboxUnread={adminInboxUnread}
         />

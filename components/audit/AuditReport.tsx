@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
 import { RubricsPanel } from '@/components/audit/RubricsPanel'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
@@ -13,6 +14,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import { UPSELLS, REPORT_COPY, HERO, OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
+import { displayVerdict } from '@/lib/audit/verdict'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
@@ -86,6 +88,7 @@ interface AuditReportProps {
   /** @deprecated Use showPrescription */
   showAiContent?: boolean
   aiReviewPending?: boolean
+  actions?: ReactNode
 }
 
 export function AuditReport({
@@ -103,6 +106,7 @@ export function AuditReport({
   showPrescription = true,
   showAiContent = showPrescription,
   aiReviewPending = false,
+  actions,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -112,6 +116,7 @@ export function AuditReport({
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const topFixPrompt = getTopFixPromptFromFlags(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
+  const userVerdict = displayVerdict(audit.verdict ?? null)
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -157,16 +162,27 @@ export function AuditReport({
         screenshotLimited={screenshotLimited}
         screenshotPartial={screenshotPartial}
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+        actions={actions}
       />
 
       {!isSample && (
-        <ReportMiniNav
-          showOverview={showOverview}
-          showPreviews={Boolean(audit.previewMeta)}
-          showFlow={Boolean(audit.flowData)}
-          showFix={Boolean(topFixPrompt && !explorerModel)}
-          showLaunchGates={hasLaunchGates}
-        />
+        <>
+          <ReportMiniNav
+            showOverview={showOverview}
+            showPreviews={Boolean(audit.previewMeta)}
+            showFlow={Boolean(audit.flowData)}
+            showFix={Boolean(topFixPrompt && !explorerModel)}
+            showLaunchGates={hasLaunchGates}
+            siteUrl={audit.url}
+            score={audit.score}
+          />
+
+          {userVerdict ? (
+            <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
+              {userVerdict}
+            </blockquote>
+          ) : null}
+        </>
       )}
 
       {explorerModel ? (

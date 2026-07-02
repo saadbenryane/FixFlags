@@ -8,7 +8,7 @@ import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FlagFeedback } from './FlagFeedback'
 import { Card } from '@/components/ui/card'
 import { formatFlagEvidence, formatFlagFixPrompt } from '@/lib/audit/evidence-highlights'
-import { resolveFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
+import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { rubricLabel, severityLabel, impactTagLabel } from '@/lib/utils'
@@ -22,10 +22,6 @@ interface Props {
   showFeedback?: boolean
   variant?: 'card' | 'row'
   defaultExpanded?: boolean
-}
-
-function bestFixPrompt(flag: RankableFlag): string {
-  return resolveFixPrompt(flag) ?? flag.problem
 }
 
 function metaLine(flag: RankableFlag): string {
@@ -46,8 +42,7 @@ export function FlagCard({
   defaultExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
-  const fixPrompt = bestFixPrompt(flag)
-  const displayFixPrompt = formatFlagFixPrompt(flag)
+  const fixPrompt = formatFlagFixPrompt(flag)
   const hasScreenshots = Boolean(screenshots?.length && reportHost)
 
   const content = (
@@ -56,7 +51,7 @@ export function FlagCard({
       flagIndex={flagIndex}
       expanded={expanded}
       onToggle={() => setExpanded(!expanded)}
-      fixPrompt={displayFixPrompt}
+      fixPrompt={fixPrompt}
       copyPrompt={fixPrompt}
       showFeedback={showFeedback}
       screenshots={screenshots}
@@ -147,7 +142,7 @@ function FlagRowContent({
 
           <div className="space-y-1">
             <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
-              Where
+              Evidence
             </p>
             <p className="text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-md leading-relaxed text-pretty">
               {evidenceText || 'No evidence captured.'}
@@ -157,7 +152,7 @@ function FlagRowContent({
           {flag.whyItMatters && (
             <div className="space-y-1">
               <p className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
-                Why
+                Why it matters
               </p>
               <p className="text-sm text-foreground/80 text-pretty">{flag.whyItMatters}</p>
             </div>

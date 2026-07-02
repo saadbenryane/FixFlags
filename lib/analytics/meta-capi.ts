@@ -54,11 +54,3 @@ export async function sendMetaCapiEvent(event: MetaCapiEvent): Promise<boolean> 
 
   return res.ok
 }
-
-export async function sendGoogleEnhancedConversion(email: string): Promise<boolean> {
-  // Enhanced Conversions for Web is primarily client-side via gtag set user_data.
-  // Server-side upload requires Google Ads API credentials not in scope here;
-  // the client fires hashed email on signup via ad-conversions.ts.
-  void email
-  return true
-}

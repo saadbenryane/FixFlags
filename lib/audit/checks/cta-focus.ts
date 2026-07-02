@@ -27,7 +27,7 @@ export function runCtaFocusChecks(metrics: CaptureMetrics | null): Deterministic
       severity: 'IMPORTANT',
       problem: `${metrics.competingPrimaryCtaCount} competing primary CTAs above the fold`,
       evidence,
-      fix: 'Choose one primary action and make it the visually dominant button above the fold. Demote the rest to secondary (ghost/text) styling or move them further down the page.',
+      fix: '1. Choose one primary action as the dominant button above the fold\n2. Demote the rest to secondary (ghost/text) styling\n3. Move competing CTAs further down the page if they serve different goals',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     },

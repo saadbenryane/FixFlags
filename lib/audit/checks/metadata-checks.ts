@@ -12,7 +12,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'CRITICAL',
       problem: 'Page title is missing',
       evidence: 'No <title> tag found in <head>',
-      fix: 'Add a descriptive <title> tag (50–60 characters) to the <head>',
+      fix: '1. Add a descriptive <title> tag (50-60 characters) to the <head>\n2. Include the primary keyword and brand name\n3. Verify the title is unique across pages',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -24,7 +24,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'IMPORTANT',
       problem: `Page title is too short (${meta.title.length} chars)`,
       evidence: `Title: "${meta.title}"`,
-      fix: 'Expand the title to 50–60 characters. Include the primary keyword and brand name.',
+      fix: '1. Expand the title to 50-60 characters\n2. Place the primary keyword near the start\n3. Include the brand name at the end',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -36,7 +36,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: `Page title is too long (${meta.title.length} chars, will truncate at ~60)`,
       evidence: `Title: "${meta.title}"`,
-      fix: 'Shorten the title to under 60 characters. Keep the primary keyword near the start.',
+      fix: '1. Shorten the title to under 60 characters\n2. Keep the primary keyword near the start\n3. Keep the brand name if it fits',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -50,7 +50,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'IMPORTANT',
       problem: 'Meta description is missing',
       evidence: 'No <meta name="description"> tag found',
-      fix: 'Add a meta description (120–160 characters) summarizing the page content and including a call to action.',
+      fix: '1. Add a meta description (120-160 characters) summarizing the page content\n2. Include a call to action and primary keywords\n3. Verify it appears in search snippet previews',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -62,7 +62,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: `Meta description is too short (${meta.description.length} chars)`,
       evidence: `Description: "${meta.description}"`,
-      fix: 'Expand the meta description to 120–160 characters. Describe what users get and include a CTA.',
+      fix: '1. Expand the meta description to 120-160 characters\n2. Describe what users get and include a CTA\n3. Avoid keyword stuffing',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -74,7 +74,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: `Meta description is too long (${meta.description.length} chars, will truncate at ~160)`,
       evidence: `Description: "${meta.description.slice(0, 80)}..."`,
-      fix: 'Shorten the meta description to under 160 characters.',
+      fix: '1. Shorten the meta description to under 160 characters\n2. Keep the key value prop and CTA in the visible portion\n3. Avoid truncation in search results',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -88,7 +88,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'IMPORTANT',
       problem: 'og:image is missing, link previews show blank',
       evidence: 'No <meta property="og:image"> tag found in <head>',
-      fix: 'Add a 1200×630px og:image. For Next.js, add it to the metadata export in your page.tsx.',
+      fix: '1. Open your page metadata export (layout.tsx or page.tsx)\n2. Add openGraph: { images: [\'https://yourdomain.com/og.png\'] }\n3. Generate a 1200x630px PNG with your branding or product screenshot',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -102,7 +102,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'og:title is missing',
       evidence: 'No <meta property="og:title"> tag found',
-      fix: 'Add <meta property="og:title" content="..."> to your page head.',
+      fix: '1. Add <meta property="og:title" content="..."> to the page head\n2. Set it to match the page title (50-60 characters)\n3. Verify it renders correctly in the Twitter Card validator',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -116,7 +116,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'og:description is missing',
       evidence: 'No <meta property="og:description"> tag found',
-      fix: 'Add <meta property="og:description">, usually the same as the meta description.',
+      fix: '1. Add <meta property="og:description"> to the page head\n2. Set it to match the meta description\n3. Keep it under 200 characters for clean link previews',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -129,7 +129,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'CRITICAL',
       problem: 'Viewport meta tag is missing',
       evidence: 'No <meta name="viewport"> found',
-      fix: 'Add <meta name="viewport" content="width=device-width, initial-scale=1"> to <head>',
+      fix: '1. Add <meta name="viewport" content="width=device-width, initial-scale=1"> to <head>\n2. Remove any other viewport meta tags that conflict\n3. Test mobile rendering at 375px width',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -143,7 +143,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'HTML lang attribute is missing',
       evidence: '<html> tag does not have a lang attribute',
-      fix: 'Add lang="en" (or the appropriate language code) to the <html> element.',
+      fix: '1. Add lang="en" (or the appropriate language code) to the <html> element\n2. Match the language of the page content\n3. Verify screen reader pronunciation with VoiceOver',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -157,7 +157,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'Canonical URL is missing',
       evidence: 'No <link rel="canonical"> found in <head>',
-      fix: 'Add <link rel="canonical" href="https://yourdomain.com/page"> to prevent duplicate content issues.',
+      fix: '1. Add <link rel="canonical" href="https://yourdomain.com/page"> to <head>\n2. Use the absolute URL matching exactly what Google should index\n3. Ensure the canonical URL returns 200, not a redirect',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -171,7 +171,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'CRITICAL',
       problem: 'Robots meta tag is blocking indexing',
       evidence: `<meta name="robots" content="${meta.robots}">`,
-      fix: 'Remove "noindex" from the robots meta tag to allow search engines to index this page.',
+      fix: '1. Find the robots meta tag in <head> or metadata export\n2. Remove "noindex" from the content attribute\n3. Verify the page appears in Google Search Console after re-crawl',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -185,7 +185,7 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       severity: 'POLISH',
       problem: 'Favicon is missing',
       evidence: 'No link rel="icon" or apple-touch-icon found in <head>',
-      fix: 'Add a favicon (32x32 PNG or ICO) and apple-touch-icon in the page head.',
+      fix: '1. Generate a 32x32 PNG or ICO favicon\n2. Add <link rel="icon" href="/favicon.ico"> to <head>\n3. Add <link rel="apple-touch-icon" href="/apple-touch-icon.png"> for iOS',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
@@ -212,7 +212,7 @@ export async function runOgImageUrlCheck(
         severity: 'IMPORTANT',
         problem: 'og:image URL is invalid',
         evidence: `og:image content="${meta.ogImage}" could not be resolved`,
-        fix: 'Set og:image to an absolute HTTPS URL that returns a valid image (1200×630px recommended).',
+        fix: '1. Set og:image to an absolute HTTPS URL that returns a valid image\n2. Use a 1200x630px PNG or JPG\n3. Verify the URL returns 200 and Content-Type is an image type',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       },
@@ -247,7 +247,7 @@ export async function runOgImageUrlCheck(
       severity: 'IMPORTANT',
       problem: 'og:image URL does not load',
       evidence: `HEAD/GET ${imageUrl} failed or returned an error status`,
-      fix: 'Fix the og:image URL so it returns 200 with a valid image. Check CDN permissions and absolute paths.',
+      fix: '1. Fix the og:image URL so it returns 200 with a valid image\n2. Check CDN permissions, bucket policies, and absolute paths\n3. Verify the Content-Type header matches the image format',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     },

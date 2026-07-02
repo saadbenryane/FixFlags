@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { FilterPill } from '@/components/ui/filter-pill'
 import { Container } from '@/components/ui/container'
+import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
@@ -21,6 +21,7 @@ interface Props {
   showFix?: boolean
   showLaunchGates?: boolean
   siteUrl?: string
+  score?: number | null
 }
 
 export function ReportMiniNav({
@@ -31,6 +32,7 @@ export function ReportMiniNav({
   showFix,
   showLaunchGates,
   siteUrl,
+  score,
 }: Props) {
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
@@ -92,27 +94,40 @@ export function ReportMiniNav({
       return null
     }
   })()
+  const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
 
   return (
-    <div className="sticky top-14 z-navbar border-0 glass-nav">
-      <Container className="flex items-center gap-4 overflow-x-auto scrollbar-thin">
+    <div className="sticky top-14 z-navbar border-y border-border/35 bg-background/82 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+      <Container className="flex items-center gap-5 overflow-x-auto scrollbar-thin">
         {hostname && (
-          <span className="shrink-0 text-xs font-medium text-muted-foreground truncate max-w-[160px]">
-            {hostname}
+          <span className="flex max-w-[170px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: scoreColor }}
+              aria-hidden
+            />
+            <span className="truncate">{hostname}</span>
           </span>
         )}
         <nav
           aria-label="Report sections"
-          className={cn('flex items-center gap-2 py-2', className)}
+          className={cn('flex min-w-max items-center gap-5', className)}
         >
           {sections.map((section) => (
-            <FilterPill
+            <button
+              type="button"
               key={section.id}
-              active={active === section.id}
               onClick={() => scrollTo(section.id)}
+              aria-current={active === section.id ? 'page' : undefined}
+              className={cn(
+                'relative h-12 shrink-0 border-b-2 px-0.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
+                active === section.id
+                  ? 'border-brand text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              )}
             >
               {section.label}
-            </FilterPill>
+            </button>
           ))}
         </nav>
       </Container>

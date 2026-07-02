@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowDown, ArrowRight, CheckCircle2, Flag, Globe, MousePointer2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { BrandIllustration } from '@/components/marketing/landing/BrandIllustration'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
@@ -28,7 +29,7 @@ function LoopStepCard({
       <div className="mb-4 flex items-center justify-between">
         <span
           className={cn(
-            'inline-flex h-10 w-10 items-center justify-center rounded-nested-md shadow-sm',
+            'stone-icon-tile inline-flex h-10 w-10 items-center justify-center rounded-nested-md',
             visual.iconBg
           )}
         >
@@ -89,8 +90,18 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
   const { headline, subhead, sampleLink, steps } = LANDING_PAGE.howItWorks
 
   return (
-    <Section spacing="marketing" id="how-it-works" className="scroll-mt-[var(--header-offset)]">
-      <Container className="space-y-8 sm:space-y-11">
+    <Section
+      spacing="marketing"
+      id="how-it-works"
+      className="relative overflow-hidden scroll-mt-[var(--header-offset)]"
+    >
+      <BrandIllustration
+        variant="moments"
+        sizes="(min-width: 1024px) 360px, 0px"
+        className="absolute left-[max(1rem,calc(50%-46rem))] top-10 hidden h-44 w-80 -rotate-2 rounded-card opacity-35 shadow-raised blur-[0.2px] lg:block"
+        imageClassName="scale-105"
+      />
+      <Container className="relative space-y-8 sm:space-y-11">
         <div className="mx-auto max-w-3xl space-y-3 text-center">
           <LandingSectionHeader headline={headline} />
           <p className="text-base leading-relaxed text-muted-foreground text-pretty">{subhead}</p>

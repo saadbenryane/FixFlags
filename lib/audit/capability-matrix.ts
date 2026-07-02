@@ -68,6 +68,16 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     verify: 'npm run demo:audit:offline',
   },
   {
+    id: 'copy-cta-focus',
+    dimension: 'MESSAGE',
+    category: 'copy',
+    label: 'CTA focus above the fold',
+    tool: 'browser-capture',
+    status: 'live',
+    checkIds: ['competing-ctas'],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+  {
     id: 'copy-heading-hierarchy',
     dimension: 'MESSAGE',
     category: 'copy',

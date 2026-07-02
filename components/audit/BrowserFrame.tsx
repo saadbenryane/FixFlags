@@ -7,6 +7,7 @@ import {
   SCREENSHOT_FRAME,
 } from '@/lib/audit/viewports'
 import { truncateUrl } from '@/lib/audit/progress-ui'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
 
 type BrowserFrameState = 'loading' | 'loaded' | 'failed'
@@ -46,6 +47,7 @@ export function BrowserFrame({
 
   const resolvedState: BrowserFrameState =
     state ?? (imageUrl ? 'loaded' : 'loading')
+  const resolvedImageUrl = imageUrl ? normalizeInternalScreenshotUrl(imageUrl) : null
 
   const displayUrl = url ? truncateUrl(url, 56) : 'Capturing page...'
 
@@ -92,16 +94,16 @@ export function BrowserFrame({
           </div>
         )}
 
-        {resolvedState === 'loaded' && imageUrl && (
+        {resolvedState === 'loaded' && resolvedImageUrl && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={imageUrl}
+            src={resolvedImageUrl}
             alt={alt}
             className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in"
           />
         )}
 
-        {resolvedState === 'loaded' && imageUrl && viewportOverlay && (
+        {resolvedState === 'loaded' && resolvedImageUrl && viewportOverlay && (
           <div className="pointer-events-none absolute inset-0">
             <div className="pointer-events-auto relative h-full w-full">{viewportOverlay}</div>
           </div>

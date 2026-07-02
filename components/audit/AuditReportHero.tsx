@@ -1,9 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
-import { displayVerdict } from '@/lib/audit/verdict'
+import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
@@ -22,6 +23,7 @@ type Props = {
   durationMs?: number | null
   startedAt?: string | Date | null
   completedAt?: string | Date | null
+  actions?: ReactNode
 }
 
 function shareStatusMessage(shareStatus: string, criticalCount: number): string {
@@ -38,7 +40,6 @@ export function AuditReportHero({
   variant = 'default',
   score = null,
   pageType,
-  verdict,
   url,
   shareStatus,
   rubrics,
@@ -46,9 +47,9 @@ export function AuditReportHero({
   durationMs,
   startedAt,
   completedAt,
+  actions,
 }: Props) {
   const isMinimal = variant === 'minimal'
-  const userVerdict = displayVerdict(verdict ?? null)
   const criticalCount = rubrics.reduce((sum, r) => sum + r.criticalCount, 0)
   const shareMessage = shareStatusMessage(shareStatus, criticalCount)
   const isReady = shareStatus === 'good_to_share'
@@ -62,6 +63,7 @@ export function AuditReportHero({
   })()
 
   const firstScreenshot = screenshots?.[0]
+  const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
 
   const durationSec =
     durationMs != null
@@ -75,7 +77,16 @@ export function AuditReportHero({
   if (isMinimal) {
     return (
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">{hostname}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_3px_currentColor]"
+            style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
+            aria-hidden
+          />
+          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+            {hostname}
+          </h1>
+        </div>
         <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
       </div>
     )
@@ -98,9 +109,14 @@ export function AuditReportHero({
         )}
 
         <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_3px_currentColor]"
+                  style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
+                  aria-label={score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'}
+                />
                 <h1 className="text-lg font-semibold tracking-tight text-foreground">{hostname}</h1>
                 {pageType ? (
                   <Badge variant="secondary" className="text-xs capitalize">
@@ -115,6 +131,11 @@ export function AuditReportHero({
               </div>
               <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
             </div>
+            {actions && (
+              <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
+                {actions}
+              </div>
+            )}
             {score != null && (
               <ScoreRingGauge score={score} size="sm" className="shrink-0 sm:hidden" />
             )}
@@ -125,12 +146,6 @@ export function AuditReportHero({
           </div>
         </div>
       </div>
-
-      {userVerdict ? (
-        <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
-          {userVerdict}
-        </blockquote>
-      ) : null}
 
       {durationSec != null && (
         <p className="text-xs text-muted-foreground font-mono tabular-nums">
