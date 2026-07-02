@@ -41,11 +41,11 @@ export const HERO = {
   audienceLine: 'A pre-share review for AI-built sites.',
   headlineAccentLegacy: false,
   subhead:
-    'Review your AI-built site before you share the link. See broken messaging, rough mobile moments, and missing link previews. Get fix prompts your builder can use.',
+    'Review your AI-built site before you share the link. Catch broken messaging, mobile layout issues, and missing link previews. Get copy-ready fix prompts your builder can run.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
   primaryCta: 'Review my site',
-  navSignUpCta: 'Sign up',
+  navSignUpCta: 'Try free',
   trySampleCta: 'View sample report',
   urlPlaceholder: 'your-site.com',
   trustBadges: [
