@@ -520,6 +520,22 @@ export const CHANGELOG_ENTRIES = [
   },
 ] as const
 
+export const BLOG_POSTS = [
+  {
+    slug: 'why-ai-built-sites-need-a-second-pass',
+    title: 'Why AI-built sites need a second pass',
+    date: '2026-07-02',
+    excerpt:
+      'AI coding tools ship fast, but speed skips the boring checks: dead CTAs, broken previews, missing alt text. Here is why a second pass matters before you share the link.',
+    body: [
+      'AI coding tools are very good at producing a page that looks finished. They are much less good at noticing the things that only show up when someone else actually uses the page: a call-to-action that points nowhere, an Open Graph image that never loads, a form input with no label.',
+      'None of these are hard to fix. Almost all of them are invisible until a real user, or a QA pass, goes looking.',
+      'That gap is what "finish what your AI started" means in practice. The build gets you 90% of the way. The last 10% is the pass that catches what speed skipped, and it is exactly the kind of checklist work that is easy to automate and easy to skip when you are moving fast.',
+      'A second pass does not need to be a person. It needs to be systematic: run the checks, get the flags, fix what matters, ship. The habit is the re-check, not the first check.',
+    ],
+  },
+] as const
+
 export const LANDING_PAGE = {
   logoCloud: {
     label: 'Trusted by builders using',
@@ -1170,6 +1186,10 @@ export const SEO = {
   changelog: {
     title: 'Changelog',
     description: 'Product updates, new checks, and shipping improvements for FixFlags.',
+  },
+  blog: {
+    title: 'Blog',
+    description: 'Notes on shipping AI-built products without the embarrassing bugs — QA, launch checklists, and what breaks when you ship fast.',
   },
   privacy: {
     title: 'Privacy Policy',

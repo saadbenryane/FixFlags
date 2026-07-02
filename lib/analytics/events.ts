@@ -24,6 +24,7 @@ type FunnelEvent =
   | 'completed_checkout'
   | 'audit_limit_reached'
   | 'viewed_report'
+  | 'fix_prompt_copied'
 
 type EventParams = {
   started_audit: { source?: string; is_logged_in?: boolean }
@@ -35,6 +36,7 @@ type EventParams = {
   completed_checkout: { plan: string }
   audit_limit_reached: { reason?: string }
   viewed_report: { audit_id?: string; is_owner?: boolean }
+  fix_prompt_copied: Record<string, never>
 }
 
 export function trackEvent<T extends FunnelEvent>(
