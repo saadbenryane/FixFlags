@@ -2,6 +2,8 @@
 
 FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
 
+See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue, customer, and growth targets.
+
 ## Free Tier Strategy
 
 - **Free accounts get 3 new URL checks total.** Every check runs the full pipeline and returns the complete report with fix prompts.

@@ -175,3 +175,7 @@ curl https://fixflags.com/api/cron/recover-stuck-audits \
 ## Voice and copy
 
 [`docs/voice-and-copy.md`](docs/voice-and-copy.md)
+
+## Year 1 operating plan
+
+[`docs/year-1-operating-plan.md`](docs/year-1-operating-plan.md) — North star, financial/customer/growth targets, product priorities, and quarterly milestones.
