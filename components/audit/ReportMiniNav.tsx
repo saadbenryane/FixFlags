@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Container } from '@/components/ui/container'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
@@ -34,6 +34,8 @@ export function ReportMiniNav({
   siteUrl,
   score,
 }: Props) {
+  const navShellRef = useRef<HTMLDivElement>(null)
+  const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
     const insertAt = 1
@@ -53,6 +55,32 @@ export function ReportMiniNav({
   }, [showOverview, showPreviews, showFlow, showFix, showLaunchGates])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
+
+  useEffect(() => {
+    let frame = 0
+
+    const updateStuck = () => {
+      frame = 0
+      const el = navShellRef.current
+      if (!el) return
+      setIsStuck(el.getBoundingClientRect().top <= 57)
+    }
+
+    const scheduleUpdate = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(updateStuck)
+    }
+
+    updateStuck()
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
+    }
+  }, [])
 
   useEffect(() => {
     const observers: IntersectionObserver[] = []
@@ -97,9 +125,15 @@ export function ReportMiniNav({
   const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
 
   return (
-    <div className="sticky top-14 z-navbar border-y border-border/35 bg-background/82 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+    <div
+      ref={navShellRef}
+      className={cn(
+        'sticky top-14 z-navbar border-y border-border/35 bg-background/82 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70',
+        isStuck && 'shadow-glass'
+      )}
+    >
       <Container className="flex items-center gap-5 overflow-x-auto scrollbar-thin">
-        {hostname && (
+        {hostname && isStuck && (
           <span className="flex max-w-[170px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground">
             <span
               className="h-2 w-2 shrink-0 rounded-full"
