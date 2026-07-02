@@ -22,6 +22,8 @@ export interface CreateAuditPageOptions {
   consoleErrors?: Array<{ type: string; text: string }>
   /** Demo fixture flow on localhost; skips public-URL guard for local dev URLs. */
   allowLocalhost?: boolean
+  /** Set false when the caller needs the first post-DOMContentLoaded paint. */
+  settle?: boolean
 }
 
 export async function settleAuditPage(page: Page): Promise<void> {
@@ -70,7 +72,9 @@ export async function createAuditPage(
   })
   await validateNavigationResponse(response, page.url(), page)
 
-  await settleAuditPage(page)
+  if (options.settle !== false) {
+    await settleAuditPage(page)
+  }
 
   return { page, consoleErrors }
 }

@@ -6,9 +6,14 @@ import type { ScreenshotCaptureStatus } from './screenshot-types'
 import { assertPublicAuditUrl } from './url'
 import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
-import { createAuditPage } from './browser/page-session'
+import { createAuditPage, settleAuditPage } from './browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
-import { measureMobileLayout, type CaptureMetrics } from './capture-metrics'
+import {
+  measureMobileLayout,
+  type CaptureMetrics,
+  type PageLoadExperience,
+} from './capture-metrics'
+import type { RuntimeHeadMetadata } from './metadata'
 import {
   pageCaptureFailureFromError,
   type PageCaptureFailure,
@@ -97,13 +102,157 @@ export interface ScreenshotResult {
   captureFailures: PageCaptureFailure[]
   flowResult?: FlowScanResult | null
   captureMetrics?: CaptureMetrics | null
+  loadExperience?: PageLoadExperience | null
+  runtimeHeadMetadata?: RuntimeHeadMetadata | null
 }
 
 interface ViewportCapture {
   base64: string | null
   url: string | null
+  initialUrl: string | null
   html: string | null
   captureMetrics?: CaptureMetrics | null
+  loadExperience?: PageLoadExperience | null
+  runtimeHeadMetadata?: RuntimeHeadMetadata | null
+}
+
+interface PageLoadSnapshot {
+  readyState: string
+  title: string | null
+  loadingVisible: boolean
+  loadingLabel: string | null
+}
+
+const LOADING_UI_SELECTOR =
+  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
+
+async function readLoadSnapshot(page: import('puppeteer').Page): Promise<PageLoadSnapshot> {
+  return page.evaluate((loadingSelector) => {
+    let loadingVisible = false
+    let loadingLabel: string | null = null
+
+    for (const el of document.querySelectorAll(loadingSelector)) {
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) continue
+      const style = window.getComputedStyle(el)
+      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+      loadingVisible = true
+      loadingLabel =
+        el.getAttribute('aria-label') ||
+        el.className.toString().split(/\s+/).find((c) => /skeleton|spinner|loading/i.test(c)) ||
+        el.tagName.toLowerCase()
+      break
+    }
+
+    return {
+      readyState: document.readyState,
+      title: document.title.trim() || null,
+      loadingVisible,
+      loadingLabel,
+    }
+  }, LOADING_UI_SELECTOR)
+}
+
+async function readRuntimeHeadMetadata(
+  page: import('puppeteer').Page
+): Promise<RuntimeHeadMetadata> {
+  return page.evaluate(() => {
+    const content = (selector: string) =>
+      document.querySelector<HTMLMetaElement>(selector)?.content?.trim() || null
+    const href = (selector: string) =>
+      document.querySelector<HTMLLinkElement>(selector)?.href?.trim() || null
+
+    return {
+      title: document.title.trim() || null,
+      description: content('meta[name="description"]'),
+      ogTitle: content('meta[property="og:title"]'),
+      ogDescription: content('meta[property="og:description"]'),
+      ogImage: content('meta[property="og:image"]'),
+      canonical: href('link[rel="canonical"]'),
+      lang: document.documentElement.getAttribute('lang')?.trim() || null,
+      viewport: content('meta[name="viewport"]'),
+      robots: content('meta[name="robots"]'),
+      hasFavicon: Boolean(
+        document.querySelector(
+          'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+        )
+      ),
+    }
+  })
+}
+
+async function waitForFinishedLoadState(
+  page: import('puppeteer').Page,
+  device: 'desktop' | 'mobile',
+  startedAt: number,
+  initialScreenshotUrl: string | null,
+  initialCaptureElapsedMs: number,
+  initial: PageLoadSnapshot
+): Promise<PageLoadExperience> {
+  await page
+    .waitForFunction(() => document.readyState === 'complete', { timeout: 8_000 })
+    .catch(() => {})
+  await page
+    .waitForFunction(() => document.title.trim().length > 0, { timeout: 3_000 })
+    .catch(() => {})
+
+  let loadingClearedMs: number | null = initial.loadingVisible ? null : Date.now() - startedAt
+  if (initial.loadingVisible) {
+    await page
+      .waitForFunction(
+        (loadingSelector) => {
+          for (const el of document.querySelectorAll(loadingSelector)) {
+            const rect = el.getBoundingClientRect()
+            if (rect.width <= 0 || rect.height <= 0) continue
+            const style = window.getComputedStyle(el)
+            if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') {
+              continue
+            }
+            return false
+          }
+          return true
+        },
+        { timeout: 10_000 },
+        LOADING_UI_SELECTOR
+      )
+      .then(() => {
+        loadingClearedMs = Date.now() - startedAt
+      })
+      .catch(() => {})
+  }
+
+  await settleAuditPage(page)
+
+  const final = await readLoadSnapshot(page)
+  return {
+    device,
+    initialScreenshotUrl,
+    initialCaptureElapsedMs,
+    finalCaptureElapsedMs: Date.now() - startedAt,
+    loadingVisibleAtInitial: initial.loadingVisible,
+    loadingVisibleAtFinal: final.loadingVisible,
+    loadingClearedMs,
+    loadingLabel: initial.loadingLabel ?? final.loadingLabel,
+    finalReadyState: final.readyState,
+    finalTitle: final.title,
+  }
+}
+
+function initialPageKey(pageKey: string | undefined): string {
+  return pageKey ? `${pageKey}-initial` : 'initial'
+}
+
+function pickLoadExperience(
+  desktop?: PageLoadExperience | null,
+  mobile?: PageLoadExperience | null
+): PageLoadExperience | null {
+  const candidates = [desktop, mobile].filter(Boolean) as PageLoadExperience[]
+  if (candidates.length === 0) return null
+  return candidates.sort((a, b) => {
+    const aMs = a.loadingClearedMs ?? a.finalCaptureElapsedMs
+    const bMs = b.loadingClearedMs ?? b.finalCaptureElapsedMs
+    return bMs - aMs
+  })[0]
 }
 
 async function captureDesktopWithFlow(
@@ -117,18 +266,34 @@ async function captureDesktopWithFlow(
   const result: ViewportCapture & { flowResult: FlowScanResult | null } = {
     base64: null,
     url: null,
+    initialUrl: null,
     html: null,
     flowResult: null,
   }
 
   let page = null
   try {
+    const captureStartedAt = Date.now()
     const session = await createAuditPage(b, targetUrl, {
       profile: DESKTOP_CAPTURE_PROFILE,
       consoleErrors,
+      settle: false,
     })
     page = session.page
 
+    const initial = await readLoadSnapshot(page)
+    const initialBuffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
+
+    result.loadExperience = await waitForFinishedLoadState(
+      page,
+      'desktop',
+      captureStartedAt,
+      result.initialUrl,
+      Date.now() - captureStartedAt,
+      initial
+    )
+    result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
     result.html = await page.content()
 
     const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
@@ -173,15 +338,30 @@ async function captureMobileViewport(
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
-  const result: ViewportCapture = { base64: null, url: null, html: null }
+  const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page = null
 
   try {
+    const captureStartedAt = Date.now()
     const session = await createAuditPage(b, targetUrl, {
       profile: MOBILE_CAPTURE_PROFILE,
       consoleErrors,
+      settle: false,
     })
     page = session.page
+
+    const initial = await readLoadSnapshot(page)
+    const initialBuffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
+
+    result.loadExperience = await waitForFinishedLoadState(
+      page,
+      'mobile',
+      captureStartedAt,
+      result.initialUrl,
+      Date.now() - captureStartedAt,
+      initial
+    )
 
     const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
     result.base64 = buffer.toString('base64')
@@ -189,6 +369,7 @@ async function captureMobileViewport(
 
     try {
       result.captureMetrics = await measureMobileLayout(page)
+      result.captureMetrics.loadExperience = result.loadExperience ?? null
     } catch (err) {
       logger.error('mobile layout metrics failed', err)
     }
@@ -231,16 +412,21 @@ export async function captureScreenshots(
     // instead of being mis-reported as "this site blocked our visit".
     if (isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
     captureFailures.push(pageCaptureFailureFromError('desktop', desktopSettled.reason))
-    desktop = { base64: null, url: null, html: null, flowResult: null }
+    desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
   }
 
-  let mobile: ViewportCapture = { base64: null, url: null, html: null }
+  let mobile: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   if (mobileSettled.status === 'fulfilled') {
     mobile = mobileSettled.value
   } else {
     logger.error('mobile screenshot failed', mobileSettled.reason)
     captureFailures.push(pageCaptureFailureFromError('mobile', mobileSettled.reason))
   }
+
+  const loadExperience = pickLoadExperience(desktop.loadExperience, mobile.loadExperience)
+  const captureMetrics = mobile.captureMetrics
+    ? { ...mobile.captureMetrics, loadExperience }
+    : null
 
   return {
     desktopUrl: desktop.url,
@@ -255,7 +441,9 @@ export async function captureScreenshots(
     },
     captureFailures,
     flowResult: desktop.flowResult,
-    captureMetrics: mobile.captureMetrics ?? null,
+    captureMetrics,
+    loadExperience,
+    runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
   }
 }
 

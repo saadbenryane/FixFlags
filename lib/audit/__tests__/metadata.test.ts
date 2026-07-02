@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { parseMetadataFromHtml } from '@/lib/audit/metadata'
+import { mergeRuntimeHeadMetadata, parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 
 const BASE_URL = 'https://example.com'
@@ -97,6 +97,23 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.hasAnalytics, true)
     assert.equal(meta.hasCookieConsent, false)
     assert.equal(meta.hasPrivacyPolicy, true)
+  })
+
+  it('uses runtime head metadata when client rendering fills a missing title', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta name="description" content="Server description that should remain available." /></head>
+<body><h1>Loaded app</h1></body>
+</html>`
+
+    const meta = mergeRuntimeHeadMetadata(parseMetadataFromHtml(html, BASE_URL), {
+      title: 'Runtime title from the hydrated app',
+      hasFavicon: true,
+    })
+
+    assert.equal(meta.title, 'Runtime title from the hydrated app')
+    assert.equal(meta.description, 'Server description that should remain available.')
+    assert.equal(meta.hasFavicon, true)
   })
 })
 

@@ -44,6 +44,43 @@ export interface PageMetadata {
   totalFormInputs: number
 }
 
+export type RuntimeHeadMetadata = Partial<
+  Pick<
+    PageMetadata,
+    | 'title'
+    | 'description'
+    | 'ogTitle'
+    | 'ogDescription'
+    | 'ogImage'
+    | 'canonical'
+    | 'lang'
+    | 'viewport'
+    | 'robots'
+    | 'hasFavicon'
+  >
+>
+
+export function mergeRuntimeHeadMetadata(
+  metadata: PageMetadata,
+  runtime: RuntimeHeadMetadata | null | undefined
+): PageMetadata {
+  if (!runtime) return metadata
+
+  return {
+    ...metadata,
+    title: runtime.title?.trim() || metadata.title,
+    description: runtime.description?.trim() || metadata.description,
+    ogTitle: runtime.ogTitle?.trim() || metadata.ogTitle,
+    ogDescription: runtime.ogDescription?.trim() || metadata.ogDescription,
+    ogImage: runtime.ogImage?.trim() || metadata.ogImage,
+    canonical: runtime.canonical?.trim() || metadata.canonical,
+    lang: runtime.lang?.trim() || metadata.lang,
+    viewport: runtime.viewport?.trim() || metadata.viewport,
+    robots: runtime.robots?.trim() || metadata.robots,
+    hasFavicon: metadata.hasFavicon || runtime.hasFavicon === true,
+  }
+}
+
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const $ = cheerio.load(html)
 

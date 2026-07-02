@@ -48,6 +48,7 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'slow-3g-blank-screen',
   'slow-3g-cta-delayed',
   'loading-indicator-stuck',
+  'loading-state-slow',
   'cta-dead-link',
 ])
 
@@ -156,6 +157,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'On phones, most visitors never scroll to a below-fold CTA - you lose signups you already earned.',
   'loading-indicator-stuck':
     'A skeleton or spinner that never clears makes the product look broken before anyone reads a word.',
+  'loading-state-slow':
+    'A long first-screen loading state makes visitors wait before they can understand or act on the page.',
   'motion-ignores-reduced-preference':
     'Vestibular disorders and focus needs make looping hero motion a hard stop - OS reduce-motion must be honored.',
   'tap-targets-small':

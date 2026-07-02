@@ -116,6 +116,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Chrome DevTools at 375×812: primary CTA button visible without scrolling.',
   'loading-indicator-stuck':
     'After page load, no skeleton, spinner, or aria-busy overlay should remain visible over the hero.',
+  'loading-state-slow':
+    'Throttle the page in Chrome DevTools; the first screen should swap from loading UI to real content within 3 seconds.',
   'motion-ignores-reduced-preference':
     'Enable prefers-reduced-motion in OS settings; hero animations and loops should stop or shorten to near-zero.',
   'font-family-sprawl':

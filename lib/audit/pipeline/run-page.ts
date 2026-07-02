@@ -2,6 +2,7 @@ import { prisma } from '../../db'
 import { captureScreenshots, getAuditBrowser } from '../screenshot'
 import {
   fetchAndParseMetadata,
+  mergeRuntimeHeadMetadata,
   parseMetadataFromHtml,
   trimMetadataForStorage,
   type PageMetadata,
@@ -52,6 +53,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
   let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
   let flowResult: FlowScanResult | null = null
+  let capturedMetadata: PageMetadata | null = null
   let desktopBase64 = ''
   let mobileBase64: string | null = null
 
@@ -134,9 +136,13 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopBase64 = screenshots.desktopBase64
     mobileBase64 = screenshots.mobileBase64
 
-    const metadataFromHtml = screenshots.desktopHtml
-      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
-      : await fetchAndParseMetadata(normalizedUrl)
+    const metadataFromHtml = mergeRuntimeHeadMetadata(
+      screenshots.desktopHtml
+        ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+        : await fetchAndParseMetadata(normalizedUrl),
+      screenshots.runtimeHeadMetadata
+    )
+    capturedMetadata = metadataFromHtml
     const storedPerformance = {
       desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
       mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
@@ -144,6 +150,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       mobileError: pagespeed.mobileError ?? null,
       screenshots: screenshots.captureStatus,
       captureFailures: screenshots.captureFailures,
+      loadExperience: screenshots.loadExperience ?? null,
     }
 
     await prisma.$transaction([
@@ -203,13 +210,17 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   }
 
   const metadata =
-    screenshots?.desktopHtml
-      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+    capturedMetadata ??
+    (screenshots?.desktopHtml
+      ? mergeRuntimeHeadMetadata(
+          parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl),
+          screenshots.runtimeHeadMetadata
+        )
       : ((await prisma.auditPage.findUnique({
           where: { id: page.id },
           select: { htmlMetadata: true },
         }))?.htmlMetadata as PageMetadata | null) ??
-        (await fetchAndParseMetadata(normalizedUrl))
+        (await fetchAndParseMetadata(normalizedUrl)))
 
   if (input.skipCapture && input.primary && input.position === 0) {
     await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started' })

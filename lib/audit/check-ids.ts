@@ -70,6 +70,7 @@ export const ALL_CHECK_IDS = [
   'cta-below-fold-mobile',
   // interaction.ts
   'loading-indicator-stuck',
+  'loading-state-slow',
   'motion-ignores-reduced-preference',
   'form-inputs-zoom-mobile',
   // design-language.ts (legacy standalone compatibility)

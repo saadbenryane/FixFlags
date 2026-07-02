@@ -21,6 +21,7 @@ import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
+import type { PageLoadExperience } from '@/lib/audit/capture-metrics'
 import {
   healthyDesktopPs,
   healthyMeta,
@@ -422,6 +423,7 @@ function healthyCaptureMetrics(
     motionIgnoresReducedPreference: boolean
     motionSampleLabel: string | null
     inputsBelow16px: Array<{ selector: string; fontSize: number }>
+    loadExperience: PageLoadExperience | null
   }> = {}
 ) {
   return {
@@ -438,6 +440,7 @@ function healthyCaptureMetrics(
     motionIgnoresReducedPreference: false,
     motionSampleLabel: null,
     inputsBelow16px: [],
+    loadExperience: null,
     ...overrides,
   }
 }
@@ -485,6 +488,29 @@ describe('runInteractionChecks', () => {
 
   it('passes when no loading UI is stuck', () => {
     assert.equal(runInteractionChecks(healthyCaptureMetrics()).length, 0)
+  })
+
+  it('flags loading UI that clears slowly', () => {
+    assert.ok(
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            loadExperience: {
+              device: 'mobile',
+              initialScreenshotUrl: '/api/screenshots/audit/mobile?page=p0-initial',
+              initialCaptureElapsedMs: 700,
+              finalCaptureElapsedMs: 4600,
+              loadingVisibleAtInitial: true,
+              loadingVisibleAtFinal: false,
+              loadingClearedMs: 4200,
+              loadingLabel: 'hero-skeleton',
+              finalReadyState: 'complete',
+              finalTitle: 'Loaded product page',
+            },
+          })
+        )
+      ).includes('loading-state-slow')
+    )
   })
 
   it('flags motion that ignores prefers-reduced-motion', () => {
@@ -844,6 +870,25 @@ describe('trigger matrix - one failing signal per checkId', () => {
           healthyCaptureMetrics({
             stuckLoadingIndicator: true,
             stuckLoadingLabel: 'hero-skeleton',
+          })
+        )
+      ),
+    'loading-state-slow': () =>
+      checkIds(
+        runInteractionChecks(
+          healthyCaptureMetrics({
+            loadExperience: {
+              device: 'mobile',
+              initialScreenshotUrl: '/api/screenshots/audit/mobile?page=p0-initial',
+              initialCaptureElapsedMs: 500,
+              finalCaptureElapsedMs: 5500,
+              loadingVisibleAtInitial: true,
+              loadingVisibleAtFinal: false,
+              loadingClearedMs: 5200,
+              loadingLabel: 'hero-skeleton',
+              finalReadyState: 'complete',
+              finalTitle: 'Loaded product page',
+            },
           })
         )
       ),

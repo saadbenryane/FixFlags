@@ -17,6 +17,20 @@ export interface CaptureMetrics {
   motionIgnoresReducedPreference: boolean
   motionSampleLabel: string | null
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
+  loadExperience?: PageLoadExperience | null
+}
+
+export interface PageLoadExperience {
+  device: 'desktop' | 'mobile'
+  initialScreenshotUrl: string | null
+  initialCaptureElapsedMs: number
+  finalCaptureElapsedMs: number
+  loadingVisibleAtInitial: boolean
+  loadingVisibleAtFinal: boolean
+  loadingClearedMs: number | null
+  loadingLabel: string | null
+  finalReadyState: string
+  finalTitle: string | null
 }
 export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
   const motion = await measureMotionA11y(page)
