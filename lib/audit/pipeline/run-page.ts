@@ -20,8 +20,8 @@ import { AUDIT_PROGRESS } from '../progress'
 import { logPipelineEvent } from '../pipeline-log'
 import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
-import { assertDeadline, accumulateUsage } from './context'
-import { runJudgeStep } from './judge-step'
+import { assertDeadline, accumulateTriageUsage } from './context'
+import { runTriageStep } from './triage-step'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -306,23 +306,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         completeness,
       },
     })
-    return {
-      pageId: page.id,
-      url: normalizedUrl,
-      metadata,
-      desktop: pagespeed?.desktop ?? null,
-      mobile: pagespeed?.mobile ?? null,
-      desktopError: pagespeed?.desktopError,
-      mobileError: pagespeed?.mobileError,
-      desktopScreenshot: Boolean(desktopBase64),
-      mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
-      flowScan: Boolean(input.primary && input.position === 0 && flowResult),
-      flowResult: input.primary && input.position === 0 ? flowResult : null,
-      desktopBase64,
-      mobileBase64,
-      flags,
-      judge: undefined,
-    }
   }
 
   await prisma.auditPage.update({
@@ -334,7 +317,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
   })
 
-  const judge = await runJudgeStep(ctx, {
+  const triage = await runTriageStep(ctx, {
     url: normalizedUrl,
     metadata,
     desktop: pagespeed?.desktop ?? null,
@@ -343,9 +326,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopBase64,
     mobileBase64,
   })
-  accumulateUsage(ctx, judge)
+  accumulateTriageUsage(ctx, triage)
 
-  judge.output.newFlags = judge.output.newFlags.map((flag) => ({
+  triage.output.newFlags = triage.output.newFlags.map((flag) => ({
     ...flag,
     pageUrl: normalizedUrl,
   }))
@@ -369,9 +352,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopScreenshot: Boolean(desktopBase64),
     mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
     flowScan: Boolean(input.primary && input.position === 0 && flowResult),
+    flowResult: input.primary && input.position === 0 ? flowResult : null,
     desktopBase64,
     mobileBase64,
     flags,
-    judge,
+    triage,
   }
 }

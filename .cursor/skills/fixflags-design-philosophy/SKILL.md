@@ -103,7 +103,7 @@ Score each new/changed surface. Ship at all green.
 - [ ] **Touch & focus** — interactive targets ≥ 44px, visible focus ring, logical tab order?
 - [ ] **Numbers are mono + tabular**, headings `text-balance`, body `text-pretty`?
 - [ ] **Motion** respects `prefers-reduced-motion` and is ≤ `--motion-fast`?
-- [ ] **Contrast** — text ≥ 4.5:1, UI ≥ 3:1, including on `#FF4D1F`?
+- [ ] **Contrast** — text ≥ 4.5:1, UI ≥ 3:1, including on `#FF4B00`?
 - [ ] **Peak & end** — is the score reveal and the fix-prompt step the most polished thing on the page?
 - [ ] **Would I screenshot this?** If it's not screenshot-worthy, it's not done.
 

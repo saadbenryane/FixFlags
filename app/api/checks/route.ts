@@ -22,6 +22,8 @@ const createSchema = z.object({
   utmSource: z.string().optional(),
   utmMedium: z.string().optional(),
   utmCampaign: z.string().optional(),
+  gclid: z.string().optional(),
+  fbclid: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -130,6 +132,8 @@ export async function POST(req: NextRequest) {
       utmSource: parsed.data.utmSource,
       utmMedium: parsed.data.utmMedium,
       utmCampaign: parsed.data.utmCampaign,
+      gclid: parsed.data.gclid,
+      fbclid: parsed.data.fbclid,
     })
 
     const { auditId, status } = await createAndEnqueueAudit({

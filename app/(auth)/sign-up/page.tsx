@@ -17,7 +17,7 @@ import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
-import { trackEvent } from '@/lib/analytics/events'
+import { trackEvent, trackSignupServerSide } from '@/lib/analytics/events'
 
 function SignUpForm() {
   const { oauthCallbackURL, navigateAfterAuth, signInHref, plan, from } = useAuthRedirect()
@@ -38,7 +38,8 @@ function SignUpForm() {
         return
       }
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
-      trackEvent('signed_up', { method: 'email', plan: plan ?? undefined })
+      trackEvent('signed_up', { method: 'email', plan: plan ?? undefined, email })
+      trackSignupServerSide({ email, eventSourceUrl: window.location.href }).catch(() => {})
       await navigateAfterAuth()
     } catch {
       toast.error('Something went wrong')

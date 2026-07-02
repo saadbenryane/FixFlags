@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils'
 const containerVariants = cva('container mx-auto w-full', {
   variants: {
     variant: {
-      default: 'max-w-7xl',
+      /** Marketing pages, header, footer — 1024px content column */
+      default: 'max-w-5xl',
       /** Settings, billing, account flows */
       narrow: 'max-w-2xl',
       /** Long-form docs, legal */

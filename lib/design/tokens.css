@@ -6,7 +6,7 @@
  */
 
 :root {
-  /* ── Surfaces — warm white canvas, soft stone panels ── */
+  /* ── Surfaces: warm white canvas, soft stone panels ── */
   --background: 40 33% 97%;
   --foreground: 0 0% 3%;
   --card: 38 22% 91%;
@@ -183,7 +183,7 @@
 }
 
 .dark {
-  /* ── Surfaces — graphite canvas, charcoal panels, glass ── */
+  /* ── Surfaces: graphite canvas, charcoal panels, glass ── */
   --background: 0 0% 7%;
   --foreground: 40 24% 95%;
   --card: 0 0% 10%;
@@ -193,7 +193,7 @@
   --border: 0 0% 16%;
   --border-subtle: 0 0% 11%;
 
-  /* ── Brand orange — precise accent only ── */
+  /* ── Brand orange: precise accent only ── */
   --brand: 18 100% 55%;
   --brand-foreground: 0 0% 100%;
   --brand-hover: 18 100% 63%;

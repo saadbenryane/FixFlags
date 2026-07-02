@@ -12,7 +12,7 @@ export function isPublicMarketingSample(audit: AiAccessAudit): boolean {
   return Boolean(audit.isPublic && audit.userId === null && audit.aiReviewAt)
 }
 
-export function canViewAiReportContent(
+export function canViewPrescriptionContent(
   audit: {
     userId: string | null
     aiReviewAt: Date | null
@@ -26,6 +26,14 @@ export function canViewAiReportContent(
   return false
 }
 
+/** @deprecated Use canViewPrescriptionContent */
+export function canViewAiReportContent(
+  audit: Parameters<typeof canViewPrescriptionContent>[0],
+  viewer: Parameters<typeof canViewPrescriptionContent>[1]
+): boolean {
+  return canViewPrescriptionContent(audit, viewer)
+}
+
 export function canViewAiViaMaxPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
@@ -34,18 +42,26 @@ export function canViewAiViaMaxPublicShare(
   return ownerCanSharePublicly
 }
 
-export async function canViewAiReportContentForAudit(
+export async function canViewPrescriptionContentForAudit(
   audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): Promise<boolean> {
   if (isPublicMarketingSample(audit)) return true
-  if (canViewAiReportContent(audit, viewer)) return true
+  if (canViewPrescriptionContent(audit, viewer)) return true
   if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
   const owner = await prisma.user.findUnique({
     where: { id: audit.userId },
     select: { id: true, role: true, plan: true },
   })
   return owner ? canSharePublicly(owner) : false
+}
+
+/** @deprecated Use canViewPrescriptionContentForAudit */
+export async function canViewAiReportContentForAudit(
+  audit: AiAccessAudit,
+  viewer: { id: string } | null | undefined
+): Promise<boolean> {
+  return canViewPrescriptionContentForAudit(audit, viewer)
 }
 
 type FlagLike = {
@@ -56,6 +72,8 @@ type FlagLike = {
   lovablePrompt?: string | null
   boltPrompt?: string | null
   whyItMatters?: string | null
+  evidence?: string | null
+  fix?: string | null
   [key: string]: unknown
 }
 
@@ -70,34 +88,45 @@ type RubricLike = {
   [key: string]: unknown
 }
 
-export function stripAiFromFlags<T extends FlagLike>(flags: T[]): T[] {
-  return flags
-    .filter((f) => f.source !== 'AI')
-    .map((f) => ({
-      ...f,
-      agentPrompt: null,
-      cursorPrompt: null,
-      claudePrompt: null,
-      lovablePrompt: null,
-      boltPrompt: null,
-      whyItMatters: null,
-    }))
-}
-
-export function stripAiFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
-  return rubrics.map((r) => ({
-    ...r,
-    summary: '',
-    rubricPrompt: '',
+/** Strip prescription-only fields; keep phase-1 triage titles and rubric summaries. */
+export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] {
+  return flags.map((f) => ({
+    ...f,
+    agentPrompt: null,
     cursorPrompt: null,
     claudePrompt: null,
     lovablePrompt: null,
     boltPrompt: null,
-    flags: r.flags ? stripAiFromFlags(r.flags) : r.flags,
+    whyItMatters: null,
+    evidence: null,
+    fix: null,
   }))
 }
 
-export function stripAiFromAudit<T extends {
+/** @deprecated Use stripPrescriptionFromFlags */
+export function stripAiFromFlags<T extends FlagLike>(flags: T[]): T[] {
+  return stripPrescriptionFromFlags(flags)
+}
+
+export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
+  return rubrics.map((r) => ({
+    ...r,
+    rubricPrompt: null,
+    cursorPrompt: null,
+    claudePrompt: null,
+    lovablePrompt: null,
+    boltPrompt: null,
+    flags: r.flags ? stripPrescriptionFromFlags(r.flags) : r.flags,
+  }))
+}
+
+/** @deprecated Use stripPrescriptionFromRubrics */
+export function stripAiFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
+  return stripPrescriptionFromRubrics(rubrics)
+}
+
+/** Legacy deterministic-only audits (no triageAt): hide AI fields entirely. */
+export function stripLegacyDeterministicAudit<T extends {
   verdict?: string | null
   pageJob?: string | null
   pageType?: string | null
@@ -111,7 +140,50 @@ export function stripAiFromAudit<T extends {
     pageJob: null,
     pageType: null,
     launchReadiness: null,
-    flags: stripAiFromFlags(audit.flags),
-    rubrics: audit.rubrics ? stripAiFromRubrics(audit.rubrics) : audit.rubrics,
+    flags: audit.flags
+      .filter((f) => f.source !== 'AI')
+      .map((f) => ({
+        ...f,
+        agentPrompt: null,
+        cursorPrompt: null,
+        claudePrompt: null,
+        lovablePrompt: null,
+        boltPrompt: null,
+        whyItMatters: null,
+      })),
+    rubrics: audit.rubrics
+      ? audit.rubrics.map((r) => ({
+          ...r,
+          summary: '',
+          rubricPrompt: '',
+          cursorPrompt: null,
+          claudePrompt: null,
+          lovablePrompt: null,
+          boltPrompt: null,
+          flags: r.flags ? stripAiFromFlags(r.flags) : r.flags,
+        }))
+      : audit.rubrics,
   }
+}
+
+export function stripPrescriptionFromAudit<T extends {
+  verdict?: string | null
+  pageJob?: string | null
+  pageType?: string | null
+  launchReadiness?: unknown
+  flags: FlagLike[]
+  rubrics?: RubricLike[]
+}>(audit: T): T {
+  return {
+    ...audit,
+    flags: stripPrescriptionFromFlags(audit.flags),
+    rubrics: audit.rubrics ? stripPrescriptionFromRubrics(audit.rubrics) : audit.rubrics,
+  }
+}
+
+/** @deprecated Use stripPrescriptionFromAudit */
+export function stripAiFromAudit<T extends Parameters<typeof stripPrescriptionFromAudit>[0]>(
+  audit: T
+): T {
+  return stripLegacyDeterministicAudit(audit)
 }

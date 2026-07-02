@@ -25,8 +25,8 @@ export function AuditLimitGate({ code, action, message, onDismiss }: Props) {
 
   return (
     <Callout
-      variant="danger"
-      title={needsSignup ? 'Sign up to continue' : 'Audit limit reached'}
+      variant={needsSignup ? 'warning' : 'danger'}
+      title={needsSignup ? 'Create a free account to continue' : 'Audit limit reached'}
     >
       <p>{message}</p>
       <div className="mt-3 flex flex-wrap gap-2">

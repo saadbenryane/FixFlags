@@ -5,31 +5,33 @@ description: FixFlags visual design tokens, kerning, spacing, border radius, 60-
 
 # FixFlags Design System
 
-UI Kit v3.0. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
+Final Brand Guideline. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
 
 ## Color theory (60-30-10)
 
 | Share | Token | Role |
 |-------|-------|------|
-| 60% | Peach mesh backdrop + glass surfaces | Page canvas, cards |
-| 30% | `--foreground` | Ink structure, headings |
-| 10% | `--brand` (`#FF4D1F`) | CTAs, flags, scores, focus |
+| 60% | Warm-white canvas + soft-stone glass surfaces | Page canvas, cards |
+| 30% | `--foreground` (Ink `#080808`) | Ink structure, headings |
+| 10% | `--brand` (`#FF4B00`) | CTAs, flags, scores, focus |
 
 **Rules:**
-- Brand is Flag orange `#FF4D1F`, hover `#FF744D`
+- Brand is Flag orange `#FF4B00`. Orange is a signal, not decoration. Never everywhere.
+- Canvas is Warm White `#FAF8F4`; cards/panels/dividers are Soft Stone `#EEEAE3`; secondary text is Muted Grey `#6D6A64`.
 - Links use `--link` (info blue `#3B82F6`), not brand orange
 - Focus rings use brand orange on inputs
-- Dark mode is re-authored (`#0F1115` canvas), orange unchanged
+- Dark mode is re-authored (Graphite `#111111` canvas, Charcoal `#1A1A1A` panels, soft-white `#F5F3EF` text), orange unchanged
 - Cards: `rounded-card` + `glass-surface` + `shadow-card` — **no borders**
 
-## Typography — Satoshi
+## Typography: Fraunces serif + Satoshi sans
 
 | Role | Font | Use |
 |------|------|-----|
-| All UI + marketing headings | Satoshi (`font-sans`) | H1–body, logo wordmark |
+| Headlines + logo wordmark | Fraunces (`font-serif` / `font-display`) | Hero, section titles, brand voice (serif) |
+| Product UI + body + labels | Satoshi (`font-sans`) | Dense report/table/settings views (sans only) |
 | Scores / labels | IBM Plex Mono (`font-mono`) | Grades, tabular nums |
 
-**Avoid:** Fraunces, Inter, DM Sans on new work.
+**Rule:** editorial serif for headlines, clean sans for functional UI. Never serif dense product UI.
 
 ## Radius
 

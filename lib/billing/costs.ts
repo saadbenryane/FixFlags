@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
   'claude-sonnet-4-20250514': { input: 3, output: 15 },
+  'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
 }
 
 // Claude Sonnet 4 approximate rates (USD per million tokens), fallback
@@ -49,12 +50,15 @@ export function estimateLlmCostUsd(
   )
 }
 
+export type LlmCostPhase = 'triage' | 'prescription' | 'full'
+
 export interface AuditRunCostMetrics {
   durationMs: number
   llmInputTokens: number
   llmOutputTokens: number
   llmModel: string
   pagespeedCalls: number
+  phase?: LlmCostPhase
 }
 
 const PAGESPEED_COST_PER_CALL = Number(process.env.COST_PAGESPEED_PER_CALL ?? 0.005)
@@ -68,14 +72,84 @@ export async function persistAuditRunCost(
   auditId: string,
   metrics: AuditRunCostMetrics
 ): Promise<void> {
+  const phase = metrics.phase ?? 'full'
   const llmCostUsd = estimateLlmCostUsd(
     metrics.llmModel,
     metrics.llmInputTokens,
     metrics.llmOutputTokens
   )
   const infraOverheadUsd = computeInfraOverheadUsd(metrics.pagespeedCalls, metrics.durationMs)
-  const estimatedCostUsd = llmCostUsd + infraOverheadUsd
 
+  const existing = await prisma.auditRunCost.findUnique({ where: { auditId } })
+
+  if (phase === 'triage') {
+    const estimatedCostUsd = llmCostUsd + infraOverheadUsd
+    await prisma.auditRunCost.upsert({
+      where: { auditId },
+      create: {
+        auditId,
+        durationMs: metrics.durationMs,
+        llmInputTokens: metrics.llmInputTokens,
+        llmOutputTokens: metrics.llmOutputTokens,
+        llmModel: metrics.llmModel,
+        llmCostUsd: new Prisma.Decimal(llmCostUsd),
+        pagespeedCalls: metrics.pagespeedCalls,
+        estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+        triageInputTokens: metrics.llmInputTokens,
+        triageOutputTokens: metrics.llmOutputTokens,
+        triageModel: metrics.llmModel,
+        triageCostUsd: new Prisma.Decimal(llmCostUsd),
+      },
+      update: {
+        durationMs: metrics.durationMs,
+        llmInputTokens: metrics.llmInputTokens,
+        llmOutputTokens: metrics.llmOutputTokens,
+        llmModel: metrics.llmModel,
+        llmCostUsd: new Prisma.Decimal(llmCostUsd),
+        pagespeedCalls: metrics.pagespeedCalls,
+        estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+        triageInputTokens: metrics.llmInputTokens,
+        triageOutputTokens: metrics.llmOutputTokens,
+        triageModel: metrics.llmModel,
+        triageCostUsd: new Prisma.Decimal(llmCostUsd),
+      },
+    })
+    return
+  }
+
+  if (phase === 'prescription' && existing) {
+    const triageInput = existing.triageInputTokens
+    const triageOutput = existing.triageOutputTokens
+    const triageCost = existing.triageCostUsd.toNumber()
+    const totalInput = triageInput + metrics.llmInputTokens
+    const totalOutput = triageOutput + metrics.llmOutputTokens
+    const prescriptionCost = llmCostUsd
+    const totalLlmCost = triageCost + prescriptionCost
+    const durationMs = Math.max(existing.durationMs, metrics.durationMs)
+    const pagespeedCalls = Math.max(existing.pagespeedCalls, metrics.pagespeedCalls)
+    const estimatedCostUsd =
+      totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
+
+    await prisma.auditRunCost.update({
+      where: { auditId },
+      data: {
+        durationMs,
+        llmInputTokens: totalInput,
+        llmOutputTokens: totalOutput,
+        llmModel: [existing.triageModel, metrics.llmModel].filter(Boolean).join(','),
+        llmCostUsd: new Prisma.Decimal(totalLlmCost),
+        pagespeedCalls,
+        estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+        prescriptionInputTokens: metrics.llmInputTokens,
+        prescriptionOutputTokens: metrics.llmOutputTokens,
+        prescriptionModel: metrics.llmModel,
+        prescriptionCostUsd: new Prisma.Decimal(prescriptionCost),
+      },
+    })
+    return
+  }
+
+  const estimatedCostUsd = llmCostUsd + infraOverheadUsd
   await prisma.auditRunCost.upsert({
     where: { auditId },
     create: {

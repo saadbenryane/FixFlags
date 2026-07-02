@@ -39,6 +39,10 @@ const envSchema = z.object({
   OPENAI_JUDGE_MODEL: z.string().optional(),
   ANTHROPIC_JUDGE_MODEL: z.string().optional(),
   OPENAI_JUDGE_MAX_TOKENS: z.string().optional(),
+  // Phase-1 triage (cheap teaser pass). Falls back to the judge provider chain
+  // models when unset; small max_tokens keeps the anonymous scan cheap.
+  TRIAGE_MODEL: z.string().optional(),
+  TRIAGE_MAX_TOKENS: z.string().optional(),
   JUDGE_TIMEOUT_MS: z.string().optional(),
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
@@ -46,6 +50,12 @@ const envSchema = z.object({
   // Run the audit worker in-process with the web server (default). Set to
   // 'false' on the web service when running dedicated worker services.
   INLINE_WORKER: z.enum(['true', 'false']).optional(),
+  // Ad-platform conversion tracking (Workstream D). All optional; each feature
+  // is gated on presence, mirroring NEXT_PUBLIC_GA_ID.
+  NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL: z.string().optional(),
+  NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
+  META_CAPI_TOKEN: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

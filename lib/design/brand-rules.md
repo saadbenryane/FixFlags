@@ -1,4 +1,4 @@
-# FixFlags Brand Rules — Final Brand Guideline
+# FixFlags Brand Rules: Final Brand Guideline
 
 Source: FixFlags Final Branding Guideline. Reference assets in `public/brand/`.
 
@@ -8,14 +8,14 @@ Source: FixFlags Final Branding Guideline. Reference assets in `public/brand/`.
 - **One-liner:** FixFlags is the QA layer for AI-built products.
 - **Campaign line:** Finish what your AI started.
 - **Product loop:** Flag → Fix → Re-check.
-- **Mark:** A clean waving flag — a rounded orange flagpole flying a soft wavy pennant to the right. Flat (reduced 3D), optically balanced curves. Icon-left, wordmark-right lockup.
+- **Mark:** A clean waving flag. A rounded orange flagpole flying a soft wavy pennant to the right. Flat (reduced 3D), optically balanced curves. Icon-left, wordmark-right lockup.
 - **Wordmark:** Editorial serif (Fraunces), title case `FixFlags`, medium weight, tracking ~-0.01em.
 
 ## Color palette (Final Guideline)
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
-| Flag (primary) | `#FF4B00` | `#FF5C1A` | Flags, CTAs, active states, focus rings — signal, not decoration |
+| Flag (primary) | `#FF4B00` | `#FF5C1A` | Flags, CTAs, active states, focus rings. Signal, not decoration |
 | Flag hover | tint of primary | tint of primary | Button hover |
 | Background | Warm White `#FAF8F4` | Graphite `#111111` | Page canvas |
 | Foreground | Ink `#080808` | Soft White `#F5F3EF` | Headings, body |
@@ -28,9 +28,9 @@ Source: FixFlags Final Branding Guideline. Reference assets in `public/brand/`.
 | Error | `#FF4444` | `#FF4444` | Destructive, grade F |
 | Info / links | `#3B82F6` | `#3B82F6` | Inline links |
 
-Accent usage: orange is a signal. Use sparingly — flags, primary CTA, issue markers, active states, small highlights, blurred background accents. The overall world is warm white, stone, ink, soft grey, controlled orange. Dark mode reads graphite, glass, quiet, premium — no neon.
+Accent usage: orange is a signal. Use sparingly: flags, primary CTA, issue markers, active states, small highlights, blurred background accents. The overall world is warm white, stone, ink, soft grey, controlled orange. Dark mode reads graphite, glass, quiet, premium. No neon.
 
-## Typography — Fraunces (serif) + Satoshi (sans)
+## Typography: Fraunces (serif) + Satoshi (sans)
 
 Editorial serif headlines + clean sans UI. This is the signature balance.
 
@@ -39,7 +39,7 @@ Editorial serif headlines + clean sans UI. This is the signature balance.
 | Wordmark | Fraunces | Medium, ~-0.01em |
 | Hero / display headlines | Fraunces | Medium/Semibold, serif |
 | Section titles | Fraunces | Serif, used sparingly for premium effect |
-| Product UI / body / labels | Satoshi | Sans only — clarity in dense report/table/settings views |
+| Product UI / body / labels | Satoshi | Sans only, for clarity in dense report/table/settings views |
 | Scores / grades / caps labels | IBM Plex Mono | Mono |
 
 Serif for brand voice and marketing headlines; sans for everything functional. Never serif dense product UI.

@@ -1,12 +1,11 @@
 import { RUBRIC_ORDER, type RubricName } from '../constants'
 import { computeRubricScores } from '../checks'
-import type { JudgeOutput } from '../judge-schema'
+import type { TriageOutput } from '../judge-triage-schema'
 import type { PageRun } from './types'
 
 /**
  * Average each rubric's deterministic score across pages, preferring the
- * deterministic score and falling back to the judge's score. A rubric is only
- * scored when every page produced a value for it.
+ * deterministic score and falling back to the triage score.
  */
 export function averageScores(
   pageRuns: PageRun[]
@@ -22,7 +21,7 @@ export function averageScores(
         )[rubricName]
         return (
           deterministic ??
-          page.judge?.output.rubrics.find((item) => item.name === rubricName)?.score ??
+          page.triage?.output.rubrics.find((item) => item.name === rubricName)?.score ??
           null
         )
       })
@@ -36,21 +35,18 @@ export function averageScores(
 }
 
 /**
- * Merge every page's judge output into the primary page's output: concatenate
- * new flags and enrichments, and average each rubric across pages. Mutates and
- * returns the primary judge output (callers persist it directly).
+ * Merge every page's triage output into the primary page's output.
  */
-export function buildCombinedJudgeOutput(pageRuns: PageRun[]): JudgeOutput {
-  const primaryJudge = pageRuns[0]?.judge
-  if (!primaryJudge) {
-    throw new Error('Cannot combine judge output without a primary judge result')
+export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
+  const primaryTriage = pageRuns[0]?.triage
+  if (!primaryTriage) {
+    throw new Error('Cannot combine triage output without a primary triage result')
   }
-  const combined = primaryJudge.output
-  combined.newFlags = pageRuns.flatMap((page) => page.judge?.output.newFlags ?? [])
-  combined.enrichments = pageRuns.flatMap((page) => page.judge?.output.enrichments ?? [])
+  const combined = { ...primaryTriage.output, rubrics: [...primaryTriage.output.rubrics] }
+  combined.newFlags = pageRuns.flatMap((page) => page.triage?.output.newFlags ?? [])
   combined.rubrics = combined.rubrics.map((rubric) => {
     const pageRubrics = pageRuns
-      .map((page) => page.judge?.output.rubrics.find((item) => item.name === rubric.name))
+      .map((page) => page.triage?.output.rubrics.find((item) => item.name === rubric.name))
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
     const scores = pageRubrics
       .map((item) => item.score)

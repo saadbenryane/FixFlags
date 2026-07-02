@@ -1,0 +1,308 @@
+import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
+import {
+  triageOutputSchema,
+  QUALITY_TRIAGE_SCHEMA,
+  QUALITY_TRIAGE_TOOL,
+  type TriageOutput,
+} from './judge-triage-schema'
+import { buildTriagePrompt } from '../prompts/system-prompt'
+import { PageMetadata } from './metadata'
+import { PageSpeedResult } from './pagespeed'
+import { DeterministicFlag } from './checks'
+import { getTriageProviderConfig, getJudgeProviderChain } from './judge-config'
+import { validateTriageOutput } from './validate-triage-output'
+import { JudgeContractError } from './validate-judge-output'
+import { isRetryableJudgeError } from './judge'
+import { logger } from '@/lib/logger'
+
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null
+
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null
+
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 2000
+
+export interface TriageUsage {
+  inputTokens: number
+  outputTokens: number
+  model: string
+}
+
+export interface TriageResult {
+  output: TriageOutput
+  usage: TriageUsage
+}
+
+function buildTriageContext(
+  url: string,
+  metadata: PageMetadata,
+  desktop: PageSpeedResult | null,
+  mobile: PageSpeedResult | null,
+  flags: DeterministicFlag[]
+) {
+  return {
+    url,
+    pageText: metadata.pageText,
+    metadata: {
+      title: metadata.title,
+      description: metadata.description,
+      h1s: metadata.h1s,
+      ctaTexts: metadata.ctaTexts,
+      hasStructuredData: metadata.hasStructuredData,
+    },
+    scores: {
+      desktopPerf: desktop?.score ?? null,
+      mobilePerf: mobile?.score ?? null,
+      desktopLcp: desktop?.lcp ?? null,
+      mobileLcp: mobile?.lcp ?? null,
+      cls: desktop?.cls ?? null,
+    },
+    topOpportunities: [...(desktop?.opportunities ?? []), ...(mobile?.opportunities ?? [])].slice(
+      0,
+      5
+    ),
+    deterministicFlags: flags.map((f) => ({
+      checkId: f.checkId,
+      problem: f.problem,
+      evidence: f.evidence,
+      rubric: f.rubric,
+      severity: f.severity,
+    })),
+  }
+}
+
+function parseTriageOutput(raw: unknown, flags: DeterministicFlag[]): TriageOutput {
+  const parsed = triageOutputSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new Error(`Invalid triage output: ${parsed.error.message}`)
+  }
+  return validateTriageOutput(parsed.data, flags)
+}
+
+async function runAnthropicTriage(
+  context: ReturnType<typeof buildTriageContext>,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
+): Promise<TriageResult> {
+  if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+
+  const imageContent: Anthropic.ImageBlockParam[] = []
+  if (desktopBase64) {
+    imageContent.push({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/png', data: desktopBase64 },
+    })
+  }
+  if (mobileBase64) {
+    imageContent.push({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/png', data: mobileBase64 },
+    })
+  }
+
+  const cfg = getTriageProviderConfig('anthropic', maxTimeoutMs)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
+
+  try {
+    const response = await anthropic.messages.create(
+      {
+        model: cfg.model,
+        max_tokens: cfg.maxTokens,
+        tools: [QUALITY_TRIAGE_TOOL],
+        tool_choice: { type: 'tool', name: 'quality_triage' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              ...imageContent,
+              {
+                type: 'text',
+                text: buildTriagePrompt({
+                  ...context,
+                  screenshotHint:
+                    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only',
+                }),
+              },
+            ],
+          },
+        ],
+      },
+      { signal: controller.signal }
+    )
+
+    const toolUse = response.content.find((b) => b.type === 'tool_use')
+    if (!toolUse || toolUse.type !== 'tool_use') {
+      throw new Error('No tool_use in triage response')
+    }
+
+    return {
+      output: parseTriageOutput(toolUse.input, flags),
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        model: cfg.model,
+      },
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function runOpenAITriage(
+  context: ReturnType<typeof buildTriageContext>,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
+): Promise<TriageResult> {
+  if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+
+  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = []
+  if (desktopBase64) {
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:image/png;base64,${desktopBase64}`,
+        detail: 'low',
+      },
+    })
+  }
+  if (mobileBase64) {
+    content.push({
+      type: 'image_url',
+      image_url: {
+        url: `data:image/png;base64,${mobileBase64}`,
+        detail: 'low',
+      },
+    })
+  }
+  const screenshotHint =
+    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
+  content.push({
+    type: 'text',
+    text: buildTriagePrompt({ ...context, screenshotHint }),
+  })
+
+  const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs)
+
+  try {
+    const response = await openai.chat.completions.create(
+      {
+        model: cfg.model,
+        max_tokens: cfg.maxTokens,
+        messages: [{ role: 'user', content }],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'quality_triage',
+              description: 'Output a fast quality triage for a website',
+              parameters: QUALITY_TRIAGE_SCHEMA,
+            },
+          },
+        ],
+        tool_choice: { type: 'function', function: { name: 'quality_triage' } },
+      },
+      { signal: controller.signal }
+    )
+
+    const toolCall = response.choices[0]?.message?.tool_calls?.[0]
+    if (!toolCall || toolCall.type !== 'function') {
+      throw new Error('No function call in triage response')
+    }
+
+    const raw = JSON.parse(toolCall.function.arguments)
+    return {
+      output: parseTriageOutput(raw, flags),
+      usage: {
+        inputTokens: response.usage?.prompt_tokens ?? 0,
+        outputTokens: response.usage?.completion_tokens ?? 0,
+        model: cfg.model,
+      },
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function runTriageWithProvider(
+  provider: string,
+  context: ReturnType<typeof buildTriageContext>,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
+): Promise<TriageResult> {
+  switch (provider) {
+    case 'openai':
+      if (!openai) throw new Error('OPENAI_API_KEY is not configured')
+      return runOpenAITriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
+    case 'anthropic':
+      if (!anthropic) throw new Error('ANTHROPIC_API_KEY is not configured')
+      return runAnthropicTriage(context, flags, desktopBase64, mobileBase64, maxTimeoutMs)
+    default:
+      throw new Error(`Unknown triage provider: ${provider}`)
+  }
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isTriageAttemptRetryable(err: unknown): boolean {
+  return (
+    isRetryableJudgeError(err) ||
+    err instanceof JudgeContractError ||
+    (err instanceof Error && err.message.startsWith('Invalid triage output:'))
+  )
+}
+
+export async function runTriageWithRetry(
+  url: string,
+  metadata: PageMetadata,
+  desktop: PageSpeedResult | null,
+  mobile: PageSpeedResult | null,
+  flags: DeterministicFlag[],
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
+): Promise<TriageResult> {
+  const context = buildTriageContext(url, metadata, desktop, mobile, flags)
+  const chain = getJudgeProviderChain()
+  let lastError: Error | null = null
+
+  for (const provider of chain) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const result = await runTriageWithProvider(
+          provider,
+          context,
+          flags,
+          desktopBase64,
+          mobileBase64,
+          maxTimeoutMs
+        )
+        logger.info('triage succeeded', { provider, attempt })
+        return result
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err))
+        logger.warn('triage attempt failed', { provider, attempt, err: lastError.message })
+        if (attempt < MAX_RETRIES && isTriageAttemptRetryable(err)) {
+          await sleep(RETRY_DELAY_MS * attempt)
+        }
+      }
+    }
+  }
+
+  throw lastError ?? new Error('Triage failed: no providers available')
+}

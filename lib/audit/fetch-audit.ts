@@ -3,9 +3,10 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { canAccessAudit } from '@/lib/audit/access'
 import {
-  canViewAiReportContentForAudit,
-  stripAiFromRubrics,
-  stripAiFromFlags,
+  canViewPrescriptionContentForAudit,
+  stripPrescriptionFromRubrics,
+  stripPrescriptionFromFlags,
+  stripLegacyDeterministicAudit,
 } from '@/lib/audit/report-access'
 import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
 import {
@@ -14,11 +15,12 @@ import {
 } from '@/lib/audit/screenshot-types'
 import { parseLaunchReadiness } from '@/lib/audit/launch-readiness'
 import { parsePipelineLog } from '@/lib/audit/pipeline-log'
-import { parsePreviewMeta, type PreviewMeta } from '@/lib/audit/preview-meta'
+import { parsePreviewMeta } from '@/lib/audit/preview-meta'
 import { parseFlowData, type FlowData } from '@/lib/audit/flow-data'
 import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-highlights'
 
-export type { PreviewMeta, FlowData }
+export type { PreviewMeta } from '@/lib/audit/preview-meta'
+export type { FlowData }
 import { sanitizeRubricForRead } from '@/lib/audit/sanitize-prompts'
 import {
   computeShareStatusFromRubrics,
@@ -100,7 +102,7 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit)
-  const showAiContent = await canViewAiReportContentForAudit(
+  const showPrescription = await canViewPrescriptionContentForAudit(
     {
       userId: audit.userId,
       aiReviewAt: audit.aiReviewAt,
@@ -108,18 +110,30 @@ export async function getGatedAuditForRequest(id: string) {
     },
     session?.user
   )
-  const aiReviewPending = audit.status === 'JUDGING' && Boolean(audit.includeAi) && !audit.aiReviewAt
+  const hasTriage = Boolean(audit.triageAt)
+  const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt
+  const aiReviewPending =
+    hasTriage && Boolean(audit.includeAi) && !audit.aiReviewAt && audit.status !== 'FAILED'
 
   let sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
   let reportFlags = audit.flags
 
-  if (!showAiContent) {
-    sanitizedRubrics = stripAiFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
-    reportFlags = stripAiFromFlags(reportFlags) as typeof reportFlags
+  if (isLegacyDeterministic) {
+    const legacy = stripLegacyDeterministicAudit({
+      ...audit,
+      rubrics: sanitizedRubrics,
+      flags: reportFlags,
+    })
+    sanitizedRubrics = legacy.rubrics as typeof sanitizedRubrics
+    reportFlags = legacy.flags as typeof reportFlags
+  } else if (!showPrescription) {
+    sanitizedRubrics = stripPrescriptionFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
+    reportFlags = stripPrescriptionFromFlags(reportFlags) as typeof reportFlags
   }
 
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
-  const launchReadiness = showAiContent ? parseLaunchReadiness(audit.launchReadiness) : null
+  const launchReadiness =
+    hasTriage || showPrescription ? parseLaunchReadiness(audit.launchReadiness) : null
   const pageSpeed = parsePageSpeedErrors(audit.performanceData)
   const ogImageBroken = audit.flags.some(
     (f) => f.checkId === 'og-image-broken' && f.status !== 'FIXED'
@@ -154,9 +168,9 @@ export async function getGatedAuditForRequest(id: string) {
     kind: 'ok' as const,
     audit: {
       ...stripped,
-      verdict: showAiContent ? stripped.verdict : null,
-      pageJob: showAiContent ? stripped.pageJob : null,
-      pageType: showAiContent ? stripped.pageType : null,
+      verdict: hasTriage || showPrescription ? stripped.verdict : null,
+      pageJob: hasTriage || showPrescription ? stripped.pageJob : null,
+      pageType: hasTriage || showPrescription ? stripped.pageType : null,
       pipelineLog: parsePipelineLog(audit.pipelineLog),
       screenshotCapture,
       launchReadiness,
@@ -166,10 +180,14 @@ export async function getGatedAuditForRequest(id: string) {
       previewMeta,
       flowData,
       evidenceAnchors,
+      triageAt: audit.triageAt,
+      isLegacyDeterministic,
     },
     isPaid,
     isLoggedIn: !!session?.user,
-    showAiContent,
+    showPrescription,
+    /** @deprecated Use showPrescription */
+    showAiContent: showPrescription,
     aiReviewPending,
     session,
   }

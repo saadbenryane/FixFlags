@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'
@@ -62,6 +63,7 @@ export default function RootLayout({
           {children}
         </Providers>
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
+        <ConversionScripts />
       </body>
     </html>
   )

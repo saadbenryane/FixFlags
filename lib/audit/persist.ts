@@ -7,6 +7,8 @@ import {
 } from '@prisma/client'
 import { DeterministicFlag } from './checks'
 import type { JudgeOutput } from './judge-schema'
+import type { TriageOutput } from './judge-triage-schema'
+import type { PrescriptionOutput } from './judge-prescription-schema'
 import { verificationRuleForCheckId } from './verify-flags'
 import { whyItMattersForCheckId, isGenericWhyItMatters } from './flag-copy'
 import {
@@ -254,6 +256,202 @@ export async function persistDeterministicFlags(
         score: overallScore,
         reportCompleteness: 'PARTIAL',
       },
+    })
+  })
+}
+
+const TRIAGE_LOCKED_EVIDENCE = 'Create a free account to unlock evidence and fix prompts.'
+const TRIAGE_LOCKED_WHY = 'Sign up to see why this matters and get a copy-paste fix prompt.'
+const TRIAGE_LOCKED_FIX = 'Sign up to unlock the copy-paste fix prompt.'
+
+export function buildTriageAiFlagRow(
+  flag: TriageOutput['newFlags'][number],
+  i: number,
+  pageIdByUrl: Map<string, string>,
+  rubricIdByName: Map<string, string>,
+  positionOffset: number
+): AiFlagRow {
+  return {
+    auditId: '',
+    pageId: flag.pageUrl ? pageIdByUrl.get(new URL(flag.pageUrl).toString()) ?? null : null,
+    rubricId: rubricIdByName.get(flag.rubric) ?? null,
+    source: 'AI',
+    rubric: flag.rubric,
+    impactTag: aiImpactToEnum(flag.impactTag),
+    severity: aiSeverityToEnum(flag.severity),
+    problem: flag.problem,
+    evidence: TRIAGE_LOCKED_EVIDENCE,
+    whyItMatters: TRIAGE_LOCKED_WHY,
+    fix: TRIAGE_LOCKED_FIX,
+    confidence: flag.confidence,
+    agentPrompt: null,
+    cursorPrompt: null,
+    claudePrompt: null,
+    lovablePrompt: null,
+    boltPrompt: null,
+    verificationRule: 'Sign up to unlock verification steps.',
+    checkId: null,
+    pageUrl: flag.pageUrl ?? null,
+    fingerprint: flagFingerprint(flag),
+    position: positionOffset + i,
+  }
+}
+
+export function flagKeyForRow(flag: {
+  checkId: string | null
+  fingerprint: string | null
+}): string {
+  return flag.checkId ?? flag.fingerprint ?? ''
+}
+
+export async function persistTriageResults(
+  auditId: string,
+  triageOutput: TriageOutput,
+  deterministicFlags: DeterministicFlag[],
+  rubricScores: Partial<Record<RubricName, number | null>>
+): Promise<void> {
+  await clearAuditResults(auditId)
+
+  await prisma.$transaction(async (tx) => {
+    const pages = await tx.auditPage.findMany({
+      where: { auditId },
+      select: { id: true, normalizedUrl: true },
+    })
+    const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
+    const resolvedScores: Partial<Record<RubricName, number | null>> = {}
+    const resolvedGrades: Partial<Record<RubricName, RubricGrade | null>> = {}
+
+    const rubricRecords = await Promise.all(
+      triageOutput.rubrics.map((rubricData) => {
+        const rubricName = rubricData.name as RubricName
+        const deterministicScore = rubricScores[rubricName]
+
+        const finalScore =
+          deterministicScore !== null && deterministicScore !== undefined
+            ? clampScore(deterministicScore)
+            : rubricData.score !== null
+              ? clampScore(rubricData.score)
+              : null
+        const finalGrade =
+          finalScore !== null ? gradeFromScore(finalScore) : rubricData.grade
+
+        resolvedScores[rubricName] = finalScore
+        resolvedGrades[rubricName] = finalGrade
+
+        return tx.reportRubric.create({
+          data: {
+            auditId,
+            name: rubricName,
+            score: finalScore,
+            grade: finalGrade,
+            status:
+              finalScore === null ? statusFromGrade(finalGrade) : statusFromScore(finalScore),
+            assessmentState: finalScore === null ? rubricData.assessmentState : 'ASSESSED',
+            confidence: rubricData.confidence,
+            summary: rubricData.summary,
+            rubricPrompt: '',
+            cursorPrompt: null,
+            claudePrompt: null,
+            lovablePrompt: null,
+            boltPrompt: null,
+          },
+        })
+      })
+    )
+
+    const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
+
+    const flagRows = [
+      ...deterministicFlags.map((f, i) => ({
+        ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName),
+        auditId,
+      })),
+      ...triageOutput.newFlags.map((f, i) => ({
+        ...buildTriageAiFlagRow(
+          f,
+          i,
+          pageIdByUrl,
+          rubricIdByName,
+          deterministicFlags.length
+        ),
+        auditId,
+      })),
+    ]
+
+    if (flagRows.length > 0) {
+      await tx.flag.createMany({ data: flagRows })
+    }
+
+    const overallScore = calculateOverallScore(resolvedScores, resolvedGrades)
+    await tx.audit.update({
+      where: { id: auditId },
+      data: {
+        status: 'FINALIZING',
+        progress: 95,
+        pageJob: triageOutput.pageJob,
+        pageType: triageOutput.pageType,
+        verdict: triageOutput.verdict,
+        score: overallScore,
+        launchReadiness: {
+          readiness: triageOutput.launchReadiness,
+          checklist: triageOutput.launchChecklist,
+        },
+        launchReadinessState: triageOutput.launchReadiness.toUpperCase() as
+          | 'SAFE'
+          | 'FIX_FIRST'
+          | 'NOT_READY',
+      },
+    })
+  })
+}
+
+export async function mergePrescriptionResults(
+  auditId: string,
+  prescription: PrescriptionOutput
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const flags = await tx.flag.findMany({ where: { auditId } })
+    const prescriptionByKey = new Map(
+      prescription.flagPrescriptions.map((item) => [item.flagKey, item])
+    )
+
+    for (const flag of flags) {
+      const key = flagKeyForRow(flag)
+      const item = prescriptionByKey.get(key)
+      if (!item) continue
+
+      await tx.flag.update({
+        where: { id: flag.id },
+        data: {
+          evidence: item.evidence,
+          whyItMatters: item.whyItMatters,
+          fix: item.fix,
+          agentPrompt: item.agentPrompt ?? null,
+          cursorPrompt: item.cursorPrompt ?? null,
+          claudePrompt: item.claudePrompt ?? null,
+          lovablePrompt: item.lovablePrompt ?? null,
+          boltPrompt: item.boltPrompt ?? null,
+          verificationRule: item.verificationRule,
+        },
+      })
+    }
+
+    for (const rubricRx of prescription.rubricPrescriptions) {
+      await tx.reportRubric.updateMany({
+        where: { auditId, name: rubricRx.name as RubricName },
+        data: {
+          rubricPrompt: rubricRx.rubricPrompt,
+          cursorPrompt: rubricRx.cursorPrompt ?? null,
+          claudePrompt: rubricRx.claudePrompt ?? null,
+          lovablePrompt: rubricRx.lovablePrompt ?? null,
+          boltPrompt: rubricRx.boltPrompt ?? null,
+        },
+      })
+    }
+
+    await tx.audit.update({
+      where: { id: auditId },
+      data: { status: 'FINALIZING', progress: 95 },
     })
   })
 }

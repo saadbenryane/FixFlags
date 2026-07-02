@@ -8,6 +8,8 @@ export interface AuditAttribution {
   utmSource: string | null
   utmMedium: string | null
   utmCampaign: string | null
+  gclid: string | null
+  fbclid: string | null
 }
 
 const CLIENT_SOURCES = new Set<AuditSource>([
@@ -39,6 +41,8 @@ export function buildAttribution(input: {
   utmSource?: string | null
   utmMedium?: string | null
   utmCampaign?: string | null
+  gclid?: string | null
+  fbclid?: string | null
 }): AuditAttribution {
   const normalizedDomain = normalizeDomain(input.url)
   const searchParams = input.searchParams
@@ -55,6 +59,14 @@ export function buildAttribution(input: {
     input.utmCampaign?.trim() ||
     searchParams?.get('utm_campaign')?.trim() ||
     null
+  const gclid =
+    input.gclid?.trim() ||
+    searchParams?.get('gclid')?.trim() ||
+    null
+  const fbclid =
+    input.fbclid?.trim() ||
+    searchParams?.get('fbclid')?.trim() ||
+    null
 
   const source =
     input.source ??
@@ -67,6 +79,8 @@ export function buildAttribution(input: {
     utmSource,
     utmMedium,
     utmCampaign,
+    gclid,
+    fbclid,
   }
 }
 

@@ -76,6 +76,8 @@ export function AuditInput({
           utmSource: params.get('utm_source') ?? undefined,
           utmMedium: params.get('utm_medium') ?? undefined,
           utmCampaign: params.get('utm_campaign') ?? undefined,
+          gclid: params.get('gclid') ?? undefined,
+          fbclid: params.get('fbclid') ?? undefined,
         }),
       })
 

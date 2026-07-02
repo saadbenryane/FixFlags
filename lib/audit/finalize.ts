@@ -27,6 +27,99 @@ interface FinalizeAuditInput {
   }
 }
 
+interface FinalizeTriageInput {
+  auditId: string
+  durationMs: number
+  pagespeedCalls: number
+  usage: {
+    inputTokens: number
+    outputTokens: number
+    model: string
+  }
+  evidence: {
+    desktopScreenshot: boolean
+    mobileScreenshot: boolean
+    metadata: boolean
+    aiAssessment: boolean
+    desktopPageSpeed: boolean
+    mobilePageSpeed: boolean
+    flowScan?: boolean
+  }
+}
+
+/** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */
+export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<void> {
+  const audit = await prisma.audit.findUnique({
+    where: { id: input.auditId },
+    select: {
+      id: true,
+      status: true,
+      userId: true,
+      parentId: true,
+      completedAt: true,
+      triageAt: true,
+    },
+  })
+  if (!audit) throw new Error(`Audit ${input.auditId} not found during triage finalization`)
+  if (audit.triageAt && audit.status === 'COMPLETED' && audit.completedAt) return
+  if (audit.status !== 'FINALIZING') {
+    throw new Error(`Audit ${input.auditId} is not ready to finalize triage`)
+  }
+
+  await persistAuditRunCost(input.auditId, {
+    durationMs: input.durationMs,
+    llmInputTokens: input.usage.inputTokens,
+    llmOutputTokens: input.usage.outputTokens,
+    llmModel: input.usage.model,
+    pagespeedCalls: input.pagespeedCalls,
+    phase: 'triage',
+  })
+
+  if (audit.parentId) {
+    await diffFlagsAgainstParent(input.auditId, audit.parentId)
+    const parent = await prisma.audit.findUnique({
+      where: { id: audit.parentId },
+      select: { url: true },
+    })
+    if (parent?.url) {
+      await applyDeterministicVerification(input.auditId, audit.parentId, parent.url)
+    }
+  }
+
+  const requiredComplete =
+    input.evidence.desktopScreenshot &&
+    input.evidence.metadata &&
+    input.evidence.aiAssessment
+  if (!requiredComplete) {
+    throw new Error('Required audit evidence is incomplete')
+  }
+
+  const completeness =
+    input.evidence.desktopScreenshot && input.evidence.metadata ? 'FULL' : 'PARTIAL'
+
+  await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'triage_completed' })
+
+  await prisma.audit.update({
+    where: { id: input.auditId },
+    data: {
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: completeness,
+      evidenceCoverage: input.evidence,
+      triageAt: new Date(),
+      completedAt: audit.completedAt ?? new Date(),
+      finalizedAt: new Date(),
+      failureCode: null,
+      failureStage: null,
+      failureMetadata: undefined,
+    },
+  })
+
+  await upsertLeadFromAudit(input.auditId).catch((err) => {
+    logger.error('Lead upsert failed after triage finalize', err)
+  })
+}
+
 export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: input.auditId },
@@ -36,12 +129,13 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
       userId: true,
       parentId: true,
       completedAt: true,
+      aiReviewAt: true,
     },
   })
   if (!audit) throw new Error(`Audit ${input.auditId} not found during finalization`)
-  if (audit.status === 'COMPLETED' && audit.completedAt) return
-  if (audit.status !== 'FINALIZING') {
-    throw new Error(`Audit ${input.auditId} is not ready to finalize`)
+  if (audit.status === 'COMPLETED' && audit.completedAt && audit.aiReviewAt) return
+  if (audit.status !== 'FINALIZING' && audit.status !== 'JUDGING') {
+    throw new Error(`Audit ${input.auditId} is not ready to finalize prescription`)
   }
 
   await persistAuditRunCost(input.auditId, {
@@ -50,6 +144,7 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
     llmOutputTokens: input.usage.outputTokens,
     llmModel: input.usage.model,
     pagespeedCalls: input.pagespeedCalls,
+    phase: 'prescription',
   })
 
   if (audit.parentId) {

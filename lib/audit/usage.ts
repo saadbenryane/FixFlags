@@ -47,7 +47,7 @@ export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
     if (used > 0) {
       return {
         allowed: false,
-        error: 'You’ve used your free scan. Create a free account to keep scanning and unlock the fix prompts.',
+        error: 'You’ve used your free scan. Create a free account to unlock fix prompts and keep scanning.',
         code: 'AUTH_REQUIRED',
         action: 'signup',
       }

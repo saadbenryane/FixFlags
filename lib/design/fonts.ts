@@ -13,7 +13,7 @@ export const satoshi = localFont({
 })
 
 /**
- * Fraunces — editorial serif for headlines + wordmark. Free, high-quality
+ * Fraunces: editorial serif for headlines + wordmark. Free, high-quality
  * stand-in for Canela per the brand guideline. Soft optical setting; used at
  * medium/semibold weights for display type only. UI/body stays on Satoshi.
  */

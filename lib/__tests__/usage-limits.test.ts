@@ -27,7 +27,7 @@ import {
 } from '@/lib/auth/entitlements'
 import {
   canViewAiReportContent,
-  stripAiFromFlags,
+  stripPrescriptionFromFlags,
 } from '@/lib/audit/report-access'
 
 describe('product contract limits', () => {
@@ -73,14 +73,15 @@ describe('AI report access', () => {
     )
   })
 
-  it('strips AI flags when gating', () => {
-    const stripped = stripAiFromFlags([
-      { source: 'AI', problem: 'ai issue' },
+  it('strips prescription fields but keeps triage flag titles', () => {
+    const stripped = stripPrescriptionFromFlags([
+      { source: 'AI', problem: 'ai issue', agentPrompt: 'x' },
       { source: 'DETERMINISTIC', problem: 'det issue', agentPrompt: 'prompt' },
     ])
-    assert.equal(stripped.length, 1)
-    assert.equal(stripped[0].problem, 'det issue')
-    assert.equal(stripped[0].agentPrompt, null)
+    assert.equal(stripped.length, 2)
+    assert.equal(stripped[0]?.problem, 'ai issue')
+    assert.equal(stripped[0]?.agentPrompt, null)
+    assert.equal(stripped[1]?.agentPrompt, null)
   })
 })
 

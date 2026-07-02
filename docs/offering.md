@@ -1,6 +1,6 @@
 # Offering & Product Scope
 
-Finish what your AI started. FixFlags is the second pass that catches what speed skipped.
+Finish what your AI started. FixFlags is the QA layer for AI-built products: the second pass that catches what speed skipped. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems.
 
 ## What We Ship
 
@@ -35,7 +35,7 @@ Phase 1 (flow scan, slop detection, preview cards) is the validated exception to
 ## Feature Philosophy
 
 - **Zero new features until 100 paying users** — except scan depth in [scan-roadmap.md](./scan-roadmap.md) Phase 1. What is missing is distribution, not depth.
-- **Every feature must serve the core loop:** check, fix, re-check, prove. If it does not fit that loop, it does not ship.
+- **Every feature must serve the core loop:** Flag, Fix, Re-check. If it does not fit that loop, it does not ship.
 - **Re-checks are the habit.** Never gate them. A user who re-checks is a user who sees value. A user who hits a paywall on re-check is a user who churns.
 
 ## The Core Loop

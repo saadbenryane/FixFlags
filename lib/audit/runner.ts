@@ -7,18 +7,19 @@ import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import { discoverCriticalPathUrls } from './critical-path'
 import { copyParentArtifacts } from './copy-parent-artifacts'
-import { persistAuditResults } from './persist'
+import { persistTriageResults } from './persist'
 import {
   tryResolveEvidenceAnchorsForAudit,
   mergeFlowCtaEvidenceAnchors,
 } from './persist-evidence-anchors'
 import {
-  finalizeAudit,
+  finalizeTriageAudit,
   finalizeDeterministicOnly,
   persistFailedAuditCost,
 } from './finalize'
+import { enqueueAiReview } from './enqueue-ai-review'
 import { runPage } from './pipeline/run-page'
-import { averageScores, buildCombinedJudgeOutput } from './pipeline/combine-pages'
+import { averageScores, buildCombinedTriageOutput } from './pipeline/combine-pages'
 import {
   sanitizeAuditErrorMessage,
   tryPartialFinalize,
@@ -109,7 +110,53 @@ export async function runAudit(auditId: string): Promise<void> {
       }
 
       if (!ctx.includeAi) {
-        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'deterministic_only' })
+        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_only' })
+      }
+
+      let triageSucceeded = false
+      try {
+        const combinedTriage = buildCombinedTriageOutput(pageRuns)
+        const flags = pageRuns.flatMap((page) => page.flags)
+        const rubricScores = averageScores(pageRuns)
+        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
+        await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
+        await tryResolveEvidenceAnchorsForAudit(
+          auditId,
+          audit.url,
+          flags.map((flag) => flag.checkId)
+        )
+        const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
+        if (primaryFlow) {
+          await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
+        }
+
+        await finalizeTriageAudit({
+          auditId,
+          durationMs: Date.now() - startedAt.getTime(),
+          pagespeedCalls: ctx.pagespeedCalls,
+          usage: {
+            inputTokens: ctx.usage.inputTokens,
+            outputTokens: ctx.usage.outputTokens,
+            model: ctx.usage.models.join(','),
+          },
+          evidence: {
+            desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
+            mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
+            metadata: pageRuns.every((page) => Boolean(page.metadata)),
+            aiAssessment: pageRuns.every((page) => Boolean(page.triage)),
+            desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
+            mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+            flowScan: pageRuns.some((page) => page.flowScan),
+          },
+        })
+        triageSucceeded = true
+
+        if (ctx.includeAi) {
+          await enqueueAiReview(auditId)
+        }
+      } catch (triageError) {
+        if (triageSucceeded) throw triageError
+        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_failed_fallback' })
         await tryResolveEvidenceAnchorsForAudit(
           auditId,
           audit.url,
@@ -132,43 +179,7 @@ export async function runAudit(auditId: string): Promise<void> {
             flowScan: pageRuns.some((page) => page.flowScan),
           },
         })
-        return
       }
-
-      const combinedOutput = buildCombinedJudgeOutput(pageRuns)
-      const flags = pageRuns.flatMap((page) => page.flags)
-      const rubricScores = averageScores(pageRuns)
-      await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
-      await persistAuditResults(auditId, combinedOutput, flags, rubricScores)
-      await tryResolveEvidenceAnchorsForAudit(
-        auditId,
-        audit.url,
-        flags.map((flag) => flag.checkId)
-      )
-      const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
-      if (primaryFlow) {
-        await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
-      }
-
-      await finalizeAudit({
-        auditId,
-        durationMs: Date.now() - startedAt.getTime(),
-        pagespeedCalls: ctx.pagespeedCalls,
-        usage: {
-          inputTokens: ctx.usage.inputTokens,
-          outputTokens: ctx.usage.outputTokens,
-          model: ctx.usage.models.join(','),
-        },
-        evidence: {
-          desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
-          mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
-          metadata: pageRuns.every((page) => Boolean(page.metadata)),
-          aiAssessment: pageRuns.every((page) => Boolean(page.judge)),
-          desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
-          mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
-          flowScan: pageRuns.some((page) => page.flowScan),
-        },
-      })
     } catch (error) {
       const partialDone = await tryPartialFinalize(ctx, pageRuns, error)
       if (partialDone) return

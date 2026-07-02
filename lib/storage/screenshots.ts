@@ -43,7 +43,7 @@ export function getLocalScreenshotPath(
  * Persist screenshot bytes and return the URL the report renders.
  *
  * In both production and dev the URL points at the app's access-controlled
- * /api/screenshots route — object stores (Railway bucket / private R2) are not
+ * /api/screenshots route - object stores (Railway bucket / private R2) are not
  * publicly readable, so bytes are streamed back through the app rather than
  * served from a public bucket URL. Only the backing store differs: the bucket
  * in production, local disk in dev.

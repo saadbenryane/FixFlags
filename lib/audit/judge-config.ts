@@ -56,3 +56,24 @@ export function getProviderConfig(provider: string, maxTimeoutMs?: number): Prov
 export function getJudgeProviderChain(): string[] {
   return getEnv().JUDGE_PROVIDER_CHAIN
 }
+
+const TRIAGE_DEFAULT_MAX_TOKENS = 1500
+
+/**
+ * Phase-1 triage config: same provider/timeout resolution as the full judge,
+ * but with a much smaller token budget and an optional cheaper model override.
+ * The small max_tokens + trimmed tool schema are what keep the anonymous pass
+ * cheap.
+ */
+export function getTriageProviderConfig(provider: string, maxTimeoutMs?: number): ProviderConfig {
+  const env = getEnv()
+  const base = getProviderConfig(provider, maxTimeoutMs)
+  const maxTokens = Number(env.TRIAGE_MAX_TOKENS) || TRIAGE_DEFAULT_MAX_TOKENS
+  return {
+    ...base,
+    model:
+      env.TRIAGE_MODEL ??
+      (provider === 'anthropic' ? 'claude-3-5-haiku-20241022' : 'gpt-4o-mini'),
+    maxTokens,
+  }
+}

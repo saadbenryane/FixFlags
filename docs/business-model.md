@@ -1,6 +1,6 @@
 # Business Model
 
-FixFlags finishes what your AI started. The business model supports that loop: check, fix, re-check, prove.
+FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
 
 ## Free Tier Strategy
 
@@ -15,7 +15,7 @@ Why: habit over scarcity. More users = more data = stronger moat = more upgrades
 
 - **Entry price: $29/mo.** Low enough to convert without justification. Raise after 100 paying users if retention supports it.
 - **Flat-rate** over per-scan billing. "Unlimited re-checks" is stronger than "25 audits."
-- **Re-checks never gated.** The core loop (check, fix, re-check, prove) is the habit.
+- **Re-checks never gated.** The core loop (Flag, Fix, Re-check) is the habit.
 - **Annual discount.** Target $19/mo annually on Pro.
 - **No founding offers.** $29 is the real price. Founding offers create expectation debt.
 
@@ -32,8 +32,9 @@ Studio tier ($999) is retained in schema but not marketed.
 
 ## Target Customer
 
-- **Primary:** Indie hackers, solo builders, and small teams shipping with AI tools (Cursor, Claude Code, Lovable, Bolt).
-- **Secondary:** Anyone shipping a public URL who wants a second pass before sharing.
+- **Primary:** AI-first founders, indie hackers, and small teams shipping with AI tools (Cursor, Claude Code, Lovable, Bolt, Replit) faster than they can QA.
+- **Secondary:** Agencies and studios that need a premium QA report before every client launch.
+- **Later:** Product teams using AI coding internally, once repo integration and CI/CD checks land ("CI for product quality").
 - **Not for:** Enterprise QA teams, manual test suites, compliance-driven orgs.
 
 ## Revenue Model

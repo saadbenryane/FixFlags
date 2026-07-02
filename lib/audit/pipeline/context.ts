@@ -1,7 +1,7 @@
 import { AuditDeadlineError } from '../pipeline-errors'
 import { finalizePartialAudit } from '../finalize'
 import { deriveAuditFailure } from './failure'
-import type { JudgeResult } from '../judge'
+import type { TriageResult } from '../judge-triage'
 import type { PipelineContext, PageRun } from './types'
 
 /** Strip URLs and config-looking tokens out of an error before it is persisted. */
@@ -23,12 +23,12 @@ export function assertDeadline(ctx: PipelineContext, stage: string): void {
   }
 }
 
-/** Fold a judge call's token usage into the run-level totals. */
-export function accumulateUsage(ctx: PipelineContext, judge: JudgeResult): void {
-  ctx.usage.inputTokens += judge.usage.inputTokens
-  ctx.usage.outputTokens += judge.usage.outputTokens
-  if (!ctx.usage.models.includes(judge.usage.model)) {
-    ctx.usage.models.push(judge.usage.model)
+/** Fold a triage call's token usage into the run-level totals. */
+export function accumulateTriageUsage(ctx: PipelineContext, triage: TriageResult): void {
+  ctx.usage.inputTokens += triage.usage.inputTokens
+  ctx.usage.outputTokens += triage.usage.outputTokens
+  if (!ctx.usage.models.includes(triage.usage.model)) {
+    ctx.usage.models.push(triage.usage.model)
   }
 }
 
@@ -51,7 +51,7 @@ export async function tryPartialFinalize(
   )
   const { failureCode, failureStage } = deriveAuditFailure(
     error,
-    pageRuns.some((p) => p.judge) ? 'judging' : 'checking'
+    pageRuns.some((p) => p.triage) ? 'judging' : 'checking'
   )
 
   await finalizePartialAudit({

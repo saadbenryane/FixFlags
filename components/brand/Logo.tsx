@@ -17,7 +17,7 @@ interface LogoProps {
 }
 
 /**
- * FixFlags mark: a clean waving flag — rounded orange flagpole flying a soft
+ * FixFlags mark: a clean waving flag. Rounded orange flagpole flying a soft
  * wavy pennant. Flat, optically balanced. Per the Final Brand Guideline.
  */
 function Mark({ px }: { px: number }) {

@@ -1,6 +1,6 @@
 # FixFlags
 
-Finish what your AI started. Paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
+The QA layer for AI-built products. Finish what your AI started: paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
 
 ## Prerequisites
 

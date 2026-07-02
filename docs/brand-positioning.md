@@ -2,21 +2,25 @@
 
 ## Category
 
-FixFlags finishes what your AI started. AI tools ship fast. FixFlags catches what they miss.
+The QA layer for AI-built products. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
 
-Not a QA tool you use after. The completion of the AI development loop.
+It is the missing quality layer after Cursor, Claude Code, Lovable, Bolt, Replit, v0, and Codex.
 
 ## One-Liner
 
-Your AI shipped a site. FixFlags finds what it missed.
+FixFlags is the QA layer for AI-built products.
 
 ## Tagline
 
-Your AI built it. FixFlags shows what to fix.
+The QA layer for AI-built products.
 
-## Anchoring Line
+## Anchoring / Campaign Line
 
 Finish what your AI started.
+
+## Product Loop
+
+Flag → Fix → Re-check. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems.
 
 ## Positioning
 
@@ -28,8 +32,9 @@ Finish what your AI started.
 
 ## Target Audience
 
-- **Primary:** Solo builders and small teams shipping with AI tools (Cursor, Claude Code, Lovable, Bolt).
-- **Secondary:** Any founder who is about to share a URL and wants a second pass.
+- **Primary:** AI-first founders and small teams shipping products with AI tools (Cursor, Claude Code, Lovable, Bolt, Replit) faster than they can QA. Message: *Finish what your AI started.*
+- **Secondary:** Agencies and studios building AI-assisted sites and apps for clients who need premium QA before handoff. Message: *A premium QA report for every client launch.*
+- **Later:** Product teams using AI coding internally, once team accounts, repo integration, and CI/CD checks land. Message: *CI for product quality.*
 - **Anti-target:** Enterprise QA teams, compliance-driven orgs, anyone who says "we have a process for that."
 
 ## Owned Moment

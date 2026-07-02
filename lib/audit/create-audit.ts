@@ -68,6 +68,8 @@ export async function createAndEnqueueAudit(
           utmSource: attribution.utmSource,
           utmMedium: attribution.utmMedium,
           utmCampaign: attribution.utmCampaign,
+          gclid: attribution.gclid,
+          fbclid: attribution.fbclid,
         }
       : {}),
   }

@@ -2,7 +2,7 @@ import type { PageMetadata } from '../metadata'
 import type { PageSpeedResult } from '../pagespeed'
 import type { FlowScanResult } from '../flow/run-flow-scan'
 import type { DeterministicFlag } from '../checks'
-import type { JudgeResult } from '../judge'
+import type { TriageResult } from '../judge-triage'
 
 /** Result of running the pipeline against a single page (primary or critical-path). */
 export interface PageRun {
@@ -20,7 +20,7 @@ export interface PageRun {
   desktopBase64: string
   mobileBase64: string | null
   flags: DeterministicFlag[]
-  judge?: JudgeResult
+  triage?: TriageResult
 }
 
 /** Shared state threaded through one audit run. */

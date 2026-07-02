@@ -1,60 +1,36 @@
 import { prisma } from '@/lib/db'
-import { computeRubricScores, type DeterministicFlag } from './checks'
-import { runJudgeWithRetry, type JudgeResult } from './judge'
-import { persistAuditResults } from './persist'
+import { mergePrescriptionResults, flagKeyForRow } from './persist'
 import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
 import { AUDIT_PROGRESS } from './progress'
 import { JudgeContractError } from './validate-judge-output'
 import { loadParentScreenshotBase64 } from './copy-parent-artifacts'
-import type { PageSpeedResult } from './pagespeed'
 import type { PageMetadata } from './metadata'
 import { logPipelineEvent } from './pipeline-log'
 import { remainingAiReportCredits } from './ai-report-entitlement'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
+import { runPrescriptionWithRetry } from './judge-prescription'
 
-function flagToDeterministic(flag: {
-  checkId: string | null
-  rubric: string
-  severity: string
-  problem: string
-  evidence: string
-  fix: string
-  confidence: number | null
-  impactTag: string | null
-  pageUrl: string | null
-}): DeterministicFlag | null {
-  if (!flag.checkId) return null
-  return {
-    checkId: flag.checkId,
-    rubric: flag.rubric as DeterministicFlag['rubric'],
-    severity: flag.severity as DeterministicFlag['severity'],
-    problem: flag.problem,
-    evidence: flag.evidence,
-    fix: flag.fix,
-    confidence: flag.confidence ?? 0.8,
-    impactTag: flag.impactTag as DeterministicFlag['impactTag'],
-    pageUrl: flag.pageUrl ?? undefined,
-    source: 'DETERMINISTIC',
-  }
-}
-
-/** Run LLM judge on a completed deterministic audit and unlock the full AI report. */
+/** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
 export async function runAiReview(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     include: {
-      flags: { where: { source: 'DETERMINISTIC' }, orderBy: { position: 'asc' } },
+      flags: { orderBy: { position: 'asc' } },
+      rubrics: true,
     },
   })
 
   if (!audit) throw new Error(`Audit ${auditId} not found`)
   if (audit.aiReviewAt) return
-  if (audit.status !== 'COMPLETED') {
-    throw new Error(`Audit ${auditId} is not ready for AI review`)
+  if (!audit.triageAt) {
+    throw new Error(`Audit ${auditId} has not completed triage`)
+  }
+  if (audit.status !== 'COMPLETED' && audit.status !== 'JUDGING') {
+    throw new Error(`Audit ${auditId} is not ready for prescription`)
   }
   if (!audit.userId) {
-    throw new Error(`Audit ${auditId} must be claimed before AI review`)
+    throw new Error(`Audit ${auditId} must be claimed before prescription`)
   }
 
   const user = await prisma.user.findUnique({
@@ -67,35 +43,46 @@ export async function runAiReview(auditId: string): Promise<void> {
   }
 
   const metadata = audit.htmlMetadata as PageMetadata | null
-  if (!metadata) throw new Error('Audit metadata missing for AI review')
-
-  const perf = audit.performanceData as {
-    desktop?: PageSpeedResult | null
-    mobile?: PageSpeedResult | null
-  } | null
+  if (!metadata) throw new Error('Audit metadata missing for prescription')
+  if (!audit.verdict || audit.score == null) {
+    throw new Error('Triage verdict missing for prescription')
+  }
 
   const { desktopBase64, mobileBase64 } = await loadParentScreenshotBase64(auditId)
-  if (!desktopBase64) throw new Error('Desktop screenshot missing for AI review')
+  if (!desktopBase64) throw new Error('Desktop screenshot missing for prescription')
 
-  const detFlags = audit.flags
-    .map(flagToDeterministic)
-    .filter((f): f is DeterministicFlag => f !== null)
+  const existingFlags = audit.flags.map((flag) => ({
+    flagKey: flagKeyForRow(flag),
+    source: flag.source,
+    rubric: flag.rubric,
+    severity: flag.severity,
+    problem: flag.problem,
+    checkId: flag.checkId,
+  }))
 
   const startedAt = Date.now()
   await prisma.audit.update({
     where: { id: auditId },
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING, includeAi: true },
   })
-  await logPipelineEvent(auditId, { stage: 'judging', event: 'ai_review_started' })
+  await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started' })
 
-  let judge: JudgeResult
+  let prescription
   try {
-    judge = await runJudgeWithRetry(
-      audit.url,
-      metadata,
-      perf?.desktop ?? null,
-      perf?.mobile ?? null,
-      detFlags,
+    prescription = await runPrescriptionWithRetry(
+      {
+        url: audit.url,
+        verdict: audit.verdict,
+        score: audit.score,
+        metadata,
+        existingFlags,
+        rubrics: audit.rubrics.map((r) => ({
+          name: r.name,
+          grade: r.grade ?? 'F',
+          score: r.score,
+          summary: r.summary ?? '',
+        })),
+      },
       desktopBase64,
       mobileBase64
     )
@@ -104,7 +91,7 @@ export async function runAiReview(auditId: string): Promise<void> {
       where: { id: auditId },
       data: {
         status: 'COMPLETED',
-        errorMsg: error instanceof Error ? error.message : 'AI review failed',
+        errorMsg: error instanceof Error ? error.message : 'Prescription failed',
         failureCode: error instanceof JudgeContractError ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED',
         failureStage: 'judging',
       },
@@ -115,26 +102,15 @@ export async function runAiReview(auditId: string): Promise<void> {
   const evidence = audit.evidenceCoverage as {
     desktopPageSpeed?: boolean
     mobilePageSpeed?: boolean
+    flowScan?: boolean
   } | null
 
-  const rubricScores = computeRubricScores(
-    detFlags,
-    perf?.desktop ?? null,
-    perf?.mobile ?? null,
-    {
-      pageSpeedAvailable: {
-        desktop: evidence?.desktopPageSpeed ?? Boolean(perf?.desktop),
-        mobile: evidence?.mobilePageSpeed ?? Boolean(perf?.mobile),
-      },
-    }
-  )
-
-  await logPipelineEvent(auditId, { stage: 'finalizing', event: 'ai_review_persist' })
-  await persistAuditResults(auditId, judge.output, detFlags, rubricScores)
+  await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
+  await mergePrescriptionResults(auditId, prescription.output)
   await tryResolveEvidenceAnchorsForAudit(
     auditId,
     audit.url,
-    detFlags.map((flag) => flag.checkId)
+    audit.flags.filter((f) => f.checkId).map((f) => f.checkId!)
   )
 
   await finalizeAudit({
@@ -142,18 +118,18 @@ export async function runAiReview(auditId: string): Promise<void> {
     durationMs: Date.now() - startedAt,
     pagespeedCalls: 0,
     usage: {
-      inputTokens: judge.usage.inputTokens,
-      outputTokens: judge.usage.outputTokens,
-      model: judge.usage.model,
+      inputTokens: prescription.usage.inputTokens,
+      outputTokens: prescription.usage.outputTokens,
+      model: prescription.usage.model,
     },
     evidence: {
       desktopScreenshot: true,
       mobileScreenshot: Boolean(mobileBase64),
       metadata: true,
       aiAssessment: true,
-      desktopPageSpeed: Boolean(perf?.desktop),
-      mobilePageSpeed: Boolean(perf?.mobile),
-      flowScan: Boolean(audit.flowData),
+      desktopPageSpeed: evidence?.desktopPageSpeed ?? true,
+      mobilePageSpeed: evidence?.mobilePageSpeed ?? true,
+      flowScan: evidence?.flowScan ?? Boolean(audit.flowData),
     },
   })
 }

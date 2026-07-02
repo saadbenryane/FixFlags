@@ -194,6 +194,8 @@ model User {
   subscriptionStatus     SubscriptionStatus  @default(NONE)
   vibecodingLevel        String?
   preferredTools         String[]
+  gclid                  String?
+  fbclid                 String?
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   projects               Project[]
@@ -445,6 +447,8 @@ model Audit {
   utmSource        String?
   utmMedium        String?
   utmCampaign      String?
+  gclid            String?
+  fbclid           String?
 
   rubrics            ReportRubric[]
   screenshots        Screenshot[]

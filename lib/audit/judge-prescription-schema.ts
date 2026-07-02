@@ -1,0 +1,71 @@
+import { z } from 'zod'
+import { zodToJsonSchema } from 'zod-to-json-schema'
+import type Anthropic from '@anthropic-ai/sdk'
+import { rubricNameSchema } from './judge-schema'
+
+/**
+ * Phase-2 "prescription" schema. Generates only the extractable payload keyed
+ * to phase-1 flags. Diagnosis fields (score, verdict, flag titles) are NOT
+ * regenerated - they merge onto existing rows by flagKey.
+ */
+
+export const flagPrescriptionSchema = z.object({
+  flagKey: z
+    .string()
+    .min(1)
+    .describe(
+      'Stable key for the existing flag: use checkId for deterministic flags, or the flagFingerprint provided in context for AI flags'
+    ),
+  evidence: z.string().min(1).describe('What you see on the page that proves this issue'),
+  whyItMatters: z
+    .string()
+    .min(1)
+    .describe('1-2 sentences on real-world business impact'),
+  fix: z.string().min(1).describe('Concrete fix instruction'),
+  agentPrompt: z.string().optional(),
+  cursorPrompt: z.string().optional(),
+  claudePrompt: z.string().optional(),
+  lovablePrompt: z.string().optional(),
+  boltPrompt: z.string().optional(),
+  verificationRule: z
+    .string()
+    .min(1)
+    .describe('How to verify this is fixed on the live page'),
+})
+
+export const rubricPrescriptionSchema = z.object({
+  name: rubricNameSchema,
+  rubricPrompt: z
+    .string()
+    .min(1)
+    .describe('Holistic prompt fixing ALL flags in this rubric at once'),
+  cursorPrompt: z.string().optional(),
+  claudePrompt: z.string().optional(),
+  lovablePrompt: z.string().optional(),
+  boltPrompt: z.string().optional(),
+})
+
+export const prescriptionOutputSchema = z.object({
+  flagPrescriptions: z
+    .array(flagPrescriptionSchema)
+    .describe('One prescription per existing flag, keyed by flagKey'),
+  rubricPrescriptions: z
+    .array(rubricPrescriptionSchema)
+    .describe('Holistic rubric-level fix prompts for MESSAGE, EXPERIENCE, and REACH'),
+})
+
+export type PrescriptionOutput = z.infer<typeof prescriptionOutputSchema>
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const generatedSchema = zodToJsonSchema(prescriptionOutputSchema as any, {
+  target: 'openApi3',
+  $refStrategy: 'none',
+})
+
+export const QUALITY_PRESCRIPTION_SCHEMA = generatedSchema
+
+export const QUALITY_PRESCRIPTION_TOOL: Anthropic.Tool = {
+  name: 'quality_prescription',
+  description: 'Generate fix prompts and evidence for an already-diagnosed audit',
+  input_schema: QUALITY_PRESCRIPTION_SCHEMA as Anthropic.Tool.InputSchema,
+}

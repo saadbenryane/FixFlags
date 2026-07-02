@@ -32,6 +32,8 @@ import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
+import { getDomainHistoryForUser } from '@/lib/audit/domain-history'
+import { DomainHistoryPanel } from '@/components/dashboard/DomainHistoryPanel'
 import { rubricLabel } from '@/lib/utils'
 
 export default async function DashboardPage() {
@@ -77,9 +79,10 @@ export default async function DashboardPage() {
     ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan })
     : false
 
-  const [mcpAudits, webAudits] = await Promise.all([
+  const [mcpAudits, webAudits, domainHistory] = await Promise.all([
     prisma.audit.count({ where: { userId, source: 'MCP' } }),
     prisma.audit.count({ where: { userId, source: { not: 'MCP' } } }),
+    getDomainHistoryForUser(userId),
   ])
 
   return (
@@ -125,7 +128,9 @@ export default async function DashboardPage() {
           <FirstAuditPrompt />
         </>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-6">
+          {domainHistory.length > 0 && <DomainHistoryPanel domains={domainHistory} />}
+          <div className="space-y-3">
           <SectionTitle>Recent checks</SectionTitle>
           {audits.map((audit) => {
             const isCompleted = audit.status === 'COMPLETED'
@@ -224,6 +229,7 @@ export default async function DashboardPage() {
               </Link>
             )
           })}
+          </div>
         </div>
       )}
 

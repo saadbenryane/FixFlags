@@ -19,21 +19,22 @@ Use with `fixflags-design-system` and `writing-simple.md`.
 - `Card` or `Surface variant="elevated"` for panels — not bordered card wrappers
 - Upsells: shadow-first (`ContextualUpgradeCard`), never `border-2 border-primary/20`
 
-## Palette (UI Kit v2.0)
+## Palette (Final Brand Guideline)
 
 | Token | Role |
 |-------|------|
-| `--background` | Warm paper white |
-| `--foreground` | Ink (`#0F1115`) |
-| `--muted` | Section wash, not gray slab |
-| `--brand` | Flag orange (`#FF4D1F`) |
+| `--background` | Warm White (`#FAF8F4`) |
+| `--foreground` | Ink (`#080808`) |
+| `--muted` / `--card` | Soft Stone (`#EEEAE3`) section wash + panels |
+| `--muted-foreground` | Muted Grey (`#6D6A64`) secondary text |
+| `--brand` | Flag orange (`#FF4B00`), signal only |
 | `--accent` | Soft wash for hero radial only |
 
-Test hierarchy in grayscale. Brand appears ≤3 times above the fold.
+Test hierarchy in grayscale. Brand appears ≤3 times above the fold. Orange is a signal, not decoration.
 
 ## Typography + copy pairing
 
-- Satoshi for all UI and marketing type (display weight for headlines)
+- Fraunces serif for headlines + wordmark (`font-serif` / `font-display`); Satoshi sans for all product UI, body, and labels
 - Body stays readable; never tightened below token scale
 - Section labels optional, drop when headline is enough
 - Pain/workflow blocks: title + one line. No icons unless semantic.

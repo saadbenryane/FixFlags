@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
+import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
 
 function normalizedWords(value: string): Set<string> {
   return new Set(
@@ -129,6 +130,29 @@ export function deduplicateFlags(
           `${flag.problem} ${flag.evidence}`,
           `${candidate.problem} ${candidate.evidence}`
         ) >= 0.65
+    )
+    if (!duplicatesAi) accepted.push(candidate)
+  }
+
+  return accepted
+}
+
+export function deduplicateTriageFlags(
+  deterministic: DeterministicFlag[],
+  aiFlags: TriageOutput['newFlags']
+): TriageOutput['newFlags'] {
+  const accepted: TriageOutput['newFlags'] = []
+
+  for (const candidate of aiFlags) {
+    const asJudgeFlag = { ...candidate, evidence: candidate.problem, fix: '', whyItMatters: '' }
+    const duplicatesDeterministic =
+      matchesDeterministicTheme(deterministic, asJudgeFlag) ||
+      deterministic.some((flag) => isNearDuplicateOfDeterministic(flag, asJudgeFlag))
+
+    if (duplicatesDeterministic) continue
+
+    const duplicatesAi = accepted.some(
+      (flag) => similarity(flag.problem, candidate.problem) >= 0.65
     )
     if (!duplicatesAi) accepted.push(candidate)
   }

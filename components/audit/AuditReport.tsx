@@ -82,6 +82,8 @@ interface AuditReportProps {
   atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
+  showPrescription?: boolean
+  /** @deprecated Use showPrescription */
   showAiContent?: boolean
   aiReviewPending?: boolean
 }
@@ -98,17 +100,18 @@ export function AuditReport({
   atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
-  showAiContent = true,
+  showPrescription = true,
+  showAiContent = showPrescription,
   aiReviewPending = false,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const aiLocked = !showAiContent
+  const prescriptionLocked = !showPrescription
+  const aiLocked = prescriptionLocked
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const topFixPrompt = getTopFixPromptFromFlags(audit.flags)
-  const hasLaunchGates =
-    !aiLocked && (audit.launchReadiness?.checklist?.length ?? 0) > 0
+  const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -191,8 +194,8 @@ export function AuditReport({
           {!isViewerOwner && <ThirdPartyAuditDisclaimer variant="compact" />}
 
           {aiReviewPending && (
-            <Callout variant="info" title="Generating AI review">
-              Unlocking fix prompts and rubric analysis. This usually takes under a minute.
+            <Callout variant="info" title="Unlocking fix prompts">
+              Generating copy-paste fix prompts for every flag. This usually takes under a minute.
             </Callout>
           )}
 
@@ -218,7 +221,11 @@ export function AuditReport({
           <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Fix prompt - create a free account to view"
+              label={
+                audit.flags.length > 0
+                  ? `You’ve got ${audit.flags.length} issue${audit.flags.length === 1 ? '' : 's'} to fix - create a free account to unlock copy-paste fix prompts`
+                  : 'Create a free account to unlock copy-paste fix prompts'
+              }
               signUpHref={signUpHref}
             />
           ) : (

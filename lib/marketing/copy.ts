@@ -38,10 +38,10 @@ export const HERO = {
   headlineLine1: 'what your',
   headlineLine2: 'AI started.',
   headlineAccent: 'Finish',
-  audienceLine: 'Second pass for AI-built sites.',
+  audienceLine: 'The review your AI build skipped.',
   headlineAccentLegacy: false,
   subhead:
-    'FixFlags is the QA layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems.',
+    'Paste your URL. We find what’s quietly costing you visitors — unclear copy, mobile friction, blank link previews — and hand you the exact fixes to paste into Cursor, Claude, or Lovable.',
   trustLine: 'Run a second pass before users see it.',
   supportingLine: 'Run a second pass before users see it.',
   primaryCta: 'Run your first audit',
@@ -405,7 +405,7 @@ export const PRICING_TEASER = {
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: 'Run a free check on any live or preview URL. Every finding includes evidence and a fix prompt your editor can run.',
+  body: 'Run an audit, copy fix prompts, and re-scan to watch your score climb. Create a free account to save history and unlock fix prompts.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -939,8 +939,8 @@ export const AUTH = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Unlock AI review',
-    body: 'Create a free account to see fix prompts, rubric analysis, and the full AI review on this report.',
+    headline: 'Unlock copy-paste fix prompts',
+    body: 'You already see your score and issues. Create a free account to unlock the fix prompts, save scan history, and re-scan to verify your fixes.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },

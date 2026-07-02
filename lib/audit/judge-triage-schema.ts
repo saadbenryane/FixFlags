@@ -5,8 +5,8 @@ import { rubricNameSchema } from './judge-schema'
 
 /**
  * Phase-1 "triage" schema. Deliberately small: it produces the teaser a cold
- * visitor sees on their OWN site — a real score, verdict, rubric grades, and
- * flag *titles* — but NONE of the expensive, extractable payload (fix prompts,
+ * visitor sees on their OWN site - a real score, verdict, rubric grades, and
+ * flag *titles* - but NONE of the expensive, extractable payload (fix prompts,
  * evidence, whyItMatters, per-tool prompts, enrichments). That payload is
  * generated only after signup by the phase-2 "prescription" pass.
  *
@@ -85,13 +85,13 @@ export const triageOutputSchema = z.object({
         rubric: rubricNameSchema,
         impactTag: impactTagSchema,
         severity: z.enum(['CRITICAL', 'IMPORTANT', 'POLISH']),
-        problem: z.string().min(1).describe('The flag title — one concise line naming the issue'),
+        problem: z.string().min(1).describe('The flag title - one concise line naming the issue'),
         confidence: z.number().min(0).max(1),
         pageUrl: z.string().url().optional(),
       })
     )
     .describe(
-      '0-2 net-new flag TITLES only, for issues deterministic rules cannot catch. Do not restate a deterministic flag. Do NOT write fixes or prompts — titles only.'
+      '0-2 net-new flag TITLES only, for issues deterministic rules cannot catch. Do not restate a deterministic flag. Do NOT write fixes or prompts - titles only.'
     ),
 })
 
