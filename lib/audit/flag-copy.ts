@@ -1,4 +1,4 @@
-import { METADATA_CHECK_IDS } from '@/lib/marketing/evidence-regions'
+import { METADATA_CHECK_IDS, formatVisualEvidence } from '@/lib/marketing/evidence-regions'
 import { verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
@@ -310,7 +310,7 @@ export function formatDisplayEvidence(checkId: string | null | undefined, eviden
   if (!checkId || isCodeOrHeadCheck(checkId)) return raw
   if (!VISUAL_EVIDENCE_CHECKS.has(checkId)) return raw
   if (/screenshot|viewport|visible|above the fold|below the fold/i.test(raw)) return raw
-  return `Visible page evidence: ${raw}`
+  return formatVisualEvidence(checkId, raw)
 }
 
 export function buildExpertFixPrompt(flag: RankableFlag): string {

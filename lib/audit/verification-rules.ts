@@ -120,10 +120,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Throttle the page in Chrome DevTools; the first screen should swap from loading UI to real content within 3 seconds.',
   'motion-ignores-reduced-preference':
     'Enable prefers-reduced-motion in OS settings; hero animations and loops should stop or shorten to near-zero.',
-  'font-family-sprawl':
-    'Inspect computed font-family on headings and body copy; limit to 2–3 families site-wide.',
-  'button-radius-inconsistent':
-    'Primary and secondary CTAs should share one border-radius token across the page.',
   'placeholder-copy-detected':
     'Page should not contain Lorem ipsum, TODO, TBD, or [object Object] in visible text.',
   'template-default-copy':
@@ -245,10 +241,6 @@ export function verificationRuleForCheckId(checkId: string): string | null {
 
 export function verifiableCheckIds(): string[] {
   return Object.keys(ALL_VERIFICATION_RULES)
-}
-
-export function getVerificationRule(checkId: string): string | null {
-  return verificationRuleForCheckId(checkId)
 }
 
 export function allCheckIdsHaveVerificationRules(): boolean {

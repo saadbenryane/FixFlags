@@ -96,7 +96,7 @@ describe('flag-copy', () => {
 
   it('includes visual context only for UI element checks when needed', () => {
     const text = formatDisplayEvidence('h1-generic', 'H1: "Build something amazing with AI"')
-    assert.match(text, /^Visible page evidence:/)
+    assert.match(text, /^On the screenshot, look at/)
     assert.match(text, /Build something amazing/)
   })
 

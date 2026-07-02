@@ -2,6 +2,7 @@ import type { FlowScanResult } from '../flow/run-flow-scan'
 import { isAuthUtilityLink } from '../flow/link-scoring'
 import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
+import { runFlowUXChecks } from './flow-ux'
 import { DeterministicFlag } from './index'
 import { registerCheck } from './registry'
 
@@ -22,6 +23,41 @@ const FLOW_CHECK_DESCRIPTORS = [
     id: 'flow-cta-destination-no-trust',
     severity: 'IMPORTANT',
     tags: ['requiresBrowser', 'destination-trust'],
+  },
+  {
+    id: 'flow-destination-no-headline',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-destination-no-cta',
+    severity: 'CRITICAL',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-cta-message-mismatch',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-destination-cta-overload',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-destination-stuck-loading',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-destination-no-privacy',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
+  },
+  {
+    id: 'flow-destination-slow-load',
+    severity: 'IMPORTANT',
+    tags: ['requiresBrowser', 'destination-ux'],
   },
 ] as const
 
@@ -138,6 +174,7 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
     ...runMultiStepFlowChecks(result),
     ...runPostClickFlowChecks(result.postClickMetrics),
     ...runDestinationTrustChecks(result),
+    ...runFlowUXChecks(result),
   ]
   const ctaLabel = formatCtaEvidence(result)
 

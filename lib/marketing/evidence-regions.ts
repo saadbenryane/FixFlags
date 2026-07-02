@@ -157,8 +157,8 @@ const VISUAL_TARGET_LABELS: Record<string, string> = {
   'render-blocking': 'Hero & first paint area',
   'placeholder-copy-detected': 'Visible page copy',
   'template-default-copy': 'Hero & body copy',
-  'font-family-sprawl': 'Headings & body typography',
-  'button-radius-inconsistent': 'Primary & secondary buttons',
+  'visual-typography-sprawl': 'Headings & body typography',
+  'visual-radius-inconsistent': 'Primary & secondary buttons',
 }
 
 /** Prefix evidence with what to look at on the screenshot. */

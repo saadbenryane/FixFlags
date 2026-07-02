@@ -478,7 +478,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Cross-section spacing, radius, typography consistency',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['font-family-sprawl', 'button-radius-inconsistent', 'visual-radius-inconsistent', 'visual-typography-sprawl'],
+    checkIds: ['visual-radius-inconsistent', 'visual-typography-sprawl'],
     verify: 'npm run test:unit -- lib/audit/__tests__/design-language.test.ts',
     notes: 'DOM style sampling during mobile capture.',
   },

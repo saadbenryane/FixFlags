@@ -94,7 +94,7 @@ describe('regression: broken-page.html', () => {
       { checkId: 'iframe-no-title', severity: 'POLISH' },
       { checkId: 'template-default-copy', severity: 'IMPORTANT' },
     ],
-    ['scroll-ghost-sections', 'button-radius-inconsistent']
+    ['scroll-ghost-sections', 'visual-radius-inconsistent']
   )
 })
 
@@ -107,6 +107,6 @@ describe('regression: saadbenryane-com.html', () => {
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
     ],
-    ['form-missing-validation', 'scroll-ghost-sections', 'button-radius-inconsistent']
+    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )
 })

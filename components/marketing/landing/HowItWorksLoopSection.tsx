@@ -97,9 +97,9 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
     >
       <BrandIllustration
         variant="moments"
-        sizes="(min-width: 1024px) 360px, 0px"
-        className="absolute left-[max(1rem,calc(50%-46rem))] top-10 hidden h-44 w-80 -rotate-2 rounded-card opacity-35 shadow-raised blur-[0.2px] lg:block"
-        imageClassName="scale-105"
+        sizes="(min-width: 1024px) 560px, 0px"
+        className="absolute left-[max(1rem,calc(50%-48rem))] top-2 hidden h-56 w-[34rem] -rotate-1 rounded-card opacity-55 shadow-raised blur-[0.1px] lg:block"
+        imageClassName="object-contain"
       />
       <Container className="relative space-y-8 sm:space-y-11">
         <div className="mx-auto max-w-3xl space-y-3 text-center">

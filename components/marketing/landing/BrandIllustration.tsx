@@ -10,9 +10,9 @@ const ILLUSTRATIONS = {
   },
   moments: {
     src: '/marketing/brand-product-moments.webp',
-    width: 1400,
-    height: 933,
-    position: 'object-center',
+    width: 1500,
+    height: 641,
+    position: 'object-left',
   },
 } as const
 

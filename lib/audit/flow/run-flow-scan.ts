@@ -11,6 +11,7 @@ import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
 import { measurePostClickLoading, type PostClickMetrics } from './post-click-probes'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
+import { runDestinationUXProbes, type DestinationUXQuality } from './destination-ux-probes'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -47,6 +48,7 @@ export interface FlowScanResult {
     hasContactInfo: boolean
     isHttps: boolean
   }
+  destinationUX?: DestinationUXQuality
 }
 
 export interface RunFlowScanOptions {
@@ -206,15 +208,20 @@ export async function runFlowScan(
       ? await fetchDestinationTrust(finalUrl)
       : undefined
 
+  const destinationUX = urlsMeaningfullyChanged(landingUrl, finalUrl)
+    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref)
+    : undefined
+
   if (httpStatus && httpStatus >= 400) {
-    return {
-      status: 'error_response',
-      steps,
-      finalUrl,
-      httpStatus,
-      ...ctaMeta,
+      return {
+        status: 'error_response',
+        steps,
+        finalUrl,
+        httpStatus,
+        destinationUX,
+        ...ctaMeta,
+      }
     }
-  }
 
   const leftOrigin = new URL(finalUrl).origin !== origin
   if (leftOrigin && !isConversionPathUrl(origin, finalUrl)) {
@@ -222,6 +229,7 @@ export async function runFlowScan(
       status: 'external_leave',
       steps,
       finalUrl,
+      destinationUX,
       ...ctaMeta,
     }
   }
@@ -234,6 +242,7 @@ export async function runFlowScan(
         finalUrl,
         postClickMetrics,
         destinationTrust,
+        destinationUX,
         ...ctaMeta,
       }
     }
@@ -251,6 +260,7 @@ export async function runFlowScan(
           finalUrl,
           postClickMetrics,
           destinationTrust,
+          destinationUX,
           ...ctaMeta,
         }
       }
@@ -261,6 +271,7 @@ export async function runFlowScan(
       finalUrl,
       postClickMetrics,
       destinationTrust,
+      destinationUX,
       ...ctaMeta,
     }
   }
@@ -271,6 +282,7 @@ export async function runFlowScan(
     finalUrl,
     postClickMetrics,
     destinationTrust,
+    destinationUX,
     ...ctaMeta,
   }
 }

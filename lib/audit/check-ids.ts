@@ -73,9 +73,6 @@ export const ALL_CHECK_IDS = [
   'loading-state-slow',
   'motion-ignores-reduced-preference',
   'form-inputs-zoom-mobile',
-  // design-language.ts (legacy standalone compatibility)
-  'font-family-sprawl',
-  'button-radius-inconsistent',
   // cta-focus.ts
   'competing-ctas',
   // slop.ts
@@ -84,7 +81,7 @@ export const ALL_CHECK_IDS = [
   'unreplaced-template-token',
   'cta-dead-link',
   'social-proof-unverifiable',
-  // form.ts
+  // content.ts
   'form-missing-validation',
   // measurement.ts
   'measurement-ga-gtm-posthog-missing',

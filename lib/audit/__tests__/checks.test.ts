@@ -907,23 +907,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
           inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
         }))
       ),
-    'font-family-sprawl': () =>
-      checkIds(
-        runDesignLanguageChecks(
-          healthyCaptureMetrics({
-            uniqueFontFamilies: 6,
-            fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'],
-          })
-        )
-      ),
-    'button-radius-inconsistent': () =>
-      checkIds(
-        runDesignLanguageChecks(
-          healthyCaptureMetrics({
-            buttonBorderRadii: [0, 8, 24],
-          })
-        )
-      ),
+
     'competing-ctas': () =>
       checkIds(
         runCtaFocusChecks(

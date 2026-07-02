@@ -20,15 +20,11 @@ export interface RankableFlag {
   confidence?: number | null
 }
 
-export type SeverityGroup = 'CRITICAL' | 'IMPORTANT' | 'POLISH'
-
-export interface FlagSeverityGroups {
+export function groupFlagsBySeverity(flags: RankableFlag[]): {
   critical: RankableFlag[]
   important: RankableFlag[]
   polish: RankableFlag[]
-}
-
-export function groupFlagsBySeverity(flags: RankableFlag[]): FlagSeverityGroups {
+} {
   const sorted = [...flags].sort(
     (a, b) => severityRank(a.severity) - severityRank(b.severity)
   )
