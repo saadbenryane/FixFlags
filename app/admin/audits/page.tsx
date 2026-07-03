@@ -11,6 +11,7 @@ import {
   AdminTableHeaderCell,
   AdminTableRow,
 } from '@/components/admin/AdminTable'
+import { RetryAuditButton } from '@/components/admin/RetryAuditButton'
 
 export default async function AdminAuditsPage() {
   const audits = await prisma.audit.findMany({
@@ -48,6 +49,7 @@ export default async function AdminAuditsPage() {
           <AdminTableHeaderCell>LLM tokens</AdminTableHeaderCell>
           <AdminTableHeaderCell>Est. cost</AdminTableHeaderCell>
           <AdminTableHeaderCell>Created</AdminTableHeaderCell>
+          <AdminTableHeaderCell></AdminTableHeaderCell>
         </AdminTableHead>
         <tbody>
           {audits.map((audit, i) => (
@@ -75,6 +77,9 @@ export default async function AdminAuditsPage() {
               </AdminTableCell>
               <AdminTableCell className="text-muted-foreground text-xs">
                 {new Date(audit.createdAt).toLocaleString()}
+              </AdminTableCell>
+              <AdminTableCell>
+                {audit.status === 'FAILED' && <RetryAuditButton auditId={audit.id} />}
               </AdminTableCell>
             </AdminTableRow>
           ))}

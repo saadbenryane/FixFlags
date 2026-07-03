@@ -4,37 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
-
-function StatValue({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="font-mono text-2xl font-medium tabular-nums">{children}</div>
-  )
-}
+import { StatValue } from '@/components/admin/StatValue'
+import { startOf, pct } from '@/lib/admin/date-ranges'
 
 function FunnelBar({ value, max, label }: { value: number; max: number; label: string }) {
-  const pct = max > 0 ? (value / max) * 100 : 0
+  const percent = pct(value, max)
   return (
     <div className="flex items-center gap-3">
       <span className="w-32 text-sm text-muted-foreground shrink-0">{label}</span>
       <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-brand rounded-full transition-all"
-          style={{ width: `${Math.max(pct, 1)}%` }}
+          style={{ width: `${Math.max(percent, 1)}%` }}
         />
       </div>
       <span className="font-mono text-sm tabular-nums w-20 text-right">{value.toLocaleString()}</span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums w-14 text-right">
-        {pct.toFixed(0)}%
+        {percent}%
       </span>
     </div>
   )
-}
-
-function startOf(daysAgo: number): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - daysAgo)
-  return d
 }
 
 export default async function AdminAnalyticsPage() {
@@ -119,7 +108,7 @@ export default async function AdminAnalyticsPage() {
         <SectionTitle>Period breakdown</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {periodStats.map((p) => (
-            <Card key={p.label} className="border-0 shadow-card">
+            <Card key={p.label} variant="solid">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{p.label}</CardTitle>
               </CardHeader>

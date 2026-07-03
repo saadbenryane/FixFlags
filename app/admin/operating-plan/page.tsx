@@ -7,24 +7,11 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { AUDIT_CAPABILITIES, capabilitySummary, type AuditDimension } from '@/lib/audit/capability-matrix'
+import { StatValue } from '@/components/admin/StatValue'
+import { startOf, pct } from '@/lib/admin/date-ranges'
 
 /** docs/offering.md, docs/business-model.md: feature freeze lifts at 100 paying users */
 const PAYING_USER_FREEZE_THRESHOLD = 100
-
-function StatValue({ children }: { children: React.ReactNode }) {
-  return <div className="font-mono text-2xl font-medium tabular-nums">{children}</div>
-}
-
-function startOf(daysAgo: number): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - daysAgo)
-  return d
-}
-
-function pct(value: number, total: number): number {
-  return total > 0 ? Math.round((value / total) * 100) : 0
-}
 
 export default async function OperatingPlanPage() {
   const monthAgo = startOf(30)
@@ -96,7 +83,7 @@ export default async function OperatingPlanPage() {
 
       <section className="space-y-4">
         <SectionTitle>Feature freeze gate</SectionTitle>
-        <Card className="border-0 shadow-card">
+        <Card variant="solid">
           <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
             <CardTitle className="text-xs text-muted-foreground font-medium">
               Paying users toward the {PAYING_USER_FREEZE_THRESHOLD}-user threshold
@@ -121,7 +108,7 @@ export default async function OperatingPlanPage() {
       <section className="space-y-4">
         <SectionTitle>Core loop health (30d) &mdash; Flag, Fix, Re-check</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Re-check rate</CardTitle>
             </CardHeader>
@@ -132,7 +119,7 @@ export default async function OperatingPlanPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Flags fixed</CardTitle>
             </CardHeader>
@@ -141,7 +128,7 @@ export default async function OperatingPlanPage() {
               <p className="text-xs text-muted-foreground mt-1">{fixedFlags.toLocaleString()} of {totalFlagsMonth.toLocaleString()} flags</p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Flags open</CardTitle>
             </CardHeader>
@@ -149,7 +136,7 @@ export default async function OperatingPlanPage() {
               <StatValue>{openFlags.toLocaleString()}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Flags regressed</CardTitle>
             </CardHeader>
@@ -162,7 +149,7 @@ export default async function OperatingPlanPage() {
 
       <section className="space-y-4">
         <SectionTitle>Launch readiness distribution (30d)</SectionTitle>
-        <Card className="border-0 shadow-card">
+        <Card variant="solid">
           <CardContent className="py-4 space-y-2">
             {readinessRows.map((r) => (
               <div key={r.key} className="flex items-center gap-3">
@@ -187,7 +174,7 @@ export default async function OperatingPlanPage() {
           docs/scan-roadmap.md) &mdash; run <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
         </p>
         <div className="grid grid-cols-3 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Live</CardTitle>
             </CardHeader>
@@ -195,7 +182,7 @@ export default async function OperatingPlanPage() {
               <StatValue>{capSummary.byStatus.live}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Partial</CardTitle>
             </CardHeader>
@@ -203,7 +190,7 @@ export default async function OperatingPlanPage() {
               <StatValue>{capSummary.byStatus.partial}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Planned</CardTitle>
             </CardHeader>
@@ -219,7 +206,7 @@ export default async function OperatingPlanPage() {
         )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {byDimension.map((d) => (
-            <Card key={d.dimension} className="border-0 shadow-card">
+            <Card key={d.dimension} variant="solid">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{d.dimension}</CardTitle>
               </CardHeader>

@@ -10,6 +10,7 @@ export default async function AdminFeedbackPage() {
       flag: {
         select: {
           id: true,
+          auditId: true,
           problem: true,
           checkId: true,
           rubric: true,
@@ -31,6 +32,7 @@ export default async function AdminFeedbackPage() {
         rubric: string
         severity: string
         evidence: string
+        sampleAuditId: string
         count: number
       }
     >
@@ -43,6 +45,7 @@ export default async function AdminFeedbackPage() {
         rubric: item.flag.rubric,
         severity: item.flag.severity,
         evidence: item.flag.evidence,
+        sampleAuditId: item.flag.auditId,
         count: 0,
       }
     }

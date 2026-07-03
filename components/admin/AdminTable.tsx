@@ -12,14 +12,14 @@ export function AdminTable({
 }) {
   if (isEmpty) {
     return (
-      <Card className="border-0 shadow-card">
+      <Card variant="solid">
         <div className="py-8 text-center text-sm text-muted-foreground">{emptyMessage}</div>
       </Card>
     )
   }
 
   return (
-    <Card className="overflow-hidden border-0 p-0 shadow-card">
+    <Card variant="solid" className="overflow-hidden p-0">
       <table className="w-full text-sm">{children}</table>
     </Card>
   )
@@ -33,7 +33,7 @@ export function AdminTableHead({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function AdminTableHeaderCell({ children, className }: { children: React.ReactNode; className?: string }) {
+export function AdminTableHeaderCell({ children, className }: { children?: React.ReactNode; className?: string }) {
   return <th className={cn('text-left px-4 py-3 font-medium', className)}>{children}</th>
 }
 
