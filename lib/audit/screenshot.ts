@@ -104,6 +104,7 @@ export interface ScreenshotResult {
   captureMetrics?: CaptureMetrics | null
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
+  responseHeaders?: Record<string, string> | null
 }
 
 interface ViewportCapture {
@@ -114,6 +115,7 @@ interface ViewportCapture {
   captureMetrics?: CaptureMetrics | null
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
+  responseHeaders?: Record<string, string> | null
 }
 
 interface PageLoadSnapshot {
@@ -280,6 +282,7 @@ async function captureDesktopWithFlow(
       settle: false,
     })
     page = session.page
+    result.responseHeaders = session.responseHeaders
 
     const initial = await readLoadSnapshot(page)
     const initialBuffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
@@ -444,6 +447,7 @@ export async function captureScreenshots(
     captureMetrics,
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
+    responseHeaders: desktop.responseHeaders ?? null,
   }
 }
 

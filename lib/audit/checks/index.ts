@@ -12,6 +12,7 @@ import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runMeasurementChecks } from './measurement'
 import { runSecurityBasicsChecks } from './security'
+import { runSecurityHeaderChecks } from './security-headers'
 import { runVisualPolishChecks } from './visual-polish'
 import { runCtaFocusChecks } from './cta-focus'
 import { runAuthCheckoutChecks } from './auth-checkout'
@@ -43,7 +44,8 @@ export async function runAllChecks(
   mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>,
   onAreaComplete?: (index: number) => void,
-  captureMetrics?: CaptureMetrics | null
+  captureMetrics?: CaptureMetrics | null,
+  responseHeaders?: Record<string, string> | null
 ): Promise<RunAllChecksResult> {
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
@@ -64,6 +66,7 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
     { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
+    { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
   ]
 

@@ -15,6 +15,8 @@ export interface AuditPageSession {
   page: Page
   /** Shared console error buffer (mutated by page listeners). */
   consoleErrors: Array<{ type: string; text: string }>
+  /** Lowercase response headers from the initial navigation, for header-based checks. */
+  responseHeaders: Record<string, string> | null
 }
 
 export interface CreateAuditPageOptions {
@@ -76,7 +78,7 @@ export async function createAuditPage(
     await settleAuditPage(page)
   }
 
-  return { page, consoleErrors }
+  return { page, consoleErrors, responseHeaders: response?.headers() ?? null }
 }
 
 export async function withAuditPage<T>(
