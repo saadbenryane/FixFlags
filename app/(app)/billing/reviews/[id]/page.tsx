@@ -14,9 +14,10 @@ export default async function ExpertReviewDetailPage({
   params: Promise<{ id: string }>
 }) {
   const session = await auth.api.getSession({ headers: await headers() })
+  if (!session) return null
   const { id } = await params
   const order = await prisma.expertReviewOrder.findFirst({
-    where: { id, userId: session!.user.id, status: { in: ['DELIVERED', 'FULFILLED'] } },
+    where: { id, userId: session.user.id, status: { in: ['DELIVERED', 'FULFILLED'] } },
     include: {
       audit: { select: { id: true, url: true } },
       deliverable: true,

@@ -7,14 +7,13 @@ export function runSecurityBasicsChecks(url: string, meta: PageMetadata): Determ
   const mixedContentUrls: string[] = []
 
   if (isHttps) {
+    // Only actual subresource loads (images here) trigger a browser mixed-content
+    // block/warning. A plain <a href="http://..."> is just an outbound link to
+    // another site -- clicking it navigates away, it doesn't load anything
+    // insecurely on this page, so it must not be counted here.
     for (const img of meta.images) {
       if (img.src.startsWith('http://')) {
         mixedContentUrls.push(img.src)
-      }
-    }
-    for (const link of meta.links) {
-      if (link.href.startsWith('http://')) {
-        mixedContentUrls.push(link.href)
       }
     }
   }

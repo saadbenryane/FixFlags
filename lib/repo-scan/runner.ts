@@ -71,7 +71,7 @@ export async function runRepoScan(repoScanId: string): Promise<void> {
     if (findings.length > 0) {
       await prisma.repoScanFinding.createMany({
         data: findings.map((finding) => {
-          const prompt = buildFindingPrompt(scan.repoFullName, finding)
+          const prompt = buildFindingPrompt(scan.repoFullName, finding, commitSha)
           return {
             repoScanId,
             severity: finding.severity,

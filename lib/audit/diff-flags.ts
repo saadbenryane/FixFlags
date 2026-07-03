@@ -23,19 +23,19 @@ function flagMatchKey(f: Pick<FlagRow, 'checkId' | 'problem' | 'rubric'>): strin
 }
 
 export async function diffFlagsAgainstParent(
-  recheckAuditId: string,
+  monitoringAuditId: string,
   parentAuditId: string
 ): Promise<void> {
-  const [parentFlags, recheckFlags] = await Promise.all([
+  const [parentFlags, monitoringFlags] = await Promise.all([
     prisma.flag.findMany({
       where: { auditId: parentAuditId },
     }),
     prisma.flag.findMany({
-      where: { auditId: recheckAuditId },
+      where: { auditId: monitoringAuditId },
     }),
   ])
 
-  const recheckByKey = new Map(recheckFlags.map((f) => [flagMatchKey(f), f]))
+  const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const updates: Array<{
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
@@ -43,32 +43,32 @@ export async function diffFlagsAgainstParent(
 
   for (const parentFlag of parentFlags) {
     const key = flagMatchKey(parentFlag)
-    const recheckFlag = recheckByKey.get(key)
+    const monitoringFlag = monitoringByKey.get(key)
 
-    if (!recheckFlag) {
+    if (!monitoringFlag) {
       updates.push({
         id: parentFlag.id,
-        data: { status: 'FIXED', resolvedInId: recheckAuditId },
+        data: { status: 'FIXED', resolvedInId: monitoringAuditId },
       })
       continue
     }
 
     const parentRank = severityRank[parentFlag.severity]
-    const recheckRank = severityRank[recheckFlag.severity]
+    const monitoringRank = severityRank[monitoringFlag.severity]
 
     let status: FlagStatus = 'OPEN'
-    if (recheckRank > parentRank) status = 'REGRESSED'
-    else if (recheckRank < parentRank) status = 'FIXED'
+    if (monitoringRank > parentRank) status = 'REGRESSED'
+    else if (monitoringRank < parentRank) status = 'FIXED'
 
     updates.push({
-      id: recheckFlag.id,
+      id: monitoringFlag.id,
       data: { status },
     })
     updates.push({
       id: parentFlag.id,
       data: {
         status,
-        resolvedInId: status === 'FIXED' ? recheckAuditId : undefined,
+        resolvedInId: status === 'FIXED' ? monitoringAuditId : undefined,
       },
     })
   }
@@ -92,19 +92,19 @@ export interface FlagDiffSummaryItem {
 
 export async function getFlagDiffSummary(
   parentAuditId: string,
-  recheckAuditId: string
+  monitoringAuditId: string
 ): Promise<{
   fixed: FlagDiffSummaryItem[]
   unchanged: FlagDiffSummaryItem[]
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
 }> {
-  const [parentFlags, recheckFlags] = await Promise.all([
+  const [parentFlags, monitoringFlags] = await Promise.all([
     prisma.flag.findMany({ where: { auditId: parentAuditId } }),
-    prisma.flag.findMany({ where: { auditId: recheckAuditId } }),
+    prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
   ])
 
-  const recheckByKey = new Map(recheckFlags.map((f) => [flagMatchKey(f), f]))
+  const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const parentKeys = new Set(parentFlags.map((f) => flagMatchKey(f)))
 
   const fixed: FlagDiffSummaryItem[] = []
@@ -114,7 +114,7 @@ export async function getFlagDiffSummary(
 
   for (const parentFlag of parentFlags) {
     const key = flagMatchKey(parentFlag)
-    const recheckFlag = recheckByKey.get(key)
+    const monitoringFlag = monitoringByKey.get(key)
     const item: FlagDiffSummaryItem = {
       checkId: parentFlag.checkId,
       problem: parentFlag.problem,
@@ -123,41 +123,41 @@ export async function getFlagDiffSummary(
       status: parentFlag.status,
     }
 
-    if (!recheckFlag) {
+    if (!monitoringFlag) {
       fixed.push(item)
       continue
     }
 
-    if (parentFlag.status === 'FIXED' || recheckFlag.status === 'FIXED') {
+    if (parentFlag.status === 'FIXED' || monitoringFlag.status === 'FIXED') {
       fixed.push({ ...item, status: 'FIXED' })
-    } else if (parentFlag.status === 'REGRESSED' || recheckFlag.status === 'REGRESSED') {
+    } else if (parentFlag.status === 'REGRESSED' || monitoringFlag.status === 'REGRESSED') {
       regressed.push({
-        checkId: recheckFlag.checkId,
-        problem: recheckFlag.problem,
-        rubric: recheckFlag.rubric,
-        severity: recheckFlag.severity,
+        checkId: monitoringFlag.checkId,
+        problem: monitoringFlag.problem,
+        rubric: monitoringFlag.rubric,
+        severity: monitoringFlag.severity,
         status: 'REGRESSED',
       })
     } else {
       unchanged.push({
-        checkId: recheckFlag.checkId,
-        problem: recheckFlag.problem,
-        rubric: recheckFlag.rubric,
-        severity: recheckFlag.severity,
+        checkId: monitoringFlag.checkId,
+        problem: monitoringFlag.problem,
+        rubric: monitoringFlag.rubric,
+        severity: monitoringFlag.severity,
         status: 'OPEN',
       })
     }
   }
 
-  for (const recheckFlag of recheckFlags) {
-    const key = flagMatchKey(recheckFlag)
+  for (const monitoringFlag of monitoringFlags) {
+    const key = flagMatchKey(monitoringFlag)
     if (!parentKeys.has(key)) {
       newIssues.push({
-        checkId: recheckFlag.checkId,
-        problem: recheckFlag.problem,
-        rubric: recheckFlag.rubric,
-        severity: recheckFlag.severity,
-        status: recheckFlag.status,
+        checkId: monitoringFlag.checkId,
+        problem: monitoringFlag.problem,
+        rubric: monitoringFlag.rubric,
+        severity: monitoringFlag.severity,
+        status: monitoringFlag.status,
       })
     }
   }

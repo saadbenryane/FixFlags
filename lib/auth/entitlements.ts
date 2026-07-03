@@ -22,10 +22,11 @@ export function getReportTierForUser(
 }
 
 export function canAccessPaidFeatures(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
+  if (user.subscriptionStatus === 'PAST_DUE' || user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') return false
   return user.plan !== 'FREE'
 }
 
@@ -40,7 +41,7 @@ export function canExportSummary(user: Pick<User, 'id' | 'role' | 'plan'>): bool
   return canSharePublicly(user)
 }
 
-export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>): boolean {
   return canAccessPaidFeatures(user)
 }
 
@@ -49,13 +50,13 @@ export function canScanRepositories(user: Pick<User, 'id' | 'role' | 'plan'>): b
   return canSharePublicly(user)
 }
 
-/** Authenticated users can re-check reports they own; quota is not consumed. */
-export function canAccessRecheck(): boolean {
+/** Authenticated users can monitor reports they own; quota is not consumed. */
+export function canAccessMonitoring(): boolean {
   return true
 }
 
 export function canAccessCompare(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   return canAccessPaidFeatures(user)
 }
@@ -65,13 +66,13 @@ export interface UserEntitlements {
   canSharePublicly: boolean
   canExportSummary: boolean
   canAccessPaidFeatures: boolean
-  canRecheck: boolean
+  canMonitor: boolean
   canUseMcp: boolean
   canScanRepositories: boolean
 }
 
 export function getEntitlements(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): UserEntitlements {
   const reportTier = getReportTierForUser(user)
   const paid = canAccessPaidFeatures(user)
@@ -80,7 +81,7 @@ export function getEntitlements(
     canSharePublicly: canSharePublicly(user),
     canExportSummary: canExportSummary(user),
     canAccessPaidFeatures: paid,
-    canRecheck: canAccessRecheck(),
+    canMonitor: canAccessMonitoring(),
     canUseMcp: canUseApiKeys(user),
     canScanRepositories: canScanRepositories(user),
   }

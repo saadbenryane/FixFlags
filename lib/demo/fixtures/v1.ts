@@ -37,9 +37,9 @@ export const v1Fixture: DemoFixture = {
   },
   announcement: null,
   navLinks: [{ label: 'Features', href: '#features' }],
-  headline: 'Ship a landing page your customers understand in 5 seconds',
+  headline: 'Ship landing pages for teams in 5 seconds',
   subhead:
-    'Founders use LaunchPad to turn a rough idea into a polished, conversion-ready page. No design skills required.',
+    'Founders use LaunchPad to turn a rough idea into a polished, conversion-ready page. As seen in TechCrunch. Start your 14-day free trial - no credit card required.',
   primaryCta: { label: 'Start free', href: '/demo/v1/signup' },
   secondaryCta: null,
   heroImageSrc: '/demo/hero-v1.svg',
@@ -62,7 +62,12 @@ export const v1Fixture: DemoFixture = {
     missingTrust: false,
   },
   showCookieConsent: true,
-  socialProof: null,
+  socialProof: {
+    statLine: 'Join 10,000+ teams',
+    testimonials: [
+      { quote: 'Increased revenue by 30%', author: 'Sarah Chen', role: 'CTO at Acme' },
+    ],
+  },
   form: {
     heading: 'Get started today',
     fields: [

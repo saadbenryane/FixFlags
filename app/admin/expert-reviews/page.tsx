@@ -34,7 +34,7 @@ export default async function AdminExpertReviewsPage() {
         ) : (
           <div className="space-y-3">
             {pending.map((order) => (
-              <Card key={order.id} className="border-0 shadow-card">
+              <Card key={order.id} variant="solid">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{order.email}</CardTitle>
                 </CardHeader>

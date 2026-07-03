@@ -19,7 +19,7 @@ export interface CreateAuditOptions {
   parentId?: string
   skipUsageCount?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
-  recheckMode?: 'FULL' | 'SUMMARY_ONLY'
+  monitoringMode?: 'FULL' | 'SUMMARY_ONLY'
   delayMs?: number
   attribution?: AuditAttribution
 }
@@ -56,7 +56,7 @@ export async function createAndEnqueueAudit(
     parentId: options.parentId ?? null,
     skipUsageCount: options.skipUsageCount ?? false,
     auditMode: options.auditMode ?? ('SINGLE' as const),
-    recheckMode: options.recheckMode ?? ('FULL' as const),
+    monitoringMode: options.monitoringMode ?? ('FULL' as const),
     status: 'QUEUED' as const,
     progress: 5,
     includeAi,

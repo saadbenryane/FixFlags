@@ -46,6 +46,91 @@ export interface AuditCapability {
  * Used by scripts/audit-capability-report.ts and goal planning.
  */
 export const AUDIT_CAPABILITIES: AuditCapability[] = [
+  // MESSAGE - messaging clarity
+  {
+    id: 'copy-messaging-clarity',
+    dimension: 'MESSAGE',
+    category: 'copy',
+    label: 'Value proposition clarity & jargon detection',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'messaging-weak-value-prop',
+      'messaging-jargon-overload',
+      'messaging-no-audience',
+      'messaging-long-sentences',
+      'messaging-headline-too-short',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+  {
+    id: 'message-conversion-friction',
+    dimension: 'MESSAGE',
+    category: 'copy',
+    label: 'Conversion path, risk reversal & social proof',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'friction-no-commitment-path',
+      'friction-trial-commitment-unclear',
+      'friction-form-too-many-fields',
+      'friction-no-risk-reversal',
+      'friction-no-social-proof',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+  {
+    id: 'message-trust-psychology',
+    dimension: 'MESSAGE',
+    category: 'trust',
+    label: 'Authority signals, claim substantiation & contact',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'trust-no-authority-signals',
+      'trust-testimonial-quality',
+      'trust-unsupported-claims',
+      'trust-no-direct-contact',
+      'trust-no-internal-links',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+
+  // EXPERIENCE - visual hierarchy
+  {
+    id: 'experience-visual-hierarchy',
+    dimension: 'EXPERIENCE',
+    category: 'layout',
+    label: 'Visual hierarchy, competing CTAs, font sprawl',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'hierarchy-competing-actions',
+      'hierarchy-too-many-fonts',
+      'hierarchy-no-sections',
+      'hierarchy-no-headline',
+      'hierarchy-information-density',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+  {
+    id: 'experience-mobile-ux-quality',
+    dimension: 'EXPERIENCE',
+    category: 'mobile',
+    label: 'Mobile UX: zoom, thumb zone, CTA labels, loading',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'mobile-input-zoom',
+      'mobile-cta-thumb-zone',
+      'mobile-cta-weak-label',
+      'mobile-stuck-loading',
+      'mobile-no-viewport',
+      'mobile-load-delay-content',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+  },
+
   // MESSAGE - copy & slop
   {
     id: 'copy-hero-specificity',
@@ -158,6 +243,25 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: ['security-mixed-content'],
     verify: 'npm run demo:audit:offline',
+  },
+  {
+    id: 'security-headers-scan',
+    dimension: 'REACH',
+    category: 'trust',
+    label: 'HTTP security headers audit',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'security-csp-missing',
+      'security-csp-unsafe-inline',
+      'security-hsts-missing',
+      'security-hsts-too-short',
+      'security-frame-options-missing',
+      'security-frame-options-too-permissive',
+      'security-content-type-options-missing',
+      'security-xss-protection-missing',
+    ],
+    notes: 'Reads raw response headers from browser capture, not PageMetadata.',
   },
 
   // REACH - metadata & SEO
@@ -413,6 +517,13 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'flow-cta-blank-destination',
       'flow-cta-stuck-loading',
       'flow-cta-destination-no-trust',
+      'flow-destination-no-headline',
+      'flow-destination-no-cta',
+      'flow-cta-message-mismatch',
+      'flow-destination-cta-overload',
+      'flow-destination-stuck-loading',
+      'flow-destination-no-privacy',
+      'flow-destination-slow-load',
     ],
     verify: 'npm run demo:audit:flow',
   },
@@ -479,7 +590,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     tool: 'browser-capture',
     status: 'live',
     checkIds: ['visual-radius-inconsistent', 'visual-typography-sprawl'],
-    verify: 'npm run test:unit -- lib/audit/__tests__/design-language.test.ts',
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'DOM style sampling during mobile capture.',
   },
 

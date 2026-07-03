@@ -75,13 +75,13 @@ export default async function AdminLeadsPage({
       </div>
 
       {leads.length === 0 ? (
-        <Card className="border-0 shadow-card">
+        <Card variant="solid">
           <div className="py-8 text-center text-sm text-muted-foreground">
             No leads yet. They appear when audits complete.
           </div>
         </Card>
       ) : (
-        <Card className="overflow-hidden border-0 p-0 shadow-card">
+        <Card variant="solid" className="p-0 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

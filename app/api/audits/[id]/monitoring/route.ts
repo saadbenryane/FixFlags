@@ -6,5 +6,5 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  return redirectLegacyAuditApi(req, `/api/reports/${id}/recheck`)
+  return redirectLegacyAuditApi(req, `/api/reports/${id}/monitoring`)
 }

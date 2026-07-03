@@ -75,7 +75,7 @@ export async function getCheckUsage(
 export {
   canAccessPaidFeatures,
   canUseApiKeys,
-  canAccessRecheck,
+  canAccessMonitoring,
   canAccessCompare,
   canSharePublicly,
   canExportSummary,

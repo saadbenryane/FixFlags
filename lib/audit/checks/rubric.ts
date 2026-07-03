@@ -3,8 +3,8 @@ import type { PageSpeedResult } from '../pagespeed'
 
 export const SCAN_STEP_FAILURE_PENALTY = 25
 
-const MESSAGE_MODULES = new Set(['content', 'slop'])
-const REACH_MODULES = new Set(['metadata', 'og-image', 'seo', 'trust'])
+const MESSAGE_MODULES = new Set(['content', 'slop', 'messaging-clarity', 'conversion-friction', 'trust-psychology', 'visual-hierarchy'])
+const REACH_MODULES = new Set(['metadata', 'og-image', 'seo', 'trust', 'trust-psychology'])
 
 export interface RubricScoreContext {
   pageSpeedAvailable?: { desktop: boolean; mobile: boolean }

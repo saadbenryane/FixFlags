@@ -148,6 +148,12 @@ export async function runSeoChecks(
   return findings
 }
 
+async function fetchWithTimeout(url: string, method: 'HEAD' | 'GET', timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { method, signal: controller.signal })
+}
+
 const MAX_LINK_CHECKS = 8
 
 async function findBrokenInternalLinks(
@@ -174,14 +180,20 @@ async function findBrokenInternalLinks(
     if (seen.size > MAX_LINK_CHECKS) break
 
     try {
-      const controller = new AbortController()
-      setTimeout(() => controller.abort(), 4000)
-      const res = await fetch(absolute, { method: 'HEAD', signal: controller.signal })
+      let res = await fetchWithTimeout(absolute, 'HEAD', 4000)
+      // Some servers reject HEAD outright (405/501) regardless of whether the
+      // resource exists -- fall back to GET rather than silently passing a
+      // genuinely dead link on those hosts.
+      if (res.status === 405 || res.status === 501) {
+        res = await fetchWithTimeout(absolute, 'GET', 4000)
+      }
       if (res.status === 404 || res.status >= 500) {
         broken.push(`${absolute} (${res.status})`)
       }
     } catch {
-      broken.push(`${absolute} (unreachable)`)
+      // Transient network errors, timeouts, and anti-bot blocks on the scanner
+      // itself aren't evidence the link is dead for a real visitor -- skip
+      // rather than false-alarm. Mirrors the same call in auth-checkout.ts.
     }
   }
 

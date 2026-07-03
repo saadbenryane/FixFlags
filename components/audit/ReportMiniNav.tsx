@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 const BASE_SECTIONS = [
   { id: 'report-flags', label: 'Flags' },
   { id: 'report-rubrics', label: 'Rubrics' },
-  { id: 'report-recheck', label: 'Re-check' },
+  { id: 'report-monitoring', label: 'Monitoring' },
 ] as const
 
 type NavSection = { id: string; label: string }

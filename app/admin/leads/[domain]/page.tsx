@@ -70,7 +70,7 @@ export default async function AdminLeadDetailPage({
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-0 shadow-card">
+        <Card variant="solid">
           <CardHeader>
             <CardTitle className="text-base">Lead details</CardTitle>
           </CardHeader>
@@ -120,7 +120,7 @@ export default async function AdminLeadDetailPage({
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-card">
+        <Card variant="solid">
           <CardHeader>
             <CardTitle className="text-base">Workflow</CardTitle>
           </CardHeader>
@@ -137,7 +137,7 @@ export default async function AdminLeadDetailPage({
       {lead.supportSessions.length > 0 && (
         <section className="space-y-3">
           <SectionTitle>Chat sessions</SectionTitle>
-          <Card className="border-0 shadow-card divide-y">
+          <Card variant="solid" className="divide-y">
             {lead.supportSessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -158,13 +158,13 @@ export default async function AdminLeadDetailPage({
       <section className="space-y-3">
         <SectionTitle>Audit history</SectionTitle>
         {audits.length === 0 ? (
-          <Card className="border-0 shadow-card">
+          <Card variant="solid">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
               No completed audits found for this domain.
             </CardContent>
           </Card>
         ) : (
-        <Card className="overflow-hidden border-0 p-0 shadow-card">
+        <Card variant="solid" className="p-0 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

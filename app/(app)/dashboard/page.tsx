@@ -38,7 +38,8 @@ import { rubricLabel } from '@/lib/utils'
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() })
-  const userId = session!.user.id
+  if (!session) return null
+  const userId = session.user.id
 
   const user = await prisma.user.findUnique({ where: { id: userId } })
 
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
           flags: { select: { severity: true } },
         },
       },
-      rechecks: {
+      monitoringAudits: {
         where: { status: 'COMPLETED' },
         select: { id: true, score: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
@@ -76,7 +77,7 @@ export default async function DashboardPage() {
     isAtCheckLimit(used, pending, effectiveLimit)
 
   const canCompare = user
-    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan })
+    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan, subscriptionStatus: user.subscriptionStatus })
     : false
 
   const totalCritical = completedAudits.reduce(
@@ -173,7 +174,7 @@ export default async function DashboardPage() {
             const trendScores = isCompleted
               ? [
                   audit.score,
-                  ...audit.rechecks.map((r) => r.score),
+                  ...audit.monitoringAudits.map((r) => r.score),
                 ].filter((s): s is number => s !== null)
               : []
 
@@ -253,7 +254,7 @@ export default async function DashboardPage() {
                               </span>
                             )
                           })}
-                          {audit.rechecks.length > 0 && canCompare && (
+                          {audit.monitoringAudits.length > 0 && canCompare && (
                             <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                               <ArrowLeftRight className="h-3 w-3" />
                               Trend

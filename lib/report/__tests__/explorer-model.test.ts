@@ -73,6 +73,63 @@ describe('explorer-model', () => {
     assert.equal(model?.flags[0]?.title, 'Generic headline')
   })
 
+  it('orders same-severity flags by impact and confidence for the default opened fix', () => {
+    const model = buildLiveExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 68,
+      verdict: 'Needs focused improvements.',
+      flags: [
+        {
+          id: 'seo-polish',
+          checkId: 'title-too-short',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          impactTag: 'SEO',
+          problem: 'Title is short',
+          evidence: 'Title is 8 characters.',
+          whyItMatters: 'Search snippets underperform.',
+          fix: 'Write a more specific title.',
+          confidence: 0.95,
+        },
+        {
+          id: 'conversion-polish-low-confidence',
+          checkId: 'friction-no-social-proof',
+          rubric: 'MESSAGE',
+          severity: 'POLISH',
+          impactTag: 'CONVERSION',
+          problem: 'No proof near CTA',
+          evidence: 'CTA has no proof nearby.',
+          whyItMatters: 'Proof reduces risk.',
+          fix: 'Add substantiated proof near the CTA.',
+          confidence: 0.4,
+        },
+        {
+          id: 'conversion-polish-high-confidence',
+          checkId: 'mobile-cta-weak-label',
+          rubric: 'MESSAGE',
+          severity: 'POLISH',
+          impactTag: 'CONVERSION',
+          problem: 'CTA label is vague',
+          evidence: 'CTA says "Click here".',
+          whyItMatters: 'Vague CTAs reduce intent.',
+          fix: 'Use outcome-specific CTA copy.',
+          confidence: 0.9,
+        },
+      ],
+      rubricRows: [
+        { name: 'MESSAGE', score: 70, grade: 'C' },
+        { name: 'EXPERIENCE', score: 75, grade: 'B' },
+        { name: 'REACH', score: 80, grade: 'B' },
+      ],
+    })
+
+    assert.deepEqual(
+      model.flags.map((flag) => flag.id),
+      ['conversion-polish-high-confidence', 'conversion-polish-low-confidence', 'seo-polish']
+    )
+  })
+
   it('returns null partial explorer model without flags', () => {
     assert.equal(
       buildPartialExplorerModel({

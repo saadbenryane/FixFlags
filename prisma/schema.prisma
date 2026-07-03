@@ -388,7 +388,7 @@ model Project {
   @@map("projects")
 }
 
-enum RecheckMode {
+enum MonitoringMode {
   FULL
   SUMMARY_ONLY
 }
@@ -402,7 +402,7 @@ model Audit {
   url       String
   status    AuditStatus @default(QUEUED)
   progress  Int         @default(0)
-  recheckMode          RecheckMode @default(FULL)
+  monitoringMode          MonitoringMode @default(FULL)
   pipelineLog          Json?
   pipelineVersion      String?
 
@@ -412,8 +412,8 @@ model Audit {
   score    Int?
 
   parentId String?
-  parent   Audit?  @relation("Rechecks", fields: [parentId], references: [id])
-  rechecks Audit[] @relation("Rechecks")
+  parent            Audit?  @relation("Monitoring", fields: [parentId], references: [id])
+  monitoringAudits  Audit[] @relation("Monitoring")
 
   isPublic             Boolean              @default(false)
   skipUsageCount       Boolean              @default(false)

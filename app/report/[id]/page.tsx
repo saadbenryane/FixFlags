@@ -145,7 +145,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showAiContent, aiReviewPending } = result
+  const { audit, isLoggedIn, session, showPrescription, aiReviewPending } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -162,6 +162,7 @@ export default async function ReportPage({ params }: Props) {
           id: true,
           plan: true,
           role: true,
+          subscriptionStatus: true,
           auditsUsed: true,
           auditsLimit: true,
         },
@@ -175,15 +176,16 @@ export default async function ReportPage({ params }: Props) {
     !isUnlimitedScanLimit(effectiveLimit) &&
     isAtCheckLimit(user.auditsUsed, pending, effectiveLimit)
 
-  const entitlements = user
-    ? getEntitlements({
-        id: session!.user.id,
-        role: user.role,
-        plan: user.plan,
-      })
+  const entitlements = user && session
+      ? getEntitlements({
+          id: session.user.id,
+          role: user.role,
+          plan: user.plan,
+          subscriptionStatus: user.subscriptionStatus,
+        })
     : null
 
-  const latestRecheck =
+  const latestMonitoring =
     session?.user && !audit.parentId
       ? await prisma.audit.findFirst({
           where: {
@@ -196,14 +198,14 @@ export default async function ReportPage({ params }: Props) {
         })
       : null
 
-  const compareRecheckAudit = audit.parentId
+  const compareMonitoringAudit = audit.parentId
     ? { parentId: audit.parentId, userId: session?.user?.id ?? null }
-    : latestRecheck
+    : latestMonitoring
       ? { parentId: id, userId: session?.user?.id ?? null }
       : null
 
   const canAccessCompareView =
-    user && compareRecheckAudit
+    user && compareMonitoringAudit
       ? canAccessCompare(user)
       : false
 
@@ -278,7 +280,7 @@ export default async function ReportPage({ params }: Props) {
     return (
       <AuditShell
         session={session}
-        showAdmin={user ? isAdminUser({ id: session!.user.id, role: user.role }) : false}
+        showAdmin={user && session ? isAdminUser({ id: session.user.id, role: user.role }) : false}
       >
         <AuditReport
           audit={reportAudit}
@@ -288,11 +290,11 @@ export default async function ReportPage({ params }: Props) {
           isLoggedIn={isLoggedIn}
           isViewerOwner={isOwner}
           variant={isMarketingSample ? 'sample' : 'default'}
-          showRecheckHint={isLoggedIn && isOwner}
+          showMonitoringHint={isLoggedIn && isOwner}
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}
-          showAiContent={showAiContent}
+          showPrescription={showPrescription}
           aiReviewPending={aiReviewPending}
           actions={
             <AuditPageActions
@@ -320,7 +322,7 @@ export default async function ReportPage({ params }: Props) {
                 canAccessCompareView
                   ? audit.parentId
                     ? id
-                    : latestRecheck?.id ?? null
+                    : latestMonitoring?.id ?? null
                   : null
               }
               plan={user?.plan ?? 'FREE'}

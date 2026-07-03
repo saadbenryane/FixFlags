@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { formatUsd } from '@/lib/billing/costs'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -48,6 +49,7 @@ export default async function AdminAuditsPage() {
           <AdminTableHeaderCell>LLM tokens</AdminTableHeaderCell>
           <AdminTableHeaderCell>Est. cost</AdminTableHeaderCell>
           <AdminTableHeaderCell>Created</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Actions</AdminTableHeaderCell>
         </AdminTableHead>
         <tbody>
           {audits.map((audit, i) => (
@@ -75,6 +77,13 @@ export default async function AdminAuditsPage() {
               </AdminTableCell>
               <AdminTableCell className="text-muted-foreground text-xs">
                 {new Date(audit.createdAt).toLocaleString()}
+              </AdminTableCell>
+              <AdminTableCell>
+                {audit.status === 'FAILED' && (
+                  <form action={`/api/admin/audits/${audit.id}/retry`} method="POST">
+                    <Button type="submit" variant="outline" size="sm">Retry</Button>
+                  </form>
+                )}
               </AdminTableCell>
             </AdminTableRow>
           ))}

@@ -20,13 +20,13 @@ import {
 import { resolveIncludeAiForNewAudit, remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
 import { scanLimitForPlan } from '@/lib/billing/plans'
 import {
-  canAccessRecheck,
+  canAccessMonitoring,
   canExportSummary,
   canSharePublicly,
   getEntitlements,
 } from '@/lib/auth/entitlements'
 import {
-  canViewAiReportContent,
+  canViewPrescriptionContent,
   stripPrescriptionFromFlags,
 } from '@/lib/audit/report-access'
 
@@ -58,14 +58,14 @@ describe('product contract limits', () => {
 describe('AI report access', () => {
   it('blocks AI content without aiReviewAt', () => {
     assert.equal(
-      canViewAiReportContent({ userId: 'u1', aiReviewAt: null }, { id: 'u1' }),
+      canViewPrescriptionContent({ userId: 'u1', aiReviewAt: null }, { id: 'u1' }),
       false
     )
   })
 
   it('allows AI content for owner after review', () => {
     assert.equal(
-      canViewAiReportContent(
+      canViewPrescriptionContent(
         { userId: 'u1', aiReviewAt: new Date() },
         { id: 'u1' }
       ),
@@ -145,16 +145,17 @@ describe('share and export entitlements', () => {
   })
 })
 
-describe('re-check entitlements', () => {
-  it('allows re-check for free users', () => {
+describe('monitoring entitlements', () => {
+  it('allows monitoring for free users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const entitlements = getEntitlements({
       id: 'u1',
       role: 'user',
       plan: 'FREE',
+      subscriptionStatus: 'NONE',
     })
-    assert.equal(entitlements.canRecheck, true)
-    assert.equal(canAccessRecheck(), true)
+    assert.equal(entitlements.canMonitor, true)
+    assert.equal(canAccessMonitoring(), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

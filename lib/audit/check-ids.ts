@@ -91,9 +91,49 @@ export const ALL_CHECK_IDS = [
   'auth-page-broken',
   // security.ts
   'security-mixed-content',
+  // security-headers.ts
+  'security-csp-missing',
+  'security-csp-unsafe-inline',
+  'security-hsts-missing',
+  'security-hsts-too-short',
+  'security-frame-options-missing',
+  'security-frame-options-too-permissive',
+  'security-content-type-options-missing',
+  'security-xss-protection-missing',
   // visual-polish.ts
   'visual-radius-inconsistent',
   'visual-typography-sprawl',
+  // messaging-clarity.ts
+  'messaging-weak-value-prop',
+  'messaging-jargon-overload',
+  'messaging-no-audience',
+  'messaging-long-sentences',
+  'messaging-headline-too-short',
+  // conversion-friction.ts
+  'friction-no-commitment-path',
+  'friction-trial-commitment-unclear',
+  'friction-form-too-many-fields',
+  'friction-no-risk-reversal',
+  'friction-no-social-proof',
+  // trust-psychology.ts
+  'trust-no-authority-signals',
+  'trust-testimonial-quality',
+  'trust-unsupported-claims',
+  'trust-no-direct-contact',
+  'trust-no-internal-links',
+  // visual-hierarchy.ts
+  'hierarchy-competing-actions',
+  'hierarchy-too-many-fonts',
+  'hierarchy-no-sections',
+  'hierarchy-no-headline',
+  'hierarchy-information-density',
+  // mobile-ux-quality.ts
+  'mobile-input-zoom',
+  'mobile-cta-thumb-zone',
+  'mobile-cta-weak-label',
+  'mobile-stuck-loading',
+  'mobile-no-viewport',
+  'mobile-load-delay-content',
   // flow.ts
   'flow-no-cta-found',
   'flow-cta-unclickable',

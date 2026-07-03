@@ -41,7 +41,7 @@ export default async function ComparePage({ params }: Props) {
     redirect(signInUrl(await getRequestedPath(`/compare/${id}`)))
   }
 
-  const recheckAudit = await prisma.audit.findUnique({
+  const monitoringAudit = await prisma.audit.findUnique({
     where: { id },
     include: {
       rubrics: { include: { flags: { select: { severity: true } } } },
@@ -55,11 +55,11 @@ export default async function ComparePage({ params }: Props) {
     },
   })
 
-  if (!recheckAudit) notFound()
-  if (!recheckAudit.parentId || !recheckAudit.parent) {
+  if (!monitoringAudit) notFound()
+  if (!monitoringAudit.parentId || !monitoringAudit.parent) {
     redirect(`/report/${id}`)
   }
-  if (recheckAudit.status !== 'COMPLETED') {
+  if (monitoringAudit.status !== 'COMPLETED') {
     redirect(`/report/${id}`)
   }
 
@@ -71,7 +71,7 @@ export default async function ComparePage({ params }: Props) {
         <Container variant="report" className="space-y-8 py-8">
           <PageHeader
             title="Before vs After"
-            description="Re-check is required to compare scores."
+            description="Monitoring is required to compare scores."
           />
             <ContextualUpgradeCard
               moment="compare_flat"
@@ -87,14 +87,14 @@ export default async function ComparePage({ params }: Props) {
   }
 
   if (
-    !canAccessAudit(recheckAudit, session.user) ||
-    !canAccessAudit(recheckAudit.parent, session.user)
+    !canAccessAudit(monitoringAudit, session.user) ||
+    !canAccessAudit(monitoringAudit.parent, session.user)
   ) {
     notFound()
   }
 
-  const before = recheckAudit.parent
-  const after = recheckAudit
+  const before = monitoringAudit.parent
+  const after = monitoringAudit
   const flagDiff = await getFlagDiffSummary(before.id, after.id)
 
   const beforeDesktop = before.screenshots.find((s) => s.device === 'DESKTOP')

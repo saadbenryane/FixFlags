@@ -164,6 +164,20 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'On throttled 3G, meaningful content should appear within 5 seconds.',
   'slow-3g-cta-delayed':
     'On throttled 3G, the primary CTA should be visible within 8 seconds.',
+  'flow-destination-no-headline':
+    'The CTA destination page should have a clear headline that reinforces the CTA promise.',
+  'flow-destination-no-cta':
+    'After clicking a CTA, the destination page should have a clear next action for the user.',
+  'flow-cta-message-mismatch':
+    'The CTA text and destination page headline should communicate the same offer.',
+  'flow-destination-cta-overload':
+    'The destination page should have one primary CTA, not multiple competing calls-to-action.',
+  'flow-destination-stuck-loading':
+    'After CTA navigation, the destination should show real content within 2 seconds, not persistent loading UI.',
+  'flow-destination-no-privacy':
+    'If a form collects personal information, a privacy policy link must be visible nearby.',
+  'flow-destination-slow-load':
+    'The destination page should show meaningful content within 3 seconds on desktop.',
 }
 
 /**
@@ -182,6 +196,22 @@ export const MEASUREMENT_VERIFICATION_RULES = {
 export const SECURITY_VERIFICATION_RULES = {
   'security-mixed-content':
     'Update all HTTP URLs to HTTPS. Replace HTTP resources in HTML/CSS/JS with HTTPS versions. Use relative URLs when possible.',
+  'security-csp-missing':
+    'Open DevTools Network tab, reload the page, click any document request and inspect Response Headers for Content-Security-Policy.',
+  'security-csp-unsafe-inline':
+    'In the CSP header, replace unsafe-inline with a nonce or hash for inline scripts.',
+  'security-hsts-missing':
+    'Open DevTools Network tab, find the document response, check for Strict-Transport-Security header.',
+  'security-hsts-too-short':
+    'Increase max-age in Strict-Transport-Security to at least 31536000 (1 year).',
+  'security-frame-options-missing':
+    'Open DevTools Network tab, check for X-Frame-Options header; add DENY or SAMEORIGIN.',
+  'security-frame-options-too-permissive':
+    'Change X-Frame-Options to DENY (preferred) or SAMEORIGIN.',
+  'security-content-type-options-missing':
+    'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
+  'security-xss-protection-missing':
+    'Open DevTools Network tab, check for X-XSS-Protection header (deprecated but defense-in-depth).',
 }
 
 /**
@@ -194,11 +224,83 @@ export const VISUAL_POLISH_VERIFICATION_RULES = {
     'Limit to 2 font families (sans-serif for body, serif or custom for headings). Follow H1 > H2 > H3 sizing hierarchy.',
 }
 
+export const MESSAGING_CLARITY_VERIFICATION_RULES: Record<string, string> = {
+  'messaging-weak-value-prop':
+    'Open the page and check that the headline names a specific outcome, not just a product category. Does it pass the "so what?" test?',
+  'messaging-jargon-overload':
+    'Scan the visible headings. Replace every jargon word (leverage, utilize, empower, etc.) with plain language. Read aloud to confirm.',
+  'messaging-no-audience':
+    'Check that the headline or subhead identifies the target audience ("for X"). Add one if missing.',
+  'messaging-long-sentences':
+    'Read the body copy aloud. Break any sentence where you run out of breath. Aim for 15-20 words max.',
+  'messaging-headline-too-short':
+    'Expand the headline to 5-10 words that name the product, audience, and outcome. Check it communicates value in under 3 seconds.',
+}
+
+export const CONVERSION_FRICTION_VERIFICATION_RULES: Record<string, string> = {
+  'friction-no-commitment-path':
+    'Add a free trial CTA, demo booking, or visible pricing link so visitors have a clear next step. Verify the link works end-to-end.',
+  'friction-trial-commitment-unclear':
+    'Add "no credit card required" text near the trial CTA. Confirm it is visible without scrolling.',
+  'friction-form-too-many-fields':
+    'Count the form fields. Remove any that are not essential for first contact (keep to 3-4 max).',
+  'friction-no-risk-reversal':
+    'Add a guarantee, "free trial" mention, or "cancel anytime" note near the primary CTA.',
+  'friction-no-social-proof':
+    'Add customer count, testimonial, or review badge near the CTA section. Position it so it is visible without scrolling past the CTA.',
+}
+
+export const TRUST_PSYCHOLOGY_VERIFICATION_RULES: Record<string, string> = {
+  'trust-no-authority-signals':
+    'Add media logos, press mentions, certification badges, or investor logos near the hero or above the CTA.',
+  'trust-testimonial-quality':
+    'Use testimonials with real name, title, and company. Quotes should be 40+ characters with specific results.',
+  'trust-unsupported-claims':
+    'Replace each absolute claim ("the best", "the fastest") with specific, verifiable data ("4.2x faster than X").',
+  'trust-no-direct-contact':
+    'Add an email address in the footer, a contact link in the nav, or a live chat widget.',
+  'trust-no-internal-links':
+    'Add navigation links to key pages (features, pricing, docs, blog) in the header and footer.',
+}
+
+export const VISUAL_HIERARCHY_VERIFICATION_RULES: Record<string, string> = {
+  'hierarchy-competing-actions':
+    'Make one CTA dominant (filled, larger). Demote others to ghost/outline styling. Remove non-essential CTAs from above the fold.',
+  'hierarchy-too-many-fonts':
+    'Consolidate to 2 font families max. Use weight and size for hierarchy, not font changes.',
+  'hierarchy-no-sections':
+    'Add H2 section headings to break content into scannable sections with descriptive labels.',
+  'hierarchy-no-headline':
+    'Add an H1 element at the top of the main content that names the product and outcome.',
+  'hierarchy-information-density':
+    'Simplify above-the-fold content. Reduce heading word count. Add whitespace between key sections.',
+}
+
+export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
+  'mobile-input-zoom':
+    'Set font-size to 16px minimum on all input, textarea, and select elements. Test on iOS Safari.',
+  'mobile-cta-thumb-zone':
+    'Move CTA lower in the viewport or add sticky bottom positioning. One-hand test on a 6.7" phone.',
+  'mobile-cta-weak-label':
+    'Replace vague CTA text with outcome-specific action text (e.g. "Start free trial" not "Click here").',
+  'mobile-stuck-loading':
+    'Test on slow 3G. Confirm all loading states clear within 5 seconds and content is visible.',
+  'mobile-no-viewport':
+    'Add <meta name="viewport" content="width=device-width, initial-scale=1"> to the <head>. Verify mobile rendering at 375px.',
+  'mobile-load-delay-content':
+    'Test on 3G. Confirm meaningful content renders within 2 seconds. Server-render hero content.',
+}
+
 export const ALL_VERIFICATION_RULES: Record<string, string> = {
   ...CHECK_ID_TO_RULE,
   ...MEASUREMENT_VERIFICATION_RULES,
   ...SECURITY_VERIFICATION_RULES,
   ...VISUAL_POLISH_VERIFICATION_RULES,
+  ...MESSAGING_CLARITY_VERIFICATION_RULES,
+  ...CONVERSION_FRICTION_VERIFICATION_RULES,
+  ...TRUST_PSYCHOLOGY_VERIFICATION_RULES,
+  ...VISUAL_HIERARCHY_VERIFICATION_RULES,
+  ...MOBILE_UX_VERIFICATION_RULES,
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

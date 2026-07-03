@@ -15,6 +15,8 @@ export interface AuditPageSession {
   page: Page
   /** Shared console error buffer (mutated by page listeners). */
   consoleErrors: Array<{ type: string; text: string }>
+  /** Response headers from the initial page navigation. */
+  responseHeaders: Record<string, string>
 }
 
 export interface CreateAuditPageOptions {
@@ -72,11 +74,19 @@ export async function createAuditPage(
   })
   await validateNavigationResponse(response, page.url(), page)
 
+  const responseHeaders: Record<string, string> = {}
+  if (response) {
+    const rawHeaders = response.headers()
+    for (const [key, value] of Object.entries(rawHeaders)) {
+      responseHeaders[key] = value
+    }
+  }
+
   if (options.settle !== false) {
     await settleAuditPage(page)
   }
 
-  return { page, consoleErrors }
+  return { page, consoleErrors, responseHeaders }
 }
 
 export async function withAuditPage<T>(

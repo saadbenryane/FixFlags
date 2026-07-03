@@ -186,8 +186,6 @@ export async function getGatedAuditForRequest(id: string) {
     isPaid,
     isLoggedIn: !!session?.user,
     showPrescription,
-    /** @deprecated Use showPrescription */
-    showAiContent: showPrescription,
     aiReviewPending,
     session,
   }

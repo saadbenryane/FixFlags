@@ -10,6 +10,35 @@ import {
 } from '@/lib/audit/flag-copy'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 
+const NEW_UX_IDS = [
+  'messaging-weak-value-prop',
+  'messaging-jargon-overload',
+  'messaging-no-audience',
+  'messaging-long-sentences',
+  'messaging-headline-too-short',
+  'friction-no-commitment-path',
+  'friction-trial-commitment-unclear',
+  'friction-form-too-many-fields',
+  'friction-no-risk-reversal',
+  'friction-no-social-proof',
+  'trust-no-authority-signals',
+  'trust-testimonial-quality',
+  'trust-unsupported-claims',
+  'trust-no-direct-contact',
+  'trust-no-internal-links',
+  'hierarchy-competing-actions',
+  'hierarchy-too-many-fonts',
+  'hierarchy-no-sections',
+  'hierarchy-no-headline',
+  'hierarchy-information-density',
+  'mobile-input-zoom',
+  'mobile-cta-thumb-zone',
+  'mobile-cta-weak-label',
+  'mobile-stuck-loading',
+  'mobile-no-viewport',
+  'mobile-load-delay-content',
+] as const
+
 describe('flag-copy', () => {
   it('uses outcome-focused whyItMatters per checkId', () => {
     const why = whyItMattersForCheckId('description-missing')
@@ -30,6 +59,15 @@ describe('flag-copy', () => {
     }
     assert.ok(isGenericWhyItMatters(flag.whyItMatters))
     assert.match(resolveWhyItMatters(flag), /Shared links|blank/i)
+  })
+
+  it('has specific whyItMatters copy for every new UX check ID', () => {
+    for (const id of NEW_UX_IDS) {
+      const why = whyItMattersForCheckId(id)
+      assert.doesNotMatch(why, /Leaving this unfixed/i, id)
+      assert.doesNotMatch(why, /quality of your page/i, id)
+      assert.ok(why.length > 40, id)
+    }
   })
 
   it('builds self-contained expert fix prompts without screenshot preamble', () => {

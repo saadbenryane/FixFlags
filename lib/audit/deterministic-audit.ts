@@ -1,7 +1,7 @@
 import { runAllChecks, type DeterministicFlag } from './checks'
 import { runFlowChecks } from './checks/flow'
 import { runSlowReplayChecks } from './checks/slow-replay'
-import { fetchAndParseMetadata } from './metadata'
+import { fetchAndParseMetadataWithHeaders } from './metadata'
 import { fetchPageSpeedData } from './pagespeed'
 import { getAuditBrowser } from './screenshot'
 import { runFlowScanStandalone, type FlowScanResult } from './flow/run-flow-scan'
@@ -22,7 +22,7 @@ export async function runDeterministicAudit(
     allowLocalhost?: boolean
   }
 ): Promise<DeterministicAuditResult> {
-  const metadata = await fetchAndParseMetadata(url)
+  const { metadata, responseHeaders } = await fetchAndParseMetadataWithHeaders(url)
   const pagespeed = await fetchPageSpeedData(url)
 
   const { flags: detFlags } = await runAllChecks(
@@ -30,7 +30,10 @@ export async function runDeterministicAudit(
     metadata,
     pagespeed.desktop,
     pagespeed.mobile,
-    options?.consoleErrors ?? []
+    options?.consoleErrors ?? [],
+    undefined,
+    undefined,
+    responseHeaders
   )
   let flags = detFlags
 

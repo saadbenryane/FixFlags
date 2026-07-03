@@ -20,14 +20,54 @@ export interface RankableFlag {
   confidence?: number | null
 }
 
+const IMPACT_PRIORITY: Record<string, number> = {
+  REVENUE: 0,
+  CONVERSION: 1,
+  TRUST: 2,
+  ACCESSIBILITY: 3,
+  MEASUREMENT: 4,
+  FRICTION: 5,
+  SHARING: 6,
+  SEO: 7,
+  CLARITY: 8,
+  AUTHORITY: 9,
+  EMOTION: 10,
+}
+
+function impactRank(impactTag: string | null | undefined): number {
+  return impactTag ? IMPACT_PRIORITY[impactTag] ?? 99 : 99
+}
+
+function confidenceRank(confidence: number | null | undefined): number {
+  return typeof confidence === 'number' ? confidence : 0
+}
+
+function compareFlagPrioritySignals(a: RankableFlag, b: RankableFlag): number {
+  const severityDiff = severityRank(a.severity) - severityRank(b.severity)
+  if (severityDiff !== 0) return severityDiff
+
+  const impactDiff = impactRank(a.impactTag) - impactRank(b.impactTag)
+  if (impactDiff !== 0) return impactDiff
+
+  const confidenceDiff = confidenceRank(b.confidence) - confidenceRank(a.confidence)
+  if (confidenceDiff !== 0) return confidenceDiff
+
+  return 0
+}
+
+export function compareFlagsByPriority(a: RankableFlag, b: RankableFlag): number {
+  const signalDiff = compareFlagPrioritySignals(a, b)
+  if (signalDiff !== 0) return signalDiff
+
+  return a.problem.localeCompare(b.problem)
+}
+
 export function groupFlagsBySeverity(flags: RankableFlag[]): {
   critical: RankableFlag[]
   important: RankableFlag[]
   polish: RankableFlag[]
 } {
-  const sorted = [...flags].sort(
-    (a, b) => severityRank(a.severity) - severityRank(b.severity)
-  )
+  const sorted = [...flags].sort(compareFlagsByPriority)
 
   return {
     critical: sorted.filter((f) => f.severity === 'CRITICAL'),
@@ -74,9 +114,7 @@ export function auditHasFixPrompts(flags: RankableFlag[]): boolean {
 export function getTopFixPromptFromFlags(
   flags: RankableFlag[]
 ): { prompt: string; flag?: string } | null {
-  const sorted = [...flags].sort(
-    (a, b) => severityRank(a.severity) - severityRank(b.severity)
-  )
+  const sorted = [...flags].sort(compareFlagsByPriority)
 
   for (const flag of sorted) {
     const prompt = resolveFixPrompt(flag)
@@ -100,9 +138,13 @@ export function rankFlagsByPriority(
   }))
 
   ranked.sort((a, b) => {
-    const severityDiff = severityRank(a.flag.severity) - severityRank(b.flag.severity)
-    if (severityDiff !== 0) return severityDiff
-    return gradeRank(a.rubricGrade ?? '') - gradeRank(b.rubricGrade ?? '')
+    const priorityDiff = compareFlagPrioritySignals(a.flag, b.flag)
+    if (priorityDiff !== 0) return priorityDiff
+
+    const gradeDiff = gradeRank(a.rubricGrade ?? '') - gradeRank(b.rubricGrade ?? '')
+    if (gradeDiff !== 0) return gradeDiff
+
+    return a.flag.problem.localeCompare(b.flag.problem)
   })
 
   return ranked.slice(0, limit)

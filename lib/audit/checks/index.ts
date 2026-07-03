@@ -12,16 +12,22 @@ import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runMeasurementChecks } from './measurement'
 import { runSecurityBasicsChecks } from './security'
+import { runSecurityHeaderChecks } from './security-headers'
 import { runVisualPolishChecks } from './visual-polish'
 import { runCtaFocusChecks } from './cta-focus'
 import { runAuthCheckoutChecks } from './auth-checkout'
+import { runMessagingClarityChecks } from './messaging-clarity'
+import { runConversionFrictionChecks } from './conversion-friction'
+import { runTrustPsychologyChecks } from './trust-psychology'
+import { runVisualHierarchyChecks } from './visual-hierarchy'
+import { runMobileUXQualityChecks } from './mobile-ux-quality'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 
 export interface DeterministicFlag {
   checkId: string
   rubric: 'MESSAGE' | 'EXPERIENCE' | 'REACH'
-  impactTag?: 'CONVERSION' | 'REVENUE' | 'TRUST' | 'MEASUREMENT' | 'SHARING' | 'SEO' | 'ACCESSIBILITY' | null
+  impactTag?: 'CONVERSION' | 'REVENUE' | 'TRUST' | 'MEASUREMENT' | 'SHARING' | 'SEO' | 'ACCESSIBILITY' | 'CLARITY' | 'AUTHORITY' | 'FRICTION' | 'EMOTION' | null
   severity: 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   problem: string
   evidence: string
@@ -43,7 +49,8 @@ export async function runAllChecks(
   mobile: PageSpeedResult | null,
   consoleErrors: Array<{ type: string; text: string }>,
   onAreaComplete?: (index: number) => void,
-  captureMetrics?: CaptureMetrics | null
+  captureMetrics?: CaptureMetrics | null,
+  responseHeaders?: Record<string, string> | null
 ): Promise<RunAllChecksResult> {
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
@@ -65,6 +72,12 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
+    { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
+    { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
+    { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata) },
+    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata) },
+    { name: 'visual-hierarchy', run: () => runVisualHierarchyChecks(metadata, captureMetrics ?? null) },
+    { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null) },
   ]
 
   for (let i = 0; i < checkers.length; i++) {

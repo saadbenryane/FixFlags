@@ -3,16 +3,16 @@ import { prisma } from '@/lib/db'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { buildAttribution } from '@/lib/leads/attribution'
 
-export interface RecheckResult {
+export interface MonitoringResult {
   auditId: string
   status: AuditStatus
 }
 
-export interface StartRecheckOptions {
+export interface StartMonitoringOptions {
   delayMs?: number
 }
 
-export function validateRecheckParent(
+export function validateMonitoringParent(
   parent: { userId: string | null; status: string } | null,
   userId: string
 ):
@@ -22,20 +22,20 @@ export function validateRecheckParent(
     return { ok: false, status: 404, error: 'Audit not found' }
   }
   if (parent.userId !== userId) {
-    return { ok: false, status: 403, error: 'You can only re-check your own audits' }
+    return { ok: false, status: 403, error: 'You can only monitor your own audits' }
   }
   if (parent.status !== 'COMPLETED') {
-    return { ok: false, status: 400, error: 'Can only re-check completed audits' }
+    return { ok: false, status: 400, error: 'Can only monitor completed audits' }
   }
   return { ok: true }
 }
 
-export async function startRecheckAudit(
+export async function startMonitoringAudit(
   parentId: string,
   user: User,
-  options: StartRecheckOptions = {}
+  options: StartMonitoringOptions = {}
 ): Promise<
-  | { ok: true; result: RecheckResult }
+  | { ok: true; result: MonitoringResult }
   | { ok: false; status: number; error: string; code?: string; action?: string }
 > {
   const parent = await prisma.audit.findUnique({
@@ -43,30 +43,26 @@ export async function startRecheckAudit(
     select: { userId: true, status: true, url: true },
   })
 
-  const validation = validateRecheckParent(parent, user.id)
+  const validation = validateMonitoringParent(parent, user.id)
   if (!validation.ok) {
     return validation
   }
 
-  try {
-    const { auditId, status } = await createAndEnqueueAudit({
+  const { auditId, status } = await createAndEnqueueAudit({
+    url: parent!.url,
+    userId: user.id,
+    parentId,
+    skipUsageCount: true,
+    monitoringMode: 'SUMMARY_ONLY',
+    delayMs: options.delayMs,
+    attribution: buildAttribution({
       url: parent!.url,
-      userId: user.id,
-      parentId,
-      skipUsageCount: true,
-      recheckMode: 'SUMMARY_ONLY',
-      delayMs: options.delayMs,
-      attribution: buildAttribution({
-        url: parent!.url,
-        source: 'DASHBOARD',
-      }),
-    })
+      source: 'DASHBOARD',
+    }),
+  })
 
-    return {
-      ok: true,
-      result: { auditId, status },
-    }
-  } catch (err) {
-    throw err
+  return {
+    ok: true,
+    result: { auditId, status },
   }
 }

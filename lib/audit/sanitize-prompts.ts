@@ -23,7 +23,7 @@ const SPECULATION_PATTERNS = [
   /\btime-on-page by \d+%/i,
   /\bCSS size reduced by \d+%/i,
   /\bA\/B test\b/i,
-  /\b\+?\d+ pts on re-check\b/i,
+  /\b\+?\d+ pts on monitoring\b/i,
 ]
 
 const UNSUPPORTED_FILE_GUESS =

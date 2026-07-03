@@ -345,7 +345,9 @@ describe('limitErrorCodeForPlan', () => {
 // ── canUseApiKeys ─────────────────────────────────────────────────
 
 describe('canUseApiKeys', () => {
-  const gateUser = (plan: 'FREE' | 'BUILDER' | 'TEAM', role = 'user') => ({ id: 'u1', role, plan })
+  const sub = (plan: 'FREE' | 'BUILDER' | 'TEAM'): 'NONE' | 'ACTIVE' =>
+    plan === 'FREE' ? 'NONE' : 'ACTIVE'
+  const gateUser = (plan: 'FREE' | 'BUILDER' | 'TEAM', role = 'user') => ({ id: 'u1', role, plan, subscriptionStatus: sub(plan) })
 
   it('allows MCP API keys for paid plan users when gates enforce', () => {
     _env.NODE_ENV = 'production'
@@ -369,12 +371,12 @@ describe('canUseApiKeys', () => {
 describe('canAccessCompare', () => {
   it('blocks free users when gates enforce', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE' }), false)
+    assert.equal(canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
   })
 
   it('allows paid users', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER' }), true)
+    assert.equal(canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), true)
   })
 })
 
@@ -383,13 +385,13 @@ describe('canAccessCompare', () => {
 describe('getEntitlements MCP (canUseMcp)', () => {
   it('maps canUseMcp to true for paid users in production', () => {
     _env.NODE_ENV = 'production'
-    const e = getEntitlements({ id: 'u1', role: 'user', plan: 'BUILDER' })
+    const e = getEntitlements({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' })
     assert.equal(e.canUseMcp, true)
   })
 
   it('maps canUseMcp to false for free users in production', () => {
     _env.NODE_ENV = 'production'
-    const e = getEntitlements({ id: 'u2', role: 'user', plan: 'FREE' })
+    const e = getEntitlements({ id: 'u2', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' })
     assert.equal(e.canUseMcp, false)
   })
 })
@@ -450,17 +452,32 @@ describe('canAccessPaidFeatures', () => {
   it('allows all users when not enforcing gates', () => {
     _env.NODE_ENV = 'development'
     delete _env.DEV_SIMULATE_BILLING
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE' }), true)
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), true)
   })
 
   it('blocks free users when enforcing gates', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE' }), false)
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
   })
 
   it('allows paid plan users when enforcing gates', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER' }), true)
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM' }), true)
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), true)
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' }), true)
+  })
+
+  it('blocks paid plan users when subscription is past_due', () => {
+    _env.NODE_ENV = 'production'
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'PAST_DUE' }), false)
+  })
+
+  it('blocks paid plan users when subscription is canceled', () => {
+    _env.NODE_ENV = 'production'
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'CANCELED' }), false)
+  })
+
+  it('allows paid plan users on trialing', () => {
+    _env.NODE_ENV = 'production'
+    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'TRIALING' }), true)
   })
 })

@@ -22,6 +22,10 @@ const impactTagSchema = z.enum([
   'SHARING',
   'SEO',
   'ACCESSIBILITY',
+  'CLARITY',
+  'AUTHORITY',
+  'FRICTION',
+  'EMOTION',
 ])
 
 export const triageOutputSchema = z.object({
@@ -91,7 +95,7 @@ export const triageOutputSchema = z.object({
       })
     )
     .describe(
-      '0-2 net-new flag TITLES only, for issues deterministic rules cannot catch. Do not restate a deterministic flag. Do NOT write fixes or prompts - titles only.'
+      '2-5 net-new flag TITLES only, for UX-expert issues deterministic rules cannot catch. Do not restate a deterministic flag. Do NOT write fixes or prompts - titles only.'
     ),
 })
 

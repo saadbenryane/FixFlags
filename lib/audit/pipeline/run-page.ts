@@ -256,7 +256,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           })
         }
       : undefined,
-    screenshots?.captureMetrics ?? null
+    screenshots?.captureMetrics ?? null,
+    screenshots?.responseHeaders ?? null
   )
 
   for (const mod of failedModules) {

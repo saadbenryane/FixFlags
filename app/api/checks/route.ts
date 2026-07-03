@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       }
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { id: true, role: true, plan: true },
+        select: { id: true, role: true, plan: true, subscriptionStatus: true },
       })
       if (!user || !canAccessPaidFeatures(user)) {
         return apiError('Critical path checks require the Pro plan or above.', 402, {

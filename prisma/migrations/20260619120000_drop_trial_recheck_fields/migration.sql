@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE "users" DROP COLUMN IF EXISTS "freeRecheckUsedAt";
+ALTER TABLE "users" DROP COLUMN IF EXISTS "freeMonitoringUsedAt";
 
 -- AlterTable
-ALTER TABLE "audits" DROP COLUMN IF EXISTS "trialRecheck";
+ALTER TABLE "audits" DROP COLUMN IF EXISTS "trialMonitoring";

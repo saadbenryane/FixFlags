@@ -124,7 +124,7 @@ describe('homepage message guardrails', () => {
 
   it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
     assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt (copy-ready)')
-    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → re-check.')
+    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → monitor.')
   })
 
   it('sample output section uses merged label', () => {

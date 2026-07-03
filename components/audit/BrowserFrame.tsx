@@ -99,7 +99,7 @@ export function BrowserFrame({
           <img
             src={resolvedImageUrl}
             alt={alt}
-            className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in"
+            className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in-up"
           />
         )}
 

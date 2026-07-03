@@ -43,7 +43,7 @@ export async function tryPartialFinalize(
   error: unknown
 ): Promise<boolean> {
   if (pageRuns.length === 0) return false
-  const hasEvidence = pageRuns.every((p) => p.desktopScreenshot && p.flags.length >= 0)
+  const hasEvidence = pageRuns.every((p) => p.desktopScreenshot)
   if (!hasEvidence) return false
 
   const errorMsg = sanitizeAuditErrorMessage(

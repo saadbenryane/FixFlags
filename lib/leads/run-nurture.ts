@@ -3,7 +3,7 @@ import { sendNurtureEmail } from '@/lib/email/send'
 
 export interface NurtureSweepResult {
   firstAuditNudge: number
-  recheck: number
+  monitoring: number
   launchChecklist: number
   skipped: number
 }
@@ -31,8 +31,8 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
     select: { id: true },
   })
 
-  // 2-day recheck nudge: signed up 2-3 days ago
-  const recheckCandidates = await prisma.user.findMany({
+  // 2-day monitoring nudge: signed up 2-3 days ago
+  const monitoringCandidates = await prisma.user.findMany({
     where: {
       plan: 'FREE',
       createdAt: { lte: twoDaysAgo, gte: threeDaysAgo },
@@ -51,7 +51,7 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
 
   const results: NurtureSweepResult = {
     firstAuditNudge: 0,
-    recheck: 0,
+    monitoring: 0,
     launchChecklist: 0,
     skipped: 0,
   }
@@ -62,9 +62,9 @@ export async function runNurtureSweep(): Promise<NurtureSweepResult> {
     else results.skipped++
   }
 
-  for (const user of recheckCandidates) {
-    const { sent } = await sendNurtureEmail(user.id, 'recheck')
-    if (sent) results.recheck++
+  for (const user of monitoringCandidates) {
+    const { sent } = await sendNurtureEmail(user.id, 'monitoring')
+    if (sent) results.monitoring++
     else results.skipped++
   }
 

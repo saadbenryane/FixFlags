@@ -23,6 +23,8 @@ export interface LogMcpInteractionInput {
 const AUDIT_ID_PARAM_KEYS = [
   'reportId',
   'parentReportId',
+  'repoScanId',
+  'findingId',
   'beforeId',
   'afterId',
   'auditId',

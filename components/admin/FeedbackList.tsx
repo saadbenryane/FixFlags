@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
+import { TextLink } from '@/components/ui/text-link'
 import { rubricLabel } from '@/lib/utils'
 
 interface FeedbackItem {
@@ -10,6 +11,7 @@ interface FeedbackItem {
   rubric: string
   severity: string
   evidence: string
+  auditId: string
   count: number
 }
 
@@ -21,7 +23,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   return (
     <div className="space-y-2">
       {items.map((item) => (
-        <Card key={item.key} className="border-0 p-4 shadow-card space-y-2">
+        <Card key={item.key} variant="solid" className="p-4 space-y-2">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <SeverityBadge severity={item.severity} />
@@ -38,6 +40,9 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
           <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
             {item.evidence}
           </div>
+          <TextLink href={`/admin/audits/${item.auditId}`} className="text-xs">
+            View audit →
+          </TextLink>
         </Card>
       ))}
     </div>

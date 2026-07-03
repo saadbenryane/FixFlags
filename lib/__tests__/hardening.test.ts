@@ -75,14 +75,15 @@ describe('getReportTierForUser', () => {
 })
 
 describe('getEntitlements', () => {
-  it('grants unlimited re-check for free users', () => {
+  it('grants unlimited monitoring for free users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const entitlements = getEntitlements({
       id: 'u1',
       role: 'user',
       plan: 'FREE',
+      subscriptionStatus: 'NONE',
     })
-    assert.equal(entitlements.canRecheck, true)
+    assert.equal(entitlements.canMonitor, true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
@@ -117,8 +118,8 @@ describe('plan limits', () => {
   })
 })
 
-describe('recheck quota semantics', () => {
-  it('re-checks skip monthly audit usage via skipUsageCount', () => {
+describe('monitoring quota semantics', () => {
+  it('monitoring skips monthly audit usage via skipUsageCount', () => {
     assert.equal({ skipUsageCount: true }.skipUsageCount, true)
   })
 })
@@ -128,11 +129,13 @@ describe('canAccessCompare', () => {
     id: 'u1',
     role: 'user' as const,
     plan: 'FREE' as const,
+    subscriptionStatus: 'NONE' as const,
   }
   const builderUser = {
     id: 'u1',
     role: 'user' as const,
     plan: 'BUILDER' as const,
+    subscriptionStatus: 'ACTIVE' as const,
   }
 
   it('allows paid users', () => {

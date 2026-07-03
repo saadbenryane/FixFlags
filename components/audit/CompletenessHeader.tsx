@@ -6,7 +6,7 @@ interface CompletenessHeaderProps {
   rubricsGradedCount: number
   totalRubrics: number
   hasFixPrompts: boolean
-  canRecheck: boolean
+  canMonitor: boolean
 }
 
 export function CompletenessHeader({
@@ -14,7 +14,7 @@ export function CompletenessHeader({
   rubricsGradedCount,
   totalRubrics,
   hasFixPrompts,
-  canRecheck,
+  canMonitor,
 }: CompletenessHeaderProps) {
   const items = [
     { label: 'Evidence screenshots', passed: hasScreenshots },
@@ -23,7 +23,7 @@ export function CompletenessHeader({
       passed: rubricsGradedCount > 0,
     },
     { label: 'Fix prompts', passed: hasFixPrompts },
-    { label: 'Re-check ready', passed: canRecheck },
+    { label: 'Monitoring ready', passed: canMonitor },
   ]
 
   return (

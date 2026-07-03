@@ -16,7 +16,7 @@ describe('verify-flags', () => {
     }
   })
 
-  it('flow-cta-dead-end clears when flow scan succeeds on re-check', () => {
+  it('flow-cta-dead-end clears when flow scan succeeds on monitoring', () => {
     const failingFlags = runFlowChecks({
       status: 'dead_end',
       steps: [],
@@ -39,7 +39,7 @@ describe('verify-flags', () => {
     assert.equal(isCheckStillFailing('flow-cta-dead-end', passingIds), false)
   })
 
-  it('treats all rule-backed deterministic modules as verifiable on re-check', () => {
+  it('treats all rule-backed deterministic modules as verifiable on monitoring', () => {
     const currentIds = buildCurrentVerifiableCheckIds([
       {
         checkId: 'measurement-ga-gtm-posthog-missing',

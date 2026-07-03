@@ -43,7 +43,7 @@ export async function runAudit(auditId: string): Promise<void> {
       includeAi: audit.includeAi,
     }
 
-    const isSummaryOnly = audit.recheckMode === 'SUMMARY_ONLY'
+    const isSummaryOnly = audit.monitoringMode === 'SUMMARY_ONLY'
     const summarySourceId = isSummaryOnly ? (audit.parentId ?? auditId) : null
 
     if (isSummaryOnly && summarySourceId) {

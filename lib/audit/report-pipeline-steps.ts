@@ -47,8 +47,6 @@ export function buildPipelineSteps({
   pageType: string | null
   mode?: PipelineStepsMode
   hasFixPrompts?: boolean
-  /** @deprecated Score is shown in the ring; kept for call-site compatibility */
-  reviewReady?: boolean
 }): PipelineStep[] {
   const scan: PipelineStep = {
     id: 'scan',

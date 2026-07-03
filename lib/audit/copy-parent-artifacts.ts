@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 
-/** Copy parent screenshots and performance metadata for summary-only recheck. */
+/** Copy parent screenshots and performance metadata for summary-only monitoring. */
 export async function copyParentArtifacts(
   auditId: string,
   parentId: string

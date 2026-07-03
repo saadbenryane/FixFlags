@@ -25,7 +25,7 @@ export function DashboardCheckoutToast() {
       refresh().then((data) => {
         const planKey = (planParam ?? data?.user?.plan ?? 'BUILDER') as Plan
         const planName = PLAN_DEFINITIONS[planKey]?.name ?? 'Pro'
-        toast.success(`Welcome to ${planName}! Unlimited re-checks and MCP are now active.`)
+        toast.success(`Welcome to ${planName}! Unlimited monitoring and MCP are now active.`)
       })
     }
     if (expertReview) {

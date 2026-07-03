@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { startRecheckAudit } from '@/lib/audit/recheck'
+import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { prisma } from '@/lib/db'
 
 export async function POST(
@@ -15,7 +15,7 @@ export async function POST(
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
     if (!session?.user) {
-      return apiError('Sign in to re-check reports', 401)
+      return apiError('Sign in to start monitoring', 401)
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
@@ -23,7 +23,7 @@ export async function POST(
       return apiError('User not found', 404)
     }
 
-    const outcome = await startRecheckAudit(parentId, user)
+    const outcome = await startMonitoringAudit(parentId, user)
     if (!outcome.ok) {
       return apiError(outcome.error, outcome.status, {
         code: outcome.code,

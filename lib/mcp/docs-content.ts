@@ -9,7 +9,7 @@ export const MCP_TOOL_DEFINITIONS = [
     desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach)',
   },
   { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-  { name: 'ff_recheck', desc: 'Run a new check on the same URL to verify fixes.' },
+  { name: 'ff_monitoring', desc: 'Run a new check on the same URL to verify fixes.' },
   {
     name: 'ff_compare',
     desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
@@ -21,6 +21,22 @@ export const MCP_TOOL_DEFINITIONS = [
   {
     name: 'ff_list_recent_audits',
     desc: 'List recent audits with status, score, and key metadata. Supports pagination and URL/status filtering.',
+  },
+  {
+    name: 'ff_start_repo_scan',
+    desc: 'Start a GitHub repository code scan for an allow-listed repo.',
+  },
+  {
+    name: 'ff_list_repo_scans',
+    desc: 'List recent GitHub repository scans and finding counts.',
+  },
+  {
+    name: 'ff_get_repo_scan',
+    desc: 'Get a GitHub repository scan and code findings.',
+  },
+  {
+    name: 'ff_get_repo_finding',
+    desc: 'Get a branch-ready fix task for one repository finding.',
   },
 ] as const
 

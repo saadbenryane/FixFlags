@@ -5,6 +5,7 @@ import {
 } from '@/lib/audit/flag-copy'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
+  compareFlagsByPriority,
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
@@ -22,7 +23,7 @@ import {
 } from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
-import { severityRank, impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
+import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 
 export interface ExplorerFlag {
@@ -56,7 +57,7 @@ export interface ReportExplorerModel {
 }
 
 function sortFlags(flags: RankableFlag[]): RankableFlag[] {
-  return [...flags].sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
+  return [...flags].sort(compareFlagsByPriority)
 }
 
 function mapLiveFlag(flag: RankableFlag): ExplorerFlag {

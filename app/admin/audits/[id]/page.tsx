@@ -86,7 +86,7 @@ export default async function AdminAuditDetailPage({
       })()}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        <Card variant="solid">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Run cost</CardTitle>
           </CardHeader>
@@ -110,7 +110,7 @@ export default async function AdminAuditDetailPage({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card variant="solid">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Identity</CardTitle>
           </CardHeader>
@@ -126,7 +126,7 @@ export default async function AdminAuditDetailPage({
       </div>
 
       {events.length > 0 && (
-        <Card>
+        <Card variant="solid">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Pipeline events ({events.length})</CardTitle>
           </CardHeader>

@@ -74,7 +74,7 @@ export function ReportTimeline({
         {showComparisonLink && events.some(e => e.isComparison) && (
           <Link
             href={`/compare/${events.find(e => e.isComparison)?.comparisonId || ''}`}
-            className="text-sm text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"
+            className="text-sm text-link hover:text-link-hover transition-colors flex items-center gap-1"
           >
             View comparison
             <ChevronRight className="h-3 w-3" />
@@ -119,25 +119,25 @@ function TimelineItem({ event, isLatest, showDivider }: TimelineItemProps) {
         <div className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 bg-background",
           isLatest
-            ? "border-blue-500 bg-blue-50"
+            ? "border-link bg-primary/5"
             : isCompleted
-              ? "border-green-500 bg-green-50"
-              : "border-gray-300 bg-gray-50"
+              ? "border-success bg-success-muted"
+              : "border-subtle bg-muted"
         )}
         >
           {isLatest ? (
-            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <div className="h-2 w-2 rounded-full bg-link" />
           ) : isCompleted ? (
-            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <div className="h-2 w-2 rounded-full bg-success" />
           ) : (
-            <div className="h-2 w-2 rounded-full bg-gray-400" />
+            <div className="h-2 w-2 rounded-full bg-muted-foreground/50" />
           )}
         </div>
 
         <Card
           className={cn(
             "flex-1 transition-all hover:shadow-md",
-            isLatest && "border-blue-200 bg-blue-50/50"
+            isLatest && "border-link/30 bg-primary/3"
           )}
         >
           <Link href={`/report/${event.auditId}`} className="block">
@@ -178,7 +178,7 @@ function TimelineItem({ event, isLatest, showDivider }: TimelineItemProps) {
                   <div className="text-xs text-muted-foreground mb-1">Critical</div>
                   <div className={cn(
                     "text-sm font-medium",
-                    event.criticalFlags > 0 ? "text-red-600" : "text-green-600"
+                    event.criticalFlags > 0 ? "text-destructive" : "text-success"
                   )}>
                     {event.criticalFlags}
                   </div>
@@ -187,7 +187,7 @@ function TimelineItem({ event, isLatest, showDivider }: TimelineItemProps) {
                   <div className="text-xs text-muted-foreground mb-1">Important</div>
                   <div className={cn(
                     "text-sm font-medium",
-                    event.importantFlags > 0 ? "text-orange-600" : "text-green-600"
+                    event.importantFlags > 0 ? "text-warning-foreground" : "text-success"
                   )}>
                     {event.importantFlags}
                   </div>
@@ -199,11 +199,11 @@ function TimelineItem({ event, isLatest, showDivider }: TimelineItemProps) {
                   <div className="text-xs text-muted-foreground mb-1">Status</div>
                   <div className="flex items-center gap-2">
                     {event.verdict.includes('FIXED') || event.verdict.includes('good') ? (
-                      <TrendingUp className="h-3 w-3 text-green-600" />
+                      <TrendingUp className="h-3 w-3 text-success" />
                     ) : event.verdict.includes('REGRESSED') ? (
-                      <TrendingDown className="h-3 w-3 text-red-600" />
+                      <TrendingDown className="h-3 w-3 text-destructive" />
                     ) : (
-                      <Clock className="h-3 w-3 text-blue-600" />
+                      <Clock className="h-3 w-3 text-link" />
                     )}
                     <span className={cn("text-xs", statusColor(event.verdict))}>
                       {event.verdict}
@@ -226,17 +226,17 @@ function TimelineItem({ event, isLatest, showDivider }: TimelineItemProps) {
 }
 
 function getScoreGrade(score: number | null): { color: string; text: string } {
-  if (score == null) return { color: "text-gray-500", text: "–" }
-  if (score >= 90) return { color: "text-green-600", text: "A" }
-  if (score >= 75) return { color: "text-green-600", text: "B" }
-  if (score >= 60) return { color: "text-yellow-600", text: "C" }
-  if (score >= 40) return { color: "text-orange-600", text: "D" }
-  return { color: "text-red-600", text: "F" }
+  if (score == null) return { color: "text-muted-foreground", text: "–" }
+  if (score >= 90) return { color: "text-grade-A", text: "A" }
+  if (score >= 75) return { color: "text-grade-B", text: "B" }
+  if (score >= 60) return { color: "text-grade-C", text: "C" }
+  if (score >= 40) return { color: "text-grade-D", text: "D" }
+  return { color: "text-grade-F", text: "F" }
 }
 
 function statusColor(verdict: string): string {
-  if (verdict.includes('FIXED') || verdict.includes('good')) return "text-green-600"
-  if (verdict.includes('REGRESSED')) return "text-red-600"
-  if (verdict.includes('BLOCKED')) return "text-red-600"
-  return "text-blue-600"
+  if (verdict.includes('FIXED') || verdict.includes('good')) return "text-success"
+  if (verdict.includes('REGRESSED')) return "text-destructive"
+  if (verdict.includes('BLOCKED')) return "text-destructive"
+  return "text-link"
 }

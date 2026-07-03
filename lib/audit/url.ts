@@ -107,7 +107,7 @@ export async function assertPublicAuditUrl(raw: string): Promise<URL> {
 export async function safeFetchHtml(
   rawUrl: string,
   options: { timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = {}
-): Promise<{ html: string; finalUrl: string }> {
+): Promise<{ html: string; finalUrl: string; headers: Record<string, string> }> {
   const timeoutMs = options.timeoutMs ?? 10_000
   const maxBytes = options.maxBytes ?? 2_000_000
   const maxRedirects = options.maxRedirects ?? 5
@@ -144,6 +144,11 @@ export async function safeFetchHtml(
       if (declaredLength > maxBytes) throw new Error('HTML response is too large')
       if (!response.body) throw new Error('Destination returned an empty response')
 
+      const responseHeaders: Record<string, string> = {}
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value
+      })
+
       const reader = response.body.getReader()
       const chunks: Uint8Array[] = []
       let total = 0
@@ -163,6 +168,7 @@ export async function safeFetchHtml(
           Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
         ),
         finalUrl: current,
+        headers: responseHeaders,
       }
     } finally {
       clearTimeout(timeout)

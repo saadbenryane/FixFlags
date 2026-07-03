@@ -1,16 +1,16 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { validateRecheckParent } from '@/lib/audit/recheck'
+import { validateMonitoringParent } from '@/lib/audit/monitoring'
 
-describe('validateRecheckParent', () => {
+describe('validateMonitoringParent', () => {
   it('rejects missing parent', () => {
-    const result = validateRecheckParent(null, 'u1')
+    const result = validateMonitoringParent(null, 'u1')
     assert.equal(result.ok, false)
     if (!result.ok) assert.equal(result.status, 404)
   })
 
   it('rejects wrong owner', () => {
-    const result = validateRecheckParent(
+    const result = validateMonitoringParent(
       { userId: 'other', status: 'COMPLETED' },
       'u1'
     )
@@ -19,7 +19,7 @@ describe('validateRecheckParent', () => {
   })
 
   it('rejects incomplete parent', () => {
-    const result = validateRecheckParent(
+    const result = validateMonitoringParent(
       { userId: 'u1', status: 'QUEUED' },
       'u1'
     )
@@ -28,7 +28,7 @@ describe('validateRecheckParent', () => {
   })
 
   it('accepts completed owned parent', () => {
-    const result = validateRecheckParent(
+    const result = validateMonitoringParent(
       { userId: 'u1', status: 'COMPLETED' },
       'u1'
     )

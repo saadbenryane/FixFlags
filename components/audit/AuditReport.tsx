@@ -80,13 +80,11 @@ interface AuditReportProps {
   isLoggedIn: boolean
   isViewerOwner?: boolean
   variant?: 'default' | 'sample'
-  showRecheckHint?: boolean
+  showMonitoringHint?: boolean
   atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
   showPrescription?: boolean
-  /** @deprecated Use showPrescription */
-  showAiContent?: boolean
   aiReviewPending?: boolean
   actions?: ReactNode
 }
@@ -99,12 +97,11 @@ export function AuditReport({
   isLoggedIn,
   isViewerOwner = true,
   variant = 'default',
-  showRecheckHint = false,
+  showMonitoringHint = false,
   atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
   showPrescription = true,
-  showAiContent = showPrescription,
   aiReviewPending = false,
   actions,
 }: AuditReportProps) {
@@ -193,7 +190,7 @@ export function AuditReport({
               showFeedback={showFeedback}
               aiLocked={aiLocked}
               signUpHref={signUpHref}
-              hasFixPrompts={showAiContent && hasFixPrompts}
+              hasFixPrompts={showPrescription && hasFixPrompts}
             />
           </div>
         </section>
@@ -274,13 +271,13 @@ export function AuditReport({
         </section>
       )}
 
-      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
-        {showRecheckHint && isLoggedIn && isViewerOwner && (
+      <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
+        {showMonitoringHint && isLoggedIn && isViewerOwner && (
           <Card className="space-y-2 p-5">
-            <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
+            <CardTitle className="text-sm">{REPORT_COPY.monitoringHint.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">
-              {REPORT_COPY.recheckHint.bodyPrefix}{' '}
-              <strong>Re-check</strong> {REPORT_COPY.recheckHint.bodySuffix}
+              {REPORT_COPY.monitoringHint.bodyPrefix}{' '}
+              <strong>Monitor</strong> {REPORT_COPY.monitoringHint.bodySuffix}
             </p>
           </Card>
         )}
@@ -318,7 +315,7 @@ export function AuditReport({
           </p>
         )}
 
-        {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
+        {!isSample && isLoggedIn && !viewerIsPaid && showPrescription && (
           <ContextualUpgradeCard
             moment={upgradeMoment && upgradeMoment !== 'free_default' ? upgradeMoment : 'report_completed'}
             isLoggedIn

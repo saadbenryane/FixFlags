@@ -35,7 +35,7 @@ export function buildLlmsTxt(): string {
     `- Setup guide: ${SITE_URL}/docs/mcp`
   )
   lines.push(
-    '- Tools: ff_check_url, ff_get_check_status, ff_get_report, ff_get_rubric, ff_get_flag, ff_recheck, ff_compare, ff_list_recent_audits, generate-fix-prompt'
+    '- Tools: ff_check_url, ff_get_check_status, ff_get_report, ff_get_rubric, ff_get_flag, ff_monitoring, ff_compare, ff_list_recent_audits, ff_start_repo_scan, ff_list_repo_scans, ff_get_repo_scan, ff_get_repo_finding, generate-fix-prompt'
   )
   lines.push('')
 

@@ -8,19 +8,8 @@ import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCost, getCostOutliers } from '@/lib/billing/costs'
 import { getAdminUnreadCount } from '@/lib/live-support/sessions'
 import { MarginPanel } from '@/components/admin/MarginPanel'
-
-function StatValue({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="font-mono text-2xl font-medium tabular-nums">{children}</div>
-  )
-}
-
-function startOf(daysAgo: number): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - daysAgo)
-  return d
-}
+import { StatValue } from '@/components/admin/StatValue'
+import { startOf } from '@/lib/admin/date-ranges'
 
 export default async function AdminPage() {
   const weekAgo = startOf(7)
@@ -112,7 +101,7 @@ export default async function AdminPage() {
         <SectionTitle>Customer ops</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {opsStats.map((s) => (
-            <Card key={s.label} className="border-0 shadow-card">
+            <Card key={s.label} variant="solid">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
               </CardHeader>
@@ -129,7 +118,7 @@ export default async function AdminPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((s) => (
-          <Card key={s.label} className="border-0 shadow-card">
+          <Card key={s.label} variant="solid">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
             </CardHeader>
@@ -144,7 +133,7 @@ export default async function AdminPage() {
         <SectionTitle>Estimated run costs</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {costStats.map((s) => (
-            <Card key={s.label} className="border-0 shadow-card">
+            <Card key={s.label} variant="solid">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
               </CardHeader>
@@ -152,7 +141,8 @@ export default async function AdminPage() {
                 <StatValue>{s.value}</StatValue>
               </CardContent>
             </Card>
-          ))}
+          ))
+        }
         </div>
       </section>
 
@@ -177,7 +167,7 @@ export default async function AdminPage() {
         <SectionTitle>Plan breakdown</SectionTitle>
         <div className="grid grid-cols-3 gap-4">
           {plans.map((p) => (
-            <Card key={p.label} className="border-0 shadow-card">
+            <Card key={p.label} variant="solid">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs text-muted-foreground font-medium">{p.label}</CardTitle>
               </CardHeader>
@@ -192,7 +182,7 @@ export default async function AdminPage() {
       {costOutliers.length > 0 && (
         <section className="space-y-4">
           <SectionTitle>Most expensive scans (7d)</SectionTitle>
-          <Card className="border-0 shadow-card p-0 overflow-hidden">
+          <Card variant="solid" className="p-0 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">

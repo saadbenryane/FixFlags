@@ -21,7 +21,7 @@ export interface MeUser {
     canSharePublicly: boolean
     canExportSummary: boolean
     canAccessPaidFeatures: boolean
-    canRecheck: boolean
+    canMonitor: boolean
     canUseMcp: boolean
     canScanRepositories: boolean
   }

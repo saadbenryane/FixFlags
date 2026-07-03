@@ -60,19 +60,19 @@ export function AuditPageActions({
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
-  const [recheckLoading, setRecheckLoading] = useState(false)
+  const [monitoringLoading, setMonitoringLoading] = useState(false)
 
   useEffect(() => {
     trackEvent('viewed_report', { audit_id: auditId, is_owner: isOwner })
   }, [auditId, isOwner])
 
-  const showRecheck = isLoggedIn && isOwner
-  const recheckLabel = 'Re-check'
+  const showMonitoring = isLoggedIn && isOwner
+  const monitoringLabel = 'Monitor'
 
-  async function handleRecheck() {
-    setRecheckLoading(true)
+  async function handleMonitoring() {
+    setMonitoringLoading(true)
     try {
-      const res = await fetch(`/api/reports/${auditId}/recheck`, { method: 'POST' })
+      const res = await fetch(`/api/reports/${auditId}/monitoring`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
         router.push(`/report/${data.reportId}`)
@@ -80,9 +80,9 @@ export function AuditPageActions({
         toast.error((await parseApiErrorResponse(res)).message)
       }
     } catch {
-      toast.error('Could not start the re-check. Try again.')
+      toast.error('Could not start the monitoring. Try again.')
     } finally {
-      setRecheckLoading(false)
+      setMonitoringLoading(false)
     }
   }
 
@@ -123,10 +123,10 @@ export function AuditPageActions({
         canExport={canExportSummary}
       />
       {isPaid && <CopyMcpCommand auditId={auditId} />}
-      {showRecheck && (
-        <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />
-          {recheckLabel}
+      {showMonitoring && (
+        <Button size="sm" onClick={handleMonitoring} disabled={monitoringLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${monitoringLoading ? 'animate-spin' : ''}`} />
+          {monitoringLabel}
         </Button>
       )}
     </>

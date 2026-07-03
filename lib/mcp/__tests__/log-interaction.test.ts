@@ -60,10 +60,18 @@ describe('extractAuditIdFromToolResult', () => {
   })
 
   it('reads parentReportId from tool params shape', () => {
-    const auditId = extractAuditIdFromToolResult('ff_recheck', {
+    const auditId = extractAuditIdFromToolResult('ff_monitoring', {
       parentReportId: 'parent-9',
     })
     assert.equal(auditId, 'parent-9')
+  })
+
+  it('reads repo scan ids from repo MCP tool results', () => {
+    const auditId = extractAuditIdFromToolResult(
+      'ff_start_repo_scan',
+      JSON.stringify({ repoScanId: 'repo-scan-123', status: 'QUEUED' })
+    )
+    assert.equal(auditId, 'repo-scan-123')
   })
 })
 

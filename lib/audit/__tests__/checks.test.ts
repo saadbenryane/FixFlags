@@ -14,9 +14,15 @@ import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
 import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
 import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
+import { runSecurityHeaderChecks } from '@/lib/audit/checks/security-headers'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
+import { runMessagingClarityChecks } from '@/lib/audit/checks/messaging-clarity'
+import { runConversionFrictionChecks } from '@/lib/audit/checks/conversion-friction'
+import { runTrustPsychologyChecks } from '@/lib/audit/checks/trust-psychology'
+import { runVisualHierarchyChecks } from '@/lib/audit/checks/visual-hierarchy'
+import { runMobileUXQualityChecks } from '@/lib/audit/checks/mobile-ux-quality'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
@@ -311,6 +317,90 @@ describe('runSeoChecks', () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
     assert.equal((await runSeoChecks('https://example.com', healthyMeta())).length, 0)
   })
+
+  it('does not flag a link as broken when the server rejects HEAD but GET succeeds', async () => {
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
+        return new Response(null, { status: 200 })
+      }
+      if (url.includes('/pricing')) {
+        return new Response(null, { status: init?.method === 'HEAD' ? 405 : 200 })
+      }
+      return new Response(null, { status: 200 })
+    }) as typeof fetch
+    restoreFetch = () => {
+      globalThis.fetch = original
+    }
+
+    const ids = checkIds(
+      await runSeoChecks(
+        'https://example.com',
+        healthyMeta({
+          links: [{ href: '/pricing', text: 'Pricing', rel: null }],
+        })
+      )
+    )
+    assert.ok(!ids.includes('broken-internal-links'))
+  })
+
+  it('falls back to GET and still flags a link as broken when a server rejects HEAD entirely', async () => {
+    // Regression test: some servers return 405 for HEAD on every route regardless
+    // of whether the resource exists. Without a GET fallback, a genuinely dead
+    // link on such a server was silently passed as fine (false negative).
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
+        return new Response(null, { status: 200 })
+      }
+      if (url.includes('/missing')) {
+        return new Response(null, { status: init?.method === 'HEAD' ? 405 : 404 })
+      }
+      return new Response(null, { status: 200 })
+    }) as typeof fetch
+    restoreFetch = () => {
+      globalThis.fetch = original
+    }
+
+    const ids = checkIds(
+      await runSeoChecks(
+        'https://example.com',
+        healthyMeta({
+          links: [{ href: '/missing', text: 'Missing', rel: null }],
+        })
+      )
+    )
+    assert.ok(ids.includes('broken-internal-links'))
+  })
+
+  it('does not flag a link as broken on a transient network error', async () => {
+    // Regression test: a fetch exception (timeout, DNS hiccup, anti-bot block
+    // against the scanner itself) isn't evidence the link is dead for a real
+    // visitor. Matches the established, documented behavior in auth-checkout.ts.
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
+        return new Response(null, { status: 200 })
+      }
+      throw new Error('network error')
+    }) as typeof fetch
+    restoreFetch = () => {
+      globalThis.fetch = original
+    }
+
+    const ids = checkIds(
+      await runSeoChecks(
+        'https://example.com',
+        healthyMeta({
+          links: [{ href: '/flaky', text: 'Flaky', rel: null }],
+        })
+      )
+    )
+    assert.ok(!ids.includes('broken-internal-links'))
+  })
 })
 
 describe('runTrustChecks', () => {
@@ -359,6 +449,145 @@ describe('runTrustChecks', () => {
 
   it('passes a healthy HTTPS page', () => {
     assert.equal(runTrustChecks('https://example.com', healthyMeta(), []).length, 0)
+  })
+})
+
+describe('runSecurityHeaderChecks', () => {
+  it('flags missing CSP header', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {})
+      ).includes('security-csp-missing')
+    )
+  })
+
+  it('flags unsafe-inline in CSP script-src', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'",
+        })
+      ).includes('security-csp-unsafe-inline')
+    )
+  })
+
+  it('does not flag unsafe-inline when CSP has nonce', () => {
+    assert.equal(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'; script-src 'self' 'nonce-abc123'",
+        })
+      ).includes('security-csp-unsafe-inline'),
+      false
+    )
+  })
+
+  it('flags missing HSTS on HTTPS', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {})
+      ).includes('security-hsts-missing')
+    )
+  })
+
+  it('flags short HSTS max-age', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'strict-transport-security': 'max-age=86400',
+        })
+      ).includes('security-hsts-too-short')
+    )
+  })
+
+  it('flags missing X-Frame-Options when no CSP frame-ancestors', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {})
+      ).includes('security-frame-options-missing')
+    )
+  })
+
+  it('skips X-Frame-Options check when CSP has frame-ancestors', () => {
+    assert.equal(
+      runSecurityHeaderChecks('https://example.com', {
+        'content-security-policy': "frame-ancestors 'self'",
+      }).filter((f) => f.checkId.startsWith('security-frame-options')).length,
+      0
+    )
+  })
+
+  it('flags permissive X-Frame-Options', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'x-frame-options': 'ALLOWALL',
+        })
+      ).includes('security-frame-options-too-permissive')
+    )
+  })
+
+  it('flags missing X-Content-Type-Options', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {})
+      ).includes('security-content-type-options-missing')
+    )
+  })
+
+  it('flags missing X-XSS-Protection', () => {
+    assert.ok(
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {})
+      ).includes('security-xss-protection-missing')
+    )
+  })
+
+  it('passes with all security headers present', () => {
+    assert.equal(
+      runSecurityHeaderChecks('https://example.com', {
+        'content-security-policy': "default-src 'self'",
+        'strict-transport-security': 'max-age=31536000; includeSubDomains',
+        'x-frame-options': 'DENY',
+        'x-content-type-options': 'nosniff',
+        'x-xss-protection': '1; mode=block',
+      }).length,
+      0
+    )
+  })
+
+  it('returns no findings when responseHeaders is null (skipCapture path)', () => {
+    assert.equal(runSecurityHeaderChecks('https://example.com', null).length, 0)
+  })
+})
+
+describe('runSecurityBasicsChecks', () => {
+  it('flags an HTTPS page that loads an image over HTTP', () => {
+    assert.ok(
+      checkIds(
+        runSecurityBasicsChecks(
+          'https://example.com',
+          healthyMeta({ images: [{ src: 'http://cdn.example.com/img.png', alt: 'x' }] })
+        )
+      ).includes('security-mixed-content')
+    )
+  })
+
+  it('does not flag a plain outbound link to an HTTP site as mixed content', () => {
+    // Regression test: a real bug flagged CRITICAL "mixed content" whenever the
+    // page had ANY <a href="http://..."> link, even though clicking a link just
+    // navigates away -- it doesn't load a resource insecurely, so browsers never
+    // warn or block on it. Only actual subresource loads (images, scripts,
+    // stylesheets) count as mixed content.
+    assert.equal(
+      runSecurityBasicsChecks(
+        'https://example.com',
+        healthyMeta({
+          links: [{ href: 'http://old-docs.example.com/reference', text: 'Reference', rel: null }],
+        })
+      ).length,
+      0
+    )
   })
 })
 
@@ -972,8 +1201,29 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'security-mixed-content': () =>
       checkIds(runSecurityBasicsChecks('https://example.com', healthyMeta({
         images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
-        links: [{ href: 'http://oldcdn.example.com/style.css', text: 'Stylesheet', rel: null }],
       }))),
+    'security-csp-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-csp-unsafe-inline': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {
+        'content-security-policy': "script-src 'self' 'unsafe-inline'",
+      })),
+    'security-hsts-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-hsts-too-short': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {
+        'strict-transport-security': 'max-age=3600',
+      })),
+    'security-frame-options-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-frame-options-too-permissive': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {
+        'x-frame-options': 'ALLOWALL',
+      })),
+    'security-content-type-options-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-xss-protection-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
     'visual-radius-inconsistent': () =>
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
     'visual-typography-sprawl': () =>
@@ -1133,6 +1383,283 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runSlowReplayChecks({ timeToFirstTextMs: 6000, timeToCtaMs: 1000, screenshotUrls: [] })),
     'slow-3g-cta-delayed': () =>
       checkIds(runSlowReplayChecks({ timeToFirstTextMs: 1000, timeToCtaMs: 9000, screenshotUrls: [] })),
+    'flow-destination-no-headline': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          ctaText: 'Sign up',
+          destinationUX: {
+            hasClearHeadline: false,
+            hasPrimaryCTA: true,
+            headline: null,
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-destination-no-cta': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          ctaText: 'Sign up',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: false,
+            headline: 'Welcome',
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 0, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-cta-message-mismatch': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          ctaText: 'Start free trial',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: true,
+            headline: 'See our pricing plans',
+            ctaText: null,
+            ctaPromisesMatch: false,
+            pageType: null,
+            frictionSignals: { ctaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-destination-cta-overload': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: true,
+            headline: 'Welcome',
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 5, tooManyCTAs: true, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-destination-stuck-loading': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: true,
+            headline: 'Welcome',
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: true, timeToContentMs: 5000, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-destination-no-privacy': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: true,
+            headline: 'Welcome',
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: true },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: false, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+    'flow-destination-slow-load': () =>
+      checkIds(
+        runFlowChecks({
+          status: 'success',
+          steps: [],
+          finalUrl: 'http://example.com/dest',
+          destinationUX: {
+            hasClearHeadline: true,
+            hasPrimaryCTA: true,
+            headline: 'Welcome',
+            ctaText: null,
+            ctaPromisesMatch: true,
+            pageType: null,
+            frictionSignals: { ctaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+            loadQuality: { hadStuckLoading: false, timeToContentMs: 3500, layoutShift: false },
+            trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+            mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+          },
+        })
+      ),
+
+    // messaging-clarity
+    'messaging-weak-value-prop': () =>
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Our platform is great'], h2s: [], pageText: '' }))),
+    'messaging-jargon-overload': () =>
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Leverage our disruptive ecosystem'], h2s: [], pageText: '' }))),
+    'messaging-no-audience': () =>
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [], pageText: '' }))),
+    'messaging-long-sentences': () =>
+      checkIds(
+        runMessagingClarityChecks(
+          healthyMeta({
+            h1s: ['Product page'],
+            pageText:
+              'This is a very long sentence that definitely exceeds the thirty word threshold for sentence length and should be flagged by the automated checker system right away without any delay whatsoever. ' +
+              'Here is another excessively long sentence that goes way beyond the recommended word count and will be caught by our automated analysis tools and reported for review by the editorial team without fail. ' +
+              'Yet one more verbose sentence that is far too long for comfortable reading and will definitely be picked up by the long sentence detection logic and flagged for immediate correction without any exceptions or special cases.',
+          })
+        )
+      ),
+    'messaging-headline-too-short': () =>
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Go'], h2s: [], pageText: '' }))),
+
+    // conversion-friction
+    'friction-no-commitment-path': () =>
+      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'We make a product.', links: [], h1s: ['Product'], ctaTexts: [] }))),
+    'friction-trial-commitment-unclear': () =>
+      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Start your free trial today', links: [] }))),
+    'friction-form-too-many-fields': () =>
+      checkIds(runConversionFrictionChecks(healthyMeta({ totalFormInputs: 7 }))),
+    'friction-no-risk-reversal': () =>
+      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Sign up now for early access', ctaTexts: ['Sign up'], links: [] }))),
+    'friction-no-social-proof': () =>
+      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Get started', links: [], h1s: ['Product'], ctaTexts: ['Get started'] }))),
+
+    // trust-psychology
+    'trust-no-authority-signals': () =>
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a nice product.', links: [] }))),
+    'trust-testimonial-quality': () =>
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'Everyone loves our product.', links: [], ctaTexts: ['Buy'] }))),
+    'trust-unsupported-claims': () =>
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'The best product for everyone.', links: [] }))),
+    'trust-no-direct-contact': () =>
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a product.', hasContactInfo: false, links: [] }))),
+    'trust-no-internal-links': () =>
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a product.', links: [], ctaTexts: ['Buy'] }))),
+
+    // visual-hierarchy
+    'hierarchy-competing-actions': () =>
+      checkIds(
+        runVisualHierarchyChecks(
+          healthyMeta({ h1s: ['Product'], h2s: ['Feature A', 'Feature B'], pageText: '' }),
+          healthyCaptureMetrics({ competingPrimaryCtaCount: 2, competingPrimaryCtaLabels: ['Get started', 'Book a demo'] })
+        )
+      ),
+    'hierarchy-too-many-fonts': () =>
+      checkIds(
+        runVisualHierarchyChecks(
+          healthyMeta({ h1s: ['Product'], h2s: ['Feature A'], pageText: '' }),
+          healthyCaptureMetrics({ uniqueFontFamilies: 4, fontFamilySample: ['Arial', 'Helvetica', 'Georgia', 'Times'] })
+        )
+      ),
+    'hierarchy-no-sections': () =>
+      checkIds(runVisualHierarchyChecks(healthyMeta({ h1s: ['Product'], h2s: [], pageText: '' }), null)),
+    'hierarchy-no-headline': () =>
+      checkIds(runVisualHierarchyChecks(healthyMeta({ h1s: [], h2s: [], pageText: 'Some body content here to exceed the 50 char threshold for detecting visible text.' }), null)),
+    'hierarchy-information-density': () =>
+      checkIds(
+        runVisualHierarchyChecks(
+          healthyMeta({
+            h1s: ['Product title here for testing the information density check across headings'],
+            h2s: [
+              'Subheading one with many words to push the total count above the threshold of eighty words total across all of these headings',
+              'Subheading two adds even more words so the total goes well beyond the eighty word limit for this particular test scenario',
+              'Subheading three continues adding textual content for the information density calculation to be thorough and realistic',
+              'Subheading four keeps padding the word count so the aggregate comfortably clears the eighty word boundary with margin',
+            ],
+            pageText: '',
+          }),
+          null
+        )
+      ),
+
+    // mobile-ux-quality
+    'mobile-input-zoom': () =>
+      checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta({}),
+          healthyCaptureMetrics({ inputsBelow16px: [{ selector: '#email', fontSize: 14 }] })
+        )
+      ),
+    'mobile-cta-thumb-zone': () =>
+      checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta({}),
+          healthyCaptureMetrics({ mobilePrimaryCtaTopPx: 700, mobilePrimaryCtaText: 'Get started', mobileViewportHeight: 800 })
+        )
+      ),
+    'mobile-cta-weak-label': () =>
+      checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta({}),
+          healthyCaptureMetrics({ mobilePrimaryCtaText: 'Learn more', mobilePrimaryCtaTopPx: 300 })
+        )
+      ),
+    'mobile-stuck-loading': () =>
+      checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta({}),
+          healthyCaptureMetrics({ stuckLoadingIndicator: true, stuckLoadingLabel: 'skeleton' })
+        )
+      ),
+    'mobile-no-viewport': () =>
+      checkIds(runMobileUXQualityChecks(healthyMeta({ viewport: null }), null)),
+    'mobile-load-delay-content': () =>
+      checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta({}),
+          healthyCaptureMetrics({
+            loadExperience: {
+              device: 'mobile',
+              initialScreenshotUrl: '/screenshots/mobile-initial.png',
+              initialCaptureElapsedMs: 500,
+              finalCaptureElapsedMs: 6000,
+              loadingVisibleAtInitial: true,
+              loadingVisibleAtFinal: false,
+              loadingClearedMs: 4500,
+              loadingLabel: 'spinner',
+              finalReadyState: 'complete',
+              finalTitle: 'Loaded',
+            },
+          })
+        )
+      ),
   }
 
   it('triggers matrix covers every checkId without extras', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AuditDeadlineError } from '../pipeline-errors'
+import { healthyMeta } from './check-fixtures'
 
 // ── runTriageStep mocks ──────────────────────────────────────────
 
@@ -53,12 +54,13 @@ function stubPageRun(overrides?: Partial<PageRun>): PageRun {
   return {
     pageId: 'p1',
     url: 'https://example.com',
-    metadata: { title: 'T', description: 'D', h1s: [], ctaTexts: [], pageText: '', hasStructuredData: false, wordCount: 0, language: 'en', locale: 'en-US', ogImage: null, favicon: null, lastModified: null, contentType: 'text/html' },
+    metadata: healthyMeta(),
     desktop: null,
     mobile: null,
     desktopScreenshot: true,
     mobileScreenshot: true,
     flowScan: false,
+    failedModules: [],
     desktopBase64: 'img',
     mobileBase64: null,
     flags: [],
@@ -77,7 +79,7 @@ describe('runTriageStep', () => {
 
     const input = {
       url: 'https://example.com',
-      metadata: { title: 'T', description: 'D', h1s: [], ctaTexts: [], pageText: '', hasStructuredData: false, wordCount: 0, language: 'en', locale: 'en-US', ogImage: null, favicon: null, lastModified: null, contentType: 'text/html' },
+      metadata: healthyMeta(),
       desktop: null,
       mobile: null,
       flags: [],
@@ -114,7 +116,7 @@ describe('runTriageStep', () => {
 
     await runTriageStep(ctx(), {
       url: 'https://example.com',
-      metadata: { title: 'T', description: 'D', h1s: [], ctaTexts: [], pageText: '', hasStructuredData: false, wordCount: 0, language: 'en', locale: 'en-US', ogImage: null, favicon: null, lastModified: null, contentType: 'text/html' },
+      metadata: healthyMeta(),
       desktop: null,
       mobile: null,
       flags: [],

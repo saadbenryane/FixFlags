@@ -24,7 +24,7 @@ function currentVerifiableCheckIds(flags: DeterministicFlag[]): Set<string> {
   )
 }
 
-/** True when a parent flag checkId still fails on re-check (used in tests). */
+/** True when a parent flag checkId still fails on monitoring (used in tests). */
 export function isCheckStillFailing(checkId: string, currentCheckIds: Set<string>): boolean {
   return currentCheckIds.has(checkId)
 }
@@ -34,9 +34,9 @@ export function buildCurrentVerifiableCheckIds(flags: DeterministicFlag[]): Set<
   return currentVerifiableCheckIds(flags)
 }
 
-/** Re-run deterministic checks on re-check and mark flags verified when checkId clears. */
+/** Re-run deterministic checks on monitoring and mark flags verified when checkId clears. */
 export async function applyDeterministicVerification(
-  recheckAuditId: string,
+  monitoringAuditId: string,
   parentAuditId: string,
   url: string
 ): Promise<void> {
@@ -53,7 +53,7 @@ export async function applyDeterministicVerification(
   try {
     auditResult = await runDeterministicAudit(url, {
       includeFlow: true,
-      auditId: recheckAuditId,
+      auditId: monitoringAuditId,
     })
   } catch {
     return
@@ -61,7 +61,7 @@ export async function applyDeterministicVerification(
 
   if (auditResult.flowResult) {
     await prisma.audit.update({
-      where: { id: recheckAuditId },
+      where: { id: monitoringAuditId },
       data: {
         flowData: serializeFlowData(auditResult.flowResult) as never,
       },
@@ -77,19 +77,19 @@ export async function applyDeterministicVerification(
       where: { id: flag.id },
       data: {
         status: stillFails ? 'OPEN' : 'FIXED',
-        resolvedInId: stillFails ? null : recheckAuditId,
+        resolvedInId: stillFails ? null : monitoringAuditId,
       },
     })
   }
 
-  const recheckFlags = await prisma.flag.findMany({
+  const monitoringFlags = await prisma.flag.findMany({
     where: {
-      auditId: recheckAuditId,
+      auditId: monitoringAuditId,
       checkId: { in: [...VERIFIABLE_CHECK_IDS] },
     },
   })
 
-  for (const flag of recheckFlags) {
+  for (const flag of monitoringFlags) {
     if (!flag.checkId) continue
     const parentMatch = parentFlags.find((p) => p.checkId === flag.checkId)
     if (!parentMatch) continue

@@ -12,6 +12,10 @@ const impactTagSchema = z.enum([
   'SHARING',
   'SEO',
   'ACCESSIBILITY',
+  'CLARITY',
+  'AUTHORITY',
+  'FRICTION',
+  'EMOTION',
 ])
 
 export const judgeOutputSchema = z.object({

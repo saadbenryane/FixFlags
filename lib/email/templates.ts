@@ -43,14 +43,14 @@ export const NURTURE_EMAILS = {
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
   },
-  recheck: {
+  monitoring: {
     subject: `Did your agent actually fix it?`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>You ran a ${BRAND.name} check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
-  <p>A re-check runs the same URL again and shows exactly what cleared and what is still open.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Re-check your site</a></p>
+  <p>A monitoring run checks the same URL again and shows exactly what cleared and what is still open.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Monitor your site</a></p>
 `),
   },
   launchChecklist: {

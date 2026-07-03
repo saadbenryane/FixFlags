@@ -113,6 +113,58 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'If sign-up or login is broken, motivated visitors hit a wall at the exact moment they were ready to convert.',
   'competing-ctas':
     'Too many equally-weighted CTAs above the fold split attention, so visitors hesitate instead of taking the one action that matters.',
+  'messaging-weak-value-prop':
+    'A vague headline makes visitors spend their first seconds decoding the offer instead of deciding whether it solves their problem.',
+  'messaging-jargon-overload':
+    'Jargon hides the concrete job your product performs, which makes the page feel less credible and harder to act on.',
+  'messaging-no-audience':
+    'When visitors cannot tell who the product is for, qualified buyers fail to self-identify and leave before reading deeper.',
+  'messaging-long-sentences':
+    'Dense, run-on copy slows scanning; busy visitors miss the value and skip the CTA.',
+  'messaging-headline-too-short':
+    'A one- or two-word headline usually lacks enough context for a first-time visitor to understand the offer.',
+  'friction-no-commitment-path':
+    'Visitors need a low-risk next step. Without pricing, trial, or demo paths, interest stalls before conversion.',
+  'friction-trial-commitment-unclear':
+    'Unclear trial commitment makes users hesitate because they cannot tell whether starting will require payment or cancellation work.',
+  'friction-form-too-many-fields':
+    'Long first-contact forms ask for trust before earning it, causing qualified visitors to abandon the conversion path.',
+  'friction-no-risk-reversal':
+    'A sign-up CTA without commitment details feels risky, especially for users comparing unfamiliar products.',
+  'friction-no-social-proof':
+    'Proof near the CTA reduces perceived risk; without it, visitors must trust your claims with no external support.',
+  'trust-no-authority-signals':
+    'Real authority signals help new visitors decide the product is credible enough to try, buy, or share internally.',
+  'trust-testimonial-quality':
+    'Generic praise feels interchangeable; specific attributed proof helps visitors believe the product works for people like them.',
+  'trust-unsupported-claims':
+    'Absolute claims without evidence trigger skepticism and can make the rest of the page feel inflated.',
+  'trust-no-direct-contact':
+    'No visible support or contact path makes the business feel unreachable at the moment users need reassurance.',
+  'trust-no-internal-links':
+    'Sparse navigation gives evaluators no way to inspect pricing, docs, proof, or support before committing.',
+  'hierarchy-competing-actions':
+    'Competing primary actions create choice paralysis; a clear visual order helps users understand the intended next step.',
+  'hierarchy-too-many-fonts':
+    'Too many typefaces make the page feel inconsistent and harder to scan, reducing perceived product polish.',
+  'hierarchy-no-sections':
+    'Without section headings, users cannot skim the page for features, pricing, proof, or answers.',
+  'hierarchy-no-headline':
+    'Missing the main headline removes the page anchor users rely on to understand where they landed.',
+  'hierarchy-information-density':
+    'Crowded above-the-fold copy forces users to parse too much before they know what to do next.',
+  'mobile-input-zoom':
+    'Inputs below 16px trigger iOS zoom, disorienting users during signup or contact forms.',
+  'mobile-cta-thumb-zone':
+    'A hard-to-reach mobile CTA adds physical friction right when a user is ready to act.',
+  'mobile-cta-weak-label':
+    'Vague mobile CTA labels make users uncertain about what tapping will do, which lowers intent.',
+  'mobile-stuck-loading':
+    'Persistent loading UI on a phone feels broken quickly because the user has less screen space and less patience.',
+  'mobile-no-viewport':
+    'Without a mobile viewport tag, phones render a desktop layout with tiny text and hard-to-tap controls.',
+  'mobile-load-delay-content':
+    'Delayed mobile content burns the short decision window before users can read the headline or reach the CTA.',
   'title-missing':
     'Search results and browser tabs show an untitled page - visitors skip links that look broken or generic.',
   'title-too-short':

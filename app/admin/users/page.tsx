@@ -65,7 +65,7 @@ export default async function AdminUsersPage() {
     <Container variant="wide" className="space-y-6 py-8">
       <PageHeader title={`Users (${rows.length})`} />
 
-      <Card className="border-0 shadow-card">
+      <Card variant="solid">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Credit packs</CardTitle>
         </CardHeader>
@@ -86,7 +86,7 @@ export default async function AdminUsersPage() {
       </Card>
 
       {(creditsByUser.length > 0) && (
-        <Card className="border-0 shadow-card p-0 overflow-hidden">
+        <Card variant="solid" className="p-0 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

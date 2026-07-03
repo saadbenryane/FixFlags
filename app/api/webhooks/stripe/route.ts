@@ -90,6 +90,23 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
   })
 }
 
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  if (!invoice.subscription) return
+
+  const subscriptionId =
+    typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
+
+  const user = await prisma.user.findFirst({
+    where: { stripeSubscriptionId: subscriptionId },
+  })
+  if (!user) return
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { subscriptionStatus: 'ACTIVE' as SubscriptionStatus },
+  })
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const signature = req.headers.get('stripe-signature')
@@ -142,6 +159,10 @@ export async function POST(req: NextRequest) {
 
         case 'invoice.payment_failed':
           await handleInvoicePaymentFailed(event.data.object)
+          break
+
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(event.data.object)
           break
 
         case 'checkout.session.expired': {

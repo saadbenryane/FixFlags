@@ -11,7 +11,8 @@ import { Callout } from '@/components/ui/callout'
 
 export default async function McpAnalyticsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
-  const userId = session!.user.id
+  if (!session) return null
+  const userId = session.user.id
 
   let analytics: Awaited<ReturnType<typeof loadMcpAnalytics>> | null = null
   let loadError = false
