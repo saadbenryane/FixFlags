@@ -10,17 +10,17 @@ import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
-import { runDesignLanguageChecks } from '@/lib/audit/checks/design-language'
 import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
 import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
 import { runMeasurementChecks } from '@/lib/audit/checks/measurement'
 import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
+import { runSecurityHeaderChecks } from '@/lib/audit/checks/security-headers'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { computeRubricScores, runAllChecks } from '@/lib/audit/checks'
 import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
-import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verify-flags'
+import { allCheckIdsHaveVerificationRules } from '@/lib/audit/verification-rules'
 import type { PageLoadExperience } from '@/lib/audit/capture-metrics'
 import {
   healthyDesktopPs,
@@ -594,6 +594,72 @@ describe('runAllChecks', () => {
   })
 })
 
+describe('runSecurityHeaderChecks', () => {
+  const FULL_HEADERS = {
+    'content-security-policy': "default-src 'self'; script-src 'self'",
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'x-frame-options': 'SAMEORIGIN',
+    'x-content-type-options': 'nosniff',
+    'x-xss-protection': '1; mode=block',
+  }
+
+  it('returns no flags when headers are null (no capture available)', () => {
+    assert.deepEqual(runSecurityHeaderChecks('https://example.com', null), [])
+  })
+
+  it('passes with a fully-hardened header set', () => {
+    assert.equal(runSecurityHeaderChecks('https://example.com', FULL_HEADERS).length, 0)
+  })
+
+  it('flags missing CSP', () => {
+    const ids = checkIds(runSecurityHeaderChecks('https://example.com', { ...FULL_HEADERS, 'content-security-policy': '' }))
+    assert.ok(ids.includes('security-csp-missing'))
+  })
+
+  it('flags unsafe-inline in CSP script-src', () => {
+    const ids = checkIds(
+      runSecurityHeaderChecks('https://example.com', {
+        ...FULL_HEADERS,
+        'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'",
+      })
+    )
+    assert.ok(ids.includes('security-csp-unsafe-inline'))
+  })
+
+  it('only checks HSTS on HTTPS', () => {
+    const ids = checkIds(
+      runSecurityHeaderChecks('http://example.com', { ...FULL_HEADERS, 'strict-transport-security': '' })
+    )
+    assert.ok(!ids.includes('security-hsts-missing'))
+  })
+
+  it('flags HSTS max-age under one year', () => {
+    const ids = checkIds(
+      runSecurityHeaderChecks('https://example.com', { ...FULL_HEADERS, 'strict-transport-security': 'max-age=60' })
+    )
+    assert.ok(ids.includes('security-hsts-too-short'))
+  })
+
+  it('skips X-Frame-Options checks when CSP sets frame-ancestors', () => {
+    const ids = checkIds(
+      runSecurityHeaderChecks('https://example.com', {
+        ...FULL_HEADERS,
+        'content-security-policy': "default-src 'self'; frame-ancestors 'none'",
+        'x-frame-options': '',
+      })
+    )
+    assert.ok(!ids.includes('security-frame-options-missing'))
+    assert.ok(!ids.includes('security-frame-options-too-permissive'))
+  })
+
+  it('flags a permissive X-Frame-Options value when CSP has no frame-ancestors', () => {
+    const ids = checkIds(
+      runSecurityHeaderChecks('https://example.com', { ...FULL_HEADERS, 'x-frame-options': 'ALLOWALL' })
+    )
+    assert.ok(ids.includes('security-frame-options-too-permissive'))
+  })
+})
+
 describe('computeRubricScores', () => {
   it('maps PageSpeed and flag penalties to rubric scores', () => {
     const scores = computeRubricScores(
@@ -907,23 +973,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
         }))
       ),
-    'font-family-sprawl': () =>
-      checkIds(
-        runDesignLanguageChecks(
-          healthyCaptureMetrics({
-            uniqueFontFamilies: 6,
-            fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'],
-          })
-        )
-      ),
-    'button-radius-inconsistent': () =>
-      checkIds(
-        runDesignLanguageChecks(
-          healthyCaptureMetrics({
-            buttonBorderRadii: [0, 8, 24],
-          })
-        )
-      ),
     'competing-ctas': () =>
       checkIds(
         runCtaFocusChecks(
@@ -991,6 +1040,69 @@ describe('trigger matrix - one failing signal per checkId', () => {
         images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
         links: [{ href: 'http://oldcdn.example.com/style.css', text: 'Stylesheet', rel: null }],
       }))),
+    'security-csp-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-csp-unsafe-inline': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'",
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-hsts-missing': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-hsts-too-short': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=3600',
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-frame-options-missing': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-content-type-options': 'nosniff',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-frame-options-too-permissive': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-frame-options': 'ALLOWALL',
+          'x-content-type-options': 'nosniff',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-content-type-options-missing': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-frame-options': 'DENY',
+          'x-xss-protection': '1; mode=block',
+        })
+      ),
+    'security-xss-protection-missing': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+        })
+      ),
     'visual-radius-inconsistent': () =>
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
     'visual-typography-sprawl': () =>

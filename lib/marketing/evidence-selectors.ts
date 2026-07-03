@@ -224,8 +224,8 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'placeholder-copy-detected': { device: 'both', selectors: ['main h1', 'main p'] },
   'template-default-copy': { device: 'both', selectors: ['main h1', 'main p'] },
   'unreplaced-template-token': { device: 'both', selectors: ['main h1', 'main p', 'main'] },
-  'font-family-sprawl': { device: 'both', selectors: ['main h1', 'main p', 'main button'] },
-  'button-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button', '.demo-cta-primary'] },
+  'visual-typography-sprawl': { device: 'both', selectors: ['main h1', 'main p', 'main button'] },
+  'visual-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button', '.demo-cta-primary'] },
   'motion-ignores-reduced-preference': {
     device: 'both',
     selectors: ['main h1', '.demo-hero', 'main section:first-of-type', '[class*="animate" i]'],

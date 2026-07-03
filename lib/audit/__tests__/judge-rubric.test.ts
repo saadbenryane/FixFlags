@@ -10,7 +10,7 @@ import {
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { buildJudgePrompt } from '@/lib/prompts/system-prompt'
 import { gradeFromScore } from '@/lib/audit/scoring'
-import { allCheckIdsHaveVerificationRules, verificationRuleForCheckId } from '@/lib/audit/verify-flags'
+import { allCheckIdsHaveVerificationRules, verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 
 const judgeContext = {

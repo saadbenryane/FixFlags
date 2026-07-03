@@ -159,6 +159,26 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     checkIds: ['security-mixed-content'],
     verify: 'npm run demo:audit:offline',
   },
+  {
+    id: 'security-headers-scan',
+    dimension: 'REACH',
+    category: 'trust',
+    label: 'CSP, HSTS, X-Frame-Options, and other response security headers',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: [
+      'security-csp-missing',
+      'security-csp-unsafe-inline',
+      'security-hsts-missing',
+      'security-hsts-too-short',
+      'security-frame-options-missing',
+      'security-frame-options-too-permissive',
+      'security-content-type-options-missing',
+      'security-xss-protection-missing',
+    ],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+    notes: 'Reads raw HTTP response headers captured during page navigation, not PageMetadata.',
+  },
 
   // REACH - metadata & SEO
   {
@@ -478,8 +498,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Cross-section spacing, radius, typography consistency',
     tool: 'browser-capture',
     status: 'live',
-    checkIds: ['font-family-sprawl', 'button-radius-inconsistent', 'visual-radius-inconsistent', 'visual-typography-sprawl'],
-    verify: 'npm run test:unit -- lib/audit/__tests__/design-language.test.ts',
+    checkIds: ['visual-radius-inconsistent', 'visual-typography-sprawl'],
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'DOM style sampling during mobile capture.',
   },
 

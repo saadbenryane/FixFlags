@@ -73,9 +73,6 @@ export const ALL_CHECK_IDS = [
   'loading-state-slow',
   'motion-ignores-reduced-preference',
   'form-inputs-zoom-mobile',
-  // design-language.ts (legacy standalone compatibility)
-  'font-family-sprawl',
-  'button-radius-inconsistent',
   // cta-focus.ts
   'competing-ctas',
   // slop.ts
@@ -94,6 +91,15 @@ export const ALL_CHECK_IDS = [
   'auth-page-broken',
   // security.ts
   'security-mixed-content',
+  // security-headers.ts
+  'security-csp-missing',
+  'security-csp-unsafe-inline',
+  'security-hsts-missing',
+  'security-hsts-too-short',
+  'security-frame-options-missing',
+  'security-frame-options-too-permissive',
+  'security-content-type-options-missing',
+  'security-xss-protection-missing',
   // visual-polish.ts
   'visual-radius-inconsistent',
   'visual-typography-sprawl',

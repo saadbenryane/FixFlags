@@ -120,10 +120,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Throttle the page in Chrome DevTools; the first screen should swap from loading UI to real content within 3 seconds.',
   'motion-ignores-reduced-preference':
     'Enable prefers-reduced-motion in OS settings; hero animations and loops should stop or shorten to near-zero.',
-  'font-family-sprawl':
-    'Inspect computed font-family on headings and body copy; limit to 2–3 families site-wide.',
-  'button-radius-inconsistent':
-    'Primary and secondary CTAs should share one border-radius token across the page.',
   'placeholder-copy-detected':
     'Page should not contain Lorem ipsum, TODO, TBD, or [object Object] in visible text.',
   'template-default-copy':
@@ -178,10 +174,6 @@ export const MEASUREMENT_VERIFICATION_RULES = {
     'Check Google Analytics 4, Google Tag Manager, or PostHog presence. Install one of them for conversion tracking and business intelligence.',
   'measurement-consent-blocking-incomplete':
     'Ensure consent banners properly block or delay analytics scripts based on user preferences. Set data retention limits and implement user-friendly consent management.',
-  'measurement-no-conversion-events':
-    'Implement conversion event tracking for key user actions: signups, purchases, form submissions, scroll depth, and video completions.',
-  'measurement-consent-multi-banner-overlap':
-    'Standardize to a single, clear consent banner that handles all regional regulations (GDPR+CCPA+Cookie Compliance).',
 }
 
 /**
@@ -206,30 +198,16 @@ export const SECURITY_VERIFICATION_RULES = {
     'Add X-Content-Type-Options: nosniff to prevent MIME type sniffing.',
   'security-xss-protection-missing':
     'Add X-XSS-Protection: 1; mode=block to enable XSS filter in older browsers.',
-  'security-critical-vulnerabilities':
-    'Implement all critical recommendations from the security scan immediately. Priority: Mixed content → CSP → X-Frame-Options → HSTS → X-Content-Type-Options → X-XSS-Protection.',
-  'security-security-practices':
-    'Implement recommendations for: Frame options, content type options, HSTS max-age, and CSP consistency.',
-  'security-headers-basic':
-    'Add missing critical headers (CSP with no unsafe-inline, X-Frame-Options: DENY/SAMEORIGIN, HSTS with max-age >= 31536000).',
 }
 
 /**
  * Verification rule for visual polish scan
  */
 export const VISUAL_POLISH_VERIFICATION_RULES = {
-  'visual-spacing-inconsistent':
-    'Use consistent spacing values (8px, 16px, 24px) and follow design tokens. Implement a spacing scale and enforce it with CSS custom properties.',
   'visual-radius-inconsistent':
     'Pick one button radius token (e.g. 8px or 9999px pill) and apply it to every primary and secondary CTA.',
   'visual-typography-sprawl':
     'Limit to 2 font families (sans-serif for body, serif or custom for headings). Follow H1 > H2 > H3 sizing hierarchy.',
-  'visual-color-palette-variant':
-    'Establish a primary, secondary, and accent color palette with clear usage guidelines. Limit to 5-7 colors total for cohesive design.',
-  'visual-ai-judge-poor-score':
-    'Review the visual design based on AI suggestions. Focus on improving visual hierarchy, spacing consistency, and component alignment.',
-  'visual-ai-judge-needs-improvement':
-    'Apply aesthetic improvements based on AI judge feedback. Consider refining spacing, contrast, and visual hierarchy.',
 }
 
 export const ALL_VERIFICATION_RULES: Record<string, string> = {
