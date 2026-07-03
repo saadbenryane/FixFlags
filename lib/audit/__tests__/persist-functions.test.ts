@@ -1,5 +1,4 @@
 import { describe, it, vi, expect, beforeEach } from 'vitest'
-import type { Mock } from 'vitest'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
 
@@ -12,13 +11,10 @@ const mockTx = {
   creditPurchase: { aggregate: vi.fn() },
 }
 
-let transactionCallback: ((tx: typeof mockTx) => Promise<unknown>) | null = null
-
 vi.mock('@/lib/db', () => ({
   prisma: {
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') {
-        transactionCallback = arg as typeof transactionCallback
         return arg(mockTx)
       }
       if (Array.isArray(arg)) {
@@ -38,9 +34,7 @@ import {
   persistDeterministicFlags,
   persistTriageResults,
   mergePrescriptionResults,
-  buildDeterministicFlagRow,
 } from '@/lib/audit/persist'
-import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { RubricName } from '@prisma/client'
 
 function makeDet(overrides: Partial<DeterministicFlag> & Pick<DeterministicFlag, 'checkId'>): DeterministicFlag {
@@ -55,11 +49,6 @@ function makeDet(overrides: Partial<DeterministicFlag> & Pick<DeterministicFlag,
     source: 'DETERMINISTIC',
     ...overrides,
   }
-}
-
-function makeRubricFindFirst(name: string, existing = false) {
-  if (!existing) return vi.fn().mockResolvedValue(null)
-  return vi.fn().mockResolvedValue({ id: `rubric-${name}`, name })
 }
 
 function makeRubricCreate(name: string) {
@@ -98,12 +87,8 @@ function makeRubricOutput(name: string, score: number | null) {
 describe('persistDeterministicFlags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    transactionCallback = null
     mockPageFindOnePage()
-    mockTx.reportRubric.findFirst.mockImplementation((args) => {
-      const name = (args as { where: { name: string } }).where.name
-      return Promise.resolve(null)
-    })
+    mockTx.reportRubric.findFirst.mockResolvedValue(null)
     mockTx.reportRubric.create.mockImplementation((args) => {
       const name = (args as { data: { name: string } }).data.name
       return Promise.resolve(makeRubricCreate(name))
@@ -207,7 +192,6 @@ function makeTriageOutput(overrides: Partial<TriageOutput> = {}): TriageOutput {
 describe('persistTriageResults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    transactionCallback = null
     mockPageFindOnePage()
     mockTx.reportRubric.create.mockImplementation((args) => {
       const name = (args as { data: { name: string } }).data.name
@@ -274,7 +258,6 @@ describe('persistTriageResults', () => {
 describe('mergePrescriptionResults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    transactionCallback = null
     mockTx.flag.findMany.mockResolvedValue([
       { id: 'flag-1', checkId: 'title-missing', fingerprint: 'fp-1' },
       { id: 'flag-2', checkId: null, fingerprint: 'fp-2' },

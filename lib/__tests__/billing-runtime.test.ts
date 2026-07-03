@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Shared prisma mock functions - hoisted so vi.mock factory can reference them
 const { mockAggregate, mockFindFirst, mockUpdate, mockAuditCount, mockAuditFindUnique, mockUserFindUnique, mockUserUpdate, mockAuditUpdate } = vi.hoisted(() => ({
@@ -47,6 +47,11 @@ import { cookies } from 'next/headers'
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  delete process.env.DEV_SIMULATE_BILLING
 })
 
 // ── wouldBlockNewCheckWithCredits ────────────────────────────────
@@ -155,11 +160,10 @@ describe('checkAnonymousAuditAllowed', () => {
   })
 
   it('allows when dev mode bypass is active', async () => {
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     delete process.env.DEV_SIMULATE_BILLING
     const result = await checkAnonymousAuditAllowed()
     expect(result).toEqual({ allowed: true })
-    process.env.NODE_ENV = 'test'
   })
 
   it('allows when no cookie exists', async () => {
@@ -208,14 +212,13 @@ describe('checkAnonymousAuditAllowed', () => {
 
 describe('getCheckUsage', () => {
   it('returns unlimited in dev mode with no plan limit', async () => {
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     delete process.env.DEV_SIMULATE_BILLING
     const result = await getCheckUsage({ id: 'u1', role: 'user', auditsUsed: 5, auditsLimit: 3 })
     expect(result.isUnlimited).toBe(true)
     expect(result.limit).toBeNull()
     expect(result.totalAvailable).toBeNull()
     expect(result.purchasedCredits).toBe(0)
-    process.env.NODE_ENV = 'test'
   })
 
   it('returns plan limit for regular user', async () => {
@@ -255,11 +258,10 @@ describe('getCheckUsage', () => {
 
 describe('incrementUsageOnCompleteForAudit', () => {
   it('returns early in dev mode without billing simulation', async () => {
-    process.env.NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     delete process.env.DEV_SIMULATE_BILLING
     await incrementUsageOnCompleteForAudit('audit1', 'user1')
     expect(mockAuditFindUnique).not.toHaveBeenCalled()
-    process.env.NODE_ENV = 'test'
   })
 
   it('returns early when audit is already counted', async () => {

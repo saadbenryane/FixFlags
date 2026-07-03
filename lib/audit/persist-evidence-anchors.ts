@@ -3,6 +3,7 @@ import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
 import {
   resolveEvidenceAnchorsWithBrowser,
+  type EvidenceAnchorTarget,
   type EvidenceAnchorMap,
 } from '@/lib/marketing/resolve-evidence-anchors'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
@@ -93,14 +94,23 @@ export async function mergeFlowCtaEvidenceAnchors(
 export async function tryResolveEvidenceAnchorsForAudit(
   auditId: string,
   url: string,
-  checkIds: Array<string | null | undefined>
+  targets: Array<string | EvidenceAnchorTarget | null | undefined>
 ): Promise<void> {
-  const ids = [...new Set(checkIds.filter((id): id is string => Boolean(id)))]
-  if (ids.length === 0) return
+  const normalizedTargets = targets
+    .map((target) => {
+      if (!target) return null
+      return typeof target === 'string' ? { checkId: target } : target
+    })
+    .filter((target): target is EvidenceAnchorTarget => Boolean(target?.checkId))
+
+  if (normalizedTargets.length === 0) return
 
   try {
     const browser = await getAuditBrowser()
-    const anchors = await resolveEvidenceAnchorsWithBrowser(browser, { url, checkIds: ids })
+    const anchors = await resolveEvidenceAnchorsWithBrowser(browser, {
+      url,
+      targets: normalizedTargets,
+    })
     await persistEvidenceAnchors(auditId, anchors)
   } catch (error) {
     logger.warn('Evidence anchor resolution skipped', { auditId, error })

@@ -6,6 +6,7 @@ import {
   formatVisualEvidence,
   visualTargetLabel,
 } from '@/lib/marketing/evidence-regions'
+import { devicesForCheck, getEvidenceSelectors } from '@/lib/marketing/evidence-selectors'
 
 describe('evidence-regions', () => {
   it('uses page scope for metadata checks', () => {
@@ -36,5 +37,16 @@ describe('evidence-regions', () => {
   it('exposes human labels for common checks', () => {
     assert.match(visualTargetLabel('cta-below-fold-mobile'), /call-to-action/i)
     assert.match(visualTargetLabel('og-image-missing'), /whole page/i)
+  })
+
+  it('targets slow loading states as visible element evidence', () => {
+    assert.equal(evidenceScopeForCheck('loading-state-slow'), 'element')
+    assert.deepEqual(devicesForCheck('loading-state-slow'), ['desktop', 'mobile'])
+    assert.ok(getEvidenceSelectors('loading-state-slow')?.selectors.includes('[aria-busy="true"]'))
+
+    const region = anchorToRegion('loading-state-slow', { x: 0.5, y: 0.35 })
+    assert.equal(region.scope, 'element')
+    assert.ok(region.height > 0.15)
+    assert.match(visualTargetLabel('loading-state-slow'), /loading/i)
   })
 })

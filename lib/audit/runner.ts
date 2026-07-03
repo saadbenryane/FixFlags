@@ -123,7 +123,11 @@ export async function runAudit(auditId: string): Promise<void> {
         await tryResolveEvidenceAnchorsForAudit(
           auditId,
           audit.url,
-          flags.map((flag) => flag.checkId)
+          flags.map((flag) => ({
+            checkId: flag.checkId,
+            problem: flag.problem,
+            evidence: flag.evidence,
+          }))
         )
         const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
         if (primaryFlow) {
@@ -160,7 +164,13 @@ export async function runAudit(auditId: string): Promise<void> {
         await tryResolveEvidenceAnchorsForAudit(
           auditId,
           audit.url,
-          pageRuns.flatMap((page) => page.flags.map((flag) => flag.checkId))
+          pageRuns.flatMap((page) =>
+            page.flags.map((flag) => ({
+              checkId: flag.checkId,
+              problem: flag.problem,
+              evidence: flag.evidence,
+            }))
+          )
         )
         const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
         if (primaryFlow) {

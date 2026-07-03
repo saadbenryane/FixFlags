@@ -1,5 +1,4 @@
 import type { Page } from 'puppeteer'
-import { logger } from '@/lib/logger'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 
 export interface DestinationUXQuality {
@@ -42,7 +41,7 @@ async function measureLoadQuality(page: Page, deadlineMs = 6000): Promise<Destin
   const started = Date.now()
   let timeToContentMs = deadlineMs
   let hadStuckLoading = false
-  let layoutShift = false
+  const layoutShift = false
 
   while (Date.now() - started < deadlineMs) {
     const elapsed = Date.now() - started

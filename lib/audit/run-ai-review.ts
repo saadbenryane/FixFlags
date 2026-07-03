@@ -110,7 +110,13 @@ export async function runAiReview(auditId: string): Promise<void> {
   await tryResolveEvidenceAnchorsForAudit(
     auditId,
     audit.url,
-    audit.flags.filter((f) => f.checkId).map((f) => f.checkId!)
+    audit.flags
+      .filter((flag) => flag.checkId)
+      .map((flag) => ({
+        checkId: flag.checkId!,
+        problem: flag.problem,
+        evidence: flag.evidence,
+      }))
   )
 
   await finalizeAudit({

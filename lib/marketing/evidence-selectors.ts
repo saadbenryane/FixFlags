@@ -143,6 +143,10 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
     device: 'both',
     selectors: ['main', '[aria-busy="true"]', '[class*="skeleton" i]', '[class*="loading" i]'],
   },
+  'loading-state-slow': {
+    device: 'both',
+    selectors: ['[aria-busy="true"]', '[class*="skeleton" i]', '[class*="spinner" i]', '[class*="loading" i]', 'main h1', 'main'],
+  },
   'scroll-ghost-sections': {
     device: 'both',
     selectors: ['main section', '.demo-feature-card', '#features'],
