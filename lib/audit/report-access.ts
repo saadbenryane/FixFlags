@@ -26,14 +26,6 @@ export function canViewPrescriptionContent(
   return false
 }
 
-/** @deprecated Use canViewPrescriptionContent */
-export function canViewAiReportContent(
-  audit: Parameters<typeof canViewPrescriptionContent>[0],
-  viewer: Parameters<typeof canViewPrescriptionContent>[1]
-): boolean {
-  return canViewPrescriptionContent(audit, viewer)
-}
-
 export function canViewAiViaMaxPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
@@ -54,14 +46,6 @@ export async function canViewPrescriptionContentForAudit(
     select: { id: true, role: true, plan: true },
   })
   return owner ? canSharePublicly(owner) : false
-}
-
-/** @deprecated Use canViewPrescriptionContentForAudit */
-export async function canViewAiReportContentForAudit(
-  audit: AiAccessAudit,
-  viewer: { id: string } | null | undefined
-): Promise<boolean> {
-  return canViewPrescriptionContentForAudit(audit, viewer)
 }
 
 type FlagLike = {
@@ -103,11 +87,6 @@ export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] 
   }))
 }
 
-/** @deprecated Use stripPrescriptionFromFlags */
-export function stripAiFromFlags<T extends FlagLike>(flags: T[]): T[] {
-  return stripPrescriptionFromFlags(flags)
-}
-
 export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
   return rubrics.map((r) => ({
     ...r,
@@ -118,11 +97,6 @@ export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[])
     boltPrompt: null,
     flags: r.flags ? stripPrescriptionFromFlags(r.flags) : r.flags,
   }))
-}
-
-/** @deprecated Use stripPrescriptionFromRubrics */
-export function stripAiFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
-  return stripPrescriptionFromRubrics(rubrics)
 }
 
 /** Legacy deterministic-only audits (no triageAt): hide AI fields entirely. */
@@ -160,7 +134,7 @@ export function stripLegacyDeterministicAudit<T extends {
           claudePrompt: null,
           lovablePrompt: null,
           boltPrompt: null,
-          flags: r.flags ? stripAiFromFlags(r.flags) : r.flags,
+          flags: r.flags ? stripPrescriptionFromFlags(r.flags) : r.flags,
         }))
       : audit.rubrics,
   }
@@ -179,11 +153,4 @@ export function stripPrescriptionFromAudit<T extends {
     flags: stripPrescriptionFromFlags(audit.flags),
     rubrics: audit.rubrics ? stripPrescriptionFromRubrics(audit.rubrics) : audit.rubrics,
   }
-}
-
-/** @deprecated Use stripPrescriptionFromAudit */
-export function stripAiFromAudit<T extends Parameters<typeof stripPrescriptionFromAudit>[0]>(
-  audit: T
-): T {
-  return stripLegacyDeterministicAudit(audit)
 }

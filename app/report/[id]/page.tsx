@@ -145,7 +145,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showAiContent, aiReviewPending } = result
+  const { audit, isLoggedIn, session, showPrescription, aiReviewPending } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -164,6 +164,7 @@ export default async function ReportPage({ params }: Props) {
           role: true,
           auditsUsed: true,
           auditsLimit: true,
+          subscriptionStatus: true,
         },
       })
     : null
@@ -180,6 +181,7 @@ export default async function ReportPage({ params }: Props) {
         id: session!.user.id,
         role: user.role,
         plan: user.plan,
+        subscriptionStatus: user.subscriptionStatus,
       })
     : null
 
@@ -292,7 +294,7 @@ export default async function ReportPage({ params }: Props) {
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}
-          showAiContent={showAiContent}
+          showPrescription={showPrescription}
           aiReviewPending={aiReviewPending}
           actions={
             <AuditPageActions

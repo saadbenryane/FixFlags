@@ -56,7 +56,7 @@ export default async function SamplesPage() {
         variant="sample"
         screenshotLimited={limited}
         screenshotPartial={partial}
-        showAiContent
+        showPrescription
       />
     </Section>
   )

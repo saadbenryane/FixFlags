@@ -85,8 +85,6 @@ interface AuditReportProps {
   screenshotLimited?: boolean
   screenshotPartial?: boolean
   showPrescription?: boolean
-  /** @deprecated Use showPrescription */
-  showAiContent?: boolean
   aiReviewPending?: boolean
   actions?: ReactNode
 }
@@ -104,7 +102,6 @@ export function AuditReport({
   screenshotLimited = false,
   screenshotPartial = false,
   showPrescription = true,
-  showAiContent = showPrescription,
   aiReviewPending = false,
   actions,
 }: AuditReportProps) {
@@ -193,7 +190,7 @@ export function AuditReport({
               showFeedback={showFeedback}
               aiLocked={aiLocked}
               signUpHref={signUpHref}
-              hasFixPrompts={showAiContent && hasFixPrompts}
+              hasFixPrompts={showPrescription && hasFixPrompts}
             />
           </div>
         </section>
@@ -318,7 +315,7 @@ export function AuditReport({
           </p>
         )}
 
-        {!isSample && isLoggedIn && !viewerIsPaid && showAiContent && (
+        {!isSample && isLoggedIn && !viewerIsPaid && showPrescription && (
           <ContextualUpgradeCard
             moment={upgradeMoment && upgradeMoment !== 'free_default' ? upgradeMoment : 'report_completed'}
             isLoggedIn
