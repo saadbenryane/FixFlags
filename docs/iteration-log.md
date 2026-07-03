@@ -14,6 +14,110 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-03 — Session 9 (competitive "10x value" analysis + branch-edit design proposal, no code changes)
+
+DB still blocked (Session 7, unresolved — user said wait). This session did
+research/design only, nothing DB-dependent, nothing risky.
+
+### Where FixFlags actually stands vs. real competitors (web-searched 2026 pricing/features)
+
+- **Cheap AI landing-page critique tools** (Web Anatomy, MyWebAudit, "Audit
+  Landing Page", Roast My Web — $2–$9/mo): single-shot AI opinion, no
+  deterministic/evidence-backed checks, no rubric scoring, no fix-prompt→editor
+  loop, no monitoring, no code-level checks. FixFlags' deterministic checks +
+  rubric (Message/Experience/Reach) + evidence screenshots + MCP already beat
+  these on rigor — **this tier is not the real competitive threat.**
+- **CRO-focused tools** (VWO's free UX/landing audit): more mature on
+  conversion-specific analysis, backed by a real analytics platform, but no
+  code-level security/SEO/a11y checks and no editor/MCP integration.
+- **AI code-review agents with real write access** (GitHub Copilot code review
+  GA March 2026 w/ auto-create fix PRs, CodeRabbit $24/user/mo, Qodo 2.0
+  multi-agent, Graphite Agent ~$40/user/mo): **this is the real threat to the
+  "10x" claim.** These tools already open PRs automatically from a finding.
+  FixFlags' repo-scan (`lib/repo-scan/*`) is still read-only + prompt
+  generation (`lib/repo-scan/finding-fix-task.ts` builds a branch name, commit
+  message, and agent prompt, but nothing calls the GitHub API to create a
+  branch or PR). **On the single dimension both markets share — "turn a
+  finding into a merged fix" — FixFlags is currently behind Copilot/CodeRabbit,
+  not ahead of them.**
+
+### Honest conclusion
+
+FixFlags' 10x wedge today is breadth + evidence, not automation: nobody else
+combines deterministic checks + AI judge + rubric scoring across
+message/experience/reach/security *and* hands you copy-paste/MCP fix prompts
+for both the live page and the underlying repo. But "10x the value of existing
+solutions" as a blanket claim doesn't hold against the code-review tier until
+the repo-scan write path exists. **Closing that gap, not adding more check
+modules, is the single highest-leverage next feature for the stated goal.**
+
+### Concrete phased proposal for the "branch edits" gap (design only — needs user sign-off before any of this is built)
+
+The groundwork is closer than it looks: `RepoFindingFixTask` already computes
+`branchName`, `commitMessage`, and a full agent-ready `prompt` per finding
+(`lib/repo-scan/finding-fix-task.ts:111`). Recommend **not** jumping straight to
+"FixFlags writes and merges code" (needs sandboxed execution + LLM-authored-diff
+review UX + broad GitHub write scope — genuinely risky, matches what Session 1
+already flagged). Instead, three increasing-risk phases, each independently
+shippable and each a real "10x" step up from read-only:
+
+1. **Phase 1 (low risk, days not weeks):** GitHub App/OAuth scope upgrade to
+   create a branch + open a **draft PR whose description is the existing
+   `prompt`** (no code diff — title, branch, and task description only). The
+   user's own agent (Claude Code/Cursor/Copilot) or the user finishes it. This
+   alone beats "copy a prompt into your editor manually" and is close to zero
+   incremental risk over what already exists — no code execution, no diff
+   review problem, just a branch + empty PR shell via the GitHub API.
+2. **Phase 2 (medium risk):** offer to trigger the user's *own* already-
+   installed coding agent against that branch (e.g., dispatch a GitHub Actions
+   workflow the user opts into, using their own Actions minutes/agent
+   credentials) rather than FixFlags running or hosting the agent itself. Sidesteps
+   "who pays for/owns the LLM diff" and keeps FixFlags out of the code-execution
+   business.
+3. **Phase 3 (highest risk, do last if ever):** FixFlags-hosted agent
+   generates the actual diff and opens the PR for human review before merge.
+   Needs: sandboxed execution, diff-review UI, rollback, abuse/cost controls
+   on repos we don't own. This is the only phase that matches Copilot/CodeRabbit
+   feature-for-feature, and the only one that needs a real security review
+   before writing a line of code.
+
+**This needs your decision, not more silent building** — in particular whether
+Phase 1 (branch + draft PR shell, no code) is worth scoping into an actual
+implementation plan next, since it's the cheapest real step toward matching the
+code-review competitors' headline capability.
+
+---
+
+## 2026-07-03 — Session 8 (real-user navigation pass, marketing site only)
+
+DB blocked (see Session 7, still unresolved — do not touch
+`prisma/migrations/2026061*`/`202606193*` without fresh user sign-off). Scoped
+this pass to DB-independent pages: `/`, `/pricing`, `/how-it-works`.
+
+**Real bug fixed:** `components/pricing/PricingComparisonTable.tsx` — the
+`/pricing` plan-card bullet says "Unlimited **Monitoring**" but the comparison
+table right below it labeled the same feature "**Re-checks**" (rename
+leftover, visible to real users). Changed the row label to `'Monitoring'`.
+
+**Two false leads ruled out — don't re-investigate:**
+1. Black bar on right edge of every mobile screenshot: `body`/`html`
+   scrollWidth/clientWidth all exactly match `innerWidth` (375), no overflow.
+   Confirmed via the mobile Sheet rendering flush with the true viewport edge,
+   past the black region. It's a `preview_screenshot` canvas/DPR artifact, not
+   a layout bug.
+2. Mobile hamburger appeared to never open via `preview_click` (data-state
+   stuck `"closed"` across repeated clicks). Dispatching a manual
+   `pointerdown→mousedown→pointerup→mouseup→click` sequence via `preview_eval`
+   opened the Radix `Sheet` fine. `preview_click` doesn't satisfy Radix's
+   trigger; real taps do. If a future session sees a Radix Sheet/Dialog/Popover
+   "not opening" under `preview_click`, dispatch raw pointer events before
+   concluding it's broken.
+
+**Not done:** `/dashboard`, `/report/[id]`, authenticated app shell — blocked by
+the Session 7 DB issue. Still open scope from the goal; pick up once resolved.
+
+---
+
 ## 2026-07-03 — Session 7 (dev-DB crash + migration-integrity bug — found, NOT fixed, needs user input)
 
 ### Critical: local dev server is currently broken on every page touching `audits`
@@ -65,6 +169,42 @@ option. **Do not revert these files without fresh user confirmation** — check
 with them again before touching `prisma/migrations/2026061*` / `202606193*`.
 Local dev will keep 500-ing on any page that queries `audits` until this is
 resolved one way or another.
+
+---
+
+## 2026-07-03 — Session 8 (branch-ready repo findings in the report UI)
+
+### What changed
+
+- Added `lib/repo-scan/finding-fix-task.ts` as the shared source for repo
+  finding locations, suggested branch names, commit messages, verification
+  checklists, and branch-ready prompts.
+- Rewired `lib/repo-scan/build-finding-prompt.ts` and
+  `lib/mcp/repo-finding-payload.ts` to use that shared helper, so future stored
+  scan prompts, MCP payloads, and report UI prompts stay aligned.
+- Updated `components/repo-scan/RepoFindingCard.tsx` and
+  `components/repo-scan/RepoScanReport.tsx` so each code finding now shows the
+  suggested branch, suggested commit, verification checklist, and copies the full
+  branch prompt instead of the older generic fix prompt.
+- Hardened `lib/__tests__/crypto.test.ts` by tampering decoded ciphertext bytes
+  before re-encoding; the previous test sometimes changed base64 text without
+  changing decoded ciphertext.
+
+### Verified
+
+- `npm run test:unit -- lib/__tests__/crypto.test.ts lib/mcp/__tests__/repo-finding-payload.test.ts lib/repo-scan/__tests__/build-finding-prompt.test.ts`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test:unit` (83 files, 1485 tests)
+
+### Notes
+
+- This still does not write branches or open pull requests. It makes the
+  dashboard and MCP agree on the exact safe branch task, which is the right
+  prerequisite for a later reviewed write path.
+- A sidecar explorer was started to inspect GitHub write-safety architecture, but
+  it did not finish before local implementation and verification completed and
+  was closed without code changes.
 
 ---
 

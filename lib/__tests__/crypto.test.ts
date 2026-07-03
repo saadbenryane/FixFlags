@@ -22,7 +22,10 @@ describe('lib/security/crypto', () => {
 
   it('throws on tampered ciphertext', () => {
     const encrypted = encryptSecret('another-secret')
-    const tampered = encrypted.slice(0, -2) + (encrypted.endsWith('A') ? 'B' : 'A')
+    const parts = encrypted.split('.')
+    const ciphertext = Buffer.from(parts[2], 'base64')
+    ciphertext[0] ^= 1
+    const tampered = [parts[0], parts[1], ciphertext.toString('base64')].join('.')
     assert.throws(() => decryptSecret(tampered))
   })
 })

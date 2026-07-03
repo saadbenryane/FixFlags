@@ -92,7 +92,12 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
           </div>
           <Card className="overflow-hidden border-0 shadow-card">
             {findings.map((finding) => (
-              <RepoFindingCard key={finding.id} finding={finding} />
+              <RepoFindingCard
+                key={finding.id}
+                finding={finding}
+                repoFullName={current.repoFullName}
+                commitSha={current.commitSha}
+              />
             ))}
           </Card>
         </>

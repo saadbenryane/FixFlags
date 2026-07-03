@@ -14,7 +14,7 @@ const ROWS = [
     max: 'Public share links + proof exports + up to 5 projects',
   },
   {
-    feature: 'Re-checks',
+    feature: 'Monitoring',
     free: 'Unlimited on reports you own',
     pro: 'Unlimited (no quota)',
     max: 'Unlimited (no quota)',
