@@ -31,6 +31,7 @@ export async function GET(request: Request) {
         auditsLimit: true,
         vibecodingLevel: true,
         preferredTools: true,
+        subscriptionStatus: true,
       },
     })
 
@@ -49,6 +50,7 @@ export async function GET(request: Request) {
       id: session.user.id,
       role: user.role,
       plan: user.plan,
+      subscriptionStatus: user.subscriptionStatus,
     })
 
     return NextResponse.json({

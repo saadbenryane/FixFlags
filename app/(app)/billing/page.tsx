@@ -16,6 +16,7 @@ import {
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
 import { CreditPackButton } from '@/components/billing/CreditPackButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
+import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
@@ -85,6 +86,17 @@ export default async function BillingPage() {
         ← Settings
       </TextLink>
       <PageHeader title="Billing" description="Manage your plan and subscription" />
+
+      {user.subscriptionStatus === 'PAST_DUE' && (
+        <Callout variant="warning" title="Your last payment failed">
+          <p>Update your card to keep your paid features. We&rsquo;ll retry automatically, but you can fix it now.</p>
+          {user.stripeCustomerId && (
+            <div className="pt-1">
+              <ManageSubscriptionButton />
+            </div>
+          )}
+        </Callout>
+      )}
 
       <Card className="space-y-4 p-6">
         <div className="space-y-1">

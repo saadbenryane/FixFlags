@@ -96,7 +96,12 @@ export class RecheckScheduler {
           continue
         }
 
-        const entitlements = getEntitlements({ id: user.id, role: user.role, plan: user.plan })
+        const entitlements = getEntitlements({
+          id: user.id,
+          role: user.role,
+          plan: user.plan,
+          subscriptionStatus: user.subscriptionStatus,
+        })
         if (!entitlements.canRecheck) {
           logger.warn('User cannot recheck, skipping', { userId: user.id })
           continue

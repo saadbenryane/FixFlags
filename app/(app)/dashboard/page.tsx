@@ -76,7 +76,7 @@ export default async function DashboardPage() {
     isAtCheckLimit(used, pending, effectiveLimit)
 
   const canCompare = user
-    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan })
+    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan, subscriptionStatus: user.subscriptionStatus })
     : false
 
   const [mcpAudits, webAudits, domainHistory] = await Promise.all([

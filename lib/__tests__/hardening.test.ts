@@ -81,6 +81,7 @@ describe('getEntitlements', () => {
       id: 'u1',
       role: 'user',
       plan: 'FREE',
+      subscriptionStatus: 'NONE',
     })
     assert.equal(entitlements.canRecheck, true)
     delete process.env.DEV_SIMULATE_BILLING
@@ -128,11 +129,13 @@ describe('canAccessCompare', () => {
     id: 'u1',
     role: 'user' as const,
     plan: 'FREE' as const,
+    subscriptionStatus: 'NONE' as const,
   }
   const builderUser = {
     id: 'u1',
     role: 'user' as const,
     plan: 'BUILDER' as const,
+    subscriptionStatus: 'ACTIVE' as const,
   }
 
   it('allows paid users', () => {

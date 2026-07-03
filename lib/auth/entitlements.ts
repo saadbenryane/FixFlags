@@ -21,12 +21,15 @@ export function getReportTierForUser(
   return user.plan !== 'FREE' ? 'paid' : 'free'
 }
 
+const REVOKED_SUBSCRIPTION_STATUSES = new Set(['PAST_DUE', 'CANCELED', 'UNPAID'])
+
 export function canAccessPaidFeatures(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
-  return user.plan !== 'FREE'
+  if (user.plan === 'FREE') return false
+  return !REVOKED_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus)
 }
 
 export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
@@ -40,7 +43,9 @@ export function canExportSummary(user: Pick<User, 'id' | 'role' | 'plan'>): bool
   return canSharePublicly(user)
 }
 
-export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+export function canUseApiKeys(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
   return canAccessPaidFeatures(user)
 }
 
@@ -55,7 +60,7 @@ export function canAccessRecheck(): boolean {
 }
 
 export function canAccessCompare(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   return canAccessPaidFeatures(user)
 }
@@ -71,7 +76,7 @@ export interface UserEntitlements {
 }
 
 export function getEntitlements(
-  user: Pick<User, 'id' | 'role' | 'plan'>
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): UserEntitlements {
   const reportTier = getReportTierForUser(user)
   const paid = canAccessPaidFeatures(user)
