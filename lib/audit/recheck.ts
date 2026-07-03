@@ -48,25 +48,21 @@ export async function startRecheckAudit(
     return validation
   }
 
-  try {
-    const { auditId, status } = await createAndEnqueueAudit({
+  const { auditId, status } = await createAndEnqueueAudit({
+    url: parent!.url,
+    userId: user.id,
+    parentId,
+    skipUsageCount: true,
+    recheckMode: 'SUMMARY_ONLY',
+    delayMs: options.delayMs,
+    attribution: buildAttribution({
       url: parent!.url,
-      userId: user.id,
-      parentId,
-      skipUsageCount: true,
-      recheckMode: 'SUMMARY_ONLY',
-      delayMs: options.delayMs,
-      attribution: buildAttribution({
-        url: parent!.url,
-        source: 'DASHBOARD',
-      }),
-    })
+      source: 'DASHBOARD',
+    }),
+  })
 
-    return {
-      ok: true,
-      result: { auditId, status },
-    }
-  } catch (err) {
-    throw err
+  return {
+    ok: true,
+    result: { auditId, status },
   }
 }
