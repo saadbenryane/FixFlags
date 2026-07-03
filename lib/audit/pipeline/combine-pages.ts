@@ -17,7 +17,14 @@ export function averageScores(
         const deterministic = computeRubricScores(
           page.flags,
           page.desktop,
-          page.mobile
+          page.mobile,
+          {
+            pageSpeedAvailable: {
+              desktop: Boolean(page.desktop),
+              mobile: Boolean(page.mobile),
+            },
+            failedModules: page.failedModules,
+          }
         )[rubricName]
         return (
           deterministic ??
@@ -27,7 +34,7 @@ export function averageScores(
       })
       .filter((score): score is number => score !== null)
     output[rubricName] =
-      values.length === pageRuns.length
+      values.length > 0 && values.length === pageRuns.length
         ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length)
         : null
   }

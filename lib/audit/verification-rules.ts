@@ -174,10 +174,6 @@ export const MEASUREMENT_VERIFICATION_RULES = {
     'Check Google Analytics 4, Google Tag Manager, or PostHog presence. Install one of them for conversion tracking and business intelligence.',
   'measurement-consent-blocking-incomplete':
     'Ensure consent banners properly block or delay analytics scripts based on user preferences. Set data retention limits and implement user-friendly consent management.',
-  'measurement-no-conversion-events':
-    'Implement conversion event tracking for key user actions: signups, purchases, form submissions, scroll depth, and video completions.',
-  'measurement-consent-multi-banner-overlap':
-    'Standardize to a single, clear consent banner that handles all regional regulations (GDPR+CCPA+Cookie Compliance).',
 }
 
 /**
@@ -186,46 +182,16 @@ export const MEASUREMENT_VERIFICATION_RULES = {
 export const SECURITY_VERIFICATION_RULES = {
   'security-mixed-content':
     'Update all HTTP URLs to HTTPS. Replace HTTP resources in HTML/CSS/JS with HTTPS versions. Use relative URLs when possible.',
-  'security-frame-options-too-permissive':
-    'Set X-Frame-Options to DENY or SAMEORIGIN. For embedding pages, use ALLOWFROM with specific trusted origins.',
-  'security-frame-options-missing':
-    'Add X-Frame-Options: DENY (prevents all framing) or X-Frame-Options: SAMEORIGIN (allows framing from same origin).',
-  'security-csp-missing':
-    'Implement a strict CSP with policy like: Content-Security-Policy: default-src \'self\'; script-src \'self\'; style-src \'self\'; img-src \'self\' data:; frame-ancestors \'none\';',
-  'security-csp-unsafe-inline':
-    'Remove unsafe-inline from CSP. Use nonce/credit-hash for scripts, or move inline code to external files.',
-  'security-hsts-missing':
-    'Add HSTS header: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload',
-  'security-hsts-too-short':
-    'Set HSTS max-age to at least 31536000 (1 year). Consider adding includeSubDomains and preload directives for maximum security.',
-  'security-content-type-options-missing':
-    'Add X-Content-Type-Options: nosniff to prevent MIME type sniffing.',
-  'security-xss-protection-missing':
-    'Add X-XSS-Protection: 1; mode=block to enable XSS filter in older browsers.',
-  'security-critical-vulnerabilities':
-    'Implement all critical recommendations from the security scan immediately. Priority: Mixed content → CSP → X-Frame-Options → HSTS → X-Content-Type-Options → X-XSS-Protection.',
-  'security-security-practices':
-    'Implement recommendations for: Frame options, content type options, HSTS max-age, and CSP consistency.',
-  'security-headers-basic':
-    'Add missing critical headers (CSP with no unsafe-inline, X-Frame-Options: DENY/SAMEORIGIN, HSTS with max-age >= 31536000).',
 }
 
 /**
  * Verification rule for visual polish scan
  */
 export const VISUAL_POLISH_VERIFICATION_RULES = {
-  'visual-spacing-inconsistent':
-    'Use consistent spacing values (8px, 16px, 24px) and follow design tokens. Implement a spacing scale and enforce it with CSS custom properties.',
   'visual-radius-inconsistent':
     'Pick one button radius token (e.g. 8px or 9999px pill) and apply it to every primary and secondary CTA.',
   'visual-typography-sprawl':
     'Limit to 2 font families (sans-serif for body, serif or custom for headings). Follow H1 > H2 > H3 sizing hierarchy.',
-  'visual-color-palette-variant':
-    'Establish a primary, secondary, and accent color palette with clear usage guidelines. Limit to 5-7 colors total for cohesive design.',
-  'visual-ai-judge-poor-score':
-    'Review the visual design based on AI suggestions. Focus on improving visual hierarchy, spacing consistency, and component alignment.',
-  'visual-ai-judge-needs-improvement':
-    'Apply aesthetic improvements based on AI judge feedback. Consider refining spacing, contrast, and visual hierarchy.',
 }
 
 export const ALL_VERIFICATION_RULES: Record<string, string> = {

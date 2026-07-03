@@ -79,6 +79,14 @@ export default async function DashboardPage() {
     ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan })
     : false
 
+  const totalCritical = completedAudits.reduce(
+    (sum, a) => sum + a.rubrics.reduce((s, r) => s + r.flags.filter((f) => f.severity === 'CRITICAL').length, 0),
+    0
+  )
+  const scores = completedAudits.map((a) => a.score).filter((s): s is number => s !== null)
+  const bestScore = scores.length > 0 ? Math.max(...scores) : null
+  const worstScore = scores.length > 0 ? Math.min(...scores) : null
+
   const [mcpAudits, webAudits, domainHistory] = await Promise.all([
     prisma.audit.count({ where: { userId, source: 'MCP' } }),
     prisma.audit.count({ where: { userId, source: { not: 'MCP' } } }),
@@ -130,6 +138,16 @@ export default async function DashboardPage() {
       ) : (
         <div className="space-y-6">
           {domainHistory.length > 0 && <DomainHistoryPanel domains={domainHistory} />}
+
+          {completedAudits.length > 0 && (
+            <div className="flex gap-4 text-sm text-muted-foreground">
+              <span className="tabular-nums">{completedAudits.length} audit{completedAudits.length !== 1 ? 's' : ''}</span>
+              {totalCritical > 0 && <span className="tabular-nums text-destructive">{totalCritical} critical flag{totalCritical !== 1 ? 's' : ''}</span>}
+              {bestScore !== null && <span className="tabular-nums">Best: {bestScore}</span>}
+              {worstScore !== null && <span className="tabular-nums">Worst: {worstScore}</span>}
+            </div>
+          )}
+
           <div className="space-y-3">
           <SectionTitle>Recent checks</SectionTitle>
           {audits.map((audit) => {
@@ -159,40 +177,61 @@ export default async function DashboardPage() {
                 ].filter((s): s is number => s !== null)
               : []
 
+            const criticalFlags = isCompleted
+              ? audit.rubrics.flatMap((r) => r.flags.filter((f) => f.severity === 'CRITICAL')).length
+              : 0
+            const importantFlags = isCompleted
+              ? audit.rubrics.flatMap((r) => r.flags.filter((f) => f.severity === 'IMPORTANT')).length
+              : 0
+
             return (
-              <Link key={audit.id} href={`/report/${audit.id}`} className="block">
+              <Link key={audit.id} href={`/report/${audit.id}`} className="block group">
                 <Card interactive>
                   <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
                       {isCompleted && (
-                        <ScoreDisplay
-                          score={audit.score}
-                          grade={null}
-                          variant="compact"
-                          size="sm"
-                          className="shrink-0"
-                        />
+                        <div className="shrink-0">
+                          <ScoreDisplay
+                            score={audit.score}
+                            grade={null}
+                            variant="compact"
+                            size="sm"
+                          />
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-base font-semibold truncate">{audit.url}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(audit.createdAt).toLocaleDateString()}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold truncate">{audit.url}</span>
+                          {statusLabel ? (
+                            <Badge
+                              variant={audit.status === 'FAILED' ? 'destructive' : 'secondary'}
+                              size="sm"
+                              className={audit.status !== 'FAILED' ? 'text-muted-foreground' : undefined}
+                            >
+                              {statusLabel}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <span>{new Date(audit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          {criticalFlags > 0 && (
+                            <span className="inline-flex items-center gap-1 text-destructive">
+                              <AlertTriangle className="h-3 w-3" />
+                              {criticalFlags} critical
+                            </span>
+                          )}
+                          {importantFlags > 0 && (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                              {importantFlags} important
+                            </span>
+                          )}
                         </div>
                         {trendScores.length > 1 && (
                           <ScoreSparkline scores={trendScores} className="mt-1" />
                         )}
                       </div>
-                      {statusLabel ? (
-                        <Badge
-                          variant={audit.status === 'FAILED' ? 'destructive' : 'secondary'}
-                          size="sm"
-                          className={audit.status !== 'FAILED' ? 'text-muted-foreground' : undefined}
-                        >
-                          {statusLabel}
-                        </Badge>
-                      ) : null}
-                      {isCompleted ? (
-                        <div className="flex gap-1 flex-wrap">
+                      {isCompleted && (
+                        <div className="flex gap-1 shrink-0">
                           {RUBRIC_ORDER.map((name) => {
                             const r = rubricMap.get(name)
                             if (!r) return null
@@ -217,12 +256,12 @@ export default async function DashboardPage() {
                           {audit.rechecks.length > 0 && canCompare && (
                             <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
                               <ArrowLeftRight className="h-3 w-3" />
-                              Compare
+                              Trend
                             </span>
                           )}
                         </div>
-                      ) : null}
-                      <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <ExternalLink className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
                     </div>
                   </CardContent>
                 </Card>

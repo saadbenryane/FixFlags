@@ -8,7 +8,7 @@ import {
   formatRubricForJudgePrompt,
 } from '@/lib/audit/rubric'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
-import { buildJudgePrompt } from '@/lib/prompts/system-prompt'
+import { buildTriagePrompt } from '@/lib/prompts/system-prompt'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { allCheckIdsHaveVerificationRules, verificationRuleForCheckId } from '@/lib/audit/verify-flags'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
@@ -64,8 +64,8 @@ describe('judge rubric constants', () => {
     }
   })
 
-  it('buildJudgePrompt references rubrics and flags', () => {
-    const prompt = buildJudgePrompt(judgeContext)
+  it('buildTriagePrompt references rubrics and flags', () => {
+    const prompt = buildTriagePrompt(judgeContext)
     assert.match(prompt, /MESSAGE/)
     assert.match(prompt, /newFlags/)
     assert.match(prompt, /FixFlags/)

@@ -20,6 +20,7 @@ export interface PageRun {
   desktopBase64: string
   mobileBase64: string | null
   flags: DeterministicFlag[]
+  failedModules: string[]
   triage?: TriageResult
 }
 

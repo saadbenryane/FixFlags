@@ -132,16 +132,18 @@ export async function runDestinationUXProbes(
 
   const metadata = await fetchAndParseMetadata(url).catch(() => null)
 
-  const ctaPromisesMatch = originCtaText && pageData.headline
-    ? originCtaText.toLowerCase().split(' ').some(word =>
-        word.length > 3 && pageData.headline!.toLowerCase().includes(word)
-      ) ||
-      originCtaHref && pageData.headline
-        ? originCtaHref.toLowerCase().split(/[/-]/).some(seg =>
-            seg.length > 3 && pageData.headline!.toLowerCase().includes(seg)
-          )
-        : true
-    : true
+  const ctaPromisesMatch = (() => {
+    if (!originCtaText || !pageData.headline) return true
+    const words = originCtaText.toLowerCase().split(' ')
+    const headline = pageData.headline.toLowerCase()
+    const wordMatch = words.some(w => w.length > 3 && headline.includes(w))
+    if (wordMatch) return true
+    if (originCtaHref) {
+      const segments = originCtaHref.toLowerCase().split(/[/-]/)
+      return segments.some(s => s.length > 3 && headline.includes(s))
+    }
+    return true
+  })()
 
   return {
     hasClearHeadline: pageData.headline !== null && pageData.headline.length > 5,
@@ -149,7 +151,7 @@ export async function runDestinationUXProbes(
     ctaText: pageData.ctaText,
     ctaPromisesMatch,
     headline: pageData.headline,
-    pageType: metadata?.pageType ?? null,
+    pageType: null,
     trustSignals: {
       hasPrivacyPolicy: metadata?.hasPrivacyPolicy ?? false,
       hasContactInfo: metadata?.hasContactInfo ?? false,

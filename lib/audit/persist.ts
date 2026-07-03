@@ -19,7 +19,7 @@ import {
   statusFromScore,
 } from './scoring'
 import { RUBRIC_ORDER } from './constants'
-import { deduplicateFlags, flagFingerprint } from './deduplicate'
+import { flagFingerprint } from './deduplicate'
 
 export interface DeterministicFlagRow {
   auditId: string
@@ -452,106 +452,6 @@ export async function mergePrescriptionResults(
     await tx.audit.update({
       where: { id: auditId },
       data: { status: 'FINALIZING', progress: 95 },
-    })
-  })
-}
-
-export async function persistAuditResults(
-  auditId: string,
-  judgeOutput: JudgeOutput,
-  deterministicFlags: DeterministicFlag[],
-  rubricScores: Partial<Record<RubricName, number | null>>
-): Promise<void> {
-  await clearAuditResults(auditId)
-
-  await prisma.$transaction(async (tx) => {
-    const pages = await tx.auditPage.findMany({
-      where: { auditId },
-      select: { id: true, normalizedUrl: true },
-    })
-    const pageIdByUrl = new Map(pages.map((page) => [page.normalizedUrl, page.id]))
-    const resolvedScores: Partial<Record<RubricName, number | null>> = {}
-    const resolvedGrades: Partial<Record<RubricName, RubricGrade | null>> = {}
-
-    const rubricRecords = await Promise.all(
-      judgeOutput.rubrics.map((rubricData) => {
-        const rubricName = rubricData.name as RubricName
-        const deterministicScore = rubricScores[rubricName]
-
-        const finalScore =
-          deterministicScore !== null && deterministicScore !== undefined
-            ? clampScore(deterministicScore)
-            : rubricData.score !== null
-              ? clampScore(rubricData.score)
-              : null
-        const finalGrade =
-          finalScore !== null ? gradeFromScore(finalScore) : rubricData.grade
-
-        resolvedScores[rubricName] = finalScore
-        resolvedGrades[rubricName] = finalGrade
-
-        return tx.reportRubric.create({
-          data: {
-            auditId,
-            name: rubricName,
-            score: finalScore,
-            grade: finalGrade,
-            status:
-              finalScore === null ? statusFromGrade(finalGrade) : statusFromScore(finalScore),
-            assessmentState: finalScore === null ? rubricData.assessmentState : 'ASSESSED',
-            confidence: rubricData.confidence,
-            summary: rubricData.summary,
-            rubricPrompt: rubricData.rubricPrompt,
-            cursorPrompt: rubricData.cursorPrompt ?? null,
-            claudePrompt: rubricData.claudePrompt ?? null,
-            lovablePrompt: rubricData.lovablePrompt ?? null,
-            boltPrompt: rubricData.boltPrompt ?? null,
-          },
-        })
-      })
-    )
-
-    const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
-    const enrichmentMap = new Map(judgeOutput.enrichments.map((e) => [e.checkId, e]))
-    const aiFlags = deduplicateFlags(deterministicFlags, judgeOutput.newFlags)
-
-    const flagRows = [
-      ...deterministicFlags.map((f, i) => {
-        const enrichment = enrichmentMap.get(f.checkId)
-        return {
-          ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName, enrichment),
-          auditId,
-        }
-      }),
-      ...aiFlags.map((f, i) => ({
-        ...buildAiFlagRow(f, i, pageIdByUrl, rubricIdByName, deterministicFlags.length),
-        auditId,
-      })),
-    ]
-
-    if (flagRows.length > 0) {
-      await tx.flag.createMany({ data: flagRows })
-    }
-
-    const overallScore = calculateOverallScore(resolvedScores, resolvedGrades)
-    await tx.audit.update({
-      where: { id: auditId },
-      data: {
-        status: 'FINALIZING',
-        progress: 95,
-        pageJob: judgeOutput.pageJob,
-        pageType: judgeOutput.pageType,
-        verdict: judgeOutput.verdict,
-        score: overallScore,
-        launchReadiness: {
-          readiness: judgeOutput.launchReadiness,
-          checklist: judgeOutput.launchChecklist,
-        },
-        launchReadinessState: judgeOutput.launchReadiness.toUpperCase() as
-          | 'SAFE'
-          | 'FIX_FIRST'
-          | 'NOT_READY',
-      },
     })
   })
 }

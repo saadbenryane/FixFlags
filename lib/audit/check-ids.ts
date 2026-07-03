@@ -108,6 +108,13 @@ export const ALL_CHECK_IDS = [
   'flow-cta-blank-destination',
   'flow-cta-stuck-loading',
   'flow-cta-destination-no-trust',
+  'flow-destination-no-headline',
+  'flow-destination-no-cta',
+  'flow-cta-message-mismatch',
+  'flow-destination-cta-overload',
+  'flow-destination-stuck-loading',
+  'flow-destination-no-privacy',
+  'flow-destination-slow-load',
   // slow-replay.ts
   'slow-3g-blank-screen',
   'slow-3g-cta-delayed',

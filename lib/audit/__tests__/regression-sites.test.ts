@@ -7,6 +7,8 @@ import { runMetadataChecks } from '../checks/metadata-checks'
 import { runTrustChecks } from '../checks/trust'
 import { runAccessibilityChecks } from '../checks/accessibility'
 import { runSlopChecks } from '../checks/slop'
+import { runMeasurementChecks } from '../checks/measurement'
+import { runSecurityBasicsChecks } from '../checks/security'
 
 const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 const URL = 'https://example.com'
@@ -40,6 +42,8 @@ function testFixture(
       ...runTrustChecks(URL, meta, []),
       ...runAccessibilityChecks(meta, null),
       ...runSlopChecks(meta),
+      ...runMeasurementChecks(meta),
+      ...runSecurityBasicsChecks(URL, meta),
     ]
 
     const ids = flags.map((f) => f.checkId)
@@ -67,13 +71,21 @@ function testFixture(
 }
 
 describe('regression: clean-page.html', () => {
-  testFixture('clean-page.html', 0, [], [])
+  testFixture(
+    'clean-page.html',
+    2,
+    [
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+    ],
+    []
+  )
 })
 
 describe('regression: broken-page.html', () => {
   testFixture(
     'broken-page.html',
-    18,
+    20,
     [
       { checkId: 'title-missing', severity: 'CRITICAL' },
       { checkId: 'description-missing', severity: 'IMPORTANT' },
@@ -93,6 +105,8 @@ describe('regression: broken-page.html', () => {
       { checkId: 'buttons-no-text', severity: 'IMPORTANT' },
       { checkId: 'iframe-no-title', severity: 'POLISH' },
       { checkId: 'template-default-copy', severity: 'IMPORTANT' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
     ],
     ['scroll-ghost-sections', 'visual-radius-inconsistent']
   )
@@ -101,12 +115,60 @@ describe('regression: broken-page.html', () => {
 describe('regression: saadbenryane-com.html', () => {
   testFixture(
     'saadbenryane-com.html',
-    3,
+    5,
     [
       { checkId: 'no-cta-detected', severity: 'IMPORTANT' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
     ],
     ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent']
+  )
+})
+
+describe('regression: html5up-paradigm-shift.html', () => {
+  testFixture(
+    'html5up-paradigm-shift.html',
+    8,
+    [
+      { checkId: 'description-missing', severity: 'IMPORTANT' },
+      { checkId: 'lang-missing', severity: 'POLISH' },
+      { checkId: 'canonical-missing', severity: 'POLISH' },
+      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'no-privacy-policy', severity: 'POLISH' },
+      { checkId: 'cookie-consent-absent', severity: 'POLISH' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+    ],
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
+  )
+})
+
+describe('regression: nextjs-org.html', () => {
+  testFixture(
+    'nextjs-org.html',
+    4,
+    [
+      { checkId: 'canonical-missing', severity: 'POLISH' },
+      { checkId: 'images-empty-alt', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+    ],
+    ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation']
+  )
+})
+
+describe('regression: vercel-com.html', () => {
+  testFixture(
+    'vercel-com.html',
+    4,
+    [
+      { checkId: 'description-too-short', severity: 'POLISH' },
+      { checkId: 'links-no-text', severity: 'IMPORTANT' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+    ],
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections']
   )
 })

@@ -376,6 +376,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     desktopBase64,
     mobileBase64,
     flags,
+    failedModules,
     triage,
   }
 }

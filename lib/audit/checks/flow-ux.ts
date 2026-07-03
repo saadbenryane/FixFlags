@@ -16,7 +16,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
         severity: 'IMPORTANT',
         problem: 'Destination page lacks a clear value proposition',
         evidence: `After clicking "${flowScan.ctaText ?? 'CTA'}", the destination page has no prominent headline that explains what the user gets. CTA leads to: ${flowScan.finalUrl}`,
-        fix: '1. Add a clear H1 headline on the destination that reinforces the CTA promise\n2. Match the headline to the CTA text — if CTA says "Start free trial", the destination should lead with the offer\n3. Use a subheadline that explains the next step in one sentence',
+        fix: '1. Add a clear H1 headline on the destination that reinforces the CTA promise\n2. Match the headline to the CTA text - if CTA says "Start free trial", the destination should lead with the offer\n3. Use a subheadline that explains the next step in one sentence',
         confidence: 0.85,
         source: 'DETERMINISTIC',
       })
@@ -30,7 +30,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
         severity: 'CRITICAL',
         problem: 'Destination page has no next-step CTA for the user',
         evidence: `After clicking "${flowScan.ctaText ?? 'CTA'}" to ${flowScan.finalUrl}, the destination page offers no clear next action. The user has reached the end of the journey.`,
-        fix: '1. Add a primary CTA on the destination page that continues the user journey\n2. Ensure the CTA matches the context — signup, book demo, start trial, learn more\n3. Include at least one secondary action for users not ready to commit',
+        fix: '1. Add a primary CTA on the destination page that continues the user journey\n2. Ensure the CTA matches the context - signup, book demo, start trial, learn more\n3. Include at least one secondary action for users not ready to commit',
         confidence: 0.9,
         source: 'DETERMINISTIC',
       })
@@ -58,7 +58,7 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
         severity: 'IMPORTANT',
         problem: `Destination page has ${ux.frictionSignals.ctaCount} competing CTAs`,
         evidence: `After clicking "${flowScan.ctaText ?? 'CTA'}", the user lands on a page with ${ux.frictionSignals.ctaCount} different calls-to-action. Choice overload reduces conversion. Destination: ${flowScan.finalUrl}`,
-        fix: '1. Designate one primary action per page — everything else is secondary or tertiary\n2. Use visual hierarchy: filled btn for primary, outline/ghost for secondary, text links for tertiary\n3. Remove or demote CTAs that compete with the main conversion goal\n4. Group related actions in a single location rather than scattered across the page',
+        fix: '1. Designate one primary action per page - everything else is secondary or tertiary\n2. Use visual hierarchy: filled btn for primary, outline/ghost for secondary, text links for tertiary\n3. Remove or demote CTAs that compete with the main conversion goal\n4. Group related actions in a single location rather than scattered across the page',
         confidence: 0.75,
         source: 'DETERMINISTIC',
       })
