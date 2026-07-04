@@ -13,12 +13,22 @@ export function shouldEnforcePlanGates(): boolean {
   return !isDevUnlimitedScans()
 }
 
+export function hasRevokedSubscriptionStatus(subscriptionStatus: string): boolean {
+  return (
+    subscriptionStatus === 'PAST_DUE' ||
+    subscriptionStatus === 'CANCELED' ||
+    subscriptionStatus === 'UNPAID'
+  )
+}
+
 export function getReportTierForUser(
-  user: Pick<User, 'id' | 'plan' | 'role'> | null | undefined
+  user: Pick<User, 'id' | 'plan' | 'role' | 'subscriptionStatus'> | null | undefined
 ): ReportTier {
   if (!user) return 'free'
   if (isAdminUser(user)) return 'paid'
-  return user.plan !== 'FREE' ? 'paid' : 'free'
+  if (user.plan === 'FREE') return 'free'
+  if (!shouldEnforcePlanGates()) return 'paid'
+  return hasRevokedSubscriptionStatus(user.subscriptionStatus) ? 'free' : 'paid'
 }
 
 export function canAccessPaidFeatures(
@@ -26,18 +36,23 @@ export function canAccessPaidFeatures(
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
-  if (user.subscriptionStatus === 'PAST_DUE' || user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') return false
+  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
   return user.plan !== 'FREE'
 }
 
-export function canSharePublicly(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+export function canSharePublicly(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
+  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
   return user.plan === 'TEAM'
 }
 
 /** Proof export (copy summary) - Max plan only. */
-export function canExportSummary(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+export function canExportSummary(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
   return canSharePublicly(user)
 }
 
@@ -46,7 +61,9 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan' | 'subscri
 }
 
 /** Codebase (GitHub repo) scanning - Max plan only, same tier as public sharing. */
-export function canScanRepositories(user: Pick<User, 'id' | 'role' | 'plan'>): boolean {
+export function canScanRepositories(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
   return canSharePublicly(user)
 }
 
@@ -95,7 +112,7 @@ export async function resolveReportTierForAudit(
 
   const owner = await prisma.user.findUnique({
     where: { id: audit.userId },
-    select: { id: true, plan: true, role: true },
+    select: { id: true, plan: true, role: true, subscriptionStatus: true },
   })
   if (!owner) return 'free'
 

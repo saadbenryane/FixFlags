@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { Check, ChevronDown, Loader2, Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, rubricIcon, rubricLabel, impactTagIcon, impactTagLabel } from '@/lib/utils'
 
 export type FixLoopFlagItem = {
   id: string
   title: string
   priorityLabel?: string
+  rubric: string
+  impactTag?: string | null
   severity: string
   hasFixPrompt?: boolean
 }
@@ -125,16 +127,20 @@ export function ReportFixLoop({
                   </div>
                 )}
                 <ul className="space-y-1" role="listbox" aria-label="Report flags">
-                  {flags.map((flag, index) => {
+                  {flags.map((flag) => {
                     const selected = selectedFlagId === flag.id
-                    const priorityLabel = flag.priorityLabel ?? priorityLabelForIndex(index)
+                    const RubricIcon = rubricIcon(flag.rubric)
+                    const ImpactIcon = impactTagIcon(flag.impactTag)
+                    const categoryLabel = [rubricLabel(flag.rubric), impactTagLabel(flag.impactTag)]
+                      .filter(Boolean)
+                      .join(' · ')
                     return (
                       <li key={flag.id} role="option" aria-selected={selected}>
                         <button
                           type="button"
                           onClick={() => onSelectFlag?.(flag.id)}
                           title={flag.title}
-                          aria-label={`${priorityLabel}: ${flag.title}`}
+                          aria-label={`${categoryLabel}: ${flag.title}`}
                           className={cn(
                             'flex w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs leading-none transition',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
@@ -143,14 +149,11 @@ export function ReportFixLoop({
                         >
                           <SeverityDot severity={flag.severity} />
                           <span
-                            className={cn(
-                              'shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none',
-                              index === 0
-                                ? 'bg-brand/10 text-brand'
-                                : 'bg-muted/70 text-muted-foreground'
-                            )}
+                            className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
+                            title={categoryLabel}
                           >
-                            {priorityLabel}
+                            <RubricIcon className="h-3 w-3" aria-hidden />
+                            {ImpactIcon && <ImpactIcon className="h-3 w-3" aria-hidden />}
                           </span>
                           <span className="min-w-0 flex-1 truncate">{flag.title}</span>
                           {flag.hasFixPrompt !== false && (

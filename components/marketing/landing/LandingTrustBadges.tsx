@@ -5,9 +5,6 @@ import { cn } from '@/lib/utils'
 export function LandingTrustBadges({ className }: { className?: string }) {
   return (
     <div className={cn('text-center', className)}>
-      <p className="mb-2 text-sm font-medium text-muted-foreground">
-        {HERO.trustBadgesSubtitle}
-      </p>
       <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 sm:gap-x-8">
         {HERO.trustBadges.map((item) => (
           <li key={item} className="inline-flex items-center gap-2 text-sm text-muted-foreground">

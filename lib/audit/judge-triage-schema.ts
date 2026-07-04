@@ -124,10 +124,15 @@ export const triageOutputSchema = z
 
 export type TriageOutput = z.infer<typeof triageOutputSchema>
 
-const generatedSchema = zodToJsonSchema(triageOutputSchema as ZodTypeAny, {
-  target: 'openApi3',
-  $refStrategy: 'none',
-})
+function buildJsonSchema(schema: ZodTypeAny): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return zodToJsonSchema(schema as any, {
+    target: 'openApi3',
+    $refStrategy: 'none',
+  }) as Record<string, unknown>
+}
+
+const generatedSchema = buildJsonSchema(triageOutputSchema)
 
 export const QUALITY_TRIAGE_SCHEMA = generatedSchema
 
@@ -160,7 +165,8 @@ function stripFormatKeyword(node: unknown): unknown {
  * object, which the `.strict()` calls on `triageOutputSchema` above provide - and
  * no unsupported `format` keywords (see `stripFormatKeyword` above).
  */
-const openaiSchemaWithFormat = zodToJsonSchema(triageOutputSchema as ZodTypeAny, {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const openaiSchemaWithFormat = zodToJsonSchema(triageOutputSchema as any, {
   $refStrategy: 'none',
 }) as Record<string, unknown>
 delete openaiSchemaWithFormat.$schema

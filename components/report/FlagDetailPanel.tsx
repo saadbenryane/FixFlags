@@ -8,7 +8,7 @@ import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
-import { cn } from '@/lib/utils'
+import { cn, impactTagIcon, impactTagLabel } from '@/lib/utils'
 
 function FlagDetailCard({
   title,
@@ -106,13 +106,16 @@ export function FlagDetailPanel({
 }
 
 export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
+  const impactLabel = impactTagLabel(flag.impactTag)
+  const ImpactIcon = impactTagIcon(flag.impactTag)
   return (
     <div className="flex flex-wrap items-center gap-2">
       <RubricPill rubric={flag.rubric} label={flag.rubricLabel} />
       <SeverityBadge severity={flag.severity} />
-      {flag.impactTag && (
-        <span className="rounded-full bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
-          {flag.impactTag}
+      {impactLabel && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+          {ImpactIcon && <ImpactIcon className="h-3 w-3 shrink-0" aria-hidden />}
+          {impactLabel}
         </span>
       )}
     </div>

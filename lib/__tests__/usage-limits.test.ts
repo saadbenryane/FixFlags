@@ -2,13 +2,20 @@ import { describe, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
 
 // These are pure-logic contract tests; they must run without a database (CI has
-// no DATABASE_URL). The only path that touches the DB is the purchased-credit
-// lookup behind getTotalAvailableCredits, so stub it at the prisma boundary to
-// return zero purchased credits and exercise the plan limit - used math.
+// no DATABASE_URL). The DB paths touched are the purchased-credit lookup behind
+// getTotalAvailableCredits and the user/audit lookups in
+// resolveIncludeAiForNewAudit, so stub them at the prisma boundary.
+const mockUserFindUnique = vi.fn()
 vi.mock('@/lib/db', () => ({
   prisma: {
     creditPurchase: {
       aggregate: vi.fn().mockResolvedValue({ _sum: { creditsRemaining: 0 } }),
+    },
+    user: {
+      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+    },
+    audit: {
+      count: vi.fn().mockResolvedValue(0),
     },
   },
 }))
@@ -33,6 +40,33 @@ import {
 describe('product contract limits', () => {
   it('anonymous new audits skip AI review', async () => {
     assert.equal(await resolveIncludeAiForNewAudit(null), false)
+  })
+
+  it('denies AI for a paid plan whose subscription has lapsed, even with a stale high auditsLimit', async () => {
+    // Simulates the exact gap: invoice.payment_failed sets subscriptionStatus
+    // but never touches plan/auditsLimit, so auditsLimit can still read the
+    // paid plan's quota (25) while the user is PAST_DUE/CANCELED/UNPAID.
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 'lapsed-user',
+      plan: 'BUILDER',
+      role: 'user',
+      auditsUsed: 0,
+      auditsLimit: 25,
+      subscriptionStatus: 'PAST_DUE',
+    })
+    assert.equal(await resolveIncludeAiForNewAudit('lapsed-user'), false)
+  })
+
+  it('still allows AI for an active paid plan under its limit', async () => {
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 'active-user',
+      plan: 'BUILDER',
+      role: 'user',
+      auditsUsed: 0,
+      auditsLimit: 25,
+      subscriptionStatus: 'ACTIVE',
+    })
+    assert.equal(await resolveIncludeAiForNewAudit('active-user'), true)
   })
 
   it('free plan has 3 lifetime AI reports', () => {
@@ -126,9 +160,9 @@ describe('wouldBlockNewCheck', () => {
 })
 
 describe('share and export entitlements', () => {
-  const freeUser = { id: 'u1', role: 'user' as const, plan: 'FREE' as const }
-  const proUser = { id: 'u2', role: 'user' as const, plan: 'BUILDER' as const }
-  const agencyUser = { id: 'u3', role: 'user' as const, plan: 'TEAM' as const }
+  const freeUser = { id: 'u1', role: 'user' as const, plan: 'FREE' as const, subscriptionStatus: 'NONE' as const }
+  const proUser = { id: 'u2', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
+  const agencyUser = { id: 'u3', role: 'user' as const, plan: 'TEAM' as const, subscriptionStatus: 'ACTIVE' as const }
 
   it('denies public share for free and pro', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'

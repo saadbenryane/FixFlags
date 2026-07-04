@@ -9,11 +9,12 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().url().optional().or(z.literal('')),
   NEXT_PUBLIC_GA_ID: z
     .string()
     .regex(/^G-[A-Z0-9]+$/, 'NEXT_PUBLIC_GA_ID must be a GA4 Measurement ID (e.g. G-XXXXXXXXXX)')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   PAGESPEED_API_KEY: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   R2_BUCKET_NAME: z.string().optional(),
@@ -33,8 +34,8 @@ const envSchema = z.object({
   ADMIN_USER_IDS: z.string().optional().transform(s => s ? s.split(',').map(x => x.trim()).filter(Boolean) : []),
   REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   SUPPORT_TENANT_SLUG: z.string().optional(),
-  SAMPLE_AUDIT_URL: z.string().url().optional(),
-  NEXT_PUBLIC_SAMPLE_AUDIT_URL: z.string().url().optional(),
+  SAMPLE_AUDIT_URL: z.string().url().optional().or(z.literal('')),
+  NEXT_PUBLIC_SAMPLE_AUDIT_URL: z.string().url().optional().or(z.literal('')),
   JUDGE_PROVIDER_CHAIN: z.string().default('openai,anthropic').transform(s => s.split(',').map(x => x.trim()).filter(Boolean)),
   OPENAI_JUDGE_MODEL: z.string().optional(),
   ANTHROPIC_JUDGE_MODEL: z.string().optional(),

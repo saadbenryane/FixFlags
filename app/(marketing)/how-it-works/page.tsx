@@ -33,7 +33,7 @@ const LOOP_ICONS = [ScanLine, Code2, RefreshCcw] as const
 export default function HowItWorksPage() {
   return (
     <>
-      <Section spacing="loose" className="overflow-hidden">
+      <Section spacing="marketing" className="overflow-hidden">
         <Container variant="wide" className="space-y-10">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] lg:items-center">
             <div className="space-y-6">
@@ -102,10 +102,11 @@ export default function HowItWorksPage() {
                             </li>
                           ))}
                         </ul>
+                        <div className="flex-1" />
                         <Button
                           variant={index === 0 ? 'ink' : 'outline'}
                           size="sm"
-                          className="mt-auto"
+                          className="mt-4"
                           asChild
                         >
                           <Link href={mode.href}>
@@ -123,7 +124,7 @@ export default function HowItWorksPage() {
         </Container>
       </Section>
 
-      <Section spacing="tight">
+      <Section spacing="marketing">
         <Container variant="wide" className="grid gap-8 lg:grid-cols-[0.75fr_1fr] lg:items-start">
           <div className="space-y-4">
             <Badge variant="outline" className="w-fit">
@@ -173,7 +174,7 @@ export default function HowItWorksPage() {
         </Container>
       </Section>
 
-      <Section spacing="default">
+      <Section spacing="marketing">
         <Container variant="wide" className="space-y-8">
           <div className="mx-auto max-w-3xl space-y-3 text-center">
             <Badge variant="outline" className="mx-auto w-fit">
@@ -204,7 +205,7 @@ export default function HowItWorksPage() {
         </Container>
       </Section>
 
-      <Section spacing="default">
+      <Section spacing="marketing">
         <Container variant="wide" className="grid gap-8 lg:grid-cols-[0.8fr_1fr] lg:items-center">
           <div className="space-y-4">
             <Badge variant="secondary" className="w-fit">
@@ -237,7 +238,7 @@ export default function HowItWorksPage() {
         </Container>
       </Section>
 
-      <Section spacing="loose">
+      <Section spacing="marketing">
         <Container variant="wide">
           <Card variant="strong" className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[0.9fr_1fr] lg:items-center lg:p-10">
             <div className="space-y-4">

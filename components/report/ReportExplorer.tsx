@@ -252,6 +252,8 @@ export function ReportExplorer({
     id: f.id,
     title: f.title,
     priorityLabel: f.priorityLabel,
+    rubric: f.rubric,
+    impactTag: f.impactTag,
     severity: f.severity,
     hasFixPrompt: f.hasFixPrompt,
   }))

@@ -26,7 +26,7 @@ import {
   buildEvidenceHighlightsForFlag,
   type EvidenceHighlight,
 } from '@/lib/audit/evidence-highlights'
-import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
+import { rubricLabel, severityLabel } from '@/lib/utils'
 
 export type { PipelineStep, PipelineStepState }
 export type { EvidenceHighlight }
@@ -183,7 +183,7 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     rubricLabel: rubricLabel(flag.rubric),
     severity: flag.severity,
     severityLabel: severityLabel(flag.severity),
-    impactTag: impactTagLabel(flag.impactTag),
+    impactTag: flag.impactTag ?? null,
     title: flag.problem,
     description: resolveWhyItMatters(flag),
     evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),

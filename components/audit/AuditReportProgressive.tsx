@@ -128,6 +128,8 @@ export function AuditReportProgressive({
   const fixLoopFlags = partialFlags.map((f) => ({
     id: f.id,
     title: f.problem,
+    rubric: f.rubric,
+    impactTag: null,
     severity: f.severity,
     hasFixPrompt: false,
   }))

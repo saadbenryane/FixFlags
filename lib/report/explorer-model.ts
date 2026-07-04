@@ -23,7 +23,7 @@ import {
 } from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
-import { impactTagLabel, rubricLabel, severityLabel } from '@/lib/utils'
+import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 
 export interface ExplorerFlag {
@@ -80,7 +80,7 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
     rubricLabel: rubricLabel(flag.rubric),
     severity: flag.severity,
     severityLabel: severityLabel(flag.severity),
-    impactTag: impactTagLabel(flag.impactTag),
+    impactTag: flag.impactTag ?? null,
     whyItMatters: resolveWhyItMatters(flag),
     evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
     fixPrompt,

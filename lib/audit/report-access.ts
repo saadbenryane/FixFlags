@@ -43,7 +43,7 @@ export async function canViewPrescriptionContentForAudit(
   if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
   const owner = await prisma.user.findUnique({
     where: { id: audit.userId },
-    select: { id: true, role: true, plan: true },
+    select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
   return owner ? canSharePublicly(owner) : false
 }

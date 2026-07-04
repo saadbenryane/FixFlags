@@ -1,5 +1,18 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import {
+  Accessibility,
+  BarChart3,
+  DollarSign,
+  Globe2,
+  MessageSquare,
+  Search,
+  Share2,
+  ShieldCheck,
+  TrendingUp,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -56,6 +69,15 @@ export function rubricLabel(name: string): string {
   return map[name] ?? name
 }
 
+export function rubricIcon(name: string): LucideIcon {
+  const map: Record<string, LucideIcon> = {
+    MESSAGE: MessageSquare,
+    EXPERIENCE: Zap,
+    REACH: Globe2,
+  }
+  return map[name] ?? MessageSquare
+}
+
 export function rubricDescription(name: string): string {
   const map: Record<string, string> = {
     MESSAGE:
@@ -89,6 +111,20 @@ export function impactTagLabel(tag: string | null | undefined): string | null {
     ACCESSIBILITY: 'Accessibility',
   }
   return map[tag] ?? tag
+}
+
+export function impactTagIcon(tag: string | null | undefined): LucideIcon | null {
+  if (!tag) return null
+  const map: Record<string, LucideIcon> = {
+    CONVERSION: TrendingUp,
+    REVENUE: DollarSign,
+    TRUST: ShieldCheck,
+    MEASUREMENT: BarChart3,
+    SHARING: Share2,
+    SEO: Search,
+    ACCESSIBILITY: Accessibility,
+  }
+  return map[tag] ?? null
 }
 
 export function flagStatusLabel(status: string): string {

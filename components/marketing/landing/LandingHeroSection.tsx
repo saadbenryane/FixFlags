@@ -27,14 +27,14 @@ export function LandingHeroSection() {
             {HERO.subhead}
           </p>
 
+          <LandingTrustBadges className="mt-5" />
+
           <div
             id="audit"
             className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)] motion-safe:animate-fade-in-up motion-safe:[animation-delay:160ms] motion-safe:[animation-fill-mode:both]"
           >
             <AuditInput variant="landing" />
           </div>
-
-          <LandingTrustBadges className="mt-5" />
         </div>
 
         <EditorToolMarks

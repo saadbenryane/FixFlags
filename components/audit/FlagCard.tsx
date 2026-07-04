@@ -11,7 +11,7 @@ import { formatFlagEvidence, formatFlagFixPrompt } from '@/lib/audit/evidence-hi
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
-import { rubricLabel, severityLabel, impactTagLabel } from '@/lib/utils'
+import { rubricLabel, severityLabel, impactTagLabel, rubricIcon, impactTagIcon } from '@/lib/utils'
 
 interface Props {
   flag: RankableFlag
@@ -24,11 +24,29 @@ interface Props {
   defaultExpanded?: boolean
 }
 
-function metaLine(flag: RankableFlag): string {
-  const parts = [rubricLabel(flag.rubric), severityLabel(flag.severity)]
+function FlagMeta({ flag }: { flag: RankableFlag }) {
+  const RubricIcon = rubricIcon(flag.rubric)
   const impact = impactTagLabel(flag.impactTag)
-  if (impact) parts.push(impact)
-  return parts.join(' · ')
+  const ImpactIcon = impactTagIcon(flag.impactTag)
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-xs uppercase tracking-label text-muted-foreground/80">
+      <span className="inline-flex items-center gap-1">
+        <RubricIcon className="h-3 w-3" aria-hidden />
+        {rubricLabel(flag.rubric)}
+      </span>
+      <span aria-hidden>·</span>
+      <span>{severityLabel(flag.severity)}</span>
+      {impact && (
+        <>
+          <span aria-hidden>·</span>
+          <span className="inline-flex items-center gap-1">
+            {ImpactIcon && <ImpactIcon className="h-3 w-3" aria-hidden />}
+            {impact}
+          </span>
+        </>
+      )}
+    </p>
+  )
 }
 
 export function FlagCard({
@@ -101,9 +119,7 @@ function FlagRowContent({
     <div className="px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="font-mono text-xs uppercase tracking-label text-muted-foreground/80">
-            {metaLine(flag)}
-          </p>
+          <FlagMeta flag={flag} />
           <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>
           {flag.confidence != null && flag.confidence < 0.8 && (
             <p className="text-xs text-muted-foreground">

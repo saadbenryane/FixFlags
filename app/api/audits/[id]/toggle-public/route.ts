@@ -32,7 +32,7 @@ export async function PATCH(
     if (makingPublic && session?.user) {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { id: true, role: true, plan: true },
+        select: { id: true, role: true, plan: true, subscriptionStatus: true },
       })
       if (user && !canSharePublicly(user)) {
         return apiError('Public share links require the Max plan or above.', 402, {

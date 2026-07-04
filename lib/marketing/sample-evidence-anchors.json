@@ -1,12 +1,18 @@
 {
   "canonical-missing": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   },
   "console-errors-some": {
@@ -22,11 +28,23 @@
   "cookie-consent-absent": {
     "desktop": {
       "x": 0.5,
-      "y": 0.5716666666666667
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.98
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
+    }
+  },
+  "cta-below-fold-mobile": {
+    "mobile": {
+      "x": 0.5,
+      "y": 0.92
     }
   },
   "cta-dead-link": {
@@ -41,12 +59,18 @@
   },
   "description-missing": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   },
   "favicon-missing": {
@@ -107,26 +131,67 @@
       "y": 0.23595289408866996
     }
   },
+  "flow-cta-destination-no-trust": {
+    "desktop": {
+      "x": 0.5,
+      "y": 0.5486111111111112,
+      "width": 1,
+      "height": 0.9027777777777778,
+      "scope": "element"
+    },
+    "mobile": {
+      "x": 0.5,
+      "y": 0.5935960591133005,
+      "width": 1,
+      "height": 0.812807881773399,
+      "scope": "element"
+    }
+  },
+  "flow-mobile-menu-broken": {
+    "mobile": {
+      "x": 0.6445416666666667,
+      "y": 0.1354679802955665,
+      "width": 0.66825,
+      "height": 0.11911330049261086,
+      "scope": "element"
+    }
+  },
   "flow-no-cta-found": {
     "desktop": {
       "x": 0.11790771484375,
       "y": 0.49616319444444446
     }
   },
-  "cta-below-fold-mobile": {
+  "flow-pricing-nav-broken": {
+    "desktop": {
+      "x": 0.821636962890625,
+      "y": 0.07555555555555556,
+      "width": 0.06,
+      "height": 0.05,
+      "scope": "element"
+    },
     "mobile": {
-      "x": 0.5,
-      "y": 0.92
+      "x": 0.8430208333333333,
+      "y": 0.11761083743842364,
+      "width": 0.15142833333333328,
+      "height": 0.05039408866995072,
+      "scope": "element"
     }
   },
   "h1-generic": {
     "desktop": {
       "x": 0.275,
-      "y": 0.30527777777777776
+      "y": 0.30527777777777776,
+      "width": 0.4375,
+      "height": 0.1395486111111111,
+      "scope": "element"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.9054033251231527,
+      "width": 0.9573333333333334,
+      "height": 0.10746921182266023,
+      "scope": "element"
     }
   },
   "no-cta-detected": {
@@ -151,32 +216,50 @@
   },
   "no-structured-data": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   },
   "og-description-missing": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   },
   "og-image-missing": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   },
   "render-blocking": {
@@ -191,12 +274,34 @@
   },
   "robots-blocks-indexing": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
+    }
+  },
+  "scroll-ghost-sections": {
+    "desktop": {
+      "x": 0.5,
+      "y": 0.8344444444444444,
+      "width": 0.91875,
+      "height": 0.33111111111111113,
+      "scope": "element"
+    },
+    "mobile": {
+      "x": 0.5,
+      "y": 0.5935960591133005,
+      "width": 1,
+      "height": 0.812807881773399,
+      "scope": "element"
     }
   },
   "tap-targets-small": {
@@ -217,12 +322,18 @@
   },
   "title-too-short": {
     "desktop": {
-      "x": 0.275,
-      "y": 0.30527777777777776
+      "x": 0.5,
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     },
     "mobile": {
       "x": 0.5,
-      "y": 0.9054033251231527
+      "y": 0.5,
+      "width": 1,
+      "height": 1,
+      "scope": "page"
     }
   }
 }

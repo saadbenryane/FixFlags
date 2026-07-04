@@ -3,8 +3,46 @@ import type { PageSpeedResult } from '../pagespeed'
 
 export const SCAN_STEP_FAILURE_PENALTY = 25
 
-const MESSAGE_MODULES = new Set(['content', 'slop', 'messaging-clarity', 'conversion-friction', 'trust-psychology', 'visual-hierarchy'])
-const REACH_MODULES = new Set(['metadata', 'og-image', 'seo', 'trust', 'trust-psychology'])
+// Kept in sync with each check module's `rubric:` field assignments (see
+// lib/audit/checks/*.ts) so a crashed module always applies an uncertainty
+// penalty to every rubric it could have produced findings for, not just some.
+const MESSAGE_MODULES = new Set([
+  'content',
+  'slop',
+  'trust',
+  'cta-focus',
+  'messaging-clarity',
+  'conversion-friction',
+  'trust-psychology',
+  'visual-hierarchy',
+  'mobile-ux-quality',
+])
+const REACH_MODULES = new Set([
+  'metadata',
+  'og-image',
+  'seo',
+  'trust',
+  'measurement',
+  'security',
+  'security-headers',
+  'trust-psychology',
+])
+const EXPERIENCE_MODULES = new Set([
+  'metadata',
+  'performance',
+  'accessibility',
+  'seo',
+  'mobile',
+  'content',
+  'layout',
+  'interaction',
+  'auth-checkout',
+  'conversion-friction',
+  'trust-psychology',
+  'visual-hierarchy',
+  'mobile-ux-quality',
+  'visual-polish',
+])
 
 export interface RubricScoreContext {
   pageSpeedAvailable?: { desktop: boolean; mobile: boolean }
@@ -33,16 +71,24 @@ export function computeRubricScores(
     (s): s is number => typeof s === 'number' && !Number.isNaN(s)
   )
 
+  // A crashed check module (e.g. mobile-ux-quality, interaction, trust-psychology)
+  // means its potential EXPERIENCE findings never had a chance to run - apply the
+  // same uncertainty penalty PageSpeed-unavailable already gets, even when the raw
+  // PageSpeed score itself is fine, so a module failure never silently scores 100.
+  const failedExperienceModules = failedModules.some((name) => EXPERIENCE_MODULES.has(name))
+
   let experience: number
   if (perfScores.length > 0) {
     let score = Math.round(perfScores.reduce((a, b) => a + b, 0) / perfScores.length)
     for (const f of experienceFindings) {
       score -= rubricPenalty(f.severity)
     }
+    if (failedExperienceModules) score -= SCAN_STEP_FAILURE_PENALTY
     experience = clampRubricScore(score)
   } else if (experienceFindings.length > 0) {
-    experience = scoreFromFindings(experienceFindings)
-  } else if (pageSpeedUnavailable || failedModules.includes('performance')) {
+    const penalty = failedExperienceModules ? SCAN_STEP_FAILURE_PENALTY : 0
+    experience = clampRubricScore(scoreFromFindings(experienceFindings) - penalty)
+  } else if (pageSpeedUnavailable || failedExperienceModules) {
     experience = penalizedBaseline(experienceFindings)
   } else {
     experience = 100

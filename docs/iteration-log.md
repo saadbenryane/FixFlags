@@ -14,6 +14,199 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-04 — Session 22 (the failed-module-penalty map was missing most modules - the score itself was wrong)
+
+### Real bug, high blast radius: `MESSAGE_MODULES`/`REACH_MODULES` in `lib/audit/checks/rubric.ts` were badly incomplete, and EXPERIENCE had no module-failure tracking at all
+
+Cross-referenced every check module's actual `rubric:` field assignments
+(`grep -o "rubric: '[A-Z]*'"` across all ~20 check files) against the two
+hardcoded module-name sets used to decide "did a crashed check module affect
+this rubric's score." Found real gaps:
+- **`MESSAGE_MODULES`** was missing `trust`, `cta-focus`, `mobile-ux-quality`
+  - all three emit MESSAGE-rubric flags.
+- **`REACH_MODULES`** was missing `measurement`, `security`,
+  `security-headers` - all three emit REACH-rubric flags.
+- **EXPERIENCE had no module-set concept at all.** ~14 check modules
+  (`metadata-checks`, `performance`, `accessibility`, `seo`, `mobile`,
+  `content`, `layout`, `interaction`, `auth-checkout`, `conversion-friction`,
+  `trust-psychology`, `visual-hierarchy`, `mobile-ux-quality`,
+  `visual-polish`) emit EXPERIENCE-rubric flags, but the only failure signal
+  EXPERIENCE ever checked was the literal string `'performance'` inside the
+  "no PageSpeed data" fallback branch - and that branch is only reached when
+  PageSpeed data is *also* missing. In the common case (PageSpeed succeeds),
+  a crashed `mobile-ux-quality`/`interaction`/`trust-psychology`/etc. module
+  silently lost its uncertainty penalty entirely, every time.
+
+Net effect before this fix: this is exactly the failure mode Session 1 (the
+very first session of this whole effort) found and partially fixed in
+`combine-pages.ts` - "if a deterministic scan module crashed... the final
+report silently scored that rubric 100 instead of applying the uncertainty
+penalty" - except the root cause went one level deeper: even when
+`failedModules` was correctly threaded through (which Session 1 fixed), the
+rubric-scoring function itself didn't know most modules existed.
+
+**Fixed:**
+- Completed `MESSAGE_MODULES` and `REACH_MODULES`.
+- Added `EXPERIENCE_MODULES` and wired it into all three EXPERIENCE branches:
+  applies a flat `SCAN_STEP_FAILURE_PENALTY` (25, matching the existing
+  MESSAGE/REACH convention of one flat penalty regardless of how many modules
+  failed) on top of the PageSpeed-derived score whenever a relevant module
+  failed, even when the raw PageSpeed score itself is healthy - not just in
+  the already-existing "PageSpeed unavailable" fallback path.
+
+### Verified
+
+- Added 3 new regression tests to `lib/audit/__tests__/checks.test.ts`
+  proving each of the three gaps (EXPERIENCE penalized despite healthy
+  PageSpeed when `mobile-ux-quality` fails; MESSAGE penalized for `trust`/
+  `cta-focus` failures; REACH penalized for `security-headers` failure) -
+  none of these three gaps had any test coverage before this session, which
+  is exactly why they went unnoticed since Session 1.
+- All 3 pre-existing `computeRubricScores` tests still pass unchanged -
+  this was a strictly additive fix (more failure conditions recognized), not
+  a behavior change to any previously-passing case.
+- `npx tsc --noEmit` clean for all files this session touched (2 pre-existing,
+  unrelated errors in `AuditReportProgressive.tsx`/`ReportExplorer.tsx` are
+  from another agent's concurrent in-progress edit, confirmed via mtime).
+- `npx vitest run` - 1509 passed, 1 known flake (shared dev server, passes
+  clean in isolation).
+- Also re-ran `lib/demo/` + `combine-pages.test.ts` + `pipeline-steps.test.ts`
+  specifically, since those exercise real end-to-end scoring paths that could
+  have been sensitive to a module-set change - all pass unchanged.
+
+---
+
+## 2026-07-04 — Session 21 (the same dunning gap, but in the part that actually costs real money)
+
+### `resolveIncludeAiForNewAudit` never checked subscriptionStatus - this one gates real LLM API spend, not just display/sharing
+
+Following the exact thread from Session 20: `handleInvoicePaymentFailed`
+(`app/api/webhooks/stripe/route.ts`) sets `subscriptionStatus: 'PAST_DUE'`
+but never touches `auditsLimit` or calls `applyPlanLimits`. Session 20 fixed
+the two entitlement functions this breaks (report tier, sharing/repo-scan).
+This session found a **third, more expensive** instance:
+`lib/audit/ai-report-entitlement.ts`'s `resolveIncludeAiForNewAudit` - the
+function that decides whether a *new* audit runs the LLM judge stage at all
+- also only ever reads `auditsLimit`/`auditsUsed`, never `subscriptionStatus`.
+Net effect: a user whose card was declined keeps getting full LLM-judge
+audits (real OpenAI/Anthropic API cost per call) at zero revenue, for as long
+as `auditsLimit` lags their revoked `subscriptionStatus` - which, per
+Session 20's finding, the dunning webhook design explicitly allows to persist
+indefinitely if `subscription.updated` never fires to resync it.
+
+**Fixed:** exported the `hasRevokedSubscriptionStatus` helper from
+`lib/auth/entitlements.ts` (was file-private), added `subscriptionStatus` to
+the `select`, and denies AI outright (no partial free-tier credit) when
+`plan !== 'FREE'` and the subscription is revoked - matching how
+`canAccessPaidFeatures`/`canSharePublicly` already deny entirely rather than
+downgrade to a partial tier.
+
+**Caught my own first draft being wrong via a real test, not just typecheck:**
+initially implemented this as "treat a revoked paid user as FREE-tier
+(3 AI reports)" instead of "deny outright." Wrote a test asserting denial and
+it failed (`true !== false`) - because with `auditsUsed: 0`, the free-tier-
+equivalent cap of 3 hadn't been hit yet, so it still allowed AI. Reconsidered
+and matched the simpler, already-established "deny entirely on revoked
+status" pattern instead of inventing a new partial-credit policy with its own
+edge cases (e.g. what a lapsed user with separately-purchased one-time
+credits should get - not addressed, noted below).
+
+### Verified
+
+- Added 2 new tests to `lib/__tests__/usage-limits.test.ts` (denies AI for
+  lapsed BUILDER despite `auditsLimit: 25`; still allows AI for an ACTIVE
+  paid plan) - extended that file's existing `vi.mock('@/lib/db', ...)` to
+  also stub `user.findUnique` and `audit.count` (previously only stubbed
+  `creditPurchase.aggregate`), since this function had *zero* coverage of its
+  user-lookup branch before this session (the one existing test only covered
+  the `userId === null` early return).
+- `npx tsc --noEmit` clean for all files this session touched. (Two
+  *unrelated* pre-existing errors in `AuditReportProgressive.tsx` /
+  `ReportExplorer.tsx` are from another agent's concurrent, in-progress edit -
+  confirmed via mtime, not caused by or fixed in this session.)
+- `npx vitest run` - 1506 passed, 1 flake (same known "live localhost"
+  demo-fixture timeout under concurrent shared-server load, passes clean in
+  isolation - not a regression).
+
+### Known gap not addressed this pass
+
+A user with a lapsed subscription who separately purchased one-time AI
+credits now gets denied outright, with no path to spend those credits until
+they either re-subscribe or someone builds a "purchased credits work
+independent of subscription status" carve-out. Given how rare that overlap
+likely is (lapsed subscription + separately purchased credits) versus the
+cost/complexity of getting the carve-out right, left it as the simpler,
+safer default - flagging here rather than silently deciding it doesn't
+matter.
+
+---
+
+## 2026-07-04 — Session 20 (billing: closed the dunning gap another agent left half-fixed, same day)
+
+### Real revenue-leak bug: 2 of 3 sibling gating functions still ignored `subscriptionStatus`
+
+Found via `git log` that commit `bfb172d` (made *today*, by another concurrent
+agent/session in this same effort) had already identified and partially fixed
+this exact class of bug: "`canAccessPaidFeatures` only checked `user.plan`,
+never `subscriptionStatus`... a user retained full paid access indefinitely"
+if `invoice.payment_failed` fires without a matching `subscription.updated`
+event (`app/api/webhooks/stripe/route.ts`'s `handleInvoicePaymentFailed` only
+sets `subscriptionStatus`, never touches `plan`). That commit fixed
+`canAccessPaidFeatures` (and therefore `canUseApiKeys`/`canAccessCompare`)
+but the diff explicitly did **not** touch two sibling functions with the
+identical bug:
+- `getReportTierForUser()` (`lib/auth/entitlements.ts`) - decides whether a
+  *report* renders as paid tier (unlocked fix prompts/evidence). Checked only
+  `user.plan`.
+- `canSharePublicly()` (same file) - gates public share links, proof export,
+  and **repo scanning** (a real, metered, cost-incurring action). Also
+  checked only `user.plan`.
+
+Net effect before this fix: a user whose payment failed (`PAST_DUE`) would be
+correctly blocked from `canAccessPaidFeatures`-gated things, but could still
+view full paid report content, share reports publicly, export summaries, and
+**kick off GitHub repo scans** - for as long as their `plan` column lagged
+behind their `subscriptionStatus` (which the dunning flow's own design
+explicitly allows to happen).
+
+**Fixed:** added the same `hasRevokedSubscriptionStatus` check (extracted as
+a shared helper) to `getReportTierForUser` and `canSharePublicly`. Also found
+and fixed **2 real, separate call-site bugs** this surfaced: `select: { id,
+role, plan }` (no `subscriptionStatus`) in `lib/auth/entitlements.ts`'s
+`resolveReportTierForAudit`, `lib/audit/report-access.ts`'s
+`canViewPrescriptionContentForAudit`, and
+`app/api/audits/[id]/toggle-public/route.ts` - all three would have silently
+defeated the fix at runtime (fetching `undefined` for `subscriptionStatus`)
+even with the entitlements logic corrected, since Prisma only returns
+explicitly-selected columns. Added all three to their respective `select`
+clauses.
+
+### Verified
+
+- Added a new regression test proving the fix
+  (`lib/__tests__/hardening.test.ts`: "returns free for a builder plan whose
+  subscription lapsed") and one to `toggle-public-gating.test.ts` ("denies a
+  TEAM user whose subscription has lapsed") - neither existed before, so
+  this exact regression had zero test coverage prior to this session.
+- Fixed 6 other test fixtures across `hardening.test.ts`,
+  `toggle-public-gating.test.ts`, `usage-limits.test.ts` that needed
+  `subscriptionStatus` added after the type signature change.
+- `npx tsc --noEmit` clean.
+- `npx vitest run` - 1505 passed, 85/85 files, 0 failed.
+
+### Note for other agents working the billing area
+
+If you're mid-flight on `bfb172d`'s dunning-gap fix or anything nearby in
+`lib/auth/entitlements.ts` / `app/api/webhooks/stripe/route.ts`, this session
+closed out the two sibling functions it didn't get to. Check
+`hasRevokedSubscriptionStatus()` before adding a fourth ad-hoc
+plan-only/subscriptionStatus-only check somewhere else in the codebase - grep
+for `.plan ===` / `.plan !==` against `User`-shaped objects first, since
+there may be more of these (only checked the entitlements-adjacent call
+sites this pass, not an exhaustive codebase-wide sweep).
+
+---
+
 ## 2026-07-04 — Session 19 (found the fix-prompt priority was inverted from day one - fixed, tests updated on purpose)
 
 ### `resolveFixPrompt()` was picking the wrong field for the "copy-paste fix prompt" - the core product promise

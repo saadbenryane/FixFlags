@@ -15,6 +15,16 @@
         "DATABASE_URL=postgresql://qualityos:qualityos@localhost:5432/qualityos_sandbox npx next dev -p 3001"
       ],
       "port": 3001
+    },
+    {
+      "name": "dev-sandbox-2",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "DATABASE_URL=postgresql://qualityos:qualityos@localhost:5432/qualityos_sandbox npx next dev -p ${PORT:-3002}"
+      ],
+      "port": 3002,
+      "autoPort": true
     }
   ]
 }

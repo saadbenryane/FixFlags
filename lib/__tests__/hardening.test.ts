@@ -66,11 +66,30 @@ describe('getReportTierForUser', () => {
   })
 
   it('returns paid for builder plan', () => {
-    assert.equal(getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user' }), 'paid')
+    assert.equal(
+      getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'ACTIVE' }),
+      'paid'
+    )
   })
 
   it('returns paid for admin role', () => {
-    assert.equal(getReportTierForUser({ id: 'u1', plan: 'FREE', role: 'admin' }), 'paid')
+    assert.equal(
+      getReportTierForUser({ id: 'u1', plan: 'FREE', role: 'admin', subscriptionStatus: 'NONE' }),
+      'paid'
+    )
+  })
+
+  it('returns free for a builder plan whose subscription lapsed', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(
+      getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'PAST_DUE' }),
+      'free'
+    )
+    assert.equal(
+      getReportTierForUser({ id: 'u1', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
+      'free'
+    )
+    delete process.env.DEV_SIMULATE_BILLING
   })
 })
 
@@ -89,7 +108,7 @@ describe('getEntitlements', () => {
 
   it('denies share/export for pro users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const }
+    const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
     assert.equal(canSharePublicly(user), false)
     assert.equal(canExportSummary(user), false)
     delete process.env.DEV_SIMULATE_BILLING
@@ -99,15 +118,15 @@ describe('getEntitlements', () => {
 describe('canScanRepositories', () => {
   it('blocks FREE and BUILDER plans', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'FREE' }), false)
-    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'BUILDER' }), false)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), false)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
   it('allows TEAM plan and admins', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'TEAM' }), true)
-    assert.equal(canScanRepositories({ id: 'u1', role: 'admin', plan: 'FREE' }), true)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' }), true)
+    assert.equal(canScanRepositories({ id: 'u1', role: 'admin', plan: 'FREE', subscriptionStatus: 'NONE' }), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

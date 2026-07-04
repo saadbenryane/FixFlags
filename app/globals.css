@@ -11,8 +11,7 @@
 
   body {
     @apply text-foreground antialiased;
-    background: var(--gradient-surface);
-    background-attachment: fixed;
+    background-color: hsl(var(--background));
     font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
     font-kerning: normal;
     font-optical-sizing: auto;
@@ -21,6 +20,17 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fixed-viewport surface gradient. A pseudo-element instead of
+     background-attachment: fixed, which iOS Safari ignores. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -20;
+    background: var(--gradient-surface);
+    pointer-events: none;
   }
 
   .font-display {

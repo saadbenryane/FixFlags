@@ -50,7 +50,9 @@ export const HERO = {
   urlPlaceholder: 'your-site.com',
   trustBadgesSubtitle: 'See what users see',
   trustBadges: [
+    'See what users see',
     'Copy-ready fix prompts',
+    'Evidence & screenshots',
     'Try it for Free',
   ] as const,
 } as const
@@ -422,7 +424,7 @@ export const HOW_IT_WORKS_PAGE = {
         rubric: 'Experience',
         status: 'Needs Attention',
         finding: 'Primary action starts below the first mobile viewport.',
-        evidence: '375px screenshot shows the CTA after 1,080px of scrolling.',
+        evidence: 'Mobile screenshot (375px) shows the CTA after 1,080px of scrolling.',
       },
       {
         rubric: 'Reach',

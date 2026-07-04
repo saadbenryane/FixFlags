@@ -884,6 +884,43 @@ describe('computeRubricScores', () => {
     assert.equal(scores.MESSAGE, 75)
     assert.equal(scores.REACH, 75)
   })
+
+  it('penalizes EXPERIENCE when a module that emits EXPERIENCE findings fails, even with a healthy PageSpeed score', () => {
+    // Regression: trust-psychology/mobile-ux-quality/interaction/etc. all emit
+    // EXPERIENCE-rubric flags, but there was no module-failure tracking for
+    // EXPERIENCE at all - a crashed module silently lost its uncertainty penalty
+    // whenever PageSpeed data happened to still be available.
+    const scores = computeRubricScores([], healthyDesktopPs({ score: 90 }), healthyMobilePs({ score: 90 }), {
+      failedModules: ['mobile-ux-quality'],
+    })
+    assert.equal(scores.EXPERIENCE, 65)
+  })
+
+  it('penalizes MESSAGE for trust/cta-focus/mobile-ux-quality module failures too', () => {
+    // Regression: trust.ts, cta-focus.ts, and mobile-ux-quality.ts all emit
+    // MESSAGE-rubric flags but weren't in MESSAGE_MODULES.
+    const scores = computeRubricScores([], null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+      failedModules: ['trust'],
+    })
+    assert.equal(scores.MESSAGE, 75)
+
+    const scores2 = computeRubricScores([], null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+      failedModules: ['cta-focus'],
+    })
+    assert.equal(scores2.MESSAGE, 75)
+  })
+
+  it('penalizes REACH for measurement/security/security-headers module failures too', () => {
+    // Regression: measurement.ts, security.ts, and security-headers.ts all emit
+    // REACH-rubric flags but weren't in REACH_MODULES.
+    const scores = computeRubricScores([], null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+      failedModules: ['security-headers'],
+    })
+    assert.equal(scores.REACH, 75)
+  })
 })
 
 describe('trigger matrix - one failing signal per checkId', () => {
