@@ -147,18 +147,6 @@ export function Header({
 
           <div className="flex items-center justify-end gap-1">
             <div className="hidden items-center gap-0.5 md:flex">
-              {!isMarketing &&
-                secondaryNavLinks.map((link) => (
-                  <NavLink
-                    key={link.href}
-                    href={link.href}
-                    className={cn(NAV_LINK_BASE, 'text-xs')}
-                    activeClassName={NAV_LINK_ACTIVE}
-                    inactiveClassName={NAV_LINK_INACTIVE}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
               {resolvedRight}
             </div>
 

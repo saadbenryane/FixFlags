@@ -22,6 +22,7 @@ export function flowCtaSelector(flowIdx: number): string {
 
 export async function discoverFlowCtas(page: Page, pageUrl: string): Promise<FlowCtaCandidate[]> {
   const raw = await page.evaluate((selectors, attr) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
 
     const elements = Array.from(document.querySelectorAll(selectors))
@@ -87,6 +88,7 @@ export async function discoverFlowCtasWithFallback(
   if (mainOnly.length > 0) return mainOnly
 
   const raw = await page.evaluate((selectors, attr) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
     const elements = Array.from(document.querySelectorAll(selectors))
     const items: Array<{

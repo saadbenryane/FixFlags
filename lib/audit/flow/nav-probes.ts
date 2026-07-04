@@ -31,7 +31,10 @@ export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {
     deviceScaleFactor: 1,
     isMobile: false,
   })
-  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+    window.scrollTo(0, 0)
+  })
   await sleep(200)
 }
 
@@ -44,6 +47,7 @@ interface PricingProbeResult {
 /** Click the header Pricing/Plans nav link and verify it reaches a real section or page. */
 export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
   const link = await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const anchors = Array.from(
       document.querySelectorAll('header nav a[href], nav[aria-label] a[href], header a[href]')
     )
@@ -66,7 +70,10 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
 
   if (link.href.startsWith('#')) {
     const targetExists = await page.evaluate(
-      (hash) => !!document.querySelector(hash),
+      (hash) => {
+        ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+        return !!document.querySelector(hash)
+      },
       link.href
     )
     if (!targetExists) {
@@ -81,6 +88,7 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
       await page.click(selector)
       await sleep(400)
       const inView = await page.evaluate((hash) => {
+        ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
         const el = document.querySelector(hash)
         if (!el) return false
         const rect = el.getBoundingClientRect()
@@ -157,7 +165,10 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
     deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
     isMobile: true,
   })
-  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+    window.scrollTo(0, 0)
+  })
   await sleep(200)
 
   const before = await page.evaluate(countVisibleNavLinks)
@@ -167,6 +178,7 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
   }
 
   const toggle = await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const candidates = Array.from(
       document.querySelectorAll('button, [role="button"], summary')
     )
@@ -218,6 +230,7 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
   let formResult = form
   if (form.formValidation === 'skipped') {
     const signupPath = await page.evaluate(() => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const cta = document.querySelector('a.demo-cta-primary')
       const href = cta?.getAttribute('href') ?? ''
       return href.includes('signup') ? href : null

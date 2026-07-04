@@ -22,6 +22,7 @@ function sleep(ms: number): Promise<void> {
 
 async function measureVisibleText(page: Page): Promise<number> {
   return page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const text = (document.querySelector('main')?.innerText ?? document.body.innerText)
       .replace(/\s+/g, ' ')
       .trim()
@@ -31,6 +32,7 @@ async function measureVisibleText(page: Page): Promise<number> {
 
 async function measureCtaVisible(page: Page): Promise<boolean> {
   return page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
       if (el.closest('nav, header, [role="navigation"]')) continue
       const combined = `${(el as HTMLAnchorElement).href ?? ''} ${el.textContent ?? ''}`.toLowerCase()

@@ -29,6 +29,7 @@ export async function measurePostClickLoading(
   while (Date.now() - started < deadlineMs) {
     const elapsed = Date.now() - started
     const snapshot = await page.evaluate((loadingSel) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const main = document.querySelector('main')
       const text = (main?.innerText ?? document.body.innerText).replace(/\s+/g, ' ').trim()
       const hasContent = text.length > 20

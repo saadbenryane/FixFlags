@@ -100,8 +100,21 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     return true
   })
 
-  return { flags, failedModules }
+  return { flags: suppressOverlappingFlags(flags), failedModules }
 }
 
 export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric'
 export type { RubricScoreContext } from './rubric'
+
+function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag[] {
+  const ids = new Set(flags.map((flag) => flag.checkId))
+  return flags.filter((flag) => {
+    if (flag.checkId === 'no-contact-info' && ids.has('trust-no-direct-contact')) {
+      return false
+    }
+    if (flag.checkId === 'hierarchy-competing-actions' && ids.has('competing-ctas')) {
+      return false
+    }
+    return true
+  })
+}

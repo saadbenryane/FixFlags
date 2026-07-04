@@ -71,6 +71,18 @@ describe('judge rubric constants', () => {
     assert.match(prompt, /FixFlags/)
   })
 
+  it('buildTriagePrompt does not claim screenshots when none were provided', () => {
+    const prompt = buildTriagePrompt(judgeContext)
+    assert.match(prompt, /No screenshots were available/)
+    assert.doesNotMatch(prompt, /You have been given a desktop screenshot/)
+  })
+
+  it('buildTriagePrompt requires null scores for incomplete rubric evidence', () => {
+    const prompt = buildTriagePrompt(judgeContext)
+    assert.match(prompt, /PARTIAL or UNKNOWN with score exactly null/)
+    assert.match(prompt, /Do not estimate a numeric score for incomplete evidence/)
+  })
+
   it('aligns grade thresholds with scoring module', () => {
     assert.equal(gradeFromScore(GRADE_THRESHOLDS.A), 'A')
     assert.equal(gradeFromScore(GRADE_THRESHOLDS.B), 'B')

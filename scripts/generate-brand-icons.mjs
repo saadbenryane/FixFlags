@@ -9,30 +9,30 @@ import sharp from 'sharp'
 
 const ROOT = process.cwd()
 const PUBLIC = join(ROOT, 'public')
-const BRAND_WHITE = '#FFFFFF'
+const BRAND_BACKGROUND = '#FAF8F4'
+const BRAND_BORDER = '#E6E1D8'
 
-function markSvg(size) {
-  const markSize = Math.round((size / 32) * 28)
+function iconSvg(size, { maskable = false } = {}) {
+  const markSize = Math.round(size * (maskable ? 0.58 : 0.68))
   const markOffset = Math.round((size - markSize) / 2)
   const markScale = markSize / 48
+  const radius = maskable ? 0 : Math.round(size * 0.22)
+  const strokeWidth = maskable ? 0 : Math.max(1, Math.round(size * 0.02))
 
   const mark = readFileSync(join(PUBLIC, 'brand/mark-light.svg'), 'utf8')
 
   return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="${strokeWidth / 2}" y="${strokeWidth / 2}" width="${size - strokeWidth}" height="${size - strokeWidth}" rx="${radius}" fill="${BRAND_BACKGROUND}"${strokeWidth ? ` stroke="${BRAND_BORDER}" stroke-width="${strokeWidth}"` : ''}/>
   <g transform="translate(${markOffset}, ${markOffset}) scale(${markScale})">${mark.replace(/<svg[^>]*>|<\/svg>/g, '')}</g>
 </svg>`
 }
 
-function maskableSvg(size) {
-  const markSize = Math.round(size * 0.58)
-  const markOffset = Math.round((size - markSize) / 2)
-  const markScale = markSize / 48
-  const mark = readFileSync(join(PUBLIC, 'brand/mark-light.svg'), 'utf8')
+function markSvg(size) {
+  return iconSvg(size)
+}
 
-  return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${size}" height="${size}" fill="${BRAND_WHITE}"/>
-  <g transform="translate(${markOffset}, ${markOffset}) scale(${markScale})">${mark.replace(/<svg[^>]*>|<\/svg>/g, '')}</g>
-</svg>`
+function maskableSvg(size) {
+  return iconSvg(size, { maskable: true })
 }
 
 async function writePng(size, filename, svg = markSvg(size)) {

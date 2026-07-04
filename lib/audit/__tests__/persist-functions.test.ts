@@ -209,6 +209,7 @@ describe('persistTriageResults', () => {
           severity: 'IMPORTANT' as const,
           problem: 'AI discovered issue',
           confidence: 0.7,
+          pageUrl: null,
         },
       ],
     })

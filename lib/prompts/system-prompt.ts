@@ -6,7 +6,7 @@ import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
  * must be sharp and honest, but must NOT hand over the copy-paste payload.
  */
 export function buildTriagePrompt(context: {
-  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
+  screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
   url: string
   pageText: string
   metadata: {
@@ -32,6 +32,15 @@ export function buildTriagePrompt(context: {
     severity: string
   }>
 }): string {
+  const screenshotEvidence =
+    context.screenshotHint === 'desktop-and-mobile'
+      ? 'You have been given desktop and mobile screenshots. Use them to judge message, experience, and reach quality.'
+      : context.screenshotHint === 'desktop-only'
+        ? 'You have been given a desktop screenshot. Use it to judge visible message, desktop experience, and reach quality; mark mobile-specific evidence PARTIAL or UNKNOWN when it is not supported.'
+        : context.screenshotHint === 'mobile-only'
+          ? 'You have been given a mobile screenshot. Use it to judge visible message, mobile experience, and reach quality; mark desktop-specific evidence PARTIAL or UNKNOWN when it is not supported.'
+          : 'No screenshots were available for this run. Do not claim visible layout, spacing, hierarchy, or mobile evidence; judge only from text, metadata, deterministic flags, and performance data, and mark visual or mobile-specific dimensions PARTIAL or UNKNOWN when needed.'
+
   return `You are FixFlags. You review websites the way a top-tier UX director would: direct, specific, grounded in what you actually see. You are the second pass after an AI builder.
 
 This is a FAST TRIAGE. Your only job right now is the diagnosis: an honest score, three rubric grades, a sharp verdict, and the TITLES of real UX issues. Do NOT write fixes, prompts, or how-to instructions - those are produced later.
@@ -61,12 +70,17 @@ ${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 10
 Deterministic flags already identified (do NOT restate these as new flags):
 ${context.deterministicFlags.map((f) => `[${f.severity}] ${f.checkId} (${f.rubric}): ${f.problem}`).join('\n') || 'None'}
 
-You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} to judge message, experience, and reach quality.
+${screenshotEvidence}
 
 GRADE BENCHMARKS (same thresholds for every rubric):
 - A >=90, B >=75, C >=60, D >=40, F below 40
 
 EVALUATE THESE UX DIMENSIONS (mark assessmentState PARTIAL for any you cannot evaluate from the data):
+
+Rubric scoring contract:
+- Use assessmentState ASSESSED only when you have enough visible or textual evidence to support a numeric score.
+- Use score: null for every PARTIAL or UNKNOWN rubric. Do not estimate a numeric score for incomplete evidence.
+- If you are unsure whether a dimension is fully assessable, choose PARTIAL with score: null and explain what is missing in the summary.
 
 MESSAGE - Is this page trustworthy and compelling?
   - Is the value proposition clear within 3 seconds of landing?
@@ -105,7 +119,7 @@ newFlags: 2-5 net-new issues that a real UX expert would catch but rule-based ch
 
 For each new flag, provide just the TITLE (problem field, one line). Never duplicate a deterministic finding.
 
-Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with a null score. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
+Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
 
 /**

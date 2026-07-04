@@ -27,16 +27,16 @@ export function EditorToolMarks({
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <ul
         className={cn(
-          'flex flex-wrap items-center gap-x-5 gap-y-3',
-          compact ? 'gap-x-4 gap-y-2' : 'sm:gap-x-7'
+          'flex flex-wrap items-center gap-x-6 gap-y-3',
+          compact ? 'gap-x-5 gap-y-2.5' : 'sm:gap-x-8'
         )}
       >
         {logos.map((name) => (
           <li
             key={name}
             className={cn(
-              'flex items-center gap-1.5 font-semibold tracking-tight text-foreground/60',
-              compact ? 'text-xs' : 'text-sm'
+              'flex items-center gap-2 font-semibold tracking-tight text-foreground/65 [&_svg]:h-5 [&_svg]:w-5',
+              compact ? 'text-sm' : 'text-[15px]'
             )}
           >
             {LOGO_MARKS[name]}
@@ -45,7 +45,9 @@ export function EditorToolMarks({
         ))}
       </ul>
       {showDisclaimer ? (
-        <p className="max-w-xl text-xs text-muted-foreground/60">{disclaimer}</p>
+        <p className="mx-auto max-w-xl text-center text-xs text-muted-foreground/60">
+          {disclaimer}
+        </p>
       ) : null}
     </div>
   )

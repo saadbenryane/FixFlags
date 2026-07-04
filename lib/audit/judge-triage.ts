@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import {
   triageOutputSchema,
-  QUALITY_TRIAGE_SCHEMA,
+  QUALITY_TRIAGE_SCHEMA_OPENAI,
   QUALITY_TRIAGE_TOOL,
   type TriageOutput,
 } from './judge-triage-schema'
@@ -15,6 +15,7 @@ import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import { logger } from '@/lib/logger'
+import { RUBRIC_ORDER } from './constants'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -26,6 +27,7 @@ const openai = process.env.OPENAI_API_KEY
 
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
+type ScreenshotHint = 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
 
 export interface TriageUsage {
   inputTokens: number
@@ -76,8 +78,54 @@ function buildTriageContext(
   }
 }
 
+function getScreenshotHint(desktopBase64: string | null, mobileBase64: string | null): ScreenshotHint {
+  if (desktopBase64 && mobileBase64) return 'desktop-and-mobile'
+  if (desktopBase64) return 'desktop-only'
+  if (mobileBase64) return 'mobile-only'
+  return 'no-screenshot'
+}
+
+export function normalizeTriageRawOutput(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+
+  const normalized = { ...(raw as Record<string, unknown>) }
+  const rubrics = Array.isArray(normalized.rubrics)
+    ? (normalized.rubrics as Array<Record<string, unknown>>)
+    : []
+  const byName = new Map<string, Record<string, unknown>>()
+
+  for (const rubric of rubrics) {
+    if (!rubric || typeof rubric !== 'object') continue
+    const name = typeof rubric.name === 'string' ? rubric.name : null
+    if (!name || byName.has(name)) continue
+
+    const assessmentState = rubric.assessmentState
+    byName.set(name, {
+      ...rubric,
+      score: assessmentState === 'ASSESSED' ? rubric.score : null,
+    })
+  }
+
+  normalized.rubrics = RUBRIC_ORDER.map((name) => {
+    const rubric = byName.get(name)
+    if (rubric) return rubric
+
+    return {
+      name,
+      score: null,
+      grade: 'F',
+      status: 'NEEDS_WORK',
+      assessmentState: 'UNKNOWN',
+      confidence: 0,
+      summary: `Not enough captured evidence to assess ${name}.`,
+    }
+  })
+
+  return normalized
+}
+
 function parseTriageOutput(raw: unknown, flags: DeterministicFlag[]): TriageOutput {
-  const parsed = triageOutputSchema.safeParse(raw)
+  const parsed = triageOutputSchema.safeParse(normalizeTriageRawOutput(raw))
   if (!parsed.success) {
     throw new Error(`Invalid triage output: ${parsed.error.message}`)
   }
@@ -127,8 +175,7 @@ async function runAnthropicTriage(
                 type: 'text',
                 text: buildTriagePrompt({
                   ...context,
-                  screenshotHint:
-                    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only',
+                  screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
                 }),
               },
             ],
@@ -184,11 +231,12 @@ async function runOpenAITriage(
       },
     })
   }
-  const screenshotHint =
-    desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
   content.push({
     type: 'text',
-    text: buildTriagePrompt({ ...context, screenshotHint }),
+    text: buildTriagePrompt({
+      ...context,
+      screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
+    }),
   })
 
   const cfg = getTriageProviderConfig('openai', maxTimeoutMs)
@@ -207,7 +255,8 @@ async function runOpenAITriage(
             function: {
               name: 'quality_triage',
               description: 'Output a fast quality triage for a website',
-              parameters: QUALITY_TRIAGE_SCHEMA,
+              parameters: QUALITY_TRIAGE_SCHEMA_OPENAI,
+              strict: true,
             },
           },
         ],

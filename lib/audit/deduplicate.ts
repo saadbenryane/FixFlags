@@ -65,9 +65,15 @@ const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> =
   },
 ]
 
+interface ThemeMatchableFlag {
+  problem: string
+  evidence: string
+  whyItMatters?: string
+}
+
 function matchesDeterministicTheme(
   deterministic: DeterministicFlag[],
-  candidate: JudgeOutput['newFlags'][number]
+  candidate: ThemeMatchableFlag
 ): boolean {
   const combined = `${candidate.problem} ${candidate.evidence} ${candidate.whyItMatters ?? ''}`
 
@@ -83,7 +89,7 @@ function matchesDeterministicTheme(
 
 function isNearDuplicateOfDeterministic(
   flag: DeterministicFlag,
-  candidate: JudgeOutput['newFlags'][number]
+  candidate: ThemeMatchableFlag
 ): boolean {
   if (similarity(flag.problem, candidate.problem) >= 0.5) return true
   if (

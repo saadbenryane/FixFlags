@@ -6,6 +6,15 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "dev-sandbox",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "DATABASE_URL=postgresql://qualityos:qualityos@localhost:5432/qualityos_sandbox npx next dev -p 3001"
+      ],
+      "port": 3001
     }
   ]
 }

@@ -142,6 +142,7 @@ export async function runFlowScan(
 
   try {
     await page.evaluate((sel) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const el = document.querySelector(sel)
       if (el instanceof HTMLElement) {
         el.scrollIntoView({ block: 'center' })
@@ -248,6 +249,7 @@ export async function runFlowScan(
     }
     if (isSamePageHashHref(cta.href)) {
       const scrolledToAnchor = await page.evaluate((hash) => {
+        ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
         const el = document.querySelector(hash)
         if (!el) return false
         const rect = el.getBoundingClientRect()
@@ -289,6 +291,7 @@ export async function runFlowScan(
 
 async function captureCtaAnchor(page: Page, selector: string): Promise<EvidenceAnchor | null> {
   const rect = await page.evaluate((sel) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const el = document.querySelector(sel)
     if (!el) return null
     const r = el.getBoundingClientRect()

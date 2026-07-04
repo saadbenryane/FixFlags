@@ -16,7 +16,10 @@ export async function probeGhostSections(page: Page): Promise<GhostSectionProbeR
   const vh = viewport?.height ?? 800
 
   for (const scrollY of [0, vh, vh * 2, vh * 3]) {
-    await page.evaluate((y) => window.scrollTo(0, y), scrollY)
+    await page.evaluate((y) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+      window.scrollTo(0, y)
+    }, scrollY)
     await sleep(500)
   }
 
@@ -24,6 +27,7 @@ export async function probeGhostSections(page: Page): Promise<GhostSectionProbeR
   await sleep(500)
 
   const result = await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const ghosts: Array<{ selector: string; text: string }> = []
     const candidates = document.querySelectorAll('main section, main article, section.demo-feature-card')
 

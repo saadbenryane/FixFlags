@@ -47,7 +47,6 @@ export function ReportFixLoop({
   flagCount,
   selectedFlagId,
   onSelectFlag,
-  hasFixPrompts = true,
   defaultExpanded = true,
   compact = false,
   loading = false,
@@ -138,12 +137,6 @@ export function ReportFixLoop({
           </div>
         )}
       </div>
-
-      {hasFixPrompts && count > 0 && interactive && (
-        <p className="text-[11px] leading-snug text-muted-foreground/80">
-          Pick a flag to view its fix prompt.
-        </p>
-      )}
     </div>
   )
 }

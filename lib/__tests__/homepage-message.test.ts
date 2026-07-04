@@ -84,17 +84,15 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('audience line frames a pre-share review without blame', () => {
-    assert.ok(!/YOUR AI BUILT IT/i.test(HERO.audienceLine))
-    assert.match(HERO.audienceLine, /AI-built/i)
-    assert.match(HERO.audienceLine, /pre-share review/i)
-    assert.ok(!/skipped/i.test(HERO.audienceLine))
+  it('hero audience badge is intentionally absent', () => {
+    assert.equal(HERO.audienceLine, '')
   })
 
-  it('hero subhead adds mechanism and deliverables, not headline echo', () => {
+  it('hero subhead is concise and deliverable-led, not headline echo', () => {
     assert.match(HERO.subhead, /review/i)
-    assert.match(HERO.subhead, /before you share/i)
+    assert.match(HERO.subhead, /live page/i)
     assert.match(HERO.subhead, /fix prompts/i)
+    assert.ok(HERO.subhead.split(/\s+/).length <= 20)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })

@@ -130,6 +130,11 @@ const LOADING_UI_SELECTOR =
 
 async function readLoadSnapshot(page: import('puppeteer').Page): Promise<PageLoadSnapshot> {
   return page.evaluate((loadingSelector) => {
+    // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls
+    // into compiled functions; that reference doesn't exist once this function's source is
+    // sent into Puppeteer's isolated browser context. No-op under tsc/webpack builds (prod,
+    // `next dev`), which never emit `__name` calls.
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     let loadingVisible = false
     let loadingLabel: string | null = null
 
@@ -159,6 +164,7 @@ async function readRuntimeHeadMetadata(
   page: import('puppeteer').Page
 ): Promise<RuntimeHeadMetadata> {
   return page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const content = (selector: string) =>
       document.querySelector<HTMLMetaElement>(selector)?.content?.trim() || null
     const href = (selector: string) =>

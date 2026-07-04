@@ -17,6 +17,13 @@ const TESTIMONIAL_QUALITY_MARKERS = [
   /\b"[^"]{40,}"/i,
 ]
 
+const TESTIMONIAL_PRESENCE_MARKERS = [
+  /\b(testimonial|what\s+customers\s+say|customer\s+story|case\s+stud(y|ies)|reviewed\s+by)\b/i,
+  /\b(customer|user|client)\s+(quote|review|feedback)\b/i,
+  /"[^"]{10,}"/i,
+  /[“”][^“”]{10,}[“”]/i,
+]
+
 const DATA_SPECIFICITY = [
   /\d+%\s+(faster|better|lower|higher|reduction|improvement)/i,
   /\d+x\s+(faster|better|more)/i,
@@ -32,6 +39,7 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
 
   const hasAuthorityRef = AUTHORITY_MARKERS.some((p) => p.test(htmlText))
   const hasMediaName = MEDIA_NAMES.some((p) => p.test(htmlText))
+  const hasTestimonialLikeContent = TESTIMONIAL_PRESENCE_MARKERS.some((p) => p.test(bodyText))
   const hasSpecificTestimonial = TESTIMONIAL_QUALITY_MARKERS.some((p) => p.test(bodyText))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
 
@@ -49,14 +57,14 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
     })
   }
 
-  if (!hasSpecificTestimonial && ctaTexts.length > 0) {
+  if (hasTestimonialLikeContent && !hasSpecificTestimonial && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-testimonial-quality',
       rubric: 'MESSAGE',
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: 'Testimonials lack specificity or named attribution',
-      evidence: 'No testimonials with named roles (e.g. "CTO at Company") or substantive quotes (40+ characters) found. Generic praise without specifics is less convincing.',
+      evidence: 'Testimonial-like proof is present, but no testimonials with named roles (e.g. "CTO at Company") or substantive quotes (40+ characters) were found. Generic praise without specifics is less convincing.',
       fix: '1. Use testimonials only from real customers or users who gave permission\n2. Prefer real name, title, company, and a specific result or workflow detail\n3. If you cannot use names yet, replace generic praise with a concrete case study, product evidence, or transparent beta feedback summary\n4. Place the strongest substantiated proof closest to the primary CTA',
       confidence: 0.8,
       source: 'DETERMINISTIC',

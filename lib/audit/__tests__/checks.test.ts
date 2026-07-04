@@ -818,7 +818,29 @@ describe('runAllChecks', () => {
     )
     const ids = checkIds(flags)
     assert.ok(ids.includes('competing-ctas'))
+    assert.ok(!ids.includes('hierarchy-competing-actions'))
     assert.ok(ids.includes('checkout-link-dead'))
+  })
+
+  it('suppresses older contact-info flag when direct-contact trust flag is present', async () => {
+    restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
+    const { flags } = await runAllChecks(
+      'https://example.com',
+      healthyMeta({
+        hasContactInfo: false,
+        ctaTexts: ['Get started'],
+        pageText: 'Get started with our product today.',
+        links: [],
+      }),
+      healthyDesktopPs(),
+      healthyMobilePs(),
+      []
+    )
+    const ids = checkIds(flags)
+    assert.deepEqual(
+      ids.filter((id) => ['no-contact-info', 'trust-no-direct-contact'].includes(id)),
+      ['trust-no-direct-contact']
+    )
   })
 })
 
@@ -1565,7 +1587,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'trust-no-authority-signals': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a nice product.', links: [] }))),
     'trust-testimonial-quality': () =>
-      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'Everyone loves our product.', links: [], ctaTexts: ['Buy'] }))),
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: '"Everyone loves our product." Contact support@example.com. As seen in TechCrunch.', links: [], ctaTexts: ['Buy'] }))),
     'trust-unsupported-claims': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'The best product for everyone.', links: [] }))),
     'trust-no-direct-contact': () =>

@@ -14,6 +14,7 @@ function sleep(ms: number): Promise<void> {
 /** Submit an empty conversion form and expect inline validation feedback. */
 export async function probeFormValidation(page: Page): Promise<FormProbeResult> {
   const formMeta = await page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const forms = Array.from(
       document.querySelectorAll('main form, [role="main"] form, form:not(header form):not(nav form)')
     )
@@ -68,6 +69,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
   const formSelector = `form[data-fixflags-form-probe="${formMeta.index}"]`
 
   const nativeCheck = await page.evaluate((sel) => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const form = document.querySelector(sel) as HTMLFormElement | null
     if (!form) return { hasValidation: false }
     // Empty required fields should fail constraint validation when rules exist.
@@ -90,7 +92,10 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
       return { formValidation: 'broken', formLabel: formMeta.label }
     }
 
-    const clickStart = await page.evaluate(() => performance.now())
+    const clickStart = await page.evaluate(() => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+      return performance.now()
+    })
     await submit.click()
 
     let feedbackMs: number | null = null
@@ -99,10 +104,14 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
   const pollInterval = 50
 
     while (feedbackMs === null || !hasFeedback) {
-      const elapsed = await page.evaluate((start) => performance.now() - start, clickStart)
+      const elapsed = await page.evaluate((start) => {
+        ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+        return performance.now() - start
+      }, clickStart)
       if (elapsed > deadline) break
 
       hasFeedback = await page.evaluate((sel) => {
+        ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
         const form = document.querySelector(sel) as HTMLFormElement | null
         if (!form) return false
 

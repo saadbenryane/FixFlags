@@ -36,6 +36,7 @@ function triageOutput(overrides: {
       severity: 'IMPORTANT' as const,
       problem,
       confidence: 0.7,
+      pageUrl: null,
     })),
   }
 }
@@ -241,6 +242,7 @@ function makeTriageOutput(overrides: { rubricScores?: Record<string, number | nu
       severity: 'IMPORTANT' as const,
       problem,
       confidence: 0.7,
+      pageUrl: null,
     })),
   }
 }

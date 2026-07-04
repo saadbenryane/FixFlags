@@ -1,5 +1,5 @@
 import { AuditInput } from '@/components/audit/AuditInput'
-import { BrandIllustration } from '@/components/marketing/landing/BrandIllustration'
+import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
 import { Container } from '@/components/ui/container'
@@ -16,10 +16,12 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
     <Section spacing="loose" className="relative pb-6 sm:pb-8 lg:pb-11">
       <Container className="relative space-y-8 lg:space-y-11">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-[var(--glass-bg)] px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-glass backdrop-blur-md motion-safe:animate-fade-in-up">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
-            {HERO.audienceLine}
-          </span>
+          {HERO.audienceLine ? (
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-[var(--glass-bg)] px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-glass backdrop-blur-md motion-safe:animate-fade-in-up">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+              {HERO.audienceLine}
+            </span>
+          ) : null}
           <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-[1.1] tracking-tight motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
             <span className="text-brand">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
@@ -42,20 +44,14 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
         </div>
 
         <div className="relative motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
-          <BrandIllustration
-            priority
-            sizes="(min-width: 1280px) 220px, 180px"
-            className="absolute -right-5 top-3 z-0 hidden h-52 w-40 rotate-[5deg] rounded-[2rem] opacity-90 shadow-raised lg:block xl:-right-16 xl:h-64 xl:w-48"
-            imageClassName="scale-110"
+          <EditorToolMarks
+            compact
+            className="mx-auto mb-6 max-w-4xl items-center text-center [&_ul]:justify-center"
           />
-          <div
-            aria-hidden
-            className="absolute -right-3 top-[13.5rem] z-0 hidden h-8 w-44 rounded-[50%] bg-foreground/10 blur-xl lg:block xl:-right-14 xl:top-[17rem] xl:w-56"
-          />
-          <p className="relative z-10 mb-3 text-center text-sm text-muted-foreground">
+          <p className="mb-3 text-center text-sm text-muted-foreground">
             {HERO.samplePreviewCue}
           </p>
-          <HeroProductPreview audit={audit} className="relative z-10" />
+          <HeroProductPreview audit={audit} />
         </div>
       </Container>
     </Section>

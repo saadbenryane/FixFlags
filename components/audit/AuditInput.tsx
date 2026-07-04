@@ -13,21 +13,25 @@ import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
+import { useMe } from '@/hooks/useMe'
 
 export function AuditInput({
   variant = 'default',
   source,
   idSuffix = '',
+  initialUrl = '',
 }: {
   variant?: 'default' | 'landing'
   /** Audit attribution source sent to POST /api/checks (defaults from variant). */
   source?: 'homepage' | 'dashboard' | 'report'
   idSuffix?: string
+  initialUrl?: string
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
-  const [url, setUrl] = useState('')
+  const { user, isLoading: authLoading } = useMe()
+  const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [urlError, setUrlError] = useState('')
   const [limitGate, setLimitGate] = useState<{
@@ -61,6 +65,17 @@ export function AuditInput({
 
     if (normalized.includes('localhost') || normalized.includes('127.0.0.1') || normalized.includes('0.0.0.0')) {
       setUrlError('FixFlags can only check publicly accessible URLs')
+      return
+    }
+
+    if (isLanding && !authLoading && !user) {
+      const nextParams = new URLSearchParams({ url: normalized })
+      const signUpParams = new URLSearchParams({
+        next: `/dashboard?${nextParams.toString()}`,
+        from: 'hero',
+      })
+
+      router.push(`/sign-up?${signUpParams.toString()}`)
       return
     }
 
@@ -130,6 +145,7 @@ export function AuditInput({
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
+  const landingDisabled = loading || (isLanding && authLoading)
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
@@ -151,7 +167,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              disabled={loading}
+              disabled={landingDisabled}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
             />
@@ -159,7 +175,7 @@ export function AuditInput({
               type="submit"
               variant="default"
               size="lg"
-              disabled={loading}
+              disabled={landingDisabled}
               className={cn(
                 fieldHeightClass,
                 'w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6'

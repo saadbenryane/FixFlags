@@ -202,6 +202,15 @@ describe('runConversionFrictionChecks', () => {
     assert.match(socialProofFlag.fix, /do not have proof yet/i)
   })
 
+  it('keeps missing social proof as one fix, not a testimonial-quality duplicate', () => {
+    const meta = healthyMeta({
+      ctaTexts: ['Get started'],
+      pageText: 'Start building today. No credit card required.',
+    })
+    assert.ok(checkIds(runConversionFrictionChecks(meta)).includes('friction-no-social-proof'))
+    assert.ok(!checkIds(runTrustPsychologyChecks(meta)).includes('trust-testimonial-quality'))
+  })
+
   it('passes with free trial + no-cc + social proof', () => {
     assert.equal(
       runConversionFrictionChecks(healthyMeta({
@@ -238,6 +247,14 @@ describe('runTrustPsychologyChecks', () => {
         pageText: 'Welcome to our site. We make great software.',
       }))).includes('trust-no-direct-contact')
     )
+  })
+
+  it('flags testimonial quality only when testimonial-like proof exists', () => {
+    const findings = runTrustPsychologyChecks(healthyMeta({
+      ctaTexts: ['Get started'],
+      pageText: '"Great product." Customer feedback from beta users. Contact support@example.com. As seen in TechCrunch.',
+    }))
+    assert.ok(checkIds(findings).includes('trust-testimonial-quality'))
   })
 
   it('passes with authority signals and specific testimonials', () => {

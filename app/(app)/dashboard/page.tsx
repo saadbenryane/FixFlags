@@ -36,7 +36,17 @@ import { getDomainHistoryForUser } from '@/lib/audit/domain-history'
 import { DomainHistoryPanel } from '@/components/dashboard/DomainHistoryPanel'
 import { rubricLabel } from '@/lib/utils'
 
-export default async function DashboardPage() {
+type DashboardSearchParams = {
+  url?: string | string[]
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<DashboardSearchParams>
+}) {
+  const params = searchParams ? await searchParams : {}
+  const initialAuditUrl = typeof params.url === 'string' ? params.url : ''
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return null
   const userId = session.user.id
@@ -125,7 +135,7 @@ export default async function DashboardPage() {
 
       <Surface variant="nested" className="sm:p-6">
         <SectionTitle className="mb-4">Audit a new URL</SectionTitle>
-        <AuditInput />
+        <AuditInput initialUrl={initialAuditUrl} />
       </Surface>
 
       {audits.length === 0 ? (

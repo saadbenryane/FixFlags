@@ -36,6 +36,10 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
   const motion = await measureMotionA11y(page)
 
   const base = await page.evaluate(() => {
+    // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls into
+    // compiled functions; that reference doesn't exist inside Puppeteer's isolated browser
+    // context. No-op under tsc/webpack builds (prod, `next dev`), which never emit `__name`.
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     let stuckLoadingIndicator = false
     let stuckLoadingLabel: string | null = null
     const loadingSelector =
@@ -169,6 +173,7 @@ async function countSignificantMotionInPage(
   page: Page
 ): Promise<{ count: number; sample: string | null }> {
   return page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const roots = document.querySelectorAll('main, [class*="hero" i], body')
     let count = 0
     let sample: string | null = null

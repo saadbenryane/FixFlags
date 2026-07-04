@@ -64,7 +64,10 @@ export function isHtmlContentType(contentType: string): boolean {
 }
 
 export async function pageHasHtmlDocument(page: import('puppeteer').Page): Promise<boolean> {
-  return page.evaluate(() => document.documentElement?.tagName === 'HTML')
+  return page.evaluate(() => {
+    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+    return document.documentElement?.tagName === 'HTML'
+  })
 }
 
 export async function validateNavigationResponse(

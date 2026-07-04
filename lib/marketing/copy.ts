@@ -38,12 +38,12 @@ export const HERO = {
   headlineLine1: 'what your',
   headlineLine2: 'AI started.',
   headlineAccent: 'Finish',
-  audienceLine: 'A pre-share review for AI-built sites.',
+  audienceLine: '',
   headlineAccentLegacy: false,
   subhead:
-    'Review your AI-built site before you share the link. See broken messaging, rough mobile moments, and missing link previews. Get fix prompts your builder can use.',
-  trustLine: 'Run a second pass before users see it.',
-  supportingLine: 'Run a second pass before users see it.',
+    'Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use.',
+  trustLine: 'Check the page before users see it.',
+  supportingLine: 'Check the page before users see it.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Sign up',
   trySampleCta: 'View sample report',
@@ -53,7 +53,7 @@ export const HERO = {
     'Copy-ready fix prompts',
     '1 free scan',
   ] as const,
-  samplePreviewCue: 'Live sample from our demo site. Use the arrows to browse 7 real flags.',
+  samplePreviewCue: 'Live sample from our demo site.',
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
@@ -171,7 +171,7 @@ export const DIFFERENTIATION = {
   subhead: 'Automated checks miss what a reviewer sees in a screenshot.',
   lighthouseLinkText: 'Compare FixFlags checks with Google Lighthouse',
   is: [
-    'The second pass that finishes what your AI started',
+    'A review layer that finishes what your AI started',
     'Flags with evidence, impact, and copy-ready fix prompts',
     'Monitoring loop to prove fixes landed',
   ],
@@ -771,7 +771,7 @@ export const FAQ = [
   {
     question: 'Who is FixFlags for?',
     answer:
-      'Builders and small teams shipping with AI tools like Cursor, Lovable, and Bolt. Run a second pass before users see the link. Not built for enterprise QA teams running manual test suites.',
+      'Builders and small teams shipping with AI tools like Cursor, Lovable, and Bolt. Check the page before users see the link. Not built for enterprise QA teams running manual test suites.',
   },
 ] as const
 

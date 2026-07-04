@@ -85,6 +85,7 @@ async function resolveRect(
       max: number,
       targetContext: { checkId: string; problem: string; evidence: string }
     ) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim()
       const contextText = `${targetContext.problem} ${targetContext.evidence}`
       const quotedNeedles = [...contextText.matchAll(/"([^"]{2,160})"/g)]

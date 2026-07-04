@@ -14,8 +14,8 @@ export function FirstAuditPrompt() {
       <div className="space-y-2">
         <p className="text-base font-semibold">Paste the URL you are about to share.</p>
         <p className="text-sm text-muted-foreground">
-          FixFlags runs a second pass on your page before anyone else sees it. You get Flags across
-          Message, Experience, and Reach. Each Flag includes a fix prompt ready to paste into
+          FixFlags reviews your page before anyone else sees it. You get Flags across Message,
+          Experience, and Reach. Each Flag includes a fix prompt ready to paste into
           Cursor, Claude, Lovable, or Bolt.
         </p>
       </div>

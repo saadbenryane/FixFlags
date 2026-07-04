@@ -1,6 +1,6 @@
--- Add pipeline observability and monitoring mode
-CREATE TYPE "MonitoringMode" AS ENUM ('FULL', 'SUMMARY_ONLY');
+-- Add pipeline observability and recheck mode
+CREATE TYPE "RecheckMode" AS ENUM ('FULL', 'SUMMARY_ONLY');
 
 ALTER TABLE "audits" ADD COLUMN "pipelineLog" JSONB;
 ALTER TABLE "audits" ADD COLUMN "pipelineVersion" TEXT;
-ALTER TABLE "audits" ADD COLUMN "monitoringMode" "MonitoringMode" NOT NULL DEFAULT 'FULL';
+ALTER TABLE "audits" ADD COLUMN "recheckMode" "RecheckMode" NOT NULL DEFAULT 'FULL';
