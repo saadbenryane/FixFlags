@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { CheckCircle2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -27,65 +28,71 @@ type DimensionId = (typeof LANDING_PAGE.checkDimensions.cards)[number]['id']
 function DimensionScene({ id }: { id: DimensionId }) {
   const isMessage = id === 'message'
   const isExperience = id === 'experience'
+  const imagePosition = isMessage ? 'object-[8%_52%]' : isExperience ? 'object-[43%_50%]' : 'object-[70%_50%]'
 
   return (
-    <div className="relative mb-6 h-36 overflow-hidden rounded-nested-md bg-[radial-gradient(ellipse_80%_80%_at_25%_15%,hsl(var(--brand)/0.11),transparent_54%),linear-gradient(145deg,hsl(var(--background)/0.92),hsl(var(--muted)/0.72))] shadow-card">
-      <div
-        aria-hidden
-        className="absolute -left-10 bottom-0 h-20 w-56 rounded-[50%] bg-background/70 blur-xl"
+    <div className="relative mb-6 h-40 overflow-hidden rounded-nested-md border border-white/60 bg-muted/35 shadow-card">
+      <Image
+        src="/marketing/brand-product-moments.webp"
+        alt=""
+        fill
+        sizes="(min-width: 768px) 33vw, 100vw"
+        className={cn('object-cover opacity-95', imagePosition)}
       />
       <div
         aria-hidden
-        className="absolute right-5 top-4 h-28 w-28 rounded-full border border-border-subtle/80 bg-background/30 shadow-glass backdrop-blur-xl"
+        className="absolute inset-0 bg-[linear-gradient(90deg,hsl(var(--background)/0.16),hsl(var(--background)/0.72)_72%,hsl(var(--background)/0.84))]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background/70 to-transparent"
       />
 
       {isMessage ? (
         <>
-          <div className="absolute left-6 top-6 h-20 w-32 rounded-[1.35rem] border border-border-subtle/80 bg-background/45 shadow-glass backdrop-blur-xl">
-            <span className="absolute left-4 top-4 h-2 w-12 rounded-full bg-brand/80" />
-            <span className="absolute left-4 top-8 h-1.5 w-20 rounded-full bg-foreground/18" />
-            <span className="absolute left-4 top-11 h-1.5 w-16 rounded-full bg-foreground/12" />
-            <span className="absolute bottom-4 left-4 h-5 w-16 rounded-full bg-brand/10" />
+          <div className="absolute right-4 top-4 w-40 rounded-[1rem] border border-white/70 bg-background/72 p-3 shadow-glass backdrop-blur-xl">
+            <span className="mb-2 block h-2 w-16 rounded-full bg-brand/80" />
+            <span className="mb-1.5 block h-1.5 w-28 rounded-full bg-foreground/18" />
+            <span className="mb-3 block h-1.5 w-20 rounded-full bg-foreground/12" />
+            <span className="inline-flex rounded-full bg-brand/12 px-2 py-1 font-mono text-[9px] font-bold uppercase leading-none text-brand">
+              Message
+            </span>
           </div>
-          <div className="absolute bottom-4 right-8 h-12 w-20 rounded-[1rem] border border-border-subtle/70 bg-background/50 shadow-card backdrop-blur-xl">
-            <span className="absolute left-4 top-4 h-1.5 w-12 rounded-full bg-foreground/18" />
-            <span className="absolute left-4 top-7 h-1.5 w-8 rounded-full bg-brand/55" />
+          <div className="absolute bottom-4 left-5 rounded-full border border-brand/20 bg-background/75 px-3 py-1.5 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-xl">
+            Clarity in first view
           </div>
         </>
       ) : isExperience ? (
         <>
-          <div className="absolute left-8 top-4 h-28 w-16 rounded-[1.4rem] border border-border-subtle/80 bg-background/45 shadow-glass backdrop-blur-xl">
+          <div className="absolute left-5 top-4 h-28 w-16 rounded-[1.25rem] border border-white/75 bg-background/64 shadow-glass backdrop-blur-xl">
             <span className="absolute left-1/2 top-2 h-1 w-5 -translate-x-1/2 rounded-full bg-foreground/16" />
-            <span className="absolute left-3 top-9 h-3 w-10 rounded-full bg-foreground/10" />
-            <span className="absolute left-3 top-16 h-3 w-10 rounded-full bg-foreground/10" />
-            <span className="absolute bottom-4 left-3 h-4 w-10 rounded-full bg-brand" />
+            <span className="absolute left-3 top-8 h-3 w-10 rounded-full bg-foreground/10" />
+            <span className="absolute left-3 top-14 h-3 w-10 rounded-full bg-foreground/10" />
+            <span className="absolute bottom-3 left-3 h-4 w-10 rounded-full bg-brand" />
+            <span className="absolute bottom-8 left-2 h-8 w-12 rounded-sm border-2 border-dashed border-brand/85 bg-brand/10 shadow-[0_0_0_2px_hsl(var(--brand)/0.12)]" />
           </div>
-          <div className="absolute bottom-5 right-8 h-16 w-28 rounded-[1.2rem] border border-border-subtle/70 bg-background/45 shadow-card backdrop-blur-xl">
-            <span className="absolute left-4 top-4 h-2 w-20 rounded-full bg-success/55" />
-            <span className="absolute left-4 top-8 h-1.5 w-14 rounded-full bg-foreground/14" />
-            <span className="absolute bottom-3 right-4 h-5 w-5 rounded-full bg-success/15 ring-1 ring-success/35" />
+          <div className="absolute bottom-4 right-4 rounded-[0.9rem] border border-white/70 bg-background/78 px-3 py-2 shadow-card backdrop-blur-xl">
+            <span className="block font-mono text-[9px] font-bold uppercase tracking-widest text-brand">
+              High
+            </span>
+            <span className="mt-1 block text-[11px] font-semibold leading-tight">
+              CTA below fold
+            </span>
           </div>
         </>
       ) : (
         <>
-          <div className="absolute left-7 top-7 h-20 w-20 rounded-full border border-info/25 bg-background/35 shadow-glass backdrop-blur-xl">
-            <span className="absolute left-1/2 top-1/2 h-px w-24 -translate-x-1/2 -translate-y-1/2 rotate-[-24deg] bg-info/25" />
-            <span className="absolute left-1/2 top-1/2 h-px w-24 -translate-x-1/2 -translate-y-1/2 rotate-[24deg] bg-info/20" />
-            <span className="absolute left-[46%] top-[46%] h-2.5 w-2.5 rounded-full bg-brand shadow-sm" />
-            <span className="absolute right-3 top-4 h-2 w-2 rounded-full bg-info/55" />
+          <div className="absolute left-5 top-5 h-20 w-32 rounded-[1rem] border border-white/70 bg-background/70 p-3 shadow-glass backdrop-blur-xl">
+            <span className="mb-2 block h-2 w-10 rounded-full bg-brand/70" />
+            <span className="mb-1.5 block h-1.5 w-24 rounded-full bg-foreground/16" />
+            <span className="block h-1.5 w-16 rounded-full bg-foreground/10" />
           </div>
-          <div className="absolute bottom-5 right-7 h-16 w-32 rounded-[1.1rem] border border-border-subtle/70 bg-background/48 shadow-card backdrop-blur-xl">
-            <span className="absolute left-4 top-4 h-2 w-8 rounded-full bg-brand/70" />
-            <span className="absolute left-4 top-8 h-1.5 w-20 rounded-full bg-foreground/16" />
-            <span className="absolute left-4 top-12 h-1.5 w-14 rounded-full bg-foreground/10" />
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-white/70 bg-background/78 px-3 py-2 text-[11px] font-semibold shadow-card backdrop-blur-xl">
+            <span className="h-2 w-2 rounded-full bg-info" />
+            Share preview ready
           </div>
         </>
       )}
-
-      <div
-        aria-hidden
-        className="absolute bottom-0 left-1/2 h-6 w-48 -translate-x-1/2 rounded-[50%] bg-foreground/10 blur-xl"
-      />
     </div>
   )
 }

@@ -45,6 +45,8 @@ describe('explorer-model', () => {
     assert.equal(model.displayHost, 'example.com')
     assert.equal(model.flags.length, 2)
     assert.equal(model.flags[0]?.severity, 'CRITICAL')
+    assert.equal(model.flags[0]?.priorityLabel, 'Fix first')
+    assert.equal(model.flags[1]?.priorityLabel, 'Next')
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
@@ -127,6 +129,10 @@ describe('explorer-model', () => {
     assert.deepEqual(
       model.flags.map((flag) => flag.id),
       ['conversion-polish-high-confidence', 'conversion-polish-low-confidence', 'seo-polish']
+    )
+    assert.deepEqual(
+      model.flags.map((flag) => flag.priorityLabel),
+      ['Fix first', 'Next', 'Priority 3']
     )
   })
 

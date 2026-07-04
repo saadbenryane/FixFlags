@@ -29,6 +29,7 @@ import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sam
 export interface ExplorerFlag {
   id: string
   title: string
+  priorityLabel: string
   rubric: string
   rubricLabel: string
   severity: string
@@ -60,13 +61,20 @@ function sortFlags(flags: RankableFlag[]): RankableFlag[] {
   return [...flags].sort(compareFlagsByPriority)
 }
 
-function mapLiveFlag(flag: RankableFlag): ExplorerFlag {
+function priorityLabelForIndex(index: number): string {
+  if (index === 0) return 'Fix first'
+  if (index === 1) return 'Next'
+  return `Priority ${index + 1}`
+}
+
+function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
   const fixPrompt = buildExpertFixPrompt(flag)
   const copyFixPrompt = fixPrompt
   const sourceFix = resolveFixPrompt(flag)
   return {
     id: flag.id,
     title: flag.problem,
+    priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),
     severity: flag.severity,
@@ -114,7 +122,7 @@ export function buildLiveExplorerModel(input: {
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
-    flags: sorted.map((flag) => mapLiveFlag(flag)),
+    flags: sorted.map((flag, index) => mapLiveFlag(flag, index)),
     allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
   }
 }
@@ -162,10 +170,11 @@ export function buildPartialExplorerModel(input: {
   })
 }
 
-function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
+function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
   return {
     id: flag.id,
     title: flag.title,
+    priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
     rubricLabel: flag.rubricLabel,
     severity: flag.severity,

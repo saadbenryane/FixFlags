@@ -314,7 +314,7 @@ const WHY_IT_MATTERS: Record<string, string> = {
   'flow-pricing-nav-broken':
     'Visitors who click Pricing in the nav get a dead click - they cannot compare plans.',
   'flow-mobile-menu-broken':
-    'Mobile visitors cannot reach Pricing or Features when the menu toggle fails.',
+    'Mobile visitors cannot reliably reach Pricing or Features when the header has no working menu pattern.',
   'flow-form-no-validation':
     'Visitors who submit an empty form get silence instead of guidance - they abandon instead of fixing typos.',
   'flow-cta-blank-destination':

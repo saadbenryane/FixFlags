@@ -40,7 +40,7 @@ export function AuditInput({
     action?: string
   } | null>(null)
 
-  async function submitUrl(inputUrl?: string) {
+  async function submitUrl(inputUrl?: string, isSample = false) {
     setUrlError('')
     setLimitGate(null)
 
@@ -68,7 +68,7 @@ export function AuditInput({
       return
     }
 
-    if (isLanding && !authLoading && !user) {
+    if (isLanding && !authLoading && !user && !isSample) {
       const nextParams = new URLSearchParams({ url: normalized })
       const signUpParams = new URLSearchParams({
         next: `/dashboard?${nextParams.toString()}`,
@@ -136,7 +136,49 @@ export function AuditInput({
 
   async function handleTrySample() {
     setUrl(SAMPLE_AUDIT_URL)
-    await submitUrl(SAMPLE_AUDIT_URL)
+    await submitUrl(SAMPLE_AUDIT_URL, true)
+  }
+
+  /** For sample URL, bypass auth redirect so anonymous users can try the demo. */
+  async function handleLandingTrySample() {
+    setUrl(SAMPLE_AUDIT_URL)
+    setLoading(true)
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const res = await fetch('/api/checks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: SAMPLE_AUDIT_URL,
+          source: 'homepage',
+          utmSource: params.get('utm_source') ?? undefined,
+          utmMedium: params.get('utm_medium') ?? undefined,
+          utmCampaign: params.get('utm_campaign') ?? undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const parsed = await parseApiErrorResponse(res)
+        if (res.status === 402 || (res.status === 401 && parsed.code === 'AUTH_REQUIRED')) {
+          setLimitGate(parsed)
+        } else {
+          toast.error(parsed.message)
+        }
+        return
+      }
+
+      const data = await res.json()
+      const reportId = typeof data.reportId === 'string' ? data.reportId : ''
+      trackEvent('started_audit', { source: 'homepage', is_logged_in: false })
+      if (reportId) {
+        setActiveAudit({ auditId: reportId, url: SAMPLE_AUDIT_URL })
+      }
+      router.push(reportId ? `/report/${reportId}` : '/dashboard')
+    } catch {
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const isLanding = variant === 'landing'
@@ -246,19 +288,20 @@ export function AuditInput({
         )}
       </form>
 
-      {!isLanding ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={loading}
-          onClick={handleTrySample}
-          className="self-start px-0 text-sm text-muted-foreground hover:text-foreground"
-        >
-          {HERO.trySampleCta}
-          <ArrowRight className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      ) : null}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={loading}
+        onClick={isLanding ? handleLandingTrySample : handleTrySample}
+        className={cn(
+          'px-0 text-sm text-muted-foreground hover:text-foreground',
+          isLanding ? 'self-center' : 'self-start'
+        )}
+      >
+        {HERO.trySampleCta}
+        <ArrowRight className="ml-1 h-3.5 w-3.5" />
+      </Button>
 
       {limitGate && (
         <AuditLimitGate

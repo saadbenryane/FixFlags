@@ -251,6 +251,7 @@ export function ReportExplorer({
   const fixLoopFlags: FixLoopFlagItem[] = model.flags.map((f) => ({
     id: f.id,
     title: f.title,
+    priorityLabel: f.priorityLabel,
     severity: f.severity,
     hasFixPrompt: f.hasFixPrompt,
   }))

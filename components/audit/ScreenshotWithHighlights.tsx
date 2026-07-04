@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  MOBILE_VIEWPORT,
   mobileViewportSizeForHeight,
   viewportAspectStyle,
 } from '@/lib/audit/viewports'
@@ -29,6 +30,8 @@ interface ScreenshotWithHighlightsProps {
   showMobile?: boolean
   className?: string
 }
+
+const MOBILE_ONLY_PREVIEW_HEIGHT = 250
 
 function useNarrowViewport() {
   const [narrow, setNarrow] = useState(false)
@@ -338,19 +341,19 @@ function EvidenceRegionGlow({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute rounded-md transition-opacity duration-300',
+        'pointer-events-none absolute rounded-[5px] transition-opacity duration-300',
         selected ? 'opacity-100' : 'opacity-0',
-        isPage && 'ring-inset',
+        isPage && 'ring-inset bg-brand/5',
         isCritical
           ? cn(
-              'ring-2 ring-destructive',
+              'ring-[3px] ring-destructive',
               !isPage &&
-                'shadow-[0_0_0_1px_hsl(var(--destructive)/0.35),0_0_24px_4px_hsl(var(--destructive)/0.35)] motion-safe:animate-pulse motion-reduce:animate-none'
+                'bg-destructive/10 shadow-[0_0_0_1px_hsl(var(--destructive)/0.38),0_0_0_5px_hsl(var(--destructive)/0.12),0_12px_34px_hsl(var(--destructive)/0.28)]'
             )
           : cn(
-              'ring-2 ring-brand',
+              'ring-[3px] ring-brand',
               !isPage &&
-                'shadow-[0_0_0_1px_hsl(var(--brand)/0.3),0_0_24px_4px_hsl(var(--peach-glow)/0.4)] motion-safe:animate-pulse motion-reduce:animate-none'
+                'bg-brand/10 shadow-[0_0_0_1px_hsl(var(--brand)/0.34),0_0_0_5px_hsl(var(--brand)/0.12),0_12px_34px_hsl(var(--peach-glow)/0.32)]'
             )
       )}
       style={{
@@ -361,11 +364,14 @@ function EvidenceRegionGlow({
       }}
       aria-hidden={!selected}
     >
-      {selected && !isPage && (
+      {selected && (
         <span
           className={cn(
-            'absolute left-0 max-w-[min(100%,14rem)] -translate-y-full -top-1 px-2 py-1 text-[10px] font-semibold leading-tight text-pretty',
-            isCritical ? 'text-destructive' : 'text-brand'
+            'absolute left-0 top-0 max-w-[min(100%,15rem)] -translate-y-[calc(100%+0.35rem)] rounded-sm bg-background/92 px-2 py-1 text-[10px] font-semibold leading-tight shadow-sm backdrop-blur-md text-pretty',
+            isCritical
+              ? 'text-destructive ring-1 ring-destructive/20'
+              : 'text-brand ring-1 ring-brand/20',
+            isPage && 'left-3 top-3 translate-y-0'
           )}
         >
           {highlight.visualTarget}
@@ -547,7 +553,9 @@ export function ScreenshotWithHighlights({
   }, [sideBySide, desktopScreenshot, measureDesktopPanel])
 
   const mobilePanelSize =
-    desktopPanelHeight != null ? mobileViewportSizeForHeight(desktopPanelHeight) : null
+    desktopPanelHeight != null
+      ? mobileViewportSizeForHeight(Math.min(desktopPanelHeight, MOBILE_VIEWPORT.height))
+      : null
 
   if (!showDesktopPanel && !showMobilePanel) return null
 
@@ -568,8 +576,10 @@ export function ScreenshotWithHighlights({
   }
 
   if (!showDesktopPanel && showMobilePanel) {
+    const mobileOnlySize = mobileViewportSizeForHeight(MOBILE_ONLY_PREVIEW_HEIGHT)
+
     return (
-      <div className={cn('w-full', className)}>
+      <div className={cn('flex w-full justify-center', className)}>
         <ScreenshotPanel
           imageUrl={mobileScreenshot!}
           device="mobile"
@@ -577,6 +587,7 @@ export function ScreenshotWithHighlights({
           highlights={highlights}
           selectedFlagId={selectedFlagId}
           onPinSelect={onPinSelect}
+          size={mobileOnlySize}
           useMobileTooltip
         />
       </div>

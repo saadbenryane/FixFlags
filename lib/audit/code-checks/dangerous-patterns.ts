@@ -21,7 +21,11 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
   {
     category: 'Shell command execution',
     severity: 'CRITICAL',
-    pattern: /\bchild_process\b.*\b(exec|execSync)\s*\(|\b(exec|execSync)\s*\(/,
+    // `execSync` has no legitimate non-shell meaning, so it's always flagged. Bare
+    // `exec(` is only flagged when NOT preceded by a `.` - that excludes the extremely
+    // common `someRegex.exec(str)` (RegExp.prototype.exec), which isn't shell execution
+    // at all and would otherwise false-positive on nearly every regex-heavy file.
+    pattern: /\bchild_process\b.*\b(exec|execSync)\s*\(|\bexecSync\s*\(|(?<!\.)\bexec\s*\(/,
     problem: 'Use of exec()/execSync() runs a shell command, which is risky if any part of the command includes unsanitized input',
     fix: 'Use execFile()/spawn() with an argument array instead of exec()/execSync() to avoid shell injection, and never interpolate user input into the command string.',
   },

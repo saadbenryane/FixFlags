@@ -106,10 +106,10 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',
-      problem: 'Mobile menu does not reveal navigation links',
+      problem: 'Mobile navigation is not reachable or collapsible',
       evidence:
-        'At 375px width, header nav links were hidden and the menu toggle did not make them reachable.',
-      fix: '1. Wire the hamburger/menu button to open the nav drawer\n2. Ensure Pricing and Features links are visible inside the open menu\n3. Test the menu at 375px width and confirm links are tappable',
+        'At 375px width, the header navigation either hides links without a working menu or shows a crowded full nav without a mobile menu pattern.',
+      fix: '1. Add a clear menu button on mobile\n2. Ensure Pricing and Features links are visible and tappable inside the open menu\n3. Test the menu at 375px width and confirm links stay reachable',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

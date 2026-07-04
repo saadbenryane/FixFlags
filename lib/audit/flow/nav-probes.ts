@@ -172,10 +172,12 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
   await sleep(200)
 
   const before = await page.evaluate(countVisibleNavLinks)
-  if (before.visible > 0 || before.total === 0) {
+  if (before.total === 0) {
     await restoreDesktopCaptureViewport(page)
     return { mobileMenu: 'skipped' as const }
   }
+
+  const visibleFullNavNeedsMenu = before.visible >= 5
 
   const toggle = await page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
@@ -202,6 +204,13 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
   })
 
   if (!toggle) {
+    await restoreDesktopCaptureViewport(page)
+    return visibleFullNavNeedsMenu || before.visible === 0
+      ? { mobileMenu: 'broken' as const }
+      : { mobileMenu: 'skipped' as const }
+  }
+
+  if (before.visible > 0 && !visibleFullNavNeedsMenu) {
     await restoreDesktopCaptureViewport(page)
     return { mobileMenu: 'skipped' as const }
   }

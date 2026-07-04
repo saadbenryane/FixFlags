@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { MousePointer2, Loader2 } from 'lucide-react'
+import { Loader2, PlugZap } from 'lucide-react'
 import { toast } from 'sonner'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { FIX_ACTION_COPY } from '@/lib/audit/fix-action-copy'
 import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
 import { SITE_URL } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
@@ -31,9 +32,9 @@ export function PromptActionRow({
   const { user } = useMe()
   const [installing, setInstalling] = useState(false)
 
-  async function sendToCursor() {
+  async function connectCursorMcp() {
     if (!user) {
-      window.location.href = '/sign-in?next=/docs/mcp'
+      window.location.href = FIX_ACTION_COPY.cursorMcpAuthRedirect
       return
     }
 
@@ -62,14 +63,15 @@ export function PromptActionRow({
               'border border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'
           )}
           disabled={installing}
-          onClick={sendToCursor}
+          onClick={connectCursorMcp}
+          aria-label={FIX_ACTION_COPY.cursorMcpAriaLabel}
         >
           {installing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           ) : (
-            <MousePointer2 className="h-3.5 w-3.5" aria-hidden />
+            <PlugZap className="h-3.5 w-3.5" aria-hidden />
           )}
-          Send to Cursor
+          {FIX_ACTION_COPY.cursorMcpLabel}
         </Button>
       )}
       <PromptCopyButton

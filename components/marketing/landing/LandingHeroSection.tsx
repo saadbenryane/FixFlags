@@ -1,20 +1,14 @@
 import { AuditInput } from '@/components/audit/AuditInput'
 import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
-import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import { HERO } from '@/lib/marketing/copy'
 
-interface LandingHeroSectionProps {
-  audit?: LiveSampleAudit
-}
-
-export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
+export function LandingHeroSection() {
   return (
-    <Section spacing="loose" className="relative pb-6 sm:pb-8 lg:pb-11">
-      <Container className="relative space-y-8 lg:space-y-11">
+    <Section spacing="marketing" className="pb-10 sm:pb-14 lg:pb-16">
+      <Container className="relative">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           {HERO.audienceLine ? (
             <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-[var(--glass-bg)] px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-glass backdrop-blur-md motion-safe:animate-fade-in-up">
@@ -43,16 +37,10 @@ export function LandingHeroSection({ audit }: LandingHeroSectionProps) {
           <LandingTrustBadges className="mt-5" />
         </div>
 
-        <div className="relative motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">
-          <EditorToolMarks
-            compact
-            className="mx-auto mb-6 max-w-4xl items-center text-center [&_ul]:justify-center"
-          />
-          <p className="mb-3 text-center text-sm text-muted-foreground">
-            {HERO.samplePreviewCue}
-          </p>
-          <HeroProductPreview audit={audit} />
-        </div>
+        <EditorToolMarks
+          compact
+          className="mx-auto mt-11 max-w-4xl items-center text-center sm:mt-14 [&_ul]:justify-center"
+        />
       </Container>
     </Section>
   )

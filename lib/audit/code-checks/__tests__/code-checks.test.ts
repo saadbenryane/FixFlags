@@ -27,6 +27,22 @@ describe('checkDangerousPatterns', () => {
     expect(checkDangerousPatterns([file('a.js', 'const x = JSON.parse(input)')])).toEqual([])
   })
 
+  it('does not flag RegExp.prototype.exec() as shell execution', () => {
+    const findings = checkDangerousPatterns([
+      file('a.js', 'const match = /foo/.exec(str)'),
+      file('b.js', 'while ((m = re.exec(text)) !== null) {}'),
+    ])
+    expect(findings.filter((f) => f.category === 'Shell command execution')).toEqual([])
+  })
+
+  it('still flags bare exec()/execSync() calls not on a regex object', () => {
+    const findings = checkDangerousPatterns([
+      file('a.js', "const { exec } = require('child_process'); exec(cmd)"),
+      file('b.js', 'cp.execSync(userInput)'),
+    ])
+    expect(findings.filter((f) => f.category === 'Shell command execution')).toHaveLength(2)
+  })
+
   it('caps findings per file', () => {
     const content = Array.from({ length: 10 }, () => 'eval(x)').join('\n')
     const findings = checkDangerousPatterns([file('a.js', content)])

@@ -152,7 +152,7 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
 
 /** Favicon / app icon - official FixFlags mark for light surfaces */
 export function IconOgImage({ size = 32 }: { size?: number }) {
-  const markSize = Math.round(size * 0.68)
+  const markSize = Math.round((size / 32) * 28)
 
   return (
     <div
@@ -162,9 +162,7 @@ export function IconOgImage({ size = 32 }: { size?: number }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: BRAND_HEX.background,
-        border: `1px solid ${BRAND_HEX.border}`,
-        borderRadius: Math.round(size * 0.22),
+        backgroundColor: 'transparent',
       }}
     >
       <LogoMarkSvg flagColor={BRAND_HEX.primary} width={markSize} height={markSize} />

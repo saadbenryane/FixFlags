@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 export type FixLoopFlagItem = {
   id: string
   title: string
+  priorityLabel?: string
   severity: string
   hasFixPrompt?: boolean
 }
@@ -41,12 +42,19 @@ function SeverityDot({ severity }: { severity: string }) {
   )
 }
 
+function priorityLabelForIndex(index: number): string {
+  if (index === 0) return 'Fix first'
+  if (index === 1) return 'Next'
+  return `Priority ${index + 1}`
+}
+
 export function ReportFixLoop({
   scanDetail,
   flags,
   flagCount,
   selectedFlagId,
   onSelectFlag,
+  hasFixPrompts,
   defaultExpanded = true,
   compact = false,
   loading = false,
@@ -54,6 +62,11 @@ export function ReportFixLoop({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const count = flagCount ?? flags.length
   const interactive = flags.length > 0 && Boolean(onSelectFlag)
+  const selectedIndex = selectedFlagId ? flags.findIndex((flag) => flag.id === selectedFlagId) : -1
+  const activeFlag = selectedIndex >= 0 ? flags[selectedIndex] : flags[0]
+  const activePriority =
+    activeFlag?.priorityLabel ?? priorityLabelForIndex(selectedIndex >= 0 ? selectedIndex : 0)
+  const activePromptReady = activeFlag?.hasFixPrompt !== false && hasFixPrompts !== false
 
   return (
     <div className={cn('space-y-3', compact && 'space-y-2.5')}>
@@ -101,33 +114,54 @@ export function ReportFixLoop({
                 {loading ? 'Checking for issues…' : 'No flags. Nice work.'}
               </p>
             ) : interactive ? (
-              <ul className="space-y-1" role="listbox" aria-label="Report flags">
-                {flags.map((flag) => {
-                  const selected = selectedFlagId === flag.id
-                  return (
-                    <li key={flag.id} role="option" aria-selected={selected}>
-                      <button
-                        type="button"
-                        onClick={() => onSelectFlag?.(flag.id)}
-                        title={flag.title}
-                        className={cn(
-                          'flex w-full min-w-0 items-center gap-2 rounded-full px-3 py-2 text-left text-xs leading-none transition',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
-                          selected
-                            ? 'bg-brand/10 text-foreground'
-                            : 'hover:bg-muted/40'
-                        )}
-                      >
-                        <SeverityDot severity={flag.severity} />
-                        <span className="min-w-0 flex-1 truncate">{flag.title}</span>
-                        {flag.hasFixPrompt !== false && (
-                          <Sparkles className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
-                        )}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+              <>
+                {activeFlag && (
+                  <div className="flex items-center justify-between gap-2 px-2 pb-1 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">
+                      <span className="font-medium text-foreground">{activePriority}</span>
+                      <span className="text-muted-foreground/50"> · </span>
+                      {activePromptReady ? 'Copy-ready fix' : 'Diagnosis only'}
+                    </span>
+                  </div>
+                )}
+                <ul className="space-y-1" role="listbox" aria-label="Report flags">
+                  {flags.map((flag, index) => {
+                    const selected = selectedFlagId === flag.id
+                    const priorityLabel = flag.priorityLabel ?? priorityLabelForIndex(index)
+                    return (
+                      <li key={flag.id} role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          onClick={() => onSelectFlag?.(flag.id)}
+                          title={flag.title}
+                          aria-label={`${priorityLabel}: ${flag.title}`}
+                          className={cn(
+                            'flex w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs leading-none transition',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
+                            selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
+                          )}
+                        >
+                          <SeverityDot severity={flag.severity} />
+                          <span
+                            className={cn(
+                              'shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none',
+                              index === 0
+                                ? 'bg-brand/10 text-brand'
+                                : 'bg-muted/70 text-muted-foreground'
+                            )}
+                          >
+                            {priorityLabel}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{flag.title}</span>
+                          {flag.hasFixPrompt !== false && (
+                            <Sparkles className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
+                          )}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
             ) : (
               <p className="px-2 py-2 text-xs leading-relaxed text-muted-foreground">
                 {count === 1 ? '1 check flagged' : `${count} checks flagged`}. Review below to

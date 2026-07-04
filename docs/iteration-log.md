@@ -14,6 +14,156 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-04 — Session 18 (real repo-scan false-positive bug — untouched area this whole effort)
+
+### Found and fixed a severe false-positive in `checkDangerousPatterns` (repo-scan code checks)
+
+`lib/audit/code-checks/dangerous-patterns.ts`'s "Shell command execution" rule
+had a fallback alternative `\b(exec|execSync)\s*\(` meant to catch bare
+`exec(cmd)`/`execSync(cmd)` calls without requiring "child_process" on the
+same line. Problem: `\b` matches right after a `.`, so this also matched
+**`someRegex.exec(str)`** - i.e. `RegExp.prototype.exec()`, one of the most
+common, completely safe operations in any JS/TS codebase that uses regexes.
+Verified empirically (`node -e` repro) before touching anything: this would
+flag ordinary regex matching as a CRITICAL "shell command execution"
+vulnerability. Not reproducible against this specific repo (it happens to use
+`.match()`/`.test()` conventions instead of `.exec()`), but the regex logic is
+provably broken for any repo scanned by the actual product feature - this is
+the kind of false-positive that would erode trust in "fully accurate flags"
+on a user's very first repo scan.
+
+**Fix:** `execSync` is unambiguous (no non-shell JS API is ever named that),
+so it's still flagged broadly. Bare `exec(` is now only flagged when **not**
+preceded by a `.` (`(?<!\.)\bexec\s*\(`), which excludes
+`regex.exec(...)`/`re.exec(...)` while still catching destructured/bare calls
+like `const { exec } = require('child_process'); exec(cmd)`. The existing
+`child_process` + `exec|execSync` same-line alternative is untouched, so
+`cp.execSync(...)`-style calls are still caught whenever "child_process"
+appears on that line.
+
+Added 2 regression tests to
+`lib/audit/code-checks/__tests__/code-checks.test.ts` (regex `.exec()` NOT
+flagged; bare `exec()`/`cp.execSync()` still flagged) - the existing test
+suite for this file had zero coverage of the false-positive case before this.
+
+Also read through `dependency-hygiene.ts` and `exposed-secrets.ts` looking for
+the same class of over-broad-regex issue - both look precise (dependency
+check only flags literal `"*"`/`"latest"`, not normal semver ranges; secret
+patterns reset `lastIndex` correctly before each `.test()`). No further fixes
+needed there this pass.
+
+### Verified
+
+- `npx vitest run lib/audit/code-checks/__tests__/code-checks.test.ts` — 12/12
+  passed (up from 10, the 2 new regression tests).
+- `npx tsc --noEmit` clean.
+- `npx vitest run` (full suite) — 1496 passed, 1 known flake (the "live
+  localhost" demo-fixture test, times out under concurrent-agent load against
+  the shared port-3000 server; passes clean in isolation, not a regression).
+
+---
+
+## 2026-07-04 — Session 17 (report fix loop now makes priority explicit)
+
+### Made the next action clearer in the report explorer
+
+The report explorer already sorted flags by severity, impact, and confidence,
+but the UI did not explain that ordering to users. Added `priorityLabel` to
+`ExplorerFlag` in `lib/report/explorer-model.ts` (`Fix first`, `Next`,
+`Priority 3`, ...), passes it through `ReportExplorer`, and renders it in
+`ReportFixLoop` beside each flag. The expanded fix loop now also states whether
+the selected item has a copy-ready fix or is diagnosis-only, so users can see
+both priority and action readiness before opening each detail panel.
+
+### Verified
+
+- `npm run test:unit -- lib/report/__tests__/explorer-model.test.ts` passed:
+  1 file, 4 tests.
+- `npm run typecheck` passed.
+- Targeted lint passed:
+  `npx eslint components/report/ReportFixLoop.tsx components/report/ReportExplorer.tsx lib/report/explorer-model.ts lib/report/__tests__/explorer-model.test.ts --max-warnings=0`.
+
+### Notes for next sessions
+
+This is a narrow UX improvement, not full dashboard completion. Next high-value
+product pass should inspect the full rendered report on desktop/mobile and
+check whether the fix prompt actions map clearly to Cursor/MCP/branch workflows
+instead of only copy-paste.
+
+---
+
+## 2026-07-04 — Session 16 (migration drift RESOLVED — user gave explicit go-ahead)
+
+### The Session 7 migration issue is fixed. `/samples` confirmed working on the real dev server.
+
+User explicitly chose to resolve this (asked via AskUserQuestion after several
+rejected/deferred attempts). Turned out worse than Session 7 found: the
+recheck→monitoring rename edits to the 4 historical migration files were no
+longer just uncommitted — **they'd been committed to `main` at `bc0fbd9`**
+(confirmed via `git log -p`). Fixed with a new commit-ready change (not a
+history rewrite): restored all 4 files to their exact pre-`bc0fbd9` content
+(pulled from `git show <parent-commit>:<path>` for each), leaving
+`20260703000000_rename_recheck_to_monitoring` as the only place doing the
+rename. **Verified, not assumed:**
+`prisma migrate diff --from-migrations ... --to-schema-datamodel ... --shadow-database-url qualityos_shadow`
+→ **"No difference detected"** - a fresh DB replaying all 30 migrations now
+produces exactly `schema.prisma`'s shape.
+
+Then ran `prisma migrate deploy` (not `migrate dev` - see below) against the
+real shared `qualityos` dev DB. **Succeeded.** `/samples` on the real port-3000
+dev server now returns 200 with actual rendered sample-report content, no
+Prisma error, no error boundary - confirmed via `curl`, not just "should work
+now."
+
+### Found a second, unrelated instance of the same failure class - resolved differently
+
+`prisma migrate dev` (not `deploy`) refused to run, demanding a full DB
+reset, citing a **different** migration:
+`20260617120000_audit_lead_sync_and_report_source` "modified after it was
+applied." Investigated before touching anything: this one was **not** a
+mistake - a prior session (commit `2189a33`, June 26) deliberately added
+`IF NOT EXISTS` guards to fix a real fresh-DB apply failure (duplicate enum
+value from an accidental earlier duplicate migration), and documented it
+clearly in the migration file. The local dev DB's `_prisma_migrations` table
+had two rows for this name: an old **failed** attempt from June 21 (before the
+idempotency fix, `finished_at IS NULL`) and a properly-`finished_at`-stamped
+row from July 2 whose checksum matches the current file exactly. `migrate
+status` didn't flag this (doesn't do the strict shadow-DB replay `dev` does);
+`migrate deploy` doesn't either - it just applies whatever's pending in order,
+which is why it worked above without hitting this. **Lesson for next time:**
+if `prisma migrate dev` demands a reset, try `prisma migrate deploy` first -
+it's the correct command for applying pending migrations to an existing,
+already-populated database anyway; `migrate dev`'s stricter shadow-DB
+diffing is meant for disposable local iteration, not this. Did not touch the
+stale failed row - it's inert (unfinished, superseded), not worth the risk of
+directly editing `_prisma_migrations` for a cosmetic cleanup.
+
+### Verified
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run` — 1493 passed (1 flake: the "live localhost" demo-fixture
+  test timed out once against the shared port-3000 server under concurrent
+  agent load, passed clean in isolation immediately after - not a regression).
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/samples` → `200`.
+- `curl` body contains real rendered content ("Sample Report", "Scanned"), zero
+  "could not be loaded" error-boundary text.
+
+### Status for other agents/sessions
+
+The recheck→monitoring migration files are back to their correct,
+already-applied-in-production form. **Do not re-touch them** to "rename to
+monitoring" again - that rename now lives *only* in
+`20260703000000_rename_recheck_to_monitoring`, which is applied everywhere
+that matters (shared dev DB confirmed; production should pick it up on next
+`migrate deploy` during normal deploy, same as any other pending migration).
+This whole saga (Sessions 7, 10, 16) is the single clearest lesson from this
+effort: **never edit an already-applied Prisma migration file's SQL to rename
+something** - always add a new migration. If you need idempotency (like the
+June 26 fix above), that's fine to add via edit, since it doesn't change what
+the migration *does* on any database that already ran it successfully.
+
+---
+
 ## 2026-07-03 — Session 15 (OpenAI triage validator hardening + truthful screenshot context)
 
 ### Fixed the remaining live triage retry pattern from Session 13

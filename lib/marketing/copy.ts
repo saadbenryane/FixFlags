@@ -53,7 +53,6 @@ export const HERO = {
     'Copy-ready fix prompts',
     '1 free scan',
   ] as const,
-  samplePreviewCue: 'Live sample from our demo site.',
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
