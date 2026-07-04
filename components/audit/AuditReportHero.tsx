@@ -83,7 +83,7 @@ export function AuditReportHero({
             style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
             aria-hidden
           />
-          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
             {hostname}
           </h1>
         </div>
@@ -117,7 +117,7 @@ export function AuditReportHero({
                   style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
                   aria-label={score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'}
                 />
-                <h1 className="text-lg font-semibold tracking-tight text-foreground">{hostname}</h1>
+                <h1 className="text-lg font-semibold tracking-heading text-foreground">{hostname}</h1>
                 {pageType ? (
                   <Badge variant="secondary" className="text-xs capitalize">
                     {pageType}

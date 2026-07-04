@@ -43,6 +43,22 @@ export const v1Fixture: DemoFixture = {
   primaryCta: { label: 'Start free', href: '/demo/v1/signup' },
   secondaryCta: null,
   heroImageSrc: '/demo/hero-v1.svg',
+  heroImageAlt: 'LaunchPad dashboard showing landing page builder interface',
+  featuresSectionTitle: 'Everything you need to launch',
+  features: [
+    {
+      title: 'AI-powered design',
+      description: 'Generate beautiful layouts in seconds with our advanced AI engine.',
+    },
+    {
+      title: 'One-click deploy',
+      description: 'Ship your landing page to production with a single click.',
+    },
+    {
+      title: 'Analytics built in',
+      description: 'Track visitors, conversions, and engagement out of the box.',
+    },
+  ],
   footerLinks: [
     { label: 'Privacy', href: '#privacy' },
     { label: 'Terms', href: '#terms' },

@@ -23,7 +23,7 @@ export function LandingFinalCtaSection() {
           />
           <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-6">
-              <h2 className="font-serif text-4xl font-medium leading-tight tracking-tight text-foreground sm:text-5xl">
+              <h2 className="font-serif text-4xl font-medium leading-display tracking-display text-balance text-foreground sm:text-5xl">
                 {FINAL_CTA.headline}{' '}
                 <span className="text-brand">
                   {FINAL_CTA.headlineAccent}

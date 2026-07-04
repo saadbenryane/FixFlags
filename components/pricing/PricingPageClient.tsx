@@ -115,14 +115,14 @@ export function PricingPageClient() {
 
         <div className="space-y-5">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-semibold tracking-heading">Compare the launch loop</h2>
+            <Heading as="h2">Compare the launch loop</Heading>
             <Muted className="mt-2 text-sm">{PRICING.allPlansInclude}</Muted>
           </div>
           <PricingComparisonTable />
         </div>
 
         <Surface variant="elevated" className="mx-auto max-w-3xl space-y-5 text-center shadow-card">
-          <h2 className="font-sans text-2xl font-semibold tracking-heading">{PRICING.expertReview.title}</h2>
+          <Heading as="h2">{PRICING.expertReview.title}</Heading>
           <Body className="text-muted-foreground">{PRICING.expertReview.body}</Body>
           <ol className="mx-auto grid max-w-2xl gap-2 text-left text-sm text-muted-foreground sm:grid-cols-3">
             {PRICING.expertReview.steps.map((step, index) => (

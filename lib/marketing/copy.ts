@@ -48,10 +48,10 @@ export const HERO = {
   navSignUpCta: 'Sign up',
   trySampleCta: 'View sample report',
   urlPlaceholder: 'your-site.com',
+  trustBadgesSubtitle: 'See what users see',
   trustBadges: [
-    'See what users see',
     'Copy-ready fix prompts',
-    '1 free scan',
+    'Try it for Free',
   ] as const,
 } as const
 

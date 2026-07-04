@@ -36,7 +36,7 @@ function LoopStepScene({ index }: { index: number }) {
       ) : index === 1 ? (
         <>
           <div className="absolute left-6 top-5 h-16 w-28 rounded-[1.1rem] border border-border-subtle/75 bg-background/55 shadow-card backdrop-blur-xl">
-            <span className="absolute left-4 top-4 rounded-full bg-brand px-2 py-0.5 text-[9px] font-bold uppercase leading-none text-brand-foreground">
+            <span className="absolute left-4 top-4 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-label text-brand-foreground">
               Flags
             </span>
             <span className="absolute left-4 top-9 h-1.5 w-20 rounded-full bg-foreground/16" />

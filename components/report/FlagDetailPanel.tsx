@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { ClipboardCheck, Lightbulb, ScanSearch, Sparkles, type LucideIcon } from 'lucide-react'
+import { ClipboardCheck, ExternalLink, Lightbulb, ScanSearch, Sparkles, type LucideIcon } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
@@ -53,6 +53,17 @@ export function FlagDetailPanel({
       {flag.evidence && (
         <FlagDetailCard title="Evidence" icon={ScanSearch}>
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
+          {flag.pageUrl ? (
+            <a
+              href={flag.pageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate max-w-[300px]">{flag.pageUrl}</span>
+            </a>
+          ) : null}
         </FlagDetailCard>
       )}
 

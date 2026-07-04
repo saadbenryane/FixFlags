@@ -46,6 +46,30 @@ describe('priority-flags', () => {
     assert.equal(top?.prompt, 'Fix conversion polish')
   })
 
+  it('prefers the AI-crafted agentPrompt over the plain-English fix once both exist', () => {
+    const top = getTopFixPromptFromFlags([
+      flag({
+        problem: 'Fully prescribed flag',
+        fix: '1. Do a thing\n2. Do another thing',
+        agentPrompt: 'Fix the hero headline in app/page.tsx to name the audience.',
+      }),
+    ])
+
+    assert.equal(top?.prompt, 'Fix the hero headline in app/page.tsx to name the audience.')
+  })
+
+  it('falls back through tool-specific prompts before the plain fix text', () => {
+    const top = getTopFixPromptFromFlags([
+      flag({
+        problem: 'Cursor-only flag',
+        fix: 'Generic instructions',
+        cursorPrompt: 'Cursor-specific instructions',
+      }),
+    ])
+
+    assert.equal(top?.prompt, 'Cursor-specific instructions')
+  })
+
   it('uses priority before rubric grade in ranked fix lists', () => {
     const ranked = rankFlagsByPriority(
       [

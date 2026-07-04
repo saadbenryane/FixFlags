@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { Heading } from '@/components/ui/typography'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { HOW_IT_WORKS_PAGE } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
@@ -40,9 +41,9 @@ export default function HowItWorksPage() {
                 {HOW_IT_WORKS_PAGE.hero.eyebrow}
               </Badge>
               <div className="space-y-4">
-                <h1 className="max-w-3xl text-4xl font-black leading-[0.98] tracking-tight text-balance sm:text-5xl lg:text-6xl">
+                <Heading as="h1" className="max-w-3xl text-4xl sm:text-5xl lg:text-6xl">
                   {HOW_IT_WORKS_PAGE.hero.headline}
-                </h1>
+                </Heading>
                 <p className="max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
                   {HOW_IT_WORKS_PAGE.hero.subhead}
                 </p>
@@ -87,7 +88,7 @@ export default function HowItWorksPage() {
                             {mode.label}
                           </span>
                         </div>
-                        <h2 className="text-xl font-bold leading-heading tracking-heading">
+                        <h2 className="text-xl font-semibold leading-heading tracking-heading">
                           {mode.title}
                         </h2>
                         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -128,9 +129,9 @@ export default function HowItWorksPage() {
             <Badge variant="outline" className="w-fit">
               {HOW_IT_WORKS_PAGE.reportPreview.label}
             </Badge>
-            <h2 className="max-w-xl text-3xl font-black leading-tight tracking-tight text-balance sm:text-4xl">
+            <Heading as="h2" className="max-w-xl">
               {HOW_IT_WORKS_PAGE.reportPreview.title}
-            </h2>
+            </Heading>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
               {HOW_IT_WORKS_PAGE.reportPreview.body}
             </p>
@@ -178,9 +179,7 @@ export default function HowItWorksPage() {
             <Badge variant="outline" className="mx-auto w-fit">
               {HOW_IT_WORKS_PAGE.loop.label}
             </Badge>
-            <h2 className="text-3xl font-black leading-tight tracking-tight text-balance sm:text-4xl">
-              {HOW_IT_WORKS_PAGE.loop.title}
-            </h2>
+            <Heading as="h2">{HOW_IT_WORKS_PAGE.loop.title}</Heading>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {HOW_IT_WORKS_PAGE.loop.steps.map((step, index) => {
@@ -196,7 +195,7 @@ export default function HowItWorksPage() {
                       {String(index + 1).padStart(2, '0')}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold">{step.title}</h3>
+                  <h3 className="text-lg font-semibold tracking-heading">{step.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
                 </Card>
               )
@@ -211,9 +210,9 @@ export default function HowItWorksPage() {
             <Badge variant="secondary" className="w-fit">
               {HOW_IT_WORKS_PAGE.mcp.label}
             </Badge>
-            <h2 className="max-w-2xl text-3xl font-black leading-tight tracking-tight text-balance sm:text-4xl">
+            <Heading as="h2" className="max-w-2xl">
               {HOW_IT_WORKS_PAGE.mcp.title}
-            </h2>
+            </Heading>
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
               {HOW_IT_WORKS_PAGE.mcp.body}
             </p>
@@ -245,9 +244,9 @@ export default function HowItWorksPage() {
               <div className="inline-flex h-11 w-11 items-center justify-center rounded-nested-md bg-brand text-brand-foreground">
                 <Route className="h-5 w-5" aria-hidden />
               </div>
-              <h2 className="max-w-2xl text-3xl font-black leading-tight tracking-tight text-balance sm:text-4xl">
+              <Heading as="h2" className="max-w-2xl">
                 {HOW_IT_WORKS_PAGE.finalCta.headline}
-              </h2>
+              </Heading>
               <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
                 {HOW_IT_WORKS_PAGE.finalCta.body}
               </p>

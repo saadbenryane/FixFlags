@@ -133,7 +133,7 @@ export function renderFixtureHtml(fixture: DemoFixture, origin = 'https://fixfla
         <img src="${fixture.heroImageSrc}" alt="${escapeHtml(fixture.heroImageAlt ?? '')}"/>
       </div>
     </section>
-  <section id="features"><h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>${features}</section>
+  <section id="features">${fixture.featuresSectionTitle ? `<h2>${escapeHtml(fixture.featuresSectionTitle)}</h2>` : ''}${features}</section>
   ${socialProof}
   ${signupForm}
   <section id="privacy" aria-hidden="true"></section>

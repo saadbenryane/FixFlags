@@ -42,6 +42,7 @@ export interface ExplorerFlag {
   verificationRule: string | null
   evidenceDevices: ('desktop' | 'mobile')[]
   hasFixPrompt: boolean
+  pageUrl: string | null
 }
 
 export interface ReportExplorerModel {
@@ -87,6 +88,7 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
     verificationRule: flag.verificationRule ?? null,
     evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],
     hasFixPrompt: Boolean(sourceFix),
+    pageUrl: flag.pageUrl ?? null,
   }
 }
 
@@ -187,6 +189,7 @@ function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
     verificationRule: flag.verificationRule,
     evidenceDevices: flag.evidenceDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),
+    pageUrl: flag.pageUrl ?? null,
   }
 }
 

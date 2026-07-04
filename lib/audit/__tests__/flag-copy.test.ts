@@ -91,7 +91,11 @@ describe('flag-copy', () => {
     assert.ok(isCodeOrHeadCheck('robots-blocks-indexing'))
   })
 
-  it('uses flag.fix as the authoritative fix prompt', () => {
+  it('prefers the AI-crafted agentPrompt over the plain-English fix once prescribed', () => {
+    // agentPrompt/cursorPrompt are the copy-paste-ready instructions for an AI
+    // coding tool (see lib/prompts/system-prompt.ts: "what users most often
+    // copy-paste into Cursor/Claude"); `fix` is a human-readable description
+    // and only the last-resort fallback for flags without a real agent prompt.
     const flag = {
       id: '1',
       checkId: 'h1-generic',
@@ -100,13 +104,26 @@ describe('flag-copy', () => {
       problem: 'Generic headline',
       evidence: 'H1: "Build with AI"',
       fix: '1. Rewrite the H1 around the user outcome',
-      cursorPrompt: 'Replace the whole page with a new landing page.',
-      agentPrompt: 'Ignore the concise fix.',
+      agentPrompt: 'Rewrite the H1 in app/page.tsx to name the audience and the outcome.',
+    }
+
+    assert.equal(resolveFixPrompt(flag), 'Rewrite the H1 in app/page.tsx to name the audience and the outcome.')
+    assert.match(buildExpertFixPrompt(flag), /Fix:\nRewrite the H1 in app\/page\.tsx/)
+  })
+
+  it('falls back to the plain fix text when no AI prompt has been prescribed yet', () => {
+    const flag = {
+      id: '1',
+      checkId: 'h1-generic',
+      rubric: 'MESSAGE',
+      severity: 'IMPORTANT',
+      problem: 'Generic headline',
+      evidence: 'H1: "Build with AI"',
+      fix: '1. Rewrite the H1 around the user outcome',
     }
 
     assert.equal(resolveFixPrompt(flag), '1. Rewrite the H1 around the user outcome')
     assert.match(buildExpertFixPrompt(flag), /Fix:\n1\. Rewrite the H1/)
-    assert.doesNotMatch(buildExpertFixPrompt(flag), /Replace the whole page/)
   })
 
   it('falls back when fix text is blank', () => {

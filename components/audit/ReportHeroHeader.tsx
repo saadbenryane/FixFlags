@@ -31,7 +31,7 @@ export function ReportHeroHeader({
     <div className="min-w-0 space-y-2">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         {hostname ? (
-          <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <h1 className="min-w-0 truncate text-xl font-semibold tracking-heading text-foreground sm:text-2xl">
             {hostname}
           </h1>
         ) : (

@@ -129,7 +129,7 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
         </section>
 
         <section id="features" className="demo-features">
-          <h2>{fixture.featuresSectionTitle}</h2>
+          {fixture.featuresSectionTitle ? <h2>{fixture.featuresSectionTitle}</h2> : null}
           <div className="demo-features-grid">
             {fixture.features.map((feature) => (
               <article

@@ -54,6 +54,7 @@ const ABOVE_FOLD_COPY = [
   HERO.headlineLine2,
   HERO.subhead,
   HERO.audienceLine,
+  HERO.trustBadgesSubtitle,
   ...HERO.trustBadges,
   ...TRUST_STRIP,
   PROOF_SECTION.headline,
@@ -98,16 +99,16 @@ describe('homepage message guardrails', () => {
   })
 
   it('trust badges are short, outcome-led, not feature jargon', () => {
-    assert.equal(HERO.trustBadges.length, 3)
+    assert.equal(HERO.trustBadges.length, 2)
     for (const badge of HERO.trustBadges) {
       assert.ok(badge.split(/\s+/).length <= 4, `Too long: ${badge}`)
       assert.ok(!/\bdeterministic\b/i.test(badge), `Jargon leak: ${badge}`)
       assert.ok(!/^results in/i.test(badge), `Feature-led speed claim: ${badge}`)
       assert.ok(!/^live or preview/i.test(badge), `Capability-only badge: ${badge}`)
     }
-    assert.match(HERO.trustBadges[0], /users see/i)
-    assert.match(HERO.trustBadges[1], /fix prompts/i)
-    assert.match(HERO.trustBadges[2], /free scan/i)
+    assert.match(HERO.trustBadges[0], /fix prompts/i)
+    assert.match(HERO.trustBadges[1], /free/i)
+    assert.match(HERO.trustBadgesSubtitle, /users see/i)
   })
 
   it('AI tools named once in segment proof, not repeated in hero', () => {

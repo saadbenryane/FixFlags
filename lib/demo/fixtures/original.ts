@@ -38,18 +38,18 @@ export const originalFixture: DemoFixture = {
     { label: 'Docs', href: '#docs' },
     { label: 'About', href: '#about' },
   ],
-  headline: 'Build something amazing with AI',
+  headline: 'Build something amazing with our innovative AI platform',
   subhead:
     'LaunchPad is the next-generation AI landing page builder for modern teams who want to ship faster.',
   primaryCta: { label: 'Get started', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
   heroImageAlt: 'Product dashboard preview',
-  featuresSectionTitle: 'Everything you need to launch',
+  featuresSectionTitle: '',
   features: [
     {
       title: 'AI-powered design',
-      description: 'Generate beautiful layouts in seconds with our advanced AI engine.',
+      description: 'Lorem ipsum dolor sit amet, generate beautiful layouts in seconds.',
     },
     {
       title: 'One-click deploy',
@@ -61,6 +61,7 @@ export const originalFixture: DemoFixture = {
     },
   ],
   footerLinks: [
+    { label: 'Partner', href: 'https://example.com' },
     { label: 'Privacy', href: '#privacy' },
     { label: 'Terms', href: '#terms' },
     { label: 'Contact', href: 'mailto:hello@launchpad-demo.app' },

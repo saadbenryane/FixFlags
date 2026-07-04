@@ -92,13 +92,18 @@ export function countFlags(flags: RankableFlag[]): {
 }
 
 export function resolveFixPrompt(flag: RankableFlag): string | null {
+  // agentPrompt/tool-specific prompts are the AI-crafted, copy-paste-ready
+  // instructions ("what users most often copy-paste into Cursor/Claude" -
+  // see lib/prompts/system-prompt.ts). `fix` is a plain-English description
+  // written for a human, not an agent, so it's only the last-resort fallback
+  // for flags that haven't gone through AI prescription yet.
   const candidates = [
-    flag.fix,
-    flag.lovablePrompt,
-    flag.boltPrompt,
+    flag.agentPrompt,
     flag.cursorPrompt,
     flag.claudePrompt,
-    flag.agentPrompt,
+    flag.lovablePrompt,
+    flag.boltPrompt,
+    flag.fix,
   ]
   return candidates.find((prompt) => prompt?.trim())?.trim() ?? null
 }

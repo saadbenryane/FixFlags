@@ -52,6 +52,7 @@ export interface SampleFlagDisplay {
   evidenceDevices: ('desktop' | 'mobile')[]
   /** Prefer mobile screenshot for experience flags */
   preferredDevice: 'desktop' | 'mobile'
+  pageUrl: string | null
 }
 
 export interface SampleReportDisplay {
@@ -194,6 +195,7 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     evidenceHighlights: buildEvidenceHighlights(flag, index),
     evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
+    pageUrl: flag.pageUrl ?? null,
   }
 }
 

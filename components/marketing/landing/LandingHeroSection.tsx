@@ -16,7 +16,7 @@ export function LandingHeroSection() {
               {HERO.audienceLine}
             </span>
           ) : null}
-          <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-[1.1] tracking-tight motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
             <span className="text-brand">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
             <br className="hidden sm:block" />

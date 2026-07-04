@@ -48,7 +48,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
     <Container variant="report" className="space-y-6 py-6 sm:py-8">
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="font-mono text-lg font-semibold tracking-tight">{current.repoFullName}</h1>
+          <h1 className="font-mono text-lg font-semibold tracking-heading">{current.repoFullName}</h1>
           {shortSha(current.commitSha) && (
             <span className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <GitBranch className="h-3.5 w-3.5" />

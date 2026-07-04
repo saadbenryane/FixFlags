@@ -14,6 +14,67 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-04 — Session 19 (found the fix-prompt priority was inverted from day one - fixed, tests updated on purpose)
+
+### `resolveFixPrompt()` was picking the wrong field for the "copy-paste fix prompt" - the core product promise
+
+`lib/audit/priority-flags.ts`'s `resolveFixPrompt()` returned the first truthy
+field in order `[fix, lovablePrompt, boltPrompt, cursorPrompt, claudePrompt,
+agentPrompt]`. Traced every consumer: `buildExpertFixPrompt()`
+(`lib/audit/flag-copy.ts`) calls it directly and is what actually builds the
+displayed/copyable prompt in the interactive report explorer
+(`lib/report/explorer-model.ts`'s `mapLiveFlag`) and the legacy report
+fallback (`components/audit/AuditReport.tsx`'s `getTopFixPromptFromFlags`).
+**There is no separate per-tool ("Copy for Cursor" vs "Copy for Claude") UI
+anywhere in the codebase** - this one flattening function is the only place
+that decides which of the 6 possible prompt fields a user actually sees and
+copies.
+
+`lib/prompts/system-prompt.ts` (the actual prescription-phase prompt sent to
+the LLM) says explicitly: "For EVERY flag, provide agentPrompt at minimum,"
+and the rubric-level prompt is "what users most often copy-paste into
+Cursor/Claude." `flag.fix` is documented elsewhere in the same prompt as a
+plain-English description, not an agent-ready instruction. So the intended
+priority is agent-crafted prompts first, `fix` last - the code had it
+backwards, meaning **every fully-prescribed flag (post-signup, after the AI
+phase ran) was showing the generic human-readable fix description instead of
+the actual AI-tool-ready prompt**, silently downgrading the core "copy-ready
+fix prompts" feature every time both existed.
+
+**Fixed:** reordered to `[agentPrompt, cursorPrompt, claudePrompt,
+lovablePrompt, boltPrompt, fix]`.
+
+### This overturned an existing test - traced why before touching it, not just deleting it
+
+`lib/audit/__tests__/flag-copy.test.ts` had a test named literally "uses
+flag.fix as the authoritative fix prompt" that encoded the *old* (backwards)
+behavior as intentional. Before assuming my fix was wrong, traced it via
+`git log -p`: it turned out to be a **mechanical regression test** written
+during a refactor (`dcdd4fd`) that moved a pre-existing `flag.fix ??
+resolveFixPrompt(flag) ?? flag.problem` ordering (already "fix-first" before
+that commit, inherited from further back) into `resolveFixPrompt` itself -
+i.e. it locked in "don't let this refactor change behavior," not "we decided
+fix should beat agentPrompt on purpose." No comment, design doc, or commit
+message anywhere explains a deliberate reason to prefer `fix`. Given the
+system prompt's explicit, documented intent points the other way, updated
+the test (renamed + rewrote assertions) to lock in the *corrected* priority
+instead of reverting the fix to match stale test expectations.
+
+### Verified
+
+- Added 2 new regression tests to `lib/audit/__tests__/priority-flags.test.ts`
+  (agentPrompt preferred over fix; tool-specific prompts preferred over fix)
+  and updated 1 in `lib/audit/__tests__/flag-copy.test.ts` to match the
+  corrected, intentional priority - old test literally couldn't pass with the
+  fix in place, so it had to be updated, not skipped.
+- `npx vitest run` — 1502 passed, 1 skipped, 85/85 files. (Two transient
+  failures during one run - both passed clean in isolation immediately after;
+  root cause was concurrent agents mid-editing unrelated fixture files at
+  that exact moment, not a real regression from this change.)
+- `npx tsc --noEmit` clean.
+
+---
+
 ## 2026-07-04 — Session 18 (real repo-scan false-positive bug — untouched area this whole effort)
 
 ### Found and fixed a severe false-positive in `checkDangerousPatterns` (repo-scan code checks)
@@ -60,6 +121,37 @@ needed there this pass.
 - `npx vitest run` (full suite) — 1496 passed, 1 known flake (the "live
   localhost" demo-fixture test, times out under concurrent-agent load against
   the shared port-3000 server; passes clean in isolation, not a regression).
+
+---
+
+## 2026-07-04 — Session 18 (fix action label now matches actual MCP behavior)
+
+### Fixed misleading Cursor action copy in the report fix card
+
+Rendered `/samples` showed the fix prompt action as `Send to Cursor`, but the
+button does not send the selected prompt anywhere. It creates/loads an API key
+and opens Cursor's MCP install deep link. Renamed the action to
+`Connect Cursor MCP`, switched the icon from a pointer to an integration plug,
+and moved the copy into `lib/audit/fix-action-copy.ts` with a regression test
+that forbids drifting back to "send" language.
+
+### Verified
+
+- `npm run typecheck` passed.
+- `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config <vitest.mjs> run lib/audit/__tests__/fix-action-copy.test.ts`
+  passed: 1 file, 1 test. Used the direct `vitest.mjs` path because the current
+  `node_modules/.bin/vitest` shim is pnpm-style shell, while `package.json`
+  still invokes it through `node`.
+- Playwright desktop and mobile snapshots of `http://localhost:3000/samples`
+  show `Connect Cursor MCP`, `Copy prompt`, `Fix first`, and no `Send to Cursor`.
+  Console log had no error entries; only Next preload warnings.
+
+### Tooling caveat
+
+Targeted ESLint is currently blocked by mixed npm/pnpm install state:
+`@rushstack/eslint-patch` cannot recognize the pnpm-resolved
+`eslint-config-next` caller. Do not treat that as a code failure in this
+session; typecheck and the focused test passed.
 
 ---
 
