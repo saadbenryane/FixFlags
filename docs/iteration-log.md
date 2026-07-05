@@ -71,6 +71,44 @@ whole 27-session effort had otherwise reviewed extensively for other things.
 
 ---
 
+## 2026-07-05 — Session 27 (report toolbar copied an invalid MCP curl shape - fixed)
+
+### Fixed the copied MCP report command to use real MCP `tools/call`
+
+Reviewed the live report actionability surface from Session 25's notes:
+`components/audit/CopyMcpCommand.tsx` generated a helpful-looking curl for
+`/api/mcp`, but the JSON-RPC body used `"method":"ff_get_report"` directly.
+That is not the protocol shape the actual MCP route expects or logs. The
+server-side parser/tests (`lib/mcp/log-interaction.ts` and
+`lib/mcp/__tests__/log-interaction.test.ts`) expect tool execution through
+`"method":"tools/call"` with `params.name` and `params.arguments`.
+
+Net effect before this fix: a user copying the report-toolbar MCP command
+could paste a curl that looks official but does not call the tool correctly,
+undermining the goal's "quickly fix from MCP" workflow.
+
+**Fixed:** moved the copied text into `lib/mcp/report-command-copy.ts`, and
+now the example curl sends:
+`{"method":"tools/call","params":{"name":"ff_get_report","arguments":{"reportId":"..."}}}`.
+The copied instructions also tell agents to fetch rubric details and then
+specific flag details before editing, which better matches the product flow.
+
+### Verified
+
+- Added `lib/mcp/__tests__/report-command-copy.test.ts` with regression checks
+  that the copied curl uses `tools/call`, includes `ff_get_report` as
+  `params.name`, includes the report ID under `params.arguments`, and does
+  **not** regress to `"method":"ff_get_report"`.
+- `npm run typecheck` passed.
+- Focused Vitest passed via direct `vitest.mjs` entrypoint: 1 file, 2 tests.
+  `npm run test:unit` is still blocked by the local pnpm-style shell shim
+  being invoked through `node`, same tooling caveat as Session 18.
+- Targeted ESLint is still blocked before reading files by the mixed
+  npm/pnpm install state (`@rushstack/eslint-patch` cannot recognize the
+  pnpm-resolved `eslint-config-next` caller).
+
+---
+
 ## 2026-07-05 — Session 26 (real accessibility bug on our own homepage - duplicate id, found via accessibility-tree snapshot, not guessed)
 
 ### Direct response to the goal's "analyze pure user experience by navigating" ask, scoped to accessibility this time (extends Session 25, doesn't repeat it)

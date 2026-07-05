@@ -189,7 +189,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
         <div className="flex justify-center">
           <Link
             href={sampleHref}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
+            className="inline-flex items-center gap-2 py-1 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
           >
             {sampleLink}
             <ArrowRight className="h-4 w-4" />

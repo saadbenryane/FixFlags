@@ -105,7 +105,7 @@ function FooterColumn({
           <li key={`${link.href}-${link.label}`}>
             <Link
               href={link.href}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex min-h-[24px] items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
