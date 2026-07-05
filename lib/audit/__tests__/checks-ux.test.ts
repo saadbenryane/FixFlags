@@ -292,6 +292,36 @@ describe('runTrustPsychologyChecks', () => {
     }))
     assert.ok(checkIds(findings).includes('trust-no-internal-links'))
   })
+
+  it('does not count non-navigation hrefs as internal links', () => {
+    const findings = runTrustPsychologyChecks(healthyMeta({
+      canonical: 'https://example.com/',
+      ctaTexts: ['Get started'],
+      links: [
+        { href: '/pricing', text: 'Pricing', rel: null },
+        { href: 'mailto:support@example.com', text: 'Email support', rel: null },
+        { href: 'tel:+15555551212', text: 'Call sales', rel: null },
+        { href: '#faq', text: 'FAQ', rel: null },
+        { href: 'javascript:void(0)', text: 'Open modal', rel: null },
+      ],
+      pageText: 'Contact support@example.com. "Acme helped our team launch faster with less manual QA work." - Sarah Chen, CTO at DataFlow. As seen in TechCrunch.',
+    }))
+    assert.ok(checkIds(findings).includes('trust-no-internal-links'))
+  })
+
+  it('counts relative and same-host absolute navigation links as internal', () => {
+    const findings = runTrustPsychologyChecks(healthyMeta({
+      canonical: 'https://example.com/',
+      ctaTexts: ['Get started'],
+      links: [
+        { href: '/pricing', text: 'Pricing', rel: null },
+        { href: 'https://example.com/docs', text: 'Docs', rel: null },
+        { href: 'mailto:support@example.com', text: 'Email support', rel: null },
+      ],
+      pageText: 'Contact support@example.com. "Acme helped our team launch faster with less manual QA work." - Sarah Chen, CTO at DataFlow. As seen in TechCrunch.',
+    }))
+    assert.ok(!checkIds(findings).includes('trust-no-internal-links'))
+  })
 })
 
 describe('runVisualHierarchyChecks', () => {

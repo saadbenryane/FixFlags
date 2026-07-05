@@ -313,6 +313,23 @@ describe('runSeoChecks', () => {
     assert.ok(ids.includes('broken-internal-links'))
   })
 
+  it('does not treat origin-prefix impostor hosts as internal links', async () => {
+    restoreFetch = mockFetchHead({
+      'sitemap.xml': 200,
+      'robots.txt': 200,
+      'example.com.evil/pricing': 404,
+    })
+    const ids = checkIds(
+      await runSeoChecks(
+        'https://example.com',
+        healthyMeta({
+          links: [{ href: 'https://example.com.evil/pricing', text: 'Pricing', rel: null }],
+        })
+      )
+    )
+    assert.ok(!ids.includes('broken-internal-links'))
+  })
+
   it('passes when sitemap and robots exist', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
     assert.equal((await runSeoChecks('https://example.com', healthyMeta())).length, 0)

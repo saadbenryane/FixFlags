@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
+import '@/lib/design/tokens.css'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'

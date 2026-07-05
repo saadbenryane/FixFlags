@@ -17,6 +17,184 @@ returns "Internal Server Error" / logs show `ENOENT ... app-paths-manifest.json`
 concurrent agents editing files while the dev server was mid-compile, not a real app
 bug. Stop and restart the server (`preview_stop` + `preview_start`) before concluding
 you found a crash — confirmed this exact false alarm on `/samples` in this session.
+**Duplicate-DOM-node note:** `#audit-url` / `#audit-url-final-cta` reproducibly
+return 2 elements each (1 real, 1 zero-size phantom at 0,0,0,0) even across full
+`preview_stop`+`preview_start` cycles + cold `window.location.assign` navigation —
+NOT just a soft-reload/HMR artifact this time. Spawned a background task
+(`task_f5d4a6af`) to root-cause this (dev-only Strict Mode artifact vs. a real
+double-render) rather than assume either way. Until resolved: when driving this
+input via `preview_eval`, filter for the element with `getBoundingClientRect().width
+> 0` before interacting — `preview_fill`/`preview_click`'s bare `#audit-url` selector
+can silently hit the invisible phantom and produce a false "nothing happened" reading.
+
+---
+
+## 2026-07-05 — Session 37 (flow scan treated non-http CTA hrefs as successful external exits)
+
+**Real false-success bug in CTA flow scanning, fixed.** `isIntentionalExternalCta()`
+accepted anything that `new URL(href, origin)` could parse, then only checked whether
+the parsed origin differed from the audited page. Non-HTTP schemes like `mailto:`,
+`tel:`, and `javascript:` parse successfully with a non-page origin, so a no-navigation
+CTA could be treated as an intentional external conversion path. In `runFlowScan()`,
+that means the browser URL could stay unchanged but the flow still returns `success`
+instead of a dead-end/unclickable-style result.
+
+Fix: `isIntentionalExternalCta()` now only considers parsed `http:` and `https:`
+destinations. Same-origin links still return false, real external booking/conversion
+URLs still return true, and non-navigation schemes no longer mask a failed CTA click.
+
+Added tests in `lib/audit/__tests__/flow-discover.test.ts` proving:
+- `mailto:contact@example.com`, `tel:+15555551212`, and `javascript:contactSales()`
+  are not intentional external CTAs.
+- a real external booking URL (`https://calendly.com/demo`) remains intentional.
+
+Also ran a read-only sidecar sweep for similar non-navigation href counting bugs. It
+confirmed this fix, confirmed Session 36 is already handled, and flagged a next real
+target: `destination-ux-probes.ts` counts placeholder/contact hrefs as destination
+CTAs inside `page.evaluate()`, which can inflate `ctaCount` and suppress/trigger
+destination UX findings. Leave that for a dedicated browser-context-safe patch.
+
+Verified:
+- `npm run typecheck` - pass.
+- Focused Vitest:
+  `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.pnpm/vitest@4.1.9_@types+node@22.20.0_@vitest+ui@4.1.9_jsdom@29.1.1_@noble+hashes@2.2.0__vit_5c6705306151f82404725d4c8649f1eb/node_modules/vitest/vitest.mjs run lib/audit/__tests__/flow-discover.test.ts lib/audit/__tests__/checks-ux.test.ts lib/audit/__tests__/checks.test.ts lib/audit/__tests__/flow-url.test.ts lib/audit/flow/__tests__/flow-url.test.ts`
+  - 5 files, 271 tests passed.
+- `git diff --check` - pass.
+- Targeted ESLint still fails before linting files because Rushstack cannot patch the
+  pnpm-resolved `eslint-config-next` module.
+
+## 2026-07-05 — Session 36 (trust-no-internal-links counted mailto/tel/hash as navigation)
+
+**Real false-negative bug in trust/navigation scoring, fixed.** `runTrustPsychologyChecks()`
+used `if (!href.startsWith('http')) return true` when counting internal links for
+`trust-no-internal-links`. That meant `mailto:`, `tel:`, `javascript:`, and same-page
+hash links counted as internal navigation. A page with one real route plus a support
+email or phone link could avoid the "very few internal navigation links" flag even
+though visitors still had no meaningful path to explore product pages.
+
+Fix: added `isInternalNavigationHref()` and count only real relative/page-navigation
+links or absolute same-host HTTP(S) links. Non-navigation schemes, empty hrefs, and
+same-page hashes no longer satisfy the internal navigation threshold. Protocol-relative
+URLs are handled by comparing their parsed hostname to the canonical hostname.
+
+Added tests in `lib/audit/__tests__/checks-ux.test.ts` proving:
+- `/pricing` plus `mailto:`, `tel:`, `#faq`, and `javascript:void(0)` still triggers
+  `trust-no-internal-links`.
+- `/pricing` plus `https://example.com/docs` passes, while the `mailto:` link is
+  ignored for navigation counting.
+
+Verified:
+- `npm run typecheck` - pass.
+- Focused Vitest:
+  `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.pnpm/vitest@4.1.9_@types+node@22.20.0_@vitest+ui@4.1.9_jsdom@29.1.1_@noble+hashes@2.2.0__vit_5c6705306151f82404725d4c8649f1eb/node_modules/vitest/vitest.mjs run lib/audit/__tests__/checks-ux.test.ts lib/audit/__tests__/checks.test.ts lib/audit/__tests__/flow-url.test.ts lib/audit/flow/__tests__/flow-url.test.ts`
+  - 4 files, 262 tests passed.
+- `git diff --check` - pass.
+- Targeted ESLint still fails before linting files because Rushstack cannot patch the
+  pnpm-resolved `eslint-config-next` module.
+
+## 2026-07-05 — Session 35 (broken-internal-links: origin-prefix impostor hosts)
+
+**Real false-positive bug in SEO link checking, fixed.** `findBrokenInternalLinks()`
+classified internal links with `absolute.startsWith(origin)`. For a scanned URL like
+`https://example.com`, that incorrectly treats `https://example.com.evil/pricing` as
+same-origin because the string starts with the same characters. If that external
+partner/ad/tracker URL returned 404/500, FixFlags could show a bogus
+`broken-internal-links` flag and tell the customer to fix a route they do not own.
+
+Fix: parse each candidate href once and compare `parsed.origin === origin`, then fetch
+only true same-origin links. This preserves relative-link handling and the existing
+HEAD -> GET fallback, while eliminating the origin-prefix false positive.
+
+Added a regression test in `lib/audit/__tests__/checks.test.ts` where
+`https://example.com.evil/pricing` returns 404 but must not produce
+`broken-internal-links`.
+
+Verified:
+- `npm run typecheck` - pass.
+- Focused Vitest:
+  `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.pnpm/vitest@4.1.9_@types+node@22.20.0_@vitest+ui@4.1.9_jsdom@29.1.1_@noble+hashes@2.2.0__vit_5c6705306151f82404725d4c8649f1eb/node_modules/vitest/vitest.mjs run lib/audit/__tests__/checks.test.ts lib/audit/__tests__/flow-url.test.ts lib/audit/flow/__tests__/flow-url.test.ts`
+  - 3 files, 207 tests passed.
+- `git diff --check` - pass.
+- Targeted ESLint still fails before linting files because Rushstack cannot patch the
+  pnpm-resolved `eslint-config-next` module.
+
+## 2026-07-05 — Session 34 (capture-metrics.ts: CTA tie-break picked the wrong element)
+
+**Real logic bug in the core Puppeteer measurement collection, fixed.** This bug
+class matters more than most: `capture-metrics.ts`'s `measureMobileLayout()` feeds
+`mobilePrimaryCtaTopPx`/`mobilePrimaryCtaText` into multiple downstream checks
+(`cta-focus.ts`, `mobile-ux-quality.ts`'s thumb-zone/weak-label checks,
+`cta-below-fold-mobile`), so a wrong measurement here silently produces wrong flags
+in several unrelated-looking places at once.
+
+Root cause: the "find the best-scoring CTA candidate" loop
+([`lib/audit/capture-metrics.ts:145`](../lib/audit/capture-metrics.ts)) used
+`if (score >= bestScore)` instead of `>`. Elements are scanned in DOM order
+(top-to-bottom for a typical page), so on a tie the LAST matching element scanned
+overwrote the first - the opposite of "find the primary/most prominent CTA." Concrete
+failure mode: a page with two equally-scored CTAs (e.g. a hero "Get started" button
+and a later pricing-section "Get started" link, both scoring 95) would report the
+LOWER, less-important one as `mobilePrimaryCtaTopPx`/`Text`, so
+`cta-below-fold-mobile`/`mobile-cta-thumb-zone`/`mobile-cta-weak-label` would then be
+assessing the WRONG element's position/label while the actual, well-positioned hero
+CTA goes unassessed.
+
+Fix: changed `>=` to `>` (one line) plus a comment explaining why strict-greater
+matters here, since it's non-obvious from the surrounding code alone.
+
+Verified: this function only runs inside a real Puppeteer `page.evaluate()` during
+the actual audit-capture pipeline - not reachable from the marketing-site preview
+browser, and this repo's vitest config uses `environment: 'node'` (no jsdom), so
+there's no existing infrastructure to unit-test this DOM-scanning logic directly
+(confirmed via `lib/audit/__tests__/{checks-ux,cta-focus,checks}.test.ts`, which only
+import `CaptureMetrics` as a *type*, never the real `measureMobileLayout` function -
+same reasoning as Session 33's UI fix, verified the same way the rest of this file
+always has been: by reasoning through the exact control flow rather than assuming).
+`npx tsc --noEmit` -> clean. `npx vitest run` -> 1533/1534 passed; the 1 failure is
+the same pre-existing, unrelated flake in `v1-fixture-audit.test.ts` (gated on an
+external dev server at port 3000 that this session doesn't control - this time a
+socket error instead of a timeout, but confirmed via grep that the test doesn't even
+import `capture-metrics.ts`).
+
+---
+
+## 2026-07-05 — Session 33 (AuditInput: non-http(s) schemes silently mangled instead of rejected)
+
+**Real, verified UX/accuracy bug in the primary "paste a URL" conversion flow, fixed.**
+[`components/audit/AuditInput.tsx`](../components/audit/AuditInput.tsx)'s URL
+normalization only prepended `https://` when the input didn't already start with
+`http://`/`https://` — it never checked whether the input had some OTHER scheme
+first. Consequences (verified via `node -e` against the actual logic, then live in
+the browser):
+- `ftp://example.com` -> became `https://ftp://example.com` -> **parsed successfully**
+  as a URL with hostname `ftp` and pathname `//example.com` -> no client error shown,
+  silently POSTed to `/api/checks` as a nonsense audit target that would only fail
+  deep in the pipeline (DNS resolution of the bare hostname `ftp`) instead of failing
+  fast with a clear message. Same failure mode for `mailto:`, `tel:`, `ws://`, and any
+  other non-http(s) scheme a user might paste.
+- Bare `http://` or `https://` (no host at all - a plausible paste mishap) became
+  `https://http:` / `https://https:` -> also parsed "successfully" with hostname
+  `http`/`https` -> same silent-garbage-submission problem.
+
+Fix: added a `hasScheme` check (`/^[a-z][a-z0-9+.-]*:/i`) before deciding whether to
+prepend `https://`, and added an explicit protocol whitelist check
+(`http:`/`https:` only) after parsing, with a new, clear error message ("Only
+http:// and https:// URLs can be checked") instead of relying on `new URL()` to
+happen to throw.
+
+Verified: `node -e` against 8 cases (bare schemes, `ftp://`, `javascript:`,
+`mailto:`, `tel:`, `ws://`, plain domain, empty) before writing the fix, confirming
+the exact before/after behavior for each. `npx tsc --noEmit` -> clean. Live browser
+verification (after ruling out the duplicate-DOM-node false lead noted above by
+filtering for the real, visible input): `ftp://example.com` now shows "Only
+http://and https:// URLs can be checked" with **zero** network request fired; bare
+`http://` now shows "Enter a valid URL..."; a normal domain (`stripe.com`) still
+gets a real `201 Created` from `/api/checks` and navigates to `/report/:id` -
+confirming no regression on the happy path. `npx vitest run` -> 1533 passed, 1
+skipped, 0 failed (unchanged). No existing test infra for this component (no RTL, no
+`.test.tsx` files anywhere in the repo - this codebase tests logic-level `.ts`
+functions with vitest and verifies UI live), so this fix was verified the same way
+the rest of this component's behavior always has been: live in the browser.
 
 ---
 

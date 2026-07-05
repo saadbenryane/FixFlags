@@ -142,7 +142,12 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
         competingCtas.add(label)
       }
 
-      if (score >= bestScore) {
+      // Strictly greater so the first (topmost, DOM-order-earliest) element at a
+      // given score wins ties, not the last one scanned - matters when a page has
+      // two equally-scored CTAs (e.g. a hero "Get started" and a pricing-section
+      // "Get started"), since downstream checks treat this as THE primary CTA's
+      // position for above-the-fold / thumb-zone / weak-label assessments.
+      if (score > bestScore) {
         bestScore = score
         bestTop = Math.round(rect.top)
         bestText = text.slice(0, 80)

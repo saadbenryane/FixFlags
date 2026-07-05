@@ -6,7 +6,12 @@ import {
   scoreCtaCandidates,
 } from '@/lib/audit/flow/score-cta-candidates'
 import { flowCtaSelector } from '@/lib/audit/flow/discover-cta'
-import { isAuthUtilityLink, isExternalBookingHref, scoreCtaLink } from '@/lib/audit/flow/link-scoring'
+import {
+  isAuthUtilityLink,
+  isExternalBookingHref,
+  isIntentionalExternalCta,
+  scoreCtaLink,
+} from '@/lib/audit/flow/link-scoring'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
 
 describe('flow CTA discovery scoring', () => {
@@ -82,6 +87,20 @@ describe('flow auth utility handling', () => {
   it('treats external booking hrefs as intentional conversion paths', () => {
     assert.equal(
       isExternalBookingHref('https://calendar.app.google/5ybQ7ahxCmMpMqq66'),
+      true
+    )
+  })
+
+  it('does not treat non-http hrefs as intentional external CTAs', () => {
+    const origin = 'https://example.com'
+    assert.equal(isIntentionalExternalCta(origin, 'mailto:contact@example.com'), false)
+    assert.equal(isIntentionalExternalCta(origin, 'tel:+15555551212'), false)
+    assert.equal(isIntentionalExternalCta(origin, 'javascript:contactSales()'), false)
+  })
+
+  it('treats real external conversion URLs as intentional external CTAs', () => {
+    assert.equal(
+      isIntentionalExternalCta('https://example.com', 'https://calendly.com/demo'),
       true
     )
   })

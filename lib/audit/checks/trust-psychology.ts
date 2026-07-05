@@ -30,6 +30,32 @@ const DATA_SPECIFICITY = [
   /\d{2,}\s+(minutes?|hours?|days?)\s+(saved|saving|reduced|cut)/i,
 ]
 
+function isInternalNavigationHref(href: string, pageHostname: string | null): boolean {
+  const value = href.trim()
+  if (!value || value.startsWith('#')) return false
+
+  const scheme = value.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase()
+  if (scheme && scheme !== 'http' && scheme !== 'https') return false
+
+  if (value.startsWith('//')) {
+    if (!pageHostname) return false
+    try {
+      return new URL(`https:${value}`).hostname === pageHostname
+    } catch {
+      return false
+    }
+  }
+
+  if (!/^https?:\/\//i.test(value)) return true
+  if (!pageHostname) return false
+
+  try {
+    return new URL(value).hostname === pageHostname
+  } catch {
+    return false
+  }
+}
+
 export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const bodyText = (meta.pageText ?? '').slice(0, 6000)
@@ -112,15 +138,7 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
     }
   })()
 
-  const internalLinks = links.filter((l) => {
-    if (!l.href.startsWith('http')) return true
-    if (!pageHostname) return false
-    try {
-      return new URL(l.href).hostname === pageHostname
-    } catch {
-      return false
-    }
-  })
+  const internalLinks = links.filter((l) => isInternalNavigationHref(l.href, pageHostname))
 
   if (internalLinks.length < 2 && ctaTexts.length > 0) {
     findings.push({

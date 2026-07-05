@@ -168,14 +168,16 @@ async function findBrokenInternalLinks(
     if (broken.length >= 3) break
     if (!link.href || link.href.startsWith('#') || link.href.startsWith('mailto:')) continue
 
-    let absolute: string
+    let parsed: URL
     try {
-      absolute = new URL(link.href, pageUrl).toString()
+      parsed = new URL(link.href, pageUrl)
     } catch {
       continue
     }
 
-    if (!absolute.startsWith(origin) || seen.has(absolute)) continue
+    if (parsed.origin !== origin) continue
+    const absolute = parsed.toString()
+    if (seen.has(absolute)) continue
     seen.add(absolute)
     if (seen.size > MAX_LINK_CHECKS) break
 

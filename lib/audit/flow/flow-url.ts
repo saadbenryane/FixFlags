@@ -1,9 +1,10 @@
-/** True when pathname, query, or hash changed (SPA-friendly). */
+/** True when origin, pathname, query, or hash changed (SPA-friendly). */
 export function urlsMeaningfullyChanged(before: string, after: string): boolean {
   try {
     const a = new URL(before)
     const b = new URL(after)
     return (
+      a.origin !== b.origin ||
       a.pathname !== b.pathname ||
       a.search !== b.search ||
       a.hash !== b.hash

@@ -23,9 +23,10 @@ export function isExternalBookingHref(href: string): boolean {
 export function isIntentionalExternalCta(origin: string, href: string | null): boolean {
   if (!href) return false
   try {
-    const resolved = href.startsWith('http') ? href : new URL(href, origin).toString()
-    const parsed = new URL(resolved)
+    const parsed = new URL(href, origin)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
     if (parsed.origin === origin) return false
+    const resolved = parsed.toString()
     return isExternalBookingHref(resolved) || scoreCtaLink(resolved, '') >= 70
   } catch {
     return false
