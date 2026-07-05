@@ -18,7 +18,11 @@ export async function GET(
       return apiError('You do not have access to this report', 403)
     }
 
-    return NextResponse.json(result.audit)
+    const response = NextResponse.json(result.audit)
+    if (result.audit.isPublic) {
+      response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300')
+    }
+    return response
   } catch (err) {
     return handleRouteError(err)
   }

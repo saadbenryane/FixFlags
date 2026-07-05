@@ -18,7 +18,7 @@ export default function AuditPageError({
     console.error(
       JSON.stringify({ level: 'error', event: 'ui.audit.error', digest: error.digest, message: error.message })
     )
-  }, [error])
+  }, [error.message])
 
   return (
     <AuditShell>

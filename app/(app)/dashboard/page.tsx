@@ -85,10 +85,13 @@ export default async function DashboardPage({
   const bestScore = scores.length > 0 ? Math.max(...scores) : null
   const worstScore = scores.length > 0 ? Math.min(...scores) : null
 
-  const [mcpAudits, webAudits] = await Promise.all([
-    prisma.audit.count({ where: { userId, source: 'MCP' } }),
-    prisma.audit.count({ where: { userId, source: { not: 'MCP' } } }),
-  ])
+  const auditCounts = await prisma.audit.groupBy({
+    by: ['source'],
+    where: { userId },
+    _count: true,
+  })
+  const mcpAudits = auditCounts.find((a) => a.source === 'MCP')?._count ?? 0
+  const webAudits = auditCounts.find((a) => a.source !== 'MCP')?._count ?? 0
 
   return (
     <Container variant="report" className="py-6 space-y-6">

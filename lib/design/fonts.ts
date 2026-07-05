@@ -20,9 +20,9 @@ export const satoshi = localFont({
 export const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+  style: ['normal'],
   variable: '--font-serif',
-  display: 'swap',
+  display: 'optional',
 })
 
 export const ibmPlexMono = IBM_Plex_Mono({

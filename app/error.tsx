@@ -23,7 +23,7 @@ export default function ErrorPage({
         message: error.message,
       })
     )
-  }, [error])
+  }, [error.message])
 
   return (
     <SiteShell variant="marketing">

@@ -481,6 +481,7 @@ function ScreenshotPanel({
       <img
         src={resolvedImageUrl}
         alt={`${device} screenshot of ${host}`}
+        loading="lazy"
         className={cn(
           'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',
           active && 'brightness-[0.92]'

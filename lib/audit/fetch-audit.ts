@@ -148,7 +148,7 @@ export async function getGatedAuditForRequest(id: string) {
     name: r.name,
     grade: r.grade,
     score: r.score,
-    flags: r.flags.map((f: { severity: string }) => ({ severity: f.severity })),
+    flags: r.flags.map((f: { severity: string; id?: string }) => ({ severity: f.severity, id: f.id })),
   }))
   const flatFlags = reportFlags.map((f) => ({
     severity: f.severity,
@@ -156,6 +156,34 @@ export async function getGatedAuditForRequest(id: string) {
   }))
   const rubrics: RubricComputed[] = computeRubricsFromRows(rubricSources, flatFlags)
   const shareStatus: ShareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
+
+  const rubricRows = sanitizedRubrics.map((r) => ({
+    id: r.id,
+    name: r.name,
+    grade: r.grade,
+    score: r.score,
+    status: r.status,
+    summary: r.summary,
+    flags: r.flags.map((f) => ({
+      id: f.id,
+      checkId: f.checkId,
+      rubric: f.rubric,
+      severity: f.severity,
+      impactTag: f.impactTag,
+      problem: f.problem,
+      evidence: f.evidence,
+      whyItMatters: f.whyItMatters,
+      fix: f.fix,
+      agentPrompt: f.agentPrompt,
+      cursorPrompt: f.cursorPrompt,
+      claudePrompt: f.claudePrompt,
+      lovablePrompt: f.lovablePrompt,
+      boltPrompt: f.boltPrompt,
+      verificationRule: f.verificationRule,
+      pageUrl: f.pageUrl,
+      confidence: f.confidence,
+    })),
+  }))
 
   const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
   const screenshotCapture = deriveScreenshotCaptureStatus(
@@ -182,6 +210,7 @@ export async function getGatedAuditForRequest(id: string) {
       evidenceAnchors,
       triageAt: audit.triageAt,
       isLegacyDeterministic,
+      rubricRows,
     },
     isPaid,
     isLoggedIn: !!session?.user,

@@ -79,6 +79,7 @@ export function FlowScanTimeline({ flowData }: Props) {
                         <img
                           src={screenshotUrl}
                           alt={step.label}
+                          loading="lazy"
                           className="aspect-video w-full bg-muted object-cover object-top"
                         />
                       </>

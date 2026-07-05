@@ -67,7 +67,10 @@ export async function GET(
     }
 
     if (NON_TERMINAL.has(audit.status)) {
-      await recoverAuditJobOnPoll(id, audit)
+      const secondsSinceUpdate = (Date.now() - audit.updatedAt.getTime()) / 1000
+      if (secondsSinceUpdate > 15) {
+        await recoverAuditJobOnPoll(id, audit)
+      }
     }
 
     const refreshed = NON_TERMINAL.has(audit.status)

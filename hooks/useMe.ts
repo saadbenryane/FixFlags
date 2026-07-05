@@ -36,6 +36,22 @@ interface MeState {
 }
 
 let claimToastShown = false
+let pendingMePromise: Promise<MeState> | null = null
+
+async function fetchMeShared(): Promise<MeState> {
+  if (pendingMePromise) return pendingMePromise
+  pendingMePromise = (async () => {
+    try {
+      const res = await fetch('/api/me')
+      const data = await res.json()
+      return { user: data.user ?? null, isLoading: false, claimedCount: data.claimedCount ?? null }
+    } catch {
+      return { user: null, isLoading: false, claimedCount: null }
+    }
+  })()
+  pendingMePromise.finally(() => { pendingMePromise = null })
+  return pendingMePromise
+}
 
 export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
   const [state, setState] = useState<MeState>({
@@ -62,7 +78,7 @@ export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
 
   useEffect(() => {
     if (!options?.claim) {
-      refresh()
+      fetchMeShared().then((data) => setState(data))
       return
     }
 

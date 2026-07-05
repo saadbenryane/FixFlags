@@ -1,10 +1,14 @@
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import type { ReactNode } from 'react'
 import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
 import { RubricsPanel } from '@/components/audit/RubricsPanel'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
-import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+
+const LiveReportExplorer = dynamic(
+  () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
+)
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'

@@ -212,39 +212,33 @@ export default async function ReportPage({ params }: Props) {
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
 
   if (audit.status === 'COMPLETED') {
-    const rubricRowsRaw = await prisma.reportRubric.findMany({
-      where: { auditId: id },
-      include: { flags: { orderBy: { position: 'asc' } } },
-      orderBy: { name: 'asc' },
-    })
-
-    const rubricRows = rubricRowsRaw.map((r) => ({
-      id: r.id,
-      name: r.name,
-      grade: r.grade,
-      score: r.score,
-      status: r.status,
-      summary: r.summary,
-      flags: r.flags.map((f) => ({
-        id: f.id,
-        checkId: f.checkId,
-        rubric: f.rubric,
-        severity: f.severity,
-        impactTag: f.impactTag,
-        problem: f.problem,
-        evidence: f.evidence,
-        whyItMatters: f.whyItMatters,
-        fix: f.fix,
-        agentPrompt: f.agentPrompt,
-        cursorPrompt: f.cursorPrompt,
-        claudePrompt: f.claudePrompt,
-        lovablePrompt: f.lovablePrompt,
-        boltPrompt: f.boltPrompt,
-        verificationRule: f.verificationRule,
-        pageUrl: f.pageUrl,
-        confidence: f.confidence,
-      })),
-    }))
+    const rubricRows = audit.rubricRows as Array<{
+      id: string
+      name: string
+      grade: string
+      score: number | null
+      status: string | null
+      summary: string
+      flags: Array<{
+        id: string
+        checkId: string
+        rubric: string
+        severity: string
+        impactTag: string | null
+        problem: string
+        evidence: string
+        whyItMatters: string
+        fix: string
+        agentPrompt: string | null
+        cursorPrompt: string | null
+        claudePrompt: string | null
+        lovablePrompt: string | null
+        boltPrompt: string | null
+        verificationRule: string | null
+        pageUrl: string | null
+        confidence: number | null
+      }>
+    }> | undefined ?? []
 
     const flags = audit.flags.map((f) => ({
       id: f.id,

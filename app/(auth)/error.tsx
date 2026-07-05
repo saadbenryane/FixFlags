@@ -18,7 +18,7 @@ export default function AuthError({
     console.error(
       JSON.stringify({ level: 'error', event: 'ui.auth.error', digest: error.digest, message: error.message })
     )
-  }, [error])
+  }, [error.message])
 
   return (
     <SiteShell variant="marketing">

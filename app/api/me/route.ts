@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       subscriptionStatus: user.subscriptionStatus,
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       claimedCount,
         user: {
           id: session.user.id,
@@ -68,6 +68,8 @@ export async function GET(request: Request) {
           preferredTools: user.preferredTools,
         },
     })
+    response.headers.set('Cache-Control', 'private, max-age=10')
+    return response
   } catch (err) {
     return handleRouteError(err)
   }

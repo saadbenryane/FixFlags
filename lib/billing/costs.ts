@@ -212,19 +212,29 @@ export async function sumEstimatedCostByPlan(since: Date): Promise<Record<Plan, 
     where: { createdAt: { gte: since } },
     _sum: { estimatedCostUsd: true },
   })
+  if (costs.length === 0) return { FREE: 0, BUILDER: 0, TEAM: 0 }
+
+  const auditIds = costs.map((c) => c.auditId)
+  const audits = await prisma.audit.findMany({
+    where: { id: { in: auditIds } },
+    select: { id: true, userId: true },
+  })
+  const userIds = [...new Set(audits.map((a) => a.userId).filter(Boolean))] as string[]
+  const users = userIds.length > 0
+    ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, plan: true },
+      })
+    : []
+  const userPlanMap = new Map(users.map((u) => [u.id, u.plan]))
+  const auditUserMap = new Map(audits.map((a) => [a.id, a.userId]))
+
   const planMap: Record<string, number> = {}
   for (const cost of costs) {
-    const audit = await prisma.audit.findUnique({
-      where: { id: cost.auditId },
-      select: { userId: true },
-    })
-    if (!audit?.userId) continue
-    const user = await prisma.user.findUnique({
-      where: { id: audit.userId },
-      select: { plan: true },
-    })
-    if (!user) continue
-    const plan = user.plan
+    const userId = auditUserMap.get(cost.auditId)
+    if (!userId) continue
+    const plan = userPlanMap.get(userId)
+    if (!plan) continue
     planMap[plan] = (planMap[plan] ?? 0) + (cost._sum.estimatedCostUsd?.toNumber() ?? 0)
   }
   return { FREE: planMap['FREE'] ?? 0, BUILDER: planMap['BUILDER'] ?? 0, TEAM: planMap['TEAM'] ?? 0 }
