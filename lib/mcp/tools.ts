@@ -11,7 +11,12 @@ import {
   computeShareStatusFromRubrics,
 } from '../audit/rubric'
 import { canUseApiKeys } from '../auth/permissions'
-import { canAccessCompare, canAccessPaidFeatures, canScanRepositories } from '../auth/entitlements'
+import {
+  canAccessCompare,
+  canAccessPaidFeatures,
+  canScanRepositories,
+  canSharePublicly,
+} from '../auth/entitlements'
 import { canAccessAudit } from '../audit/access'
 import { createAndEnqueueRepoScan, RepoScanRequestError } from '@/lib/repo-scan/create-repo-scan'
 import { hashApiKey } from '@/lib/security/api-keys'
@@ -40,12 +45,28 @@ function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: s
   return buildAiFlagMatchKey(flag.problem, flag.rubric)
 }
 
-function assertAuditAccess(
+export async function assertAuditAccess(
   audit: { userId: string | null; isPublic: boolean },
   userId: string,
   message = 'Unauthorized'
-): void {
+): Promise<void> {
   if (!canAccessAudit(audit, { id: userId })) {
+    throw new Error(message)
+  }
+  // canAccessAudit only checks the audit's own isPublic bit, which can go stale:
+  // if the owner's plan/subscription later lapses, canSharePublicly(owner) turns
+  // false but nothing un-publishes already-public audits. Re-check the owner's
+  // LIVE entitlement here so a downgraded owner's fix-prompt content doesn't stay
+  // exposed to non-owners via MCP indefinitely - matches the live re-check the
+  // web report UI already does for the same content (canViewAiViaMaxPublicShare
+  // in lib/audit/report-access.ts).
+  const isOwner = audit.userId === userId
+  if (isOwner || !audit.userId) return
+  const owner = await prisma.user.findUnique({
+    where: { id: audit.userId },
+    select: { id: true, role: true, plan: true, subscriptionStatus: true },
+  })
+  if (!owner || !canSharePublicly(owner)) {
     throw new Error(message)
   }
 }
@@ -154,7 +175,7 @@ export function registerAllTools(
         select: { id: true, status: true, url: true, createdAt: true, userId: true, isPublic: true },
       })
       if (!audit) throw new Error('Report not found')
-      assertAuditAccess(audit, user.id, 'You do not have access to this report')
+      await assertAuditAccess(audit, user.id, 'You do not have access to this report')
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(audit) }],
       }
@@ -178,7 +199,7 @@ export function registerAllTools(
         },
       })
       if (!audit) throw new Error('Report not found')
-      assertAuditAccess(audit, user.id)
+      await assertAuditAccess(audit, user.id)
       if (audit.status !== 'COMPLETED') {
         return {
           content: [
@@ -247,7 +268,7 @@ export function registerAllTools(
         select: { userId: true, isPublic: true },
       })
       if (!ownerAudit) throw new Error('Report not found')
-      assertAuditAccess(ownerAudit, user.id)
+      await assertAuditAccess(ownerAudit, user.id)
 
       const rubricRow = await prisma.reportRubric.findUnique({
         where: { auditId_name: { auditId: reportId, name: rubric as RubricName } },
@@ -317,7 +338,7 @@ export function registerAllTools(
         include: { audit: { select: { userId: true, isPublic: true } } },
       })
       if (!flag) throw new Error('Flag not found')
-      assertAuditAccess(flag.audit, user.id)
+      await assertAuditAccess(flag.audit, user.id)
 
       const safeFlag = sanitizeFlagForRead(flag)
 
@@ -419,8 +440,8 @@ export function registerAllTools(
         }),
       ])
       if (!before || !after) throw new Error('One or both reports not found')
-      assertAuditAccess(before, user.id)
-      assertAuditAccess(after, user.id)
+      await assertAuditAccess(before, user.id)
+      await assertAuditAccess(after, user.id)
 
       const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
       if (!freshUser) throw new Error('User not found')

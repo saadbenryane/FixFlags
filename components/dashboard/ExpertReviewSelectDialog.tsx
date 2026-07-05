@@ -84,7 +84,7 @@ export function ExpertReviewSelectDialog({ audits }: ExpertReviewSelectDialogPro
               title="Run a check first"
               description="Expert Review needs a completed audit. Paste a URL below, then return here from Pricing."
             />
-            <AuditInput />
+            <AuditInput idSuffix="-expert-review-dialog" />
             <Button variant="outline" asChild className="w-full">
               <Link href="/pricing">Back to pricing</Link>
             </Button>

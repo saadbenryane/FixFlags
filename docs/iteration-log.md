@@ -14,6 +14,260 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-05 — Session 26 (real accessibility bug on our own homepage - duplicate id, found via accessibility-tree snapshot, not guessed)
+
+### Direct response to the goal's "analyze pure user experience by navigating" ask, scoped to accessibility this time (extends Session 25, doesn't repeat it)
+
+Took a `preview_snapshot` (accessibility tree) of the live homepage - this is
+what a screen reader user actually hears, not just what's visually on
+screen. The URL input's accessible name came back as **"Website URL Website
+URL"** - doubled. Screen reader users would hear this exact confusing
+duplication on the product's own homepage, first form field a visitor
+encounters.
+
+### Root cause, confirmed via DOM inspection before touching anything
+
+`components/audit/AuditInput.tsx` accepts an `idSuffix` prop specifically
+designed to keep `id="audit-url${idSuffix}"` unique when multiple instances
+render on one page - the pattern already existed and was already used
+correctly at `app/(marketing)/how-it-works/page.tsx` (`idSuffix="-how-it-works"`).
+Two call sites weren't using it:
+- `components/marketing/landing/LandingHeroSection.tsx` and
+  `components/marketing/landing/LandingFinalCtaSection.tsx` both render
+  `<AuditInput variant="landing" />` with no `idSuffix` - and both mount on
+  the **same homepage** (hero at top, final CTA at bottom, per AGENTS.md's
+  documented section order). Two inputs, same `id="audit-url"`, two
+  `<label for="audit-url">` elements - the browser's `input.labels`
+  associates both labels with both same-ID inputs, producing the doubled
+  accessible name. Verified via `input.labels` directly
+  (`labelsCount: 2, labelTexts: ["Website URL", "Website URL"]`,
+  `document.querySelectorAll('#audit-url').length === 2`) before touching
+  source, not assumed from reading JSX.
+- `components/dashboard/ExpertReviewSelectDialog.tsx` renders
+  `<AuditInput />` (also no `idSuffix`) inside a dialog that opens **on top
+  of** `app/(app)/dashboard/page.tsx`, which has its own default-id
+  `AuditInput` already mounted underneath. Same bug, second real instance,
+  found by checking every `<AuditInput` call site for this exact pattern
+  rather than stopping at the first fix.
+
+**Fixed:** added `idSuffix="-final-cta"` and `idSuffix="-expert-review-dialog"`
+respectively. `LandingHeroSection` and `SharedReportBanner.tsx` correctly
+keep the bare default id - each is now the only default-id `AuditInput` on
+its respective page (`/` and `/report/[id]` are different routes, so no
+cross-page collision to worry about there).
+
+### False leads chased and ruled out before landing on this (documented so it's not repeated)
+
+- A `preview_screenshot` immediately after editing+reloading showed **4**
+  `input[id^="audit-url"]` elements (2 pairs), which looked like each
+  `AuditInput` instance was somehow rendering its markup twice internally.
+  Traced the component's JSX (a real mutually-exclusive `isLanding ? A : B`
+  ternary - can't produce two DOM nodes from one instance) and confirmed via
+  a **clean, cold navigation** (`window.location.assign`, not `reload()`,
+  waited for `document.readyState === 'complete'`) that the count settles to
+  the correct 2. The "4" reading was an HMR/dev-server transition artifact
+  from querying too soon after a source edit - not a real double-render.
+  **Don't re-chase "component renders twice" here if you see it again right
+  after an edit; re-check after a full cold navigation first.**
+- A `preview_snapshot` briefly showed `"This page could not be loaded"` on
+  the homepage. Restarted the preview server fresh and re-navigated - loaded
+  clean. Tied to the specific dev-server/tab session at that moment (this
+  session's server had also gone stale between two conversation turns), not
+  a reproducible app bug.
+
+### Verified
+
+- Confirmed live via `preview_eval` DOM inspection (`input.labels`,
+  `getBoundingClientRect`, `document.querySelectorAll` counts) before and
+  after the fix, on a cold-navigated page, not just a code read.
+- `npx tsc --noEmit` clean for all files touched.
+- `npx vitest run` - 1516 passed, 1 known flake (shared dev server,
+  passes clean in isolation, unrelated).
+- **No new automated test added** - this codebase has zero `.test.tsx`
+  component-render tests (every existing test is pure-logic `.test.ts`);
+  adding React Testing Library infrastructure for one fix would be a bigger,
+  disproportionate change. Live DOM verification stands in for it here.
+  Documenting the exact rule instead: **any future `<AuditInput>` call site
+  must pass a unique `idSuffix` unless it's provably the only `AuditInput`
+  instance possible on its page** (check for dialogs/banners that can
+  co-render with a page-level default instance, as this session's second
+  finding shows that's easy to miss).
+
+---
+
+## 2026-07-04 — Session 25 (real-user navigation pass, this time on a live report - other agents' work confirmed compounding)
+
+### Real, live report confirms several fixes/features from this whole effort are actually shipping correctly
+
+Used the sandbox (`dev-sandbox-2`, port 3002, auto-picks a free port - another
+agent added this variant so it doesn't collide with whoever's on `dev-sandbox`/
+3001) to navigate the dashboard and a real completed report as a logged-in
+user, not just read code. Confirmed live and correct:
+- **Session 17's `priorityLabel` feature** ("Fix first · Diagnosis only")
+  renders correctly on the top flag - this is a *different* agent's UX work
+  building on the same priority-ordering logic Session 19 fixed the field
+  selection for. Concrete evidence of the "compounding" the goal asks for,
+  not just notes referencing each other.
+- **The recheck→monitoring rename** is fully live in the report UI - tab
+  says "Monitoring," action button says "Monitor," matching Session 16's
+  fixed migration.
+- **A "Copy MCP command" button** exists directly on the report toolbar -
+  a concrete, low-friction MCP-adoption touchpoint I hadn't seen in any
+  earlier session's review (someone added this since).
+- 29 real flags rendering with real severity/rubric icons, "1 critical - fix
+  this before sharing" banner, rubric score breakdown (Message 65,
+  Experience 65, Reach 0) - all consistent with the actual audit data.
+
+### Tooling note for future sessions (saves debugging time - not a product bug)
+
+`preview_screenshot` intermittently captured a **fully blank frame** after
+scrolling to certain positions on this specific report page, even though
+`preview_eval`-based DOM inspection (`querySelectorAll` +
+`getBoundingClientRect`) simultaneously proved real, correctly-positioned,
+non-empty content existed in the exact same viewport region. Rechecked
+`window.innerWidth`/`document.documentElement`'s bounding box too (briefly
+read as `0` right after a resize/reload, before settling back to normal on
+the next read) - both point to the **screenshot/eval tooling having a race
+or stale-frame issue on this page**, not the app being broken. Scrolling
+back to the top and re-screenshotting confirmed the page renders correctly.
+**If a future session sees a blank `preview_screenshot` capture, cross-check
+with `preview_eval` DOM inspection (position/text of real elements) before
+concluding it's a real rendering bug** - this is now the second tooling
+false-positive this effort has hit (the first was the mobile "black bar" in
+Session 8), and both wasted real investigation time before being ruled out.
+
+### Not a new code change this session (navigation/verification only)
+
+No source files touched. `npx vitest run` / `npx tsc --noEmit` unaffected
+(unchanged from Session 24's end state).
+
+---
+
+## 2026-07-04 — Session 24 (repo-scan security review: clean. verify-flags.ts: one design ambiguity flagged, not fixed)
+
+### `lib/repo-scan/*` (clone.ts, walk-files.ts, create-repo-scan.ts, runner.ts) - reviewed for the exact bug classes found all session, none found
+
+Given Session 23's MCP finding was "a stale flag checked only at creation
+time, never re-verified live," specifically checked whether repo-scan has
+the same pattern (does a queued scan re-validate `selectedRepos`/
+`revokedAt` at *execution* time, or only at enqueue time). **It's done
+right**: `runner.ts`'s `runRepoScan` re-fetches `githubConnection` fresh from
+the DB and re-checks `revokedAt` + `selectedRepos.includes(repoFullName)` at
+the top of the actual scan execution (lines 25-32), not just relying on the
+check `create-repo-scan.ts` already did at enqueue time. If a user
+revokes/deselects a repo after a scan is already queued, the worker correctly
+fails it instead of scanning anyway.
+
+Also checked for injection/traversal risk given this subsystem clones and
+reads arbitrary user-supplied repos: `clone.ts` uses `execFile` with an argv
+array (not `exec`/shell string interpolation - the safe pattern), and the
+GitHub token is passed via `GIT_ASKPASS` + an env var, never touching argv
+(`ps` -visible) or any file written to disk. `walk-files.ts`'s directory walk
+uses `Dirent.isDirectory()`/`isFile()` from `readdir(..., {withFileTypes:
+true})`, which don't follow symlinks - a malicious repo can't symlink outside
+the clone dir and have its target silently read as a "scanned file." Byte/
+file-count caps (`MAX_FILES_SCANNED`, `MAX_TOTAL_BYTES_SCANNED`,
+`MAX_REPO_SIZE_KB`) bound resource use.
+
+**No bug found here. Recording the negative result** so a future session
+doesn't re-spend the same investigation - this subsystem was already built
+carefully.
+
+### `lib/audit/verify-flags.ts` - one real ambiguity, not fixed (needs a product call, not a unilateral one)
+
+`applyDeterministicVerification`'s only "REGRESSED" condition is: the flag's
+checkId still fails on the follow-up scan **and** its severity rank is now
+higher than it was on the parent audit. That means "REGRESSED" currently
+means "this same still-broken issue got more severe," not the more intuitive
+reading a user would likely have of the word in a "scan → fix → re-scan"
+product: "this was marked FIXED before, and it's broken again now." The
+function only ever compares two audits (`parentAuditId`/`monitoringAuditId`)
+directly against each other, so it structurally cannot detect the
+"previously FIXED, now reappeared" case even if that's what "REGRESSED"
+should mean to a user reading their dashboard.
+
+Didn't change this - unlike the billing/MCP findings, there's no single
+"obviously correct" fix here without knowing the intended UX meaning of a
+REGRESSED status pill, and getting it wrong risks a confusing status change
+in production for no net accuracy gain. **Flagging with the exact code
+location for whoever owns the monitoring/verification UX to decide**, rather
+than guessing.
+
+---
+
+## 2026-07-04 — Session 23 (MCP data-exposure bug: stale `isPublic` bit outlives the entitlement that justified it)
+
+### First-ever look at `lib/mcp/tools.ts` this whole effort (873 lines, zero prior review)
+
+Checked entitlement wiring first (given how many billing gaps this session
+already found) - all clean: every `prisma.user.findUnique` in this file
+either omits `select` entirely (full row, `subscriptionStatus` included) or
+uses `include: { user: true }`. No bug there, worth having verified.
+
+### Real bug found: `assertAuditAccess`/`canAccessAudit` trusted a stale `isPublic` bit for fix-prompt content, unlike the web UI
+
+`ff_get_flag` and `ff_get_rubric` both return full prescription content (fix
+text, evidence, tool-specific prompts) gated only by
+`assertAuditAccess(audit, callerId)`, which just calls
+`canAccessAudit` (`lib/audit/access.ts`): owner OR `audit.isPublic` OR
+anonymous (`userId === null`). The web report UI protects the *exact same
+content* more strictly: `canViewAiViaMaxPublicShare`
+(`lib/audit/report-access.ts`) requires not just `isPublic` but a **live
+re-check** that the owner currently has `canSharePublicly` (TEAM plan,
+active subscription) before showing full AI content to a non-owner viewer.
+
+MCP's `assertAuditAccess` had no such re-check - it trusted the `isPublic`
+column alone. Nothing in the codebase un-publishes an audit when its owner's
+plan/subscription later lapses (confirmed: same root cause pattern as
+Sessions 20-21's billing gaps - a column goes stale because no code path
+resyncs it on downgrade). Net effect: once a TEAM-plan user made one audit
+public, **anyone with a valid FixFlags API key** (not just that owner) could
+call `ff_get_flag`/`ff_get_rubric` with a flag ID from that audit (e.g.
+scraped off the public report page) and get the full paid fix-prompt
+content forever, even after the owner's subscription lapsed and the web UI
+would have correctly hidden it.
+
+**Fixed:** made `assertAuditAccess` async; when the caller isn't the owner
+and access is being granted via `isPublic` (not anonymous), it now fetches
+the owner's *current* `plan`/`subscriptionStatus`/`role` and requires
+`canSharePublicly(owner)` to still hold - mirroring
+`canViewAiViaMaxPublicShare`'s live check. Owner-access and anonymous-audit
+access are unaffected (no extra DB call in those paths - checked first,
+early return). Updated all 6 call sites (`ff_get_check_status`,
+`ff_get_report`, `ff_get_rubric`, `ff_get_flag`, `ff_compare` x2) to `await`
+the now-async function. Exported `assertAuditAccess` (was module-private) so
+it's directly unit-testable.
+
+### Verified
+
+- Added `lib/mcp/__tests__/assert-audit-access.test.ts` (new file - `tools.ts`
+  had zero test coverage of its own logic before this session, only its
+  imported helpers were tested elsewhere): 6 tests covering owner access (no
+  DB call), anonymous access (no DB call), private-audit denial, public
+  audit with a currently-entitled owner (allowed), public audit with a
+  lapsed owner (denied - the regression case), and public audit with an
+  owner downgraded off TEAM plan (denied).
+- `npx tsc --noEmit` clean for all files this session touched.
+- `npx vitest run` - 1516 passed, 1 known flake (shared dev server, passes
+  clean in isolation, unrelated to this change).
+
+### Not addressed this pass (documented, not fixed)
+
+While tracing `lib/audit/pipeline/combine-pages.ts`'s `averageScores()` for a
+different reason, noticed its `deterministic ?? triageScore ?? null` fallback
+is dead code: `computeRubricScores` (fixed in Session 22) never actually
+returns `null` for any rubric - every branch ends in a concrete number or a
+literal `100`. So the AI judge's own rubric assessment is silently never
+used for the final combined score, contradicting the function's doc comment
+("falling back to the triage score"). Didn't touch this - whether the AI's
+qualitative rubric judgment *should* ever override the deterministic,
+evidence-backed score is a real product-design question, not a clear-cut
+"wrong output" bug like the others this session, and isn't mine to decide
+unilaterally. Flagging for whoever owns the judge/deterministic scoring
+relationship next.
+
+---
+
 ## 2026-07-04 — Session 22 (the failed-module-penalty map was missing most modules - the score itself was wrong)
 
 ### Real bug, high blast radius: `MESSAGE_MODULES`/`REACH_MODULES` in `lib/audit/checks/rubric.ts` were badly incomplete, and EXPERIENCE had no module-failure tracking at all

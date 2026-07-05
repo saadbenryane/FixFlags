@@ -35,7 +35,7 @@ export function LandingFinalCtaSection() {
             </div>
 
             <div className="space-y-5">
-              <AuditInput variant="landing" />
+              <AuditInput variant="landing" idSuffix="-final-cta" />
               <ul className="flex flex-col gap-3">
                 {TRUST_BADGES.map((badge) => (
                   <li
