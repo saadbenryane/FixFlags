@@ -14,7 +14,7 @@ export default function BillingError({
 }) {
   useEffect(() => {
     console.error(JSON.stringify({ level: 'error', event: 'ui.billing.error', digest: error.digest, message: error.message }))
-  }, [error.message])
+  }, [error.message, error.digest])
 
   return (
     <Container variant="narrow" className="flex flex-1 flex-col items-center justify-center py-24 text-center">

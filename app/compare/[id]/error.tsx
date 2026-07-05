@@ -18,7 +18,7 @@ export default function ComparePageError({
     console.error(
       JSON.stringify({ level: 'error', event: 'ui.compare.error', digest: error.digest, message: error.message })
     )
-  }, [error.message])
+  }, [error.message, error.digest])
 
   return (
     <AuditShell>

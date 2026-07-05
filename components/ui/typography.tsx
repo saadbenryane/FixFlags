@@ -14,7 +14,7 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
   as?: HeadingLevel
 }
 
-export function PageTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function PageTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h1
       className={cn(
@@ -22,7 +22,9 @@ export function PageTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </h1>
   )
 }
 
@@ -103,7 +105,7 @@ export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpan
 }
 
 /** In-page section heading (dashboard lists, admin groups) */
-export function SectionTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function SectionTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
       className={cn(
@@ -111,6 +113,8 @@ export function SectionTitle({ className, ...props }: React.HTMLAttributes<HTMLH
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </h2>
   )
 }

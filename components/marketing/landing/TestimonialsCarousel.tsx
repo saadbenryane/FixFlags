@@ -106,7 +106,7 @@ export function TestimonialsCarousel({ quotes }: { quotes: readonly TestimonialQ
           ref={scrollRef}
           role="region"
           aria-label="Example feedback quotes"
-          tabIndex={0}
+          tabIndex={0} /* eslint-disable-line jsx-a11y/no-noninteractive-tabindex -- needed for keyboard scrolling of overflow-x */
           className={cn(
             'flex gap-5 overflow-x-auto scroll-smooth px-4 py-1 sm:px-6',
             'snap-x snap-mandatory',

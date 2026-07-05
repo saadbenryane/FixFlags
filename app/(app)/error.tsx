@@ -18,7 +18,7 @@ export default function AppError({
     console.error(
       JSON.stringify({ level: 'error', event: 'ui.app.error', digest: error.digest, message: error.message })
     )
-  }, [error.message])
+  }, [error.message, error.digest])
 
   return (
     <SiteShell variant="app">

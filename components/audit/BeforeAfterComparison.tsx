@@ -25,6 +25,10 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
   return (
     <div
       ref={containerRef}
+      role="slider"
+      aria-label="Before and after comparison"
+      aria-valuenow={position}
+      tabIndex={0}
       className="relative w-full overflow-hidden rounded-card bg-muted/30 shadow-card select-none cursor-col-resize"
       style={viewportAspectStyle(device)}
       onMouseDown={(e) => {
@@ -42,6 +46,14 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
       }}
       onTouchStart={(e) => updatePosition(e.touches[0].clientX)}
       onTouchMove={(e) => updatePosition(e.touches[0].clientX)}
+      onKeyDown={(e) => {
+        const step = 1
+        if (e.key === 'ArrowRight') {
+          setPosition((p) => Math.min(100, p + step))
+        } else if (e.key === 'ArrowLeft') {
+          setPosition((p) => Math.max(0, p - step))
+        }
+      }}
     >
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}

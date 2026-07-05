@@ -18,7 +18,7 @@ export default function AdminPageError({
     console.error(
       JSON.stringify({ level: 'error', event: 'ui.admin.error', digest: error.digest, message: error.message })
     )
-  }, [error.message])
+  }, [error.message, error.digest])
 
   return (
     <SiteShell variant="admin" logoHref="/dashboard">

@@ -36,7 +36,6 @@ interface AuditItem {
 interface RecentChecksListProps {
   audits: AuditItem[]
   canCompare: boolean
-  totalAudits: number
   bestScore: number | null
   worstScore: number | null
 }
@@ -44,7 +43,6 @@ interface RecentChecksListProps {
 export function RecentChecksList({
   audits: initialAudits,
   canCompare,
-  totalAudits,
   bestScore,
   worstScore,
 }: RecentChecksListProps) {

@@ -49,7 +49,6 @@ export function Header({
   const [scrolled, setScrolled] = useState(false)
 
   const navLinks = variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
-  const secondaryNavLinks: ReadonlyArray<{ href: string; label: string }> = []
 
   const defaultLogoHref = variant === 'admin' ? '/dashboard' : '/'
 

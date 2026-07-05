@@ -110,7 +110,6 @@ function SignUpForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
-          autoFocus
         />
         <PasswordInput
           label="Password"

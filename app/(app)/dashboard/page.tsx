@@ -157,7 +157,6 @@ export default async function DashboardPage({
           <RecentChecksList
             audits={audits}
             canCompare={canCompare}
-            totalAudits={completedAudits.length}
             bestScore={bestScore}
             worstScore={worstScore}
           />
