@@ -1,10 +1,10 @@
 /** Shared CTA / conversion-path link scoring for critical path and flow scan. */
 
 const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
-const PRICING_PATTERN = /pricing|plans|price/
+const PRICING_PATTERN = /pricing|plans?\b|price/
 const PRIMARY_CONVERSION_PATTERN =
-  /book a call|book demo|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo/i
-const SECONDARY_CONVERSION_PATTERN = /signup|sign-up|register|try|demo|contact|book/
+  /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i
+const SECONDARY_CONVERSION_PATTERN = /signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i
 
 export function isAuthUtilityLink(href: string, text: string): boolean {
   return AUTH_UTILITY_PATTERN.test(`${href} ${text}`)

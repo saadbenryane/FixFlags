@@ -182,7 +182,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   })
 
   // CTA detection
-  const ctaKeywords = ['get started', 'start', 'try', 'sign up', 'signup', 'subscribe', 'buy', 'purchase', 'learn more', 'book', 'schedule', 'contact', 'join', 'download', 'free trial', 'demo']
+  const ctaKeywords = ['get started', 'start', 'try', 'sign up', 'signup', 'subscribe', 'buy', 'purchase', 'learn more', 'book', 'schedule', 'contact', 'join', 'download', 'free trial', 'demo', 'explore', 'shop', 'browse', 'watch', 'find', 'claim', 'reserve']
   const ctaTexts: string[] = []
   $('a, button, [role="button"]').each((_, el) => {
     const text = $(el).text().trim().toLowerCase()

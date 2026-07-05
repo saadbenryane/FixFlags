@@ -112,17 +112,17 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       const combined = `${href} ${text}`.toLowerCase()
       let score = 0
       if (/\b(login|log in|sign in|signin)\b/i.test(combined)) score = 15
-      else if (/pricing|plans|price/.test(combined)) score = 100
+      else if (/pricing|plans?\b|price/.test(combined)) score = 100
       else if (
-        /book a call|book demo|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo/i.test(
+        /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i.test(
           combined
         )
       )
         score = 95
-      else if (/signup|sign-up|register|try|demo|contact|book/.test(combined)) score = 70
+      else if (/signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i.test(combined)) score = 70
       else if (
         tag === 'button' &&
-        /get started|sign up|signup|start|try|demo|contact|register|join/i.test(text)
+        /get started|sign up|signup|start|try|demo|contact|register|join|learn more|explore|shop|browse|watch|find|claim|reserve|see how|get access/i.test(text)
       )
         score = 85
       else if (

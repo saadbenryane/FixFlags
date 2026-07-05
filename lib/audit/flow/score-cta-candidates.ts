@@ -16,7 +16,7 @@ export interface ScoredCtaCandidate {
 }
 
 const CTA_BUTTON_PATTERN =
-  /get started|sign up|signup|start|try|demo|contact|register|join/i
+  /get started|sign up|signup|start|try|demo|contact|register|join|learn more|explore|shop|browse|watch|find|claim|reserve|see how|get access/i
 
 /** Pure scoring for unit tests and discover-cta. */
 export function scoreCtaCandidates(
