@@ -6,6 +6,7 @@ import {
   buildCurrentVerifiableCheckIds,
   isCheckStillFailing,
 } from '@/lib/audit/verify-flags'
+import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 
 describe('verify-flags', () => {
@@ -79,5 +80,50 @@ describe('verify-flags', () => {
     assert.ok(isCheckStillFailing('measurement-ga-gtm-posthog-missing', currentIds))
     assert.ok(isCheckStillFailing('security-mixed-content', currentIds))
     assert.ok(isCheckStillFailing('visual-radius-inconsistent', currentIds))
+  })
+
+  it('marks previously fixed issues as regressed when they come back', () => {
+    assert.equal(
+      resolveMonitoringFlagStatus({
+        parentStatus: 'FIXED',
+        parentSeverity: 'IMPORTANT',
+        monitoringSeverity: 'IMPORTANT',
+        stillFails: true,
+      }),
+      'REGRESSED'
+    )
+  })
+
+  it('keeps still-failing issues open unless they worsen', () => {
+    assert.equal(
+      resolveMonitoringFlagStatus({
+        parentStatus: 'OPEN',
+        parentSeverity: 'IMPORTANT',
+        monitoringSeverity: 'IMPORTANT',
+        stillFails: true,
+      }),
+      'OPEN'
+    )
+    assert.equal(
+      resolveMonitoringFlagStatus({
+        parentStatus: 'OPEN',
+        parentSeverity: 'IMPORTANT',
+        monitoringSeverity: 'CRITICAL',
+        stillFails: true,
+      }),
+      'REGRESSED'
+    )
+  })
+
+  it('marks cleared monitoring issues fixed', () => {
+    assert.equal(
+      resolveMonitoringFlagStatus({
+        parentStatus: 'REGRESSED',
+        parentSeverity: 'CRITICAL',
+        monitoringSeverity: 'CRITICAL',
+        stillFails: false,
+      }),
+      'FIXED'
+    )
   })
 })

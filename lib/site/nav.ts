@@ -5,13 +5,6 @@ export const MARKETING_LINKS = [
   { href: '/pricing', label: 'Pricing' },
 ] as const
 
-const SECONDARY_MARKETING_HREFS = new Set(['/pricing', '/examples'])
-
-/** Compact marketing links shown alongside app nav on audit/dashboard pages. */
-export const SECONDARY_MARKETING_NAV = MARKETING_LINKS.filter((link) =>
-  SECONDARY_MARKETING_HREFS.has(link.href)
-)
-
 export const MARKETING_NAV = MARKETING_LINKS
 
 export const FOOTER_COLUMNS = {
@@ -33,12 +26,6 @@ export const FOOTER_COLUMNS = {
   ],
 } as const
 
-export const APP_NAV = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/settings', label: 'Settings' },
-  { href: '/billing', label: 'Billing' },
-] as const
-
 export const ADMIN_NAV = [
   { href: '/admin', label: 'Metrics' },
   { href: '/admin/analytics', label: 'Analytics' },
@@ -59,10 +46,3 @@ export const SUPPORT_LINK = {
   href: `mailto:${BRAND.supportEmail}`,
   label: 'Support',
 } as const
-
-export const SETTINGS_NAV = [
-  { href: '/settings', label: 'Settings' },
-  { href: '/settings/api-keys', label: 'API Keys' },
-  { href: '/settings/integrations', label: 'Integrations' },
-  { href: '/billing', label: 'Billing' },
-] as const

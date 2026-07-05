@@ -132,7 +132,6 @@ export const ALL_CHECK_IDS = [
   'mobile-cta-thumb-zone',
   'mobile-cta-weak-label',
   'mobile-stuck-loading',
-  'mobile-no-viewport',
   'mobile-load-delay-content',
   // flow.ts
   'flow-no-cta-found',

@@ -52,14 +52,26 @@ export function AuditInput({
 
     normalized = normalized.replace(/\/+$/, '')
 
-    if (!normalized.startsWith('http://') && !normalized.startsWith('https://')) {
+    // Only prepend https:// when there's no scheme at all. Blindly prepending
+    // whenever the string doesn't start with http(s):// mangled other schemes
+    // (e.g. "ftp://x.com" became "https://ftp://x.com", parsed as host "ftp" with
+    // no error shown) into a URL that "successfully" parsed but pointed nowhere
+    // real, so bad input silently reached the backend instead of failing fast.
+    const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(normalized)
+    if (!hasScheme) {
       normalized = 'https://' + normalized
     }
 
+    let parsedUrl: URL
     try {
-      new URL(normalized)
+      parsedUrl = new URL(normalized)
     } catch {
       setUrlError('Enter a valid URL like https://yoursite.com')
+      return
+    }
+
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      setUrlError('Only http:// and https:// URLs can be checked')
       return
     }
 

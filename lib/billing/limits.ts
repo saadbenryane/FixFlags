@@ -1,12 +1,16 @@
-import { Plan } from '@prisma/client'
+import { Plan, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { scanLimitForPlan } from '@/lib/billing/plans'
 import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 
 export { scanLimitForPlan } from '@/lib/billing/plans'
 
-export async function applyPlanLimits(userId: string, plan: Plan): Promise<void> {
-  const user = await prisma.user.findUnique({
+export async function applyPlanLimits(
+  userId: string,
+  plan: Plan,
+  client: Prisma.TransactionClient | typeof prisma = prisma
+): Promise<void> {
+  const user = await client.user.findUnique({
     where: { id: userId },
     select: { role: true, auditsLimit: true, auditsUsed: true },
   })
@@ -15,7 +19,7 @@ export async function applyPlanLimits(userId: string, plan: Plan): Promise<void>
   const update = computePlanLimitUpdate(user, plan)
   if (!update) return
 
-  await prisma.user.update({
+  await client.user.update({
     where: { id: userId },
     data: update,
   })

@@ -11,6 +11,266 @@ mtimes racing within the same minute). Before editing one of these files, re-`Re
 it immediately before your `Edit` call — several edits below landed on the second
 try because another agent had just changed the file. If you find your fix already
 applied, don't re-do it; move to the next item.
+**Dev-server note:** if a `preview_start`'d server (e.g. `dev-sandbox-2`) suddenly
+returns "Internal Server Error" / logs show `ENOENT ... app-paths-manifest.json` or
+`Cannot find module './NNNN.js'`, that's stale `.next` build output from many
+concurrent agents editing files while the dev server was mid-compile, not a real app
+bug. Stop and restart the server (`preview_stop` + `preview_start`) before concluding
+you found a crash — confirmed this exact false alarm on `/samples` in this session.
+
+---
+
+## 2026-07-05 — Session 32 (Stripe webhook: subscription writes escaped the idempotency transaction)
+
+**Real transactional-integrity bug in billing-critical code, fixed.**
+[`app/api/webhooks/stripe/route.ts`](../app/api/webhooks/stripe/route.ts) wraps all
+per-event side effects in `prisma.$transaction(async (tx) => { ... })` specifically so
+that either (a) the event's effects AND its `processedStripeEvent` idempotency marker
+both commit together, or (b) neither does — guaranteeing a Stripe retry (on any
+non-2xx response) safely re-runs the whole thing exactly once. Three of the switch
+cases' handlers - `processSubscription` (plan/status/period-end updates for
+`customer.subscription.*`), `handleInvoicePaymentFailed`, and
+`handleInvoicePaymentSucceeded` - wrote via the **global** `prisma` client instead of
+the `tx` parameter (they didn't even receive `tx` - they closed over the module-level
+import). Every other case in the same switch (`checkout.session.completed`,
+`checkout.session.expired`, `charge.refunded`) correctly used `tx.*`. This meant a
+subscription/plan/status write from these three handlers could commit immediately and
+durably even if something later in the same transaction failed and rolled back the
+`processedStripeEvent` row - at which point Stripe's retry-on-failure would re-run the
+handler again against already-updated data. Confirmed via code tracing (not just
+suspicion) that this specific case is currently idempotent in practice (each handler
+sets an absolute target state, doesn't increment counters) so no double-charge/double-
+grant was reachable today, but it silently defeats the atomicity the `$transaction`
+wrapper exists to provide, and a future edit adding any non-idempotent step (e.g. a
+credit grant, an email side effect gating a state change) would then be exposed to a
+real correctness bug under retry.
+
+Fix: [`lib/billing/limits.ts`](../lib/billing/limits.ts)'s `applyPlanLimits()` now
+takes an optional `Prisma.TransactionClient | typeof prisma` (defaults to the global
+client, so the other caller in `app/api/admin/users/[id]/route.ts` is unaffected).
+Threaded `tx` through `processSubscription`, `resolveSubscriptionUser`,
+`handleInvoicePaymentFailed`, and `handleInvoicePaymentSucceeded` in the webhook route,
+replacing their internal `prisma.*` calls with `tx.*`, matching the pattern the other
+(already-correct) switch cases used (`refundPurchasedCredit(tx, ...)` in
+`lib/billing/credits.ts` was the reference for the `Prisma.TransactionClient` typing
+convention).
+
+Verified: `npx tsc --noEmit` -> clean. `npx vitest run` -> 1533 passed, 1 skipped
+(live-server-gated test), 0 failed - unchanged from before, confirming no behavioral
+regression for the existing `computePlanLimitUpdate` tests or any other suite. No
+existing test exercised this webhook route or `applyPlanLimits`'s transaction
+threading directly (writing one would require mocking Stripe's webhook signature
+verification plus a real `$transaction` callback - flagged as a good candidate for a
+future session, not attempted here to keep this fix's diff minimal and reviewable).
+
+---
+
+## 2026-07-05 — Session 31 (ff_compare MCP tool: wrong regressed/fixed verdicts from unrelated audits)
+
+**Real, subtle, high-value bug in the `ff_compare` MCP tool, fixed.** This tool is
+the "did my fix actually work" verification loop — directly central to the product's
+AI-agent fix workflow — so its correctness matters a lot.
+
+Root cause: [`lib/mcp/tools.ts`](../lib/mcp/tools.ts)'s `ff_compare` handler took two
+**arbitrary** report IDs (`beforeId`, `afterId` — no relationship required by the tool
+schema or its description, "Compare two reports to see what improved..."), then
+classified each matched flag via `classifyMatchedFlagDiff()`, reading `af.status`
+(each flag's *persisted* `FlagStatus` field). That field is only meaningful because
+of `diffFlagsAgainstParent()` in [`lib/audit/diff-flags.ts`](../lib/audit/diff-flags.ts),
+which computes and stores it relative to that flag's **own real parent audit**
+(`Audit.parentId` in `prisma/schema.prisma`) during the actual monitoring-recheck
+pipeline. `ff_compare` never checked `after.parentId === beforeId` before trusting
+that field. Confirmed the correct, established usage pattern lives in
+[`app/compare/[id]/page.tsx:96-98`](../app/compare/[id]/page.tsx), which always sets
+`before = monitoringAudit.parent` and `after = monitoringAudit` before calling the
+sibling function `getFlagDiffSummary` — i.e. the *real* parent/child pair is
+structurally guaranteed there, but `ff_compare` has no such guarantee for its two
+free-form IDs.
+
+Concrete failure mode: if a user calls `ff_compare(oldReportId, newReportId)` on any
+two reports that aren't a true parent → monitoring-child pair (the overwhelmingly
+common case — e.g. two independent `ff_check_url` runs of the same site before/after
+a manual fix), a flag that happens to carry a stale `'FIXED'` status from some
+*unrelated* earlier monitoring cycle gets misclassified as **`'regressed'`** even
+though nothing regressed between the two reports actually being compared. This is a
+wrong verdict on the exact question the tool exists to answer.
+
+Fix: added `classifyArbitraryReportFlagDiff()` next to `classifyMatchedFlagDiff()` in
+`diff-flags.ts` - a self-contained comparison using only each flag's own current
+`severity` in `beforeId` vs `afterId`, never a persisted `status` field. Wired it into
+`ff_compare`. Left `classifyMatchedFlagDiff`/`getFlagDiffSummary` and the `/compare`
+page untouched since those are correct for their actual, relationship-guaranteed
+call site.
+
+Verified: this logic had **zero prior test coverage** (no test file referenced
+`ff_compare` at all) - added 4 new unit tests in
+[`lib/audit/__tests__/diff-flags.test.ts`](../lib/audit/__tests__/diff-flags.test.ts),
+including one that directly encodes the bug scenario (stale `'FIXED'`-adjacent
+severity input must classify as `'unchanged'`, not `'regressed'`).
+`npx vitest run` -> 1533/1534 passed (only the pre-existing, unrelated live-server
+timeout test failed). `npx tsc --noEmit` -> clean.
+
+---
+
+## 2026-07-05 — Session 30 (duplicate CRITICAL flag: viewport-missing vs mobile-no-viewport)
+
+**Real, high-confidence "flag accuracy" bug, fixed.** Two independent deterministic
+check modules fired on the exact same underlying condition (`!meta.viewport`), both
+wired into the same pipeline run (`lib/audit/checks/index.ts`):
+- [`lib/audit/checks/metadata-checks.ts:125`](../lib/audit/checks/metadata-checks.ts)
+  `checkId: 'viewport-missing'`, CRITICAL, rubric EXPERIENCE.
+- [`lib/audit/checks/mobile-ux-quality.ts:11`](../lib/audit/checks/mobile-ux-quality.ts)
+  (pre-fix) `checkId: 'mobile-no-viewport'`, CRITICAL, rubric EXPERIENCE, near-identical
+  problem/evidence/fix text.
+
+Every audit of a page missing a viewport meta tag (common on older/non-responsive
+sites — exactly what customers bring to FixFlags) surfaced this same issue **twice**
+under different checkIds, inflating the flag count and confusing prioritization.
+Also confirmed via `lib/marketing/evidence-regions.ts`/`evidence-selectors.ts` that
+`viewport-missing` is the more complete implementation (registered in
+`PAGE_SCOPE_CHECK_IDS`, has a selector entry) while `mobile-no-viewport` had neither
+— so kept `viewport-missing` and removed the duplicate finding from
+`mobile-ux-quality.ts`.
+
+Cascading changes required (verified each was safe, not just deleted blindly):
+- Removed `'mobile-no-viewport'` from `lib/audit/check-ids.ts`'s `ALL_CHECK_IDS` —
+  required because `checks.test.ts`'s exhaustive `triggers` matrix
+  (`triggers matrix covers every checkId without extras` + one `it('fires ${checkId}')`
+  per id) enforces that every registered ID is actually emitted somewhere.
+  Removed the now-dead `'mobile-no-viewport': () => ...` entry from that `triggers` map.
+- Updated `checks-ux.test.ts`: replaced the test asserting `mobile-no-viewport` fires
+  with one asserting it does NOT fire, and dropped it from the `NEW_IDS` registry-
+  presence list (that list separately asserts membership in `ALL_CHECK_IDS`).
+- Removed the dead `'mobile-no-viewport'` entry from `capability-matrix.ts`'s
+  `experience-mobile-ux-quality` capability (that test only checks
+  `ALL_CHECK_IDS ⊆ mapped`, so this wasn't required for tests to pass, but leaving a
+  capability entry pointing at a checkId that's no longer emitted would be misleading).
+- **Deliberately left** `verification-rules.ts` and `flag-copy.ts`'s `'mobile-no-viewport'`
+  entries alone — both of those tests only assert `ALL_CHECK_IDS ⊆ (their keys)`, so
+  the stray entries are inert, and `flag-copy.test.ts` directly asserts
+  `whyItMattersForCheckId('mobile-no-viewport')` still returns valid copy (unrelated
+  to whether the check ever fires) — removing them would have added risk for zero
+  benefit.
+
+Caught my own regression before it landed: my first comment (in the fixed
+`mobile-ux-quality.ts`) used an em dash, which `lib/__tests__/no-em-dash.test.ts`
+correctly flagged (`SCAN_ROOTS = ['app', 'components', 'lib']` — this repo bans
+U+2014 in source; note `docs/` itself is NOT scanned, only `app`/`components`/`lib`).
+Fixed the comment wording and reran.
+
+Verified: `npx vitest run` → 1529/1529 passed (up from 1521 baseline: net +8 across
+the edited test files, 0 failures — including the previously-flaky
+`v1-fixture-audit.test.ts` timeout test, which passed clean this run). `npx tsc --noEmit`
+→ clean (the one pre-existing unrelated error from a prior session's snapshot is gone,
+presumably fixed by a concurrent agent in the meantime).
+
+Also ran a background subagent sweep of all ~28 check modules for the SAME early-
+return class of bug that produced the (already-fixed, earlier-session) `mobile-no-viewport`
+placement bug — result was a clean, thorough negative: no other instances found, all
+early-return guards in the codebase correctly gate only checks that actually depend on
+the gated data. Documenting the negative result so a future session doesn't re-run the
+same sweep.
+
+---
+
+## 2026-07-05 — Session 30 (compare + MCP status buckets use corrected regression semantics)
+
+Follow-up to Session 29: fixed the remaining presentation-layer bucket mismatch for
+monitoring compare summaries and MCP compare output.
+
+**Bug:** `getFlagDiffSummary` checked `parent.status === 'FIXED'` before checking
+the monitoring row's regression state. That meant a previously fixed issue that came
+back could still be shown under "fixed" in compare summaries if the parent row had an
+old `FIXED` status. The same class of issue existed in `ff_compare_audits`, where
+arbitrary report comparisons were reading persisted flag status values that only make
+sense relative to each flag's own real parent audit.
+
+**Fix:**
+- Added `classifyMatchedFlagDiff()` for real parent/monitoring pairs.
+- Added `classifyArbitraryReportFlagDiff()` for MCP arbitrary report comparisons,
+  based only on before/after severity for matched flags.
+- `getFlagDiffSummary()` and `ff_compare_audits` now share these classifiers instead
+  of open-coding inconsistent fixed/regressed precedence.
+- Added focused tests for reappeared fixed issues, monitoring-regressed precedence,
+  stale fixed statuses in arbitrary comparisons, and severity increases.
+- Used a read-only sidecar agent to check compare/report/MCP/dashboard status bucket
+  surfaces; it found no remaining fixed/regressed classification bug after this patch.
+
+**Verification:**
+- `npm run typecheck` - pass after re-reading through concurrent edits.
+- `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.pnpm/vitest@4.1.9_@types+node@22.20.0_@vitest+ui@4.1.9_jsdom@29.1.1_@noble+hashes@2.2.0__vit_5c6705306151f82404725d4c8649f1eb/node_modules/vitest/vitest.mjs run lib/audit/__tests__/verify-flags.test.ts lib/audit/__tests__/diff-flags.test.ts lib/mcp/__tests__/report-command-copy.test.ts lib/mcp/__tests__/log-interaction.test.ts`
+  - 4 files, 26 tests passed.
+- `git diff --check` - pass.
+- Targeted ESLint still fails before linting files because Rushstack cannot patch the
+  pnpm-resolved `eslint-config-next` module.
+
+## 2026-07-05 — Session 29 (monitoring regression semantics aligned with user-facing status copy)
+
+Fixed a concrete status contradiction in monitoring/diff verification.
+
+**Bug:** `REGRESSED` is described to users as "Came back after a fix", but both
+deterministic verification and parent/monitoring diffing only marked regression when
+severity worsened. A previously `FIXED` flag that reappeared at the same severity was
+shown as `OPEN`, which undercuts monitoring value and makes the dashboard less
+trustworthy.
+
+**Fix:**
+- Added `lib/audit/flag-status-resolution.ts` as the shared status resolver.
+- `FIXED` parent + still failing now becomes `REGRESSED`.
+- Existing severity-worsened behavior is preserved (`IMPORTANT` -> `CRITICAL` still
+  becomes `REGRESSED`).
+- Cleared flags still become `FIXED`.
+- Parent flags now clear stale `resolvedInId` when they are no longer fixed.
+- Fixed `app/api/auth/[...all]/route.ts` logger argument order, which was blocking
+  `npm run typecheck`.
+
+**Verification:**
+- `npm run typecheck` - pass.
+- `DOTENV_CONFIG_PATH=.env.local node -r dotenv/config node_modules/.pnpm/vitest@4.1.9_@types+node@22.20.0_@vitest+ui@4.1.9_jsdom@29.1.1_@noble+hashes@2.2.0__vit_5c6705306151f82404725d4c8649f1eb/node_modules/vitest/vitest.mjs run lib/audit/__tests__/verify-flags.test.ts` - 6 tests passed.
+- `./node_modules/.bin/eslint ...changed files...` still fails before linting files:
+  Rushstack cannot patch the pnpm-resolved `eslint-config-next` module.
+
+## 2026-07-05 — Session 28 (mobile touch-target sizing — real bug found + fixed)
+
+Continued the keyboard/mobile-navigation testing the hook specifically flagged as missing.
+
+**Keyboard focus-visible check: no bug, but methodology limits documented.**
+- Confirmed no positive `tabindex` on the homepage.
+- Confirmed `--focus-ring`/`--ring` CSS custom properties ARE properly defined in
+  `lib/design/tokens.css:92-93` (light) and `:268-269` (dark) — a real color value,
+  not undefined. My first grep only checked `app/globals.css` directly and missed
+  that it `@import`s `lib/design/tokens.css`, where the actual tokens live. Confirmed
+  `components/ui/button.tsx` and `components/ui/input-group.tsx` both correctly wire
+  `focus-visible:ring-focus-ring`. **Not a bug** — false alarm from an incomplete grep.
+- Note for future sessions: programmatic `el.focus()` via `preview_eval` does NOT
+  reliably trigger `:focus-visible` CSS matching (only genuine keyboard-driven focus
+  does per browser heuristics), so runtime box-shadow checks after `.focus()` are not
+  a valid test for focus-ring visibility. Use static source/CSS review instead, or a
+  real CDP-level Tab keypress if the tooling supports one (`preview_*` tools currently
+  don't expose raw key-press, only click/fill/eval).
+
+**Mobile touch-target sizing: real bug, fixed.** Swept all visible interactive
+elements on the mobile-viewport (375×812) homepage via `getBoundingClientRect()` —
+found 11 links under the WCAG 2.2 **2.5.8 Target Size Minimum (AA)** 24×24px floor:
+- [`components/layout/footer.tsx`](../components/layout/footer.tsx) `FooterColumn`
+  links (Product/Resources/Company columns — Pricing, FAQ, Careers, Documentation,
+  Examples, Changelog, Sample report, Privacy Policy, etc.) rendered as bare
+  `text-sm text-muted-foreground` with **zero padding**, giving ~18px-tall tap targets.
+  The codebase already had the right pattern (`NAV_LINK_FOOTER_BASE` in
+  [`lib/site/nav-styles.ts`](../lib/site/nav-styles.ts), `min-h-[44px]`) — used
+  correctly for the legal-links row directly below, but never applied to
+  `FooterColumn`. Fixed by adding `inline-flex min-h-[24px] items-center py-1` to the
+  column-link className → now measures 28px tall.
+- [`components/marketing/landing/HowItWorksLoopSection.tsx`](../components/marketing/landing/HowItWorksLoopSection.tsx)
+  "View full sample review" CTA link had no vertical padding (20px tall). Added `py-1`
+  → now 28px tall.
+
+Verified via live `preview_eval` sweep before/after (11 undersized → 0 undersized,
+45 total interactive elements checked, mobile viewport), plus a screenshot confirming
+no visual regression on the hero section. `npx tsc --noEmit`: clean except one
+pre-existing, unrelated error in `app/api/auth/[...all]/route.ts` (not in my diff).
+`npx vitest run`: 1520/1521 passed; the 1 failure is a pre-existing timeout in
+`lib/demo/__tests__/v1-fixture-audit.test.ts` gated on a live dev server, unrelated.
 
 ---
 

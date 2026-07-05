@@ -99,6 +99,26 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.hasPrivacyPolicy, true)
   })
 
+  it('detects search/URL input fields as CTAs on tool landing pages', () => {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head><title>Website Analyzer</title></head>
+<body>
+  <main>
+    <h1>Analyze your site</h1>
+    <form>
+      <input type="url" placeholder="Enter your website URL" />
+      <button type="submit">Analyze</button>
+    </form>
+    <a href="/pricing">Pricing</a>
+  </main>
+</body>
+</html>`
+
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.ok(meta.ctaTexts.some((t) => t.toLowerCase().includes('enter your website url')))
+  })
+
   it('uses runtime head metadata when client rendering fills a missing title', () => {
     const html = `<!DOCTYPE html>
 <html>

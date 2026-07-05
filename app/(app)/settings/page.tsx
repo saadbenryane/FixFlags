@@ -1,13 +1,10 @@
 import { headers } from 'next/headers'
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { signInUrl } from '@/lib/auth/redirect-path'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { BRAND } from '@/lib/marketing/copy'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -26,10 +23,9 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Settings" description="Account and integrations" />
+      <PageHeader title="Settings" description="Account, identity, and password" />
 
-      <div className="space-y-6">
-        <Card className="border-0 shadow-card">
+      <Card className="border-0 shadow-card">
         <CardHeader>
           <CardTitle className="text-base">Account</CardTitle>
           <CardDescription>Profile, identity, password, and account lifecycle</CardDescription>
@@ -46,32 +42,6 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-0 shadow-card">
-          <CardHeader>
-            <CardTitle className="text-base">API Keys</CardTitle>
-            <CardDescription>Connect {BRAND.name} to Cursor, Claude, or Windsurf</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/settings/api-keys">Manage API keys</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-card">
-          <CardHeader>
-            <CardTitle className="text-base">Billing</CardTitle>
-            <CardDescription>Plan, usage, and subscription</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/billing">View billing</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-      </div>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
-import type { Plan, SubscriptionStatus } from '@prisma/client'
+import type { Plan, Prisma, SubscriptionStatus } from '@prisma/client'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
@@ -27,13 +27,16 @@ function subscriptionPeriodEnd(subscription: Stripe.Subscription): Date | null {
   return value ? new Date(value * 1000) : null
 }
 
-async function resolveSubscriptionUser(subscription: Stripe.Subscription) {
+async function resolveSubscriptionUser(
+  tx: Prisma.TransactionClient,
+  subscription: Stripe.Subscription
+) {
   const metadataUserId = subscription.metadata?.userId
   if (metadataUserId) {
-    const user = await prisma.user.findUnique({ where: { id: metadataUserId } })
+    const user = await tx.user.findUnique({ where: { id: metadataUserId } })
     if (user) return user
   }
-  return prisma.user.findFirst({
+  return tx.user.findFirst({
     where: { stripeCustomerId: subscription.customer as string },
   })
 }
@@ -42,8 +45,11 @@ function resolvePriceIds(subscription: Stripe.Subscription): string[] {
   return subscription.items.data.map((item) => item.price.id).filter(Boolean)
 }
 
-async function processSubscription(subscription: Stripe.Subscription): Promise<void> {
-  const user = await resolveSubscriptionUser(subscription)
+async function processSubscription(
+  tx: Prisma.TransactionClient,
+  subscription: Stripe.Subscription
+): Promise<void> {
+  const user = await resolveSubscriptionUser(tx, subscription)
   if (!user) throw new Error(`No user found for Stripe subscription ${subscription.id}`)
 
   const priceIds = resolvePriceIds(subscription)
@@ -59,8 +65,8 @@ async function processSubscription(subscription: Stripe.Subscription): Promise<v
 
   const effectivePlan: Plan =
     paidPlan && hasPaidEntitlement(status) ? paidPlan : 'FREE'
-  await applyPlanLimits(user.id, effectivePlan)
-  await prisma.user.update({
+  await applyPlanLimits(user.id, effectivePlan, tx)
+  await tx.user.update({
     where: { id: user.id },
     data: {
       stripeCustomerId: subscription.customer as string,
@@ -73,35 +79,41 @@ async function processSubscription(subscription: Stripe.Subscription): Promise<v
   })
 }
 
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaymentFailed(
+  tx: Prisma.TransactionClient,
+  invoice: Stripe.Invoice
+): Promise<void> {
   if (!invoice.subscription) return
 
   const subscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
 
-  const user = await prisma.user.findFirst({
+  const user = await tx.user.findFirst({
     where: { stripeSubscriptionId: subscriptionId },
   })
   if (!user) return
 
-  await prisma.user.update({
+  await tx.user.update({
     where: { id: user.id },
     data: { subscriptionStatus: 'PAST_DUE' as SubscriptionStatus },
   })
 }
 
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaymentSucceeded(
+  tx: Prisma.TransactionClient,
+  invoice: Stripe.Invoice
+): Promise<void> {
   if (!invoice.subscription) return
 
   const subscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
 
-  const user = await prisma.user.findFirst({
+  const user = await tx.user.findFirst({
     where: { stripeSubscriptionId: subscriptionId },
   })
   if (!user) return
 
-  await prisma.user.update({
+  await tx.user.update({
     where: { id: user.id },
     data: { subscriptionStatus: 'ACTIVE' as SubscriptionStatus },
   })
@@ -154,15 +166,15 @@ export async function POST(req: NextRequest) {
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted':
-          await processSubscription(event.data.object)
+          await processSubscription(tx, event.data.object)
           break
 
         case 'invoice.payment_failed':
-          await handleInvoicePaymentFailed(event.data.object)
+          await handleInvoicePaymentFailed(tx, event.data.object)
           break
 
         case 'invoice.payment_succeeded':
-          await handleInvoicePaymentSucceeded(event.data.object)
+          await handleInvoicePaymentSucceeded(tx, event.data.object)
           break
 
         case 'checkout.session.expired': {

@@ -336,9 +336,11 @@ describe('runMobileUXQualityChecks', () => {
     )
   })
 
-  it('flags missing viewport meta tag', () => {
+  it('does not double-flag missing viewport meta tag (owned by metadata-checks.ts)', () => {
     assert.ok(
-      checkIds(runMobileUXQualityChecks(healthyMeta({ viewport: null }), captureMetrics())).includes('mobile-no-viewport')
+      !checkIds(runMobileUXQualityChecks(healthyMeta({ viewport: null }), captureMetrics())).includes(
+        'mobile-no-viewport'
+      )
     )
   })
 
@@ -376,7 +378,6 @@ describe('new check IDs registered in ALL_CHECK_IDS', () => {
     'mobile-cta-thumb-zone',
     'mobile-cta-weak-label',
     'mobile-stuck-loading',
-    'mobile-no-viewport',
     'mobile-load-delay-content',
   ]
 

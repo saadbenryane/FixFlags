@@ -125,6 +125,11 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
         /get started|sign up|signup|start|try|demo|contact|register|join/i.test(text)
       )
         score = 85
+      else if (
+        tag === 'button' &&
+        /search|audit|analyze|check.*site|run.*(scan|audit|check|test)|test.*site/i.test(text)
+      )
+        score = 85
 
       if (score === 0) continue
 
@@ -145,6 +150,45 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     }
 
     const competingLabels = [...competingCtas]
+
+    // Fallback: if no button/link CTA was found, check for search/URL input fields
+    // which serve as the primary conversion action on tool and SaaS landing pages
+    // (e.g. URL auditors, search tools, website checkers).
+    if (bestScore === 0) {
+      for (const el of document.querySelectorAll(
+        'input[type="search"], input[type="url"], input[type="text"]'
+      )) {
+        const placeholder = (el.getAttribute('placeholder') || '').toLowerCase()
+        if (
+          !placeholder ||
+          !/(search|url|website|www\.|https?|enter.*(url|site|link|domain)|paste.*(url|link|domain))/i.test(
+            placeholder
+          )
+        )
+          continue
+
+        const rect = el.getBoundingClientRect()
+        if (rect.width <= 0 || rect.height <= 0) continue
+        if (rect.top < 0 || rect.top > window.innerHeight * 2) continue
+
+        const form = el.closest('form')
+        let submitBtnText = ''
+        if (form) {
+          const submitBtn = form.querySelector(
+            'button[type="submit"], input[type="submit"], button:not([type])'
+          )
+          if (submitBtn) {
+            submitBtnText =
+              (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
+          }
+        }
+
+        bestScore = submitBtnText ? 90 : 85
+        bestTop = Math.round(rect.top)
+        bestText = submitBtnText || placeholder || 'Search input'
+        break
+      }
+    }
 
     return {
       mobilePrimaryCtaTopPx: bestTop,

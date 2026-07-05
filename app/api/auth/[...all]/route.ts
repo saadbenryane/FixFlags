@@ -9,7 +9,7 @@ function withErrorLogging(handler: typeof baseGET) {
     try {
       return await handler(request)
     } catch (error) {
-      logger.error({ err: error, url: request.url, method: request.method }, 'Auth handler error')
+      logger.error('Auth handler error', { err: error, url: request.url, method: request.method })
       return new Response('Internal Server Error', { status: 500 })
     }
   }

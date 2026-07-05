@@ -190,6 +190,11 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
       ctaTexts.push($(el).text().trim())
     }
   })
+  // Also detect search/URL input fields as CTAs (common on tool/SaaS landing pages)
+  $('input[type="search"], input[type="url"], input[placeholder*="search" i], input[placeholder*="url" i], input[placeholder*="website" i]').each((_, el) => {
+    const placeholder = $(el).attr('placeholder')?.trim()
+    if (placeholder) ctaTexts.push(placeholder)
+  })
 
   // Analytics detection
   const htmlStr = html.toLowerCase()

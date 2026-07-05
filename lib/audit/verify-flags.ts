@@ -3,7 +3,8 @@ import { DeterministicFlag } from './checks'
 import { runDeterministicAudit } from './deterministic-audit'
 import { serializeFlowData } from './flow/flow-url'
 import { verifiableCheckIds } from './verification-rules'
-import type { FlagStatus, Severity } from '@prisma/client'
+import { resolveMonitoringFlagStatus } from './flag-status-resolution'
+import type { FlagStatus } from '@prisma/client'
 
 export {
   allCheckIdsHaveVerificationRules,
@@ -11,12 +12,6 @@ export {
 } from './verification-rules'
 
 const VERIFIABLE_CHECK_IDS = new Set(verifiableCheckIds())
-
-const severityRank: Record<Severity, number> = {
-  CRITICAL: 3,
-  IMPORTANT: 2,
-  POLISH: 1,
-}
 
 function currentVerifiableCheckIds(flags: DeterministicFlag[]): Set<string> {
   return new Set(
@@ -73,10 +68,16 @@ export async function applyDeterministicVerification(
   for (const flag of parentFlags) {
     if (!flag.checkId || !VERIFIABLE_CHECK_IDS.has(flag.checkId)) continue
     const stillFails = currentCheckIds.has(flag.checkId)
+    const status = resolveMonitoringFlagStatus({
+      parentStatus: flag.status,
+      parentSeverity: flag.severity,
+      monitoringSeverity: flag.severity,
+      stillFails,
+    })
     await prisma.flag.update({
       where: { id: flag.id },
       data: {
-        status: stillFails ? 'OPEN' : 'FIXED',
+        status,
         resolvedInId: stillFails ? null : monitoringAuditId,
       },
     })
@@ -94,12 +95,12 @@ export async function applyDeterministicVerification(
     const parentMatch = parentFlags.find((p) => p.checkId === flag.checkId)
     if (!parentMatch) continue
     const stillFails = currentCheckIds.has(flag.checkId)
-    let status: FlagStatus = stillFails ? 'OPEN' : 'FIXED'
-    if (stillFails && parentMatch.severity !== flag.severity) {
-      if (severityRank[flag.severity] > severityRank[parentMatch.severity]) {
-        status = 'REGRESSED'
-      }
-    }
+    const status: FlagStatus = resolveMonitoringFlagStatus({
+      parentStatus: parentMatch.status,
+      parentSeverity: parentMatch.severity,
+      monitoringSeverity: flag.severity,
+      stillFails,
+    })
     await prisma.flag.update({
       where: { id: flag.id },
       data: { status },

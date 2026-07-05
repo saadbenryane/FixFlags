@@ -1,6 +1,5 @@
 import { headers } from 'next/headers'
-import Link from 'next/link'
-import { ArrowLeft, Cpu } from 'lucide-react'
+import { Cpu } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { loadMcpAnalytics } from '@/lib/mcp/analytics'
 import { Container } from '@/components/ui/container'
@@ -38,15 +37,7 @@ export default async function McpAnalyticsPage() {
       <PageHeader
         title="MCP Analytics"
         description="API call volume from your editor. Dashboard MCP counts track completed audits; this page tracks every MCP request."
-      >
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to dashboard
-        </Link>
-      </PageHeader>
+      />
 
       {loadError && (
         <Callout variant="warning" title="Could not load analytics">

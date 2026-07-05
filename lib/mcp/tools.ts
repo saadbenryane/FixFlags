@@ -25,6 +25,7 @@ import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimat
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
+import { classifyArbitraryReportFlagDiff } from '@/lib/audit/diff-flags'
 import {
   sanitizeFlagForRead,
   sanitizeRubricForRead,
@@ -499,9 +500,12 @@ export function registerAllTools(
           continue
         }
 
-        if (bf.status === 'FIXED' || af.status === 'FIXED') {
-          fixed.push(item)
-        } else if (bf.status === 'REGRESSED' || af.status === 'REGRESSED') {
+        const bucket = classifyArbitraryReportFlagDiff({
+          beforeSeverity: bf.severity,
+          afterSeverity: af.severity,
+        })
+
+        if (bucket === 'regressed') {
           regressed.push({
             checkId: af.checkId,
             problem: af.problem,

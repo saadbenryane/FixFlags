@@ -82,9 +82,6 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
             </div>
           </div>
         )}
-        <p className="text-[10px] text-muted-foreground">
-          Analytics tracks every MCP API call, including tools/list and connection tests.
-        </p>
 
         {configLines && (
           <div className="space-y-1">

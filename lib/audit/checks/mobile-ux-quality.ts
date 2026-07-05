@@ -7,21 +7,9 @@ export function runMobileUXQualityChecks(
   captureMetrics: CaptureMetrics | null
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const hasViewportMeta = meta.viewport !== null
-  if (!hasViewportMeta) {
-    findings.push({
-      checkId: 'mobile-no-viewport',
-      rubric: 'EXPERIENCE',
-      impactTag: 'ACCESSIBILITY',
-      severity: 'CRITICAL',
-      problem: 'Mobile viewport meta tag is missing',
-      evidence: 'No <meta name="viewport" content="width=device-width, initial-scale=1"> found. Mobile devices will render the page at desktop width, making text tiny.',
-      fix: '1. Add <meta name="viewport" content="width=device-width, initial-scale=1"> to the <head>\n2. Do not set user-scalable=no (prevents accessibility zoom)\n3. Verify the page renders properly at 375px width after adding the tag',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
 
+  // Missing viewport meta tag is already covered by metadata-checks.ts's
+  // 'viewport-missing' (same condition, same severity), so don't double-flag it here.
   if (!captureMetrics) return findings
 
   if (captureMetrics.inputsBelow16px.length > 0) {

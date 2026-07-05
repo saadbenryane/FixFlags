@@ -1697,8 +1697,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           healthyCaptureMetrics({ stuckLoadingIndicator: true, stuckLoadingLabel: 'skeleton' })
         )
       ),
-    'mobile-no-viewport': () =>
-      checkIds(runMobileUXQualityChecks(healthyMeta({ viewport: null }), null)),
     'mobile-load-delay-content': () =>
       checkIds(
         runMobileUXQualityChecks(

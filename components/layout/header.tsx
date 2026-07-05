@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { ADMIN_NAV, APP_NAV, MARKETING_NAV, SECONDARY_MARKETING_NAV } from '@/lib/site/nav'
+import { ADMIN_NAV, MARKETING_NAV } from '@/lib/site/nav'
 import {
   NAV_LINK_ACTIVE,
   NAV_LINK_BASE,
@@ -17,7 +17,6 @@ import { Container } from '@/components/ui/container'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignOutButton } from '@/components/auth/SignOutButton'
-import { AvatarMenu } from '@/components/layout/AvatarMenu'
 import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 import {
   Sheet,
@@ -36,7 +35,6 @@ interface HeaderProps {
   logoHref?: string
   right?: React.ReactNode
   className?: string
-  showAdmin?: boolean
   adminInboxUnread?: number
 }
 
@@ -45,26 +43,17 @@ export function Header({
   logoHref,
   right,
   className,
-  showAdmin,
   adminInboxUnread = 0,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
-  const navLinks =
-    variant === 'app' ? APP_NAV : variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
+  const navLinks = variant === 'admin' ? ADMIN_NAV : MARKETING_NAV
+  const secondaryNavLinks: ReadonlyArray<{ href: string; label: string }> = []
 
-  const secondaryNavLinks = variant === 'app' ? SECONDARY_MARKETING_NAV : []
+  const defaultLogoHref = variant === 'admin' ? '/dashboard' : '/'
 
-  const defaultLogoHref =
-    variant === 'app' || variant === 'admin' ? '/dashboard' : '/'
-
-  const defaultRight =
-    variant === 'app' ? (
-      <AppHeaderRight showAdmin={showAdmin} />
-    ) : variant === 'admin' ? (
-      <AdminHeaderRight />
-    ) : null
+  const defaultRight = variant === 'admin' ? <AdminHeaderRight /> : null
 
   const resolvedRight = right ?? defaultRight
   const isMarketing = variant === 'marketing'
@@ -131,18 +120,6 @@ export function Header({
                 </span>
               </NavLink>
             ))}
-            {!isMarketing &&
-              secondaryNavLinks.map((link) => (
-                <NavLink
-                  key={link.href}
-                  href={link.href}
-                  className={cn(NAV_LINK_BASE, 'text-xs')}
-                  activeClassName={NAV_LINK_ACTIVE}
-                  inactiveClassName={NAV_LINK_INACTIVE}
-                >
-                  {link.label}
-                </NavLink>
-              ))}
           </nav>
 
           <div className="flex items-center justify-end gap-1">
@@ -186,18 +163,6 @@ export function Header({
                       </span>
                     </NavLink>
                   ))}
-                  {secondaryNavLinks.map((link) => (
-                    <NavLink
-                      key={link.href}
-                      href={link.href}
-                      onNavigate={() => setOpen(false)}
-                      className={NAV_LINK_MOBILE_BASE}
-                      activeClassName={NAV_LINK_MOBILE_ACTIVE}
-                      inactiveClassName={NAV_LINK_INACTIVE}
-                    >
-                      {link.label}
-                    </NavLink>
-                  ))}
                   <div className="mt-4 space-y-3 border-t pt-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Theme</span>
@@ -219,23 +184,6 @@ export function Header({
         </div>
       </Container>
     </header>
-  )
-}
-
-function AppHeaderRight({
-  showAdmin,
-}: {
-  showAdmin?: boolean
-}) {
-  return (
-    <div className="ml-2 flex items-center gap-2">
-      {showAdmin && (
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/admin">Admin</Link>
-        </Button>
-      )}
-      <AvatarMenu />
-    </div>
   )
 }
 

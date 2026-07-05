@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Callout } from '@/components/ui/callout'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
+import { TextLink } from '@/components/ui/text-link'
 import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCP_DOCS, BRAND } from '@/lib/marketing/copy'
@@ -116,9 +116,6 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-8">
-      <TextLink href="/settings" className="text-xs">
-        ← Settings
-      </TextLink>
       <PageHeader
         title="API Keys"
         description={`Use API keys to connect ${BRAND.name} to Claude Code, Cursor, or Windsurf via MCP.`}

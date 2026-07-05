@@ -30,26 +30,16 @@ const ALL_EDITORS: { key: EditorKey; label: string }[] = [
   { key: 'windsurf', label: 'Windsurf' },
 ]
 
-const LEVELS: { key: VibecodingLevel; label: string; desc: string }[] = [
-  { key: 'beginner', label: 'New to AI coding tools', desc: 'Walk me through, explain what MCP is' },
-  { key: 'regular', label: 'Use them regularly', desc: 'Show config directly, light explanation' },
-  { key: 'advanced', label: 'I know what I\'m doing', desc: 'Show all options, skip hand-holding' },
-]
-
-const TOOLS = [
-  { key: 'cursor', label: 'Cursor' },
-  { key: 'claudeCode', label: 'Claude Code' },
-  { key: 'windsurf', label: 'Windsurf' },
-  { key: 'lovable', label: 'Lovable' },
-  { key: 'bolt', label: 'Bolt' },
-  { key: 'other', label: 'Other' },
+const LEVELS: { key: VibecodingLevel; label: string }[] = [
+  { key: 'beginner', label: 'New to AI coding tools' },
+  { key: 'regular', label: 'Use them regularly' },
+  { key: 'advanced', label: 'I know what I\'m doing' },
 ]
 
 export default function McpSetupWizard() {
   const { refresh } = useMe()
   const [step, setStep] = useState(0)
   const [vibecodingLevel, setVibecodingLevel] = useState<VibecodingLevel | null>(null)
-  const [selectedTools, setSelectedTools] = useState<string[]>([])
   const [savingProfile, setSavingProfile] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
   const [creatingKey, setCreatingKey] = useState(false)
@@ -65,7 +55,7 @@ export default function McpSetupWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vibecodingLevel: vibecodingLevel || undefined,
-          preferredTools: selectedTools.length ? selectedTools : undefined,
+          preferredTools: editor ? [editor] : undefined,
         }),
       })
       await refresh()
@@ -107,15 +97,14 @@ export default function McpSetupWizard() {
     if (step === 0) {
       await saveProfile()
     }
-    if (step < 3) {
+    if (step < 2) {
       setStep((s) => s + 1)
     }
   }
 
   function canProceed(): boolean {
-    if (step === 0) return true
-    if (step === 1) return editor !== null
-    if (step === 2) return newKey !== null
+    if (step === 0) return vibecodingLevel !== null && editor !== null
+    if (step === 1) return newKey !== null
     return true
   }
 
@@ -124,7 +113,7 @@ export default function McpSetupWizard() {
       <Container variant="narrow" className="py-8 space-y-8">
         <PageHeader
           title="Connect your AI coding tool"
-          description="Tell us about your setup so we can tailor the experience. You can change this later in Settings."
+          description="Tell us about your setup so we can show the right config for your editor."
         />
         <Surface variant="nested" className="space-y-6 sm:p-6">
         <Card className="p-6 space-y-6 border-0 shadow-none">
@@ -143,40 +132,31 @@ export default function McpSetupWizard() {
                   }`}
                 >
                   <span className="font-medium">{l.label}</span>
-                  <span className="ml-2 text-muted-foreground">{l.desc}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-medium">Which editor(s) do you use?</p>
-            <div className="flex flex-wrap gap-2">
-              {TOOLS.map((t) => {
-                const selected = selectedTools.includes(t.key)
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() =>
-                      setSelectedTools((prev) =>
-                        prev.includes(t.key)
-                          ? prev.filter((k) => k !== t.key)
-                          : [...prev, t.key]
-                      )
-                    }
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-[box-shadow,background-color] ${
-                      selected
-                        ? 'bg-brand/10 text-brand ring-2 ring-brand/25'
-                        : 'glass-surface text-muted-foreground hover:bg-[var(--glass-bg)]'
-                    }`}
-                  >
-                    {selected && <Check className="h-3 w-3" />}
-                    <McpToolMark toolKey={t.key} className="h-3.5 w-3.5 shrink-0 text-current" />
-                    {t.label}
-                  </button>
-                )
-              })}
+            <p className="text-sm font-medium">Which editor do you use with MCP?</p>
+            <div className="space-y-2">
+              {ALL_EDITORS.map((e) => (
+                <button
+                  key={e.key}
+                  type="button"
+                  onClick={() => setEditor(e.key)}
+                  className={`w-full text-left rounded-card p-4 transition-[box-shadow,background-color] ${
+                    editor === e.key
+                      ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
+                      : 'glass-surface hover:bg-[var(--glass-bg)]'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <McpToolMark toolKey={e.key} className="h-5 w-5 shrink-0 text-brand" />
+                    <span className="font-medium">{e.label}</span>
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -184,7 +164,7 @@ export default function McpSetupWizard() {
             <Button variant="ghost" size="sm" asChild>
               <Link href="/dashboard">Skip</Link>
             </Button>
-            <Button size="sm" onClick={handleNext} disabled={savingProfile}>
+            <Button size="sm" onClick={handleNext} disabled={savingProfile || !vibecodingLevel || !editor}>
               {savingProfile ? 'Saving...' : 'Continue'}
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
@@ -196,48 +176,6 @@ export default function McpSetupWizard() {
   }
 
   if (step === 1) {
-    return (
-      <Container variant="narrow" className="py-8 space-y-8">
-        <PageHeader
-          title="Pick your editor"
-          description="Choose the editor you use most. We'll show the exact config for it."
-        />
-        <Surface variant="nested" className="space-y-6 sm:p-6">
-        <div className="space-y-2">
-          {ALL_EDITORS.map((e) => (
-            <button
-              key={e.key}
-              type="button"
-              onClick={() => setEditor(e.key)}
-              className={`w-full text-left rounded-card p-4 transition-[box-shadow,background-color] ${
-                editor === e.key
-                  ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
-                  : 'glass-surface hover:bg-[var(--glass-bg)]'
-              }`}
-            >
-              <span className="inline-flex items-center gap-2">
-                <McpToolMark toolKey={e.key} className="h-5 w-5 shrink-0 text-brand" />
-                <span className="font-medium">{e.label}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Back
-          </Button>
-          <Button size="sm" onClick={handleNext} disabled={!canProceed()}>
-            Continue
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </div>
-        </Surface>
-      </Container>
-    )
-  }
-
-  if (step === 2) {
     return (
       <Container variant="narrow" className="py-8 space-y-8">
         <PageHeader
@@ -276,7 +214,7 @@ export default function McpSetupWizard() {
           )}
         </Card>
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+          <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
             <ArrowLeft className="mr-1.5 h-4 w-4" />
             Back
           </Button>
@@ -338,7 +276,7 @@ export default function McpSetupWizard() {
       )}
 
       <div className="flex items-center justify-between pt-4">
-        <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
+        <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
           <ArrowLeft className="mr-1.5 h-4 w-4" />
           Back
         </Button>

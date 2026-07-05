@@ -125,7 +125,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'mobile-cta-thumb-zone',
       'mobile-cta-weak-label',
       'mobile-stuck-loading',
-      'mobile-no-viewport',
       'mobile-load-delay-content',
     ],
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
