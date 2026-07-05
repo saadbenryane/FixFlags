@@ -14,6 +14,63 @@ applied, don't re-do it; move to the next item.
 
 ---
 
+## 2026-07-05 — Session 27 (systematic heading-hierarchy sweep - 2 more real WCAG skips found and fixed)
+
+### Extended Session 26's accessibility check into a quick, repeatable sweep across the app's key pages
+
+Method: `[...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(h => h.tagName)`
+on a **cold-navigated, `readyState === 'complete'`** page (learned that
+lesson the hard way in Session 26 - checking right after an edit/reload
+gives stale HMR reads). Checked `/pricing`, `/dashboard`,
+`/report/[id]` (the same live report used in Sessions 25/26).
+
+**`/pricing`: H1 → H3, skipping H2** for the Free/Pro/Max plan cards.
+Root cause: `CardTitle` (`components/ui/card.tsx`) hardcodes `<h3>` - a
+shared design-system primitive, correct in contexts with a real H2 above it,
+but this page's plan-card grid sits directly under the H1 hero heading with
+no H2 anywhere before it. Didn't touch the shared `CardTitle` primitive
+(too high a blast radius - other pages may correctly rely on its `<h3>`
+default under their own H2s). **Fixed** by adding a scoped, `sr-only`
+`<h2>Plans</h2>` in `components/pricing/PricingPageClient.tsx` immediately
+before the plan grid - matches visual design (no visible change), gives
+screen-reader users the missing structural landmark.
+
+**`/report/[id]`: same pattern, H1 → H3** - the flags list/detail panel in
+`components/report/ReportExplorer.tsx` had no heading at all wrapping it;
+page goes straight from the H1 (site host) to the first flag's H3. This
+component renders in 3 variants (`page`, `hero`, `live`) - checked whether
+an unconditional fix was safe across all 3 (yes: `sr-only`, no visual
+effect, and a "this is the flags list" landmark is equally correct whether
+it's the full report page or an embedded homepage/live-scanning preview).
+**Fixed** by adding `<h2 className="sr-only">Flags</h2>` right before
+`<ReportBody />`.
+
+`/dashboard` heading hierarchy was already clean (H1 → H2 → H2 → H2 → H3,
+no skips) - checked and confirmed, not just assumed.
+
+### Verified
+
+- Confirmed both fixes live via `preview_eval` heading-tag dumps on cold
+  navigations, before and after - not just a code read.
+- `npx tsc --noEmit` fully clean (the pre-existing, unrelated
+  `AuditReportProgressive.tsx`/`ReportExplorer.tsx` `FixLoopFlagItem.rubric`
+  error flagged in Sessions 22-26 as another agent's concurrent work is
+  **gone now** - they finished it since; first time this session's tsc run
+  has had zero exclusions needed).
+- `npx vitest run` - 1521 passed, 87/87 files, 0 failed, no flake this run.
+
+### Pattern worth remembering for future sessions
+
+Both bugs this round were the exact same shape: a shared heading-emitting
+primitive (`CardTitle` → `<h3>`) or a headingless content wrapper
+(`ReportExplorer`'s panel) assumed there'd always be a proper heading above
+it, but the specific page/section didn't provide one. **When checking a new
+page's accessibility, dump the heading list first** - it's a 5-second check
+that already caught 2 real WCAG 1.3.1 violations this session on pages this
+whole 27-session effort had otherwise reviewed extensively for other things.
+
+---
+
 ## 2026-07-05 — Session 26 (real accessibility bug on our own homepage - duplicate id, found via accessibility-tree snapshot, not guessed)
 
 ### Direct response to the goal's "analyze pure user experience by navigating" ask, scoped to accessibility this time (extends Session 25, doesn't repeat it)

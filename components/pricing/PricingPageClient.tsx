@@ -41,6 +41,7 @@ export function PricingPageClient() {
           </div>
         </div>
 
+        <h2 className="sr-only">Plans</h2>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           {PLANS.map((plan) => (
             <Card

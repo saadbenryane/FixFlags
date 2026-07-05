@@ -308,6 +308,7 @@ export function ReportExplorer({
       )}
 
       <div className="p-4 sm:p-6">
+        <h2 className="sr-only">Flags</h2>
         <ReportBody {...reportBodyProps} />
       </div>
     </>
