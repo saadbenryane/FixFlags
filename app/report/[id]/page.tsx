@@ -7,7 +7,7 @@ import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
-import { getEntitlements, canAccessCompare } from '@/lib/auth/entitlements'
+import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { normalizeInternalScreenshotUrl, resolveScreenshotUx } from '@/lib/audit/screenshot-types'
@@ -171,8 +171,14 @@ export default async function ReportPage({ params }: Props) {
 
   const pending = user ? await getPendingCheckCount(user.id) : 0
   const effectiveLimit = user ? getEffectiveScanLimit(user) : 3
+  // A revoked subscription is treated the same as FREE here - see the identical comment in
+  // app/(app)/dashboard/page.tsx - so the upgrade nudge isn't hidden from someone whose plan
+  // field hasn't been resynced yet but who is no longer actually paying.
+  const isEffectivelyFree =
+    user?.plan === 'FREE' || (user ? hasRevokedSubscriptionStatus(user.subscriptionStatus) : true)
   const atAuditLimit =
-    user?.plan === 'FREE' &&
+    isEffectivelyFree &&
+    !!user &&
     !isUnlimitedScanLimit(effectiveLimit) &&
     isAtCheckLimit(user.auditsUsed, pending, effectiveLimit)
 

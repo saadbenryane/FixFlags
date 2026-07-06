@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { Button } from '@/components/ui/button'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
@@ -76,7 +77,10 @@ export default async function BillingPage() {
     isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
   const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
   const pending = await getPendingCheckCount(session.user.id)
-  const isPaid = user.plan !== 'FREE'
+  // A lapsed subscription (payment failure, cancellation) only updates subscriptionStatus via
+  // the Stripe webhook - plan can lag behind until a separate subscription.updated event
+  // resyncs it. Billing must show the true current state, not the stale plan field.
+  const isPaid = user.plan !== 'FREE' && !hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const isActivating = isPaid && !user.stripeCustomerId
 
   return (

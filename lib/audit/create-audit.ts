@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
+import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
@@ -96,7 +97,16 @@ export async function createAndEnqueueAudit(
                   },
                 })
                 const atAiCap = isAtCheckLimit(user.auditsUsed, pendingAi, limit)
-                if (atAiCap && user.plan !== 'FREE') {
+                // A revoked subscription (payment failure, cancellation) is treated as
+                // free-tier here too, matching resolveIncludeAiForNewAudit's "deny outright"
+                // policy: no partial credit for a plan that's no longer actually paid for.
+                // Falling through (same as an actual FREE user) means the audit still gets
+                // created without a hard TOKEN_LIMIT error - it just won't include AI review.
+                if (
+                  atAiCap &&
+                  user.plan !== 'FREE' &&
+                  !hasRevokedSubscriptionStatus(user.subscriptionStatus)
+                ) {
                   const purchased = await getPurchasedCreditsRemaining(user.id)
                   if (purchased <= 0) {
                     throw new AuditLimitError('TOKEN_LIMIT')

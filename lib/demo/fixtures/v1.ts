@@ -60,8 +60,8 @@ export const v1Fixture: DemoFixture = {
     },
   ],
   footerLinks: [
-    { label: 'Privacy', href: '#privacy' },
-    { label: 'Terms', href: '#terms' },
+    { label: 'Privacy', href: '/demo/v1/privacy' },
+    { label: 'Terms', href: '/demo/v1/terms' },
     { label: 'Contact', href: '#signup' },
   ],
   layout: {

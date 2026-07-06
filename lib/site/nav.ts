@@ -41,8 +41,3 @@ export const LEGAL_LINKS = [
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
 ] as const
-
-export const SUPPORT_LINK = {
-  href: `mailto:${BRAND.supportEmail}`,
-  label: 'Support',
-} as const

@@ -20,7 +20,7 @@ import { Surface } from '@/components/ui/surface'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
-import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
+import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 
 type DashboardSearchParams = {
@@ -67,8 +67,13 @@ export default async function DashboardPage({
   const isUnlimited = isDevUnlimitedScans() || (user ? isUnlimitedScanLimit(getEffectiveScanLimit(user)) : false)
   const effectiveLimit = isUnlimited ? null : (user ? getEffectiveScanLimit(user) : 3)
   const pending = user ? await getPendingCheckCount(user.id) : 0
+  // A revoked subscription (payment failure, cancellation) leaves the user effectively on the
+  // free tier even though `plan` hasn't been resynced yet - treat them the same as FREE here so
+  // the upgrade nudges aren't hidden from someone who actually needs to see them.
+  const isEffectivelyFree =
+    user?.plan === 'FREE' || (user ? hasRevokedSubscriptionStatus(user.subscriptionStatus) : true)
   const atAuditLimit =
-    user?.plan === 'FREE' &&
+    isEffectivelyFree &&
     !isUnlimited &&
     effectiveLimit !== null &&
     isAtCheckLimit(used, pending, effectiveLimit)
@@ -110,7 +115,7 @@ export default async function DashboardPage({
 
       <div className="flex items-center justify-between">
         <PageHeader title="Dashboard" />
-        {user?.plan === 'FREE' && !isUnlimited && <UpgradeButton />}
+        {isEffectivelyFree && !isUnlimited && <UpgradeButton />}
       </div>
 
       {atAuditLimit && (
