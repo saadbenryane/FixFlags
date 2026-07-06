@@ -45,7 +45,7 @@ export async function canViewPrescriptionContentForAudit(
     where: { id: audit.userId },
     select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
-  return owner ? canSharePublicly(owner) : false
+  return canViewAiViaMaxPublicShare(audit, owner ? canSharePublicly(owner) : false)
 }
 
 type FlagLike = {

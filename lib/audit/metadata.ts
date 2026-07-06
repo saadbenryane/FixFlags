@@ -106,6 +106,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   })
 
   // Links analysis
+  const pageHostname = new URL(url).hostname
   const links: Array<{ href: string; text: string; rel: string | null }> = []
   let externalLinksWithoutNoopener = 0
   $('a[href]').each((_, el) => {
@@ -113,9 +114,19 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     const text = $(el).text().trim()
     const rel = $(el).attr('rel') || null
     links.push({ href, text, rel })
-    if (href.startsWith('http') && !href.includes(new URL(url).hostname)) {
-      if (!rel?.includes('noopener')) externalLinksWithoutNoopener++
+    if (!href.startsWith('http')) return
+    // Parse and compare hostnames rather than substring-matching: a string-contains
+    // check treats any lookalike domain (e.g. "notexample.com" or
+    // "example.com.evil-attacker.com" for hostname "example.com") as internal,
+    // silently skipping the noopener/reverse-tabnabbing check on a genuinely
+    // external, unrelated link.
+    let isExternal: boolean
+    try {
+      isExternal = new URL(href).hostname !== pageHostname
+    } catch {
+      isExternal = false
     }
+    if (isExternal && !rel?.includes('noopener')) externalLinksWithoutNoopener++
   })
 
   // Forms and inputs

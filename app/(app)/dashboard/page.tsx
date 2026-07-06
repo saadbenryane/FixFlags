@@ -146,7 +146,7 @@ export default async function DashboardPage({
             </span>
           )}
         </div>
-        <AuditInput initialUrl={initialAuditUrl} />
+        <AuditInput initialUrl={initialAuditUrl} idSuffix="-dashboard" />
       </Surface>
 
       {audits.length === 0 ? (

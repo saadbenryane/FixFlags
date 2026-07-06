@@ -28,9 +28,11 @@ import { resolveIncludeAiForNewAudit, remainingAiReportCredits } from '@/lib/aud
 import { scanLimitForPlan } from '@/lib/billing/plans'
 import {
   canAccessMonitoring,
+  canAccessPaidFeatures,
   canExportSummary,
   canSharePublicly,
   getEntitlements,
+  getReportTierForUser,
 } from '@/lib/auth/entitlements'
 import {
   canViewPrescriptionContent,
@@ -67,6 +69,25 @@ describe('product contract limits', () => {
       subscriptionStatus: 'ACTIVE',
     })
     assert.equal(await resolveIncludeAiForNewAudit('active-user'), true)
+  })
+
+  it('still allows AI for a lapsed subscription if the user has purchased credit packs', async () => {
+    // The plan's included quota is forfeited on a lapsed subscription (see the test
+    // above), but a one-time credit pack is a distinct, already-paid-for transaction
+    // and must remain spendable regardless of subscription state.
+    const { prisma } = await import('@/lib/db')
+    vi.mocked(prisma.creditPurchase.aggregate).mockResolvedValueOnce({
+      _sum: { creditsRemaining: 5 },
+    } as never)
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 'lapsed-user-with-credits',
+      plan: 'BUILDER',
+      role: 'user',
+      auditsUsed: 0,
+      auditsLimit: 25,
+      subscriptionStatus: 'PAST_DUE',
+    })
+    assert.equal(await resolveIncludeAiForNewAudit('lapsed-user-with-credits'), true)
   })
 
   it('free plan has 3 lifetime AI reports', () => {
@@ -191,5 +212,80 @@ describe('monitoring entitlements', () => {
     assert.equal(entitlements.canMonitor, true)
     assert.equal(canAccessMonitoring(), true)
     delete process.env.DEV_SIMULATE_BILLING
+  })
+})
+
+describe('revoked subscription behavior', () => {
+  const revokedStates = ['PAST_DUE', 'CANCELED', 'UNPAID'] as const
+
+  for (const status of revokedStates) {
+    it(`getReportTierForUser returns free for ${status}`, () => {
+      process.env.DEV_SIMULATE_BILLING = 'true'
+      const tier = getReportTierForUser({
+        id: 'u',
+        plan: 'BUILDER',
+        role: 'user',
+        subscriptionStatus: status,
+      })
+      assert.equal(tier, 'free')
+      delete process.env.DEV_SIMULATE_BILLING
+    })
+  }
+
+  for (const status of revokedStates) {
+    it(`canAccessPaidFeatures returns false for ${status}`, () => {
+      process.env.DEV_SIMULATE_BILLING = 'true'
+      const paid = canAccessPaidFeatures({
+        id: 'u',
+        plan: 'BUILDER',
+        role: 'user',
+        subscriptionStatus: status,
+      })
+      assert.equal(paid, false)
+      delete process.env.DEV_SIMULATE_BILLING
+    })
+  }
+
+  it('canSharePublicly revoked for TEAM plan', () => {
+    process.env.DEV_SIMULATE_BILLING = 'true'
+    assert.equal(
+      canSharePublicly({ id: 'u', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
+      false
+    )
+    delete process.env.DEV_SIMULATE_BILLING
+  })
+
+  it('purchased credits remain spendable after revocation', async () => {
+    // Purchased credit packs are a distinct, already-paid-for transaction
+    // and remain available regardless of subscription state (same as FREE plan).
+    const { prisma } = await import('@/lib/db')
+    vi.mocked(prisma.creditPurchase.aggregate).mockResolvedValueOnce({
+      _sum: { creditsRemaining: 3 },
+    } as never)
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 'revoked-with-credits',
+      plan: 'BUILDER',
+      role: 'user',
+      auditsUsed: 0,
+      auditsLimit: 25,
+      subscriptionStatus: 'CANCELED',
+    })
+    assert.equal(await resolveIncludeAiForNewAudit('revoked-with-credits'), true)
+  })
+
+  it('revoked user with zero credits gets no AI', async () => {
+    const { prisma } = await import('@/lib/db')
+    vi.mocked(prisma.creditPurchase.aggregate).mockResolvedValueOnce({
+      _sum: { creditsRemaining: 0 },
+    } as never)
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 'revoked-no-credits',
+      plan: 'BUILDER',
+      role: 'user',
+      auditsUsed: 0,
+      auditsLimit: 25,
+      subscriptionStatus: 'CANCELED',
+    })
+    assert.equal(await resolveIncludeAiForNewAudit('revoked-no-credits'), false)
   })
 })

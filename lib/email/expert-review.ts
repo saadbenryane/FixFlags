@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
 import { getAppUrl } from '@/lib/get-app-url'
+import { logger } from '@/lib/logger'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL =
@@ -61,8 +62,22 @@ export async function notifyExpertReviewPaid(params: {
   auditId: string | null
   orderId: string
 }): Promise<void> {
-  if (!params.userId) throw new Error('Expert Review order is missing a user')
-  if (!params.auditId) throw new Error('Expert Review order is missing an audit')
+  // Called from inside the same DB transaction that marks the order PAID
+  // (app/api/webhooks/stripe/route.ts). Throwing here would roll back that
+  // status update - permanently, since Stripe's webhook retries hit this exact
+  // same missing data every time - silently erasing a real customer's payment
+  // confirmation. userId/auditId are nullable via onDelete: SetNull (the user
+  // or audit can be deleted after the order was placed), so log and skip the
+  // notification instead of failing the whole transaction over an edge case
+  // that has nothing to do with whether the payment itself succeeded.
+  if (!params.userId || !params.auditId) {
+    logger.error('Expert Review order missing user or audit; skipping notification', {
+      orderId: params.orderId,
+      userId: params.userId,
+      auditId: params.auditId,
+    })
+    return
+  }
 
   const appUrl = getAppUrl()
   const auditLink = `${appUrl}/report/${params.auditId}`

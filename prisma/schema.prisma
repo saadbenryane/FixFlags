@@ -178,41 +178,42 @@ enum SupportMessageRole {
 }
 
 model User {
-  id                     String              @id @default(cuid())
-  email                  String              @unique
-  name                   String?
-  emailVerified          Boolean             @default(false)
-  image                  String?
-  role                   String              @default("user")
-  plan                   Plan                @default(FREE)
-  auditsUsed             Int                 @default(0)
-  auditsLimit            Int                 @default(3)
-  stripeCustomerId       String?             @unique
-  stripeSubscriptionId   String?             @unique
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
-  subscriptionStatus     SubscriptionStatus  @default(NONE)
-  vibecodingLevel        String?
-  preferredTools         String[]
-  gclid                  String?
-  fbclid                 String?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  projects               Project[]
-  audits                 Audit[]
-  apiKeys                ApiKey[]
-  sessions               Session[]
-  accounts               Account[]
-  emailLogs              EmailLog[]
-  expertReviewOrders     ExpertReviewOrder[]
-  expertReviewEvents     ExpertReviewEvent[] @relation("ExpertReviewEventActor")
-  linkedLeads            Lead[]              @relation("LeadLinkedUser")
-  supportSessions        SupportSession[]    @relation("SupportSessionUser")
-  assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
+  id                      String              @id @default(cuid())
+  email                   String              @unique
+  name                    String?
+  emailVerified           Boolean             @default(false)
+  image                   String?
+  role                    String              @default("user")
+  plan                    Plan                @default(FREE)
+  auditsUsed              Int                 @default(0)
+  auditsLimit             Int                 @default(3)
+  stripeCustomerId        String?             @unique
+  stripeSubscriptionId    String?             @unique
+  stripePriceId           String?
+  stripeCurrentPeriodEnd  DateTime?
+  subscriptionStatus      SubscriptionStatus  @default(NONE)
+  vibecodingLevel         String?
+  preferredTools          String[]
+  gclid                   String?
+  fbclid                  String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  projects                Project[]
+  audits                  Audit[]
+  apiKeys                 ApiKey[]
+  sessions                Session[]
+  accounts                Account[]
+  emailLogs               EmailLog[]
+  expertReviewOrders      ExpertReviewOrder[]
+  expertReviewEvents      ExpertReviewEvent[] @relation("ExpertReviewEventActor")
+  linkedLeads             Lead[]              @relation("LeadLinkedUser")
+  supportSessions         SupportSession[]    @relation("SupportSessionUser")
+  assignedSupportSessions SupportSession[]    @relation("SupportSessionAgent")
   mcpInteractions         McpInteraction[]
   creditPurchases         CreditPurchase[]
   githubConnection        GithubConnection?
   repoScans               RepoScan[]
+  repoFixPrs              RepoFixPr[]
 
   @@map("users")
 }
@@ -225,17 +226,19 @@ enum RepoScanStatus {
   FAILED
 }
 
-/** App-level GitHub repo access for codebase scanning, separate from GitHub login (Account). */
+/**
+ * App-level GitHub repo access for codebase scanning, separate from GitHub login (Account).
+ */
 model GithubConnection {
-  id                   String    @id @default(cuid())
-  userId               String    @unique
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String     @id @default(cuid())
+  userId               String     @unique
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   githubUserId         String
   githubLogin          String
-  encryptedAccessToken String    @db.Text
+  encryptedAccessToken String     @db.Text
   scope                String
   selectedRepos        String[]
-  connectedAt          DateTime  @default(now())
+  connectedAt          DateTime   @default(now())
   revokedAt            DateTime?
   repoScans            RepoScan[]
 
@@ -243,19 +246,20 @@ model GithubConnection {
 }
 
 model RepoScan {
-  id                 String           @id @default(cuid())
+  id                 String            @id @default(cuid())
   userId             String
-  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   githubConnectionId String
-  githubConnection   GithubConnection @relation(fields: [githubConnectionId], references: [id], onDelete: Cascade)
+  githubConnection   GithubConnection  @relation(fields: [githubConnectionId], references: [id], onDelete: Cascade)
   repoFullName       String
   commitSha          String?
-  status             RepoScanStatus   @default(QUEUED)
+  status             RepoScanStatus    @default(QUEUED)
   errorMsg           String?
   startedAt          DateTime?
   completedAt        DateTime?
   findings           RepoScanFinding[]
-  createdAt          DateTime         @default(now())
+  fixPrs             RepoFixPr[]
+  createdAt          DateTime          @default(now())
 
   @@index([userId, createdAt])
   @@index([githubConnectionId])
@@ -263,24 +267,60 @@ model RepoScan {
 }
 
 model RepoScanFinding {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   repoScanId   String
-  repoScan     RepoScan @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+  repoScan     RepoScan   @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
   severity     Severity
   category     String
   filePath     String
   lineStart    Int?
   lineEnd      Int?
   problem      String
-  evidence     String   @db.Text
-  fix          String   @db.Text
-  agentPrompt  String?  @db.Text
-  cursorPrompt String?  @db.Text
-  claudePrompt String?  @db.Text
-  createdAt    DateTime @default(now())
+  evidence     String     @db.Text
+  fix          String     @db.Text
+  agentPrompt  String?    @db.Text
+  cursorPrompt String?    @db.Text
+  claudePrompt String?    @db.Text
+  createdAt    DateTime   @default(now())
+  fixPr        RepoFixPr?
 
   @@index([repoScanId])
   @@map("repo_scan_findings")
+}
+
+enum RepoFixPrStatus {
+  DRAFT
+  CREATING
+  CREATED
+  FAILED
+}
+
+/**
+ * A branch + draft PR opened for a single repo-scan finding (v1 write path: PR body is the
+ * existing fix prompt, no arbitrary code changes - see lib/repo-scan/mechanical-patch.ts for
+ * the narrow, mechanical exception).
+ */
+model RepoFixPr {
+  id           String          @id @default(cuid())
+  repoScanId   String
+  repoScan     RepoScan        @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+  findingId    String          @unique
+  finding      RepoScanFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchName   String
+  baseSha      String
+  prNumber     Int?
+  prUrl        String?
+  status       RepoFixPrStatus @default(DRAFT)
+  patchApplied Boolean         @default(false)
+  errorMsg     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([repoScanId])
+  @@index([userId])
+  @@map("repo_fix_prs")
 }
 
 model EmailLog {
@@ -326,20 +366,20 @@ model Session {
 }
 
 model Account {
-  id                   String    @id @default(cuid())
-  userId               String
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId            String
-  providerId           String
-  accessToken          String?
-  refreshToken         String?
-  accessTokenExpiresAt DateTime?
-  idToken              String?
-  scope                String?
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  idToken               String?
+  scope                 String?
   refreshTokenExpiresAt DateTime?
-  password             String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@unique([providerId, accountId])
   @@index([userId])
@@ -395,26 +435,26 @@ enum MonitoringMode {
 }
 
 model Audit {
-  id        String      @id @default(cuid())
-  userId    String?
-  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  projectId String?
-  project   Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  url       String
-  status    AuditStatus @default(QUEUED)
-  progress  Int         @default(0)
-  monitoringMode          MonitoringMode @default(FULL)
-  pipelineLog          Json?
-  pipelineVersion      String?
+  id              String         @id @default(cuid())
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  projectId       String?
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  url             String
+  status          AuditStatus    @default(QUEUED)
+  progress        Int            @default(0)
+  monitoringMode  MonitoringMode @default(FULL)
+  pipelineLog     Json?
+  pipelineVersion String?
 
   pageJob  String?
   pageType String?
   verdict  String?
   score    Int?
 
-  parentId String?
-  parent            Audit?  @relation("Monitoring", fields: [parentId], references: [id])
-  monitoringAudits  Audit[] @relation("Monitoring")
+  parentId         String?
+  parent           Audit?  @relation("Monitoring", fields: [parentId], references: [id])
+  monitoringAudits Audit[] @relation("Monitoring")
 
   isPublic             Boolean              @default(false)
   skipUsageCount       Boolean              @default(false)
@@ -472,24 +512,24 @@ model Audit {
 }
 
 model Lead {
-  id               String     @id @default(cuid())
-  normalizedDomain String     @unique
-  firstSeenAt      DateTime
-  lastSeenAt       DateTime
-  scanCount        Int        @default(1)
-  status           LeadStatus @default(NEW)
-  latestScore      Int?
-  latestAuditId    String?
-  latestUrl        String?
-  linkedUserId     String?
-  linkedUser       User?      @relation("LeadLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
-  notes            String?    @db.Text
-  source           String?
-  totalCostUsd     Decimal    @default(0) @db.Decimal(10, 6)
-  latestScanCostUsd Decimal?  @db.Decimal(10, 6)
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  supportSessions  SupportSession[]
+  id                String           @id @default(cuid())
+  normalizedDomain  String           @unique
+  firstSeenAt       DateTime
+  lastSeenAt        DateTime
+  scanCount         Int              @default(1)
+  status            LeadStatus       @default(NEW)
+  latestScore       Int?
+  latestAuditId     String?
+  latestUrl         String?
+  linkedUserId      String?
+  linkedUser        User?            @relation("LeadLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
+  notes             String?          @db.Text
+  source            String?
+  totalCostUsd      Decimal          @default(0) @db.Decimal(10, 6)
+  latestScanCostUsd Decimal?         @db.Decimal(10, 6)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  supportSessions   SupportSession[]
 
   @@index([status])
   @@index([lastSeenAt(sort: Desc)])
@@ -579,28 +619,28 @@ model AuditPage {
 }
 
 model AuditRunCost {
-  auditId          String   @id
-  audit            Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  auditId          String  @id
+  audit            Audit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
   durationMs       Int
-  llmInputTokens   Int      @default(0)
-  llmOutputTokens  Int      @default(0)
+  llmInputTokens   Int     @default(0)
+  llmOutputTokens  Int     @default(0)
   llmModel         String?
-  llmCostUsd       Decimal  @db.Decimal(10, 6)
-  pagespeedCalls   Int      @default(0)
-  estimatedCostUsd Decimal  @db.Decimal(10, 6)
+  llmCostUsd       Decimal @db.Decimal(10, 6)
+  pagespeedCalls   Int     @default(0)
+  estimatedCostUsd Decimal @db.Decimal(10, 6)
 
   // Per-phase LLM breakdown (triage = anonymous teaser pass, prescription = post-signup fixes).
   // llm* columns above stay the running total across phases.
-  triageInputTokens        Int      @default(0)
-  triageOutputTokens       Int      @default(0)
+  triageInputTokens        Int     @default(0)
+  triageOutputTokens       Int     @default(0)
   triageModel              String?
-  triageCostUsd            Decimal  @default(0) @db.Decimal(10, 6)
-  prescriptionInputTokens  Int      @default(0)
-  prescriptionOutputTokens Int      @default(0)
+  triageCostUsd            Decimal @default(0) @db.Decimal(10, 6)
+  prescriptionInputTokens  Int     @default(0)
+  prescriptionOutputTokens Int     @default(0)
   prescriptionModel        String?
-  prescriptionCostUsd      Decimal  @default(0) @db.Decimal(10, 6)
+  prescriptionCostUsd      Decimal @default(0) @db.Decimal(10, 6)
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("audit_run_costs")
 }
@@ -647,22 +687,22 @@ model Screenshot {
 }
 
 model Flag {
-  id       String     @id @default(cuid())
-  auditId  String
-  audit    Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  pageId   String?
-  page     AuditPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  rubricId String?
+  id         String        @id @default(cuid())
+  auditId    String
+  audit      Audit         @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  pageId     String?
+  page       AuditPage?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  rubricId   String?
   rubric_rel ReportRubric? @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  source   FlagSource
+  source     FlagSource
 
   rubric       String
   impactTag    ImpactTag?
   severity     Severity
   problem      String
-  evidence     String   @db.Text
-  whyItMatters String   @db.Text
-  fix          String   @db.Text
+  evidence     String     @db.Text
+  whyItMatters String     @db.Text
+  fix          String     @db.Text
   confidence   Float
 
   agentPrompt   String? @db.Text
@@ -749,8 +789,8 @@ model ExpertReviewEvent {
   metadata  Json?
   createdAt DateTime          @default(now())
 
-  @@index([orderId, createdAt])
   @@unique([orderId, type])
+  @@index([orderId, createdAt])
   @@index([actorId])
   @@map("expert_review_events")
 }

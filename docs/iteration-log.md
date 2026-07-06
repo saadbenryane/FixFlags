@@ -26,6 +26,315 @@ double-render) rather than assume either way. Until resolved: when driving this
 input via `preview_eval`, filter for the element with `getBoundingClientRect().width
 > 0` before interacting — `preview_fill`/`preview_click`'s bare `#audit-url` selector
 can silently hit the invisible phantom and produce a false "nothing happened" reading.
+**In-progress note (updated 2026-07-05 ~11:24):** `lib/audit/flow/link-scoring.ts`
+had a large active edit in progress from another agent (mtime seconds old at 11:19,
+still growing at 11:22). As of ~11:24 the full `vitest run` suite is back to 100%
+green (1586/1587, 1 skip) - so their work is functionally done - but `npx tsc
+--noEmit` still shows 3 `string | undefined` -> `new URL()` errors in that same file
+(lines ~122-124 as of this check). Left it alone both times, per collab norms - if
+you hit this, check whether it's since been type-fixed before assuming it's fresh.
+**Update ~11:27:** same agent (or a related one) also touched `destination-ux-probes.ts`
+at 11:24, adding `visibleCtaCount`/`actionableCtaCount`/`primaryCtaHref` to
+`DestinationUXQuality` - `lib/audit/__tests__/checks.test.ts`'s fixtures (last
+touched 03:03, much earlier) don't have these fields yet, so `tsc` now shows 7 more
+errors there and `demo v1 fixture audit (offline)` fails. Still in-progress on their
+end almost certainly - left it alone again.
+**Resolved ~11:29:** both of the above are done - `npx tsc --noEmit` is clean and
+`npx vitest run` is 1598/1599 (1 skip), 0 failed. Confirms the "wait, don't touch an
+actively-edited file" approach worked cleanly here with zero intervention needed.
+
+---
+
+## 2026-07-05 — Session 45 (follow-up: confirmed Session 41's shared-flagKey concern is real, via a different mechanism than assumed)
+
+**No code change - a correction to my own earlier reasoning, worth recording so a
+future session doesn't have to re-derive this.** Session 41 flagged that
+`validatePrescriptionOutput()` requires one prescription per **unique** `flagKey`
+because two flag rows can share a key in a multi-page critical-path audit. Reading
+[`lib/audit/pipeline/run-page.ts:275-282`](../lib/audit/pipeline/run-page.ts) now
+shows *deterministic* flags are explicitly protected against this: every non-primary
+page's checkId gets a `::page:N` suffix before the flag is persisted, so within one
+audit a deterministic checkId can appear at most once un-suffixed (position 0) and
+once per additional page (uniquely suffixed) - they never actually collide. So my
+Session 41 concern, AS STATED (framed around checkId collisions), doesn't apply to
+deterministic flags.
+
+It's still real for **AI-generated** flags, though, via a different path:
+`flagKeyForRow()` falls back to `fingerprint` when `checkId` is null (all AI flags),
+and `buildAiFlagMatchKey()` ([`lib/audit/validate-judge-output.ts:111-113`](../lib/audit/validate-judge-output.ts))
+computes that fingerprint purely from `` `${rubric}::${normalizedProblemText}` `` -
+no page/URL disambiguation at all. If the AI independently raises a similarly-worded
+issue on two different pages of the same multi-page audit, those two rows share a
+`flagKey` with certainty, and there's no suffixing to prevent it the way there is for
+deterministic checks. So Session 41's fix (clarifying the prescription schema's
+AI-facing description to say "one per unique flagKey," matching
+`mergePrescriptionResults()`'s intentional one-prescription-to-multiple-rows
+behavior) was addressing a real scenario - just one gated on AI-flag fingerprint
+collisions, not deterministic checkId collisions as I'd assumed at the time.
+
+---
+
+## 2026-07-05 — Session 44 (parse-error.ts: developer-facing copy in an end-user error message)
+
+**Real UX-copy defect, fixed - low frequency but genuinely user-facing.**
+[`lib/api/parse-error.ts`](../lib/api/parse-error.ts)'s `parseApiErrorResponse()`
+first tries to read a real `message` from the response's JSON body (used by every
+legitimate app-level error, including the actual 503s this app returns for
+DB/Redis misconfiguration - `lib/api/errors.ts:61,68` already send a specific,
+correct message in those cases). The hardcoded `res.status === 503` fallback only
+fires when the body isn't parseable JSON at all - the realistic trigger being a
+bare platform-level outage response (e.g. the hosting platform's own error page)
+returned before the request ever reaches the Next.js app during a genuine, full
+outage. That fallback read "Service temporarily unavailable. **Check server
+configuration.**" - operator/developer language ("check X config") shown directly
+to an end user at the exact moment they can least act on it. Reworded to plain,
+actionable end-user language: "Please try again in a few minutes."
+
+Verified: traced the only two real 503-producing code paths
+(`lib/api/errors.ts` DB/Redis config checks, `app/api/health/route.ts`) to confirm
+this fallback text is reachable only for the bare-non-JSON case, not a path this
+app itself would hit with a JSON body already containing the real cause.
+`npx tsc --noEmit`: clean for this file (3 unrelated errors remain in
+`lib/audit/flow/link-scoring.ts`, another agent's in-progress edit - see the note
+above). `npx vitest run`: 1586 passed, 1 skipped, 0 failed. No existing test
+coverage for `lib/api/*` (none of that directory has test files) - not a gap
+introduced by this change, and out of proportion to add for a one-line copy fix.
+
+---
+
+## 2026-07-05 — Session 43 (metadata.ts: lookalike-domain substring bug in external-link/noopener detection)
+
+**Real, broadly-reproducible accuracy bug, fixed.**
+[`lib/audit/metadata.ts:116`](../lib/audit/metadata.ts)'s `externalLinksWithoutNoopener`
+counter (feeds `external-links-unsafe` in
+[`lib/audit/checks/seo.ts:50-56`](../lib/audit/checks/seo.ts)) checked
+`href.includes(new URL(url).hostname)` to decide whether a link was "internal" (skip
+the noopener check) - a plain substring match, not a real hostname comparison. Same
+anti-pattern class as Session 35's `.startsWith(origin)` bug in
+`findBrokenInternalLinks`, just inverted (`.includes()` instead of `.startsWith()`),
+found independently in a different file. Verified empirically before fixing (not
+just reasoned about): for hostname `example.com`, `'https://notexample.com/other'`
+and `'https://example.com.evil-attacker.com/phish'` **both** satisfied
+`.includes('example.com')` - meaning ANY domain containing the target hostname as a
+substring anywhere (prefix, suffix, or embedded) was silently treated as internal,
+skipping the reverse-tabnabbing (`rel="noopener"`) check on a genuinely external,
+unrelated link. Broader than the Session 35 bug's exact trigger shape, since
+`.includes()` catches lookalikes on either side of the hostname, not just as a
+prefix.
+
+Fix: parse each href with `new URL()` and compare `.hostname !== pageHostname`
+(computed once, outside the per-link loop), matching the established-correct pattern
+used elsewhere in the codebase this session (`isInternalNavigationHref`,
+`findBrokenInternalLinks`'s fixed version). Malformed hrefs that fail to parse are
+treated as non-external (preserves prior behavior for garbage input rather than
+throwing).
+
+Also fixed, unrelated but discovered while verifying `tsc`:
+[`components/repo-scan/RepoScanReport.tsx`](../components/repo-scan/RepoScanReport.tsx)
+was missing the `repoScanId` prop on `<RepoFindingCard>` - a genuinely stale call
+site (its own last commit predates today, not an active concurrent edit, confirmed
+via `git log`/mtime) left behind after `RepoFindingCard`'s `Props` interface added
+`repoScanId: string` as required. One-line fix: pass `repoScanId={current.id}`.
+
+Verified: added a regression test in
+[`lib/audit/__tests__/metadata.test.ts`](../lib/audit/__tests__/metadata.test.ts)
+proving the exact lookalike-domain scenario (`notexample.com` and
+`example.com.evil-attacker.com` both now correctly counted as external, alongside a
+real same-host link staying internal). `npx tsc --noEmit` -> clean *for my own
+changes* (see in-progress note above for the separate, actively-being-edited
+`link-scoring.ts` failures). `npx vitest run lib/audit/__tests__/metadata.test.ts
+lib/audit/__tests__/report-access.test.ts` -> 13/13 passed in isolation. Full-suite
+run showed 5 unrelated failures, all traced to the concurrent `link-scoring.ts` edit
+in progress, not this session's changes.
+
+---
+
+## 2026-07-05 — Session 42 (report-access.ts: dead code + duplicated access-gate condition, consolidated)
+
+**Design/consistency fix in access-control code, not an active bug - but exactly
+the shape of duplication that's caused real divergence bugs elsewhere this
+session (e.g. `ff_compare`'s stale-status issue, Session 31).**
+[`lib/audit/report-access.ts`](../lib/audit/report-access.ts)'s
+`canViewAiViaMaxPublicShare(audit, ownerCanSharePublicly)` was exported and had its
+own test coverage, but was **never actually called from real application code** -
+confirmed via a repo-wide grep (only hit: my own comment in `lib/mcp/tools.ts`, plus
+its own tests). Meanwhile `canViewPrescriptionContentForAudit()` - the actual
+combinator every real caller uses - reimplemented the exact same gating condition
+inline (`!audit.aiReviewAt || !audit.isPublic || !audit.userId`) instead of calling
+it. Two copies of the same access-control condition in one file is a real risk: if
+either one is edited later without remembering the other, the two would silently
+diverge and could either over-expose or over-restrict AI prescription content.
+
+Fix: `canViewPrescriptionContentForAudit()` now calls `canViewAiViaMaxPublicShare()`
+for its final gate instead of duplicating the condition. Kept the original early
+`if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false` **before**
+the `prisma.user.findUnique()` call - my first draft of this edit dropped that early
+return (only checking `!audit.userId`), which passed every test but silently added
+an unnecessary DB query on every audit that isn't eligible for public AI sharing at
+all; caught this myself by re-tracing the diff before considering it done, restored
+the full early-return, and confirmed both are needed for the exact same true/false
+outcome with zero avoidable Prisma calls.
+
+Verified: `npx tsc --noEmit` -> clean. `npx vitest run lib/audit/__tests__/report-access.test.ts`
+-> 6/6 passed (unchanged - these test `canViewAiViaMaxPublicShare` and
+`canViewPrescriptionContent` in isolation, both untouched in behavior). Full suite:
+1557 passed, 1 skipped, 0 failed.
+
+---
+
+## 2026-07-05 — Session 41 (prescription schema: investigated a suspected dedup bug, confirmed correct-by-design, clarified AI-facing wording)
+
+**Investigated, ruled out as a bug — but found a real, if narrow, AI-facing
+description mismatch worth fixing.** `validatePrescriptionOutput()` in
+[`lib/audit/judge-prescription.ts`](../lib/audit/judge-prescription.ts) requires
+exactly `requiredKeys.size` (a **deduped** `Set` of flagKeys) prescriptions from the
+AI, while `prescriptionOutputSchema`'s own field description read "One prescription
+per existing flag" (implying one per flag **row**, not per unique key). Traced
+whether two flag rows can legitimately share a `flagKey` (`flagKeyForRow()` in
+[`lib/audit/persist.ts:300-305`](../lib/audit/persist.ts) returns `checkId ??
+fingerprint`) - confirmed they can, in multi-page critical-path audits where the
+same check fires on more than one page - and confirmed
+`mergePrescriptionResults()` ([`lib/audit/persist.ts:408-435`](../lib/audit/persist.ts))
+is intentionally built to apply one prescription to every flag row sharing that key.
+So the *validation logic* is correct by design. But the schema description sent to
+the AI as part of its actual tool-call instructions said "per existing flag," which
+could lead the model to (in that specific multi-page-shared-checkId case) return
+more prescriptions than the deduped count the validator expects - a genuine, if rare,
+path to an avoidable `JudgeContractError` contract-validation failure. Reworded the
+`.describe()` text to say "one per UNIQUE flagKey" and explain why, so the AI's
+actual instructions match what the validator (and the merge step) actually expect.
+
+Verified: `npx tsc --noEmit` -> clean. Confirmed no test asserts on the exact
+description string (`lib/audit/__tests__/persist-functions.test.ts` only uses
+`flagPrescriptions` as fixture data, not the description text). `npx vitest run` ->
+1553 passed, 1 skipped, 0 failed (unchanged).
+
+---
+
+## 2026-07-05 — Session 40 (console-error count inflated 2x by desktop+mobile sharing one array)
+
+**Real accuracy bug, fixed.** [`lib/audit/screenshot.ts`](../lib/audit/screenshot.ts)'s
+`captureScreenshots()` runs desktop and mobile captures concurrently
+(`captureDesktopWithFlow` / `captureMobileViewport`), each navigating its **own**
+Puppeteer page - but both were passed the same shared `consoleErrors` array, and
+[`lib/audit/browser/page-session.ts:63-67`](../lib/audit/browser/page-session.ts)
+attaches a `page.on('console', ...)` listener per page that pushes into whatever
+array it's given. Since most real console errors aren't device-specific (they fire
+identically on every page load, not just on one viewport), any genuine error got
+counted **twice** - once from the desktop navigation, once from the mobile one.
+[`lib/audit/checks/trust.ts:67-87`](../lib/audit/checks/trust.ts) has zero
+deduplication (`consoleErrors.filter((e) => e.type === 'error')`, straight `.length`
+comparisons against `>= 3` for CRITICAL / `> 0` for POLISH), so a page with 2
+genuinely distinct console errors could show "4 JavaScript console errors detected"
+and cross the CRITICAL threshold it shouldn't have reached - a real, verifiable
+"fully accurate flags" violation, not a cosmetic one.
+
+Fix: extracted `dedupeConsoleErrors()` (dedupe by `type:text` via a `Map`) and apply
+it once, at the point `consoleErrors` is finalized in `captureScreenshots()`'s return
+- fixing it at the source rather than in `trust.ts` specifically, so every current
+and future consumer (`copy-parent-artifacts.ts`, `deterministic-audit.ts`,
+`pipeline/run-page.ts` all read `ScreenshotResult.consoleErrors`) gets an
+already-deduplicated array without needing to remember to dedupe themselves.
+
+Verified: extracted the dedup as a small, pure, exported function specifically so it
+could be unit-tested without a real Puppeteer browser (this file had zero prior test
+coverage) - added
+[`lib/audit/__tests__/screenshot-console-errors.test.ts`](../lib/audit/__tests__/screenshot-console-errors.test.ts)
+(4 tests: same error from both captures collapses to one, genuinely distinct errors
+stay separate, same text with a different console-message type stays distinct, empty
+input handled). `npx tsc --noEmit` -> clean. `npx vitest run` -> 1553 passed, 1
+skipped, 0 failed.
+
+---
+
+## 2026-07-05 — Session 39 (payment-confirmation transaction could silently roll back; monitoring severity-regression undetectable on parent flags)
+
+**Bug 1 - real, serious, billing-critical.** [`lib/email/expert-review.ts`](../lib/email/expert-review.ts)'s
+`notifyExpertReviewPaid()` threw when `params.userId`/`params.auditId` were null. Both
+are genuinely nullable (`ExpertReviewOrder.userId`/`auditId`, `onDelete: SetNull` in
+`prisma/schema.prisma` - the user or audit can be deleted after the order was placed).
+This function is called from **inside** the same DB transaction that marks the order
+`PAID` ([`app/api/webhooks/stripe/route.ts:207-215`](../app/api/webhooks/stripe/route.ts)),
+so a throw here rolled back that status update too - and since Stripe retries a
+non-2xx webhook response with the exact same event data, every retry would hit the
+identical permanent failure. Net effect: a customer who genuinely paid for an Expert
+Review, if their account/audit happened to be null at that moment, would have their
+payment confirmation silently and permanently erased - order stuck in `PENDING`
+forever, no confirmation email, no admin alert to actually do the review they paid
+for. Found via a subagent sweep of `lib/email/*` (first time reviewed this session);
+verified myself by tracing the actual webhook call site before fixing, not just
+trusting the subagent's report. Fix: log the anomaly and return early instead of
+throwing, so the transaction (and the customer's PAID status) commits regardless.
+
+**Bug 2 - real, subtler, affects monitoring-recheck accuracy broadly.**
+[`lib/audit/verify-flags.ts`](../lib/audit/verify-flags.ts)'s `applyDeterministicVerification()`
+has two loops that update flag `status` via `resolveMonitoringFlagStatus()`. The
+first loop (updating the **parent** flag's own status) passed
+`monitoringSeverity: flag.severity` where `flag` **is** the parent flag being
+updated - parent and "monitoring" severity were always the identical value by
+construction, so the severity-regression branch
+(`severityRank[monitoringSeverity] > severityRank[parentSeverity]`) could never fire
+for a parent flag's own status field, even when the underlying issue's severity
+genuinely got worse in the recheck. The second loop (updating monitoring flag rows)
+already did this correctly, using the monitoring flag's own real severity - the bug
+was isolated to the parent-row update. `verifiableCheckIds()` covers essentially
+every deterministic checkId (there's a completeness test requiring every checkId
+have a verification rule), so this affected the parent flag's status accuracy
+broadly, not one check. Fix: build a `Map<checkId, severity>` from the just-run
+`auditResult.flags` and look up the real current severity per checkId instead of
+reusing the parent's own value.
+
+Verified: `npx tsc --noEmit` -> clean. `npx vitest run` -> 1548 passed, 1 skipped, 0
+failed. Neither function has existing test coverage (both require mocking
+Resend/Prisma across multiple layers) - noted as a gap, not attempted here to keep
+the fix diff minimal; correctness was verified by tracing the exact call sites and
+transaction boundaries rather than by a new test.
+
+---
+
+## 2026-07-05 — Session 38 (v1 fixture test broken by Sessions 35-36's own accuracy fixes; fixed the fixture, not the checks)
+
+**Follow-on fix, not a new check bug.** After Sessions 35-37 (concurrent agents)
+correctly tightened `isInternalNavigationHref()` (Session 36) and
+`findBrokenInternalLinks()`'s origin comparison (Session 35), the previously-green
+`lib/demo/__tests__/v1-fixture-audit.test.ts` (`original keeps intentional flaws
+and v1 clears in-scope flags`) started failing - first with `trust-no-internal-links`,
+then with `broken-internal-links` once the first was addressed. Traced both instead
+of assuming either the new checks or the test were simply wrong:
+
+1. `lib/demo/fixtures/v1.ts` (the "everything's been fixed" demo fixture) had
+   `navLinks`/`footerLinks` that were ALL same-page hash anchors (`#features`,
+   `#privacy`, `#terms`, `#signup`) - zero real page-to-page links. Session 36's
+   stricter, *correct* `isInternalNavigationHref()` rightly excludes hash anchors
+   from "internal navigation" (matching the check's own fix-text: "add navigation
+   links to key pages," "footer with site map links" - i.e. other pages, not
+   scroll-anchors). The fixture was never designed to satisfy this correct
+   definition; a bug in the OLD check logic had been masking the gap.
+   Fixed the fixture (not the check): `Privacy`/`Terms` now point to real relative
+   paths (`/demo/v1/privacy`, `/demo/v1/terms`) instead of hash anchors, giving v1
+   two genuine internal links. Kept `Contact -> #signup` as-is (a "scroll to the
+   signup form" CTA is a legitimate, common real-world pattern).
+2. That surfaced a second, genuinely separate gap: `broken-internal-links`
+   ([`lib/audit/checks/seo.ts:110`](../lib/audit/checks/seo.ts)) performs a REAL
+   `fetch` HEAD/GET against `https://fixflags.com/demo/v1/privacy` (offline-mode
+   fixture audits use the real `DEMO_FIXTURE_ORIGIN`, per
+   [`lib/demo/demo-audit-scope.ts`](../lib/demo/demo-audit-scope.ts)) - a path that
+   doesn't correspond to any real deployed route for this fixture variant, so it
+   correctly 404s. This is the exact same category already documented for
+   `og-image-broken` ("needs a live HTTP fetch... offline fixture audit can't
+   validate it") but `broken-internal-links` was missing from
+   `DEMO_FIXTURE_OUT_OF_SCOPE_CHECK_IDS`. Added it, matching the existing pattern
+   and comment style exactly.
+
+Also confirmed while investigating: a concurrent agent has an active, uncommitted,
+in-progress edit to `app/report/[id]/page.tsx` (`+!!user &&` on line 181) that
+currently leaves a `tsc` error (`'user' is possibly 'null'` at line 182, one line
+below their edit) - did not touch it, it's clearly mid-flight on their end, not
+related to anything in this entry.
+
+Verified: `npx tsc --noEmit` -> clean (aside from the concurrent in-progress edit
+noted above, confirmed via `git diff --stat` to be someone else's uncommitted work,
+not mine). `npx vitest run` -> 1547 passed, 1 skipped, 0 failed.
 
 ---
 

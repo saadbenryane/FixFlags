@@ -53,7 +53,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <AuditInput source="report" />
+        <AuditInput source="report" idSuffix="-shared-report" />
       </div>
     </Callout>
   )

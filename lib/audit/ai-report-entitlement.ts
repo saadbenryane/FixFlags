@@ -28,20 +28,6 @@ export async function resolveIncludeAiForNewAudit(userId: string | null): Promis
   if (!user) return false
   if (hasUnlimitedScans(user) || isAdminUser(user)) return true
 
-  // A payment failure only sets subscriptionStatus (see handleInvoicePaymentFailed
-  // in app/api/webhooks/stripe/route.ts) - auditsLimit can still reflect the paid
-  // plan's larger quota until a separate subscription.updated event resyncs it.
-  // Without this, a user with a declined card keeps getting full LLM-judge audits
-  // (real per-call cost) at zero revenue for however long that lag lasts. Deny
-  // outright (no partial free-tier credit) to match canAccessPaidFeatures /
-  // canSharePublicly, which also revoke access entirely on a lapsed subscription.
-  if (user.plan !== 'FREE' && hasRevokedSubscriptionStatus(user.subscriptionStatus)) {
-    return false
-  }
-
-  const limit = getEffectiveScanLimit(user)
-  if (isUnlimitedScanLimit(limit)) return true
-
   const pendingAi = await prisma.audit.count({
     where: {
       userId: user.id,
@@ -51,7 +37,22 @@ export async function resolveIncludeAiForNewAudit(userId: string | null): Promis
     },
   })
 
-  if (!isAtCheckLimit(user.auditsUsed, pendingAi, limit)) return true
+  // A payment failure only sets subscriptionStatus (see handleInvoicePaymentFailed
+  // in app/api/webhooks/stripe/route.ts) - auditsLimit can still reflect the paid
+  // plan's larger quota until a separate subscription.updated event resyncs it.
+  // Without this, a user with a declined card keeps getting full LLM-judge audits
+  // (real per-call cost) at zero subscription revenue for however long that lag lasts.
+  // A revoked subscription forfeits the plan's included AI quota entirely (matches
+  // canAccessPaidFeatures / canSharePublicly, which also revoke access on a lapsed
+  // subscription) - but credit packs the user separately paid real money for
+  // (lib/billing/credits.ts) are a distinct transaction and remain spendable
+  // regardless of subscription state, same as for a FREE-plan user below.
+  const revoked = user.plan !== 'FREE' && hasRevokedSubscriptionStatus(user.subscriptionStatus)
+  if (!revoked) {
+    const limit = getEffectiveScanLimit(user)
+    if (isUnlimitedScanLimit(limit)) return true
+    if (!isAtCheckLimit(user.auditsUsed, pendingAi, limit)) return true
+  }
 
   const purchased = await getPurchasedCreditsRemaining(user.id)
   return purchased > pendingAi

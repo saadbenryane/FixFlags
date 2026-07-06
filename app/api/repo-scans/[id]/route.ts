@@ -12,7 +12,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params
     const scan = await prisma.repoScan.findUnique({
       where: { id },
-      include: { findings: { orderBy: [{ severity: 'asc' }, { filePath: 'asc' }] } },
+      include: {
+        findings: {
+          orderBy: [{ severity: 'asc' }, { filePath: 'asc' }],
+          include: {
+            fixPr: {
+              select: {
+                id: true,
+                status: true,
+                prNumber: true,
+                prUrl: true,
+                patchApplied: true,
+                errorMsg: true,
+              },
+            },
+          },
+        },
+      },
     })
     if (!scan || scan.userId !== session.user.id) {
       return apiError('Repo scan not found', 404, { code: 'NOT_FOUND' })

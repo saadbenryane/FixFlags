@@ -49,3 +49,39 @@ export async function cloneRepoShallow(
 
   return { dir, cleanup: () => rm(dir, { recursive: true, force: true }) }
 }
+
+/**
+ * Pushes a new branch from a local clone. Uses the same one-shot GIT_ASKPASS technique as
+ * cloneRepoShallow so the token never appears in argv or on disk. Never used with --force -
+ * the branch name is always freshly generated (fixflags/... prefix), so it should never
+ * already exist on the remote.
+ */
+export async function pushBranch(
+  repoDir: string,
+  branchName: string,
+  accessToken: string
+): Promise<void> {
+  const scriptDir = await mkdtemp(join(tmpdir(), 'repo-scan-askpass-'))
+  const askpassPath = join(scriptDir, 'askpass.sh')
+
+  try {
+    await writeFile(askpassPath, '#!/bin/sh\necho "$REPO_SCAN_GIT_TOKEN"\n', 'utf8')
+    await chmod(askpassPath, 0o700)
+
+    await execFileAsync('git', ['push', 'origin', `HEAD:refs/heads/${branchName}`], {
+      cwd: repoDir,
+      timeout: CLONE_TIMEOUT_MS,
+      maxBuffer: 10 * 1024 * 1024,
+      env: {
+        ...process.env,
+        GIT_ASKPASS: askpassPath,
+        GIT_TERMINAL_PROMPT: '0',
+        REPO_SCAN_GIT_TOKEN: accessToken,
+      },
+    })
+  } catch (err) {
+    throw err instanceof Error ? new Error(`Failed to push branch ${branchName}: ${err.message}`) : err
+  } finally {
+    await rm(scriptDir, { recursive: true, force: true })
+  }
+}

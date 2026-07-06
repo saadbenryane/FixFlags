@@ -95,6 +95,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
               <RepoFindingCard
                 key={finding.id}
                 finding={finding}
+                repoScanId={current.id}
                 repoFullName={current.repoFullName}
                 commitSha={current.commitSha}
               />

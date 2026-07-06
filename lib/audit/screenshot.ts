@@ -91,6 +91,18 @@ async function getBrowser(): Promise<Browser> {
   }
 }
 
+/**
+ * Desktop and mobile captures each navigate their own page but push console
+ * errors into one shared array, so any error that fires on every page load (the
+ * common case) lands twice. Dedupe by type+text so the count reflects distinct
+ * issues, not an artifact of running the same page through two viewports.
+ */
+export function dedupeConsoleErrors(
+  errors: Array<{ type: string; text: string }>
+): Array<{ type: string; text: string }> {
+  return [...new Map(errors.map((e) => [`${e.type}:${e.text}`, e])).values()]
+}
+
 export interface ScreenshotResult {
   desktopUrl: string | null
   mobileUrl: string | null
@@ -443,7 +455,7 @@ export async function captureScreenshots(
     desktopBase64: desktop.base64,
     mobileBase64: mobile.base64,
     desktopHtml: desktop.html,
-    consoleErrors,
+    consoleErrors: dedupeConsoleErrors(consoleErrors),
     captureStatus: {
       desktop: desktop.url ? 'ok' : 'failed',
       mobile: mobile.url ? 'ok' : 'failed',

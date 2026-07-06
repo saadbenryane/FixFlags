@@ -31,7 +31,11 @@ export async function parseApiErrorResponse(res: Response): Promise<ParsedApiErr
   let message = 'Something went wrong. Please try again.'
   let estimatedWaitSeconds: number | undefined
 
-  if (res.status === 503) message = 'Service temporarily unavailable. Check server configuration.'
+  // A parseable JSON body with the real cause (e.g. "Database is not configured")
+  // is handled above via data.message; this only fires for a bare, non-JSON 503
+  // (a platform-level outage page returned before the request reached the app),
+  // so keep it end-user language, not the operator-facing detail that case has.
+  if (res.status === 503) message = 'Service temporarily unavailable. Please try again in a few minutes.'
   if (res.status === 402) message = 'Scan limit reached.'
   if (res.status === 400) message = 'Invalid request.'
   if (res.status === 429) {

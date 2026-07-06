@@ -64,6 +64,9 @@ export async function applyDeterministicVerification(
   }
 
   const currentCheckIds = currentVerifiableCheckIds(auditResult.flags)
+  const currentSeverityByCheckId = new Map(
+    auditResult.flags.filter((f) => f.checkId).map((f) => [f.checkId as string, f.severity])
+  )
 
   for (const flag of parentFlags) {
     if (!flag.checkId || !VERIFIABLE_CHECK_IDS.has(flag.checkId)) continue
@@ -71,7 +74,12 @@ export async function applyDeterministicVerification(
     const status = resolveMonitoringFlagStatus({
       parentStatus: flag.status,
       parentSeverity: flag.severity,
-      monitoringSeverity: flag.severity,
+      // Look up this checkId's fresh severity from the just-run monitoring audit
+      // instead of reusing the parent's own severity - passing flag.severity for
+      // both parentSeverity and monitoringSeverity made a same-severity comparison
+      // by construction, so a genuine regression (this issue now firing at a worse
+      // severity) could never be detected on the parent flag's own status field.
+      monitoringSeverity: currentSeverityByCheckId.get(flag.checkId) ?? flag.severity,
       stillFails,
     })
     await prisma.flag.update({

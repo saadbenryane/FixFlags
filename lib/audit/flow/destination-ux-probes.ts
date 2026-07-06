@@ -8,6 +8,12 @@ export interface DestinationUXQuality {
   ctaPromisesMatch: boolean
   headline: string | null
   pageType: string | null
+  /** Total visible CTA elements on the destination page. */
+  visibleCtaCount: number
+  /** CTAs with actionable hrefs (not dead/placeholder/empty). */
+  actionableCtaCount: number
+  /** Resolved href of the primary CTA, if one exists. */
+  primaryCtaHref: string | null
   trustSignals: {
     hasPrivacyPolicy: boolean
     hasContactInfo: boolean
@@ -96,6 +102,17 @@ export async function runDestinationUXProbes(
     const h1 = document.querySelector('h1')
     const headline = h1?.textContent?.trim() ?? null
 
+    function isActionableHref(href: string | null, tag: string): boolean {
+      if (tag === 'button' || tag === 'input') return true
+      if (!href || href === '#' || href.startsWith('javascript:') || href === 'about:blank') return false
+      try {
+        const url = new URL(href)
+        return url.protocol === 'http:' || url.protocol === 'https:'
+      } catch {
+        return true
+      }
+    }
+
     const ctas = Array.from(document.querySelectorAll('a[href], button, [role="button"]'))
       .filter((el) => {
         if (el.closest('nav, header, [role="navigation"]')) return false
@@ -106,9 +123,12 @@ export async function runDestinationUXProbes(
         text: (el.textContent ?? '').trim(),
         href: (el as HTMLAnchorElement).href ?? null,
         isPrimary: el.matches('.primary, [class*="cta"], [class*="btn-primary"], button:not([class*="ghost"])'),
+        tag: el.tagName.toLowerCase(),
       }))
 
     const primaryCta = ctas.find((c) => c.isPrimary) ?? ctas[0] ?? null
+
+    const actionableCtas = ctas.filter((c) => isActionableHref(c.href, c.tag))
 
     const viewportMeta = !!document.querySelector('meta[name="viewport"]')
 
@@ -123,7 +143,9 @@ export async function runDestinationUXProbes(
     return {
       headline,
       ctaText: primaryCta?.text ?? null,
+      ctaHref: primaryCta?.href ?? null,
       ctaCount: ctas.length,
+      actionableCtaCount: actionableCtas.length,
       primaryCtaExists: primaryCta !== null,
       hasViewportMeta: viewportMeta,
       tapTargetsSmall: smallTapTargets,
@@ -153,6 +175,9 @@ export async function runDestinationUXProbes(
     ctaPromisesMatch,
     headline: pageData.headline,
     pageType: null,
+    visibleCtaCount: pageData.ctaCount,
+    actionableCtaCount: pageData.actionableCtaCount,
+    primaryCtaHref: pageData.ctaHref,
     trustSignals: {
       hasPrivacyPolicy: metadata?.hasPrivacyPolicy ?? false,
       hasContactInfo: metadata?.hasContactInfo ?? false,

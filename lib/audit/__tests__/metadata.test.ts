@@ -82,6 +82,25 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.ctaTexts.length, 0)
   })
 
+  it('treats a lookalike domain as external, not a substring match on the hostname', () => {
+    // Regression test: externalLinksWithoutNoopener used to check
+    // `href.includes(new URL(url).hostname)`, so any domain containing the
+    // page's hostname as a substring anywhere (prefix, suffix, or embedded) was
+    // wrongly treated as internal, silently skipping the noopener/reverse-
+    // tabnabbing check on a genuinely external, unrelated link.
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Lookalike domain test page title</title></head>
+<body>
+  <a href="https://example.com.evil-attacker.com/phish">Suspicious</a>
+  <a href="https://notexample.com/other">Lookalike prefix</a>
+  <a href="https://example.com/pricing">Real internal link</a>
+</body>
+</html>`
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(meta.externalLinksWithoutNoopener, 2)
+  })
+
   it('detects analytics without cookie consent', () => {
     const html = `<!DOCTYPE html>
 <html lang="en">

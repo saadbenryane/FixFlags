@@ -1,16 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronUp, GitCommitHorizontal } from 'lucide-react'
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  GitCommitHorizontal,
+  GitPullRequest,
+  Loader2,
+} from 'lucide-react'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
+import { toast } from 'sonner'
 import type { RepoScanFinding } from '@/hooks/useRepoScanPolling'
 import { buildRepoFindingFixTask } from '@/lib/repo-scan/finding-fix-task'
+import { isAutoPatchable } from '@/lib/repo-scan/auto-patch-policy'
+import { useFixPrStatus, requestFixPr } from '@/hooks/useFixPrStatus'
 
 interface Props {
   finding: RepoScanFinding
   repoFullName: string
+  repoScanId: string
   commitSha: string | null
   defaultExpanded?: boolean
 }
@@ -26,10 +40,14 @@ function locationLabel(finding: RepoScanFinding): string {
 export function RepoFindingCard({
   finding,
   repoFullName,
+  repoScanId,
   commitSha,
   defaultExpanded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const [confirming, setConfirming] = useState(false)
+  const [hasRequested, setHasRequested] = useState(Boolean(finding.fixPr))
+  const [submitting, setSubmitting] = useState(false)
   const fixTask = buildRepoFindingFixTask({
     repoFullName,
     commitSha,
@@ -42,6 +60,21 @@ export function RepoFindingCard({
     evidence: finding.evidence,
     fix: finding.fix,
   })
+  const { fixPr } = useFixPrStatus(repoScanId, finding.id, hasRequested, finding.fixPr)
+  const patchable = isAutoPatchable(finding)
+
+  async function handleConfirmFixPr() {
+    setSubmitting(true)
+    try {
+      await requestFixPr(repoScanId, finding.id)
+      setHasRequested(true)
+      setConfirming(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not start the fix PR')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="relative border-b border-border/60 last:border-b-0">
@@ -120,6 +153,73 @@ export function RepoFindingCard({
             </div>
 
             <FixPromptBlock prompt={fixTask.prompt} rows={4} clamp={false} nested />
+
+            <div className="space-y-2">
+              {!hasRequested && !confirming && (
+                <Button variant="outline" size="sm" onClick={() => setConfirming(true)}>
+                  <GitPullRequest className="mr-1.5 h-3.5 w-3.5" />
+                  Create fix PR
+                </Button>
+              )}
+
+              {!hasRequested && confirming && (
+                <Callout variant="info">
+                  <div className="space-y-2">
+                    <p>
+                      Opens branch <span className="font-mono">{fixTask.branchName}</span> as a
+                      draft pull request on {repoFullName}. This never touches your default
+                      branch directly.
+                    </p>
+                    {patchable && (
+                      <p>
+                        Since this is an exposed secret in a committed <code>.env</code> file,
+                        FixFlags will also add {finding.filePath} to .gitignore and stop tracking
+                        it. You still need to rotate the exposed credential yourself.
+                      </p>
+                    )}
+                    {!patchable && (
+                      <p>No code changes are made - the PR description carries the fix prompt above for your own agent to apply.</p>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={handleConfirmFixPr} disabled={submitting}>
+                        {submitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirming(false)}
+                        disabled={submitting}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </Callout>
+              )}
+
+              {hasRequested && (!fixPr || fixPr.status === 'DRAFT' || fixPr.status === 'CREATING') && (
+                <Button variant="outline" size="sm" disabled>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Creating fix PR…
+                </Button>
+              )}
+
+              {hasRequested && fixPr?.status === 'CREATED' && fixPr.prUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={fixPr.prUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    View PR{fixPr.prNumber ? ` #${fixPr.prNumber}` : ''}
+                  </a>
+                </Button>
+              )}
+
+              {hasRequested && fixPr?.status === 'FAILED' && (
+                <Callout variant="danger">
+                  {fixPr.errorMsg || 'Could not create the fix PR.'}
+                </Callout>
+              )}
+            </div>
           </div>
         )}
       </div>

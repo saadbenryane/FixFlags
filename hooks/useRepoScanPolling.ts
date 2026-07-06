@@ -12,6 +12,14 @@ export interface RepoScanFinding {
   evidence: string
   fix: string
   agentPrompt: string | null
+  fixPr?: {
+    id: string
+    status: 'DRAFT' | 'CREATING' | 'CREATED' | 'FAILED'
+    prNumber: number | null
+    prUrl: string | null
+    patchApplied: boolean
+    errorMsg: string | null
+  } | null
 }
 
 export interface RepoScan {

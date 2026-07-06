@@ -7,6 +7,7 @@ export const MAX_FILE_SIZE_BYTES = 512 * 1024 // 512 KB
 export const MAX_TOTAL_BYTES_SCANNED = 50 * 1024 * 1024 // 50 MB
 
 export const SCAN_TIMEOUT_MS = 5 * 60 * 1000
+export const FIX_PR_TIMEOUT_MS = 3 * 60 * 1000
 
 export const SKIPPED_DIR_NAMES = new Set([
   'node_modules',

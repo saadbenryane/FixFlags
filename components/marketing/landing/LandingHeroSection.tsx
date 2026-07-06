@@ -33,7 +33,7 @@ export function LandingHeroSection() {
             id="audit"
             className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)] motion-safe:animate-fade-in-up motion-safe:[animation-delay:160ms] motion-safe:[animation-fill-mode:both]"
           >
-            <AuditInput variant="landing" />
+            <AuditInput variant="landing" idSuffix="-hero" />
           </div>
         </div>
 

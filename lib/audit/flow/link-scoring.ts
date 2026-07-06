@@ -5,6 +5,23 @@ const PRICING_PATTERN = /pricing|plans?\b|price/
 const PRIMARY_CONVERSION_PATTERN =
   /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i
 const SECONDARY_CONVERSION_PATTERN = /signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i
+const NON_PAGE_PROTOCOLS = new Set(['mailto:', 'tel:', 'sms:'])
+
+export interface CtaHrefOptions {
+  baseUrl?: string
+  /** True only when a same-page hash points at a real element on the page. */
+  hashTargetExists?: boolean
+}
+
+export interface CtaHrefClassification {
+  href: string | null
+  resolvedHref: string | null
+  protocol: string | null
+  isPlaceholder: boolean
+  isPageNavigation: boolean
+  isSamePageAnchor: boolean
+  isActionable: boolean
+}
 
 export function isAuthUtilityLink(href: string, text: string): boolean {
   return AUTH_UTILITY_PATTERN.test(`${href} ${text}`)
@@ -33,6 +50,105 @@ export function isIntentionalExternalCta(origin: string, href: string | null): b
   }
 }
 
+export function classifyCtaHref(
+  href: string | null | undefined,
+  options: CtaHrefOptions = {}
+): CtaHrefClassification {
+  const raw = typeof href === 'string' ? href.trim() : ''
+  const fallback = {
+    href: raw || null,
+    resolvedHref: null,
+    protocol: null,
+    isPlaceholder: true,
+    isPageNavigation: false,
+    isSamePageAnchor: false,
+    isActionable: false,
+  }
+
+  if (!raw || raw === '#') return fallback
+
+  const lower = raw.toLowerCase()
+  if (
+    lower === 'javascript:;' ||
+    lower.startsWith('javascript:') ||
+    lower === 'about:blank'
+  ) {
+    return fallback
+  }
+
+  if (raw.startsWith('#')) {
+    const actionable = Boolean(options.hashTargetExists)
+    return {
+      href: raw,
+      resolvedHref: options.baseUrl ? new URL(raw, options.baseUrl).toString() : raw,
+      protocol: null,
+      isPlaceholder: !actionable,
+      isPageNavigation: actionable,
+      isSamePageAnchor: actionable,
+      isActionable: actionable,
+    }
+  }
+
+  // Relative URL (no protocol scheme) means it's a same-site page link
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !raw.startsWith('//')) {
+    const resolvedHref = options.baseUrl ? new URL(raw, options.baseUrl).toString() : null
+    return {
+      href: raw,
+      resolvedHref,
+      protocol: null,
+      isPlaceholder: false,
+      isPageNavigation: true,
+      isSamePageAnchor: false,
+      isActionable: true,
+    }
+  }
+
+  try {
+    const parsed = options.baseUrl ? new URL(raw, options.baseUrl) : new URL(raw)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return {
+        href: raw,
+        resolvedHref: parsed.toString(),
+        protocol: parsed.protocol,
+        isPlaceholder: NON_PAGE_PROTOCOLS.has(parsed.protocol),
+        isPageNavigation: false,
+        isSamePageAnchor: false,
+        isActionable: false,
+      }
+    }
+
+    const isSamePageAnchor = (() => {
+      if (!options.baseUrl || !parsed.hash) return false
+      const base = options.baseUrl
+      return (
+        parsed.origin === new URL(base).origin &&
+        parsed.pathname === new URL(base).pathname &&
+        parsed.search === new URL(base).search
+      )
+    })()
+    const anchorIsActionable = !isSamePageAnchor || Boolean(options.hashTargetExists)
+
+    return {
+      href: raw,
+      resolvedHref: parsed.toString(),
+      protocol: parsed.protocol,
+      isPlaceholder: isSamePageAnchor && !anchorIsActionable,
+      isPageNavigation: anchorIsActionable,
+      isSamePageAnchor,
+      isActionable: anchorIsActionable,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+export function isActionableCtaHref(
+  href: string | null | undefined,
+  options: CtaHrefOptions = {}
+): boolean {
+  return classifyCtaHref(href, options).isActionable
+}
+
 export function scoreCtaLink(href: string, text: string): number {
   const combined = `${href} ${text}`.toLowerCase()
 
@@ -46,13 +162,23 @@ export function scoreCtaLink(href: string, text: string): number {
 }
 
 export function isDeadHref(href: string): boolean {
-  const normalized = href.trim().toLowerCase()
-  return (
-    normalized === '' ||
-    normalized === '#' ||
-    normalized.startsWith('javascript:void') ||
-    normalized === 'javascript:;'
-  )
+  return classifyCtaHref(href).isPlaceholder
+}
+
+/**
+ * Self-contained (no-import) CTA actionability predicate that can be serialized
+ * via .toString() and passed to page.evaluate() for in-browser use.
+ * Callers: `page.evaluate(isBrowserActionablePredicate)` then filter the result.
+ */
+export function isBrowserActionableHref(href: string | null, tag: string): boolean {
+  if (tag === 'button' || tag === 'input') return true
+  if (!href || href === '#' || href.startsWith('javascript:') || href === 'about:blank') return false
+  try {
+    const url = new URL(href)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return true
+  }
 }
 
 export function resolveSameOrigin(origin: string, href: string): string | null {

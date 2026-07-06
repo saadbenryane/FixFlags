@@ -48,7 +48,11 @@ export const rubricPrescriptionSchema = z.object({
 export const prescriptionOutputSchema = z.object({
   flagPrescriptions: z
     .array(flagPrescriptionSchema)
-    .describe('One prescription per existing flag, keyed by flagKey'),
+    .describe(
+      'One prescription per UNIQUE flagKey in the provided flags - if the same checkId ' +
+        'appears on more than one page (e.g. a multi-page critical-path scan), it is one ' +
+        'issue with one flagKey and needs exactly one prescription, not one per occurrence'
+    ),
   rubricPrescriptions: z
     .array(rubricPrescriptionSchema)
     .describe('Holistic rubric-level fix prompts for MESSAGE, EXPERIENCE, and REACH'),

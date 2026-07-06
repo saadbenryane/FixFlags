@@ -3,6 +3,7 @@ import { prisma } from '../db'
 import { runAudit } from '../audit/runner'
 import { runAiReview } from '../audit/run-ai-review'
 import { runRepoScan } from '../repo-scan/runner'
+import { runFixPr } from '../repo-scan/fix-pr-runner'
 import { createWorkerRedis } from './redis'
 import { touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
@@ -35,6 +36,11 @@ export function startWorker() {
       if (job.name === 'repo-scan') {
         const { repoScanId } = job.data as { repoScanId: string }
         await runRepoScan(repoScanId)
+        return
+      }
+      if (job.name === 'repo-fix-pr') {
+        const { repoFixPrId } = job.data as { repoFixPrId: string }
+        await runFixPr(repoFixPrId)
         return
       }
       try {
@@ -70,6 +76,15 @@ export function startWorker() {
       await prisma.repoScan.updateMany({
         where: { id: repoScanId, status: { notIn: ['COMPLETED', 'FAILED'] } },
         data: { status: 'FAILED', errorMsg: err.message || 'Repo scan failed', completedAt: new Date() },
+      })
+      return
+    }
+
+    if (job.name === 'repo-fix-pr') {
+      const { repoFixPrId } = job.data as { repoFixPrId: string }
+      await prisma.repoFixPr.updateMany({
+        where: { id: repoFixPrId, status: { not: 'CREATED' } },
+        data: { status: 'FAILED', errorMsg: err.message || 'Fix PR creation failed' },
       })
       return
     }

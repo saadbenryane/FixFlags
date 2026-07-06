@@ -98,9 +98,16 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
-  const deadCtaLinks = meta.links.filter(
-    (link) => isDeadHref(link.href) && CTA_PATTERN.test(`${link.href} ${link.text}`)
-  )
+  const elementIdSet = new Set(meta.elementIds)
+  const deadCtaLinks = meta.links.filter((link) => {
+    const href = link.href
+    // Hash target that exists on the page is not dead
+    if (href.startsWith('#')) {
+      const targetId = href.slice(1).toLowerCase()
+      if (elementIdSet.has(targetId)) return false
+    }
+    return isDeadHref(href) && CTA_PATTERN.test(`${href} ${link.text}`)
+  })
   if (deadCtaLinks.length > 0) {
     const sample = deadCtaLinks[0]
     findings.push({

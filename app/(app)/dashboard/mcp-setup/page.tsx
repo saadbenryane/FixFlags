@@ -10,7 +10,6 @@ import {
   Copy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Callout } from '@/components/ui/callout'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -116,7 +115,6 @@ export default function McpSetupWizard() {
           description="Tell us about your setup so we can show the right config for your editor."
         />
         <Surface variant="nested" className="space-y-6 sm:p-6">
-        <Card className="p-6 space-y-6 border-0 shadow-none">
           <div className="space-y-3">
             <p className="text-sm font-medium">What&apos;s your experience with AI coding tools?</p>
             <div className="space-y-2">
@@ -169,7 +167,6 @@ export default function McpSetupWizard() {
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
           </div>
-        </Card>
         </Surface>
       </Container>
     )
@@ -183,7 +180,6 @@ export default function McpSetupWizard() {
           description="This key lets your editor talk to FixFlags. Copy it now - you won't see it again."
         />
         <Surface variant="nested" className="space-y-6 sm:p-6">
-        <Card className="p-6 space-y-4 border-0 shadow-none">
           {!newKey ? (
             <>
               <Button onClick={createApiKey} disabled={creatingKey} size="lg" className="w-full">
@@ -212,17 +208,16 @@ export default function McpSetupWizard() {
               </Callout>
             </>
           )}
-        </Card>
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Back
-          </Button>
-          <Button size="sm" onClick={handleNext} disabled={!canProceed()}>
-            {newKey ? 'Continue' : 'Skip'}
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </div>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Back
+            </Button>
+            <Button size="sm" onClick={handleNext} disabled={!canProceed()}>
+              {newKey ? 'Continue' : 'Skip'}
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </div>
         </Surface>
       </Container>
     )
