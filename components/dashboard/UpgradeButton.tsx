@@ -4,9 +4,15 @@ import { Button } from '@/components/ui/button'
 import { Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgrade-moments'
 
-export function UpgradeButton() {
+interface Props {
+  context?: UpgradeMoment
+}
+
+export function UpgradeButton({ context }: Props) {
   const [loading, setLoading] = useState(false)
+  const momentContent = context ? getUpgradeMomentContent(context) : null
 
   async function handleUpgrade() {
     setLoading(true)
@@ -34,13 +40,20 @@ export function UpgradeButton() {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleUpgrade} disabled={loading}>
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-      ) : (
-        <Sparkles className="h-4 w-4 mr-2" />
+    <div className="flex items-center gap-3">
+      {momentContent && (
+        <span className="text-xs text-muted-foreground max-w-48 text-right leading-snug">
+          {momentContent.headline}
+        </span>
       )}
-      Upgrade
-    </Button>
+      <Button variant="outline" size="sm" onClick={handleUpgrade} disabled={loading}>
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        ) : (
+          <Sparkles className="h-4 w-4 mr-2" />
+        )}
+        {momentContent ? momentContent.cta : 'Upgrade'}
+      </Button>
+    </div>
   )
 }

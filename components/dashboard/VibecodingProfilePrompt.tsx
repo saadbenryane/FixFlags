@@ -13,7 +13,8 @@ export function VibecodingProfilePrompt() {
   const [dismissed, setDismissed] = useState(false)
 
   const hasProfile = user?.vibecodingLevel || user?.preferredTools?.length
-  if (hasProfile || dismissed) return null
+  const hasRunCheck = (user?.checks.used ?? 0) > 0
+  if (hasProfile || dismissed || !hasRunCheck) return null
 
   return (
     <Card className="bg-brand/5 p-4 ring-2 ring-brand/20 sm:p-5">

@@ -17,6 +17,7 @@ import { RecentChecksList } from '@/components/dashboard/RecentChecksList'
 import { Container } from '@/components/ui/container'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
+import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
@@ -115,7 +116,14 @@ export default async function DashboardPage({
 
       <div className="flex items-center justify-between">
         <PageHeader title="Dashboard" />
-        {isEffectivelyFree && !isUnlimited && <UpgradeButton />}
+        <div className="flex items-center gap-3">
+          {!isEffectivelyFree && (
+            <Badge variant="outline" className="text-success border-success/30 bg-success/5 text-xs gap-1.5">
+              Pro
+            </Badge>
+          )}
+          {isEffectivelyFree && !isUnlimited && <UpgradeButton context="free_default" />}
+        </div>
       </div>
 
       {atAuditLimit && (

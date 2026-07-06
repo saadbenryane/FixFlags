@@ -45,6 +45,27 @@ actively-edited file" approach worked cleanly here with zero intervention needed
 
 ---
 
+## 2026-07-06 — Session 46 (fix-PR runner: non-patchable findings could never open a PR)
+
+**Real structural bug in the branch-edit feature, fixed.**
+[`lib/repo-scan/fix-pr-runner.ts`](../lib/repo-scan/fix-pr-runner.ts): the
+non-mechanically-patchable path (everything except committed-.env findings, per
+`auto-patch-policy.ts`) created the fix branch via the GitHub refs API at `baseSha`
+— zero commits ahead of the default branch — then tried to open a draft PR. GitHub
+rejects PRs whose head has no commits ahead of base (422 "No commits between ..."),
+so "Create fix PR" failed with a raw 422 for the **majority** of finding types. The
+patchable-but-no-op case (`patch.changed === false`, e.g. .env already ignored) hit
+the same wall. Fix: unified both paths on clone -> branch -> patch-if-applicable ->
+commit (`--allow-empty` with a "Start fix branch for: <problem>" message when
+nothing changed) -> push, so the draft PR always has >= 1 commit to anchor it.
+Removed the now-dead `createBranchRef` from `lib/integrations/github-pr.ts`.
+Verified: `tsc` clean, `vitest run lib/repo-scan/__tests__` 27/27 (targeted only,
+per the updated test-with-intention directive). No unit test added for the runner
+itself — it would only re-mock the same GitHub-behavior assumption; the guarantee is
+now structural (the commit is unconditional).
+
+---
+
 ## 2026-07-05 — Session 45 (follow-up: confirmed Session 41's shared-flagKey concern is real, via a different mechanism than assumed)
 
 **No code change - a correction to my own earlier reasoning, worth recording so a

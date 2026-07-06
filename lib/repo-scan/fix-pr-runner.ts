@@ -3,7 +3,7 @@ import { promisify } from 'node:util'
 import { prisma } from '@/lib/db'
 import { decryptSecret } from '@/lib/security/crypto'
 import { getGithubRepo } from '@/lib/integrations/github'
-import { createBranchRef, createDraftPullRequest, GithubPermissionError } from '@/lib/integrations/github-pr'
+import { createDraftPullRequest, GithubPermissionError } from '@/lib/integrations/github-pr'
 import { logger } from '@/lib/logger'
 import { cloneRepoShallow, pushBranch } from './clone'
 import { isAutoPatchable, buildMechanicalPatch } from './mechanical-patch'
@@ -52,29 +52,34 @@ export async function runFixPr(repoFixPrId: string): Promise<void> {
       )
     }
 
-    const patchable = isAutoPatchable(fixPr.finding)
-    let patchApplied = false
+    // Always clone + commit + push, even when there is no mechanical patch: a
+    // branch with zero commits ahead of the default branch cannot be opened as
+    // a PR (GitHub rejects it with 422 "No commits between base and head"), so
+    // the no-patch case gets an empty commit to anchor the draft PR the user's
+    // agent will push the real fix onto.
+    const cloned = await cloneRepoShallow(repoFullName, accessToken)
+    cleanup = cloned.cleanup
+    await execFileAsync('git', ['checkout', '-b', fixPr.branchName], { cwd: cloned.dir })
 
-    if (patchable) {
-      const cloned = await cloneRepoShallow(repoFullName, accessToken)
-      cleanup = cloned.cleanup
-      await execFileAsync('git', ['checkout', '-b', fixPr.branchName], { cwd: cloned.dir })
+    const patch = isAutoPatchable(fixPr.finding)
+      ? await buildMechanicalPatch(fixPr.finding, cloned.dir)
+      : { changed: false, description: 'No mechanical patch available for this finding.' }
+    const patchApplied = patch.changed
 
-      const patch = await buildMechanicalPatch(fixPr.finding, cloned.dir)
-      patchApplied = patch.changed
-      if (patch.changed) {
-        await execFileAsync('git', ['add', '-A'], { cwd: cloned.dir })
-        await execFileAsync(
-          'git',
-          ['-c', 'user.email=bot@fixflags.com', '-c', 'user.name=FixFlags', 'commit', '-m', patch.description],
-          { cwd: cloned.dir }
-        )
-      }
-
-      await pushBranch(cloned.dir, fixPr.branchName, accessToken)
-    } else {
-      await createBranchRef(accessToken, repoFullName, fixPr.branchName, fixPr.baseSha)
+    if (patch.changed) {
+      await execFileAsync('git', ['add', '-A'], { cwd: cloned.dir })
     }
+    await execFileAsync(
+      'git',
+      [
+        '-c', 'user.email=bot@fixflags.com', '-c', 'user.name=FixFlags',
+        'commit', '--allow-empty', '-m',
+        patch.changed ? patch.description : `Start fix branch for: ${fixPr.finding.problem}`,
+      ],
+      { cwd: cloned.dir }
+    )
+
+    await pushBranch(cloned.dir, fixPr.branchName, accessToken)
 
     const fixTask = buildRepoFindingFixTask({
       repoFullName,

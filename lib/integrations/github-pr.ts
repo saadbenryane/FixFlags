@@ -24,25 +24,6 @@ async function githubApiCall(
   return res
 }
 
-/** Creates a branch ref pointing at an existing commit - used when there is no local patch to push. */
-export async function createBranchRef(
-  accessToken: string,
-  repoFullName: string,
-  branchName: string,
-  baseSha: string
-): Promise<void> {
-  const res = await githubApiCall(accessToken, 'POST', `/repos/${repoFullName}/git/refs`, {
-    ref: `refs/heads/${branchName}`,
-    sha: baseSha,
-  })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    // 422 with "Reference already exists" is fine - a retry after a partial prior failure.
-    if (res.status === 422 && detail.includes('already exists')) return
-    throw new Error(`Failed to create branch ${branchName} (${res.status}): ${detail.slice(0, 200)}`)
-  }
-}
-
 export interface CreatePullRequestResult {
   number: number
   htmlUrl: string
