@@ -5,6 +5,7 @@ import { applyDeterministicVerification } from '@/lib/audit/verify-flags'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
+import { persistAuditGraphSnapshot } from '@/lib/graph/snapshot'
 import { logger } from '@/lib/logger'
 
 interface FinalizeAuditInput {
@@ -195,6 +196,14 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after audit finalize', err)
+  })
+
+  // Knowledge-graph: write the audit's findings into the internal graph so
+  // every new audit contributes to issue frequencies, benchmarks, and the
+  // public read models. Fire-and-forget — a graph failure must never block
+  // an audit from being marked COMPLETED for the user.
+  await persistAuditGraphSnapshot(input.auditId).catch((err) => {
+    logger.error('Knowledge-graph persist failed after audit finalize', err)
   })
 }
 

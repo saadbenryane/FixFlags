@@ -498,6 +498,12 @@ model Audit {
   runCost            AuditRunCost?
   expertReviewOrders ExpertReviewOrder[]
 
+  // Knowledge-graph back-references. Nullable + optional so the migration
+  // is safe to apply to existing audits; filled by
+  // scripts/graph/backfill-historical.ts and the live persist hook.
+  siteId     String?
+  site       Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -508,6 +514,7 @@ model Audit {
   @@index([userId, status])
   @@index([parentId])
   @@index([normalizedDomain])
+  @@index([siteId])
   @@map("audits")
 }
 
@@ -609,9 +616,13 @@ model AuditPage {
   failureMessage  String?
   screenshots     Screenshot[]
   flags           Flag[]
+
+  // Knowledge-graph: each distinct page URL is also a graph:Page.
+  pageId          String?
+  page_rel        Page?   @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
-
   @@unique([auditId, normalizedUrl])
   @@unique([auditId, position])
   @@index([auditId, status])
@@ -723,10 +734,16 @@ model Flag {
   feedback  FlagFeedback[]
   createdAt DateTime       @default(now())
 
+  // Knowledge-graph link. Nullable so the migration is safe to apply to
+  // existing flags without recomputing fingerprints.
+  issueId    String?
+  issue      Issue?  @relation(fields: [issueId], references: [id], onDelete: SetNull)
+
   @@index([auditId])
   @@index([auditId, checkId])
   @@index([pageId])
   @@index([auditId, fingerprint])
+  @@index([issueId])
   @@map("flags")
 }
 
@@ -842,4 +859,217 @@ model CreditPurchase {
 
   @@index([userId, status])
   @@map("credit_purchases")
+}
+
+// =============================================================================
+// Growth / Knowledge Graph
+//
+// Internal-only entities that model the relationships FixFlags discovers as it
+// audits sites. Public artifacts (issue pages, benchmark pages, free tools,
+// public reports) are derived from these tables — never read directly.
+//
+// See docs/growth/architecture.md for the full design.
+// =============================================================================
+
+model Site {
+  id             String   @id @default(cuid())
+  hostname       String   @unique
+  rootUrl        String
+  firstSeenAt    DateTime @default(now())
+  lastAuditedAt  DateTime @default(now())
+  auditCount     Int      @default(0)
+  industryGuess  String?
+  techGuess      Json?
+  pages          Page[]
+  audits         Audit[]
+  // Note: per-flag linkage to a Site lives in graph_issue_occurrence, not as
+  // a direct relation — keeps this model cheap to query by hostname alone.
+  technologies   SiteTechnology[]
+  industry       Industry? @relation(fields: [industryId], references: [id], onDelete: SetNull)
+  industryId     String?
+  occurrences    IssueOccurrence[]
+
+  @@index([lastAuditedAt])
+  @@map("graph_site")
+}
+
+model Page {
+  id         String   @id @default(cuid())
+  siteId     String
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  url        String
+  path       String
+  role       String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  audits     AuditPage[]
+
+  @@unique([siteId, url])
+  @@index([siteId])
+  @@map("graph_page")
+}
+
+model Technology {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  kind  String
+  sites SiteTechnology[]
+
+  @@map("graph_technology")
+}
+
+model SiteTechnology {
+  siteId       String
+  technologyId String
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  confidence   Float    @default(1.0)
+
+  site         Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  technology   Technology  @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([siteId, technologyId])
+  @@index([technologyId])
+  @@map("graph_site_technology")
+}
+
+model Industry {
+  id     String  @id @default(cuid())
+  slug   String  @unique
+  label  String
+  sites  Site[]
+
+  @@map("graph_industry")
+}
+
+model Issue {
+  id               String   @id @default(cuid())
+  // Stable hash of (checkId, normalized-evidence-shape). Same fingerprint
+  // across sites means it's the same underlying problem.
+  fingerprint      String   @unique
+  checkId          String
+  rubric           String
+  problemTemplate  String   @db.Text
+  fixTemplate      String   @db.Text
+  // Denormalized counters, recomputed by scripts/growth/issue-frequencies.ts
+  occurrenceCount  Int      @default(0)
+  siteCount        Int      @default(0)
+  frameworkCount   Int      @default(0)
+  // Top-N redacted public examples — opaque to end users, drives the issue
+  // page's "what this looks like in the wild" section.
+  examples         Json?
+  firstSeenAt      DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  flags            Flag[]
+  occurrences      IssueOccurrence[]
+  fixPrompts       FixPrompt[]
+  snapshots        BenchmarkSnapshot[]
+
+  @@index([checkId])
+  @@index([rubric])
+  @@index([occurrenceCount])
+  @@map("graph_issue")
+}
+
+model IssueOccurrence {
+  id        String  @id @default(cuid())
+  issueId   String
+  issue     Issue   @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  siteId    String
+  site      Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  flagId    String  @unique
+  observedAt DateTime @default(now())
+
+  @@index([issueId])
+  @@index([siteId])
+  @@map("graph_issue_occurrence")
+}
+
+model FixPrompt {
+  id           String   @id @default(cuid())
+  issueId      String
+  issue        Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  // cursor | claude | lovable | bolt | generic
+  tool         String
+  template     String   @db.Text
+  usageCount   Int      @default(0)
+  // Populated by flag feedback + re-audit signal over time.
+  successRate  Float?
+  createdAt    DateTime @default(now())
+
+  @@unique([issueId, tool])
+  @@index([issueId])
+  @@map("graph_fix_prompt")
+}
+
+model BenchmarkSnapshot {
+  id          String   @id @default(cuid())
+  // e.g. "industry:saas", "framework:nextjs", "builder:lovable",
+  // "industry:saas+framework:nextjs"
+  scope       String
+  takenAt     DateTime @default(now())
+  sampleSize  Int
+  avgScore    Float
+  p25Score    Float
+  p50Score    Float
+  p75Score    Float
+  flagFrequency Json
+  topIssues     Json
+  // Optional reference to the dominant issue driving the snapshot.
+  topIssueId  String?
+  topIssue    Issue?   @relation(fields: [topIssueId], references: [id], onDelete: SetNull)
+
+  @@index([scope, takenAt])
+  @@map("graph_benchmark_snapshot")
+}
+
+model Experiment {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  hypothesis  String   @db.Text
+  // landing-page | programmatic-page | free-tool | on-platform | outbound
+  surface     String
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  metric      String
+  baseline    Float?
+  result      Float?
+  decision    String?  // kept | reverted | inconclusive
+  notes       String?  @db.Text
+
+  @@index([surface, startedAt])
+  @@map("graph_experiment")
+}
+
+model ToolUsage {
+  id        String   @id @default(cuid())
+  // meta-preview | cta-above-fold | placeholder-copy-detector | ...
+  toolSlug  String
+  // Hash of normalized input — never the input itself; no PII.
+  inputHash String
+  result    Json
+  // Did the user click the CTA into the audit flow within the same session?
+  // Set by a correlation id from the client; null if unknown.
+  sessionId String?
+  // Organic attribution surface for funnel reads.
+  source    String?
+  createdAt DateTime @default(now())
+
+  @@index([toolSlug, createdAt])
+  @@index([source, createdAt])
+  @@map("graph_tool_usage")
+}
+
+model GrowthArtifact {
+  // Files written to docs/growth/metrics/ and similar — one row per file
+  // emission. Tracks the data lineage of every public statement we make.
+  id        String   @id @default(cuid())
+  // gsc-rolling-30d | benchmark-snapshot | opportunity-report | ...
+  kind      String
+  path      String   @unique
+  payload   Json
+  writtenAt DateTime @default(now())
+
+  @@index([kind, writtenAt])
+  @@map("graph_artifact")
 }

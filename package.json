@@ -40,6 +40,8 @@
     "db:seed": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config prisma/seed.ts",
     "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/webhooks/stripe --api-version 2025-02-24.acacia",
     "backfill:leads": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/backfill-leads.ts",
+    "graph:backfill": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/graph/backfill-historical.ts",
+    "growth:rollup-issues": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/issue-frequencies.ts",
     "verify": "npm run db:validate && npm run db:check && npm run db:drift && npm run typecheck && npm run lint && npm run brand:hex-guard && npm run ui:drift-guard && npm run seo:guard && npm run test:unit && npm run build && npm run worker:build",
     "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed"
   },
