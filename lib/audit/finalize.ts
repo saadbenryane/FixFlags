@@ -200,7 +200,7 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
 
   // Knowledge-graph: write the audit's findings into the internal graph so
   // every new audit contributes to issue frequencies, benchmarks, and the
-  // public read models. Fire-and-forget — a graph failure must never block
+  // public read models. Fire-and-forget - a graph failure must never block
   // an audit from being marked COMPLETED for the user.
   await persistAuditGraphSnapshot(input.auditId).catch((err) => {
     logger.error('Knowledge-graph persist failed after audit finalize', err)

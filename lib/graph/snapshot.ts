@@ -2,7 +2,7 @@
  * Audit-time helper: loads an audit's URL + flags from the database and
  * forwards them to `persistAuditToGraph()`. Lives here (not in lib/audit/)
  * so the audit pipeline doesn't have a hard import on graph internals beyond
- * this single function — which it calls fire-and-forget after finalization.
+ * this single function - which it calls fire-and-forget after finalization.
  *
  * See docs/growth/architecture.md for the full data flow.
  */
@@ -53,7 +53,7 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
     return
   }
 
-  // Minimal snapshot — detection of tech/industry lives in a future
+  // Minimal snapshot - detection of tech/industry lives in a future
   // iteration of this function. For Week 1, we only populate what the
   // deterministic scan pipeline already knows.
   const pageUrls = audit.pages.length > 0 ? audit.pages.map((p) => p.url) : [audit.url]

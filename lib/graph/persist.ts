@@ -2,12 +2,12 @@
  * Knowledge-graph persistence layer.
  *
  * `persistAuditToGraph()` is called once per audit when it transitions to
- * COMPLETED. It is **idempotent** — running it twice on the same audit produces
+ * COMPLETED. It is **idempotent** - running it twice on the same audit produces
  * the same graph state. Backfill scripts and the live hook both call it.
  *
  * The function upserts a graph:Site, the audit's graph:Pages, and the
  * graph:Issue rows for every flag. Crucially, **it does not** recompute the
- * aggregate counters (`occurrenceCount`, `siteCount`, `frameworkCount`) — those
+ * aggregate counters (`occurrenceCount`, `siteCount`, `frameworkCount`) - those
  * are a rollup job run on schedule by scripts/growth/issue-frequencies.ts so
  * the per-flag persist can stay O(flags) and never block the audit path.
  *
@@ -33,7 +33,7 @@ function pathOf(url: string): string {
 }
 
 function roleOf(pageUrls: string[], url: string): string {
-  // Cheap heuristic — refine when we have a real classifier. The graph tolerates
+  // Cheap heuristic - refine when we have a real classifier. The graph tolerates
   // noisy roles; the public surface filters on role being meaningful.
   if (pageUrls.length === 1) return 'home'
   const p = pathOf(url)
@@ -108,7 +108,7 @@ async function upsertSite(
     pageIds.push(page.id)
   }
 
-  // Link the audit row to the site. Nullable per schema — existing audits
+  // Link the audit row to the site. Nullable per schema - existing audits
   // before this migration get filled by the backfill script.
   await prisma.audit.update({
     where: { id: auditId },
@@ -143,7 +143,7 @@ async function upsertIssue(
   siteId: string,
 ): Promise<string | null> {
   if (!flag.fingerprint || !flag.checkId) {
-    // Flags without a fingerprint or checkId can't be aggregated. Skip silently —
+    // Flags without a fingerprint or checkId can't be aggregated. Skip silently -
     // the rollup script treats them as "untracked" and logs a count.
     return null
   }

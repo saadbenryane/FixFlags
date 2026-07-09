@@ -10,7 +10,7 @@
 export type GraphTechKind = 'framework' | 'builder' | 'hosting' | 'analytics' | 'cms'
 
 export interface SiteSnapshot {
-  /** Audit URL — normalized, hostname + protocol only. */
+  /** Audit URL - normalized, hostname + protocol only. */
   rootUrl: string
   /** Distinct page URLs discovered during this audit (homepage at minimum). */
   pageUrls: string[]
@@ -18,7 +18,7 @@ export interface SiteSnapshot {
   pageRoles: Record<string, string>
   /** Detected technologies with confidence in [0, 1]. */
   detectedTech: Array<{ name: string; kind: GraphTechKind; confidence: number }>
-  /** Industry guess, if we have one yet (otherwise null — learned over time). */
+  /** Industry guess, if we have one yet (otherwise null - learned over time). */
   industryGuess: string | null
 }
 

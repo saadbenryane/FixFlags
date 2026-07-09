@@ -1,14 +1,14 @@
 /**
  * Read models for the knowledge graph.
  *
- * These functions return only data shaped for the **public** surface — no
+ * These functions return only data shaped for the **public** surface - no
  * internal ids, no PII, no per-audit rows beyond what's needed to render a
  * page. Page templates (issue pages, benchmark pages, free tools) read from
  * here, never directly from Prisma.
  *
  * All queries respect `MIN_SAMPLE_SIZE` for any aggregate that would drive a
  * public page. A scope with sample < the threshold returns `null` and the
- * page 404s — that's the quality gate that prevents thin programmatic pages
+ * page 404s - that's the quality gate that prevents thin programmatic pages
  * from leaking into Google's index.
  *
  * See docs/growth/architecture.md for the gates and thresholds.
@@ -18,7 +18,7 @@ import { prisma } from '@/lib/db'
 /**
  * The minimum number of distinct audited sites we need to be comfortable
  * publishing a programmatic page about a given issue or benchmark scope.
- * 20 is a defensible starting point — high enough to be representative, low
+ * 20 is a defensible starting point - high enough to be representative, low
  * enough that we won't starve new axes. Revisit in 90 days with real data.
  */
 export const MIN_SAMPLE_SIZE = 20
@@ -37,13 +37,13 @@ export interface IssuePageData {
   occurrenceCount: number
   /** Top frameworks where this issue appears, ranked by site share. */
   topFrameworks: Array<{ name: string; siteCount: number }>
-  /** Top 3 redacted public examples — anonymized hostname + role only. */
+  /** Top 3 redacted public examples - anonymized hostname + role only. */
   examples: Array<{ hostname: string; pageRole: string; severity: string }>
 }
 
 /**
  * Read a single issue by checkId. Returns null if the issue hasn't crossed
- * the minimum sample-size threshold — callers should 404.
+ * the minimum sample-size threshold - callers should 404.
  */
 export async function getIssuePage(checkId: string): Promise<IssuePageData | null> {
   const issue = await prisma.issue.findFirst({
@@ -68,7 +68,7 @@ export async function getIssuePage(checkId: string): Promise<IssuePageData | nul
     LIMIT 5
   `
 
-  // Anonymized examples — never expose user-identifying data.
+  // Anonymized examples - never expose user-identifying data.
   const exampleRows = await prisma.$queryRaw<
     Array<{ hostname: string; pageRole: string; severity: string }>
   >`

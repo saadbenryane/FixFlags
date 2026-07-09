@@ -44,3 +44,21 @@ The public changelog (`lib/marketing/copy.ts` → `CHANGELOG_ENTRIES`) is for **
 - Explain how something was built or mention implementation details
 - Use internal terminology or backend concepts
 - List technical changes (e.g. "Trust checks run as scan modules" or "Updated MCP tools")
+
+## Organic growth / SEO
+
+Growth and SEO documentation lives at `docs/growth/` — start with
+`docs/growth/README.md`. It's the permanent memory of the organic growth
+system: architecture, roadmap, decisions, experiments, and weekly reviews.
+
+Rules that apply project-wide, not just to the growth workspace:
+
+- Any public page that states a statistic, frequency, or benchmark must
+  derive it from `lib/graph/queries.ts` (which enforces a minimum sample
+  size before returning data) — never hardcode or estimate a number.
+- The knowledge graph (`graph_*` Prisma models, `lib/graph/`) is
+  internal-only. Public pages read derived data through
+  `lib/graph/queries.ts`, never by querying `graph_*` tables directly.
+- Before building a new public growth page, read
+  `docs/growth/architecture.md` §5 (Boundaries and invariants).
+

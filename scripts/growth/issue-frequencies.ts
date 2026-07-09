@@ -17,7 +17,7 @@
 import { config as loadEnv } from 'dotenv'
 loadEnv({ path: process.env.DOTENV_CONFIG_PATH ?? '.env.local' })
 
-import { prisma } from '../../lib/db.js'
+import { prisma } from '@/lib/db'
 
 interface CountRow {
   id: string
@@ -107,10 +107,27 @@ async function main(): Promise<void> {
   console.log(`[rollup-issues] done in ${elapsed}s`)
 }
 
-main()
-  .then(() => prisma.$disconnect())
-  .catch(async (err) => {
-    console.error('[rollup-issues] fatal:', err)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+/**
+ * Callable entrypoint for the in-process scheduler
+ * (lib/queue/recovery-scheduler.ts). Returns counters instead of exiting the
+ * process — the CLI wrapper below handles process lifecycle for manual runs.
+ */
+export async function runIssueRollup(): Promise<{ issues: number; examples: number }> {
+  const issues = await recomputeIssueAggregates()
+  const examples = await rebuildExamples()
+  return { issues, examples }
+}
+
+// Only run as a CLI entrypoint when invoked directly (npm run growth:rollup-issues).
+// When imported by the in-process scheduler (lib/queue/recovery-scheduler.ts),
+// `runIssueRollup()` below is called instead — no process.exit, no dotenv reload.
+const isDirectRun = process.argv[1]?.endsWith('issue-frequencies.ts')
+if (isDirectRun) {
+  main()
+    .then(() => prisma.$disconnect())
+    .catch(async (err) => {
+      console.error('[rollup-issues] fatal:', err)
+      await prisma.$disconnect()
+      process.exit(1)
+    })
+}
