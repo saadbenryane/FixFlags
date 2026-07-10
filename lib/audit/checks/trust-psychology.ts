@@ -27,7 +27,7 @@ const TESTIMONIAL_PRESENCE_MARKERS = [
 const DATA_SPECIFICITY = [
   /\d+%\s+(faster|better|lower|higher|reduction|improvement)/i,
   /\d+x\s+(faster|better|more)/i,
-  /\d{2,}\s+(minutes?|hours?|days?)\s+(saved|saving|reduced|cut)/i,
+  /\d+\s+(minutes?|hours?|days?)\s+(saved|saving|reduced|cut)/i,
 ]
 
 function isInternalNavigationHref(href: string, pageHostname: string | null): boolean {
@@ -114,7 +114,7 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
 
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/
   const emailCount = (bodyText.match(emailRegex) || []).length
-  const hasContactLink = links.some((l) => /\b(contact|support|help)\b/i.test(l.href) || /\b(contact|support|help)\b/i.test(l.text))
+  const hasContactLink = links.some((l) => /\b(contact|support|help|get in touch|talk to us|reach out|chat with us|let.s talk)\b/i.test(l.href + ' ' + l.text))
   const hasPhone = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(bodyText)
 
   if (!hasContactLink && !hasPhone && emailCount === 0) {

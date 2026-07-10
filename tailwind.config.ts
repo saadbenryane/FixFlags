@@ -145,6 +145,8 @@ const config: Config = {
         background: '-1',
         content: '10',
         navbar: '50',
+        fab: '60',
+        overlay: '70',
         dropdown: '100',
         modal: '200',
         tooltip: '300',

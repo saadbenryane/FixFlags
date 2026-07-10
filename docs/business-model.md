@@ -1,6 +1,32 @@
 # Business Model
 
+*Last updated: 2026-07-10*
+
 FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
+
+## What We Ship
+
+- **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
+- **CTA flow test** (free): automated click-through on the primary CTA with before/after screenshots and flow flags.
+- **Preview cards** (free): live Google snippet and social link preview rendered in the report.
+- **Full report on every check** (free): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, AI-generated flags, and fix prompts on every report.
+- **Fix prompts** (free): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from your page.
+- **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
+- **Before/after compare** (Pro+): side-by-side proof after re-checks.
+- **MCP integration** (Pro+): 6 MCP tools for Cursor and Claude Code. Lovable/Bolt MCP not supported yet.
+- **Share links and proof export** (Agency+): public report links and client-ready summaries.
+
+## What We Do Not Ship (Current)
+
+- Staging / password-protected site support.
+- Localhost or private network checks.
+- CI/CD integration (GitHub Actions, Vercel deploy hooks). Not yet.
+- Custom rubric creation.
+- Team workspaces / seat management.
+- API for batch scanning.
+- White-label reports.
+
+These are not planned until 100 paying users validate demand.
 
 ## Free Tier Strategy
 

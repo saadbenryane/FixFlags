@@ -6,9 +6,15 @@ import { handleRouteError } from '@/lib/api/errors'
 import { isAdminUser, getCheckUsage } from '@/lib/auth/permissions'
 import { getEntitlements } from '@/lib/auth/entitlements'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
+import { recordRateLimit } from '@/lib/security/rate-limit'
 
 export async function GET(request: Request) {
   try {
+    const clientId = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown'
+    await recordRateLimit({ scope: 'api-me', identifier: clientId, limit: 60, windowSeconds: 60 })
+
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
     if (!session?.user?.id) {

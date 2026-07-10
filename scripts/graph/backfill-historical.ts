@@ -38,6 +38,11 @@ async function listCompletedAuditIds(limit: number | null): Promise<string[]> {
   return rows.map((r) => r.id)
 }
 
+/**
+ * Build a SiteSnapshot + FlagSnapshot from a completed audit.
+ * Reuses the same field mapping as lib/graph/snapshot.ts::persistAuditGraphSnapshot()
+ * but reads directly from DB for the backfill context.
+ */
 async function loadFlagSnapshot(auditId: string): Promise<{
   snapshot: import('../../lib/graph/types.js').SiteSnapshot
   flags: FlagSnapshot[]
@@ -69,11 +74,27 @@ async function loadFlagSnapshot(auditId: string): Promise<{
     ? audit.pages.map((p) => p.url)
     : [audit.url]
 
+  // Build page roles (mirrors roleOf() in persist.ts)
+  const pageRoles: Record<string, string> = {}
+  for (const url of pageUrls) {
+    try {
+      const p = new URL(url).pathname || '/'
+      if (p === '/' || p === '') pageRoles[url] = 'home'
+      else if (/pricing/i.test(p)) pageRoles[url] = 'pricing'
+      else if (/sign[-_]?up|register/i.test(p)) pageRoles[url] = 'signup'
+      else if (/sign[-_]?in|login/i.test(p)) pageRoles[url] = 'signin'
+      else if (/blog|post|article|\/\d{4}\//i.test(p)) pageRoles[url] = 'blog'
+      else pageRoles[url] = 'other'
+    } catch {
+      pageRoles[url] = 'other'
+    }
+  }
+
   return {
     snapshot: {
       rootUrl: audit.url,
       pageUrls,
-      pageRoles: {},
+      pageRoles,
       detectedTech: [],
       industryGuess: null,
     },

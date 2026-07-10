@@ -1,5 +1,7 @@
 # Scan Roadmap
 
+*Last updated: 2026-07-10*
+
 Phased plan to expand FixFlags scans. Every phase must serve the core loop: **check → fix → re-check → prove**.
 
 Full scan list by rubric: [scan-catalog.md](./scan-catalog.md).

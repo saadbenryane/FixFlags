@@ -43,6 +43,7 @@
     "graph:backfill": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/graph/backfill-historical.ts",
     "growth:rollup-issues": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/issue-frequencies.ts",
     "growth:pull-gsc": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/pull-gsc.ts",
+    "growth:self-seed": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/self-seed.ts",
     "growth:pull-ga": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/pull-ga.ts",
     "verify": "npm run db:validate && npm run db:check && npm run db:drift && npm run typecheck && npm run lint && npm run brand:hex-guard && npm run ui:drift-guard && npm run seo:guard && npm run test:unit && npm run build && npm run worker:build",
     "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed"

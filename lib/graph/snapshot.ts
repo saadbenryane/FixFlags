@@ -53,9 +53,6 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
     return
   }
 
-  // Minimal snapshot - detection of tech/industry lives in a future
-  // iteration of this function. For Week 1, we only populate what the
-  // deterministic scan pipeline already knows.
   const pageUrls = audit.pages.length > 0 ? audit.pages.map((p) => p.url) : [audit.url]
 
   const flags: FlagSnapshot[] = audit.flags.map((f) => ({
@@ -75,12 +72,24 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
     },
   }))
 
+  // Build page roles from existing roleOf heuristic in persist.ts
+  const pageRoles: Record<string, string> = {}
+  for (const url of pageUrls) {
+    const p = new URL(url).pathname || '/'
+    if (p === '/' || p === '') pageRoles[url] = 'home'
+    else if (/pricing/i.test(p)) pageRoles[url] = 'pricing'
+    else if (/sign[-_]?up|register/i.test(p)) pageRoles[url] = 'signup'
+    else if (/sign[-_]?in|login/i.test(p)) pageRoles[url] = 'signin'
+    else if (/blog|post|article|\/\d{4}\//i.test(p)) pageRoles[url] = 'blog'
+    else pageRoles[url] = 'other'
+  }
+
   await persistAuditToGraph(
     auditId,
     {
       rootUrl: audit.url,
       pageUrls,
-      pageRoles: {},
+      pageRoles,
       detectedTech: [],
       industryGuess: null,
     },

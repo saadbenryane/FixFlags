@@ -131,13 +131,13 @@ function EvidenceTooltip({
       <>
         <button
           type="button"
-          className="fixed inset-0 z-[60] bg-foreground/20"
+          className="fixed inset-0 z-overlay bg-foreground/20"
           aria-label="Close evidence"
           onClick={onClose}
         />
         <div
           role="tooltip"
-          className="fixed left-1/2 top-1/2 z-[61] w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-border/60 bg-card px-4 py-3 text-left shadow-raised"
+          className="fixed left-1/2 top-1/2 z-overlay w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-md border border-border/60 bg-card px-4 py-3 text-left shadow-raised"
         >
           <PinTooltipContent highlight={highlight} />
         </div>

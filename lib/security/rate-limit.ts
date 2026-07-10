@@ -13,7 +13,9 @@ function getRateLimitRedis(): Redis {
       enableReadyCheck: true,
       lazyConnect: true,
     })
-    redis.on('error', () => {})
+    redis.on('error', (err) => {
+      logger.warn('Rate-limit Redis error', err.message)
+    })
   }
   return redis
 }

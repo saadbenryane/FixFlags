@@ -23,18 +23,30 @@ function classifyLink(link: { href: string; text: string }): LinkKind | null {
   return null
 }
 
-/** True only on a definitive HTTP error (404 / 5xx); HEAD-blocking hosts and
+/** True only on a definitive HTTP error (404 / 410 / 5xx); HEAD-blocking hosts and
  *  transient network errors are left alone to avoid false "dead path" alarms. */
 async function linkIsDead(absolute: string): Promise<boolean> {
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-    const res = await fetch(absolute, { method: 'HEAD', signal: controller.signal })
-    clearTimeout(timer)
-    return res.status === 404 || res.status >= 500
-  } catch {
+  const fetchWithMethod = async (method: string): Promise<number | null> => {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+      const res = await fetch(absolute, { method, signal: controller.signal })
+      clearTimeout(timer)
+      return res.status
+    } catch {
+      return null
+    }
+  }
+
+  const headStatus = await fetchWithMethod('HEAD')
+  if (headStatus !== null && headStatus !== 404 && headStatus !== 410 && headStatus < 500) {
     return false
   }
+  if (headStatus === null || headStatus === 404 || headStatus === 410 || headStatus >= 500) {
+    const getStatus = await fetchWithMethod('GET')
+    return getStatus !== null && (getStatus === 404 || getStatus === 410 || getStatus >= 500)
+  }
+  return false
 }
 
 /**

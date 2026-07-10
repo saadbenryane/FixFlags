@@ -161,6 +161,7 @@ enum AuditSource {
   REPORT
   API
   MCP
+  SEED
   UNKNOWN
 }
 

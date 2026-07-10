@@ -1,5 +1,7 @@
 # Iteration Log
 
+*Last updated: 2026-07-10*
+
 Running notes for the "make FixFlags 10x, genius-level accurate" iteration effort.
 Purpose: avoid re-deriving architecture/context on every session, and track what's
 been checked so we don't waste tokens re-auditing the same code.

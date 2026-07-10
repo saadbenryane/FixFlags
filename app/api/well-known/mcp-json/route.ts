@@ -8,9 +8,6 @@ export async function GET() {
     mcpServers: {
       [BRAND.mcpServerKey]: {
         url: MCP_ENDPOINT,
-        headers: {
-          'x-api-key': 'ff_live_your_key_here',
-        },
       },
     },
   })

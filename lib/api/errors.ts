@@ -67,7 +67,7 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
     if (err.message.includes('REDIS_URL')) {
       return apiError('Queue is not configured. Check REDIS_URL.', 503, { requestId })
     }
-    return apiError(err.message || fallback, 500, { requestId })
+    return apiError(fallback, 500, { requestId })
   }
 
   return apiError(fallback, 500, { requestId })

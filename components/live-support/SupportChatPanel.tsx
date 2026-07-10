@@ -124,7 +124,7 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Type a message…"
             rows={2}
-            className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex-1 resize-none rounded-full border-0 bg-[var(--glass-bg-subtle)] px-4 py-2.5 text-sm shadow-glass backdrop-blur-md placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

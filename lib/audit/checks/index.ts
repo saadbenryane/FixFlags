@@ -115,6 +115,12 @@ function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag
     if (flag.checkId === 'hierarchy-competing-actions' && ids.has('competing-ctas')) {
       return false
     }
+    if (flag.checkId === 'mobile-input-zoom' && ids.has('form-inputs-zoom-mobile')) {
+      return false
+    }
+    if (flag.checkId === 'mobile-stuck-loading' && ids.has('loading-indicator-stuck')) {
+      return false
+    }
     return true
   })
 }

@@ -147,7 +147,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   let formInputsMissingValidation = 0
   let totalFormInputs = 0
   const formInputSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]), textarea, select'
-  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
+  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([type="email"]):not([type="url"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
   const formElements = $('form')
   if (formElements.length > 0) {
     formElements.each((_, form) => {
@@ -157,7 +157,9 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
       $(form).find(formValidationSelectors).each((_, field) => {
         const el = $(field)
         const hasPattern = el.attr('pattern') !== undefined
-        if (!hasPattern) formInputsMissingValidation++
+        const hasMinOrMax = el.attr('min') !== undefined || el.attr('max') !== undefined
+        const hasMinOrMaxLength = el.attr('minlength') !== undefined || el.attr('maxlength') !== undefined
+        if (!hasPattern && !hasMinOrMax && !hasMinOrMaxLength) formInputsMissingValidation++
       })
     })
   }
@@ -197,7 +199,11 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const ctaTexts: string[] = []
   $('a, button, [role="button"]').each((_, el) => {
     const text = $(el).text().trim().toLowerCase()
-    if (ctaKeywords.some((kw) => text.includes(kw)) && text.length < 60) {
+    const matchesKeyword = ctaKeywords.some((kw) => {
+      if (kw.includes(' ')) return text.includes(kw)
+      return new RegExp(`\\b${kw}\\b`).test(text)
+    })
+    if (matchesKeyword && text.length < 60) {
       ctaTexts.push($(el).text().trim())
     }
   })
@@ -216,7 +222,18 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     htmlStr.includes('segment.com') ||
     htmlStr.includes('mixpanel') ||
     htmlStr.includes('plausible') ||
-    htmlStr.includes('fathom')
+    htmlStr.includes('fathom') ||
+    htmlStr.includes('amplitude.com') ||
+    htmlStr.includes('hotjar') ||
+    htmlStr.includes('hubspot') ||
+    htmlStr.includes('fbq(') ||
+    htmlStr.includes('snaptr.com') ||
+    htmlStr.includes('static.ads-twitter.com') ||
+    htmlStr.includes('bat.bing.com') ||
+    htmlStr.includes('matomo') ||
+    htmlStr.includes('heap-analytics') ||
+    htmlStr.includes('fullstory.com') ||
+    htmlStr.includes('cdn.heapanalytics.com')
   )
 
   // Cookie consent
@@ -263,7 +280,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
   // Page text (stripped)
   $('script, style, noscript').remove()
-  const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 3000)
+  const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 8000)
 
   const h1s: string[] = []
   $('h1').each((_, el) => { h1s.push($(el).text().trim()) })

@@ -40,14 +40,14 @@ Layer 4: Business outcomes (is traffic converting to revenue?)
 
 | Metric | Definition | Source | Current | Target |
 |---|---|---|---|---|
-| Impressions | Search impressions across all indexed URLs | GSC | Not yet available | Growing weekly |
-| Clicks | Search clicks | GSC | Not yet available | Growing weekly |
-| Avg. position | Mean SERP position for tracked queries | GSC | Not yet available | <20 for target queries |
-| Indexed pages | Count of URLs Google has indexed | GSC Coverage | Not yet available | All intended pages |
-| Branded search share | % of clicks from queries containing "fixflags" | GSC | Not yet available | <30% (healthy non-branded mix) |
+| Impressions | Search impressions across all indexed URLs | GSC | 63 (last 28d) | Growing weekly |
+| Clicks | Search clicks | GSC | 3 (last 28d) | Growing weekly |
+| Avg. position | Mean SERP position for tracked queries | GSC | ~3.0 | <20 for target queries |
+| Indexed pages | Count of URLs Google has indexed | GSC Coverage | 2 (www vs non-www) | All intended pages |
+| Branded search share | % of clicks from queries containing "fixflags" | GSC | 100% (only branded queries so far) | <30% (healthy non-branded mix) |
 | Referring domains | Distinct domains linking to fixflags.com | Backlink tool | Not yet available | Growing monthly |
-| CTR by page type | Clicks / impressions per page family | GSC | Not yet available | >3% for issue pages |
-| Issue page impressions | Impressions for `/issues/*` URLs | GSC | N/A | >1000/mo within 90 days of indexing |
+| CTR by page type | Clicks / impressions per page family | GSC | 4.8% (homepage) | >3% for issue pages |
+| Issue page impressions | Impressions for `/issues/*` URLs | GSC | N/A (not yet built) | >1000/mo within 90 days of indexing |
 | Free tool usage | `ToolUsage.count()` per tool | DB | 0 | 100+/mo per tool |
 | Free tool → audit conversion | Tool sessions that start an audit | `ToolUsage.sessionId` correlation | N/A | >15% |
 
@@ -55,10 +55,14 @@ Layer 4: Business outcomes (is traffic converting to revenue?)
 
 | Metric | Definition | Source | Current | Target |
 |---|---|---|---|---|
-| Audit starts | Count of `started_audit` events | GA | Tracked | Growing from organic |
-| Audit completion rate | completed / started | GA + DB | Tracked | >80% |
-| Signups | Count of `signed_up` events | GA | Tracked | Growing from organic |
-| Paid conversion | Count of `completed_checkout` | GA + Stripe | Tracked | >5% of signups |
+| Users | Total users | GA4 | 129 (last 28d) | Growing from organic |
+| Sessions | Total sessions | GA4 | 179 (last 28d) | Growing from organic |
+| Page views | Total page views | GA4 | 683 (last 28d) | Growing from organic |
+| Engagement rate | Engaged sessions / total | GA4 | 48.6% | >60% |
+| Audit starts | Count of `started_audit` events | GA4 | 17 (last 28d) | Growing from organic |
+| Audit completion rate | completed / started | GA4 + DB | 17.6% (3/17) | >80% |
+| Signups | Count of `signed_up` events | GA4 | Tracked | Growing from organic |
+| Paid conversion | Count of `completed_checkout` | GA4 + Stripe | Tracked | >5% of signups |
 | Revenue from organic | Stripe revenue attributed to organic source | DB + Stripe | Not computed | Growing monthly |
 | Organic attribution | Which surfaces drive signups/paid | UTM + source tracking | Not implemented | Measurable per surface |
 | Cost per organic acquisition | Total growth cost / organic signups | Manual | N/A | Declining over time |

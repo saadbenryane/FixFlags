@@ -108,6 +108,7 @@ export async function runGscPull(): Promise<GscSummary | null> {
   const auth = getAuth()
   if (!auth) return null
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- googleapis-common bundles its own google-auth-library types
   const searchconsole = google.searchconsole({ version: 'v1', auth: auth as any })
 
   const now = new Date()

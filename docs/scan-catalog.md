@@ -1,5 +1,7 @@
 # Scan Catalog
 
+*Last updated: 2026-07-10*
+
 Single source of truth for every scan FixFlags runs or plans to run, organized by rubric.
 
 **Rubrics** (from `lib/audit/constants.ts`): `MESSAGE`, `EXPERIENCE`, `REACH`.

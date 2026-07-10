@@ -26,7 +26,7 @@ export function runVisualHierarchyChecks(
       })
     }
 
-    if (captureMetrics.uniqueFontFamilies > 3) {
+    if (captureMetrics.uniqueFontFamilies > 4) {
       findings.push({
         checkId: 'hierarchy-too-many-fonts',
         rubric: 'EXPERIENCE',

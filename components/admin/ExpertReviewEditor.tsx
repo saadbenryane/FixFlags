@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 
 interface Priority {
@@ -97,12 +98,11 @@ export function ExpertReviewEditor({
     <div className="space-y-5">
       <div className="space-y-2">
         <label htmlFor="review-summary" className="text-sm font-medium">Executive summary</label>
-        <textarea
+        <Textarea
           id="review-summary"
           value={summary}
           onChange={(event) => setSummary(event.target.value)}
           rows={8}
-          className="w-full rounded-md border bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
       <div className="space-y-2">
@@ -110,12 +110,12 @@ export function ExpertReviewEditor({
         <p className="text-xs text-muted-foreground">
           Use three lines per priority: title, rationale, action. Separate priorities with ---.
         </p>
-        <textarea
+        <Textarea
           id="review-priorities"
           value={prioritiesText}
           onChange={(event) => setPrioritiesText(event.target.value)}
           rows={14}
-          className="w-full rounded-md border bg-background p-3 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="font-mono"
         />
       </div>
       <div className="space-y-2">

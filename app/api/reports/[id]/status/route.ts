@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
@@ -9,6 +10,7 @@ import { deriveScreenshotCaptureStatus,
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
+import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -19,6 +21,9 @@ export async function GET(
   try {
     const { id } = await params
     const session = await resolveSessionUser()
+
+    const clientId = requestClientId(await headers())
+    await recordRateLimit({ scope: 'report-status', identifier: clientId, limit: 60, windowSeconds: 60 })
 
     const audit = await prisma.audit.findUnique({
       where: { id },

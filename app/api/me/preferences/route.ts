@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { handleRouteError } from '@/lib/api/errors'
+import { apiError, handleRouteError } from '@/lib/api/errors'
 
 const VALID_LEVELS = ['beginner', 'regular', 'advanced'] as const
 const VALID_TOOLS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt', 'other'] as const
@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('Unauthorized', 401)
     }
 
     const body = await req.json().catch(() => ({}))
@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest) {
       : undefined
 
     if (vibecodingLevel === undefined && preferredTools === undefined) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+      return apiError('No valid fields to update', 400)
     }
 
     await prisma.user.update({

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const feedbackSchema = z.object({
   vote: z.number().min(-1).max(1),
@@ -16,6 +17,9 @@ export async function POST(
 ) {
   try {
     const { id: flagId } = await params
+
+    const clientId = requestClientId(await headers())
+    await recordRateLimit({ scope: 'flag-feedback', identifier: clientId, limit: 30, windowSeconds: 60 })
 
     const flag = await prisma.flag.findUnique({ where: { id: flagId }, select: { id: true } })
     if (!flag) return apiError('Flag not found', 404, { code: 'NOT_FOUND' })

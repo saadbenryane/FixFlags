@@ -1,5 +1,7 @@
 # FixFlags Testing Strategy
 
+*Last updated: 2026-07-10*
+
 ## The 3 Categories
 
 ### 1. Truth — audits are accurate

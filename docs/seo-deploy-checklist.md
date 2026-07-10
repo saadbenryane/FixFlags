@@ -1,5 +1,7 @@
 # SEO post-deploy checklist
 
+*Last updated: 2026-07-10*
+
 After deploying to production (`https://fixflags.com`):
 
 1. **Search Console** — Verify domain ownership using `GOOGLE_SITE_VERIFICATION` in Vercel env.

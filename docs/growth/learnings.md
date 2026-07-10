@@ -13,6 +13,14 @@ earlier one, say so explicitly and leave both.
 - **Word-boundary matters for CTA text matching.** Single-word weak phrases like `start` and `try` need exact-match (`ctaText === p`) while multi-word phrases like `learn more` can use `startsWith`. The original code used `startsWith` for all phrases, causing false positives on "Start free trial" etc.
 - **Threshold changes need before/after check on fixture tests.** Lowering `visual-hierarchy.ts` bodyText threshold from 50 to 10 and removing `home` from generic phrases didn't break any fixtures — showing the fixtures don't exercise those exact edge cases.
 - **Do not trust line numbers from agent reports without verification.** Agent report said line 20 for layout.ts - actually line 24. Account for file changes between agent context and current state.
+- **`metadata.ts` is shared infra — changes here cascade to all text-based checks.** Increasing `pageText` slice from 3000→8000 affects every module that uses `meta.pageText`. Always run the full test suite after touching it.
+- **Word-boundary regex in CTA extraction prevents phantom CTA matches.** `includes('start')` matches "startup", "Starter" — `\bstart\b` does not. This was the root cause of phantom CTA detection affecting 6+ downstream checks.
+- **Auth-checkout HEAD-only detection has a known false-positive vector.** Some servers return different statuses for HEAD vs GET. Adding a GET fallback after HEAD 404/5xx eliminates this at the cost of an extra request per dead link.
+- **Form validation detection should account for native HTML5 validation types.** `type="email"`, `type="url"`, etc. provide native browser validation without `required`/`pattern`. Previously these were falsely flagged as missing validation.
+- **Analytics provider detection should be specific to avoid false positives.** `facebook` is too broad (matches Facebook links, share buttons); `fbq(` matches the Facebook Pixel call. Same for Twitter: `static.ads-twitter.com` matches the pixel, not general Twitter mentions.
+- **Font-family thresholds should be consistent across check modules.** `visual-polish` used `>4`, `visual-hierarchy` used `>3`. Aligned both to `>4` so font-count warnings are always the same check.
+- **v1-fixture-audit test needs >5s timeout.** The default vitest 5s timeout isn't enough for the full offline pipeline. Bumped global testTimeout to 30s.
+- **NPM test script is `test:unit`, not `test`.** This project uses vitest configured as `test:unit`.
 
 ---
 

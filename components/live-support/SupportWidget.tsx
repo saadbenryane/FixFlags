@@ -51,7 +51,7 @@ function SupportWidgetInner() {
     <>
       {panelOpen && (
         <div
-          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] flex h-[min(32rem,calc(100vh_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-bottom)))] w-[min(24rem,calc(100vw_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-right)))] flex-col overflow-hidden rounded-card glass-surface-elevated shadow-2xl"
+          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-fab flex h-[min(32rem,calc(100vh_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-bottom)))] w-[min(24rem,calc(100vw_-_var(--floating-action-offset)_-_var(--floating-action-offset)_-_env(safe-area-inset-right)))] flex-col overflow-hidden rounded-card glass-surface-elevated shadow-2xl"
           role="dialog"
           aria-label="Live chat with FixFlags"
         >
@@ -78,7 +78,7 @@ function SupportWidgetInner() {
           onClick={() => void openPanel()}
           variant="ink"
           size="icon"
-          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-[60] h-14 w-14 rounded-full shadow-lg"
+          className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-fab h-14 w-14 rounded-full shadow-lg"
           aria-label="Open live chat"
         >
           <MessageCircle className="h-6 w-6" />

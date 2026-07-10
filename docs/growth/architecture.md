@@ -1,6 +1,8 @@
 # Architecture
 
-Status: **Foundations implemented (Week 1). No public surfaces shipped yet.**
+*Last updated: 2026-07-10*
+
+Status: **Growth system active. GSC/GA4 data pulling. Knowledge graph seeding in progress.**
 
 This document is the living design for FixFlags' organic growth system. It
 covers the knowledge graph, the public knowledge layer derived from it, and

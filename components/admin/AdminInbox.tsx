@@ -6,6 +6,7 @@ import { Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { TextLink } from '@/components/ui/text-link'
 import { cn } from '@/lib/utils'
 import {
@@ -203,12 +204,12 @@ export function AdminInbox() {
                   void sendReply()
                 }}
               >
-                <textarea
+                <Textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={2}
                   placeholder="Reply as FixFlags team…"
-                  className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="flex-1 resize-none"
                 />
                 <Button type="submit" size="icon" disabled={sending || !draft.trim()}>
                   <Send className="h-4 w-4" />

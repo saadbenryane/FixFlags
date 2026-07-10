@@ -112,6 +112,7 @@ export async function runGaPull(): Promise<void> {
   const auth = getAuth()
   if (!auth) return
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- googleapis-common bundles its own google-auth-library types
   const analyticsdata = google.analyticsdata({ version: 'v1beta', auth: auth as any })
 
   const { startDate, endDate } = dateRange()

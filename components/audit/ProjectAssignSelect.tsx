@@ -57,7 +57,7 @@ export function ProjectAssignSelect({ auditId, initialProjectId, enabled }: Prop
     <label className="inline-flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">Project</span>
       <select
-        className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+        className="rounded-full border-0 bg-[var(--glass-bg-subtle)] px-3 py-1.5 text-sm shadow-glass backdrop-blur-md"
         value={projectId}
         disabled={saving || projects.length === 0}
         onChange={(e) => handleChange(e.target.value)}

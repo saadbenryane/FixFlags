@@ -1682,7 +1682,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(
         runVisualHierarchyChecks(
           healthyMeta({ h1s: ['Product'], h2s: ['Feature A'], pageText: '' }),
-          healthyCaptureMetrics({ uniqueFontFamilies: 4, fontFamilySample: ['Arial', 'Helvetica', 'Georgia', 'Times'] })
+          healthyCaptureMetrics({ uniqueFontFamilies: 5, fontFamilySample: ['Arial', 'Helvetica', 'Georgia', 'Times', 'Courier'] })
         )
       ),
     'hierarchy-no-sections': () =>

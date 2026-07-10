@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -15,6 +16,9 @@ export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to view projects', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+
+    const clientId = requestClientId(await headers())
+    await recordRateLimit({ scope: 'api-projects', identifier: clientId, limit: 30, windowSeconds: 60 })
 
   const projects = await prisma.project.findMany({
     where: { userId: session.user.id },

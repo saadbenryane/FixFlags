@@ -44,7 +44,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
   }
 
   const server = new McpServer(
-    { name: 'fixflags', version: '3.0.0' },
+    { name: 'fixflags', version: process.env.npm_package_version || '0.1.0' },
     { capabilities: { tools: {} } }
   )
   registerAllTools(server, user, { signal: req.signal })
