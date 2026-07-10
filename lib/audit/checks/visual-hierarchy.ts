@@ -58,7 +58,7 @@ export function runVisualHierarchyChecks(
 
   const h1Count = h1s.length
   if (h1Count === 0) {
-    const hasVisibleText = bodyText.length > 50
+    const hasVisibleText = bodyText.length > 10
     if (hasVisibleText) {
       findings.push({
         checkId: 'hierarchy-no-headline',

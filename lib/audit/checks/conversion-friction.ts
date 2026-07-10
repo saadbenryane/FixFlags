@@ -72,7 +72,7 @@ export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFl
     }
   }
 
-  const hasRiskReversal = hasGuarantee || bodyText.includes('cancel anytime') || bodyText.includes('free')
+  const hasRiskReversal = hasGuarantee || bodyText.includes('cancel anytime') || FREE_TRIAL_MARKERS.test(bodyText)
   if (ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
     findings.push({
       checkId: 'friction-no-risk-reversal',

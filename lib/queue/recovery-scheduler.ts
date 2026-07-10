@@ -2,6 +2,8 @@ import { tryAcquireLock } from './lock'
 import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
 import { runIssueRollup } from '@/scripts/growth/issue-frequencies'
+import { runGscPull } from '@/scripts/growth/pull-gsc'
+import { runGaPull } from '@/scripts/growth/pull-ga'
 import { logger } from '@/lib/logger'
 
 const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
@@ -12,6 +14,9 @@ const NURTURE_LOCK_TTL_MS = 23 * 60 * 60 * 1000 // ...but only actually run ~onc
 
 const ROLLUP_INTERVAL_MS = 6 * 60 * 60 * 1000 // check every 6h
 const ROLLUP_LOCK_TTL_MS = 23 * 60 * 60 * 1000 // ...but only actually run ~once/day (nightly)
+
+const ANALYTICS_INTERVAL_MS = 24 * 60 * 60 * 1000 // check every 24h
+const ANALYTICS_LOCK_TTL_MS = 25 * 60 * 60 * 1000 // ...but only actually run ~once/day
 
 let started = false
 
@@ -45,6 +50,17 @@ async function growthRollupTick(): Promise<void> {
   }
 }
 
+async function analyticsTick(): Promise<void> {
+  if (!(await tryAcquireLock('growth-analytics', ANALYTICS_LOCK_TTL_MS))) return
+  try {
+    await runGscPull()
+    await runGaPull()
+    logger.info('Growth analytics pull completed')
+  } catch (err) {
+    logger.error('Growth analytics pull failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
 /**
  * Self-hosted scheduler for periodic jobs (stuck-audit recovery + nurture
  * emails + knowledge-graph issue rollup). Runs inside every worker (inline or
@@ -71,6 +87,11 @@ export function startRecoveryScheduler(): void {
   initialRollup.unref?.()
   const rollupTimer = setInterval(() => void growthRollupTick(), ROLLUP_INTERVAL_MS)
   rollupTimer.unref?.()
+
+  const initialAnalytics = setTimeout(() => void analyticsTick(), 120_000)
+  initialAnalytics.unref?.()
+  const analyticsTimer = setInterval(() => void analyticsTick(), ANALYTICS_INTERVAL_MS)
+  analyticsTimer.unref?.()
 
   logger.info('Recovery scheduler started')
 }

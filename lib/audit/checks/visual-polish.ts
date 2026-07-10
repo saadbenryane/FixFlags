@@ -28,7 +28,7 @@ export function runVisualPolishChecks(metrics: CaptureMetrics | null): Determini
     radii.length > 2 &&
     radii.length > 0 &&
     allRadii.length > 0 &&
-    (allRadii[allRadii.length - 1] - allRadii[0]) >= 6
+    (radii[radii.length - 1] - radii[0]) >= 6
   ) {
     findings.push({
       checkId: 'visual-radius-inconsistent',

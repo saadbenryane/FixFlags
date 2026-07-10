@@ -9,6 +9,8 @@ phase's exit criteria are met — not on a calendar.
 public has shipped yet. No marketing claims until there's real data behind
 them.
 
+### Deliverables
+
 | Deliverable | Status |
 |---|---|
 | Prisma migration: 10 graph tables + FK links on `Audit`/`AuditPage`/`Flag` | ✅ Done |
@@ -18,64 +20,108 @@ them.
 | Live hook in `finalizeAudit()` — every new audit persists automatically | ✅ Done |
 | `scripts/graph/backfill-historical.ts` — one-shot historical backfill | ✅ Done |
 | `scripts/growth/issue-frequencies.ts` — nightly rollup script | ✅ Done |
-| `docs/growth/` workspace seeded | ✅ Done (this file) |
-| Committed to git + pushed to `origin/main` | ✅ Done 2026-07-09 (was sitting uncommitted locally) |
-| Migration applied to production DB | ✅ Done 2026-07-09 (`npm run db:deploy` against Railway Postgres) |
-| Backfill run against production | ✅ Done 2026-07-09 — 1 completed audit backfilled (production has only 1 real completed audit; see decision-log 2026-07-09) |
-| Rollup wired into self-hosted scheduler | ✅ Done 2026-07-09 (`lib/queue/recovery-scheduler.ts`, Redis-lock guarded, runs alongside recovery/nurture ticks) |
-| Analytics access (GSC/GA/PostHog) | ⬜ Still awaiting decision — see `decision-log.md` |
-| **Self-seed knowledge graph** (new — see decision-log 2026-07-09) | ⬜ Not started — required because organic volume alone (1 real user) won't reach `MIN_SAMPLE_SIZE` in any reasonable timeframe pre-launch |
+| `docs/growth/` workspace seeded | ✅ Done |
+| Committed to git + pushed to `origin/main` | ✅ Done 2026-07-09 |
+| Migration applied to production DB | ✅ Done 2026-07-09 |
+| Backfill run against production | ✅ Done 2026-07-09 |
+| Rollup wired into self-hosted scheduler | ✅ Done 2026-07-09 |
+| Analytics access (GSC/GA/PostHog) | ⬜ Still awaiting decision |
+| Self-seed knowledge graph | ⬜ Not started — required because organic volume alone won't reach MIN_SAMPLE_SIZE |
+| Industry/tech detection in snapshot.ts | ⬜ Not started — blocks benchmark pages |
 
 ### Exit criteria for Phase 1
 
-- ~~Migration applied in production, backfill run against real historical
-  audits, `getGraphStats()` returns non-zero counts.~~ ✅ Met 2026-07-09.
-- ~~Rollup script running nightly without manual intervention.~~ ✅ Met
-  2026-07-09.
-- At least one full week of new audits landing in the graph automatically
-  via the live hook (verified via `GrowthArtifact` or direct query) — not
-  yet observed at meaningful volume; superseded by the self-seed decision
-  below since waiting on organic volume alone is not viable pre-launch.
-- **New criterion (added 2026-07-09):** at least one `Issue` crosses
-  `MIN_SAMPLE_SIZE = 20` distinct sites, via the self-seed batch. This is
-  now the real Phase 1 → Phase 2 gate, not calendar time.
+- ~~Migration applied in production, backfill run, getGraphStats() returns non-zero.~~ ✅
+- ~~Rollup script running nightly without manual intervention.~~ ✅
+- **Self-seed batch complete:** at least 40-60 real audits against curated
+  public sites (AI-builder output from Product Hunt, Lovable, Bolt, v0,
+  Cursor-shipped pages). This produces genuine scan data for the graph.
+- **At least one Issue crosses MIN_SAMPLE_SIZE = 20** distinct sites via
+  the self-seed batch. This is the real Phase 1 → Phase 2 gate.
+- **Industry/tech detection implemented** in `lib/graph/snapshot.ts` —
+  needed before benchmark pages can exist.
 
 ## Phase 2 — First public artifacts (not started)
 
 **Goal:** ship the *smallest possible* real thing per family, gated by
-`MIN_SAMPLE_SIZE`, and measure before scaling.
+MIN_SAMPLE_SIZE, and measure before scaling.
 
-- `/issues/[checkId]` — one issue page, for whichever check has crossed the
-  sample-size threshold first
-- `/tools/meta-preview` — first free tool
-- Extend `INDEXABLE_ROUTES`, `sitemap.ts`, `llms.txt` sections for the new
-  families
-- `seo-guard.mjs` assertions for the new route registries
-- Basic analytics wiring (whatever access was granted in Phase 1)
+### Deliverables
+
+| Deliverable | Blocked by | Priority |
+|---|---|---|
+| `/tools/meta-preview` — first free tool | Nothing | P0 |
+| `/tools/placeholder-copy-detector` — second free tool | Nothing | P0 |
+| `/issues/[checkId]` — first issue page | Sample size | P0 |
+| Attribution parameter system | Nothing | P1 |
+| Extend `INDEXABLE_ROUTES` + `sitemap.ts` + `llms.txt` | Issue page template | P1 |
+| `seo-guard.mjs` assertions for new route registries | New routes | P1 |
+| Internal linking engine (`lib/graph/related.ts`) | Issue page template | P2 |
+| Structured data for issue pages | Issue page template | P2 |
+| Basic analytics wiring | GSC access | P2 |
 
 ### Exit criteria for Phase 2
 
 - One issue page live, indexed, receiving impressions in GSC (if access
   granted) or at minimum verified crawlable via `curl` + robots checks.
 - One free tool live, `ToolUsage` rows accumulating.
+- Attribution parameters on all public surface links.
 - A full weekly-review cycle completed at least once.
 
-## Phase 3 — Scale the families that worked (not started)
+## Phase 3 — Scale the families (not started)
 
-- Expand `/issues/[checkId]` to all checks crossing the sample threshold
-- `/benchmarks/[scope]` — first benchmark pages (industry × framework
-  intersections with sufficient sample)
-- Second and third free tools
-- `/reports` public index (opt-in reports only)
-- Sitemap split (`sitemap-static.xml`, `sitemap-issues.xml`,
-  `sitemap-benchmarks.xml`)
+**Goal:** expand what worked in Phase 2, add benchmark pages, build the
+measurement layer.
+
+### Deliverables
+
+| Deliverable | Blocked by |
+|---|---|
+| Expand `/issues/[checkId]` to all checks crossing sample threshold | Sample size |
+| `/benchmarks/[scope]` — first benchmark pages | Tech detection + sample size |
+| `/reports` public index (opt-in reports only) | Enough `isPublic` audits + PII redaction audit |
+| Third free tool: `/tools/cta-above-fold` | Audit pipeline reuse |
+| `scripts/growth/rollup-benchmarks.ts` | Tech detection |
+| `scripts/growth/opportunity-scoring.ts` | GSC access |
+| `scripts/growth/weekly-review.ts` | GSC access + analytics |
+| Sitemap split (static, issues, benchmarks, tools) | All page families |
+| Structured data for benchmark pages | Benchmark template |
+| Dynamic sitemap from knowledge graph | All page families |
+| Experiment framework (A/B testing infrastructure) | Traffic volume |
+
+### Exit criteria for Phase 3
+
+- At least 5 issue pages live and indexed.
+- At least 1 benchmark page live with real data.
+- Weekly review automated and running.
+- Opportunity scoring feeding backlog re-ranking from real data.
 
 ## Phase 4 — Original research & comparisons (not started)
 
-- `/compare/[slug]` pages
-- First original-research piece backed by graph data (e.g. "we audited N
-  Lovable-built landing pages — here's what breaks")
-- Backlink program (tooling TBD — see `decision-log.md`)
+**Goal:** establish FixFlags as the authoritative source for AI-built product
+QA research.
+
+### Deliverables
+
+| Deliverable | Blocked by |
+|---|---|
+| `/compare/[slug]` — comparison pages | Multiple audits of same URL |
+| First original-research piece backed by graph data | Sufficient graph data |
+| Backlink program (tooling TBD) | Link-worthy assets from Phase 2-3 |
+| Competitive intelligence automation | SERP monitoring tools |
+
+### Research topics (candidates)
+
+- "We audited N Lovable-built landing pages — here's what breaks"
+- "The top 5 issues in AI-built SaaS landing pages (2026 data)"
+- "How AI-built sites perform vs. hand-built: a data comparison"
+- "The state of AI-built product QA: a FixFlags report"
+
+### Exit criteria for Phase 4
+
+- At least 1 comparison page live.
+- At least 1 original research piece published.
+- Backlink program generating measurable referring domain growth.
 
 ## Explicitly deferred
 

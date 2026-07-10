@@ -169,3 +169,105 @@ without waiting on organic volume.
 
 **Review date:** After first seeding batch completes — check
 `getGraphStats()` and re-rank `backlog.md` with real numbers.
+
+---
+
+## [2026-07-09] Four-layer architecture: measurement before public surfaces
+
+**Problem:** The existing architecture had the knowledge graph and public
+surface design, but lacked a measurement layer. Without attribution tracking,
+we can't know which public pages drive conversions — meaning the core loop
+(audit -> knowledge -> pages -> trust -> acquisition -> audit) has a
+measurement break.
+
+**Alternatives considered:**
+1. Ship Phase 2 pages first, add attribution later (retrofit).
+2. Design the attribution system now, require it on all Phase 2 pages
+   from day one.
+
+**Chosen solution:** Option 2 — design attribution now, implement before
+Phase 2 pages ship.
+
+**Reasoning:** Retrofitting attribution means either losing historical data
+(catching up is impossible) or running dual tracking (complexity). By
+requiring UTM parameters and extended `Audit.source` values on every Phase 2
+page from day one, we get clean funnel data from the first page that earns
+traffic. The cost is small (add UTM strings to link templates, extend an
+enum) and the benefit is permanent.
+
+**Confidence:** high — this is obviously correct in hindsight; the gap was
+that the original architecture focused on the graph-to-page pipeline
+without considering the page-to-measurement pipeline.
+
+**Expected outcome:** Phase 2 pages ship with full attribution. Within 30
+days of the first issue page earning impressions, we can answer: "Which
+issue pages drive the most signups?" and "Which free tools have the highest
+audit conversion rate?"
+
+**Review date:** After first Phase 2 page ships — verify attribution is
+working end-to-end.
+
+---
+
+## [2026-07-09] Internal linking engine: automatic topical authority
+
+**Problem:** Public pages (issue pages, benchmark pages, tools) would exist
+in isolation without cross-linking. Search engines reward topical authority
+clusters — pages that link to related content on the same topic. Without an
+engine, we'd need to manually maintain "related reading" sections.
+
+**Alternatives considered:**
+1. Manual "related" links per page (static, maintenance burden).
+2. A `lib/graph/related.ts` module that queries the graph for related pages
+   by rubric, framework, and check category.
+
+**Chosen solution:** Option 2 — automated, graph-powered linking.
+
+**Reasoning:** The knowledge graph already has the relationships needed:
+`Issue.rubric` links issues by topic, `SiteTechnology` links issues by
+framework, and `IssueOccurrence` links issues by co-occurrence on the same
+sites. A function that queries these relationships and returns related
+pages is cheap to build and zero-maintenance.
+
+**Confidence:** high — the data relationships already exist in the schema;
+this is a query layer, not a data modeling problem.
+
+**Expected outcome:** Every public page automatically links to 3-5 related
+pages, creating topical clusters. Internal link equity flows between related
+pages, strengthening the entire cluster's ranking potential.
+
+**Review date:** After first issue page ships — verify internal links are
+rendering and click-through is measurable.
+
+---
+
+## [2026-07-09] Dynamic sitemap: knowledge-graph-driven indexing
+
+**Problem:** The current sitemap is static — derived from `INDEXABLE_ROUTES`
+in `seo-routes.ts`. Adding a new programmatic page family (e.g., issue
+pages) requires manually adding routes to this registry. This is a manual
+step that creates risk of pages existing but not being in the sitemap, or
+being in the sitemap before they have sufficient content.
+
+**Alternatives considered:**
+1. Keep static sitemap, manually update when new families ship.
+2. Generate sitemap from knowledge graph — only include pages backed by
+   graph entities with sufficient sample size.
+
+**Chosen solution:** Option 2 — dynamic sitemap from graph.
+
+**Reasoning:** The MIN_SAMPLE_SIZE gate already ensures no thin page is
+backed by a query. Extending this to the sitemap means: a page appears in
+the sitemap if and only if it has a graph entity with sufficient sample.
+This is the same quality gate, applied to indexing instead of rendering. It
+prevents index bloat automatically.
+
+**Confidence:** high — this is a direct extension of an existing quality
+gate (MIN_SAMPLE_SIZE) to a new surface (sitemap).
+
+**Expected outcome:** Issue pages automatically appear in the sitemap when
+they cross MIN_SAMPLE_SIZE, and disappear if sample size drops below
+threshold (e.g., due to data cleanup). No manual intervention needed.
+
+**Review date:** After first dynamic sitemap generation — verify correct
+routes are included and thin pages are excluded.

@@ -2,7 +2,7 @@ import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
 import { DeterministicFlag } from './index'
 
-const PLACEHOLDER_PATTERNS = [
+const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /lorem ipsum/i, label: 'Lorem ipsum placeholder text' },
   { pattern: /\bTODO\b/, label: 'TODO marker' },
   { pattern: /\bTBD\b/, label: 'TBD marker' },
@@ -10,11 +10,19 @@ const PLACEHOLDER_PATTERNS = [
   { pattern: /\bundefined\b/, label: 'literal "undefined" in page text' },
 ]
 
-const TEMPLATE_COPY_PATTERNS = [
+const TEMPLATE_COPY_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /welcome to/i, label: 'Welcome to…' },
   { pattern: /your company/i, label: 'Your Company' },
   { pattern: /coming soon/i, label: 'Coming soon' },
   { pattern: /hello world/i, label: 'Hello world' },
+]
+
+const AI_BUILDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /\bbuilt with\s+(lovable|bolt|v0|cursor|windsurf)\b/i, label: 'AI-builder watermark' },
+  { pattern: /\b(add|enter)\s+your\s+(own\s+)?(content|images?|text|logo|details|information|team|data)\b/i, label: 'fill-in-your-own template' },
+  { pattern: /double.?click to edit|click to edit|click here to edit/i, label: 'in-page editor instruction' },
+  { pattern: /\bthis\s+(is\s+a\s+)?(template|demo|example|sample)\s+(page|site|app)\b/i, label: 'template self-identification' },
+  { pattern: /\[your\s+(brand|company|product|name|logo|text|image|content)\]/i, label: 'bracket-brand placeholder' },
 ]
 
 const TEMPLATE_TOKEN_PATTERN = /\{\{[^}]+\}\}|\$\{[^}]+\}|%[A-Z_]+%/i
@@ -33,9 +41,10 @@ const SOCIAL_PROOF_SLOP_PATTERNS = [
   { pattern: /lorem ipsum.*testimonial/i, label: 'lorem testimonial' },
 ]
 
-export function detectSocialProofSlop(text: string): string | null {
+export function detectSocialProofSlop(text: string): { label: string; matched: string } | null {
   for (const { pattern, label } of SOCIAL_PROOF_SLOP_PATTERNS) {
-    if (pattern.test(text)) return label
+    const match = text.match(pattern)
+    if (match) return { label, matched: match[0] }
   }
   return null
 }
@@ -50,15 +59,27 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   const bodyText = meta.pageText.slice(0, 8000)
   const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, 8000)
 
+  function matchedSnippet(text: string, pattern: RegExp, contextChars = 40): string {
+    const match = text.match(pattern)
+    if (!match) return ''
+    const idx = match.index!
+    const start = Math.max(0, idx - contextChars)
+    const end = Math.min(text.length, idx + match[0].length + contextChars)
+    const prefix = start > 0 ? '…' : ''
+    const suffix = end < text.length ? '…' : ''
+    return `${prefix}"${text.slice(start, end).trim()}"${suffix}`
+  }
+
   for (const { pattern, label } of PLACEHOLDER_PATTERNS) {
-    if (pattern.test(sampleText)) {
+    const match = sampleText.match(pattern)
+    if (match) {
       findings.push({
         checkId: 'placeholder-copy-detected',
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
         problem: 'Placeholder or unfinished copy detected on the page',
-        evidence: `Found ${label} in visible page text`,
+        evidence: `Found ${label}: ${matchedSnippet(sampleText, pattern)}`,
         fix: '1. Replace placeholder text with product-specific copy\n2. Review the entire page for any remaining placeholder content\n3. Test the live page to confirm no placeholder text is visible',
         confidence: 0.95,
         source: 'DETERMINISTIC',
@@ -68,14 +89,15 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   }
 
   for (const { pattern, label } of TEMPLATE_COPY_PATTERNS) {
-    if (pattern.test(sampleText)) {
+    const match = sampleText.match(pattern)
+    if (match) {
       findings.push({
         checkId: 'template-default-copy',
         rubric: 'MESSAGE',
         impactTag: 'TRUST',
         severity: 'IMPORTANT',
         problem: 'Template or generic default copy detected',
-        evidence: `Found "${label}" pattern in page text`,
+        evidence: `Found "${label}": ${matchedSnippet(sampleText, pattern)}`,
         fix: '1. Replace generic template copy with a specific headline\n2. Name the product, audience, and outcome in the headline\n3. Review other sections for template defaults (CTAs, subheadings)',
         confidence: 0.85,
         source: 'DETERMINISTIC',
@@ -84,14 +106,33 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     }
   }
 
-  if (TEMPLATE_TOKEN_PATTERN.test(sampleText)) {
+  for (const { pattern, label } of AI_BUILDER_PATTERNS) {
+    const match = sampleText.match(pattern)
+    if (match) {
+      findings.push({
+        checkId: 'placeholder-copy-detected',
+        rubric: 'MESSAGE',
+        impactTag: 'TRUST',
+        severity: 'IMPORTANT',
+        problem: 'AI-builder template artifact visible on the page',
+        evidence: `Found ${label}: ${matchedSnippet(sampleText, pattern)}`,
+        fix: '1. Replace auto-generated template text with original product copy\n2. Remove any "Built with X" watermarks or builder labels\n3. Remove in-place editor instructions like "Click to edit"\n4. Fill in any "Add your…" placeholder sections with real content',
+        confidence: 0.9,
+        source: 'DETERMINISTIC',
+      })
+      break
+    }
+  }
+
+  const tokenMatch = sampleText.match(TEMPLATE_TOKEN_PATTERN)
+  if (tokenMatch) {
     findings.push({
       checkId: 'unreplaced-template-token',
       rubric: 'MESSAGE',
       impactTag: 'TRUST',
       severity: 'CRITICAL',
       problem: 'Unreplaced template token visible on the page',
-      evidence: 'Found {{…}}, ${…}, or %VAR% style token in visible text',
+      evidence: `Found unreplaced token: "${tokenMatch[0].slice(0, 80)}" in "${sampleText.slice(Math.max(0, tokenMatch.index! - 20), tokenMatch.index! + tokenMatch[0].length + 20).trim()}"`,
       fix: '1. Replace template tokens ({{…}}, ${…}, %VAR%) with real values\n2. Check env vars and CMS fields did not leak into the rendered page\n3. Set fallback values for any optional template variables',
       confidence: 0.95,
       source: 'DETERMINISTIC',
@@ -131,7 +172,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
       impactTag: 'TRUST',
       severity: 'IMPORTANT',
       problem: 'Social proof looks placeholder or unverifiable',
-      evidence: `Found ${socialSlop} in visible page text`,
+      evidence: `Found "${socialSlop.matched}" - ${socialSlop.label}`,
       fix: '1. Replace fake stats with real, verifiable numbers\n2. Replace logo placeholders with actual customer logos\n3. Replace anonymous testimonials with real quotes with named attribution',
       confidence: 0.85,
       source: 'DETERMINISTIC',

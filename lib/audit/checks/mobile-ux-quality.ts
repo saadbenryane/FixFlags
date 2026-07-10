@@ -39,7 +39,7 @@ export function runMobileUXQualityChecks(
         rubric: 'EXPERIENCE',
         impactTag: 'CONVERSION',
         severity: 'POLISH',
-        problem: 'Primary CTA is in the hard-to-reach upper zone on mobile',
+        problem: 'Primary CTA is in the hard-to-reach bottom zone on mobile',
         evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(ctaPositionRatio * 100)}% of the viewport height. Users may need to stretch to tap it one-handed.`,
         fix: '1. Move the primary CTA lower in the mobile viewport (40-70% from top) for thumb-friendly reach\n2. Or ensure the CTA is large enough (min 48px height) to tap easily even when reaching\n3. Consider a sticky bottom CTA that stays within thumb range\n4. Test one-handed on a 6.7" phone - can you tap the CTA comfortably?',
         confidence: 0.7,
@@ -51,7 +51,11 @@ export function runMobileUXQualityChecks(
       const ctaText = captureMetrics.mobilePrimaryCtaText.toLowerCase()
       const weakPhrases = ['click here', 'learn more', 'read more', 'submit', 'go', 'start', 'try']
 
-      if (weakPhrases.some((p) => ctaText === p || ctaText.startsWith(p))) {
+      const isVague = weakPhrases.some((p) => {
+        if (p.includes(' ')) return ctaText.startsWith(p)
+        return ctaText === p
+      })
+      if (isVague) {
         findings.push({
           checkId: 'mobile-cta-weak-label',
           rubric: 'MESSAGE',

@@ -13,16 +13,16 @@ Run this skill when improving visual quality project-wide. **Read the project sk
 2. [fixflags-design-system/SKILL.md](../fixflags-design-system/SKILL.md) — tokens, fonts, spacing
 3. [fixflags-marketing/lean-visual.md](../fixflags-marketing/lean-visual.md) — if touching marketing/report surfaces
 
-## Font stack (current — UI Kit v2.0)
+## Font stack (current — dual-typeface system)
 
 | Role | Font | Use |
 |------|------|-----|
-| Display | Satoshi (`font-sans` / `font-display`) | Hero h1, section h2, logo, **not** app page titles at hero scale |
-| App titles | `PageTitle` / `PageHeader` | Dashboard, settings, billing, admin — 1.625–1.875rem |
-| Body | Satoshi (`font-sans`) | UI, forms, paragraphs |
+| Headlines + wordmark | Fraunces (`font-serif` / `font-display`) | Hero h1, section h2, marketing headlines — editorial serif for brand voice |
+| App titles | `PageTitle` / `PageHeader` | Dashboard, settings, billing, admin — 1.625–1.875rem, Satoshi |
+| Body | Satoshi (`font-sans`) | UI, forms, paragraphs, all functional text |
 | Mono | IBM Plex Mono | Grades, scores, labels, code |
 
-Satoshi is the single typeface for display + body. **Never** use `Heading as="h1"` on app/admin pages — use `PageHeader` + `PageTitle`. **Do not** reintroduce Fraunces / Source Sans 3 (legacy).
+**Rule:** Fraunces serif for marketing headlines only. Satoshi sans for everything functional. Never serif in dense product UI. **Never** use `Heading as="h1"` on app/admin pages — use `PageHeader` + `PageTitle`. Do not use Source Sans 3 (legacy).
 
 ## Global skills (read before editing)
 
@@ -34,7 +34,7 @@ Satoshi is the single typeface for display + body. **Never** use `Heading as="h1
 | Color/contrast | `~/.agents/skills/color-theory/SKILL.md` |
 | Auth/dashboard recipes | `~/.agents/skills/ui-craft/references/recipe-auth.md`, `recipe-dashboard.md` |
 | A11y audit | `~/.agents/skills/web-design-guidelines/SKILL.md` |
-| Marketing copy | `~/.cursor/skills/landing-page-copy/SKILL.md` |
+| Marketing copy | `.cursor/skills/fixflags-marketing/SKILL.md` |
 
 ## Upgrade checklist (in order)
 
@@ -60,7 +60,7 @@ Satoshi is the single typeface for display + body. **Never** use `Heading as="h1
 
 ## Anti-patterns (reject on review)
 
-- Inter, DM Sans, Instrument Serif, Roboto, Fraunces, Source Sans 3 (all non-Satoshi)
+- Inter, DM Sans, Instrument Serif, Roboto, Source Sans 3 (non-brand fonts)
 - `font-bold` on page titles (use `PageTitle` or `Heading`)
 - Hero-sized display type on dashboard/settings
 - Purple gradients, generic 3-card grids, border-heavy cards

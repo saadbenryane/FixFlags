@@ -214,3 +214,96 @@ waiting.
 5. Once one Issue crosses threshold: ship `/issues/[checkId]` for that
    check + `/tools/meta-preview` (no pipeline dependency) as the two
    Phase 2 pilots, per `backlog.md` ranking.
+
+---
+
+## [2026-07-09] Architecture review and four-layer redesign
+
+**Objective:** Comprehensive system audit and architecture improvement.
+Review everything built so far against the full mission brief, identify
+gaps, and redesign the architecture to be more complete and measurable.
+
+**Changes made:**
+- Read and analyzed every file in `docs/growth/`, `lib/graph/`,
+  `lib/marketing/`, `lib/audit/finalize.ts`, `scripts/`, `app/` routes,
+  `prisma/schema.prisma`, and `package.json`.
+- Redesigned `architecture.md` with a four-layer model:
+  - Layer 1: Data Collection (audit pipeline, GSC, analytics, backlinks, SERP)
+  - Layer 2: Intelligence (rollups, opportunity scoring, competitive analysis)
+  - Layer 3: Public Surfaces (issue pages, benchmarks, tools, reports, compare)
+  - Layer 4: Measurement & Feedback (attribution, experiments, weekly reviews)
+- Identified 6 architectural gaps:
+  1. No attribution funnel (can't trace organic -> audit -> signup -> paid)
+  2. No automated data pipeline (GSC, benchmarks, opportunity scoring)
+  3. No dynamic sitemap (manual step to add programmatic pages)
+  4. No internal linking engine (no topical authority clusters)
+  5. No content freshness system (public pages go stale)
+  6. No competitive intelligence (no SERP monitoring, no backlink tracking)
+- Updated `roadmap.md` with specific deliverables and dependencies per phase
+- Updated `backlog.md` with P0-P4 priority tiers and dependency chains
+- Updated `metrics.md` with a four-layer measurement framework and funnel
+  metrics
+- Updated `architecture.md` with data flow diagram, structured data
+  expansion plan, internal linking engine design, and dynamic sitemap design
+- Identified 5 things that can ship immediately with no blockers:
+  1. Industry/tech detection in snapshot.ts
+  2. Benchmark rollup script
+  3. Free tool: meta-preview
+  4. Free tool: placeholder-copy-detector
+  5. Attribution parameter design
+
+**Reasoning:** The existing Phase 1 foundations are well-designed — the
+knowledge graph schema, persist/query boundary, MIN_SAMPLE_SIZE gate, and
+fire-and-forget audit hook are all sound. But the architecture had gaps in
+the measurement and feedback layers that would have caused the system to
+produce public pages without knowing if they work. The four-layer model
+ensures every layer feeds the next and nothing falls through the cracks.
+
+The most critical insight: the system can produce public pages that earn
+traffic, but without attribution tracking, we can't know which pages drive
+signups. This means the loop (audit -> knowledge -> pages -> trust ->
+acquisition -> audit) has a measurement break. Fixing this before shipping
+Phase 2 pages means every page ships with UTM/source tracking from day one.
+
+**Expected impact:** The improved architecture means:
+- Phase 2 ships with attribution from day one (not retrofitted later)
+- Every public page has a clear information gain requirement (no thin pages)
+- The measurement framework catches declining pages before they lose ranking
+- The internal linking engine builds topical authority automatically
+- The dynamic sitemap prevents index bloat automatically
+
+**Measured impact:** Not yet measured — this is architecture work, not
+shipping code. Impact will be measured by Phase 2 outcomes.
+
+**What worked:** The existing codebase is remarkably well-structured for a
+pre-launch product. The knowledge graph schema covers the right entities,
+the persist/query boundary is correctly enforced, and the audit pipeline
+already captures everything needed for rich public pages. The 164 check IDs
+across 15+ categories are a goldmine of data waiting to be aggregated.
+
+**What failed:** Nothing failed. The gaps identified are typical of a
+system that was designed foundations-first (correctly) but hasn't yet
+reached the public-surface phase.
+
+**What we learned:**
+- The attribution gap is the most dangerous architectural flaw — it's
+  invisible until you try to measure the loop, and by then you've shipped
+  pages without tracking. Fix this before Phase 2, not after.
+- Industry/tech detection is the single biggest blocker to benchmark pages.
+  The `htmlMetadata` JSON on `AuditPage` likely already contains enough
+  signal (framework detection, builder fingerprints) — check there before
+  building new detection logic.
+- The free tools (meta-preview, placeholder-detector) have zero blockers
+  and should ship in parallel with the self-seed batch — they're the
+  fastest path to top-of-funnel traffic.
+- The existing `seo-guard.mjs` script is a good pattern — extend it to
+  cover new route registries as they're added.
+
+**Recommended next steps:**
+1. Execute the self-seed batch (#1 in backlog) — this unblocks everything
+2. Ship meta-preview and placeholder-detector in parallel (#2, #3)
+3. Implement industry/tech detection (#4) — use real HTML from the seed
+   batch as test data
+4. Resolve analytics access decision (#5) — highest-leverage unlock for
+   measurement
+5. Then: first issue page, attribution system, internal linking engine

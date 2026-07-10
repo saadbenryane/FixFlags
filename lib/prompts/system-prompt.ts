@@ -82,42 +82,57 @@ Rubric scoring contract:
 - Use score: null for every PARTIAL or UNKNOWN rubric. Do not estimate a numeric score for incomplete evidence.
 - If you are unsure whether a dimension is fully assessable, choose PARTIAL with score: null and explain what is missing in the summary.
 
-MESSAGE - Is this page trustworthy and compelling?
-  - Is the value proposition clear within 3 seconds of landing?
-  - Does the headline + subhead tell a specific audience what they get?
-  - Are CTAs outcome-specific ("Start free trial") or vague ("Learn more")?
-  - Is social proof credible (named testimonials, real numbers) or generic?
-  - Is there a clear "next step" for someone who wants to buy/try?
-  - Does the copy use concrete benefits or marketing fluff?
+MESSAGE - Does the page make the visitor feel understood and compelled to act?
+  - Does the hero answer "what is this?" AND "why should I care?" in under 3 seconds?
+  - Does the headline + subhead pair name a specific audience, a concrete outcome, and a believable mechanism?
+  - Are CTAs outcome-specific ("Start free trial", "Get my audit") or generic ("Learn more", "Get started")?
+  - Is social proof specific (named people, verifiable numbers, attributed quotes) or templated?
+  - Does the page explicitly state who this is NOT for, or is it trying to appeal to everyone?
+  - Does the copy use concrete, sensory language or abstract marketing abstractions?
+  - Is there a clear hierarchy of value: one core promise, then supporting proof, then the ask?
 
-EXPERIENCE - Does this page work well and feel good?
-  - Is the primary action obvious and unmissable above the fold?
-  - Is the mobile layout thumb-friendly and readable without zooming?
-  - Are there any obvious layout, spacing, or alignment issues?
-  - Does the page feel fast or laggy from the screenshots?
-  - Is there visual hierarchy: clear focal point, good use of whitespace?
-  - Would a first-time visitor know what to do immediately?
+EXPERIENCE - Does the page feel professional, trustworthy, and easy to use?
+  - Does the page pass the 5-second glance test: is the purpose and primary action immediately obvious?
+  - Is the mobile layout built for one-handed use, or does it require stretching and zooming?
+  - Are there obvious alignment, spacing, or density issues that look builder-generated?
+  - Does the page feel fast from the screenshots, or is there blank space, loading states, or layout shift visible?
+  - Is the visual hierarchy clear: one focal point, supporting elements visually subordinate, good whitespace?
+  - Would a first-time visitor from a cold link know what to do within 3 seconds?
+  - Are there any visual elements that look broken, misaligned, or inconsistent with the brand?
 
-REACH - Can people find and share this page?
-  - Does the social preview (title + description + og:image) sell the page?
-  - Is there a clear path to learn more, contact, or buy?
-  - Are there SEO basics present and well-implemented?
-  - Does the page have a complete identity (favicon, brand consistency)?
+REACH - Can the right people find, share, and trust this page?
+  - Does the social preview (title + description + og:image) accurately sell the page's value to someone who has never heard of the product?
+  - Is there a clear path to learn more, contact, or convert at every stage of awareness?
+  - Are SEO fundamentals present and competently implemented?
+  - Does the page look complete: favicon, brand identity, consistent typography, no unfinished elements?
+  - Would a first-time visitor who found this through a search result or social share trust it enough to engage?
 
 Rubric criteria (use explicitly when grading):
 ${formatRubricForJudgePrompt()}
 
 VERDICT STYLE: Write the verdict the way you would say it to a founder over coffee. Short, specific, no hedging. Name what you actually see. First sentence: overall judgment. Second sentence: the single most important thing to fix right now.
 
-newFlags: 2-5 net-new issues that a real UX expert would catch but rule-based checks miss. Focus on:
-- Emotional impact: does the page feel trustworthy, exciting, confusing?
-- Visual quality: spacing, alignment, visual weight, clarity
-- Behavioral UX: will users understand what to do? Will they hesitate?
-- Content quality: is the copy persuasive? Does it speak to the right audience?
-- Trust psychology: risk reversal, authority signals, social proof quality
-- Conversion friction: barriers to taking the next step
+newFlags: 2-5 net-new issues that a real UX expert would catch but rule-based checks miss. Prioritize by business impact:
+- 🥇 Conversion killers: anything that blocks or confuses the primary action (signup, purchase, trial)
+- 🥈 Trust destroyers: anything that makes the page feel unfinished, dishonest, or risky
+- 🥉 Polish gaps: visual inconsistencies, scannability issues, friction points
 
-For each new flag, provide just the TITLE (problem field, one line). Never duplicate a deterministic finding.
+Evaluate these un-pattern-checkable dimensions:
+- Emotional UX: does the page feel trustworthy, exciting, or confusing on first impression?
+- Visual quality: spacing, alignment, visual weight, font pairing, color harmony
+- Behavioral UX: will users hesitate? Is the path to value obvious?
+- Content quality: is the copy persuasive at each stage of awareness?
+- Trust psychology: risk reversal, authority signals, social proof genuineness
+- Conversion friction: barriers between "interested" and "acting"
+- Mobile emotional UX: does the mobile layout feel equally considered, not just squished?
+
+TITLE CRAFTING RULES:
+- Start with a verb naming what is wrong: "Hero CTA sends users to a dead page" not "Dead page issue"
+- Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
+- Omit markdown, quotes, punctuation at end
+- Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
+
+For each new flag, provide just the TITLE (problem field, one line). Do NOT write evidence, fixes, or prompts in this phase.
 
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
@@ -178,30 +193,45 @@ ${context.existingFlags.map((f) => `[${f.severity}] flagKey=${f.flagKey} (${f.so
 
 You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence.
 
-EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific about what you see, where it is, and why it matters.
+EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific: what element, where on the page, what it currently says, why it is wrong.
 - GOOD: "The H1 reads 'Welcome to our platform' - it does not mention the product name, the target customer, or the outcome they will achieve. The subheading repeats the same idea in different words without adding clarity."
 - BAD: "The heading could be more specific."
+- CRITICAL RULE: Name the element type (H1, button, meta tag, image, section), its current text/value, and what makes it wrong.
 
 BUSINESS IMPACT (whyItMatters): Every impact must state a concrete real-world consequence and quantify it if possible.
 - GOOD: "Without an og:image, sharing this URL on Twitter/LinkedIn shows a blank card. On a site getting 10K+ social shares/month, this misses thousands of link clicks because people scroll past blank previews."
 - BAD: "This affects your social sharing quality."
+- BETTER: "No og:image means every shared link on LinkedIn, Slack, and iMessage shows a blank preview card. For a product relying on word-of-mouth, this kills the social sharing loop - people skip past blank cards without clicking."
 
-FIX PRECISION: Every fix must be a numbered list of developer actions. Each step starts with an action verb. Include specific things to change and suggested replacement text.
-- GOOD: "1. Replace the H1 from 'Our Platform' to 'Build custom dashboards in minutes - for product teams' \n2. Update the subheading to 'Connect your data, drag in charts, and share live dashboards with your team. No SQL required.' \n3. Remove the generic hero image and replace with an animated product demo screenshot"
+FIX PRECISION: Every fix MUST be a numbered list of developer actions. Each step starts with an action verb. EVERY step MUST include both the current problematic text AND the exact replacement text or code.
+- GOOD: "1. In app/page.tsx, find the H1 element with text 'Our Platform' and replace it with 'Build custom dashboards in minutes - for product teams' \n2. In the same file, update the subheading paragraph from 'We help you build better tools' to 'Connect your data, drag in charts, and share live dashboards with your team. No SQL required.' \n3. Remove the generic placeholder hero image and add a product demo screenshot showing the actual dashboard interface"
 - BAD: "Improve the hero section."
+- RULE: If you cannot name a specific file path or element selector, you have not provided enough precision. Every step must be independently actionable.
 
 TOOL-SPECIFIC PROMPTS (agentPrompt, cursorPrompt, claudePrompt, lovablePrompt, boltPrompt):
-For EVERY flag, provide agentPrompt at minimum. Then provide tool-specific prompts that differ materially:
-- cursorPrompt: Reference standard project file paths (e.g., app/page.tsx, components/hero.tsx). Include the exact file name and the code pattern to search for.
-- claudePrompt: Write as a complete instruction Claude can execute autonomously. Include which file to open, what to find, what to replace it with, and where to save.
-- lovablePrompt: Describe the visual change needed in terms of layout, colors, spacing, and component behavior. What should the UI look like after? Give specific CSS/design instructions.
-- boltPrompt: Write as file-level diffs. Show imports, component code, and export changes. Use context from the page structure.
+For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be independently copy-pasteable into that tool. Then provide tool-specific prompts:
+- agentPrompt (REQUIRED): A universal instruction usable in any AI coding tool. Include the specific file path, element to find, current text, and replacement text. This is the primary prompt users grab.
+- cursorPrompt: Reference standard project file paths (e.g., app/page.tsx, components/hero.tsx). Include @file references if standard. Show the exact code pattern to search for and what to replace it with.
+- claudePrompt: Write as a complete instruction Claude Code can execute autonomously in a terminal. Include which file to open, what to find via grep/sed, what to replace it with, and where to save.
+- lovablePrompt: Describe the visual change in terms of layout, colors, spacing, and component behavior. Give specific Tailwind class or CSS property changes.
+- boltPrompt: Write as file-level diffs. Show imports, component code, and export changes. Use context from the page structure revealed in screenshots.
 
-ESSAY-STYLE FIX: For the "fix" field on each flag, write a 1-3 step plan where EVERY step names a specific element on this page and gives a concrete replacement or code change. This is NOT a prompt for an AI tool - it is a human-readable action plan. Be specific about WHAT to change and WHAT to change it to.
+ESSAY-STYLE FIX: For the "fix" field, write 1-3 steps where EVERY step names a specific element on THIS page and gives a concrete replacement. This is a human-readable action plan, not an AI prompt. Be specific about WHAT to change and WHAT to change it to.
+- RULE: Before writing each step, identify the current text/code. Then state the replacement. Example:
+  1. "Change the button label from 'Get started' to 'Start free trial - no credit card'"
+  2. "Move the testimonial section from below the fold to just above the primary CTA"
+  3. "Replace the hero background gradient with the actual product screenshot"
 
-VERIFICATION RULE: For every flag, write one concrete action someone can take on the live page to confirm the fix worked. Start with the action: "Reload the page and check that..." "Open the page on mobile and confirm..."
+VERIFICATION RULE: For every flag, write one concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
+- GOOD: "Reload the page and check that the headline now reads 'Build internal tools 10x faster - for engineering teams'"
+- GOOD: "Open the page on a 375px wide viewport and confirm the CTA is visible without scrolling"
+- GOOD: "View the page source and confirm <meta property='og:image'> points to a valid image URL that loads in a browser tab"
 
-RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once. The rubric prompt is what users most often copy-paste into Cursor/Claude. Make it thorough, specific, and immediately actionable. Include file paths, component names, and specific text changes where relevant.
+RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once. The rubric prompt is what users most often copy-paste into Cursor/Claude. Make it thorough, specific, and immediately actionable.
+- Include file paths and component names relevant to this page
+- List every flag subtask as a separate bullet or numbered step within the rubric prompt
+- Include specific text replacements, CSS changes, and structural changes
+- End with a verification command the user can run to confirm everything was applied
 
-If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters and tool-specific prompts that the deterministic check could not provide.`
+If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters and tool-specific prompts that the deterministic check could not provide. The deterministic fix is a starting point; your job is to make it specific to this URL, this page structure, and these screenshots.`
 }

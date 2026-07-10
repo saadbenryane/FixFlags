@@ -8,22 +8,42 @@ agent) picks it back up.
 ## Start here
 
 1. **`vision.md`** — what we're building and why, in one page.
-2. **`architecture.md`** — the knowledge-graph + public-surface design. Read
-   this before touching `lib/graph/` or any `app/(marketing)/` page that
+2. **`architecture.md`** — the four-layer design (Data Collection →
+   Intelligence → Public Surfaces → Measurement & Feedback). Read this
+   before touching `lib/graph/` or any `app/(marketing)/` page that
    claims to be data-driven.
 3. **`roadmap.md`** — current phase and what's next.
 4. **`growth-memory.md`** — the running log. Read the last 3 entries before
    starting new work; they tell you what was tried and what happened.
+
+## The four-layer architecture
+
+```
+Layer 4: MEASUREMENT & FEEDBACK
+  Attribution · Experiments · Weekly reviews · Learning
+        ↓ feeds back into
+Layer 3: PUBLIC SURFACES
+  Issue pages · Benchmarks · Tools · Reports · Compare
+        ↓ derived from
+Layer 2: INTELLIGENCE
+  Rollups · Opportunity scoring · Competitive analysis
+        ↓ fed by
+Layer 1: DATA COLLECTION
+  Audit pipeline · GSC · Analytics · Backlinks · SERP
+```
+
+Each layer feeds the next. The loop closes when Layer 4 learning improves
+what Layer 1 collects.
 
 ## Maintained files
 
 | File | Purpose | Update cadence |
 |---|---|---|
 | `vision.md` | North star, scope, non-goals | Rarely — only on strategy pivots |
-| `architecture.md` | System design (graph + public layer) | When the architecture changes |
+| `architecture.md` | Four-layer system design | When the architecture changes |
 | `roadmap.md` | Phase plan, current focus | Weekly |
-| `backlog.md` | Ranked opportunity ledger | Weekly |
-| `metrics.md` | KPI definitions + current values | Weekly |
+| `backlog.md` | Ranked opportunity ledger (P0-P4) | Weekly |
+| `metrics.md` | KPI definitions + measurement framework | Weekly |
 | `experiments.md` | Hypothesis → outcome log | Per experiment |
 | `learnings.md` | What worked / didn't, dated | Per iteration |
 | `opportunities.md` | GSC/analytics-derived opportunities | Weekly |
@@ -39,10 +59,12 @@ agent) picks it back up.
   remove the original.
 - **Every public page must trace to data.** If a page claims a statistic,
   the number must come from `lib/graph/queries.ts`, not from memory or
-  assumption. See `architecture.md` § Information Gain.
+  assumption. See `architecture.md` § Information gain rule.
 - **Minimum sample size gate.** No programmatic page ships below
   `MIN_SAMPLE_SIZE` (currently 20 distinct sites) for its scope. See
   `lib/graph/queries.ts`.
+- **Attribution is mandatory.** Every public surface link to the audit
+  flow must include UTM parameters. See `architecture.md` § Layer 4.
 - **This is a repo-tracked workspace, not a wiki.** Changes here go through
   the same `main`-only workflow as the rest of the codebase (see root
   `AGENTS.md`).

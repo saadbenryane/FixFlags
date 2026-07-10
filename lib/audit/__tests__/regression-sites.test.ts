@@ -139,7 +139,7 @@ describe('regression: html5up-paradigm-shift.html', () => {
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
       { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'IMPORTANT' },
     ],
     ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )

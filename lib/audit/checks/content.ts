@@ -6,7 +6,7 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
 
   if (meta.h1s.length > 0) {
     const h1 = meta.h1s[0]
-    const genericPhrases = ['home', 'welcome', 'welcome to', 'untitled', 'coming soon', 'hello world']
+    const genericPhrases = ['welcome', 'welcome to', 'untitled', 'coming soon', 'hello world']
     const categoryHeadlinePatterns = [
       /build something (amazing|great|beautiful|incredible|awesome)/i,
       /create something (amazing|great|beautiful)/i,

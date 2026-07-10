@@ -23,7 +23,7 @@ export function runMeasurementChecks(meta: PageMetadata): DeterministicFlag[] {
       checkId: 'measurement-consent-blocking-incomplete',
       rubric: 'REACH',
       impactTag: 'MEASUREMENT',
-      severity: 'POLISH',
+      severity: meta.hasAnalytics ? 'IMPORTANT' : 'POLISH',
       problem: 'No cookie consent or privacy controls detected alongside analytics',
       evidence: `Analytics were ${meta.hasAnalytics ? 'detected' : 'not detected'} but no consent banner or privacy control elements found.`,
       fix: '1. Add a consent management platform (Cookiebot, Osano, or CookieYes)\n2. Block analytics scripts from loading until consent is given\n3. Link to the privacy policy and include a cookie settings button in the footer',

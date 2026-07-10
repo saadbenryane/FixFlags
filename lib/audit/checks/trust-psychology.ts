@@ -112,7 +112,8 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
     })
   }
 
-  const emailCount = (bodyText.match(/@/g) || []).length
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/
+  const emailCount = (bodyText.match(emailRegex) || []).length
   const hasContactLink = links.some((l) => /\b(contact|support|help)\b/i.test(l.href) || /\b(contact|support|help)\b/i.test(l.text))
   const hasPhone = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(bodyText)
 
