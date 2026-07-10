@@ -66,7 +66,6 @@ Studio tier ($999) is retained in schema but not marketed.
 ## Revenue Model
 
 - Subscription-only (no per-check or usage billing).
-- $500 Expert Review add-on (human report review).
 - Future: agency white-label? Data licensing (aggregate flags report)?
 
 ## Moat Strategy

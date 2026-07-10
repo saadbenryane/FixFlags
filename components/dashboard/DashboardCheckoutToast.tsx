@@ -15,26 +15,19 @@ export function DashboardCheckoutToast() {
 
   useEffect(() => {
     const upgraded = searchParams.get('upgraded') === '1'
-    const expertReview = searchParams.get('expert_review') === '1'
     const planParam = searchParams.get('plan')
 
-    if (!upgraded && !expertReview) return
+    if (!upgraded) return
 
-    if (upgraded) {
-      trackEvent('completed_checkout', { plan: planParam ?? 'BUILDER' })
-      refresh().then((data) => {
-        const planKey = (planParam ?? data?.user?.plan ?? 'BUILDER') as Plan
-        const planName = PLAN_DEFINITIONS[planKey]?.name ?? 'Pro'
-        toast.success(`Welcome to ${planName}! Unlimited monitoring and MCP are now active.`)
-      })
-    }
-    if (expertReview) {
-      toast.success('Expert review confirmed. We will respond within 48 hours.')
-    }
+    trackEvent('completed_checkout', { plan: planParam ?? 'BUILDER' })
+    refresh().then((data) => {
+      const planKey = (planParam ?? data?.user?.plan ?? 'BUILDER') as Plan
+      const planName = PLAN_DEFINITIONS[planKey]?.name ?? 'Pro'
+      toast.success(`Welcome to ${planName}! Unlimited monitoring and MCP are now active.`)
+    })
 
     const next = new URLSearchParams(searchParams.toString())
     next.delete('upgraded')
-    next.delete('expert_review')
     next.delete('plan')
     const qs = next.toString()
     router.replace(qs ? `/dashboard?${qs}` : '/dashboard')

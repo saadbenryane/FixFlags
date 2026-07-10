@@ -6,7 +6,7 @@
  * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
  */
 
-import { getMarketingPlans, proUpgradeCta, EXPERT_REVIEW_PRICE_USD } from '@/lib/billing/plans'
+import { getMarketingPlans, proUpgradeCta } from '@/lib/billing/plans'
 
 export const BRAND = {
   name: 'FixFlags',
@@ -814,16 +814,6 @@ export const PRICING = {
   foundingBadge: 'Founding price. Keep this rate as we grow.',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
-  expertReview: {
-    title: `Expert Review - $${EXPERT_REVIEW_PRICE_USD}`,
-    body: 'A human reviews your report and writes a prioritized fix plan. Good for launch week.',
-    steps: [
-      'Submit your latest FixFlags report',
-      'A senior reviewer prioritizes Flags by launch impact',
-      'Get a launch checklist within 48 hours',
-    ],
-    cta: 'Get Expert Review',
-  },
   allPlansInclude:
     'Every check includes evidence, fix prompts, and rubric summaries. Pro adds the ship loop: monitoring, compare, and check from your editor.',
 } as const

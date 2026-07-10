@@ -6,7 +6,6 @@ import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { prisma } from '@/lib/db'
-import { notifyExpertReviewPaid } from '@/lib/email/expert-review'
 import { logger } from '@/lib/logger'
 
 function entitlementStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
@@ -179,11 +178,6 @@ export async function POST(req: NextRequest) {
 
         case 'checkout.session.expired': {
           const session = event.data.object
-          if (session.metadata?.type === 'expert_review') {
-            await tx.expertReviewOrder.deleteMany({
-              where: { stripeSessionId: session.id, status: 'PENDING' },
-            })
-          }
           if (session.metadata?.type === 'credit_pack') {
             await tx.creditPurchase.deleteMany({
               where: { stripeSessionId: session.id, status: 'PENDING' },
@@ -203,23 +197,6 @@ export async function POST(req: NextRequest) {
 
         case 'checkout.session.completed': {
           const session = event.data.object
-          if (session.metadata?.type === 'expert_review') {
-            const order = await tx.expertReviewOrder.update({
-              where: { stripeSessionId: session.id },
-              data: { status: 'PAID' },
-            })
-            await tx.expertReviewEvent.createMany({
-              data: [{ orderId: order.id, type: 'PAYMENT_CONFIRMED' }],
-              skipDuplicates: true,
-            })
-            await notifyExpertReviewPaid({
-              userId: order.userId,
-              email: order.email,
-              auditId: order.auditId,
-              orderId: order.id,
-            })
-          }
-
           if (session.metadata?.type === 'credit_pack') {
             const existing = await tx.creditPurchase.findUnique({
               where: { stripeSessionId: session.id },

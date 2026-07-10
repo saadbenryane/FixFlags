@@ -155,9 +155,6 @@ export default async function AdminPage() {
           <Button variant="outline" asChild>
             <Link href="/admin/leads">Leads</Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/expert-reviews">Expert Review orders</Link>
-          </Button>
         </div>
       </section>
 

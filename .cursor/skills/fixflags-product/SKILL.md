@@ -1,6 +1,6 @@
 ---
 name: fixflags-product
-description: FixFlags product behavior, entitlements, billing, audit pipeline, and dev workflow. Use when changing auth, audits, re-checks, Stripe, MCP runtime, expert review, admin tools, or anything where marketing copy must match code. Triggers on entitlements, quota, worker, webhook, recheck, share link, API keys, expert review, validateProductionEnv.
+description: FixFlags product behavior, entitlements, billing, audit pipeline, and dev workflow. Use when changing auth, audits, re-checks, Stripe, MCP runtime, admin tools, or anything where marketing copy must match code. Triggers on entitlements, quota, worker, webhook, recheck, share link, API keys, validateProductionEnv.
 ---
 
 # FixFlags Product (source of truth for behavior)
@@ -79,7 +79,6 @@ UI must gate before API 402:
 - Webhooks: `customer.subscription.created/updated/deleted` upgrade/downgrade plan
 - Checkout success: `/dashboard?upgraded=1&plan=BUILDER|TEAM|STUDIO`
 - `DashboardCheckoutToast` reads plan from URL or `/api/me`
-- Expert Review: one-time payment → `expertReviewOrder` → customer email + `/billing` status + `/admin/expert-reviews` fulfill queue
 
 ## MCP
 
@@ -87,14 +86,6 @@ UI must gate before API 402:
 - Docs/config in `MCP_DOCS` in `copy.ts`
 - `pollAuditUntilDone()` for `waitForCompletion`; return final status, not stale `QUEUED`
 - Route aborts on client disconnect
-
-## Expert Review ($500)
-
-Minimal fulfillment (do not defer):
-
-1. Customer confirmation email on payment (`lib/email/expert-review.ts`)
-2. Orders on `/billing` with status (PAID / FULFILLED)
-3. Admin queue `/admin/expert-reviews` → mark FULFILLED
 
 ## Tests & CI
 

@@ -19,27 +19,22 @@ import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCar
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { canAccessAudit } from '@/lib/audit/access'
-import { canAccessCompare } from '@/lib/auth/entitlements'
+import { canAccessCompare, canSharePublicly } from '@/lib/auth/entitlements'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { RubricDiff } from '@/components/compare/RubricDiff'
+import { ShareCompareButton } from '@/components/audit/ShareCompareButton'
+import type { User } from '@prisma/client'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ share?: string }>
 }
 
-export default async function ComparePage({ params }: Props) {
+export default async function ComparePage({ params, searchParams }: Props) {
   const { id } = await params
+  const { share: shareToken } = await searchParams
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-
-  if (!session?.user) {
-    redirect(`/sign-in?next=/compare/${id}`)
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-  if (!user) {
-    redirect(signInUrl(await getRequestedPath(`/compare/${id}`)))
-  }
 
   const monitoringAudit = await prisma.audit.findUnique({
     where: { id },
@@ -63,16 +58,60 @@ export default async function ComparePage({ params }: Props) {
     redirect(`/report/${id}`)
   }
 
-  const showAdmin = isAdminUser(user)
+  let viewer: Pick<User, 'id' | 'plan' | 'role' | 'subscriptionStatus'> | null = null
+  let showAdmin = false
+  let isShareView = false
 
-  if (!canAccessCompare(user)) {
-    return (
-      <AuditShell session={session} showAdmin={showAdmin}>
-        <Container variant="report" className="space-y-8 py-8">
-          <PageHeader
-            title="Before vs After"
-            description="Monitoring is required to compare scores."
-          />
+  if (shareToken) {
+    const link = await prisma.shareLink.findUnique({
+      where: { token: shareToken },
+      select: {
+        id: true,
+        revoked: true,
+        expiresAt: true,
+        maxViews: true,
+        viewCount: true,
+        password: true,
+        auditId: true,
+      },
+    })
+    const valid =
+      link &&
+      !link.revoked &&
+      !link.password &&
+      (!link.expiresAt || link.expiresAt >= new Date()) &&
+      (!link.maxViews || link.viewCount < link.maxViews) &&
+      (link.auditId === monitoringAudit.id || link.auditId === monitoringAudit.parentId)
+
+    if (valid) {
+      isShareView = true
+      await prisma.shareLink.update({
+        where: { id: link!.id },
+        data: { viewCount: { increment: 1 }, lastViewedAt: new Date() },
+      })
+    }
+  }
+
+  if (!isShareView) {
+    if (!session?.user) {
+      redirect(`/sign-in?next=/compare/${id}`)
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!user) {
+      redirect(signInUrl(await getRequestedPath(`/compare/${id}`)))
+    }
+    viewer = user
+    showAdmin = isAdminUser(user)
+
+    if (!canAccessCompare(user)) {
+      return (
+        <AuditShell session={session} showAdmin={showAdmin}>
+          <Container variant="report" className="space-y-8 py-8">
+            <PageHeader
+              title="Before vs After"
+              description="Monitoring is required to compare scores."
+            />
             <ContextualUpgradeCard
               moment="compare_flat"
               isLoggedIn
@@ -81,16 +120,17 @@ export default async function ComparePage({ params }: Props) {
             <Button asChild variant="outline">
               <Link href={`/report/${id}`}>Back to report</Link>
             </Button>
-        </Container>
-      </AuditShell>
-    )
-  }
+          </Container>
+        </AuditShell>
+      )
+    }
 
-  if (
-    !canAccessAudit(monitoringAudit, session.user) ||
-    !canAccessAudit(monitoringAudit.parent, session.user)
-  ) {
-    notFound()
+    if (
+      !canAccessAudit(monitoringAudit, session.user) ||
+      !canAccessAudit(monitoringAudit.parent, session.user)
+    ) {
+      notFound()
+    }
   }
 
   const before = monitoringAudit.parent
@@ -119,23 +159,25 @@ export default async function ComparePage({ params }: Props) {
   const beforeShareStatus = computeShareStatusFromRubrics(mapRubrics(before.rubrics))
   const afterShareStatus = computeShareStatusFromRubrics(mapRubrics(after.rubrics))
 
+  const canShare = viewer ? canSharePublicly(viewer) : isShareView
+
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
       <Container variant="report" className="space-y-8 py-8">
-          <div className="space-y-1">
-            <Muted className="truncate text-xs">{after.url}</Muted>
-            <PageHeader
-              title={
-                flagDiff.fixed.length > 0
-                  ? `${flagDiff.fixed.length === 1 ? '1 flag cleared' : `${flagDiff.fixed.length} flags cleared`}${
-                      flagDiff.unchanged.length === 0 && flagDiff.regressed.length === 0
-                        ? '. Clean pass.'
-                        : '.'
-                    }`
-                  : 'Before vs After'
-              }
-            />
-          </div>
+        <div className="space-y-1">
+          <Muted className="truncate text-xs">{after.url}</Muted>
+          <PageHeader
+            title={
+              flagDiff.fixed.length > 0
+                ? `${flagDiff.fixed.length === 1 ? '1 flag cleared' : `${flagDiff.fixed.length} flags cleared`}${
+                    flagDiff.unchanged.length === 0 && flagDiff.regressed.length === 0
+                      ? '. Clean pass.'
+                      : '.'
+                  }`
+                : 'Before vs After'
+            }
+          />
+        </div>
 
         <Card className="flex items-center gap-6 border-0 p-5 shadow-card sm:p-6">
           <div className="text-center">
@@ -161,14 +203,14 @@ export default async function ComparePage({ params }: Props) {
           </div>
         </Card>
 
-        {!user.plan || user.plan === 'FREE' ? (
+        {!isShareView && viewer && (!viewer.plan || viewer.plan === 'FREE') && (
           <ContextualUpgradeCard
             moment={compareMoment}
             scoreDelta={scoreDelta}
             isLoggedIn
-            currentPlan={user.plan}
+            currentPlan={viewer.plan}
           />
-        ) : null}
+        )}
 
         <RubricDiff
           beforeShareStatus={beforeShareStatus}
@@ -227,15 +269,11 @@ export default async function ComparePage({ params }: Props) {
           </div>
         )}
 
-        {flagDiff.fixed.length > 0 && (
-          <div className="rounded-card border-0 bg-grade-A/5 p-5 shadow-card space-y-2">
-            <p className="text-sm font-semibold text-success">
-              {flagDiff.fixed.length === 1 ? '1 flag fixed.' : `${flagDiff.fixed.length} flags fixed.`} Share the proof.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Upgrade to Agency to share public proof links with clients and stakeholders.
-            </p>
-          </div>
+        {canShare && (
+          <ShareCompareButton
+            auditId={after.id}
+            label="Share this comparison"
+          />
         )}
 
         <div className="flex gap-3 flex-wrap">

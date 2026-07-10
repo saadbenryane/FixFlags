@@ -73,15 +73,15 @@ describe('priority-flags', () => {
   })
 
   it('countFixPrompts returns 0 when no flags have fix prompts', () => {
-    assert.equal(countFixPrompts([flag({ id: 'a' }), flag({ id: 'b' })]), 0)
+    assert.equal(countFixPrompts([flag({ id: 'a', fix: undefined }), flag({ id: 'b', fix: undefined })]), 0)
   })
 
   it('countFixPrompts counts flags with agentPrompt or cursorPrompt etc', () => {
     assert.equal(
       countFixPrompts([
-        flag({ id: 'a' }),
-        flag({ id: 'b', agentPrompt: 'Do this' }),
-        flag({ id: 'c', cursorPrompt: 'Cursor fix' }),
+        flag({ id: 'a', fix: undefined }),
+        flag({ id: 'b', agentPrompt: 'Do this', fix: undefined }),
+        flag({ id: 'c', cursorPrompt: 'Cursor fix', fix: undefined }),
         flag({ id: 'd', fix: 'Fix it' }),
       ]),
       3
@@ -89,7 +89,7 @@ describe('priority-flags', () => {
   })
 
   it('collectAllFixPrompts returns empty string when no flags have prompts', () => {
-    assert.equal(collectAllFixPrompts([flag({ id: 'a' }), flag({ id: 'b' })]), '')
+    assert.equal(collectAllFixPrompts([flag({ id: 'a', fix: undefined }), flag({ id: 'b', fix: undefined })]), '')
   })
 
   it('collectAllFixPrompts formats multiple prompts with separators and indexes', () => {
@@ -105,11 +105,11 @@ describe('priority-flags', () => {
 
   it('collectAllFixPrompts skips flags without prompts and indexes remaining', () => {
     const result = collectAllFixPrompts([
-      flag({ id: 'a', problem: 'Skipped' }),
-      flag({ id: 'b', problem: 'Has prompt', agentPrompt: 'Fix this' }),
+      flag({ id: 'a', problem: 'Skipped', fix: undefined }),
+      flag({ id: 'b', problem: 'Has prompt', agentPrompt: 'Fix this', fix: undefined }),
     ])
     assert.match(result, /Fix 1: Has prompt/)
-    assert.doesNotMatch(result, /Fix 2/)
+    assert.equal(result.includes('Fix 2'), false)
   })
 
   it('uses priority before rubric grade in ranked fix lists', () => {

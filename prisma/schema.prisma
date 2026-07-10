@@ -127,14 +127,6 @@ enum Device {
   MOBILE
 }
 
-enum ExpertReviewStatus {
-  PENDING
-  PAID
-  IN_REVIEW
-  DELIVERED
-  FULFILLED
-}
-
 enum EmailDeliveryStatus {
   PENDING
   SENT
@@ -182,37 +174,35 @@ enum SupportMessageRole {
 }
 
 model User {
-  id                      String              @id @default(cuid())
-  email                   String              @unique
+  id                      String             @id @default(cuid())
+  email                   String             @unique
   name                    String?
-  emailVerified           Boolean             @default(false)
+  emailVerified           Boolean            @default(false)
   image                   String?
-  role                    String              @default("user")
-  plan                    Plan                @default(FREE)
-  auditsUsed              Int                 @default(0)
-  auditsLimit             Int                 @default(3)
-  stripeCustomerId        String?             @unique
-  stripeSubscriptionId    String?             @unique
+  role                    String             @default("user")
+  plan                    Plan               @default(FREE)
+  auditsUsed              Int                @default(0)
+  auditsLimit             Int                @default(3)
+  stripeCustomerId        String?            @unique
+  stripeSubscriptionId    String?            @unique
   stripePriceId           String?
   stripeCurrentPeriodEnd  DateTime?
-  subscriptionStatus      SubscriptionStatus  @default(NONE)
+  subscriptionStatus      SubscriptionStatus @default(NONE)
   vibecodingLevel         String?
   preferredTools          String[]
   gclid                   String?
   fbclid                  String?
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
   projects                Project[]
   audits                  Audit[]
   apiKeys                 ApiKey[]
   sessions                Session[]
   accounts                Account[]
   emailLogs               EmailLog[]
-  expertReviewOrders      ExpertReviewOrder[]
-  expertReviewEvents      ExpertReviewEvent[] @relation("ExpertReviewEventActor")
-  linkedLeads             Lead[]              @relation("LeadLinkedUser")
-  supportSessions         SupportSession[]    @relation("SupportSessionUser")
-  assignedSupportSessions SupportSession[]    @relation("SupportSessionAgent")
+  linkedLeads             Lead[]             @relation("LeadLinkedUser")
+  supportSessions         SupportSession[]   @relation("SupportSessionUser")
+  assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
   mcpInteractions         McpInteraction[]
   creditPurchases         CreditPurchase[]
   githubConnection        GithubConnection?
@@ -495,19 +485,18 @@ model Audit {
   gclid            String?
   fbclid           String?
 
-  rubrics            ReportRubric[]
-  screenshots        Screenshot[]
-  flags              Flag[]
-  pages              AuditPage[]
-  runCost            AuditRunCost?
-  expertReviewOrders ExpertReviewOrder[]
-  shareLinks         ShareLink[]
+  rubrics     ReportRubric[]
+  screenshots Screenshot[]
+  flags       Flag[]
+  pages       AuditPage[]
+  runCost     AuditRunCost?
+  shareLinks  ShareLink[]
 
   // Knowledge-graph back-references. Nullable + optional so the migration
   // is safe to apply to existing audits; filled by
   // scripts/graph/backfill-historical.ts and the live persist hook.
-  siteId     String?
-  site       Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId String?
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -524,19 +513,19 @@ model Audit {
 }
 
 model ShareLink {
-  id        String   @id @default(cuid())
-  auditId   String
-  audit     Audit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  token     String   @unique @default(cuid())
-  label     String?
-  password  String?
-  expiresAt DateTime?
-  maxViews  Int?
-  viewCount Int      @default(0)
+  id           String    @id @default(cuid())
+  auditId      String
+  audit        Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  token        String    @unique @default(cuid())
+  label        String?
+  password     String?
+  expiresAt    DateTime?
+  maxViews     Int?
+  viewCount    Int       @default(0)
   lastViewedAt DateTime?
-  revoked   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  revoked      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([auditId])
   @@index([token])
@@ -643,11 +632,12 @@ model AuditPage {
   flags           Flag[]
 
   // Knowledge-graph: each distinct page URL is also a graph:Page.
-  pageId          String?
-  page_rel        Page?   @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  pageId   String?
+  page_rel Page?   @relation(fields: [pageId], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([auditId, normalizedUrl])
   @@unique([auditId, position])
   @@index([auditId, status])
@@ -761,8 +751,8 @@ model Flag {
 
   // Knowledge-graph link. Nullable so the migration is safe to apply to
   // existing flags without recomputing fingerprints.
-  issueId    String?
-  issue      Issue?  @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  issueId String?
+  issue   Issue?  @relation(fields: [issueId], references: [id], onDelete: SetNull)
 
   @@index([auditId])
   @@index([auditId, checkId])
@@ -784,57 +774,6 @@ model FlagFeedback {
   @@unique([flagId, userId])
   @@index([flagId])
   @@map("flag_feedback")
-}
-
-model ExpertReviewOrder {
-  id              String                   @id @default(cuid())
-  userId          String?
-  user            User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email           String
-  auditId         String?
-  audit           Audit?                   @relation(fields: [auditId], references: [id], onDelete: SetNull)
-  stripeSessionId String                   @unique
-  status          ExpertReviewStatus       @default(PENDING)
-  deliverable     ExpertReviewDeliverable?
-  events          ExpertReviewEvent[]
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-
-  @@index([userId])
-  @@index([auditId])
-  @@map("expert_review_orders")
-}
-
-model ExpertReviewDeliverable {
-  id          String            @id @default(cuid())
-  orderId     String            @unique
-  order       ExpertReviewOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  summary     String            @db.Text
-  priorities  Json
-  reportUrl   String?
-  authoredBy  String
-  deliveredAt DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@index([orderId])
-  @@map("expert_review_deliverables")
-}
-
-model ExpertReviewEvent {
-  id        String            @id @default(cuid())
-  orderId   String
-  order     ExpertReviewOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  actorId   String?
-  actor     User?             @relation("ExpertReviewEventActor", fields: [actorId], references: [id], onDelete: SetNull)
-  type      String
-  metadata  Json?
-  createdAt DateTime          @default(now())
-
-  @@unique([orderId, type])
-  @@index([orderId, createdAt])
-  @@index([actorId])
-  @@map("expert_review_events")
 }
 
 model ProcessedStripeEvent {
@@ -897,37 +836,37 @@ model CreditPurchase {
 // =============================================================================
 
 model Site {
-  id             String   @id @default(cuid())
-  hostname       String   @unique
-  rootUrl        String
-  firstSeenAt    DateTime @default(now())
-  lastAuditedAt  DateTime @default(now())
-  auditCount     Int      @default(0)
-  industryGuess  String?
-  techGuess      Json?
-  pages          Page[]
-  audits         Audit[]
+  id            String            @id @default(cuid())
+  hostname      String            @unique
+  rootUrl       String
+  firstSeenAt   DateTime          @default(now())
+  lastAuditedAt DateTime          @default(now())
+  auditCount    Int               @default(0)
+  industryGuess String?
+  techGuess     Json?
+  pages         Page[]
+  audits        Audit[]
   // Note: per-flag linkage to a Site lives in graph_issue_occurrence, not as
   // a direct relation — keeps this model cheap to query by hostname alone.
-  technologies   SiteTechnology[]
-  industry       Industry? @relation(fields: [industryId], references: [id], onDelete: SetNull)
-  industryId     String?
-  occurrences    IssueOccurrence[]
+  technologies  SiteTechnology[]
+  industry      Industry?         @relation(fields: [industryId], references: [id], onDelete: SetNull)
+  industryId    String?
+  occurrences   IssueOccurrence[]
 
   @@index([lastAuditedAt])
   @@map("graph_site")
 }
 
 model Page {
-  id         String   @id @default(cuid())
-  siteId     String
-  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  url        String
-  path       String
-  role       String
-  firstSeenAt DateTime @default(now())
-  lastSeenAt DateTime @default(now())
-  audits     AuditPage[]
+  id          String      @id @default(cuid())
+  siteId      String
+  site        Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  url         String
+  path        String
+  role        String
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+  audits      AuditPage[]
 
   @@unique([siteId, url])
   @@index([siteId])
@@ -935,8 +874,8 @@ model Page {
 }
 
 model Technology {
-  id    String  @id @default(cuid())
-  name  String  @unique
+  id    String           @id @default(cuid())
+  name  String           @unique
   kind  String
   sites SiteTechnology[]
 
@@ -950,8 +889,8 @@ model SiteTechnology {
   lastSeenAt   DateTime @default(now())
   confidence   Float    @default(1.0)
 
-  site         Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  technology   Technology  @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+  site       Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
 
   @@id([siteId, technologyId])
   @@index([technologyId])
@@ -959,36 +898,36 @@ model SiteTechnology {
 }
 
 model Industry {
-  id     String  @id @default(cuid())
-  slug   String  @unique
-  label  String
-  sites  Site[]
+  id    String @id @default(cuid())
+  slug  String @unique
+  label String
+  sites Site[]
 
   @@map("graph_industry")
 }
 
 model Issue {
-  id               String   @id @default(cuid())
+  id              String              @id @default(cuid())
   // Stable hash of (checkId, normalized-evidence-shape). Same fingerprint
   // across sites means it's the same underlying problem.
-  fingerprint      String   @unique
-  checkId          String
-  rubric           String
-  problemTemplate  String   @db.Text
-  fixTemplate      String   @db.Text
+  fingerprint     String              @unique
+  checkId         String
+  rubric          String
+  problemTemplate String              @db.Text
+  fixTemplate     String              @db.Text
   // Denormalized counters, recomputed by scripts/growth/issue-frequencies.ts
-  occurrenceCount  Int      @default(0)
-  siteCount        Int      @default(0)
-  frameworkCount   Int      @default(0)
+  occurrenceCount Int                 @default(0)
+  siteCount       Int                 @default(0)
+  frameworkCount  Int                 @default(0)
   // Top-N redacted public examples — opaque to end users, drives the issue
   // page's "what this looks like in the wild" section.
-  examples         Json?
-  firstSeenAt      DateTime @default(now())
-  lastSeenAt       DateTime @default(now())
-  flags            Flag[]
-  occurrences      IssueOccurrence[]
-  fixPrompts       FixPrompt[]
-  snapshots        BenchmarkSnapshot[]
+  examples        Json?
+  firstSeenAt     DateTime            @default(now())
+  lastSeenAt      DateTime            @default(now())
+  flags           Flag[]
+  occurrences     IssueOccurrence[]
+  fixPrompts      FixPrompt[]
+  snapshots       BenchmarkSnapshot[]
 
   @@index([checkId])
   @@index([rubric])
@@ -997,12 +936,12 @@ model Issue {
 }
 
 model IssueOccurrence {
-  id        String  @id @default(cuid())
-  issueId   String
-  issue     Issue   @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  siteId    String
-  site      Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  flagId    String  @unique
+  id         String   @id @default(cuid())
+  issueId    String
+  issue      Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  siteId     String
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  flagId     String   @unique
   observedAt DateTime @default(now())
 
   @@index([issueId])
@@ -1011,16 +950,16 @@ model IssueOccurrence {
 }
 
 model FixPrompt {
-  id           String   @id @default(cuid())
-  issueId      String
-  issue        Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  issueId     String
+  issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
   // cursor | claude | lovable | bolt | generic
-  tool         String
-  template     String   @db.Text
-  usageCount   Int      @default(0)
+  tool        String
+  template    String   @db.Text
+  usageCount  Int      @default(0)
   // Populated by flag feedback + re-audit signal over time.
-  successRate  Float?
-  createdAt    DateTime @default(now())
+  successRate Float?
+  createdAt   DateTime @default(now())
 
   @@unique([issueId, tool])
   @@index([issueId])
@@ -1028,39 +967,39 @@ model FixPrompt {
 }
 
 model BenchmarkSnapshot {
-  id          String   @id @default(cuid())
+  id            String   @id @default(cuid())
   // e.g. "industry:saas", "framework:nextjs", "builder:lovable",
   // "industry:saas+framework:nextjs"
-  scope       String
-  takenAt     DateTime @default(now())
-  sampleSize  Int
-  avgScore    Float
-  p25Score    Float
-  p50Score    Float
-  p75Score    Float
+  scope         String
+  takenAt       DateTime @default(now())
+  sampleSize    Int
+  avgScore      Float
+  p25Score      Float
+  p50Score      Float
+  p75Score      Float
   flagFrequency Json
   topIssues     Json
   // Optional reference to the dominant issue driving the snapshot.
-  topIssueId  String?
-  topIssue    Issue?   @relation(fields: [topIssueId], references: [id], onDelete: SetNull)
+  topIssueId    String?
+  topIssue      Issue?   @relation(fields: [topIssueId], references: [id], onDelete: SetNull)
 
   @@index([scope, takenAt])
   @@map("graph_benchmark_snapshot")
 }
 
 model Experiment {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  hypothesis  String   @db.Text
+  id         String    @id @default(cuid())
+  slug       String    @unique
+  hypothesis String    @db.Text
   // landing-page | programmatic-page | free-tool | on-platform | outbound
-  surface     String
-  startedAt   DateTime @default(now())
-  endedAt     DateTime?
-  metric      String
-  baseline    Float?
-  result      Float?
-  decision    String?  // kept | reverted | inconclusive
-  notes       String?  @db.Text
+  surface    String
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  metric     String
+  baseline   Float?
+  result     Float?
+  decision   String? // kept | reverted | inconclusive
+  notes      String?   @db.Text
 
   @@index([surface, startedAt])
   @@map("graph_experiment")

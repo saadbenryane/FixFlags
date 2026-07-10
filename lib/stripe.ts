@@ -7,8 +7,6 @@ export {
   projectLimitForPlan,
   planFromPriceId,
   getMarketingPlans,
-  getExpertReviewStripePriceId,
-  EXPERT_REVIEW_PRICE_USD,
   PLAN_DEFINITIONS,
 } from '@/lib/billing/plans'
 

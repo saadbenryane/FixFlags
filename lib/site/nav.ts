@@ -34,7 +34,6 @@ export const ADMIN_NAV = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/audits', label: 'Audits' },
   { href: '/admin/feedback', label: 'Feedback' },
-  { href: '/admin/expert-reviews', label: 'Expert reviews' },
 ] as const
 
 export const LEGAL_LINKS = [

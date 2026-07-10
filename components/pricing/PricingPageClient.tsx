@@ -4,7 +4,6 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
-import { ExpertReviewButton } from '@/components/pricing/ExpertReviewButton'
 import { FaqSection } from '@/components/marketing/FaqSection'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -121,22 +120,6 @@ export function PricingPageClient() {
           </div>
           <PricingComparisonTable />
         </div>
-
-        <Surface variant="elevated" className="mx-auto max-w-3xl space-y-5 text-center shadow-card">
-          <Heading as="h2">{PRICING.expertReview.title}</Heading>
-          <Body className="text-muted-foreground">{PRICING.expertReview.body}</Body>
-          <ol className="mx-auto grid max-w-2xl gap-2 text-left text-sm text-muted-foreground sm:grid-cols-3">
-            {PRICING.expertReview.steps.map((step, index) => (
-              <li key={step} className="rounded-nested-md bg-muted/35 p-3">
-                <span className="mb-2 block font-mono text-xs font-semibold text-brand">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-          <ExpertReviewButton isLoggedIn={isLoggedIn} label={PRICING.expertReview.cta} />
-        </Surface>
 
         <div className="mx-auto max-w-3xl">
           <FaqSection items={PRICING_FAQ} title="Pricing questions" sectionLabel={null} />
