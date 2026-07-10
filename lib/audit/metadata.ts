@@ -344,7 +344,7 @@ export function trimMetadataForStorage(metadata: PageMetadata) {
   return {
     ...compact,
     h2s: h2s.slice(0, 10),
-    pageText: pageText.slice(0, 500),
+    pageText: pageText.slice(0, 5000),
   }
 }
 

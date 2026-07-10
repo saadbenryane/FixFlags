@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const VALID_LEVELS = ['beginner', 'regular', 'advanced'] as const
 const VALID_TOOLS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt', 'other'] as const
@@ -13,6 +14,9 @@ export async function PATCH(req: NextRequest) {
     if (!session?.user) {
       return apiError('Unauthorized', 401)
     }
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'me-preferences', identifier: `${session.user.id}:${clientId}`, limit: 20, windowSeconds: 60 })
 
     const body = await req.json().catch(() => ({}))
     const vibecodingLevel =

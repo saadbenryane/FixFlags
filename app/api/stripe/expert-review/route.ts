@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { getAppUrl } from '@/lib/get-app-url'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const schema = z.object({
   auditId: z.string().min(1),
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to purchase Expert Review', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'expert-review', identifier: `${session.user.id}:${clientId}`, limit: 5, windowSeconds: 60 })
 
     const priceId = getExpertReviewStripePriceId()
     if (!priceId) return apiError('Expert Review is not configured', 503, { code: 'BILLING_NOT_CONFIGURED' })

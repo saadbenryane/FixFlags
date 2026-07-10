@@ -151,8 +151,10 @@ export function buildPrescriptionPrompt(context: {
     title: string | null
     description: string | null
     h1s: string[]
+    h2s: string[]
     ctaTexts: string[]
   }
+  techStack: string[]
   existingFlags: Array<{
     flagKey: string
     source: string
@@ -176,14 +178,17 @@ URL: ${context.url}
 Overall score: ${context.score}/100
 Verdict: ${context.verdict}
 
-Page text (first 2500 chars):
-${context.pageText.slice(0, 2500)}
+Page text (first 5000 chars):
+${context.pageText.slice(0, 5000)}
+${context.pageText.length > 5000 ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
 
 Metadata:
 - Title: ${context.metadata.title || 'MISSING'}
 - Description: ${context.metadata.description || 'MISSING'}
 - H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
+- H2s: ${(context.metadata.h2s ?? []).join(', ').slice(0, 300) || 'NONE'}
 - CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
+${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
 
 Rubric grades from triage:
 ${context.rubrics.map((r) => `- ${r.name}: ${r.grade}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}

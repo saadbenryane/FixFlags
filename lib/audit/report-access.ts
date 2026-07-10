@@ -26,7 +26,7 @@ export function canViewPrescriptionContent(
   return false
 }
 
-export function canViewAiViaMaxPublicShare(
+export function canViewAiViaAgencyPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
 ): boolean {
@@ -45,7 +45,7 @@ export async function canViewPrescriptionContentForAudit(
     where: { id: audit.userId },
     select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
-  return canViewAiViaMaxPublicShare(audit, owner ? canSharePublicly(owner) : false)
+  return canViewAiViaAgencyPublicShare(audit, owner ? canSharePublicly(owner) : false)
 }
 
 type FlagLike = {

@@ -71,7 +71,7 @@ export function ShareAuditButton({
     } else {
       toast.success('Private link copied', {
         description:
-          'Only you can view this report while it is private. Upgrade to Max for public share links.',
+          'Only you can view this report while it is private. Upgrade to Agency for public share links.',
       })
     }
   }
@@ -92,7 +92,7 @@ export function ShareAuditButton({
             toast.error(content.headline, {
               description: content.body,
               action: {
-                label: 'See Max',
+                label: 'See Agency',
                 onClick: () => router.push('/pricing'),
               },
             })
@@ -162,7 +162,7 @@ export function ShareAuditButton({
       </Button>
       {isOwner && !isPublic && !isAnonymous && !canPublicShare && (
         <Button variant="ghost" size="sm" asChild className="text-xs text-muted-foreground">
-          <Link href="/pricing">Max for public links</Link>
+          <Link href="/pricing">Agency for public links</Link>
         </Button>
       )}
     </div>

@@ -24,6 +24,65 @@ earlier one, say so explicitly and leave both.
 
 ---
 
+## 2026-07-10 — Iteration 3-4: Check quality, report UX, prompt context
+
+**What we did:** Fixed 8+ check quality issues (thumb zone, sentinel wording,
+H1 threshold, weak label, risk reversal regex, email regex, consent severity),
+added dedup rules for overlapping check IDs, removed dead code, added Top
+Priorities section + Copy All button to report, fixed flow message-mismatch
+logic, improved tap target evidence with element counts, and increased AI
+prompt context (pageText 500→5000, tech stack, H2 headings).
+
+**What we learned:**
+
+- **`trimMetadataForStorage` truncates pageText to 500 chars — any change to
+  the prompt template's `.slice()` is meaningless unless this limit is raised.**
+  The prescription AI reads from stored metadata, which is always run through
+  `trimMetadataForStorage`. The `buildPrescriptionPrompt` `.slice(0, 5000)` was
+  a no-op over 500-char input. Always trace the complete storage→retrieval
+  chain before changing prompt input sizes.
+- **Triage gets fresh metadata (8000-char pageText); prescription gets stored
+  (500-char).** The triage runs inline during the pipeline with the just-parsed
+  metadata. Prescription runs as a separate job and reads from the DB. The AI
+  that writes fix prompts gets 6% of the page text the triage AI sees. This is
+  an information bottleneck for fix quality.
+- **`topFixPrompt && !explorerModel` is logically impossible.** When
+  `topFixPrompt` is truthy (fix prompts exist), `explorerModel` is always
+  truthy (built from same flags array). The dead section and `showFix` nav
+  prop were legacy from before `LiveReportExplorer`. Always cross-check the
+  conditions when working with report component state.
+- **`collectAllFixPrompts` has no test coverage.** When adding a new
+  utility with formatting logic (indexed separators, empty handling), add
+  tests immediately. The "Copy all" button depended on untested code.
+- **Tech stack detection is stored in `auditPage.performanceData`, not in
+  `htmlMetadata`.** To pass it to the AI prescription, we had to include
+  `audit.pages` in the Prisma query and extract from `performanceData`.
+  This indirection should be documented — it's easy to miss that two
+  separate storage locations contain page intelligence.
+- **`getTopFixPromptFromFlags` duplicates the sorting logic of
+  `rankFlagsByPriority` but returns only a single result.** When we removed
+  its only consumer (the dead `topFixPrompt` section), the function and its
+  tests were left orphaned. Consider consolidating: `rankFlagsByPriority`
+  with limit=1 returns the same result.
+- **`slow-replay.ts` is NOT imported through the checks barrel.** It's a
+  side-channel module directly called by `deterministic-audit.ts`. This is
+  intentional — it requires browser probe results, not just HTML metadata.
+  The `check-ids.ts` comment reference is documentation, not dead code.
+- **The `showFix`, `showOverview`, `showFlow`, `showPreviews` pattern in
+  `ReportMiniNav` is flexible but creates dead-code surface area.** Each
+  boolean creates a condition that can be permanently false. When removing
+  a section, clean up both the section and its nav entry.
+
+**What we'd do differently next time:**
+- Before changing any prompt template's slice/truncation, trace the full
+  data pipeline from source → storage → retrieval → prompt.
+- For any new UI section (Top Priorities), verify rendering state across
+  all conditions: signed-in, signed-out, locked, no flags, etc.
+- Add test coverage for new utility functions in the same PR as the
+  function definition.
+
+---
+
 ## 2026-07-09 — Phase 1 foundation build
 
 **What we did:** Designed and implemented the knowledge-graph schema (10

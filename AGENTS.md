@@ -45,6 +45,59 @@ The public changelog (`lib/marketing/copy.ts` → `CHANGELOG_ENTRIES`) is for **
 - Use internal terminology or backend concepts
 - List technical changes (e.g. "Trust checks run as scan modules" or "Updated MCP tools")
 
+## Report UI conventions
+
+### Top Priorities section
+
+- Renders between the verdict and the flags explorer, showing the top 3 flags
+  by priority with compact fix prompts and individual copy buttons.
+- Condition: `!isSample && explorerModel && hasFixPrompts && showPrescription`
+- Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)` for ordering
+- Each card shows: severity badge, rubric label, problem text, `FixPromptBlock`
+  with `variant="compact"` and `nested`
+- "Copy all N fix prompts" button in the section header calls
+  `collectAllFixPrompts()` — adds `=== Fix N: Problem ===` separators
+
+### Mini nav
+
+- `ReportMiniNav` accepts `showFix` prop but it is **always false** since the
+  old standalone fix section was removed in iteration 4. Do not reintroduce it.
+- Optional sections (Overview, Previews, Flow test, Launch) are inserted at
+  position 1 in the nav order; the Fix prompt tab is inserted after Flags.
+
+### Dead code to avoid
+
+- `topFixPrompt && !explorerModel` — logically impossible condition, don't use
+- `Boolean(topFixPrompt && !explorerModel)` for `showFix` — always false
+
+## AI prescription data flow
+
+Key constraint: pageText available to the AI differs between triage and
+prescription:
+
+| Phase | Source | Max pageText |
+|-------|--------|-------------|
+| Triage | Freshly parsed HTML (in-memory) | 2500 chars (from 8000-char source) |
+| Prescription | Stored `audit.htmlMetadata` (DB) | 500 chars (from 5000-char stored) |
+
+If you need to increase AI pageText, change **both**:
+1. `trimMetadataForStorage` in `lib/audit/metadata.ts` (storage limit)
+2. `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice)
+
+Tech stack for prescription is extracted from `auditPage.performanceData`
+(`detectedTech` array), not from `htmlMetadata`. It flows through
+`PrescriptionContext.techStack` → prompt.
+
+## Check module architecture
+
+- 22 check modules run through `checks/index.ts` barrel via `runAllChecks()`
+- `slow-replay.ts` is a side-channel: imported directly by
+  `deterministic-audit.ts`, NOT through the barrel. It requires Puppeteer
+  probe results.
+- Dedup rules live in `lib/audit/checks/index.ts` `DEDUP_RULES` array.
+  Each rule has a `keep` and a `suppress` checkId pattern.
+- `impactTag` is set on all deterministic checks — verified in iteration 2.
+
 ## Organic growth / SEO
 
 Growth and SEO documentation lives at `docs/growth/` — start with

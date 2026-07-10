@@ -14,7 +14,7 @@ export interface PageSpeedResult {
   fcp: number | null
   tbt: number | null
   inp: number | null
-  opportunities: Array<{ id: string; title: string; savings: number }>
+  opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }>
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
@@ -76,7 +76,7 @@ async function runPageSpeed(
       }
     }
 
-    const opportunities: Array<{ id: string; title: string; savings: number }> = []
+    const opportunities: Array<{ id: string; title: string; savings: number; itemsCount?: number }> = []
     const opportunityIds = [
       'render-blocking-resources',
       'unused-javascript',
@@ -105,10 +105,12 @@ async function runPageSpeed(
         const audit = audits[id]
         if (audit && audit.score !== null && (audit.score as number) < 1) {
           if (!opportunities.some((o) => o.id === id)) {
+            const tapItems = ((audit.details as Record<string, unknown>)?.items as unknown[]) ?? []
             opportunities.push({
               id,
               title: (audit.title as string) ?? 'Tap targets are too small',
               savings: 0,
+              itemsCount: tapItems.length > 0 ? tapItems.length : undefined,
             })
           }
         }

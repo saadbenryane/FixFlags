@@ -4,6 +4,7 @@ import { Container } from '@/components/ui/container'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageTitle, Heading, Lead, LabelCaps, Muted } from '@/components/ui/typography'
 import { getMadewithPage } from '@/lib/graph/queries'
 import Link from 'next/link'
 
@@ -61,17 +62,17 @@ export default async function MadewithPage({ params }: Props) {
     <Container variant="default" className="py-16 md:py-24">
       {/* Hero */}
       <div className="text-center mb-12">
-        <p className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+        <LabelCaps className="mb-3">
           Built with
-        </p>
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-4">
+        </LabelCaps>
+        <PageTitle className="mb-4">
           {data.hostname}
-        </h1>
+        </PageTitle>
         {data.techStack.length > 0 && (
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <Lead className="max-w-2xl mx-auto">
             Detected tech stack:{' '}
             {data.techStack.map((t) => t.name).join(', ')}
-          </p>
+          </Lead>
         )}
         {data.industry && (
           <Badge variant="secondary" size="md" className="mt-4">
@@ -86,9 +87,9 @@ export default async function MadewithPage({ params }: Props) {
           {groupedTech.map((group) => (
             <Card key={group.kind} variant="solid">
               <CardContent className="p-6">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                <Heading as="h2" className="mb-4">
                   {group.label}
-                </h2>
+                </Heading>
                 <div className="flex flex-wrap gap-2">
                   {group.items.map((tech) => (
                     <Badge key={tech.name} variant="outline" size="md">
@@ -108,19 +109,18 @@ export default async function MadewithPage({ params }: Props) {
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground mb-1">
+                <Heading as="h2" className="mb-1">
                   Last Audit
-                </h2>
-                <p className="text-sm text-muted-foreground">
+                </Heading>
+                <Muted>
                   {data.lastAudit.completedAt.toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
                   })}
-                  {' '}
                   &middot;{' '}
                   {data.lastAudit.flagCount} {data.lastAudit.flagCount === 1 ? 'issue' : 'issues'} found
-                </p>
+                </Muted>
               </div>
               <div className="flex items-center gap-4">
                 {data.lastAudit.score !== null && (
@@ -145,9 +145,9 @@ export default async function MadewithPage({ params }: Props) {
       {/* Related Sites */}
       {data.relatedSites.length > 0 && (
         <div className="mb-12">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
+          <Heading as="h2" className="mb-4">
             Sites Using the Same Stack
-          </h2>
+          </Heading>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.relatedSites.map((site) => (
               <Link
@@ -177,9 +177,9 @@ export default async function MadewithPage({ params }: Props) {
 
       {/* CTA */}
       <div className="text-center pt-8 border-t border-border/30">
-        <p className="text-muted-foreground mb-4">
+        <Muted className="mb-4">
           Curious about your own site?
-        </p>
+        </Muted>
         <Button asChild variant="default" size="lg">
           <Link href="/">
             Run a Free Audit

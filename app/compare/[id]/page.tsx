@@ -233,7 +233,7 @@ export default async function ComparePage({ params }: Props) {
               {flagDiff.fixed.length === 1 ? '1 flag fixed.' : `${flagDiff.fixed.length} flags fixed.`} Share the proof.
             </p>
             <p className="text-sm text-muted-foreground">
-              Upgrade to Max to share public proof links with clients and stakeholders.
+              Upgrade to Agency to share public proof links with clients and stakeholders.
             </p>
           </div>
         )}

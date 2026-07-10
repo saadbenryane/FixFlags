@@ -43,7 +43,7 @@ export function ExportSummaryButton({
       toast.error(content.headline, {
         description: content.body,
         action: {
-          label: 'See Max',
+          label: 'See Agency',
           onClick: () => router.push('/pricing'),
         },
       })

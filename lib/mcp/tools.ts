@@ -59,7 +59,7 @@ export async function assertAuditAccess(
   // false but nothing un-publishes already-public audits. Re-check the owner's
   // LIVE entitlement here so a downgraded owner's fix-prompt content doesn't stay
   // exposed to non-owners via MCP indefinitely - matches the live re-check the
-  // web report UI already does for the same content (canViewAiViaMaxPublicShare
+  // web report UI already does for the same content (canViewAiViaAgencyPublicShare
   // in lib/audit/report-access.ts).
   const isOwner = audit.userId === userId
   if (isOwner || !audit.userId) return
@@ -623,7 +623,7 @@ export function registerAllTools(
     async ({ repoFullName }) => {
       const freshUser = await assertMcpAccess(user)
       if (!canScanRepositories(freshUser)) {
-        throw new Error('Repository scanning requires the Max plan')
+        throw new Error('Repository scanning requires the Agency plan')
       }
 
       try {
@@ -671,7 +671,7 @@ export function registerAllTools(
     async ({ limit = 10, offset = 0, repoFullName }) => {
       const freshUser = await assertMcpAccess(user)
       if (!canScanRepositories(freshUser)) {
-        throw new Error('Repository scanning requires the Max plan')
+        throw new Error('Repository scanning requires the Agency plan')
       }
 
       const where = {

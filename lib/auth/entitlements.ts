@@ -49,7 +49,7 @@ export function canSharePublicly(
   return user.plan === 'TEAM'
 }
 
-/** Proof export (copy summary) - Max plan only. */
+/** Proof export (copy summary) - Agency plan only. */
 export function canExportSummary(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
@@ -60,7 +60,7 @@ export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan' | 'subscri
   return canAccessPaidFeatures(user)
 }
 
-/** Codebase (GitHub repo) scanning - Max plan only, same tier as public sharing. */
+/** Codebase (GitHub repo) scanning - Agency plan only, same tier as public sharing. */
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {

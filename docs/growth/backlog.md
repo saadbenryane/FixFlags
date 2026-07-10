@@ -10,37 +10,39 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
 
 ## Ranked
 
-### P0 — Ship immediately (no blockers)
+### ✅ Completed (2026-07-10 implementation batch)
 
-1. **Self-seed the knowledge graph with real audits against curated public
-   sites.** Production has 1 real user pre-launch; organic volume alone will
-   not reach `MIN_SAMPLE_SIZE = 20` in any useful timeframe. Run ~40-60
-   real audits against public AI-builder-output sites (Product Hunt launches,
-   Lovable/Bolt/v0/Cursor-shipped landing pages) to unblock Phase 2 without
-   fabricating any data. *(Phase 1 -> unblocks Phase 2)*
+1. **Self-seed the knowledge graph** — 4-phase script (queue → poll → rollup
+   → report) ships. Ready to run against 60 curated URLs once the worker is
+   active. *(scripts/growth/self-seed.ts)*
 
-2. **Ship `/tools/meta-preview`.** Cheapest free tool to build (no audit
-   pipeline dependency — just fetch + parse OG tags), highest expected
-   top-of-funnel volume (broad, evergreen search intent: "og image
-   checker", "open graph preview"). Can ship in parallel with #1 — no
-   sample-size dependency. Writes `ToolUsage` for conversion tracking.
-   *(Phase 2 — no blockers)*
+2. **`/tools/meta-preview`** — Free tool that fetches a URL and displays OG
+   tags, social preview card, and meta metadata. Writes `ToolUsage` rows.
+   *(app/(marketing)/tools/meta-preview + app/api/tools/meta-preview)*
 
-3. **Ship `/tools/placeholder-copy-detector`.** No audit dependency at all —
-   pure deterministic linter reusing `lib/audit/checks/slop.ts` rules. Good
-   distribution potential among AI-builder communities (Reddit r/lovable,
-   r/cursor, etc.). *(Phase 2 — no blockers)*
+3. **`/tools/placeholder-copy-detector`** — Scans a URL for lorem ipsum,
+   TODO markers, AI-builder template artifacts, unreplaced tokens, and social
+   proof slop. Writes `ToolUsage` rows.
+   *(app/(marketing)/tools/placeholder-detector + app/api/tools/placeholder-detector)*
 
-### P1 — Ship after P0 or in parallel if capacity allows
+4. **Industry/tech detection** — Already connected end-to-end:
+   `run-page.ts` calls `detectTechnologies()` + `inferIndustry()`, stores
+   in `AuditPage.performanceData`, `snapshot.ts` extracts and passes to
+   `persist.ts` which upserts `SiteTechnology` rows and sets
+   `Site.industryGuess`. *(lib/audit/tech-detect.ts → lib/graph/snapshot.ts → lib/graph/persist.ts)*
 
-4. **Implement industry/tech detection in `lib/graph/snapshot.ts`.**
-   Currently stubbed to `null`/`[]`. Blocks `SiteTechnology` and `Industry`
-   from ever populating, which blocks every benchmark page. Needs its own
-   design pass (header sniffing? known builder fingerprints in HTML? existing
-   `htmlMetadata` on Audit might already have signal — check before building
-   new detection). Do this in parallel with the seed batch (#1) — real HTML
-   from real builder output is the best test data for the heuristics.
-   *(Phase 1 -> unblocks benchmark pages)*
+7. **Attribution system** — `AuditSource` enum extended with `TOOL_PAGE`,
+   `ISSUE_PAGE`, `BENCHMARK_PAGE`. `CLIENT_SOURCES` and `inferAuditSource`
+   updated. Migration created. *(lib/leads/attribution.ts, prisma/schema.prisma)*
+
+### P0 — Current priorities
+
+5. ~~**Decide analytics access**~~ — Still pending at decision level.
+
+6. **Ship the first `/issues/[checkId]` page** for whichever check crosses
+   `MIN_SAMPLE_SIZE` first after the self-seed batch. Validates the entire
+   graph -> public-page pipeline end to end before building five more.
+   *(Phase 2 — blocked on sample size)*
 
 5. **Decide analytics access** (GSC at minimum). Every ranking below this
    line is a guess until this exists. *(Phase 1 -> gates Phase 2 prioritization)*
@@ -49,12 +51,6 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
    `MIN_SAMPLE_SIZE` first after the self-seed batch. Validates the entire
    graph -> public-page pipeline end to end before building five more.
    *(Phase 2 — blocked on sample size)*
-
-7. **Design and implement attribution system.** Add UTM parameters to all
-   public surface links and extend `Audit.source` enum with new values
-   (`ISSUE_PAGE`, `BENCHMARK_PAGE`, `TOOL_PAGE`, `REPORT_INDEX`). This is
-   the measurement foundation — without it, we can't know which surfaces
-   drive conversions. *(Phase 2 — no blockers, but low urgency until pages exist)*
 
 ### P2 — Ship after Phase 2 first artifacts are live
 
@@ -79,17 +75,16 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
 ### P3 — Ship in Phase 3
 
 12. **`scripts/growth/rollup-benchmarks.ts`** — compute `BenchmarkSnapshot`
-    per scope weekly. Depends on #4 (tech detection). *(Phase 3)*
+    per scope weekly. *(Phase 3)*
 
-13. **First `/benchmarks/[scope]` page**, once tech detection exists and a
-    scope crosses sample size. *(Phase 3)*
+13. **First `/benchmarks/[scope]` page**, once a scope crosses sample size.
+    *(Phase 3)*
 
 14. **`scripts/growth/opportunity-scoring.ts`** — rank pages by
-    impressions x CTR gap x conversion potential. Depends on #5 (GSC
-    access). *(Phase 3)*
+    impressions x CTR gap x conversion potential. *(Phase 3 — needs GSC access)*
 
 15. **`scripts/growth/weekly-review.ts`** — automated weekly review
-    composition from live data. Depends on #5 (GSC access). *(Phase 3)*
+    composition from live data. *(Phase 3 — needs GSC access)*
 
 16. **`/reports` public index** — opt-in reports only. Needs a PII-redaction
     audit before the toggle is meaningfully safe to expose broadly.

@@ -49,6 +49,7 @@ export interface PrescriptionContext {
   verdict: string
   score: number
   metadata: PageMetadata
+  techStack: string[]
   existingFlags: ExistingFlagForPrescription[]
   rubrics: Array<{
     name: string
@@ -143,8 +144,10 @@ async function runAnthropicPrescription(
                     title: context.metadata.title,
                     description: context.metadata.description,
                     h1s: context.metadata.h1s,
+                    h2s: context.metadata.h2s,
                     ctaTexts: context.metadata.ctaTexts,
                   },
+                  techStack: context.techStack,
                   existingFlags: context.existingFlags,
                   rubrics: context.rubrics,
                   screenshotHint:
@@ -210,8 +213,10 @@ async function runOpenAIPrescription(
         title: context.metadata.title,
         description: context.metadata.description,
         h1s: context.metadata.h1s,
+        h2s: context.metadata.h2s,
         ctaTexts: context.metadata.ctaTexts,
       },
+      techStack: context.techStack,
       existingFlags: context.existingFlags,
       rubrics: context.rubrics,
       screenshotHint,

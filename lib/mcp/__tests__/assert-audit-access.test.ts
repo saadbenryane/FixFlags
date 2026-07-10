@@ -56,7 +56,7 @@ describe('assertAuditAccess', () => {
     )
   })
 
-  it('denies a non-owner on a public audit whose owner downgraded off TEAM plan', async () => {
+  it('denies a non-owner on a public audit whose owner downgraded off Agency plan', async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       id: 'owner-1',
       role: 'user',

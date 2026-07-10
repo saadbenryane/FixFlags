@@ -5,15 +5,19 @@ import { prisma } from '@/lib/db'
 import { canScanRepositories } from '@/lib/auth/entitlements'
 import { createAndEnqueueRepoScan, RepoScanRequestError } from '@/lib/repo-scan/create-repo-scan'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'repo-scan', identifier: `${session.user.id}:${clientId}`, limit: 5, windowSeconds: 60 })
+
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user || !canScanRepositories(user)) {
-      return apiError('Repository scanning requires the Max plan', 402, {
+      return apiError('Repository scanning requires the Agency plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'upgrade',
       })

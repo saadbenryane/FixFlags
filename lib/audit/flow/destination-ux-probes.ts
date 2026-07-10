@@ -157,15 +157,25 @@ export async function runDestinationUXProbes(
 
   const ctaPromisesMatch = (() => {
     if (!originCtaText || !pageData.headline) return true
-    const words = originCtaText.toLowerCase().split(' ')
+    const ctaLower = originCtaText.toLowerCase()
     const headline = pageData.headline.toLowerCase()
-    const wordMatch = words.some(w => w.length > 3 && headline.includes(w))
-    if (wordMatch) return true
+
+    const genericWords = new Set(['get', 'start', 'free', 'try', 'your', 'now', 'for', 'the', 'and', 'our', 'with', 'more', 'learn', 'book', 'view', 'see', 'join', 'sign', 'up', 'log', 'in', 'click', 'here', 'out', 'all'])
+
+    const words = ctaLower.split(' ').filter(w => w.length > 3 && !genericWords.has(w))
+
+    if (words.length > 0) {
+      const matchedWords = words.filter(w => headline.includes(w))
+      if (matchedWords.length === words.length) return true
+    }
+
     if (originCtaHref) {
       const segments = originCtaHref.toLowerCase().split(/[/-]/)
-      return segments.some(s => s.length > 3 && headline.includes(s))
+      const meaningful = segments.filter(s => s.length > 4 && !genericWords.has(s))
+      if (meaningful.length > 0 && meaningful.some(s => headline.includes(s))) return true
     }
-    return true
+
+    return words.length === 0
   })()
 
   return {

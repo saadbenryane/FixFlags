@@ -5,7 +5,7 @@ import { formatUsd, sumEstimatedCostByPlan, sumRevenueByPlan } from '@/lib/billi
 const PLAN_LABELS: Record<string, string> = {
   FREE: 'Free',
   BUILDER: 'Pro',
-  TEAM: 'Max',
+  TEAM: 'Agency',
 }
 
 export async function MarginPanel() {

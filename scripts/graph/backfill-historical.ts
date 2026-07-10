@@ -17,7 +17,7 @@ import { config as loadEnv } from 'dotenv'
 loadEnv({ path: process.env.DOTENV_CONFIG_PATH ?? '.env.local' })
 
 import { prisma } from '../../lib/db.js'
-import { persistAuditToGraph } from '../../lib/graph/persist.js'
+import { persistAuditToGraph, classifyPageRole } from '../../lib/graph/persist.js'
 import type { FlagSnapshot } from '../../lib/graph/types.js'
 
 function parseArgs(): { limit: number | null; dryRun: boolean } {
@@ -74,17 +74,11 @@ async function loadFlagSnapshot(auditId: string): Promise<{
     ? audit.pages.map((p) => p.url)
     : [audit.url]
 
-  // Build page roles (mirrors roleOf() in persist.ts)
+  // Build page roles using shared classifier
   const pageRoles: Record<string, string> = {}
   for (const url of pageUrls) {
     try {
-      const p = new URL(url).pathname || '/'
-      if (p === '/' || p === '') pageRoles[url] = 'home'
-      else if (/pricing/i.test(p)) pageRoles[url] = 'pricing'
-      else if (/sign[-_]?up|register/i.test(p)) pageRoles[url] = 'signup'
-      else if (/sign[-_]?in|login/i.test(p)) pageRoles[url] = 'signin'
-      else if (/blog|post|article|\/\d{4}\//i.test(p)) pageRoles[url] = 'blog'
-      else pageRoles[url] = 'other'
+      pageRoles[url] = classifyPageRole(pageUrls, url)
     } catch {
       pageRoles[url] = 'other'
     }

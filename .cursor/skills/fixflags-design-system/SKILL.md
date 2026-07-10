@@ -38,7 +38,7 @@ Final Brand Guideline. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/b
 | Token | Value | Use |
 |-------|-------|-----|
 | `--radius-pill` | 9999px | Buttons, inputs, selects |
-| `--radius-card` | 12px | Glass cards, panels |
+| `--radius-card` | 1.716rem | Glass cards, panels |
 | `--radius-nested-md` | outer − 0.75rem gap | Inner shells inside `rounded-card` with ~12px padding |
 | `--radius-nested-lg` | outer − 1rem gap | Inner shells inside `rounded-card` with 16px+ padding |
 

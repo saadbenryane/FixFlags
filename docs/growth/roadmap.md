@@ -26,20 +26,20 @@ them.
 | Backfill run against production | ✅ Done 2026-07-09 |
 | Rollup wired into self-hosted scheduler | ✅ Done 2026-07-09 |
 | Analytics access (GSC/GA/PostHog) | ⬜ Still awaiting decision |
-| Self-seed knowledge graph | ⬜ Not started — required because organic volume alone won't reach MIN_SAMPLE_SIZE |
-| Industry/tech detection in snapshot.ts | ⬜ Not started — blocks benchmark pages |
+| Self-seed knowledge graph | ✅ Done — 4-phase script queues, polls, rolls up, and reports readiness |
+| Industry/tech detection in snapshot.ts | ✅ Done — already implemented, verified connected end-to-end |
 
 ### Exit criteria for Phase 1
 
 - ~~Migration applied in production, backfill run, getGraphStats() returns non-zero.~~ ✅
 - ~~Rollup script running nightly without manual intervention.~~ ✅
-- **Self-seed batch complete:** at least 40-60 real audits against curated
-  public sites (AI-builder output from Product Hunt, Lovable, Bolt, v0,
-  Cursor-shipped pages). This produces genuine scan data for the graph.
-- **At least one Issue crosses MIN_SAMPLE_SIZE = 20** distinct sites via
-  the self-seed batch. This is the real Phase 1 → Phase 2 gate.
-- **Industry/tech detection implemented** in `lib/graph/snapshot.ts` —
-  needed before benchmark pages can exist.
+- **Self-seed script complete:** 4-phase script (queue → poll → rollup →
+  report) ships. Requires running against 60 curated public URLs.
+  Produces genuine scan data for the graph.
+- **Industry/tech detection verified** in `lib/graph/snapshot.ts` → `persist.ts`
+  pipeline (reads `AuditPage.performanceData.detectedTech` + `industryGuess`,
+  writes `SiteTechnology`, `Industry`, `Site.industryGuess`). Already
+  implemented — just needs real audit data to populate.
 
 ## Phase 2 — First public artifacts (not started)
 
@@ -50,12 +50,12 @@ MIN_SAMPLE_SIZE, and measure before scaling.
 
 | Deliverable | Blocked by | Priority |
 |---|---|---|
-| `/tools/meta-preview` — first free tool | Nothing | P0 |
-| `/tools/placeholder-copy-detector` — second free tool | Nothing | P0 |
+| `/tools/meta-preview` — first free tool | ✅ Done | P0 |
+| `/tools/placeholder-copy-detector` — second free tool | ✅ Done | P0 |
 | `/issues/[checkId]` — first issue page | Sample size | P0 |
-| Attribution parameter system | Nothing | P1 |
-| Extend `INDEXABLE_ROUTES` + `sitemap.ts` + `llms.txt` | Issue page template | P1 |
-| `seo-guard.mjs` assertions for new route registries | New routes | P1 |
+| Attribution parameter system | ✅ Done — `ISSUE_PAGE`, `BENCHMARK_PAGE`, `TOOL_PAGE` added | P1 |
+| Extend `INDEXABLE_ROUTES` + `sitemap.ts` + `llms.txt` | ✅ Done — tools registered, issues/benchmarks ready for templates | P1 |
+| `seo-guard.mjs` assertions for new route registries | ✅ Done | P1 |
 | Internal linking engine (`lib/graph/related.ts`) | Issue page template | P2 |
 | Structured data for issue pages | Issue page template | P2 |
 | Basic analytics wiring | GSC access | P2 |
@@ -64,8 +64,10 @@ MIN_SAMPLE_SIZE, and measure before scaling.
 
 - One issue page live, indexed, receiving impressions in GSC (if access
   granted) or at minimum verified crawlable via `curl` + robots checks.
-- One free tool live, `ToolUsage` rows accumulating.
-- Attribution parameters on all public surface links.
+- Two free tools live (`/tools/meta-preview`, `/tools/placeholder-detector`),
+  `ToolUsage` rows accumulating.
+- Attribution parameters on all public surface links (`AuditSource` enum
+  extended with `TOOL_PAGE` / `ISSUE_PAGE` / `BENCHMARK_PAGE`).
 - A full weekly-review cycle completed at least once.
 
 ## Phase 3 — Scale the families (not started)

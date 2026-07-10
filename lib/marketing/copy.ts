@@ -194,7 +194,7 @@ export const DIFFERENTIATION = {
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
     { feature: 'Monitoring after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
     { feature: 'Monitoring proof loop', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
-    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Max)' },
+    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
   comparisonRows: [
@@ -356,7 +356,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'TEAM',
       title: 'Share',
-      body: 'Client share links, proof exports, and projects for power users and teams.',
+      body: 'Client-ready share links, proof exports, and projects for agencies and client-driven teams.',
     },
   ],
 } as const
@@ -481,7 +481,7 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
   FREE: ['Unlimited monitoring on your reports', 'No share links', 'No export'],
   BUILDER: ['Monitoring loop', 'Before/after compare', 'Editor integration (MCP)'],
-  TEAM: ['Public share links', 'Proof exports', 'Up to 5 projects'],
+  TEAM: ['Client-ready share links', 'Proof exports', 'Up to 5 projects'],
 }
 
 export const PRICING_TEASER = {
@@ -808,10 +808,10 @@ export const PRICING_FAQ = [
 ] as const
 
 export const PRICING = {
-  headline: 'Pay when you\u2019re shipping, not when you\u2019re browsing',
+  headline: 'Start free. Pay when you ship.',
   subhead:
     'Start free with the full report. Upgrade when you ship weekly and need unlimited monitoring and MCP.',
-  foundingBadge: 'Founding offer active: lock in launch-week pricing',
+  foundingBadge: 'Founding price. Keep this rate as we grow.',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   expertReview: {
@@ -991,7 +991,7 @@ export const AUTH = {
     footerLink: 'Sign in',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Pro, unlimited monitoring and MCP from day one',
-      TEAM: 'You\u2019re signing up for Max, organize checks across up to 5 projects',
+      TEAM: 'You\u2019re signing up for Agency, ship client-ready share links and organize across up to 5 projects',
     },
     planSteps: [
       'Create your account',
@@ -1061,14 +1061,14 @@ export const UPGRADE_MOMENTS = {
   },
   share_public: {
     headline: 'Share reports with clients',
-    body: 'Max includes public share links with OG previews and a Check My Site CTA for viewers.',
-    cta: 'Upgrade to Max',
+    body: 'Agency includes public share links with OG previews and a Check My Site CTA for viewers.',
+    cta: 'Upgrade to Agency',
     plan: 'TEAM' as const,
   },
   export_locked: {
-    headline: 'Proof exports are on Max',
-    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Max to unlock exports.',
-    cta: 'Upgrade to Max',
+    headline: 'Proof exports are on Agency',
+    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Agency to unlock exports.',
+    cta: 'Upgrade to Agency',
     plan: 'TEAM' as const,
   },
   free_default: {
@@ -1165,7 +1165,7 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with the full report and 3 checks. Upgrade to Pro for unlimited monitoring and MCP. Founding offer active.',
+      'Start free with the full report and 3 checks. Upgrade to Pro for unlimited monitoring and MCP. Founding pricing for early users.',
   },
   howItWorks: {
     title: 'How FixFlags Works',
@@ -1195,6 +1195,16 @@ export const SEO = {
   changelog: {
     title: 'Changelog',
     description: 'Product updates, new checks, and shipping improvements for FixFlags.',
+  },
+  metaPreview: {
+    title: 'Meta Preview Tool – FixFlags',
+    description:
+      'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Check og:image, title, and description tags on any URL. Free tool.',
+  },
+  placeholderDetector: {
+    title: 'Placeholder Copy Detector – FixFlags',
+    description:
+      'Scan any URL for Lorem ipsum, TODO markers, AI-builder template artifacts, and unreplaced tokens. Free tool.',
   },
   privacy: {
     title: 'Privacy Policy',

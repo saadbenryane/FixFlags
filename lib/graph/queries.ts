@@ -13,6 +13,7 @@
  *
  * See docs/growth/architecture.md for the gates and thresholds.
  */
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 /**
@@ -281,7 +282,7 @@ export async function getMadewithPage(hostname: string): Promise<MadewithPageDat
         FROM "graph_site" s
         JOIN "graph_site_technology" st ON st."siteId" = s.id
         JOIN "graph_technology" t ON t.id = st."technologyId"
-        WHERE t.name IN (${sharedTechNames.join(',')})
+        WHERE t.name IN (${Prisma.join(sharedTechNames)})
           AND s.hostname != ${normalizedHostname}
         GROUP BY s.hostname
         HAVING count(DISTINCT t.name) >= 2

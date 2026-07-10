@@ -1,6 +1,7 @@
 import { describe, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
-import { AuditDeadlineError, isNonRetryableAuditError, isNonRetryablePipelineError, determineFailureCode, determineFailureStage, sanitizeAuditErrorMessage, canTryPartialFinalize } from '@/lib/audit/pipeline-errors'
+import { AuditDeadlineError, isNonRetryableAuditError, determineFailureCode, determineFailureStage, canTryPartialFinalize } from '@/lib/audit/pipeline-errors'
+import { sanitizeAuditErrorMessage } from '@/lib/audit/pipeline/context'
 import { assertDeadline } from '@/lib/audit/pipeline/context'
 import { AUDIT_DEADLINE_MS, MIN_JUDGE_BUDGET_MS, FINALIZE_RESERVE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
@@ -97,30 +98,6 @@ describe('isNonRetryableAuditError', () => {
     assert.equal(isNonRetryableAuditError('string error'), false)
     assert.equal(isNonRetryableAuditError(42), false)
     assert.equal(isNonRetryableAuditError({}), false)
-  })
-})
-
-// ── isNonRetryablePipelineError ──────────────────────────────────
-
-describe('isNonRetryablePipelineError', () => {
-  it('returns true for AuditDeadlineError', () => {
-    assert.equal(isNonRetryablePipelineError(new AuditDeadlineError('capturing')), true)
-  })
-
-  it('returns true for desktop screenshot failure', () => {
-    assert.equal(isNonRetryablePipelineError(new Error('Desktop screenshot capture failed')), true)
-  })
-
-  it('returns false for API key errors (handled by worker, not pipeline)', () => {
-    assert.equal(isNonRetryablePipelineError(new Error('ANTHROPIC_API_KEY is not set')), false)
-  })
-
-  it('returns false for generic errors', () => {
-    assert.equal(isNonRetryablePipelineError(new Error('network error')), false)
-  })
-
-  it('returns false for JudgeContractError', () => {
-    assert.equal(isNonRetryablePipelineError(new JudgeContractError('bad')), false)
   })
 })
 

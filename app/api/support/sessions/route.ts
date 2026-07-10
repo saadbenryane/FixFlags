@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db'
 import { getOrCreateVisitorToken } from '@/lib/live-support/visitor-token'
 import { resumeOrCreateSession, serializeSession } from '@/lib/live-support'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const postSchema = z.object({
   pageUrl: z.string().url().optional(),
@@ -17,6 +18,9 @@ const postSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'support-session', identifier: clientId, limit: 10, windowSeconds: 60 })
+
     const body = await req.json().catch(() => ({}))
     const parsed = postSchema.safeParse(body)
     if (!parsed.success) {

@@ -18,6 +18,7 @@ export async function runAiReview(auditId: string): Promise<void> {
     include: {
       flags: { orderBy: { position: 'asc' } },
       rubrics: true,
+      pages: { take: 1, orderBy: { url: 'asc' } },
     },
   })
 
@@ -51,6 +52,15 @@ export async function runAiReview(auditId: string): Promise<void> {
   const { desktopBase64, mobileBase64 } = await loadParentScreenshotBase64(auditId)
   if (!desktopBase64) throw new Error('Desktop screenshot missing for prescription')
 
+  const techStack: string[] = (() => {
+    const page = audit.pages[0]
+    if (!page) return []
+    const perfData = page.performanceData as Record<string, unknown> | null
+    if (!perfData?.detectedTech) return []
+    const techs = perfData.detectedTech as Array<{ name: string; kind: string; confidence: number }>
+    return techs.filter((t) => t.kind === 'framework' || t.kind === 'builder' || t.kind === 'cms' || t.kind === 'hosting').map((t) => t.name)
+  })()
+
   const existingFlags = audit.flags.map((flag) => ({
     flagKey: flagKeyForRow(flag),
     source: flag.source,
@@ -75,6 +85,7 @@ export async function runAiReview(auditId: string): Promise<void> {
         verdict: audit.verdict,
         score: audit.score,
         metadata,
+        techStack,
         existingFlags,
         rubrics: audit.rubrics.map((r) => ({
           name: r.name,

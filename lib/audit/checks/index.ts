@@ -121,6 +121,12 @@ function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag
     if (flag.checkId === 'mobile-stuck-loading' && ids.has('loading-indicator-stuck')) {
       return false
     }
+    if (flag.checkId === 'mobile-load-delay-content' && ids.has('loading-state-slow')) {
+      return false
+    }
+    if (flag.checkId === 'heading-hierarchy-missing' && ids.has('hierarchy-no-sections')) {
+      return false
+    }
     return true
   })
 }

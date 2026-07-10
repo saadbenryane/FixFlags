@@ -130,6 +130,24 @@ export function getTopFixPromptFromFlags(
   return null
 }
 
+export function collectAllFixPrompts(flags: RankableFlag[]): string {
+  const sorted = [...flags].sort(compareFlagsByPriority)
+  const parts: string[] = []
+  let index = 0
+  for (const flag of sorted) {
+    const prompt = resolveFixPrompt(flag)
+    if (prompt) {
+      index++
+      parts.push(`=== Fix ${index}: ${flag.problem} ===\n${prompt}`)
+    }
+  }
+  return parts.join('\n\n')
+}
+
+export function countFixPrompts(flags: RankableFlag[]): number {
+  return flags.filter(flagHasFixPrompt).length
+}
+
 export function rankFlagsByPriority(
   flags: RankableFlag[],
   rubricRows: Array<{ name: string; grade: string | null }> = [],

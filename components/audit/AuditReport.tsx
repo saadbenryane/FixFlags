@@ -9,13 +9,13 @@ import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
-import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
-import { UPSELLS, REPORT_COPY, HERO, OUTPUT_LABELS } from '@/lib/marketing/copy'
+import { UPSELLS, REPORT_COPY, HERO } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
@@ -26,9 +26,13 @@ import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
   auditHasFixPrompts,
-  getTopFixPromptFromFlags,
+  rankFlagsByPriority,
+  countFixPrompts,
+  collectAllFixPrompts,
+  resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import { PreviewCards } from '@/components/audit/PreviewCards'
@@ -37,6 +41,7 @@ import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
+import { rubricLabel, severityLabel } from '@/lib/utils'
 
 interface RubricRow {
   id: string
@@ -115,7 +120,6 @@ export function AuditReport({
   const prescriptionLocked = !showPrescription
   const aiLocked = prescriptionLocked
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
-  const topFixPrompt = getTopFixPromptFromFlags(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
 
@@ -172,7 +176,6 @@ export function AuditReport({
             showOverview={showOverview}
             showPreviews={Boolean(audit.previewMeta)}
             showFlow={Boolean(audit.flowData)}
-            showFix={Boolean(topFixPrompt && !explorerModel)}
             showLaunchGates={hasLaunchGates}
             siteUrl={audit.url}
             score={audit.score}
@@ -184,6 +187,50 @@ export function AuditReport({
             </blockquote>
           ) : null}
         </>
+      )}
+
+      {!isSample && explorerModel && hasFixPrompts && showPrescription && (
+        <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <SectionTitle>Top priorities</SectionTitle>
+            {(() => {
+              const total = countFixPrompts(audit.flags)
+              if (total === 0) return null
+              return (
+                <PromptCopyButton
+                  prompt={collectAllFixPrompts(audit.flags)}
+                  label={`Copy all ${total} fix prompt${total > 1 ? 's' : ''}`}
+                  compact
+                />
+              )
+            })()}
+          </div>
+          <div className="grid gap-3">
+            {rankFlagsByPriority(audit.flags, audit.rubricRows, 3).map(({ flag, rubricName }) => {
+              const prompt = resolveFixPrompt(flag)
+              if (!prompt) return null
+              return (
+                <Card key={flag.id} className="p-4 sm:p-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Badge
+                      variant={flag.severity === 'CRITICAL' ? 'destructive' : 'secondary'}
+                      size="sm"
+                    >
+                      {severityLabel(flag.severity)}
+                    </Badge>
+                    <span className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                      {rubricLabel(rubricName)}
+                    </span>
+                  </div>
+                  <p className="mb-3 text-sm font-medium leading-snug text-pretty">
+                    {flag.problem}
+                  </p>
+                  <FixPromptBlock prompt={prompt} rows={2} clamp variant="compact" nested />
+                </Card>
+              )
+            })}
+          </div>
+        </section>
       )}
 
       {explorerModel ? (
@@ -231,34 +278,6 @@ export function AuditReport({
 
           {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
         </div>
-      )}
-
-      {topFixPrompt && !explorerModel && (
-        <section id="report-fix" className="scroll-mt-[var(--header-offset)] space-y-3">
-          <SectionTitle>{OUTPUT_LABELS.fixPrompt}</SectionTitle>
-          {aiLocked ? (
-            <LockedContentTeaser
-              label={
-                audit.flags.length > 0
-                  ? `You’ve got ${audit.flags.length} issue${audit.flags.length === 1 ? '' : 's'} to fix - create a free account to unlock copy-paste fix prompts`
-                  : 'Create a free account to unlock copy-paste fix prompts'
-              }
-              signUpHref={signUpHref}
-            />
-          ) : (
-            <Card className="p-4 sm:p-5">
-              <FixPromptBlock
-                prompt={topFixPrompt.prompt}
-                finding={topFixPrompt.flag}
-                showNextStep
-                showCursorAction
-                rows={5}
-                clamp={false}
-                nested
-              />
-            </Card>
-          )}
-        </section>
       )}
 
       {!isSample && (

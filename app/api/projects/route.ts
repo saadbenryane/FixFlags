@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const limit = projectLimitForPlan(user.plan)
   if (limit === 0) {
-      return apiError('Projects require the Max plan', 402, {
+      return apiError('Projects require the Agency plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })

@@ -32,9 +32,11 @@ function pathOf(url: string): string {
   }
 }
 
-function roleOf(pageUrls: string[], url: string): string {
-  // Cheap heuristic - refine when we have a real classifier. The graph tolerates
-  // noisy roles; the public surface filters on role being meaningful.
+/**
+ * Classify a page URL into a semantic role for the knowledge graph.
+ * Used by persist.ts, snapshot.ts, and backfill-historical.ts.
+ */
+export function classifyPageRole(pageUrls: string[], url: string): string {
   if (pageUrls.length === 1) return 'home'
   const p = pathOf(url)
   if (p === '/' || p === '') return 'home'
@@ -69,9 +71,6 @@ async function upsertSite(
       hostname,
       rootUrl: snapshot.rootUrl,
       industryGuess: snapshot.industryGuess,
-      techGuess: snapshot.detectedTech.length
-        ? (snapshot.detectedTech as unknown as object)
-        : undefined,
       auditCount: 1,
       lastAuditedAt: new Date(),
     },
@@ -87,7 +86,7 @@ async function upsertSite(
   const pageIds: string[] = []
   for (const url of snapshot.pageUrls) {
     const normPath = pathOf(url)
-    const role = snapshot.pageRoles[url] ?? roleOf(snapshot.pageUrls, url)
+    const role = snapshot.pageRoles[url] ?? classifyPageRole(snapshot.pageUrls, url)
 
     const page = await prisma.page.upsert({
       where: {
@@ -226,29 +225,25 @@ async function upsertTechnologies(
       update: {}, // name is unique, kind is fixed per tech
     })
 
-    // Upsert the site-technology link with confidence
-    const existing = await prisma.siteTechnology.findUnique({
-      where: { siteId_technologyId: { siteId, technologyId: technology.id } },
-      select: { confidence: true },
-    })
-
-    if (existing) {
-      // Keep the higher confidence score (never downgrade)
-      await prisma.siteTechnology.update({
+    // Upsert the site-technology link with confidence.
+    // Use upsert with P2002 catch for concurrent-audit safety.
+    try {
+      await prisma.siteTechnology.upsert({
         where: { siteId_technologyId: { siteId, technologyId: technology.id } },
-        data: {
-          lastSeenAt: new Date(),
-          confidence: Math.max(tech.confidence, existing.confidence),
-        },
-      })
-    } else {
-      await prisma.siteTechnology.create({
-        data: {
+        create: {
           siteId,
           technologyId: technology.id,
           confidence: tech.confidence,
         },
+        update: {
+          lastSeenAt: new Date(),
+          confidence: { set: tech.confidence },
+        },
       })
+    } catch (err: unknown) {
+      // P2002 = race condition: another audit created the row between our check and write.
+      const code = (err as { code?: string }).code
+      if (code !== 'P2002') throw err
     }
   }
 }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -18,6 +19,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to update projects', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'project-update', identifier: `${session.user.id}:${clientId}`, limit: 20, windowSeconds: 60 })
 
   const { id } = await context.params
   const body = await req.json().catch(() => ({}))

@@ -422,7 +422,7 @@ export function inferIndustry(hostname: string, pageText: string): string | null
 
   // Order matters: more specific patterns first
   const rules: Array<{ pattern: RegExp; industry: string }> = [
-    // E-commerce (check early — "shop" in hostname is very reliable)
+    // E-commerce (check early - "shop" in hostname is very reliable)
     { pattern: /\b(shop|store|buy|cart|product|commerce|checkout|ecommerce)\b/, industry: 'E-commerce' },
     // SaaS / tech
     { pattern: /\b(saas|app\.|api\.|dev\.|tool|platform|dashboard|software)\b/, industry: 'SaaS' },
@@ -436,7 +436,7 @@ export function inferIndustry(hostname: string, pageText: string): string | null
     { pattern: /\b(finance|bank|invest|crypto|fintech|payment|insurance)\b/, industry: 'Finance' },
     // Media / content
     { pattern: /\b(news|media|magazine|journal|podcast|blog)\b/, industry: 'Media' },
-    // Portfolio / personal (check last — broadest match)
+    // Portfolio / personal (check last - broadest match)
     { pattern: /\b(portfolio|personal|resume|cv)\b/, industry: 'Portfolio' },
   ]
 

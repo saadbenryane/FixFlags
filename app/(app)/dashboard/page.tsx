@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { AuditInput } from '@/components/audit/AuditInput'
@@ -36,7 +37,7 @@ export default async function DashboardPage({
   const params = searchParams ? await searchParams : {}
   const initialAuditUrl = typeof params.url === 'string' ? params.url : ''
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) return null
+  if (!session) redirect('/sign-in')
   const userId = session.user.id
 
   const user = await prisma.user.findUnique({ where: { id: userId } })

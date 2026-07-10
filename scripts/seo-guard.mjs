@@ -46,7 +46,7 @@ for (const key of seoKeys) {
   }
 }
 
-const requiredLlmsPaths = ['/', '/samples', '/pricing', '/docs/mcp', '/faq', '/privacy', '/terms', '/examples']
+const requiredLlmsPaths = ['/', '/samples', '/pricing', '/docs/mcp', '/faq', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
 for (const path of requiredLlmsPaths) {
   if (!llmsPaths.includes(path)) {
     errors.push(`LLMS_SECTIONS missing path "${path}"`)

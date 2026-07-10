@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { canScanRepositories } from '@/lib/auth/entitlements'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const MAX_SELECTED_REPOS = 20
 
@@ -12,9 +13,12 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'github-select', identifier: `${session.user.id}:${clientId}`, limit: 10, windowSeconds: 60 })
+
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user || !canScanRepositories(user)) {
-      return apiError('Repository scanning requires the Max plan', 402, {
+      return apiError('Repository scanning requires the Agency plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'upgrade',
       })

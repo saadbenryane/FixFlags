@@ -7,7 +7,7 @@ import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
-import { ShareAuditButton } from '@/components/audit/ShareAuditButton'
+import { ShareDrawer } from '@/components/audit/ShareDrawer'
 import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
@@ -103,7 +103,7 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      <ShareAuditButton
+      <ShareDrawer
         auditId={auditId}
         score={score}
         topIssue={topIssue}

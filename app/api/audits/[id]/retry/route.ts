@@ -4,6 +4,8 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { retryAudit } from '@/lib/audit/retry-audit'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { headers } from 'next/headers'
 
 export async function POST(
   _req: NextRequest,
@@ -12,6 +14,9 @@ export async function POST(
   try {
     const { id } = await params
     const session = await resolveSessionUser()
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
     const audit = await prisma.audit.findUnique({
       where: { id },
       select: { userId: true, isPublic: true, status: true },

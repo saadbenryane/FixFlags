@@ -162,6 +162,9 @@ enum AuditSource {
   API
   MCP
   SEED
+  TOOL_PAGE
+  ISSUE_PAGE
+  BENCHMARK_PAGE
   UNKNOWN
 }
 
@@ -498,6 +501,7 @@ model Audit {
   pages              AuditPage[]
   runCost            AuditRunCost?
   expertReviewOrders ExpertReviewOrder[]
+  shareLinks         ShareLink[]
 
   // Knowledge-graph back-references. Nullable + optional so the migration
   // is safe to apply to existing audits; filled by
@@ -517,6 +521,26 @@ model Audit {
   @@index([normalizedDomain])
   @@index([siteId])
   @@map("audits")
+}
+
+model ShareLink {
+  id        String   @id @default(cuid())
+  auditId   String
+  audit     Audit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  token     String   @unique @default(cuid())
+  label     String?
+  password  String?
+  expiresAt DateTime?
+  maxViews  Int?
+  viewCount Int      @default(0)
+  lastViewedAt DateTime?
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([auditId])
+  @@index([token])
+  @@map("share_links")
 }
 
 model Lead {

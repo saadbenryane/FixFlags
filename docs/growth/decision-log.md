@@ -167,6 +167,15 @@ Bolt, v0, Cursor-generated landing pages), at least 2-3 checks should cross
 `MIN_SAMPLE_SIZE = 20`, unblocking the first `/issues/[checkId]` page
 without waiting on organic volume.
 
+**Current status (2026-07-10):** The script now has all 4 phases:
+1. Queue — create SEED audits and enqueue to BullMQ
+2. Poll — wait for each audit to reach COMPLETED/FAILED
+3. Rollup — recompute issue aggregates + rebuild examples
+4. Report — count how many issues crossed `MIN_SAMPLE_SIZE`
+
+The script is ready for execution but has not yet been run against
+production — requires an active worker and database with audits.
+
 **Review date:** After first seeding batch completes — check
 `getGraphStats()` and re-rank `backlog.md` with real numbers.
 

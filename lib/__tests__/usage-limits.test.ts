@@ -105,7 +105,7 @@ describe('product contract limits', () => {
     assert.equal(scanLimitForPlan('BUILDER'), 25)
   })
 
-  it('max plan has 100 monthly checks', () => {
+  it('agency plan has 100 monthly checks', () => {
     assert.equal(scanLimitForPlan('TEAM'), 100)
   })
 })
@@ -246,7 +246,7 @@ describe('revoked subscription behavior', () => {
     })
   }
 
-  it('canSharePublicly revoked for TEAM plan', () => {
+  it('canSharePublicly revoked for Agency plan', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       canSharePublicly({ id: 'u', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),

@@ -18,6 +18,9 @@ const CLIENT_SOURCES = new Set<AuditSource>([
   'REPORT',
   'API',
   'MCP',
+  'TOOL_PAGE',
+  'ISSUE_PAGE',
+  'BENCHMARK_PAGE',
   'UNKNOWN',
 ])
 
@@ -26,6 +29,9 @@ export function inferAuditSource(pathname: string | null | undefined): AuditSour
   if (pathname === '/' || pathname.startsWith('/#')) return 'HOMEPAGE'
   if (pathname.startsWith('/dashboard')) return 'DASHBOARD'
   if (pathname.startsWith('/report') || pathname.startsWith('/audit')) return 'REPORT'
+  if (pathname.startsWith('/tools/')) return 'TOOL_PAGE'
+  if (pathname.startsWith('/issue/')) return 'ISSUE_PAGE'
+  if (pathname.startsWith('/benchmark/')) return 'BENCHMARK_PAGE'
   if (pathname.startsWith('/pricing')) return 'UNKNOWN'
   if (pathname.startsWith('/api/mcp')) return 'MCP'
   if (pathname.startsWith('/api/')) return 'API'

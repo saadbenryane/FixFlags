@@ -6,11 +6,15 @@ import { revokeGithubGrant } from '@/lib/integrations/github'
 import { decryptSecret } from '@/lib/security/crypto'
 import { getAuditQueue } from '@/lib/queue/client'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 export async function POST() {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'github-disconnect', identifier: `${session.user.id}:${clientId}`, limit: 5, windowSeconds: 60 })
 
     const connection = await prisma.githubConnection.findUnique({
       where: { userId: session.user.id },

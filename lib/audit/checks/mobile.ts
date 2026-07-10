@@ -37,12 +37,13 @@ export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFl
       o.id === 'target-size'
   )
   if (tapTargets) {
+    const itemCount = tapTargets.itemsCount ? ` (${tapTargets.itemsCount} element${tapTargets.itemsCount > 1 ? 's' : ''})` : ''
     findings.push({
       checkId: 'tap-targets-small',
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
       problem: 'Tap targets are too small for mobile users',
-      evidence: `Lighthouse: ${tapTargets.title}`,
+      evidence: `Lighthouse: ${tapTargets.title}${itemCount}. Interactive elements need to be at least 48x48px for comfortable tapping.`,
       fix: '1. Identify interactive elements smaller than 48x48px\n2. Add padding or increase size to meet the 48x48px minimum\n3. Use min-height and min-width instead of fixed sizes for flexibility',
       confidence: 1.0,
       source: 'DETERMINISTIC',

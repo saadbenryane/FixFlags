@@ -1,26 +1,5 @@
 import type { SlowReplayResult } from '../flow/slow-replay-probe'
 import { DeterministicFlag } from './index'
-import { registerCheck } from './registry'
-
-registerCheck({
-  id: 'slow-3g-blank-screen',
-  rubric: 'EXPERIENCE',
-  impactTag: 'CONVERSION',
-  severity: 'CRITICAL',
-  tags: ['requiresBrowser', 'slow-replay'],
-  requiresBrowser: true,
-  evaluate: () => null,
-})
-
-registerCheck({
-  id: 'slow-3g-cta-delayed',
-  rubric: 'EXPERIENCE',
-  impactTag: 'CONVERSION',
-  severity: 'IMPORTANT',
-  tags: ['requiresBrowser', 'slow-replay'],
-  requiresBrowser: true,
-  evaluate: () => null,
-})
 
 export function runSlowReplayChecks(result: SlowReplayResult | null): DeterministicFlag[] {
   if (!result) return []

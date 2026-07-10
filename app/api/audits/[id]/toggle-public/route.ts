@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canManageAudit } from '@/lib/audit/access'
 import { canSharePublicly } from '@/lib/auth/entitlements'
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 export async function PATCH(
   _req: NextRequest,
@@ -13,6 +14,9 @@ export async function PATCH(
   try {
     const { id } = await params
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+
+    const clientId = requestClientId(await headers())
+    await enforceRateLimit({ scope: 'audit-toggle-public', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
 
     const audit = await prisma.audit.findUnique({
       where: { id },
@@ -35,7 +39,7 @@ export async function PATCH(
         select: { id: true, role: true, plan: true, subscriptionStatus: true },
       })
       if (user && !canSharePublicly(user)) {
-        return apiError('Public share links require the Max plan or above.', 402, {
+        return apiError('Public share links require the Agency plan or above.', 402, {
           code: 'UPGRADE_REQUIRED',
           action: 'upgrade',
         })

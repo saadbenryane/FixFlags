@@ -9,6 +9,7 @@ const config = [
   {
     ignores: ['.next/**', 'dist/**', 'node_modules/**', 'next-env.d.ts'],
   },
+
   ...tsPlugin.configs['flat/recommended'],
   {
     plugins: {
@@ -24,14 +25,7 @@ const config = [
       ...reactPlugin.configs['jsx-runtime'].rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...jsxA11yPlugin.configs.recommended.rules,
-    },
-    rules: {
-      ...nextPlugin.flatConfig.coreWebVitals.rules,
-      ...reactPlugin.configs.recommended.rules,
-      ...reactPlugin.configs['jsx-runtime'].rules,
-      ...reactHooksPlugin.configs.recommended.rules,
-      ...jsxA11yPlugin.configs.recommended.rules,
-    'react/prop-types': 'off',
+      'react/prop-types': 'off',
     },
     settings: {
       react: {

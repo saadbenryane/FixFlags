@@ -21,6 +21,8 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/docs/mcp', seoKey: 'mcp', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/privacy', seoKey: 'privacy', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
+  { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'
@@ -48,6 +50,13 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/faq', label: 'FAQ', note: 'Checks, Flags, plans, MCP' },
       { path: '/privacy', label: 'Privacy' },
       { path: '/terms', label: 'Terms' },
+    ],
+  },
+  {
+    title: 'Free Tools',
+    links: [
+      { path: '/tools/meta-preview', label: 'Meta Preview Tool', note: 'Check social preview tags on any URL' },
+      { path: '/tools/placeholder-detector', label: 'Placeholder Copy Detector', note: 'Find lorem ipsum, TODOs, AI template artifacts' },
     ],
   },
   {

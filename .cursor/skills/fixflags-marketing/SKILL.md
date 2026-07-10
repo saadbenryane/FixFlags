@@ -78,7 +78,7 @@ Switch interview questions and force mapping: [jtbd-research.md](jtbd-research.m
 
 ## Voice (non-negotiable)
 
-From `docs/voice-and-copy.md` plus [writing-simple.md](writing-simple.md):
+From `docs/voice-and-copy.md`:
 
 - **KISS:** One idea per sentence. Cut adjectives. No "still broken" or "graded" in marketing copy.
 - Operator clarity: short sentences, verb-first CTAs, name tools when relevant
@@ -204,6 +204,3 @@ Unlike [alternative], we [differentiator with evidence].
 - JTBD / switch interviews: [jtbd-research.md](jtbd-research.md)
 - Evidence pack (stats, problem bars): [evidence-pack.md](evidence-pack.md)
 - Before/after copy examples: [copy-examples.md](copy-examples.md)
-- KISS rewrite pass: [writing-simple.md](writing-simple.md)
-- Lean borderless layout: [lean-visual.md](lean-visual.md)
-- Canonical pitch + audience test: [pitch.md](pitch.md)

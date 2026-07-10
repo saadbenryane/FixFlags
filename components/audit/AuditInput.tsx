@@ -23,7 +23,7 @@ export function AuditInput({
 }: {
   variant?: 'default' | 'landing'
   /** Audit attribution source sent to POST /api/checks (defaults from variant). */
-  source?: 'homepage' | 'dashboard' | 'report'
+  source?: 'homepage' | 'dashboard' | 'report' | 'tool_page' | 'issue_page' | 'benchmark_page'
   idSuffix?: string
   initialUrl?: string
 }) {

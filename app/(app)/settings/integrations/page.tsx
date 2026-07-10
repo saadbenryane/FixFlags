@@ -41,7 +41,7 @@ function isScanInProgress(status: string): boolean {
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: 'GitHub integration is not configured on this deployment.',
-  upgrade_required: 'Codebase scanning requires the Max plan.',
+  upgrade_required: 'Codebase scanning requires the Agency plan.',
   invalid_state: 'That GitHub connection link expired. Please try connecting again.',
   connect_failed: 'Could not connect to GitHub. Please try again.',
 }
@@ -211,13 +211,13 @@ function IntegrationsPageContent() {
       {!canScan && (
         <Card className="bg-brand/5 ring-2 ring-brand/25">
           <CardContent className="space-y-3 py-5">
-            <p className="text-sm font-medium">Codebase scanning is a Max plan feature.</p>
+            <p className="text-sm font-medium">Codebase scanning is an Agency plan feature.</p>
             <p className="text-sm text-muted-foreground">
-              Upgrade to Max to connect GitHub and scan your repositories for exposed secrets,
+              Upgrade to Agency to connect GitHub and scan your repositories for exposed secrets,
               dependency hygiene issues, and dangerous code patterns.
             </p>
             <Button asChild size="sm">
-              <TextLink href="/pricing">Upgrade to Max</TextLink>
+              <TextLink href="/pricing">Upgrade to Agency</TextLink>
             </Button>
           </CardContent>
         </Card>
