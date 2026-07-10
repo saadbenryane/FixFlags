@@ -3,6 +3,7 @@ import type { PageSpeedResult } from '../pagespeed'
 import type { FlowScanResult } from '../flow/run-flow-scan'
 import type { DeterministicFlag } from '../checks'
 import type { TriageResult } from '../judge-triage'
+import type { DetectedTech } from '../tech-detect'
 
 /** Result of running the pipeline against a single page (primary or critical-path). */
 export interface PageRun {
@@ -22,6 +23,10 @@ export interface PageRun {
   flags: DeterministicFlag[]
   failedModules: string[]
   triage?: TriageResult
+  /** Detected technologies from HTML + headers analysis. */
+  detectedTech: DetectedTech[]
+  /** Inferred industry from hostname + page content. */
+  industryGuess: string | null
 }
 
 /** Shared state threaded through one audit run. */

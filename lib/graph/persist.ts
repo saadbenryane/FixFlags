@@ -211,6 +211,49 @@ async function upsertFixPrompts(issueId: string, flag: FlagSnapshot): Promise<vo
 }
 
 /**
+ * Upsert Technology and SiteTechnology rows for each detected tech.
+ * This populates the graph tables that feed /madewith pages and
+ * the topFrameworks display on issue pages.
+ */
+async function upsertTechnologies(
+  siteId: string,
+  detectedTech: SiteSnapshot['detectedTech'],
+): Promise<void> {
+  for (const tech of detectedTech) {
+    const technology = await prisma.technology.upsert({
+      where: { name: tech.name },
+      create: { name: tech.name, kind: tech.kind },
+      update: {}, // name is unique, kind is fixed per tech
+    })
+
+    // Upsert the site-technology link with confidence
+    const existing = await prisma.siteTechnology.findUnique({
+      where: { siteId_technologyId: { siteId, technologyId: technology.id } },
+      select: { confidence: true },
+    })
+
+    if (existing) {
+      // Keep the higher confidence score (never downgrade)
+      await prisma.siteTechnology.update({
+        where: { siteId_technologyId: { siteId, technologyId: technology.id } },
+        data: {
+          lastSeenAt: new Date(),
+          confidence: Math.max(tech.confidence, existing.confidence),
+        },
+      })
+    } else {
+      await prisma.siteTechnology.create({
+        data: {
+          siteId,
+          technologyId: technology.id,
+          confidence: tech.confidence,
+        },
+      })
+    }
+  }
+}
+
+/**
  * Public entry point. Persist everything an audit just learned into the
  * knowledge graph. Safe to call repeatedly; safe to call on already-persisted
  * audits (will re-upsert but not duplicate occurrences thanks to the unique
@@ -222,6 +265,11 @@ export async function persistAuditToGraph(
   flags: FlagSnapshot[],
 ): Promise<PersistResult> {
   const { siteId, pageIds } = await upsertSite(auditId, snapshot)
+
+  // Upsert technology detections into the graph tables
+  if (snapshot.detectedTech.length > 0) {
+    await upsertTechnologies(siteId, snapshot.detectedTech)
+  }
 
   const issueIds: string[] = []
   for (const flag of flags) {

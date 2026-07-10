@@ -64,6 +64,8 @@ function stubPageRun(overrides?: Partial<PageRun>): PageRun {
     desktopBase64: 'img',
     mobileBase64: null,
     flags: [],
+    detectedTech: [],
+    industryGuess: null,
     ...overrides,
   }
 }

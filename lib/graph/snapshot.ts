@@ -8,7 +8,7 @@
  */
 import { prisma } from '@/lib/db'
 import { persistAuditToGraph } from '@/lib/graph/persist'
-import type { FlagSnapshot } from '@/lib/graph/types'
+import type { FlagSnapshot, SiteSnapshot } from '@/lib/graph/types'
 
 /**
  * Persist a single just-completed audit into the knowledge graph.
@@ -17,6 +17,8 @@ import type { FlagSnapshot } from '@/lib/graph/types'
  *  - audit.url           → Site.rootUrl
  *  - audit.pages[].url   → Page.url + role
  *  - audit.flags[]       → Issue + FixPrompt
+ *  - audit.pages[].performanceData.detectedTech → Technology graph
+ *  - audit.pages[].performanceData.industryGuess → Site.industryGuess
  *
  * Determinism: identical input → identical graph state. The unique constraint
  * on graph_issue_occurrence.flagId makes the operation idempotent across
@@ -27,7 +29,12 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
     where: { id: auditId },
     select: {
       url: true,
-      pages: { select: { url: true } },
+      pages: {
+        select: {
+          url: true,
+          performanceData: true,
+        },
+      },
       flags: {
         select: {
           id: true,
@@ -54,6 +61,12 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
   }
 
   const pageUrls = audit.pages.length > 0 ? audit.pages.map((p) => p.url) : [audit.url]
+
+  // Extract tech detection from primary page's performanceData
+  const primaryPage = audit.pages[0]
+  const perfData = primaryPage?.performanceData as Record<string, unknown> | null
+  const detectedTech = (perfData?.detectedTech as SiteSnapshot['detectedTech']) ?? []
+  const industryGuess = (perfData?.industryGuess as string | null) ?? null
 
   const flags: FlagSnapshot[] = audit.flags.map((f) => ({
     flagId: f.id,
@@ -90,8 +103,8 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
       rootUrl: audit.url,
       pageUrls,
       pageRoles,
-      detectedTech: [],
-      industryGuess: null,
+      detectedTech,
+      industryGuess,
     },
     flags,
   )

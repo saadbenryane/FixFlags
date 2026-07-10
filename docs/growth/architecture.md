@@ -68,11 +68,14 @@ via `persistAuditToGraph()` — fire-and-forget, idempotent, O(flags).
 - Performance data (PageSpeed metrics)
 - HTML metadata (title, description, OG tags, etc.)
 - Flow data (CTA click-through results)
+- Technology detection (framework, builder, CMS, hosting, analytics)
+- Industry classification (SaaS, E-commerce, Agency, etc.)
 
-**What it does NOT capture yet (gap):**
-- Technology detection (stubbed to `[]` in snapshot.ts)
-- Industry classification (stubbed to `null` in snapshot.ts)
-- These block benchmark pages by scope — see Layer 2.
+**Tech detection:** Runs during the capture phase via `lib/audit/tech-detect.ts`.
+Inspects rendered HTML + HTTP response headers. Results stored in
+`performanceData.detectedTech` and persisted to `graph_technology` /
+`graph_site_technology` tables. Feeds `/madewith/[hostname]` pages and
+`topFrameworks` on issue pages.
 
 ### 1b. Search Console (NOT IMPLEMENTED — blocked on access)
 

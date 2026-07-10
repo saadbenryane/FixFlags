@@ -60,6 +60,8 @@ function pageRun(output: TriageOutput): PageRun {
     flags: [],
     failedModules: [],
     triage,
+    detectedTech: [],
+    industryGuess: null,
   }
 }
 
@@ -132,6 +134,8 @@ describe('averageScores', () => {
       desktopBase64: 'x',
       mobileBase64: null,
       triage: { output: makeTriageOutput({}), usage: { inputTokens: 0, outputTokens: 0, model: 't' } },
+      detectedTech: [],
+      industryGuess: null,
     }
   }
 

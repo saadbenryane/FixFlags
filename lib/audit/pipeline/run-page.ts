@@ -23,6 +23,7 @@ import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
+import { detectTechnologies, inferIndustry } from '../tech-detect'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -222,6 +223,31 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         }))?.htmlMetadata as PageMetadata | null) ??
         (await fetchAndParseMetadata(normalizedUrl)))
 
+  // Technology detection from HTML + response headers (primary page only)
+  const detectedTech = input.primary
+    ? detectTechnologies(
+        screenshots?.desktopHtml ?? '',
+        screenshots?.responseHeaders ?? {},
+      )
+    : []
+  const industryGuess = input.primary
+    ? inferIndustry(new URL(normalizedUrl).hostname, metadata.pageText ?? '')
+    : null
+
+  // Persist tech data in performanceData so it survives to finalize
+  if (input.primary && detectedTech.length > 0) {
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: {
+        performanceData: {
+          ...((await prisma.auditPage.findUnique({ where: { id: page.id }, select: { performanceData: true } }))?.performanceData as Record<string, unknown> ?? {}),
+          detectedTech,
+          industryGuess,
+        } as never,
+      },
+    })
+  }
+
   if (input.skipCapture && input.primary && input.position === 0) {
     await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started' })
     const browser = await getAuditBrowser()
@@ -379,5 +405,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     flags,
     failedModules,
     triage,
+    detectedTech,
+    industryGuess,
   }
 }

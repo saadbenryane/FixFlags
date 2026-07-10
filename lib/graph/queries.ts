@@ -195,3 +195,110 @@ export async function getGraphStats(): Promise<{
   ])
   return { sites, pages, issues, occurrences, benchmarks }
 }
+
+// ─── Madewith page ──────────────────────────────────────────────────────
+
+/**
+ * Public read model for a /madewith/[hostname] page.
+ * Shows detected technologies, industry, and audit summary for a site.
+ */
+export interface MadewithPageData {
+  hostname: string
+  rootUrl: string
+  industry: string | null
+  techStack: Array<{ name: string; kind: string }>
+  lastAudit: {
+    score: number | null
+    flagCount: number
+    completedAt: Date
+    url: string
+  } | null
+  relatedSites: Array<{
+    hostname: string
+    techNames: string[]
+  }>
+}
+
+/**
+ * Read the tech stack and audit summary for a hostname.
+ * Returns null if the hostname hasn't been audited yet.
+ */
+export async function getMadewithPage(hostname: string): Promise<MadewithPageData | null> {
+  const normalizedHostname = hostname.replace(/^www\./, '').toLowerCase()
+
+  const site = await prisma.site.findUnique({
+    where: { hostname: normalizedHostname },
+    select: {
+      hostname: true,
+      rootUrl: true,
+      industryGuess: true,
+      technologies: {
+        select: {
+          technology: {
+            select: { name: true, kind: true },
+          },
+          confidence: true,
+        },
+        orderBy: { confidence: 'desc' },
+      },
+      audits: {
+        where: { status: 'COMPLETED' },
+        orderBy: { completedAt: 'desc' },
+        take: 1,
+        select: {
+          score: true,
+          url: true,
+          completedAt: true,
+          _count: { select: { flags: true } },
+        },
+      },
+    },
+  })
+
+  if (!site) return null
+
+  const techStack = site.technologies
+    .filter((st) => st.confidence >= 0.7)
+    .map((st) => ({ name: st.technology.name, kind: st.technology.kind }))
+
+  const lastAudit = site.audits[0]?.completedAt
+    ? {
+        score: site.audits[0].score,
+        flagCount: site.audits[0]._count.flags,
+        completedAt: site.audits[0].completedAt,
+        url: site.audits[0].url,
+      }
+    : null
+
+  // Find related sites: sites that share at least 2 technologies
+  const sharedTechNames = techStack.map((t) => t.name)
+  const relatedSites = sharedTechNames.length > 0
+    ? await prisma.$queryRaw<
+        Array<{ hostname: string; tech_names: string[] }>
+      >`
+        SELECT s.hostname,
+               array_agg(DISTINCT t.name) AS tech_names
+        FROM "graph_site" s
+        JOIN "graph_site_technology" st ON st."siteId" = s.id
+        JOIN "graph_technology" t ON t.id = st."technologyId"
+        WHERE t.name IN (${sharedTechNames.join(',')})
+          AND s.hostname != ${normalizedHostname}
+        GROUP BY s.hostname
+        HAVING count(DISTINCT t.name) >= 2
+        ORDER BY count(DISTINCT t.name) DESC
+        LIMIT 5
+      `
+    : []
+
+  return {
+    hostname: site.hostname,
+    rootUrl: site.rootUrl,
+    industry: site.industryGuess,
+    techStack,
+    lastAudit,
+    relatedSites: relatedSites.map((r) => ({
+      hostname: r.hostname,
+      techNames: r.tech_names,
+    })),
+  }
+}
