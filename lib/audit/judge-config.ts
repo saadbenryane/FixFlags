@@ -57,6 +57,15 @@ export function getJudgeProviderChain(): string[] {
   return getEnv().JUDGE_PROVIDER_CHAIN
 }
 
+/** Provider chain limited to vendors with API keys configured in the environment. */
+export function getConfiguredJudgeProviderChain(): string[] {
+  return getJudgeProviderChain().filter((provider) => {
+    if (provider === 'openai') return Boolean(process.env.OPENAI_API_KEY)
+    if (provider === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY)
+    return false
+  })
+}
+
 const TRIAGE_DEFAULT_MAX_TOKENS = 1500
 
 /**

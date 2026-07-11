@@ -27,8 +27,20 @@ async function main() {
     process.exit(1)
   }
 
-  const aiHealth = await fetch(`${BASE}/api/health/ai`).then((r) => r.json())
+  const aiHealth = await fetch(`${BASE}/api/health/ai?validate=1`).then((r) => r.json())
   console.log('AI health:', JSON.stringify(aiHealth, null, 2))
+
+  if (aiHealth.validation && !aiHealth.validation.ok) {
+    console.error(
+      'FAIL: AI provider credentials invalid:',
+      aiHealth.validation.provider,
+      aiHealth.validation.error
+    )
+    console.error(
+      'Update OPENAI_API_KEY or ANTHROPIC_API_KEY on Railway and redeploy.'
+    )
+    process.exit(1)
+  }
 
   const create = await fetch(`${BASE}/api/checks`, {
     method: 'POST',
@@ -56,6 +68,7 @@ async function main() {
       if (!status.triageAt) {
         console.error('FAIL: audit COMPLETED without triageAt (triage did not run)')
         console.error('failureCode:', status.failureCode)
+        console.error('errorMsg:', status.errorMsg)
         process.exit(1)
       }
       if (status.verdict === DETERMINISTIC_STUB) {

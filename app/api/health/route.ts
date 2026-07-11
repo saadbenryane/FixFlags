@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isProdStorageConfigured, isAiProviderConfigured } from '@/lib/env'
-import { getJudgeProviderChain } from '@/lib/audit/judge-config'
+import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/audit/judge-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +18,7 @@ export async function GET() {
   const ai = {
     configured: isAiProviderConfigured(),
     providerChain: getJudgeProviderChain(),
+    configuredProviders: getConfiguredJudgeProviderChain(),
     openai: Boolean(process.env.OPENAI_API_KEY),
     anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
   }
@@ -33,6 +34,7 @@ export async function GET() {
       storageConfigured,
       aiConfigured: ai.configured,
       aiProviderChain: ai.providerChain,
+      aiConfiguredProviders: ai.configuredProviders,
       ...(degraded.length > 0 ? { degraded } : {}),
     })
   } catch {

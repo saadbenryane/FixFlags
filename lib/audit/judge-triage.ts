@@ -10,7 +10,7 @@ import { buildTriagePrompt } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
-import { getTriageProviderConfig, getJudgeProviderChain } from './judge-config'
+import { getTriageProviderConfig, getConfiguredJudgeProviderChain } from './judge-config'
 import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
@@ -327,7 +327,12 @@ export async function runTriageWithRetry(
   maxTimeoutMs?: number
 ): Promise<TriageResult> {
   const context = buildTriageContext(url, metadata, desktop, mobile, flags)
-  const chain = getJudgeProviderChain()
+  const chain = getConfiguredJudgeProviderChain()
+  if (chain.length === 0) {
+    throw new Error('No AI provider keys configured')
+  }
+
+  const attemptErrors: string[] = []
   let lastError: Error | null = null
 
   for (const provider of chain) {
@@ -345,13 +350,16 @@ export async function runTriageWithRetry(
         return result
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err))
+        attemptErrors.push(`${provider}#${attempt}: ${lastError.message}`)
         logger.warn('triage attempt failed', { provider, attempt, err: lastError.message })
-        if (attempt < MAX_RETRIES && isTriageAttemptRetryable(err)) {
+        if (!isTriageAttemptRetryable(err)) break
+        if (attempt < MAX_RETRIES) {
           await sleep(RETRY_DELAY_MS * attempt)
         }
       }
     }
   }
 
-  throw lastError ?? new Error('Triage failed: no providers available')
+  const detail = attemptErrors.length > 0 ? attemptErrors.join('; ') : 'no attempts recorded'
+  throw lastError ?? new Error(`Triage failed: ${detail}`)
 }

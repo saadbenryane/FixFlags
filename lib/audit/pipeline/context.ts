@@ -4,10 +4,12 @@ import { deriveAuditFailure } from './failure'
 import type { TriageResult } from '../judge-triage'
 import type { PipelineContext, PageRun } from './types'
 
-/** Strip URLs and config-looking tokens out of an error before it is persisted. */
+/** Strip URLs, API keys, and config-looking tokens out of an error before it is persisted. */
 export function sanitizeAuditErrorMessage(message: string): string {
   return message
     .replace(/https?:\/\/[^\s]+/gi, '[url]')
+    .replace(/\bsk-[a-zA-Z0-9_-]{8,}\b/g, '[redacted-key]')
+    .replace(/\bsk-ant-[a-zA-Z0-9_-]{8,}\b/g, '[redacted-key]')
     .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, (match) =>
       match.includes('API') || match.includes('KEY') ? '[config]' : match
     )

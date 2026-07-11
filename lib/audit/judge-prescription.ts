@@ -8,7 +8,7 @@ import {
 } from './judge-prescription-schema'
 import { buildPrescriptionPrompt } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
-import { getProviderConfig, getJudgeProviderChain } from './judge-config'
+import { getProviderConfig, getConfiguredJudgeProviderChain } from './judge-config'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import { logger } from '@/lib/logger'
@@ -302,7 +302,11 @@ export async function runPrescriptionWithRetry(
   mobileBase64: string | null,
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
-  const chain = getJudgeProviderChain()
+  const chain = getConfiguredJudgeProviderChain()
+  if (chain.length === 0) {
+    throw new Error('No AI provider keys configured')
+  }
+
   let lastError: Error | null = null
 
   for (const provider of chain) {
@@ -320,7 +324,8 @@ export async function runPrescriptionWithRetry(
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err))
         logger.warn('prescription attempt failed', { provider, attempt, err: lastError.message })
-        if (attempt < MAX_RETRIES && isPrescriptionAttemptRetryable(err)) {
+        if (!isPrescriptionAttemptRetryable(err)) break
+        if (attempt < MAX_RETRIES) {
           await sleep(RETRY_DELAY_MS * attempt)
         }
       }

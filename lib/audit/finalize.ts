@@ -196,15 +196,12 @@ export async function finalizeTriageDegraded(
     detail: input.reason,
   })
 
-  const completeness =
-    input.evidence.desktopScreenshot && input.evidence.metadata ? 'FULL' : 'PARTIAL'
-
   await prisma.audit.update({
     where: { id: input.auditId },
     data: {
       status: 'COMPLETED',
       progress: 100,
-      reportCompleteness: completeness,
+      reportCompleteness: 'PARTIAL',
       evidenceCoverage: {
         ...input.evidence,
         aiAssessment: false,
