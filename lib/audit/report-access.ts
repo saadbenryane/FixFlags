@@ -26,6 +26,15 @@ export function canViewPrescriptionContent(
   return false
 }
 
+export function canViewDeterministicFixes(
+  audit: { userId: string | null; aiReviewAt: Date | null; isPublic?: boolean },
+  viewer: { id: string } | null | undefined
+): boolean {
+  if (isPublicMarketingSample(audit)) return true
+  if (!viewer?.id) return false
+  return audit.userId === viewer.id
+}
+
 export function canViewAiViaMaxPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
@@ -46,6 +55,13 @@ export async function canViewPrescriptionContentForAudit(
     select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
   return canViewAiViaMaxPublicShare(audit, owner ? canSharePublicly(owner) : false)
+}
+
+export async function canViewDeterministicFixesForAudit(
+  audit: AiAccessAudit,
+  viewer: { id: string } | null | undefined
+): Promise<boolean> {
+  return canViewDeterministicFixes(audit, viewer)
 }
 
 type FlagLike = {
@@ -72,8 +88,20 @@ type RubricLike = {
   [key: string]: unknown
 }
 
-/** Strip prescription-only fields; keep phase-1 triage titles and rubric summaries. */
-export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] {
+/** Strip AI prescription fields only; keep deterministic fix, evidence, and whyItMatters. */
+export function stripAiPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] {
+  return flags.map((f) => ({
+    ...f,
+    agentPrompt: null,
+    cursorPrompt: null,
+    claudePrompt: null,
+    lovablePrompt: null,
+    boltPrompt: null,
+  }))
+}
+
+/** Strip all fix content for anonymous / non-owner viewers. */
+export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[]): T[] {
   return flags.map((f) => ({
     ...f,
     agentPrompt: null,
@@ -87,7 +115,12 @@ export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] 
   }))
 }
 
-export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
+/** @deprecated Use stripAiPrescriptionFromFlags or stripDeterministicFixesFromFlags. */
+export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] {
+  return stripDeterministicFixesFromFlags(flags)
+}
+
+export function stripAiPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
   return rubrics.map((r) => ({
     ...r,
     rubricPrompt: null,
@@ -95,8 +128,25 @@ export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[])
     claudePrompt: null,
     lovablePrompt: null,
     boltPrompt: null,
-    flags: r.flags ? stripPrescriptionFromFlags(r.flags) : r.flags,
+    flags: r.flags ? stripAiPrescriptionFromFlags(r.flags) : r.flags,
   }))
+}
+
+export function stripDeterministicFixesFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
+  return rubrics.map((r) => ({
+    ...r,
+    rubricPrompt: null,
+    cursorPrompt: null,
+    claudePrompt: null,
+    lovablePrompt: null,
+    boltPrompt: null,
+    flags: r.flags ? stripDeterministicFixesFromFlags(r.flags) : r.flags,
+  }))
+}
+
+/** @deprecated Use stripAiPrescriptionFromRubrics or stripDeterministicFixesFromRubrics. */
+export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
+  return stripDeterministicFixesFromRubrics(rubrics)
 }
 
 /** Legacy deterministic-only audits (no triageAt): hide AI fields entirely. */
@@ -134,7 +184,7 @@ export function stripLegacyDeterministicAudit<T extends {
           claudePrompt: null,
           lovablePrompt: null,
           boltPrompt: null,
-          flags: r.flags ? stripPrescriptionFromFlags(r.flags) : r.flags,
+          flags: r.flags ? stripAiPrescriptionFromFlags(r.flags) : r.flags,
         }))
       : audit.rubrics,
   }
@@ -150,9 +200,7 @@ export function stripPrescriptionFromAudit<T extends {
 }>(audit: T): T {
   return {
     ...audit,
-    flags: stripPrescriptionFromFlags(audit.flags),
-    rubrics: audit.rubrics ? stripPrescriptionFromRubrics(audit.rubrics) : audit.rubrics,
+    flags: stripDeterministicFixesFromFlags(audit.flags),
+    rubrics: audit.rubrics ? stripDeterministicFixesFromRubrics(audit.rubrics) : audit.rubrics,
   }
 }
-
-

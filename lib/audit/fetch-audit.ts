@@ -4,8 +4,11 @@ import { auth } from '@/lib/auth'
 import { canAccessAudit } from '@/lib/audit/access'
 import {
   canViewPrescriptionContentForAudit,
-  stripPrescriptionFromRubrics,
-  stripPrescriptionFromFlags,
+  canViewDeterministicFixesForAudit,
+  stripAiPrescriptionFromRubrics,
+  stripAiPrescriptionFromFlags,
+  stripDeterministicFixesFromRubrics,
+  stripDeterministicFixesFromFlags,
   stripLegacyDeterministicAudit,
 } from '@/lib/audit/report-access'
 import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
@@ -110,6 +113,14 @@ export async function getGatedAuditForRequest(id: string) {
     },
     session?.user
   )
+  const showDeterministicFixes = await canViewDeterministicFixesForAudit(
+    {
+      userId: audit.userId,
+      aiReviewAt: audit.aiReviewAt,
+      isPublic: audit.isPublic,
+    },
+    session?.user
+  )
   const hasTriage = Boolean(audit.triageAt)
   const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt && !audit.failureCode
   const triageDegraded =
@@ -137,9 +148,12 @@ export async function getGatedAuditForRequest(id: string) {
     })
     sanitizedRubrics = legacy.rubrics as typeof sanitizedRubrics
     reportFlags = legacy.flags as typeof reportFlags
+  } else if (!showDeterministicFixes) {
+    sanitizedRubrics = stripDeterministicFixesFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
+    reportFlags = stripDeterministicFixesFromFlags(reportFlags) as typeof reportFlags
   } else if (!showPrescription) {
-    sanitizedRubrics = stripPrescriptionFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
-    reportFlags = stripPrescriptionFromFlags(reportFlags) as typeof reportFlags
+    sanitizedRubrics = stripAiPrescriptionFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
+    reportFlags = stripAiPrescriptionFromFlags(reportFlags) as typeof reportFlags
   }
 
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
@@ -226,6 +240,7 @@ export async function getGatedAuditForRequest(id: string) {
     isPaid,
     isLoggedIn: !!session?.user,
     showPrescription,
+    showDeterministicFixes,
     aiReviewPending,
     triageDegraded,
     prescriptionFailed,

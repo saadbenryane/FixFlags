@@ -142,19 +142,29 @@ const LOADING_UI_SELECTOR =
 
 async function readLoadSnapshot(page: import('puppeteer').Page): Promise<PageLoadSnapshot> {
   return page.evaluate((loadingSelector) => {
-    // tsx/esbuild dev runs (npm run worker, scripts/*) inject `__name(...)` wrapper calls
-    // into compiled functions; that reference doesn't exist once this function's source is
-    // sent into Puppeteer's isolated browser context. No-op under tsc/webpack builds (prod,
-    // `next dev`), which never emit `__name` calls.
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+
+    function isBlockingLoadingEl(el: Element): boolean {
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return false
+      const style = window.getComputedStyle(el)
+      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0')
+        return false
+
+      const inMain = Boolean(el.closest('main, [role="main"], [class*="hero" i]'))
+      const viewportArea = window.innerWidth * window.innerHeight
+      const elArea = rect.width * rect.height
+      const coversViewport = elArea >= viewportArea * 0.12
+      const isLargeOverlay = elArea >= viewportArea * 0.35
+      if (!inMain && !coversViewport && !isLargeOverlay) return false
+      return true
+    }
+
     let loadingVisible = false
     let loadingLabel: string | null = null
 
     for (const el of document.querySelectorAll(loadingSelector)) {
-      const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
-      const style = window.getComputedStyle(el)
-      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+      if (!isBlockingLoadingEl(el)) continue
       loadingVisible = true
       loadingLabel =
         el.getAttribute('aria-label') ||

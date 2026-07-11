@@ -41,11 +41,13 @@ export function FlagDetailPanel({
   flag,
   showFeedback = false,
   aiLocked = false,
+  aiEnhancementPending = false,
   signUpHref,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
   aiLocked?: boolean
+  aiEnhancementPending?: boolean
   signUpHref?: string
 }) {
   return (
@@ -77,9 +79,13 @@ export function FlagDetailPanel({
         <FlagDetailCard title="Fix" icon={Sparkles} emphasis>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Fix prompt - create a free account to view"
+              label="Sign in to view fix prompts for this flag"
               signUpHref={signUpHref}
             />
+          ) : aiEnhancementPending && !flag.fixPrompt ? (
+            <p className="text-sm text-muted-foreground">
+              Generating enhanced fix prompt. Deterministic guidance is in the evidence above.
+            </p>
           ) : (
             <FixPromptBlock
               prompt={flag.fixPrompt}

@@ -1101,6 +1101,14 @@ export const UPSELLS = {
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
+  signedInAiPending: {
+    headline: 'Fix prompts on the way',
+    body: 'Deterministic fixes are ready below. Enhanced copy-paste prompts usually finish within a minute.',
+  },
+  signedInAiDegraded: {
+    headline: 'Deterministic fixes are ready',
+    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every flag below. Re-scan to retry the AI pass.',
+  },
   atLimit: 'AI report limit reached. Upgrade to continue',
 } as const
 
@@ -1181,7 +1189,9 @@ export const AUDIT_ERRORS = {
     'Automated checks are complete. AI summary was unavailable for this run. Deterministic flags and screenshots are shown below.',
   triageDegradedTimeout:
     'This scan ran out of time before AI summary could finish. Deterministic checks and screenshots are shown below.',
-  partialReport: 'This report is partial. Some checks or screenshots could not complete.',
+  triageProviderNotConfigured:
+    'AI summary is unavailable because no provider key is configured on the scanner. Deterministic checks and fix steps are shown below.',
+  partialReport: 'Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.',
   pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
 } as const
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Share2,
+  Upload,
   Check,
   Copy,
   Globe,
@@ -207,7 +207,7 @@ export function ShareDrawer({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <Share2 className="h-4 w-4" />
+          <Upload className="h-4 w-4" />
           Share
         </Button>
       </SheetTrigger>

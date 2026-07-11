@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { ReactNode } from 'react'
-import { ReportMiniNav } from '@/components/audit/ReportMiniNav'
+import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricsPanel } from '@/components/audit/RubricsPanel'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
@@ -94,10 +94,13 @@ interface AuditReportProps {
   screenshotLimited?: boolean
   screenshotPartial?: boolean
   showPrescription?: boolean
+  showDeterministicFixes?: boolean
   aiReviewPending?: boolean
   triageDegraded?: boolean
   prescriptionFailed?: boolean
+  failureCode?: string | null
   actions?: ReactNode
+  toolbarActions?: ReactNode
 }
 
 export function AuditReport({
@@ -113,16 +116,19 @@ export function AuditReport({
   screenshotLimited = false,
   screenshotPartial = false,
   showPrescription = true,
+  showDeterministicFixes = true,
   aiReviewPending = false,
   triageDegraded = false,
   prescriptionFailed = false,
+  failureCode = null,
   actions,
+  toolbarActions,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const prescriptionLocked = !showPrescription
-  const aiLocked = prescriptionLocked
+  const fixPromptLocked = !showDeterministicFixes
+  const aiPrescriptionLocked = !showPrescription
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
@@ -170,21 +176,22 @@ export function AuditReport({
         url={audit.url}
         shareStatus={audit.shareStatus}
         rubrics={audit.rubrics}
+        totalFlags={audit.flags.length}
         screenshotLimited={screenshotLimited}
         screenshotPartial={screenshotPartial}
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
-        actions={actions}
       />
 
       {!isSample && (
         <>
-          <ReportMiniNav
+          <ReportStickyToolbar
             showOverview={showOverview}
             showPreviews={Boolean(audit.previewMeta)}
             showFlow={Boolean(audit.flowData)}
             showLaunchGates={hasLaunchGates}
             siteUrl={audit.url}
             score={audit.score}
+            actions={toolbarActions ?? actions}
           />
 
           {userVerdict ? (
@@ -245,9 +252,13 @@ export function AuditReport({
             <LiveReportExplorer
               model={explorerModel}
               showFeedback={showFeedback}
-              aiLocked={aiLocked}
+              aiLocked={fixPromptLocked}
+              aiEnhancementPending={!aiPrescriptionLocked ? false : isLoggedIn && aiReviewPending}
               signUpHref={signUpHref}
-              hasFixPrompts={showPrescription && hasFixPrompts}
+              hasFixPrompts={showDeterministicFixes && hasFixPrompts}
+              defaultSeverityFilter={
+                audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
+              }
             />
           </div>
         </section>
@@ -277,11 +288,13 @@ export function AuditReport({
 
           {triageDegraded && (
             <Callout variant="warning" title="AI summary unavailable">
-              {audit.verdict ?? AUDIT_ERRORS.partialReport}
+              {failureCode === 'AI_PROVIDER_NOT_CONFIGURED'
+                ? AUDIT_ERRORS.triageProviderNotConfigured
+                : (audit.verdict ?? AUDIT_ERRORS.partialReport)}
             </Callout>
           )}
 
-          {audit.reportCompleteness !== 'FULL' && (
+          {audit.reportCompleteness !== 'FULL' && !triageDegraded && (
             <Callout variant="warning" title="Partial report">
               Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
               being inferred.
@@ -292,9 +305,19 @@ export function AuditReport({
             <LaunchGates checklist={audit.launchReadiness.checklist} />
           )}
 
-          {audit.previewMeta && <PreviewCards preview={audit.previewMeta} />}
+          {audit.previewMeta && (
+            <div className="space-y-2">
+              <p className="text-xs font-mono uppercase tracking-label text-muted-foreground">Reach</p>
+              <PreviewCards preview={audit.previewMeta} />
+            </div>
+          )}
 
-          {audit.flowData && <FlowScanTimeline flowData={audit.flowData} />}
+          {audit.flowData && (
+            <div className="space-y-2">
+              <p className="text-xs font-mono uppercase tracking-label text-muted-foreground">Experience</p>
+              <FlowScanTimeline flowData={audit.flowData} />
+            </div>
+          )}
         </div>
       )}
 
@@ -305,7 +328,7 @@ export function AuditReport({
             rubrics={audit.rubrics}
             rubricRows={audit.rubricRows}
             showFeedback={showFeedback}
-            aiLocked={aiLocked}
+            aiLocked={fixPromptLocked}
             signUpHref={signUpHref}
             showFlagList={!explorerModel}
           />
@@ -333,7 +356,7 @@ export function AuditReport({
           </Card>
         )}
 
-        {!isSample && aiLocked && (
+        {!isSample && fixPromptLocked && (
           <Card className="space-y-3 p-6 text-center">
             <CardTitle>{UPSELLS.anon.headline}</CardTitle>
             <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
@@ -345,6 +368,17 @@ export function AuditReport({
                 <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
               </Button>
             </div>
+          </Card>
+        )}
+
+        {!isSample && showDeterministicFixes && !showPrescription && isLoggedIn && (
+          <Card className="space-y-2 p-6 text-center">
+            <CardTitle>
+              {aiReviewPending ? UPSELLS.signedInAiPending.headline : UPSELLS.signedInAiDegraded.headline}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {aiReviewPending ? UPSELLS.signedInAiPending.body : UPSELLS.signedInAiDegraded.body}
+            </p>
           </Card>
         )}
 

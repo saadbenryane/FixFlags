@@ -16,6 +16,7 @@ type Props = {
   url: string
   shareStatus: string
   rubrics: RubricComputed[]
+  totalFlags?: number
   screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
   screenshotPartial?: boolean
@@ -26,14 +27,22 @@ type Props = {
   actions?: ReactNode
 }
 
-function shareStatusMessage(shareStatus: string, criticalCount: number): string {
+function shareStatusMessage(
+  shareStatus: string,
+  criticalCount: number,
+  totalFlags: number
+): string {
   if (shareStatus === 'good_to_share') {
     return 'No critical flags found. Good to share.'
   }
   if (criticalCount === 1) {
-    return '1 critical. Fix this before sharing.'
+    return totalFlags > 1
+      ? `1 critical of ${totalFlags} flags. Fix this before sharing.`
+      : '1 critical. Fix this before sharing.'
   }
-  return `${criticalCount} critical. Fix these before sharing.`
+  return totalFlags > criticalCount
+    ? `${criticalCount} critical of ${totalFlags} flags. Fix critical before sharing.`
+    : `${criticalCount} critical. Fix these before sharing.`
 }
 
 export function AuditReportHero({
@@ -43,6 +52,7 @@ export function AuditReportHero({
   url,
   shareStatus,
   rubrics,
+  totalFlags = 0,
   screenshots,
   durationMs,
   startedAt,
@@ -51,7 +61,8 @@ export function AuditReportHero({
 }: Props) {
   const isMinimal = variant === 'minimal'
   const criticalCount = rubrics.reduce((sum, r) => sum + r.criticalCount, 0)
-  const shareMessage = shareStatusMessage(shareStatus, criticalCount)
+  const flagTotal = totalFlags || rubrics.reduce((sum, r) => sum + r.flagCount, 0)
+  const shareMessage = shareStatusMessage(shareStatus, criticalCount, flagTotal)
   const isReady = shareStatus === 'good_to_share'
 
   const hostname = (() => {

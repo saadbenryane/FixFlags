@@ -145,7 +145,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showPrescription, aiReviewPending, triageDegraded, prescriptionFailed } = result
+  const { audit, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -295,16 +295,19 @@ export default async function ReportPage({ params }: Props) {
           screenshotLimited={limited}
           screenshotPartial={partial}
           showPrescription={showPrescription}
+          showDeterministicFixes={showDeterministicFixes}
           aiReviewPending={aiReviewPending}
           triageDegraded={triageDegraded}
           prescriptionFailed={prescriptionFailed}
-          actions={
+          failureCode={audit.failureCode ?? null}
+          toolbarActions={
             <AuditPageActions
               auditId={id}
               url={audit.url}
               score={audit.score}
               verdict={audit.verdict}
               topIssue={topIssue}
+              flags={flags}
               rubrics={rubricRows.map((r) => ({
                 name: r.name,
                 grade: r.grade,
@@ -331,6 +334,8 @@ export default async function ReportPage({ params }: Props) {
               projectId={audit.projectId}
               canExportSummary={entitlements?.canExportSummary ?? false}
               canSharePublicly={entitlements?.canSharePublicly ?? false}
+              showFixPrompts={showDeterministicFixes}
+              toolbar
             />
           }
         />

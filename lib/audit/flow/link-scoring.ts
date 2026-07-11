@@ -42,7 +42,7 @@ export function isIntentionalExternalCta(origin: string, href: string | null): b
   try {
     const parsed = new URL(href, origin)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
-    if (parsed.origin === origin) return false
+    if (isSameSiteOrigin(parsed.origin, origin)) return false
     const resolved = parsed.toString()
     return isExternalBookingHref(resolved) || scoreCtaLink(resolved, '') >= 70
   } catch {
@@ -165,11 +165,26 @@ export function isDeadHref(href: string): boolean {
   return classifyCtaHref(href).isPlaceholder
 }
 
+/** Normalize hostname for same-site comparisons (www vs apex). */
+export function normalizeSiteHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, '')
+}
+
+export function isSameSiteOrigin(originA: string, originB: string): boolean {
+  try {
+    const a = normalizeSiteHost(new URL(originA).hostname)
+    const b = normalizeSiteHost(new URL(originB).hostname)
+    return a === b
+  } catch {
+    return false
+  }
+}
+
 export function resolveSameOrigin(origin: string, href: string): string | null {
   try {
     if (href.startsWith('/')) return new URL(href, origin).toString()
     const parsed = new URL(href)
-    if (parsed.origin === origin) return parsed.toString()
+    if (isSameSiteOrigin(parsed.origin, origin)) return parsed.toString()
     return null
   } catch {
     return null

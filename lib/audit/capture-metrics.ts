@@ -44,11 +44,24 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     let stuckLoadingLabel: string | null = null
     const loadingSelector =
       '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
-    for (const el of document.querySelectorAll(loadingSelector)) {
+
+    function isBlockingLoadingEl(el: Element): boolean {
       const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
+      if (rect.width <= 0 || rect.height <= 0) return false
       const style = window.getComputedStyle(el)
-      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue
+      if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0')
+        return false
+      const inMain = Boolean(el.closest('main, [role="main"], [class*="hero" i]'))
+      const viewportArea = window.innerWidth * window.innerHeight
+      const elArea = rect.width * rect.height
+      const coversViewport = elArea >= viewportArea * 0.12
+      const isLargeOverlay = elArea >= viewportArea * 0.35
+      if (!inMain && !coversViewport && !isLargeOverlay) return false
+      return true
+    }
+
+    for (const el of document.querySelectorAll(loadingSelector)) {
+      if (!isBlockingLoadingEl(el)) continue
       stuckLoadingIndicator = true
       stuckLoadingLabel =
         el.getAttribute('aria-label') ||
@@ -90,14 +103,12 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       inputsBelow16px.push({ selector, fontSize: Math.round(fontSize * 10) / 10 })
     }
 
-    let bestScore = 0
-    let bestTop: number | null = null
-    let bestText: string | null = null
-    const competingCtas = new Set<string>()
+    const MOBILE_FOLD_RATIO = 0.85
+    const foldLine = Math.round(window.innerHeight * MOBILE_FOLD_RATIO)
 
-    for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
-      if (el.closest('nav, header, [role="navigation"]')) continue
+    type CtaCandidate = { score: number; top: number; text: string }
 
+    function scoreCtaElement(el: Element): CtaCandidate | null {
       const tag = el.tagName.toLowerCase()
       const href =
         tag === 'a'
@@ -112,6 +123,7 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       const combined = `${href} ${text}`.toLowerCase()
       let score = 0
       if (/\b(login|log in|sign in|signin)\b/i.test(combined)) score = 15
+      else if (/\bview (all|details|plan details|more info)\b/i.test(text)) score = 55
       else if (/pricing|plans?\b|price/.test(combined)) score = 100
       else if (
         /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i.test(
@@ -131,35 +143,117 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       )
         score = 85
 
-      if (score === 0) continue
+      if (score === 0) return null
 
       const rect = el.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
+      if (rect.width <= 0 || rect.height <= 0) return null
 
-      // High-intent CTA visible within the first mobile screen.
-      if (score >= 85 && rect.top >= 0 && rect.top <= window.innerHeight) {
-        const label = text.slice(0, 80) || tag
-        competingCtas.add(label)
+      return { score, top: Math.round(rect.top), text: text.slice(0, 80) || tag }
+    }
+
+    function shouldSkipNavHeader(el: Element): boolean {
+      if (el.closest('nav, [role="navigation"]')) return true
+      const header = el.closest('header')
+      if (!header) return false
+      const form = el.closest('form')
+      if (form) {
+        const input = form.querySelector('input[type="search"], input[type="url"], input[type="text"]')
+        if (input) {
+          const placeholder = (input.getAttribute('placeholder') || '').toLowerCase()
+          if (
+            /search|find|doctor|clinic|service|location|special|symptom|hospital|provider/i.test(
+              placeholder
+            )
+          ) {
+            return false
+          }
+        }
       }
+      return true
+    }
 
-      // Strictly greater so the first (topmost, DOM-order-earliest) element at a
-      // given score wins ties, not the last one scanned - matters when a page has
-      // two equally-scored CTAs (e.g. a hero "Get started" and a pricing-section
-      // "Get started"), since downstream checks treat this as THE primary CTA's
-      // position for above-the-fold / thumb-zone / weak-label assessments.
-      if (score > bestScore) {
-        bestScore = score
-        bestTop = Math.round(rect.top)
-        bestText = text.slice(0, 80)
+    const candidates: CtaCandidate[] = []
+    const competingCtas = new Set<string>()
+
+    for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
+      if (shouldSkipNavHeader(el)) continue
+      const candidate = scoreCtaElement(el)
+      if (!candidate) continue
+      candidates.push(candidate)
+
+      if (candidate.score >= 85 && candidate.top >= 0 && candidate.top <= window.innerHeight) {
+        competingCtas.add(candidate.text || 'cta')
       }
     }
 
-    const competingLabels = [...competingCtas]
+    let selected: CtaCandidate | null = null
 
-    // Fallback: if no button/link CTA was found, check for search/URL input fields
-    // which serve as the primary conversion action on tool and SaaS landing pages
-    // (e.g. URL auditors, search tools, website checkers).
-    if (bestScore === 0) {
+    // Pass 1: hero search form in the first screen (directory / marketplace landing pages).
+    for (const el of document.querySelectorAll(
+      'input[type="search"], input[type="url"], input[type="text"]'
+    )) {
+      const placeholder = (el.getAttribute('placeholder') || '').toLowerCase()
+      if (
+        !placeholder ||
+        !/(search|find|doctor|clinic|service|location|special|symptom|hospital|provider|url|website|www\.|https?|enter.*(url|site|link|domain)|paste.*(url|link|domain))/i.test(
+          placeholder
+        )
+      )
+        continue
+
+      const rect = el.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) continue
+      if (rect.top < 0 || rect.top > foldLine) continue
+
+      const form = el.closest('form')
+      let submitBtnText = ''
+      if (form) {
+        const submitBtn = form.querySelector(
+          'button[type="submit"], input[type="submit"], button:not([type])'
+        )
+        if (submitBtn) {
+          submitBtnText =
+            (submitBtn.textContent || submitBtn.getAttribute('aria-label') || '').trim()
+        }
+      }
+
+      selected = {
+        score: submitBtnText ? 92 : 90,
+        top: Math.round(rect.top),
+        text: submitBtnText || placeholder || 'Search input',
+      }
+      break
+    }
+
+    // Pass 2: topmost high-intent CTA above the fold.
+    if (!selected) {
+      for (const c of candidates) {
+        if (c.score < 85 || c.top < 0 || c.top > foldLine) continue
+        if (
+          !selected ||
+          c.top < selected.top ||
+          (c.top === selected.top && c.score > selected.score)
+        ) {
+          selected = c
+        }
+      }
+    }
+
+    // Pass 3: global best score, tie-break topmost.
+    if (!selected) {
+      for (const c of candidates) {
+        if (
+          !selected ||
+          c.score > selected.score ||
+          (c.score === selected.score && c.top < selected.top)
+        ) {
+          selected = c
+        }
+      }
+    }
+
+    // Pass 4: deep-page search input fallback.
+    if (!selected) {
       for (const el of document.querySelectorAll(
         'input[type="search"], input[type="url"], input[type="text"]'
       )) {
@@ -188,12 +282,18 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
           }
         }
 
-        bestScore = submitBtnText ? 90 : 85
-        bestTop = Math.round(rect.top)
-        bestText = submitBtnText || placeholder || 'Search input'
+        selected = {
+          score: submitBtnText ? 90 : 85,
+          top: Math.round(rect.top),
+          text: submitBtnText || placeholder || 'Search input',
+        }
         break
       }
     }
+
+    const bestTop = selected?.top ?? null
+    const bestText = selected?.text ?? null
+    const competingLabels = [...competingCtas]
 
     return {
       mobilePrimaryCtaTopPx: bestTop,

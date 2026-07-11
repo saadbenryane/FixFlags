@@ -2,7 +2,7 @@ import type { Browser, Page } from 'puppeteer'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
-import { resolveSameOrigin, isIntentionalExternalCta } from './link-scoring'
+import { resolveSameOrigin, isIntentionalExternalCta, isSameSiteOrigin } from './link-scoring'
 import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
 import { anchorFromViewportRect } from './flow-evidence'
 import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
@@ -224,7 +224,7 @@ export async function runFlowScan(
       }
     }
 
-  const leftOrigin = new URL(finalUrl).origin !== origin
+  const leftOrigin = !isSameSiteOrigin(finalUrl, origin)
   if (leftOrigin && !isConversionPathUrl(origin, finalUrl)) {
     return {
       status: 'external_leave',

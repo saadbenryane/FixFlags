@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import { FlagDetailPanel, FlagMetaPills } from '@/components/report/FlagDetailPanel'
@@ -9,9 +9,12 @@ import type { FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { Button } from '@/components/ui/button'
 import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
-import { cn } from '@/lib/utils'
+import { RUBRIC_ORDER } from '@/lib/audit/constants'
+import { cn, rubricLabel } from '@/lib/utils'
 
 type ExplorerVariant = 'page' | 'hero' | 'live'
+type RubricFilter = 'ALL' | (typeof RUBRIC_ORDER)[number]
+type SeverityFilter = 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
 
 interface ReportExplorerProps {
   model: ReportExplorerModel
@@ -20,8 +23,10 @@ interface ReportExplorerProps {
   initialFlagIndex?: number
   showFeedback?: boolean
   aiLocked?: boolean
+  aiEnhancementPending?: boolean
   signUpHref?: string
   hasFixPrompts?: boolean
+  defaultSeverityFilter?: SeverityFilter
 }
 
 const VARIANT_CONFIG = {
@@ -104,6 +109,7 @@ function ReportBody({
   flagDetailRef,
   showFeedback,
   aiLocked,
+  aiEnhancementPending,
   signUpHref,
   hasFixPrompts,
 }: {
@@ -120,6 +126,7 @@ function ReportBody({
   flagDetailRef: React.RefObject<HTMLDivElement | null>
   showFeedback?: boolean
   aiLocked?: boolean
+  aiEnhancementPending?: boolean
   signUpHref?: string
   hasFixPrompts?: boolean
 }) {
@@ -188,10 +195,100 @@ function ReportBody({
           flag={flag}
           showFeedback={showFeedback}
           aiLocked={aiLocked}
+          aiEnhancementPending={aiEnhancementPending}
           signUpHref={signUpHref}
         />
       </div>
     </div>
+  )
+}
+
+function ExplorerFilters({
+  rubricFilter,
+  severityFilter,
+  onRubricChange,
+  onSeverityChange,
+  model,
+}: {
+  rubricFilter: RubricFilter
+  severityFilter: SeverityFilter
+  onRubricChange: (value: RubricFilter) => void
+  onSeverityChange: (value: SeverityFilter) => void
+  model: ReportExplorerModel
+}) {
+  const rubricCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const flag of model.flags) {
+      counts.set(flag.rubric, (counts.get(flag.rubric) ?? 0) + 1)
+    }
+    return counts
+  }, [model.flags])
+
+  const criticalCount = model.flags.filter((f) => f.severity === 'CRITICAL').length
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 pb-4">
+      <div className="flex flex-wrap gap-1.5">
+        <FilterPill active={rubricFilter === 'ALL'} onClick={() => onRubricChange('ALL')}>
+          All ({model.flags.length})
+        </FilterPill>
+        {RUBRIC_ORDER.map((rubric) => {
+          const count = rubricCounts.get(rubric) ?? 0
+          if (count === 0) return null
+          return (
+            <FilterPill
+              key={rubric}
+              active={rubricFilter === rubric}
+              onClick={() => onRubricChange(rubric)}
+            >
+              {rubricLabel(rubric)} ({count})
+            </FilterPill>
+          )
+        })}
+      </div>
+      {criticalCount > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-l border-border/40 pl-2">
+          <FilterPill
+            active={severityFilter === 'CRITICAL'}
+            onClick={() =>
+              onSeverityChange(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
+            }
+          >
+            Critical ({criticalCount})
+          </FilterPill>
+          {severityFilter === 'CRITICAL' && (
+            <FilterPill active={false} onClick={() => onSeverityChange('ALL')}>
+              Show all
+            </FilterPill>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+        active
+          ? 'bg-brand/15 text-brand'
+          : 'bg-muted/50 text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -202,14 +299,31 @@ export function ReportExplorer({
   initialFlagIndex = 0,
   showFeedback = false,
   aiLocked = false,
+  aiEnhancementPending = false,
   signUpHref,
   hasFixPrompts = true,
+  defaultSeverityFilter = 'ALL',
 }: ReportExplorerProps) {
   const config = VARIANT_CONFIG[variant]
+  const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>(defaultSeverityFilter)
   const [flagIndex, setFlagIndex] = useState(initialFlagIndex)
   const flagDetailRef = useRef<HTMLDivElement>(null)
-  const flagCount = model.flags.length
-  const currentFlag = model.flags[flagIndex]
+
+  const filteredFlags = useMemo(() => {
+    return model.flags.filter((flag) => {
+      if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
+      if (severityFilter !== 'ALL' && flag.severity !== severityFilter) return false
+      return true
+    })
+  }, [model.flags, rubricFilter, severityFilter])
+
+  useEffect(() => {
+    setFlagIndex(0)
+  }, [rubricFilter, severityFilter])
+
+  const flagCount = filteredFlags.length
+  const currentFlag = filteredFlags[flagIndex] ?? filteredFlags[0]
 
   const showPrevious = useCallback(() => {
     setFlagIndex((i) => (i - 1 + flagCount) % flagCount)
@@ -221,14 +335,14 @@ export function ReportExplorer({
 
   const goToFlag = useCallback(
     (flagId: string) => {
-      const idx = model.flags.findIndex((f) => f.id === flagId)
+      const idx = filteredFlags.findIndex((f) => f.id === flagId)
       if (idx < 0) return
       setFlagIndex(idx)
       requestAnimationFrame(() => {
         flagDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       })
     },
-    [model.flags]
+    [filteredFlags]
   )
 
   useEffect(() => {
@@ -243,15 +357,34 @@ export function ReportExplorer({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [showNext, showPrevious])
 
-  if (!currentFlag) return null
-
   const shellClass = cn(
     'overflow-hidden rounded-card glass-surface shadow-card',
     variant === 'hero' && 'shadow-2xl',
     className
   )
 
-  const fixLoopFlags: FixLoopFlagItem[] = model.flags.map((f) => ({
+  if (!currentFlag || flagCount === 0) {
+    const emptyInner = (
+      <div className="p-4 sm:p-6">
+        <ExplorerFilters
+          rubricFilter={rubricFilter}
+          severityFilter={severityFilter}
+          onRubricChange={setRubricFilter}
+          onSeverityChange={setSeverityFilter}
+          model={model}
+        />
+        <p className="text-sm text-muted-foreground">No flags match this filter.</p>
+      </div>
+    )
+    if (variant === 'live') return <div className={cn(className)}>{emptyInner}</div>
+    return (
+      <div className={cn(className)}>
+        <div className={shellClass}>{emptyInner}</div>
+      </div>
+    )
+  }
+
+  const fixLoopFlags: FixLoopFlagItem[] = filteredFlags.map((f) => ({
     id: f.id,
     title: f.title,
     priorityLabel: f.priorityLabel,
@@ -275,6 +408,7 @@ export function ReportExplorer({
     flagDetailRef,
     showFeedback,
     aiLocked,
+    aiEnhancementPending,
     signUpHref,
     hasFixPrompts,
   }
@@ -312,6 +446,13 @@ export function ReportExplorer({
 
       <div className="p-4 sm:p-6">
         <h2 className="sr-only">Flags</h2>
+        <ExplorerFilters
+          rubricFilter={rubricFilter}
+          severityFilter={severityFilter}
+          onRubricChange={setRubricFilter}
+          onSeverityChange={setSeverityFilter}
+          model={model}
+        />
         <ReportBody {...reportBodyProps} />
       </div>
     </>

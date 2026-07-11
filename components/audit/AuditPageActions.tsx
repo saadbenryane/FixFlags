@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 
 import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
 import { ShareDrawer } from '@/components/audit/ShareDrawer'
-import { ExportSummaryButton } from '@/components/audit/ExportSummaryButton'
+import { ExportMenu } from '@/components/audit/ExportMenu'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { trackEvent } from '@/lib/analytics/events'
@@ -16,12 +16,15 @@ import { useEffect } from 'react'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 
+import type { RankableFlag } from '@/lib/audit/priority-flags'
+
 interface Props {
   auditId: string
   url: string
   score: number | null
   verdict?: string | null
   topIssue?: string
+  flags?: RankableFlag[]
   rubrics: Array<{
     name: string
     grade: string | null
@@ -38,6 +41,8 @@ interface Props {
   projectId?: string | null
   canExportSummary?: boolean
   canSharePublicly?: boolean
+  showFixPrompts?: boolean
+  toolbar?: boolean
 }
 
 export function AuditPageActions({
@@ -47,6 +52,7 @@ export function AuditPageActions({
   verdict,
   topIssue,
   rubrics,
+  flags = [],
   isPaid,
   isLoggedIn,
   isOwner,
@@ -57,6 +63,8 @@ export function AuditPageActions({
   projectId,
   canExportSummary = false,
   canSharePublicly = false,
+  showFixPrompts = false,
+  toolbar = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -114,15 +122,17 @@ export function AuditPageActions({
         canPublicShare={canSharePublicly}
         onPublicChange={setIsPublic}
       />
-      <ExportSummaryButton
+      <ExportMenu
         auditId={auditId}
         url={url}
         score={score}
         verdict={verdict}
         rubrics={rubrics}
-        canExport={canExportSummary}
+        flags={flags ?? []}
+        canExportSummary={canExportSummary}
+        showFixPrompts={showFixPrompts}
       />
-      {isPaid && <CopyMcpCommand auditId={auditId} />}
+      {!toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
       {showMonitoring && (
         <Button size="sm" onClick={handleMonitoring} disabled={monitoringLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${monitoringLoading ? 'animate-spin' : ''}`} />

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
   canViewPrescriptionContent,
+  canViewDeterministicFixes,
   canViewAiViaMaxPublicShare,
   isPublicMarketingSample,
-  stripPrescriptionFromFlags,
+  stripAiPrescriptionFromFlags,
+  stripDeterministicFixesFromFlags,
 } from '@/lib/audit/report-access'
 
 const aiReviewAt = new Date('2026-01-01')
@@ -90,8 +92,50 @@ describe('report-access', () => {
     )
   })
 
+  it('grants deterministic fixes to signed-in owner without AI prescription', () => {
+    assert.equal(
+      canViewDeterministicFixes(
+        { userId: 'owner-1', aiReviewAt: null, isPublic: false },
+        { id: 'owner-1' }
+      ),
+      true
+    )
+    assert.equal(
+      canViewDeterministicFixes(
+        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        null
+      ),
+      false
+    )
+  })
+
+  it('strips AI prescription fields but keeps deterministic fix text', () => {
+    const stripped = stripAiPrescriptionFromFlags([
+      {
+        source: 'DETERMINISTIC',
+        problem: 'det flag',
+        agentPrompt: 'x',
+        fix: 'keep me',
+        evidence: 'evidence',
+        whyItMatters: 'why',
+      },
+    ])
+    assert.equal(stripped[0]?.fix, 'keep me')
+    assert.equal(stripped[0]?.evidence, 'evidence')
+    assert.equal(stripped[0]?.whyItMatters, 'why')
+    assert.equal(stripped[0]?.agentPrompt, null)
+  })
+
+  it('strips deterministic fix content for anonymous viewers', () => {
+    const stripped = stripDeterministicFixesFromFlags([
+      { source: 'DETERMINISTIC', problem: 'det flag', fix: 'hidden', evidence: 'hidden' },
+    ])
+    assert.equal(stripped[0]?.fix, null)
+    assert.equal(stripped[0]?.evidence, null)
+  })
+
   it('strips prescription fields but keeps AI flag titles when locked', () => {
-    const stripped = stripPrescriptionFromFlags([
+    const stripped = stripDeterministicFixesFromFlags([
       { source: 'AI', problem: 'ai flag', agentPrompt: 'x', whyItMatters: 'y' },
       { source: 'DETERMINISTIC', problem: 'det flag', agentPrompt: 'z', whyItMatters: 'w' },
     ])

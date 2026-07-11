@@ -5,6 +5,7 @@ import {
   getTopFixPromptFromFlags,
   rankFlagsByPriority,
   collectAllFixPrompts,
+  collectFixPromptsByRubric,
   countFixPrompts,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
@@ -110,6 +111,18 @@ describe('priority-flags', () => {
     ])
     assert.match(result, /Fix 1: Has prompt/)
     assert.equal(result.includes('Fix 2'), false)
+  })
+
+  it('collectFixPromptsByRubric scopes prompts to one rubric', () => {
+    const result = collectFixPromptsByRubric(
+      [
+        flag({ id: 'a', rubric: 'MESSAGE', problem: 'Msg', agentPrompt: 'Fix msg' }),
+        flag({ id: 'b', rubric: 'EXPERIENCE', problem: 'Exp', agentPrompt: 'Fix exp' }),
+      ],
+      'MESSAGE'
+    )
+    assert.match(result, /Message: Fix 1: Msg/)
+    assert.equal(result.includes('Exp'), false)
   })
 
   it('uses priority before rubric grade in ranked fix lists', () => {
