@@ -528,7 +528,6 @@ model ShareLink {
   updatedAt    DateTime  @updatedAt
 
   @@index([auditId])
-  @@index([token])
   @@map("share_links")
 }
 
