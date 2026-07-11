@@ -20,6 +20,27 @@ function hasSessionCookie(request: NextRequest): boolean {
     .some((c) => c.name.endsWith('better-auth.session_token') && c.value.length > 0)
 }
 
+function buildCsp(): string {
+  const isDev = process.env.NODE_ENV !== 'production'
+  const csp = [
+    "default-src 'self'",
+    // 'unsafe-eval' is required by GTM in dev but should NOT be in production
+    // 'unsafe-inline' is needed for inline styles from Tailwind/next-themes
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' blob: data: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    // ws://localhost:* only needed for dev hot-reload WebSocket
+    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com${isDev ? ' ws://localhost:*' : ''}`,
+    "frame-src https://*.stripe.com https://js.stripe.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ')
+
+  return csp
+}
+
 export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   const pathname = request.nextUrl.pathname + request.nextUrl.search
@@ -29,20 +50,7 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   })
 
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' blob: data: https:",
-    "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com ws://localhost:*",
-    "frame-src https://*.stripe.com https://js.stripe.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join('; ')
-
-  response.headers.set('Content-Security-Policy', csp)
+  response.headers.set('Content-Security-Policy', buildCsp())
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -63,6 +71,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Skip API routes, static assets, and images
+    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

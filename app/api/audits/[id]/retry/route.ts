@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canAccessAudit } from '@/lib/audit/access'
@@ -30,7 +30,7 @@ export async function POST(
     }
 
     const result = await retryAudit(id)
-    return Response.json(result)
+    return NextResponse.json(result)
   } catch (err) {
     return handleRouteError(err)
   }

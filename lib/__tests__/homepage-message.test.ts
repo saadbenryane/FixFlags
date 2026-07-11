@@ -4,6 +4,7 @@ import {
   AI_TOOLS,
   BRAND,
   CASE_STUDIES_SECTION,
+  CHANGELOG_ENTRIES,
   DIFFERENTIATION,
   FINAL_CTA,
   HERO,
@@ -26,6 +27,14 @@ const BANNED_LANDING_PHRASES = [
   /ship tonight/i,
   /fix my live site/i,
   /start in 60 seconds/i,
+  /\bunlock\b/i,
+  /\b10x\b/i,
+  /game-changing/i,
+  /world-class/i,
+  /comprehensive/i,
+  /robust/i,
+  /\bleverage\b/i,
+  /holistic/i,
 ] as const
 
 function collectStrings(value: unknown, out: string[] = []): string[] {
@@ -234,6 +243,33 @@ describe('homepage message guardrails', () => {
     assert.ok(LANDING_PAGE.logoCloud.disclaimer.length > 0)
     assert.ok(!LANDING_PAGE.testimonials.disclaimer.includes('2,000'))
     assert.ok(LANDING_PAGE.testimonials.quotes.length >= 4)
+  })
+
+  it('CHANGELOG_ENTRIES are user-facing: no internal terminology, no implementation details', () => {
+    const internalTerms = [
+      /\bscan\b/i,
+      /\bmodule\b/i,
+      /\bendpoint\b/i,
+      /\brefactor\b/i,
+      /\bmigration\b/i,
+      /\bPR\b/i,
+      /\bcommit\b/i,
+      /\bdeploy\b/i,
+      /\bpipeline\b/i,
+    ]
+    for (const entry of CHANGELOG_ENTRIES) {
+      for (const item of entry.items) {
+        for (const pattern of internalTerms) {
+          assert.ok(!pattern.test(item), `Internal term (${pattern}) in changelog item: ${item}`)
+        }
+      }
+      assert.ok(entry.items.length >= 3, `Changelog entry has too few items: ${entry.title}`)
+    }
+  })
+
+  it('social proof disclaimer avoids invented member counts', () => {
+    // Should not contain specific numbers like "2,000+ users" or "500 companies"
+    assert.ok(!/[\d,]+(?:\+|\s*(?:users?|customers?|companies?|teams?))/i.test(LANDING_PAGE.testimonials.disclaimer))
   })
 
   it('samples SEO references LaunchPad demo, not homepage dogfood', () => {

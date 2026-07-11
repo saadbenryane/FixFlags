@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AlertCircle, FileText, Loader2, Search, ExternalLink, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { TOOLS } from '@/lib/marketing/copy'
 
 interface PlaceholderMatch {
   type: 'placeholder' | 'template-copy' | 'ai-builder' | 'template-token' | 'social-proof'
@@ -28,6 +30,14 @@ const TYPE_LABELS: Record<string, { label: string; color: 'destructive' | 'secon
 
 function severityClass(type: string): string {
   return type === 'placeholder' || type === 'template-token' ? 'border-l-destructive' : 'border-l-muted-foreground'
+}
+
+export function generateMetadata() {
+  const seo = TOOLS.placeholderDetector
+  return {
+    title: `${seo.heading} – FixFlags`,
+    description: seo.subhead,
+  }
 }
 
 export default function PlaceholderDetectorPage() {
@@ -70,17 +80,16 @@ export default function PlaceholderDetectorPage() {
     }
   }
 
+  const copy = TOOLS.placeholderDetector
+
   return (
     <>
       <Section spacing="marketing">
         <Container variant="narrow" className="space-y-8">
           <div className="space-y-4 text-center">
-            <Badge variant="secondary" className="mx-auto w-fit">Free Tool</Badge>
-            <Heading as="h1">Placeholder Copy Detector</Heading>
-            <p className="text-base leading-relaxed text-muted-foreground">
-              Scan any URL for Lorem ipsum, TODO markers, AI-builder template artifacts,
-              and unreplaced tokens. One less thing to miss before you share the link.
-            </p>
+            <Badge variant="secondary" className="mx-auto w-fit">{copy.badge}</Badge>
+            <Heading as="h1">{copy.heading}</Heading>
+            <p className="text-base leading-relaxed text-muted-foreground">{copy.subhead}</p>
           </div>
 
           <Card variant="strong" className="p-6">
@@ -99,7 +108,7 @@ export default function PlaceholderDetectorPage() {
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Scanning...</>
                 ) : (
-                  <><Search className="h-4 w-4" /> Scan page</>
+                  <><Search className="h-4 w-4" /> {copy.ctaScan}</>
                 )}
               </Button>
             </form>
@@ -115,10 +124,8 @@ export default function PlaceholderDetectorPage() {
               <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
                 <FileText className="h-6 w-6" aria-hidden />
               </div>
-              <h2 className="font-semibold">No placeholder content found</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                This page looks clean. No template artifacts, placeholder copy, or unreplaced tokens detected.
-              </p>
+              <h2 className="font-semibold">{copy.noIssuesHeading}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{copy.noIssuesSubhead}</p>
             </Card>
           )}
 
@@ -133,7 +140,7 @@ export default function PlaceholderDetectorPage() {
                 {matches.map((match, i) => {
                   const typeInfo = TYPE_LABELS[match.type] ?? { label: match.type, color: 'secondary' as const }
                   return (
-                    <Card key={i} variant="strong" className={`border-l-4 ${severityClass(match.type)} p-4`}>
+                    <Card key={i} variant="strong" className={`${severityClass(match.type)} p-4`}>
                       <div className="mb-2 flex items-center gap-2">
                         <Badge variant={typeInfo.color} size="sm">{typeInfo.label}</Badge>
                         <span className="text-sm font-medium">{match.label}</span>
@@ -149,10 +156,10 @@ export default function PlaceholderDetectorPage() {
 
               <div className="flex justify-center pt-2">
                 <Button variant="outline" asChild>
-                  <a href={`/report?url=${encodeURIComponent(url.startsWith('http') ? url : `https://${url}`)}`}>
-                    Run full audit on this URL
+                  <Link href={`/report?url=${encodeURIComponent(url.startsWith('http') ? url : `https://${url}`)}`}>
+                    {TOOLS.shared.ctaAudit}
                     <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden />
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -160,10 +167,8 @@ export default function PlaceholderDetectorPage() {
 
           <Card variant="strong" className="p-6">
             <div className="space-y-3">
-              <h2 className="font-semibold">Run a full audit</h2>
-              <p className="text-sm text-muted-foreground">
-                Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.
-              </p>
+              <h2 className="font-semibold">{TOOLS.shared.auditHeading}</h2>
+              <p className="text-sm text-muted-foreground">{TOOLS.shared.auditSubhead}</p>
               <AuditInput source="tool_page" idSuffix="-placeholder-detector" />
             </div>
           </Card>

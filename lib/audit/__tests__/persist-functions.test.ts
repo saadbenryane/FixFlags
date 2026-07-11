@@ -165,6 +165,22 @@ describe('persistDeterministicFlags', () => {
     const exp = createCalls.find((c: { name: string }) => c.name === 'EXPERIENCE')
     expect(exp!.score).toBeNull()
   })
+
+  it('persists duplicate flags as separate rows with identical fingerprints (dedup is upstream)', async () => {
+    // The persist layer does not dedupe - deduplicateTriageFlags handles that
+    // before persist. Two identical deterministic flags therefore produce two
+    // rows sharing one fingerprint (Flag.fingerprint is indexed, not unique).
+    const dup = makeDet({ checkId: 'title-missing', problem: 'Title is missing' })
+
+    await persistDeterministicFlags('audit-1', [dup, { ...dup }], baseRubricScores())
+
+    expect(mockTx.flag.createMany).toHaveBeenCalledTimes(1)
+    const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as {
+      data: Array<{ fingerprint: string }>
+    }
+    expect(flagData.data).toHaveLength(2)
+    expect(flagData.data[0].fingerprint).toBe(flagData.data[1].fingerprint)
+  })
 })
 
 // ── persistTriageResults ────────────────────────────────────────
@@ -252,6 +268,26 @@ describe('persistTriageResults', () => {
     expect(data.data.status).toBe('FINALIZING')
     expect(data.data.progress).toBe(95)
   })
+
+  it('handles a large volume of deterministic + AI flags in one insert', async () => {
+    const manyDet: DeterministicFlag[] = []
+    for (let i = 0; i < 100; i++) {
+      manyDet.push(makeDet({ checkId: `check-${i}`, problem: `Problem ${i}` }))
+    }
+    const triageOutput = makeTriageOutput({
+      newFlags: [
+        { rubric: 'MESSAGE' as const, impactTag: 'CONVERSION' as const, severity: 'IMPORTANT' as const, problem: 'AI flag A', confidence: 0.7, pageUrl: null },
+        { rubric: 'EXPERIENCE' as const, impactTag: 'FRICTION' as const, severity: 'POLISH' as const, problem: 'AI flag B', confidence: 0.6, pageUrl: null },
+        { rubric: 'REACH' as const, impactTag: 'SEO' as const, severity: 'IMPORTANT' as const, problem: 'AI flag C', confidence: 0.8, pageUrl: null },
+      ],
+    })
+
+    await persistTriageResults('audit-1', triageOutput, manyDet, baseRubricScores())
+
+    expect(mockTx.flag.createMany).toHaveBeenCalledTimes(1)
+    const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as { data: unknown[] }
+    expect(flagData.data).toHaveLength(103)
+  })
 })
 
 // ── mergePrescriptionResults ────────────────────────────────────
@@ -332,6 +368,56 @@ describe('mergePrescriptionResults', () => {
     expect(mockTx.audit.update).toHaveBeenCalledWith({
       where: { id: 'audit-1' },
       data: { status: 'FINALIZING', progress: 95 },
+    })
+  })
+
+  it('discards a prescription with blank evidence instead of overwriting the flag', async () => {
+    // Whitespace-only evidence passes the schema's `.min(1)` but must not blank
+    // out a flag: the item is discarded, and the valid one still applies.
+    await mergePrescriptionResults('audit-1', {
+      flagPrescriptions: [
+        { flagKey: 'title-missing', evidence: '   ', whyItMatters: 'x', fix: 'y', verificationRule: 'z' },
+        { flagKey: 'fp-2', evidence: 'Real evidence', whyItMatters: 'Real impact', fix: 'Real fix', verificationRule: 'Verify it' },
+      ],
+      rubricPrescriptions: [],
+    })
+
+    expect(mockTx.flag.update).toHaveBeenCalledTimes(1)
+    expect(mockTx.flag.update).toHaveBeenCalledWith({
+      where: { id: 'flag-2' },
+      data: expect.objectContaining({ evidence: 'Real evidence' }),
+    })
+  })
+
+  it('flows tool-specific fix prompts and verification rule through to the flag row', async () => {
+    await mergePrescriptionResults('audit-1', {
+      flagPrescriptions: [
+        {
+          flagKey: 'title-missing',
+          evidence: 'The <title> tag is empty',
+          whyItMatters: 'Search snippets show the URL instead',
+          fix: 'Add a descriptive <title>',
+          agentPrompt: 'agent: set the title',
+          cursorPrompt: 'cursor: set the title',
+          claudePrompt: 'claude: set the title',
+          lovablePrompt: 'lovable: set the title',
+          boltPrompt: 'bolt: set the title',
+          verificationRule: 'Confirm the tab shows a real title',
+        },
+      ],
+      rubricPrescriptions: [],
+    })
+
+    expect(mockTx.flag.update).toHaveBeenCalledWith({
+      where: { id: 'flag-1' },
+      data: expect.objectContaining({
+        agentPrompt: 'agent: set the title',
+        cursorPrompt: 'cursor: set the title',
+        claudePrompt: 'claude: set the title',
+        lovablePrompt: 'lovable: set the title',
+        boltPrompt: 'bolt: set the title',
+        verificationRule: 'Confirm the tab shows a real title',
+      }),
     })
   })
 })

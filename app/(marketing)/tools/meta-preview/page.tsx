@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ExternalLink, ImageIcon, Loader2, Search, AlertCircle, CheckCircle2, XCircle } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { TOOLS } from '@/lib/marketing/copy'
 
 interface MetaPreviewResult {
   url: string
@@ -83,6 +85,14 @@ function SocialPreview({ result }: { result: MetaPreviewResult }) {
   )
 }
 
+export function generateMetadata() {
+  const seo = TOOLS.metaPreview
+  return {
+    title: `${seo.heading} – FixFlags`,
+    description: seo.subhead,
+  }
+}
+
 export default function MetaPreviewPage() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -120,17 +130,16 @@ export default function MetaPreviewPage() {
     }
   }
 
+  const copy = TOOLS.metaPreview
+
   return (
     <>
       <Section spacing="marketing">
         <Container variant="narrow" className="space-y-8">
           <div className="space-y-4 text-center">
-            <Badge variant="secondary" className="mx-auto w-fit">Free Tool</Badge>
-            <Heading as="h1">Meta Preview Tool</Heading>
-            <p className="text-base leading-relaxed text-muted-foreground">
-              See how your page looks when shared on Slack, X, LinkedIn, and Discord.
-              Enter a URL to check its og:image, title, and description tags.
-            </p>
+            <Badge variant="secondary" className="mx-auto w-fit">{copy.badge}</Badge>
+            <Heading as="h1">{copy.heading}</Heading>
+            <p className="text-base leading-relaxed text-muted-foreground">{copy.subhead}</p>
           </div>
 
           <Card variant="strong" className="p-6">
@@ -149,7 +158,7 @@ export default function MetaPreviewPage() {
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Checking...</>
                 ) : (
-                  <><Search className="h-4 w-4" /> Check preview</>
+                  <><Search className="h-4 w-4" /> {copy.ctaCheck}</>
                 )}
               </Button>
             </form>
@@ -164,34 +173,34 @@ export default function MetaPreviewPage() {
             <div className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <Card variant="strong" className="p-5">
-                  <h2 className="mb-4 text-sm font-semibold text-muted-foreground">Social Preview</h2>
+                  <h2 className="mb-4 text-sm font-semibold text-muted-foreground">{copy.metaTagsHeading.replace('Meta Tags', 'Social Preview')}</h2>
                   <SocialPreview result={result} />
                 </Card>
 
                 <Card variant="strong" className="p-5">
-                  <h2 className="mb-4 text-sm font-semibold text-muted-foreground">Meta Tags</h2>
+                  <h2 className="mb-4 text-sm font-semibold text-muted-foreground">{copy.metaTagsHeading}</h2>
                   <div className="space-y-3">
-                    <MetaField label="Title" value={result.title} />
-                    <MetaField label="Description" value={result.description} />
-                    <MetaField label="og:title" value={result.ogTitle} />
-                    <MetaField label="og:description" value={result.ogDescription} />
-                    <MetaField label="og:image" value={result.ogImage} missingLabel="Missing" />
-                    <MetaField label="twitter:card" value={result.twitterCard} />
-                    <MetaField label="twitter:image" value={result.twitterImage} />
-                    <MetaField label="Favicon" value={result.favicon} />
+                    <MetaField label={copy.metaFieldLabels.title} value={result.title} />
+                    <MetaField label={copy.metaFieldLabels.description} value={result.description} />
+                    <MetaField label={copy.metaFieldLabels.ogTitle} value={result.ogTitle} />
+                    <MetaField label={copy.metaFieldLabels.ogDescription} value={result.ogDescription} />
+                    <MetaField label={copy.metaFieldLabels.ogImage} value={result.ogImage} missingLabel={copy.missing} />
+                    <MetaField label={copy.metaFieldLabels.twitterCard} value={result.twitterCard} />
+                    <MetaField label={copy.metaFieldLabels.twitterImage} value={result.twitterImage} />
+                    <MetaField label={copy.metaFieldLabels.favicon} value={result.favicon} />
                     <div className="flex items-center gap-4 pt-1">
                       <span className="flex items-center gap-1.5 text-sm">
                         {result.hasCanonical ? (
-                          <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Canonical</>
+                          <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {copy.canonicalPresent}</>
                         ) : (
-                          <><XCircle className="h-3.5 w-3.5 text-destructive" /> No canonical</>
+                          <><XCircle className="h-3.5 w-3.5 text-destructive" /> {copy.canonicalMissing}</>
                         )}
                       </span>
                       <span className="flex items-center gap-1.5 text-sm">
                         {result.hasRobots ? (
-                          <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Robots meta</>
+                          <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> {copy.robotsPresent}</>
                         ) : (
-                          <><XCircle className="h-3.5 w-3.5 text-muted-foreground" /> No robots meta</>
+                          <><XCircle className="h-3.5 w-3.5 text-muted-foreground" /> {copy.robotsMissing}</>
                         )}
                       </span>
                     </div>
@@ -201,10 +210,10 @@ export default function MetaPreviewPage() {
 
               <div className="flex justify-center">
                 <Button variant="outline" asChild>
-                  <a href={`/report?url=${encodeURIComponent(result.url)}`}>
-                    Run full audit on this URL
+                  <Link href={`/report?url=${encodeURIComponent(result.url)}`}>
+                    {copy.ctaAudit}
                     <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden />
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -212,10 +221,8 @@ export default function MetaPreviewPage() {
 
           <Card variant="strong" className="p-6">
             <div className="space-y-3">
-              <h2 className="font-semibold">Run a full audit</h2>
-              <p className="text-sm text-muted-foreground">
-                Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.
-              </p>
+              <h2 className="font-semibold">{copy.auditHeading}</h2>
+              <p className="text-sm text-muted-foreground">{copy.auditSubhead}</p>
               <AuditInput source="tool_page" idSuffix="-meta-preview" />
             </div>
           </Card>

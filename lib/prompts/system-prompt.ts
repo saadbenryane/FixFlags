@@ -1,4 +1,5 @@
 import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
+import { TRIAGE_TEXT, PRESCRIPTION_TEXT } from '@/lib/audit/page-text-limits'
 
 /**
  * Phase-1 triage prompt. Diagnosis only - no fix prompts, no evidence briefs.
@@ -47,8 +48,8 @@ This is a FAST TRIAGE. Your only job right now is the diagnosis: an honest score
 
 URL: ${context.url}
 
-Page text (first 2500 chars):
-${context.pageText.slice(0, 2500)}
+Page text (first ${TRIAGE_TEXT} chars):
+${context.pageText.slice(0, TRIAGE_TEXT)}
 
 Technical metadata:
 - Title: ${context.metadata.title || 'MISSING'}
@@ -178,9 +179,9 @@ URL: ${context.url}
 Overall score: ${context.score}/100
 Verdict: ${context.verdict}
 
-Page text (first 5000 chars):
-${context.pageText.slice(0, 5000)}
-${context.pageText.length > 5000 ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
+Page text (first ${PRESCRIPTION_TEXT} chars):
+${context.pageText.slice(0, PRESCRIPTION_TEXT)}
+${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
 
 Metadata:
 - Title: ${context.metadata.title || 'MISSING'}

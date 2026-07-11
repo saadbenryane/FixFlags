@@ -1,117 +1,153 @@
-# Project conventions
+# FixFlags — Agent Operating System
 
-## Git workflow
+**Canonical entry point for AI agents.** Read this first. Tool-specific files only redirect here.
 
-**Always work on `main`.** This is a solo development setup — there is no need for
-feature branches, and we keep only one branch (`main`) locally and on the remote.
+## Project
 
-During development, push work **directly to `origin/main`** so it deploys to the live
-environment for testing. Do **not** create feature branches or open pull requests unless
-explicitly asked. Production (Railway) deploys from `main`, so anything that needs to be
-tested on the deployed app must land on `main`.
+**FixFlags** — The QA layer for AI-built products. Finish what your AI started: paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
 
-## Landing page
+- **Stage:** Pre-revenue / testing. Prioritizing distribution over depth.
+- **Domain:** fixflags.com | **Pricing:** Free (3 lifetime), Pro $29/mo (25/mo), Agency $99/mo (100/mo)
+- **Status:** 888 tests passing, 30/31 check modules live, pipeline v2.3.0
 
-Homepage section order (canonical):
+## Key directories and authoritative files
 
-1. Hero (stable headline/subhead; one interactive report preview)
-2. Logo cloud (compact bridge below hero report)
-3. Three dimensions (Message, Experience, Reach — checklists + example findings)
-4. Fix loop (scan → flag → fix → verify cards with arrows)
-5. Example feedback (honest disclaimer; no unverifiable counts)
-6. Final CTA (URL input repeated; outcome-led copy from `FINAL_CTA`)
+| Path | What |
+|------|------|
+| `app/` | Next.js App Router (marketing, auth, app, audit, admin routes) |
+| `components/` | React components (ui/, audit/, marketing/, layout/, etc.) |
+| `lib/` | Core logic (audit engine, queue, billing, graph, prompts, MCP) |
+| `lib/marketing/copy.ts` | **Single source of truth** for all marketing copy |
+| `lib/design/tokens.css` | **Canonical design tokens** (colors, shadows, radii, type scale) |
+| `lib/audit/` | Audit pipeline (runner, checks, scoring, flow, judge, persist) |
+| `lib/queue/` | BullMQ queue (client, worker, inline-worker, recovery) |
+| `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only |
+| `lib/billing/` | Subscription limits, credits, Stripe integration |
+| `lib/prompts/system-prompt.ts` | AI triage + prescription prompts |
+| `prisma/schema.prisma` | Database schema (34 models) |
+| `scripts/` | CLI scripts (demo audits, backfills, guards) |
+| `worker/` | Standalone audit worker |
+| `docs/` | Strategy, positioning, voice, growth docs |
+| `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) |
+| `docs/voice-and-copy.md` | Voice & copy guidelines (276 lines) |
+| `docs/brand-positioning.md` | Brand identity and positioning |
+| `docs/offering.md` | Product scope and philosophy |
+| `test-strategy.md` | Testing strategy with readiness ratings |
+| `docs/scan-catalog.md` | All check modules catalog |
+| `docs/scan-roadmap.md` | Scan module roadmap |
 
-Rules:
+## Verified commands
 
-- Do not duplicate the report explorer below the hero
-- No How-to-Start toggle, no evidence screenshots section
-- Hero copy changes only when explicitly requested
-- Marketing strings live in `lib/marketing/copy.ts`; guardrails in `lib/__tests__/homepage-message.test.ts`
-- Social proof must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts
-- Avoid banned marketing phrases: "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds"
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Next.js + inline worker (single command) |
+| `npm run dev:all` | Next.js + separate worker process |
+| `npm run setup` | Docker up + generate + migrate + seed |
+| `npm run typecheck` | `tsc --noEmit --incremental false` |
+| `npm run lint` | ESLint with core-web-vitals + a11y + import |
+| `npm run test:unit` | Vitest (lib/**/*.test.ts, node env, 30s timeout) |
+| `npm run brand:hex-guard` | Brand color compliance |
+| `npm run ui:drift-guard` | UI drift detection |
+| `npm run seo:guard` | SEO compliance |
+| `npm run build` | Production Next.js build |
+| `npm run worker:build` | Worker TypeScript build |
+| `npm run verify` | All checks: validate + migrate status + drift + typecheck + lint + guards + test + build |
+| `npm run demo:audit:offline` | Demo fixture audit (CLI, no server) |
+| `npm run demo:audit:flow` | Flow audit on demo fixture |
+| `npm run db:migrate` | Prisma migrate dev |
+| `npm run db:deploy` | Prisma migrate deploy |
+| `npm run db:seed` | Seed local admin |
+| `npm run db:studio` | Prisma Studio |
 
-## Changelog
+## Critical invariants
 
-The public changelog (`lib/marketing/copy.ts` → `CHANGELOG_ENTRIES`) is for **users**, not internal notes.
+### Product
+- **Core loop:** Flag → Fix → Re-check. Every feature must serve this loop.
+- **Re-checks are free and unlimited.** Never gate them.
+- **Zero new features until 100 paying users** — except scan depth in scan-roadmap.md Phase 1.
+- **Three rubrics only:** Message, Experience, Reach.
+- **Marketing copy** lives in `lib/marketing/copy.ts` only — never hardcoded in components.
+- **Banned marketing phrases:** "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds", unlock, 10x, game-changing, world-class, comprehensive, robust, leverage, holistic.
+- **No em dashes** anywhere in copy. Use periods, commas, or colons.
+- **Homepage section order:** Hero → Logo cloud → Three dimensions → Fix loop → Example feedback → Final CTA (no duplication of report explorer below hero). Hero copy changes only when explicitly requested.
+- **Changelog** (`CHANGELOG_ENTRIES` in copy.ts) is user-facing only: plain language, outcomes and benefits, never implementation details or internal terminology.
+- **Social proof** must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts.
 
-### Do
-- Say what the user gets ("Sign up and create your account to start testing")
-- Announce betas, new features, and improvements in plain language
-- Invite feedback ("We'd love your feedback — use the chat button")
-- Describe outcomes and benefits
+### Architecture
+- **Pipeline stages:** QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
+- **22 check modules** run via `checks/index.ts` barrel; `slow-replay.ts` imported directly by `deterministic-audit.ts` (side-channel).
+- **AI two-phase:** Triage (cheap, anonymous, 2500 chars pageText) → Prescription (post-signup, 500 chars pageText from stored metadata).
+- **Tech stack** for prescription comes from `auditPage.performanceData.detectedTech`, not `htmlMetadata`.
+- **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
+- **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
+- **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
+- **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. "Copy all N fix prompts" uses `collectAllFixPrompts()` with `=== Fix N: Problem ===` separators.
+- **Report UI — MiniNav:** `showFix` prop exists but is **always false** (old standalone fix section removed iteration 4). Fix prompt tab inserted after Flags. Do not reintroduce.
+- **Dead code to avoid:** `topFixPrompt && !explorerModel` is a logically impossible condition; never use `Boolean(topFixPrompt && !explorerModel)` for `showFix`.
+- **If increasing AI pageText**, change **both**: `trimMetadataForStorage` in `lib/audit/metadata.ts` (storage limit) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
+- **Dedup rules** live in `lib/audit/checks/index.ts` `DEDUP_RULES` array. Each rule has a `keep` and a `suppress` checkId pattern.
+- **impactTag** is set on all deterministic checks.
 
-### Don't
-- Explain how something was built or mention implementation details
-- Use internal terminology or backend concepts
-- List technical changes (e.g. "Trust checks run as scan modules" or "Updated MCP tools")
+### Design
+- Use semantic CSS tokens (`bg-card`, `text-brand`, `shadow-card`, `rounded-card`), never raw hex except `grade.*`
+- **Stack:** Tailwind + shadcn/ui (Radix primitives). Fraunces serif display, Satoshi sans UI, IBM Plex Mono labels.
+- **Cards:** `border-0 shadow-card glass-surface`. Pill controls (`rounded-full`). Concentric radii (inner = outer − padding).
+- See `lib/design/tokens.css`, `tailwind.config.ts`, `.cursor/rules/fixflags-ui.mdc`, `DESIGN.md`
 
-## Report UI conventions
+### Voice
+- Sharp senior reviewer who has shipped messy launches. Clear before clever. Calm before loud. Specific before impressive.
+- Short sentences. Active voice. No filler adverbs (really, just, literally, actually).
+- See `docs/voice-and-copy.md` and `SOUL.md`
 
-### Top Priorities section
+### Security
+- **Edge middleware** (`proxy.ts`) sets CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy. No Prisma/Node imports on edge.
+- `/admin/` and `/settings/` gated by session cookie presence (server-side validation follows).
+- Cron endpoints guarded by `CRON_SECRET` bearer token.
+- GitHub tokens encrypted at rest (AES-256-GCM via `TOKEN_ENCRYPTION_KEY`).
+- API keys hashed, prefixed `ff_live_`.
+- Stripe webhook signature verified.
+- See `SECURITY.md` for full details.
 
-- Renders between the verdict and the flags explorer, showing the top 3 flags
-  by priority with compact fix prompts and individual copy buttons.
-- Condition: `!isSample && explorerModel && hasFixPrompts && showPrescription`
-- Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)` for ordering
-- Each card shows: severity badge, rubric label, problem text, `FixPromptBlock`
-  with `variant="compact"` and `nested`
-- "Copy all N fix prompts" button in the section header calls
-  `collectAllFixPrompts()` — adds `=== Fix N: Problem ===` separators
+## Parallel-agent rules
 
-### Mini nav
+1. **Read `.agents/BOARD.md` before any substantial write task.**
+2. **Claim tasks** by adding a board entry before starting. One agent owns a write scope at a time.
+3. **Read-only research** (grep, search, read) may run in parallel without claiming.
+4. **Use isolated branches and worktrees** for concurrent write-heavy tasks:
+   - Branch: `agent/<task-id>-<short-description>`
+   - Worktree: `../qewos-<task-id>/`
+5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work.**
+6. **Stop and document** ambiguous ownership or conflicting state.
+7. **Create a handoff** (`/Users/saadbenryane/Code/qewos/.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
+8. **Solo operation on `main`** (the primary workflow) is fine for single-agent sessions. The parallel rules above are for multi-agent scenarios.
 
-- `ReportMiniNav` accepts `showFix` prop but it is **always false** since the
-  old standalone fix section was removed in iteration 4. Do not reintroduce it.
-- Optional sections (Overview, Previews, Flow test, Launch) are inserted at
-  position 1 in the nav order; the Fix prompt tab is inserted after Flags.
+## Verification and definition of done
 
-### Dead code to avoid
+Before claiming completion:
+- [ ] **Inspect** the relevant code, UI, docs, git state, and `.agents/BOARD.md`
+- [ ] **Understand** the user outcome and product intent, not just the literal ticket
+- [ ] **Run** `npm run typecheck` and `npm run lint` — zero errors
+- [ ] **Run** `npm run test:unit` — all passing (888+)
+- [ ] **Run** relevant guards (`brand:hex-guard`, `ui:drift-guard`, `seo:guard`)
+- [ ] **Verify** behavior by running the actual code path, not just assuming passing tests means correct behavior
+- [ ] **Check** edge cases, responsive states, loading/empty/error states
+- [ ] **Confirm** no secrets written, no fake data, no hardcoded answers
+- [ ] **Report** uncertainty and incomplete verification honestly
 
-- `topFixPrompt && !explorerModel` — logically impossible condition, don't use
-- `Boolean(topFixPrompt && !explorerModel)` for `showFix` — always false
+## Deeper docs
 
-## AI prescription data flow
-
-Key constraint: pageText available to the AI differs between triage and
-prescription:
-
-| Phase | Source | Max pageText |
-|-------|--------|-------------|
-| Triage | Freshly parsed HTML (in-memory) | 2500 chars (from 8000-char source) |
-| Prescription | Stored `audit.htmlMetadata` (DB) | 500 chars (from 5000-char stored) |
-
-If you need to increase AI pageText, change **both**:
-1. `trimMetadataForStorage` in `lib/audit/metadata.ts` (storage limit)
-2. `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice)
-
-Tech stack for prescription is extracted from `auditPage.performanceData`
-(`detectedTech` array), not from `htmlMetadata`. It flows through
-`PrescriptionContext.techStack` → prompt.
-
-## Check module architecture
-
-- 22 check modules run through `checks/index.ts` barrel via `runAllChecks()`
-- `slow-replay.ts` is a side-channel: imported directly by
-  `deterministic-audit.ts`, NOT through the barrel. It requires Puppeteer
-  probe results.
-- Dedup rules live in `lib/audit/checks/index.ts` `DEDUP_RULES` array.
-  Each rule has a `keep` and a `suppress` checkId pattern.
-- `impactTag` is set on all deterministic checks — verified in iteration 2.
-
-## Organic growth / SEO
-
-Growth and SEO documentation lives at `docs/growth/` — start with
-`docs/growth/README.md`. It's the permanent memory of the organic growth
-system: architecture, roadmap, decisions, experiments, and weekly reviews.
-
-Rules that apply project-wide, not just to the growth workspace:
-
-- Any public page that states a statistic, frequency, or benchmark must
-  derive it from `lib/graph/queries.ts` (which enforces a minimum sample
-  size before returning data) — never hardcode or estimate a number.
-- The knowledge graph (`graph_*` Prisma models, `lib/graph/`) is
-  internal-only. Public pages read derived data through
-  `lib/graph/queries.ts`, never by querying `graph_*` tables directly.
-- Before building a new public growth page, read
-  `docs/growth/architecture.md` §5 (Boundaries and invariants).
-
+| File | Contents |
+|------|----------|
+| `PRODUCT.md` | Users, workflows, capabilities, priorities |
+| `SOUL.md` | Identity, personality, voice, product principles |
+| `DESIGN.md` | Visual and interaction standards |
+| `ARCHITECTURE.md` | System architecture, data flows, modules |
+| `DEVELOPMENT.md` | Setup, commands, debugging, deployment |
+| `QUALITY.md` | Verification matrix, risks, required checks |
+| `SECURITY.md` | Security invariants, trust boundaries |
+| `DECISIONS.md` | Durable decisions with rationale |
+| `ROADMAP.md` | Now / Next / Later / Not planned |
+| `.agents/README.md` | Multi-agent coordination system |
+| `.agents/BOARD.md` | Active task board |
+| `.agents/learnings/` | Validated project learnings |
+| `.agents/evals/` | Evaluation suites |

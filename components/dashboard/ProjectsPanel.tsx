@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 interface ProjectRow {
   id: string
@@ -28,6 +29,7 @@ interface Props {
 
 export function ProjectsPanel({ plan }: Props) {
   const limit = projectLimitForPlan(plan)
+  const { confirm, confirmDialog } = useConfirm()
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -89,7 +91,13 @@ export function ProjectsPanel({ plan }: Props) {
   }
 
   async function handleDelete(project: ProjectRow) {
-    if (!window.confirm(`Delete “${project.name}”? Its audits will remain available.`)) return
+    const ok = await confirm({
+      title: `Delete "${project.name}"?`,
+      description: 'Its audits will remain available.',
+      confirmLabel: 'Delete project',
+      destructive: true,
+    })
+    if (!ok) return
     setDeletingId(project.id)
     try {
       const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
@@ -130,6 +138,7 @@ export function ProjectsPanel({ plan }: Props) {
 
   return (
     <div className="space-y-4">
+      {confirmDialog}
       <div className="flex items-center justify-between gap-4">
         <div>
         <SectionTitle>Projects</SectionTitle>

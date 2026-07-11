@@ -32,6 +32,64 @@ export const OUTPUT_LABELS = {
   nextStep: 'Paste into editor → run → monitor.',
 } as const
 
+export const TOOLS = {
+  metaPreview: {
+    badge: 'Free Tool',
+    heading: 'Meta Preview Tool',
+    subhead:
+      'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
+    ctaCheck: 'Check preview',
+    ctaAudit: 'Run full audit on this URL',
+    metaTagsHeading: 'Meta Tags',
+    metaFieldLabels: {
+      title: 'Title',
+      description: 'Description',
+      ogTitle: 'og:title',
+      ogDescription: 'og:description',
+      ogImage: 'og:image',
+      twitterCard: 'twitter:card',
+      twitterImage: 'twitter:image',
+      favicon: 'Favicon',
+    },
+    missing: 'Missing',
+    canonicalPresent: 'Canonical',
+    canonicalMissing: 'No canonical',
+    robotsPresent: 'Robots meta',
+    robotsMissing: 'No robots meta',
+    auditHeading: 'Run a full audit',
+    auditSubhead:
+      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
+  },
+  placeholderDetector: {
+    badge: 'Free Tool',
+    heading: 'Placeholder Copy Detector',
+    subhead:
+      'Scan any URL for Lorem ipsum, TODO markers, AI-builder template artifacts, and unreplaced tokens. One less thing to miss before you share the link.',
+    ctaScan: 'Scan page',
+    noIssuesIconAria: 'Clean page',
+    noIssuesHeading: 'No placeholder content found',
+    noIssuesSubhead:
+      'This page looks clean. No template artifacts, placeholder copy, or unreplaced tokens detected.',
+    issuesFound: '{count} issue{plural} found',
+    typeLabels: {
+      placeholder: 'Placeholder',
+      'template-copy': 'Template Copy',
+      'ai-builder': 'AI Builder Artifact',
+      'template-token': 'Template Token',
+      'social-proof': 'Social Proof Issue',
+    },
+    auditHeading: 'Run a full audit',
+    auditSubhead:
+      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
+  },
+  shared: {
+    auditHeading: 'Run a full audit',
+    auditSubhead:
+      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
+    ctaAudit: 'Run full audit on this URL',
+  },
+} as const
+
 export const HERO = {
   badge: 'Finish what your AI started.',
   headline: 'Finish what your AI started.',
@@ -504,7 +562,7 @@ export const PRICING_TEASER = {
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: 'Run an audit, copy fix prompts, and re-scan to watch your score climb. Create a free account to save history and unlock fix prompts.',
+  body: 'Run an audit, copy fix prompts, and re-scan to watch your score climb. Create a free account to save history and get fix prompts.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -516,7 +574,7 @@ export const CHANGELOG_ENTRIES = [
       'Run free checks on any live or preview URL',
       'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
       'Fix-ready prompts for Cursor, Claude Code, Lovable, Bolt, and Windsurf',
-      'Track scan history and MCP usage from your dashboard',
+      'View your report history and AI tool usage from your dashboard',
     ],
   },
 ] as const

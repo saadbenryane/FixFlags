@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Surface } from '@/components/ui/surface'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Github, Trash2, Loader2, ScanSearch } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,6 +12,8 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { useConfirm } from '@/components/ui/confirm-dialog'
+import { SettingsSkeleton } from '@/components/settings/settings-skeleton'
 
 interface GithubRepo {
   fullName: string
@@ -56,6 +57,7 @@ export default function IntegrationsPage() {
 
 function IntegrationsPageContent() {
   const { user, isLoading: meLoading } = useMe()
+  const { confirm, confirmDialog } = useConfirm()
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -173,7 +175,13 @@ function IntegrationsPageContent() {
   }
 
   async function disconnect() {
-    if (!window.confirm('Disconnect GitHub? This revokes access and stops all repo scans.')) return
+    const ok = await confirm({
+      title: 'Disconnect GitHub?',
+      description: 'This revokes access and stops all repo scans.',
+      confirmLabel: 'Disconnect',
+      destructive: true,
+    })
+    if (!ok) return
     setDisconnecting(true)
     try {
       const res = await fetch('/api/integrations/github/disconnect', { method: 'POST' })
@@ -193,12 +201,7 @@ function IntegrationsPageContent() {
   }
 
   if (meLoading || loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-32 rounded bg-muted" />
-        <Surface variant="flat" className="h-24" />
-      </div>
-    )
+    return <SettingsSkeleton />
   }
 
   return (
@@ -209,7 +212,7 @@ function IntegrationsPageContent() {
       />
 
       {!canScan && (
-        <Card className="bg-brand/5 ring-2 ring-brand/25">
+        <Card className="border-0 shadow-card bg-brand/5">
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">Codebase scanning is an Agency plan feature.</p>
             <p className="text-sm text-muted-foreground">
@@ -373,6 +376,7 @@ function IntegrationsPageContent() {
           )}
         </>
       )}
+      {confirmDialog}
     </div>
   )
 }

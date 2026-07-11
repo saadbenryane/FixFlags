@@ -1,4 +1,5 @@
 import { prisma } from '../db'
+import { Prisma } from '@prisma/client'
 import { runWithContext } from '@/lib/logger/context'
 import { AUDIT_PROGRESS } from './progress'
 import { AUDIT_DEADLINE_MS } from './pipeline-config'
@@ -73,7 +74,7 @@ export async function runAudit(auditId: string): Promise<void> {
         errorMsg: null,
         failureCode: null,
         failureStage: null,
-        failureMetadata: undefined,
+        failureMetadata: Prisma.JsonNull,
         progress: isSummaryOnly ? AUDIT_PROGRESS.CHECKING : AUDIT_PROGRESS.CAPTURING,
       },
     })

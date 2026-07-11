@@ -14,6 +14,8 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { useConfirm } from '@/components/ui/confirm-dialog'
+import { SettingsSkeleton } from '@/components/settings/settings-skeleton'
 
 interface ApiKey {
   id: string
@@ -26,6 +28,7 @@ interface ApiKey {
 
 export default function ApiKeysPage() {
   const { user, isLoading: meLoading } = useMe()
+  const { confirm, confirmDialog } = useConfirm()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKeyName, setNewKeyName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -80,7 +83,13 @@ export default function ApiKeysPage() {
   }
 
   async function deleteKey(id: string) {
-    if (!window.confirm('Delete this API key? Any integrations using it will stop working.')) return
+    const ok = await confirm({
+      title: 'Delete this API key?',
+      description: 'Any integrations using it will stop working.',
+      confirmLabel: 'Delete key',
+      destructive: true,
+    })
+    if (!ok) return
     try {
       const response = await fetch(`/api/api-keys?id=${id}`, { method: 'DELETE' })
       if (!response.ok) {
@@ -101,17 +110,7 @@ export default function ApiKeysPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-32 rounded bg-muted" />
-        <Surface variant="flat" className="h-24" />
-        <div className="space-y-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <Surface key={i} variant="flat" className="h-14" />
-          ))}
-        </div>
-      </div>
-    )
+    return <SettingsSkeleton />
   }
 
   return (
@@ -122,7 +121,7 @@ export default function ApiKeysPage() {
       />
 
       {!canUseKeys && (
-        <Card className="bg-brand/5 ring-2 ring-brand/25">
+        <Card className="border-0 shadow-card bg-brand/5">
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
             <p className="text-sm text-muted-foreground">
@@ -218,6 +217,7 @@ export default function ApiKeysPage() {
         <TextLink href="/docs/mcp">MCP setup guide</TextLink>{' '}
         to connect your key to Claude Code, Cursor, or Windsurf.
       </div>
+      {confirmDialog}
     </div>
   )
 }

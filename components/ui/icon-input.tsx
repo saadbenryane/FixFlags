@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 
 const fieldVariants = {
   default: "",
-  dark: "border-white/20 bg-black/20 text-foreground placeholder:text-foreground/60",
+  dark: "border-overlay/20 bg-overlay/20 text-foreground placeholder:text-foreground/60",
   light: "border-input bg-background",
 }
 

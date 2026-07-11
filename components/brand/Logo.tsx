@@ -1,6 +1,5 @@
 import Image from 'next/image'
 import { BRAND } from '@/lib/marketing/copy'
-import { LogoMarkSvg } from '@/lib/design/logo-mark'
 import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
@@ -18,7 +17,17 @@ interface LogoProps {
 }
 
 function Mark({ px }: { px: number }) {
-  return <LogoMarkSvg width={px} height={px} />
+  return (
+    <span className="relative block" style={{ width: px, height: px }}>
+      <Image
+        src="/brand/logo-mark.png"
+        alt=""
+        fill
+        sizes={`${px}px`}
+        className="object-contain"
+      />
+    </span>
+  )
 }
 
 export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoProps) {

@@ -1,0 +1,13 @@
+---
+description: Agent coordination — read AGENTS.md first
+globs: "*"
+alwaysApply: true
+---
+
+# Agent Operating System
+
+Read `/AGENTS.md` first — it is the canonical entry point for all AI agents.
+
+Before any substantial write task, also read `.agents/BOARD.md` to check for overlapping ownership and claim your task.
+
+See `.agents/README.md` for multi-agent coordination rules, session/handoff/learning/eval conventions.

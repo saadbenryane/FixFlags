@@ -304,6 +304,11 @@ export function flagKeyForRow(flag: {
   return flag.checkId ?? flag.fingerprint ?? ''
 }
 
+/** Treats null, empty, and whitespace-only strings as blank. */
+export function isBlankText(value: string | null | undefined): boolean {
+  return !value || value.trim().length === 0
+}
+
 export async function persistTriageResults(
   auditId: string,
   triageOutput: TriageOutput,
@@ -419,6 +424,10 @@ export async function mergePrescriptionResults(
       const key = flagKeyForRow(flag)
       const item = prescriptionByKey.get(key)
       if (!item) continue
+      // Discard a degenerate prescription rather than blanking a flag: the
+      // schema's `.min(1)` accepts whitespace-only evidence, which would
+      // otherwise overwrite real triage content with an empty string.
+      if (isBlankText(item.evidence)) continue
 
       await tx.flag.update({
         where: { id: flag.id },

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 export function AccountSettingsForms({
   initialName,
@@ -19,6 +20,7 @@ export function AccountSettingsForms({
   emailVerified: boolean
 }) {
   const router = useRouter()
+  const { confirm, confirmDialog } = useConfirm()
   const [name, setName] = useState(initialName)
   const [newEmail, setNewEmail] = useState(email)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -98,9 +100,13 @@ export function AccountSettingsForms({
 
   async function deleteAccount(event: React.FormEvent) {
     event.preventDefault()
-    if (!window.confirm('Permanently delete your account, audits, screenshots, and API keys?')) {
-      return
-    }
+    const ok = await confirm({
+      title: 'Delete your account?',
+      description: 'This permanently deletes your account, audits, screenshots, and API keys.',
+      confirmLabel: 'Delete account',
+      destructive: true,
+    })
+    if (!ok) return
     if (
       await run('delete', () =>
         authClient.deleteUser({
@@ -115,6 +121,7 @@ export function AccountSettingsForms({
 
   return (
     <div className="space-y-8">
+      {confirmDialog}
       {error && (
         <Callout variant="danger" title="Could not update account">
           {error}

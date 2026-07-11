@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db'
-import { handleRouteError } from '@/lib/api/errors'
+import { handleRouteError, apiError } from '@/lib/api/errors'
 
 const PAGE_SIZE = 20
 
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError('Sign in to view recent checks', 401)
     }
 
     const cursor = req.nextUrl.searchParams.get('cursor')

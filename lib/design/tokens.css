@@ -172,6 +172,7 @@
   --glass-bg-elevated: rgba(252, 250, 246, 0.94);
   --glass-bg-nav: rgba(250, 248, 244, 0.5);
   --glass-border: hsl(38 18% 88%);
+  --overlay: 0 0% 0%;
   --overlay-pill-bg: hsl(38 22% 91% / 0.95);
   --overlay-pill-border: hsl(38 18% 88%);
   --cover-gradient: linear-gradient(to top, hsl(40 33% 97%) 0%, hsl(40 33% 97% / 0.92) 45%, transparent 90%);
@@ -298,6 +299,7 @@
   --glass-bg-elevated: rgba(26, 26, 26, 0.9);
   --glass-bg-nav: rgba(17, 17, 17, 0.62);
   --glass-border: hsl(0 0% 16%);
+  --overlay: 0 0% 0%;
   --overlay-pill-bg: hsl(0 0% 12% / 0.92);
   --overlay-pill-border: hsl(0 0% 18%);
   --cover-gradient: linear-gradient(to top, hsl(0 0% 7%) 0%, hsl(0 0% 7% / 0.6) 45%, transparent 90%);

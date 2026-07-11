@@ -1,5 +1,5 @@
 import { BRAND, HERO } from '@/lib/marketing/copy'
-import { BRAND_HEX, getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
+import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
 import { LogoMarkSvg } from '@/lib/design/logo-mark'
 import { rubricLabel } from '@/lib/utils'
@@ -146,26 +146,6 @@ export function SiteOgImage({ mode = 'light' }: { mode?: BrandMode }) {
           fix prompts included
         </div>
       </div>
-    </div>
-  )
-}
-
-/** Favicon / app icon - official FixFlags mark for light surfaces */
-export function IconOgImage({ size = 32 }: { size?: number }) {
-  const markSize = Math.round((size / 32) * 28)
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'transparent',
-      }}
-    >
-      <LogoMarkSvg flagColor={BRAND_HEX.primary} width={markSize} height={markSize} />
     </div>
   )
 }

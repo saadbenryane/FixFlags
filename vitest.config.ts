@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
-    include: ['lib/**/*.test.ts'],
+    include: ['lib/**/*.test.ts', 'app/api/**/*.test.ts'],
     exclude: ['node_modules', '.next'],
     testTimeout: 30_000,
   },

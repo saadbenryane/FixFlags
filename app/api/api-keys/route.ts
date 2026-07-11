@@ -89,59 +89,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PUT() {
-  try {
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
-
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user || !canUseApiKeys(user)) {
-      return apiError('API keys require the Pro plan or higher', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'upgrade',
-      })
-    }
-
-    const activeCount = await prisma.apiKey.count({
-      where: { userId: session.user.id, revokedAt: null },
-    })
-    if (activeCount >= MAX_ACTIVE_API_KEYS) {
-      return apiError(`You can have up to ${MAX_ACTIVE_API_KEYS} active API keys`, 409, {
-        code: 'API_KEY_LIMIT',
-        action: 'revoke_key',
-      })
-    }
-
-    const generated = generateApiKey()
-    const apiKey = await prisma.apiKey.create({
-      data: {
-        userId: session.user.id,
-        name: 'MCP Key',
-        keyHash: generated.keyHash,
-        prefix: generated.prefix,
-        lastFour: generated.lastFour,
-      },
-    })
-
-    return NextResponse.json(
-      {
-        id: apiKey.id,
-        name: apiKey.name,
-        key: generated.rawKey,
-        prefix: apiKey.prefix,
-        lastFour: apiKey.lastFour,
-      },
-      { status: 201 }
-    )
-  } catch (err) {
-    return handleRouteError(err, 'Failed to create API key')
-  }
-}
-
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
-    if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
+    if (!session?.user) return apiError('Sign in to access this resource', 401, { code: 'UNAUTHORIZED' })
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

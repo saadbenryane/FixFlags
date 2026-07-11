@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
+import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
 
 export interface PageMetadata {
   title: string | null
@@ -280,7 +281,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
 
   // Page text (stripped)
   $('script, style, noscript').remove()
-  const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 8000)
+  const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, MAX_RAW_TEXT)
 
   const h1s: string[] = []
   $('h1').each((_, el) => { h1s.push($(el).text().trim()) })
@@ -344,7 +345,7 @@ export function trimMetadataForStorage(metadata: PageMetadata) {
   return {
     ...compact,
     h2s: h2s.slice(0, 10),
-    pageText: pageText.slice(0, 5000),
+    pageText: pageText.slice(0, MAX_STORED_TEXT),
   }
 }
 

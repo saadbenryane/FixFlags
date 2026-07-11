@@ -2,8 +2,7 @@ import { verifyPassword } from 'better-auth/crypto'
 
 async function main() {
   const password = 'password123'
-  const fullHash = 'c220add1e40fe70a86711538aeeb5c...'  // We need the full hash
-  
+
   // Get the full hash from the database
   const { prisma } = await import('@/lib/db')
   const account = await prisma.account.findUnique({ 
@@ -11,7 +10,7 @@ async function main() {
   })
   
   if (account?.password) {
-    const match = await verifyPassword(password, account.password)
+    const match = await verifyPassword({ password, hash: account.password })
     console.log('Password match:', match)
     console.log('Full hash:', account.password)
   } else {

@@ -33,13 +33,13 @@ export async function GET(
     const resolved = await resolveLink(token)
 
     if ('error' in resolved) {
-      return NextResponse.json({ error: resolved.error }, { status: 404 })
+      return apiError(resolved.error as string, 404)
     }
 
     const { link } = resolved
 
     if (link.password) {
-      return NextResponse.json({ needsPassword: true, token })
+      return apiError('Share link requires password', 401)
     }
 
     if (!link.audit.isPublic) {
@@ -74,7 +74,7 @@ export async function POST(
 
     const resolved = await resolveLink(token)
     if ('error' in resolved) {
-      return NextResponse.json({ error: resolved.error }, { status: 404 })
+      return apiError(resolved.error as string, 404)
     }
 
     const { link } = resolved

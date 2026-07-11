@@ -1,12 +1,12 @@
 ---
-description: FixFlags UI craft, tokens, color theory, anti-slop. Load skills before editing UI.
+description: FixFlags UI craft, tokens, color theory, anti-slop. Read AGENTS.md first.
 globs: "**/*.{tsx,css}"
 alwaysApply: false
 ---
 
 # FixFlags UI
 
-Before editing UI, read `.ui-craft/brief.md`, `lib/design/tokens.css`, and `.cursor/skills/fixflags-design-system/SKILL.md`.
+Before editing UI, read `/AGENTS.md`, `.ui-craft/brief.md`, `lib/design/tokens.css`, and `DESIGN.md`.
 
 ## Stack
 
