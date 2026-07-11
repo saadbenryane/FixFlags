@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalLink, ImageIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { ExternalLink, ImageIcon, CheckCircle2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
