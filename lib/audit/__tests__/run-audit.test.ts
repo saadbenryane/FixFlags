@@ -58,6 +58,7 @@ vi.mock('@/lib/audit/pipeline/failure', () => ({
 
 import { runAudit } from '@/lib/audit/runner'
 import { runPage } from '@/lib/audit/pipeline/run-page'
+import { buildCombinedTriageOutput } from '@/lib/audit/pipeline/combine-pages'
 import { persistTriageResults } from '@/lib/audit/persist'
 import {
   finalizeTriageAudit,
@@ -172,6 +173,24 @@ describe('runAudit orchestrator', () => {
 
     expect(finalizeDeterministicOnly).toHaveBeenCalledTimes(1)
     expect(finalizeTriageAudit).not.toHaveBeenCalled()
+    expect(updateStatuses()).not.toContain('FAILED')
+  })
+
+  it('completes deterministic-only (never FAILED) when a captured page has no triage result', async () => {
+    // runPage now swallows LLM failures and returns the page with `triage`
+    // undefined instead of throwing, so screenshots+checks are never discarded.
+    // buildCombinedTriageOutput throws on a triage-less primary (real behavior),
+    // which the runner must catch and finalize deterministic-only.
+    ;(runPage as Mock).mockResolvedValue(makePageRun({ triage: undefined }))
+    ;(buildCombinedTriageOutput as Mock).mockImplementation(() => {
+      throw new Error('Cannot combine triage output without a primary triage result')
+    })
+
+    await runAudit('audit-1')
+
+    expect(finalizeDeterministicOnly).toHaveBeenCalledTimes(1)
+    expect(finalizeTriageAudit).not.toHaveBeenCalled()
+    expect(tryPartialFinalize).not.toHaveBeenCalled()
     expect(updateStatuses()).not.toContain('FAILED')
   })
 })

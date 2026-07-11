@@ -24,6 +24,7 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
+import type { TriageResult } from '../judge-triage'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -364,21 +365,39 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
   })
 
-  const triage = await runTriageStep(ctx, {
-    url: normalizedUrl,
-    metadata,
-    desktop: pagespeed?.desktop ?? null,
-    mobile: pagespeed?.mobile ?? null,
-    flags,
-    desktopBase64,
-    mobileBase64,
-  })
-  accumulateTriageUsage(ctx, triage)
+  // Triage is the only per-page step that depends on an external LLM, so it is
+  // by far the most failure-prone (timeout, rate limit, provider outage, or a
+  // schema-invalid response that exhausts retries). Once a page's screenshot has
+  // been captured we must never throw the whole report away: a triage failure
+  // degrades this page to its deterministic results and returns with no triage,
+  // which lets the runner finalize a deterministic-only audit instead of marking
+  // it FAILED with the generic "site unreachable" copy. This is the difference
+  // between "screenshots then Check failed" and a real, shippable report.
+  let triage: TriageResult | undefined
+  try {
+    triage = await runTriageStep(ctx, {
+      url: normalizedUrl,
+      metadata,
+      desktop: pagespeed?.desktop ?? null,
+      mobile: pagespeed?.mobile ?? null,
+      flags,
+      desktopBase64,
+      mobileBase64,
+    })
+    accumulateTriageUsage(ctx, triage)
 
-  triage.output.newFlags = triage.output.newFlags.map((flag) => ({
-    ...flag,
-    pageUrl: normalizedUrl,
-  }))
+    triage.output.newFlags = triage.output.newFlags.map((flag) => ({
+      ...flag,
+      pageUrl: normalizedUrl,
+    }))
+  } catch (triageError) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'judging',
+      event: 'triage_failed',
+      error: triageError instanceof Error ? triageError.message : String(triageError),
+    })
+    triage = undefined
+  }
 
   await prisma.auditPage.update({
     where: { id: page.id },
