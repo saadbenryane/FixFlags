@@ -2,6 +2,7 @@
 
 import { ReportExplorer } from '@/components/report/ReportExplorer'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
+import type { JourneyPage } from '@/components/audit/JourneyBar'
 
 interface LiveReportExplorerProps {
   model: ReportExplorerModel
@@ -12,6 +13,7 @@ interface LiveReportExplorerProps {
   hasFixPrompts?: boolean
   defaultSeverityFilter?: 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   className?: string
+  pages?: JourneyPage[]
 }
 
 export function LiveReportExplorer({
@@ -23,6 +25,7 @@ export function LiveReportExplorer({
   hasFixPrompts = true,
   defaultSeverityFilter = 'ALL',
   className,
+  pages,
 }: LiveReportExplorerProps) {
   if (model.flags.length === 0) return null
 
@@ -37,6 +40,7 @@ export function LiveReportExplorer({
       hasFixPrompts={hasFixPrompts}
       defaultSeverityFilter={defaultSeverityFilter}
       className={className}
+      pages={pages}
     />
   )
 }

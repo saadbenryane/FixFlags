@@ -98,11 +98,11 @@ describe('homepage message guardrails', () => {
     assert.equal(HERO.audienceLine, '')
   })
 
-  it('hero subhead is concise and deliverable-led, not headline echo', () => {
-    assert.match(HERO.subhead, /review/i)
-    assert.match(HERO.subhead, /share the link/i)
-    assert.match(HERO.subhead, /fix prompts/i)
-    assert.ok(HERO.subhead.split(/\s+/).length <= 40)
+  it('hero subhead is concise and names the three rubrics', () => {
+    assert.match(HERO.subhead, /messaging/i)
+    assert.match(HERO.subhead, /experience/i)
+    assert.match(HERO.subhead, /reach/i)
+    assert.ok(HERO.subhead.split(/\s+/).length <= 30)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })

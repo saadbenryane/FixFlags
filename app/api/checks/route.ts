@@ -9,8 +9,6 @@ import {
 } from '@/lib/audit/create-audit'
 import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/usage'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-import { prisma } from '@/lib/db'
-import { canAccessPaidFeatures } from '@/lib/auth/entitlements'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
@@ -18,6 +16,7 @@ import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attributio
 const createSchema = z.object({
   url: z.string().url('Invalid URL, please include https://'),
   mode: z.enum(['single', 'critical_path']).optional(),
+  parentId: z.string().optional(),
   source: z.string().optional(),
   utmSource: z.string().optional(),
   utmMedium: z.string().optional(),
@@ -44,26 +43,7 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const clientId = requestClientId(req.headers)
 
-    const criticalPath = parsed.data.mode === 'critical_path'
-
-    if (criticalPath) {
-      if (!session?.user) {
-        return apiError('Sign in and upgrade to Pro for critical path checks.', 402, {
-          code: 'UPGRADE_REQUIRED',
-          action: 'upgrade',
-        })
-      }
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { id: true, role: true, plan: true, subscriptionStatus: true },
-      })
-      if (!user || !canAccessPaidFeatures(user)) {
-        return apiError('Critical path checks require the Pro plan or above.', 402, {
-          code: 'UPGRADE_REQUIRED',
-          action: 'upgrade',
-        })
-      }
-    }
+    const criticalPath = parsed.data.mode !== 'single'
 
     if (!session?.user) {
       const anonCheck = await checkAnonymousAuditAllowed()
@@ -139,6 +119,7 @@ export async function POST(req: NextRequest) {
     const { auditId, status } = await createAndEnqueueAudit({
       url,
       userId: session?.user?.id ?? null,
+      parentId: parsed.data.parentId,
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
       attribution,

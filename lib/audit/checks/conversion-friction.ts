@@ -7,7 +7,9 @@ const DEMO_MARKERS = /(book demo|request demo|schedule demo|see it in action|wat
 
 const PRICING_MARKERS = /\b(pricing|plans|see pricing|view pricing|compare plans)\b/i
 
-const GUARANTEE_MARKERS = /(money.back|guarantee|satisfaction guaranteed|refund|risk.free|cancel anytime)/i
+const BOOKING_MARKERS = /\b(book now|book online|book appointment|schedule|make a reservation|schedule visit|request appointment|request quote|get quote|find near you|search by|browse|explore)\b/i
+
+const GUARANTEE_MARKERS = /(money.back|guarantee|satisfied guaranteed|refund|risk.free|cancel anytime)/i
 
 const SOCIAL_MARKERS = /(github\s+stars|\d[\d,.]*\+?\s*(users|customers|teams|stars|downloads)|rated\s+\d|g2\s+|capterra|trustpilot|reviewed\s+by|case stud(y|ies)|testimonial)/i
 
@@ -22,11 +24,12 @@ export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFl
   const hasFreeTrial = FREE_TRIAL_MARKERS.test(bodyText) || FREE_TRIAL_MARKERS.test(combinedAboveFold)
   const hasDemo = DEMO_MARKERS.test(bodyText)
   const hasPricing = PRICING_MARKERS.test(bodyText) || PRICING_MARKERS.test(combinedAboveFold)
+  const hasBooking = BOOKING_MARKERS.test(bodyText) || BOOKING_MARKERS.test(combinedAboveFold)
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText)
   const hasPricingLinks = links.some((l) => PRICING_MARKERS.test(l.href) || PRICING_MARKERS.test(l.text))
 
-  if (!hasFreeTrial && !hasDemo && !hasPricing && !hasPricingLinks) {
+  if (!hasFreeTrial && !hasDemo && !hasPricing && !hasPricingLinks && !hasBooking) {
     findings.push({
       checkId: 'friction-no-commitment-path',
       rubric: 'EXPERIENCE',

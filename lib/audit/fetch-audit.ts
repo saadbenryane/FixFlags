@@ -62,6 +62,14 @@ export const auditFullInclude = {
   flags: {
     orderBy: { position: 'asc' as const },
   },
+  pages: {
+    orderBy: { position: 'asc' as const },
+    include: {
+      flags: {
+        select: { severity: true },
+      },
+    },
+  },
   screenshots: true,
 } as const
 

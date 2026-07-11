@@ -56,7 +56,7 @@ export async function createAndEnqueueAudit(
     userId: options.userId ?? null,
     parentId: options.parentId ?? null,
     skipUsageCount: options.skipUsageCount ?? false,
-    auditMode: options.auditMode ?? ('SINGLE' as const),
+    auditMode: options.auditMode ?? ('CRITICAL_PATH' as const),
     monitoringMode: options.monitoringMode ?? ('FULL' as const),
     status: 'QUEUED' as const,
     progress: 5,

@@ -13,7 +13,6 @@ import {
 import { canUseApiKeys } from '../auth/permissions'
 import {
   canAccessCompare,
-  canAccessPaidFeatures,
   canScanRepositories,
   canSharePublicly,
 } from '../auth/entitlements'
@@ -88,7 +87,7 @@ export function registerAllTools(
       mode: z
         .enum(['single', 'critical_path'])
         .optional()
-        .describe('critical_path checks up to 3 same-origin URLs (Pro+)'),
+        .describe('critical_path checks up to 6 same-origin URLs (default)'),
     },
     async ({ url, waitForCompletion, mode }) => {
       const freshUser = await assertMcpAccess(user)
@@ -117,10 +116,7 @@ export function registerAllTools(
       const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
         computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
 
-      const criticalPath = mode === 'critical_path'
-      if (criticalPath && !canAccessPaidFeatures(freshUser)) {
-        throw new Error('Critical path checks require the Pro plan or above')
-      }
+      const criticalPath = mode !== 'single'
 
       const { auditId } = await createAndEnqueueAudit({
         url: normalizedUrl,

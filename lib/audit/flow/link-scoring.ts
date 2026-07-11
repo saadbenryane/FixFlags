@@ -4,7 +4,10 @@ const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
 const PRICING_PATTERN = /pricing|plans?\b|price/
 const PRIMARY_CONVERSION_PATTERN =
   /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i
+const FEATURES_PATTERN = /\b(features?|product|how it works|solutions?|integrations?|capabilities|what we do|platform)\b/i
 const SECONDARY_CONVERSION_PATTERN = /signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i
+const TRUST_PATTERN = /\b(about|team|company|customers?|case studies?|testimonials?|stories|our story|who we are)\b/i
+const RESOURCES_PATTERN = /\b(docs?|resources?|blog|guides?|api|documentation|help|support|faq|changelog)\b/i
 const NON_PAGE_PROTOCOLS = new Set(['mailto:', 'tel:', 'sms:'])
 
 export interface CtaHrefOptions {
@@ -149,6 +152,39 @@ export function isActionableCtaHref(
   return classifyCtaHref(href, options).isActionable
 }
 
+export type LinkCategory =
+  | 'pricing'
+  | 'primary-cta'
+  | 'features'
+  | 'secondary-cta'
+  | 'trust'
+  | 'resources'
+  | 'auth'
+  | 'other'
+
+const CATEGORY_MAX: Record<LinkCategory, number> = {
+  pricing: 1,
+  'primary-cta': 1,
+  features: 1,
+  'secondary-cta': 1,
+  trust: 1,
+  resources: 1,
+  auth: 0,
+  other: 0,
+}
+
+export function classifyLinkCategory(href: string, text: string): LinkCategory {
+  const combined = `${href} ${text}`.toLowerCase()
+  if (isAuthUtilityLink(href, text)) return 'auth'
+  if (PRICING_PATTERN.test(combined)) return 'pricing'
+  if (PRIMARY_CONVERSION_PATTERN.test(combined)) return 'primary-cta'
+  if (FEATURES_PATTERN.test(combined)) return 'features'
+  if (SECONDARY_CONVERSION_PATTERN.test(combined)) return 'secondary-cta'
+  if (TRUST_PATTERN.test(combined)) return 'trust'
+  if (RESOURCES_PATTERN.test(combined)) return 'resources'
+  return 'other'
+}
+
 export function scoreCtaLink(href: string, text: string): number {
   const combined = `${href} ${text}`.toLowerCase()
 
@@ -157,9 +193,15 @@ export function scoreCtaLink(href: string, text: string): number {
 
   if (PRICING_PATTERN.test(combined)) return 100
   if (PRIMARY_CONVERSION_PATTERN.test(combined)) return 95
+  if (FEATURES_PATTERN.test(combined)) return 80
   if (SECONDARY_CONVERSION_PATTERN.test(combined)) return 70
+  if (TRUST_PATTERN.test(combined)) return 60
+  if (RESOURCES_PATTERN.test(combined)) return 40
   return 0
 }
+
+/** Maximum pages to discover per link category (used by critical path). */
+export { CATEGORY_MAX }
 
 export function isDeadHref(href: string): boolean {
   return classifyCtaHref(href).isPlaceholder

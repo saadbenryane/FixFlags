@@ -83,7 +83,15 @@ export function mergeRuntimeHeadMetadata(
 }
 
 export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
-  const $ = cheerio.load(html)
+  // Unwrap <noscript> content so Cheerio can parse links, headings, and CTAs
+  // inside noscript blocks. SPAs often put full fallback content (including
+  // navigation links, headings, and contact info) inside noscript for crawlers.
+  // Cheerio treats noscript as raw text by default, causing false negatives.
+  const unwrapped = html.replace(
+    /<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi,
+    (_, inner: string) => inner
+  )
+  const $ = cheerio.load(unwrapped)
 
   // Extract structured data
   const jsonLd: unknown[] = []

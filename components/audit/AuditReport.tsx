@@ -37,6 +37,7 @@ import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import { PreviewCards } from '@/components/audit/PreviewCards'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
+import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
@@ -101,6 +102,7 @@ interface AuditReportProps {
   failureCode?: string | null
   actions?: ReactNode
   toolbarActions?: ReactNode
+  pages?: JourneyPage[]
 }
 
 export function AuditReport({
@@ -123,6 +125,7 @@ export function AuditReport({
   failureCode = null,
   actions,
   toolbarActions,
+  pages = [],
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -182,6 +185,15 @@ export function AuditReport({
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
       />
 
+      {!isSample && pages.length > 1 && (
+        <JourneyBar
+          pages={pages}
+          totalFlags={audit.flags.length}
+          auditId={auditId}
+          primaryUrl={audit.url}
+        />
+      )}
+
       {!isSample && (
         <>
           <ReportStickyToolbar
@@ -189,6 +201,7 @@ export function AuditReport({
             showPreviews={Boolean(audit.previewMeta)}
             showFlow={Boolean(audit.flowData)}
             showLaunchGates={hasLaunchGates}
+            showJourney={pages.length > 1}
             siteUrl={audit.url}
             score={audit.score}
             actions={toolbarActions ?? actions}
@@ -259,6 +272,7 @@ export function AuditReport({
               defaultSeverityFilter={
                 audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
               }
+              pages={pages}
             />
           </div>
         </section>
@@ -331,6 +345,7 @@ export function AuditReport({
             aiLocked={fixPromptLocked}
             signUpHref={signUpHref}
             showFlagList={!explorerModel}
+            pages={pages}
           />
         </section>
       )}

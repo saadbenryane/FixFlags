@@ -267,11 +267,41 @@ export default async function ReportPage({ params }: Props) {
     }))
 
     const reportAudit = {
-      ...audit,
+      pageJob: audit.pageJob,
+      pageType: audit.pageType,
+      verdict: audit.verdict,
+      score: audit.score,
+      url: audit.url,
+      screenshots: audit.screenshots,
+      screenshotCapture: audit.screenshotCapture,
+      rubrics: audit.rubrics,
       rubricRows,
       flags,
       shareStatus: audit.shareStatus,
+      launchReadiness: audit.launchReadiness,
+      reportCompleteness: audit.reportCompleteness,
+      evidenceCoverage: audit.evidenceCoverage,
+      pipelineVersion: audit.pipelineVersion,
+      pipelineLog: audit.pipelineLog,
+      startedAt: audit.startedAt,
+      completedAt: audit.completedAt,
+      parentId: audit.parentId,
+      pageSpeedErrors: audit.pageSpeedErrors,
+      previewMeta: audit.previewMeta,
+      flowData: audit.flowData,
+      evidenceAnchors: audit.evidenceAnchors,
     }
+
+    const journeyPages = (audit.pages ?? []).map((p) => ({
+      id: p.id,
+      url: p.url,
+      title: p.title,
+      role: p.role,
+      position: p.position,
+      flagCount: p.flags.length,
+      criticalCount: p.flags.filter((f) => f.severity === 'CRITICAL').length,
+      importantCount: p.flags.filter((f) => f.severity === 'IMPORTANT').length,
+    }))
 
     const screenshots = parseScreenshots(audit.screenshots)
     const captureStatus = parseCaptureStatus(audit)
@@ -300,6 +330,7 @@ export default async function ReportPage({ params }: Props) {
           triageDegraded={triageDegraded}
           prescriptionFailed={prescriptionFailed}
           failureCode={audit.failureCode ?? null}
+          pages={journeyPages}
           toolbarActions={
             <AuditPageActions
               auditId={id}

@@ -100,7 +100,7 @@ export const HERO = {
   audienceLine: '',
   headlineAccentLegacy: false,
   subhead:
-    'Review your AI-built site before you share the link. Catch broken messaging, mobile layout issues, and missing link previews. Get copy-ready fix prompts your builder can run.',
+    'Code review checks syntax. FixFlags checks messaging, experience, and reach. So what you ship feels complete.',
   trustLine: 'Check the page before users see it.',
   supportingLine: 'Check the page before users see it.',
   primaryCta: 'Review my site',

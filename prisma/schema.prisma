@@ -452,7 +452,7 @@ model Audit {
 
   isPublic             Boolean              @default(false)
   skipUsageCount       Boolean              @default(false)
-  auditMode            AuditMode            @default(SINGLE)
+  auditMode            AuditMode            @default(CRITICAL_PATH)
   launchReadiness      Json?
   launchReadinessState LaunchReadinessState @default(UNKNOWN)
   reportCompleteness   ReportCompleteness   @default(UNKNOWN)

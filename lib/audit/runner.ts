@@ -87,17 +87,17 @@ export async function runAudit(auditId: string): Promise<void> {
       })
       pageRuns.push(primary)
 
-      const urls =
+      const discovered =
         audit.auditMode === 'CRITICAL_PATH' && !isSummaryOnly
           ? discoverCriticalPathUrls(audit.url, primary.metadata)
-          : [audit.url]
+          : [{ url: audit.url, category: 'primary' as const }]
 
-      for (const [index, pageUrl] of urls.slice(1).entries()) {
+      for (const [index, page] of discovered.slice(1).entries()) {
         pageRuns.push(
           await runPage(ctx, {
-            url: pageUrl,
+            url: page.url,
             position: index + 1,
-            role: index === 0 ? 'pricing-or-plan' : 'primary-cta',
+            role: page.category,
             primary: false,
           })
         )

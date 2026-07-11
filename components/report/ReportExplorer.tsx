@@ -9,11 +9,10 @@ import type { FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { Button } from '@/components/ui/button'
 import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
-import { RUBRIC_ORDER } from '@/lib/audit/constants'
-import { cn, rubricLabel } from '@/lib/utils'
+import type { JourneyPage } from '@/components/audit/JourneyBar'
+import { cn } from '@/lib/utils'
 
 type ExplorerVariant = 'page' | 'hero' | 'live'
-type RubricFilter = 'ALL' | (typeof RUBRIC_ORDER)[number]
 type SeverityFilter = 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
 
 interface ReportExplorerProps {
@@ -27,6 +26,7 @@ interface ReportExplorerProps {
   signUpHref?: string
   hasFixPrompts?: boolean
   defaultSeverityFilter?: SeverityFilter
+  pages?: JourneyPage[]
 }
 
 const VARIANT_CONFIG = {
@@ -204,50 +204,60 @@ function ReportBody({
 }
 
 function ExplorerFilters({
-  rubricFilter,
   severityFilter,
-  onRubricChange,
   onSeverityChange,
   model,
+  pageFilter,
+  onPageChange,
+  pages,
 }: {
-  rubricFilter: RubricFilter
   severityFilter: SeverityFilter
-  onRubricChange: (value: RubricFilter) => void
   onSeverityChange: (value: SeverityFilter) => void
   model: ReportExplorerModel
+  pageFilter: string | null
+  onPageChange: (url: string | null) => void
+  pages: JourneyPage[]
 }) {
-  const rubricCounts = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const flag of model.flags) {
-      counts.set(flag.rubric, (counts.get(flag.rubric) ?? 0) + 1)
-    }
-    return counts
-  }, [model.flags])
-
   const criticalCount = model.flags.filter((f) => f.severity === 'CRITICAL').length
+  const hasPages = pages.length > 1
 
   return (
-    <div className="flex flex-wrap items-center gap-2 pb-4">
+    <div className="space-y-3 pb-4">
+      {hasPages && (
+        <div className="flex flex-wrap gap-1.5">
+          <FilterPill
+            active={pageFilter === null}
+            onClick={() => onPageChange(null)}
+          >
+            All Pages ({model.flags.length})
+          </FilterPill>
+          {pages.map((page) => {
+            const count = model.flags.filter((f) => f.pageUrl === page.url).length
+            if (count === 0) return null
+            const hostname = (() => {
+              try { return new URL(page.url).pathname === '/' ? '' : new URL(page.url).pathname.split('/').filter(Boolean)[0] ?? '' } catch { return '' }
+            })()
+            const label = hostname || page.role
+            return (
+              <FilterPill
+                key={page.url}
+                active={pageFilter === page.url}
+                onClick={() => onPageChange(pageFilter === page.url ? null : page.url)}
+              >
+                {label} ({count})
+              </FilterPill>
+            )
+          })}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5">
-        <FilterPill active={rubricFilter === 'ALL'} onClick={() => onRubricChange('ALL')}>
+        <FilterPill
+          active={severityFilter === 'ALL'}
+          onClick={() => onSeverityChange('ALL')}
+        >
           All ({model.flags.length})
         </FilterPill>
-        {RUBRIC_ORDER.map((rubric) => {
-          const count = rubricCounts.get(rubric) ?? 0
-          if (count === 0) return null
-          return (
-            <FilterPill
-              key={rubric}
-              active={rubricFilter === rubric}
-              onClick={() => onRubricChange(rubric)}
-            >
-              {rubricLabel(rubric)} ({count})
-            </FilterPill>
-          )
-        })}
-      </div>
-      {criticalCount > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-l border-border/40 pl-2">
+        {criticalCount > 0 && (
           <FilterPill
             active={severityFilter === 'CRITICAL'}
             onClick={() =>
@@ -256,13 +266,8 @@ function ExplorerFilters({
           >
             Critical ({criticalCount})
           </FilterPill>
-          {severityFilter === 'CRITICAL' && (
-            <FilterPill active={false} onClick={() => onSeverityChange('ALL')}>
-              Show all
-            </FilterPill>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -303,24 +308,25 @@ export function ReportExplorer({
   signUpHref,
   hasFixPrompts = true,
   defaultSeverityFilter = 'ALL',
+  pages = [],
 }: ReportExplorerProps) {
   const config = VARIANT_CONFIG[variant]
-  const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>(defaultSeverityFilter)
+  const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [flagIndex, setFlagIndex] = useState(initialFlagIndex)
   const flagDetailRef = useRef<HTMLDivElement>(null)
 
   const filteredFlags = useMemo(() => {
     return model.flags.filter((flag) => {
-      if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
       if (severityFilter !== 'ALL' && flag.severity !== severityFilter) return false
+      if (pageFilter && flag.pageUrl !== pageFilter) return false
       return true
     })
-  }, [model.flags, rubricFilter, severityFilter])
+  }, [model.flags, severityFilter, pageFilter])
 
   useEffect(() => {
     setFlagIndex(0)
-  }, [rubricFilter, severityFilter])
+  }, [severityFilter, pageFilter])
 
   const flagCount = filteredFlags.length
   const currentFlag = filteredFlags[flagIndex] ?? filteredFlags[0]
@@ -367,11 +373,12 @@ export function ReportExplorer({
     const emptyInner = (
       <div className="p-4 sm:p-6">
         <ExplorerFilters
-          rubricFilter={rubricFilter}
           severityFilter={severityFilter}
-          onRubricChange={setRubricFilter}
           onSeverityChange={setSeverityFilter}
           model={model}
+          pageFilter={pageFilter}
+          onPageChange={setPageFilter}
+          pages={pages}
         />
         <p className="text-sm text-muted-foreground">No flags match this filter.</p>
       </div>
@@ -447,11 +454,12 @@ export function ReportExplorer({
       <div className="p-4 sm:p-6">
         <h2 className="sr-only">Flags</h2>
         <ExplorerFilters
-          rubricFilter={rubricFilter}
           severityFilter={severityFilter}
-          onRubricChange={setRubricFilter}
           onSeverityChange={setSeverityFilter}
           model={model}
+          pageFilter={pageFilter}
+          onPageChange={setPageFilter}
+          pages={pages}
         />
         <ReportBody {...reportBodyProps} />
       </div>
