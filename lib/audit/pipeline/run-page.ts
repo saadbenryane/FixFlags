@@ -24,7 +24,7 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
-import type { TriageResult } from '../judge-triage'
+import { isTriageProviderConfigured, type TriageResult } from '../judge-triage'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -356,15 +356,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
-  await prisma.auditPage.update({
-    where: { id: page.id },
-    data: { status: 'JUDGING' },
-  })
-  await prisma.audit.update({
-    where: { id: ctx.auditId },
-    data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
-  })
-
   // Triage is the only per-page step that depends on an external LLM, so it is
   // by far the most failure-prone (timeout, rate limit, provider outage, or a
   // schema-invalid response that exhausts retries). Once a page's screenshot has
@@ -374,29 +365,50 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // it FAILED with the generic "site unreachable" copy. This is the difference
   // between "screenshots then Check failed" and a real, shippable report.
   let triage: TriageResult | undefined
-  try {
-    triage = await runTriageStep(ctx, {
-      url: normalizedUrl,
-      metadata,
-      desktop: pagespeed?.desktop ?? null,
-      mobile: pagespeed?.mobile ?? null,
-      flags,
-      desktopBase64,
-      mobileBase64,
-    })
-    accumulateTriageUsage(ctx, triage)
 
-    triage.output.newFlags = triage.output.newFlags.map((flag) => ({
-      ...flag,
-      pageUrl: normalizedUrl,
-    }))
-  } catch (triageError) {
+  if (!isTriageProviderConfigured()) {
+    // No LLM key configured: don't transition to JUDGING or attempt a call that
+    // can only fail. Skip straight to a deterministic-only report, matching the
+    // documented intent in lib/env.ts (keyless deploys "complete with
+    // deterministic checks only" rather than stalling every scan).
     await logPipelineEvent(ctx.auditId, {
       stage: 'judging',
-      event: 'triage_failed',
-      error: triageError instanceof Error ? triageError.message : String(triageError),
+      event: 'triage_skipped_no_provider',
     })
-    triage = undefined
+  } else {
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: { status: 'JUDGING' },
+    })
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
+    })
+
+    try {
+      triage = await runTriageStep(ctx, {
+        url: normalizedUrl,
+        metadata,
+        desktop: pagespeed?.desktop ?? null,
+        mobile: pagespeed?.mobile ?? null,
+        flags,
+        desktopBase64,
+        mobileBase64,
+      })
+      accumulateTriageUsage(ctx, triage)
+
+      triage.output.newFlags = triage.output.newFlags.map((flag) => ({
+        ...flag,
+        pageUrl: normalizedUrl,
+      }))
+    } catch (triageError) {
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'judging',
+        event: 'triage_failed',
+        error: triageError instanceof Error ? triageError.message : String(triageError),
+      })
+      triage = undefined
+    }
   }
 
   await prisma.auditPage.update({
