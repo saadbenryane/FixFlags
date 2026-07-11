@@ -20,6 +20,7 @@ interface Props {
   showFlow?: boolean
   showFix?: boolean
   showLaunchGates?: boolean
+  showJourney?: boolean
   siteUrl?: string
   score?: number | null
   actions?: ReactNode
@@ -32,6 +33,7 @@ export function ReportStickyToolbar({
   showFlow,
   showFix,
   showLaunchGates,
+  showJourney,
   siteUrl,
   score,
   actions,
@@ -42,6 +44,7 @@ export function ReportStickyToolbar({
     const items: NavSection[] = [...BASE_SECTIONS]
     const insertAt = 1
     const optional: Array<{ id: string; label: string }> = []
+    if (showJourney) optional.push({ id: 'report-journey', label: 'Journey' })
     if (showOverview) optional.push({ id: 'report-overview', label: 'Overview' })
     if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
     if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })
@@ -54,7 +57,7 @@ export function ReportStickyToolbar({
       items.splice(flagsIndex + 1, 0, { id: 'report-fix', label: 'Fix prompt' })
     }
     return items
-  }, [showOverview, showPreviews, showFlow, showFix, showLaunchGates])
+  }, [showOverview, showPreviews, showFlow, showFix, showLaunchGates, showJourney])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
 

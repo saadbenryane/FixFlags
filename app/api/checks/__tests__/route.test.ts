@@ -92,26 +92,21 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(createAndEnqueueAudit).not.toHaveBeenCalled()
   })
 
-  it('returns 402 UPGRADE_REQUIRED for unauthenticated critical_path mode', async () => {
+  it('returns 201 for unauthenticated critical_path mode (now free for all)', async () => {
     const res = await POST(postReq({ url: 'https://example.com', mode: 'critical_path' }))
 
-    expect(res.status).toBe(402)
-    const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(body.action).toBe('upgrade')
-    expect(createAndEnqueueAudit).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(createAndEnqueueAudit).toHaveBeenCalled()
   })
 
-  it('returns 402 UPGRADE_REQUIRED for FREE user on critical_path mode', async () => {
+  it('returns 201 for FREE user on critical_path mode (now free for all)', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'FREE' }))
 
     const res = await POST(postReq({ url: 'https://example.com', mode: 'critical_path' }))
 
-    expect(res.status).toBe(402)
-    const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(createAndEnqueueAudit).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(createAndEnqueueAudit).toHaveBeenCalled()
   })
 
   it('returns 402 when createAndEnqueueAudit throws AuditLimitError', async () => {

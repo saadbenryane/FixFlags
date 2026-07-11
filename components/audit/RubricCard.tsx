@@ -12,6 +12,7 @@ import { rubricLabel, cn } from '@/lib/utils'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import type { JourneyPage } from '@/components/audit/JourneyBar'
 
 interface RubricRow {
   id: string
@@ -29,6 +30,7 @@ interface Props {
   aiLocked?: boolean
   signUpHref?: string
   showFlagList?: boolean
+  pages?: JourneyPage[]
   /** Controlled open state. Omit to let the card manage its own (uncontrolled). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -41,6 +43,7 @@ export function RubricCard({
   aiLocked = false,
   signUpHref,
   showFlagList = true,
+  pages,
   open: openProp,
   onOpenChange,
 }: Props) {
@@ -124,14 +127,55 @@ export function RubricCard({
           {showFlagList ? (
             rubricRow.flags.length > 0 ? (
               <Surface variant="nested" className="overflow-hidden p-0">
-                {rubricRow.flags.map((flag) => (
-                  <FlagCard
-                    key={flag.id}
-                    flag={flag}
-                    showFeedback={showFeedback}
-                    variant="row"
-                  />
-                ))}
+                {pages && pages.length > 1 ? (
+                  (() => {
+                    const grouped = new Map<string, RankableFlag[]>()
+                    for (const flag of rubricRow.flags) {
+                      const key = flag.pageUrl ?? '__primary__'
+                      const arr = grouped.get(key) ?? []
+                      arr.push(flag)
+                      grouped.set(key, arr)
+                    }
+                    const entries = Array.from(grouped.entries())
+                    return entries.map(([pageUrl, flags], gi) => {
+                      const page = pages.find((p) => p.url === pageUrl)
+                      const label = page
+                        ? (() => {
+                            try {
+                              const path = new URL(page.url).pathname
+                              return path === '/' ? 'Homepage' : path.split('/').filter(Boolean)[0] ?? page.role
+                            } catch { return page.role }
+                          })()
+                        : 'Primary'
+                      return (
+                        <div key={pageUrl} className={gi > 0 ? 'border-t border-border/30' : ''}>
+                          <div className="px-3 py-1.5 bg-muted/30">
+                            <span className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                              {label}
+                            </span>
+                          </div>
+                          {flags.map((flag) => (
+                            <FlagCard
+                              key={flag.id}
+                              flag={flag}
+                              showFeedback={showFeedback}
+                              variant="row"
+                            />
+                          ))}
+                        </div>
+                      )
+                    })
+                  })()
+                ) : (
+                  rubricRow.flags.map((flag) => (
+                    <FlagCard
+                      key={flag.id}
+                      flag={flag}
+                      showFeedback={showFeedback}
+                      variant="row"
+                    />
+                  ))
+                )}
               </Surface>
             ) : rubricRow.grade === 'A' ? (
               <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
