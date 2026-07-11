@@ -114,54 +114,9 @@ export async function runAudit(auditId: string): Promise<void> {
         await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_only' })
       }
 
-      let triageSucceeded = false
-      try {
-        const combinedTriage = buildCombinedTriageOutput(pageRuns)
-        const flags = pageRuns.flatMap((page) => page.flags)
-        const rubricScores = averageScores(pageRuns)
-        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
-        await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
-        await tryResolveEvidenceAnchorsForAudit(
-          auditId,
-          audit.url,
-          flags.map((flag) => ({
-            checkId: flag.checkId,
-            problem: flag.problem,
-            evidence: flag.evidence,
-          }))
-        )
-        const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
-        if (primaryFlow) {
-          await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
-        }
-
-        await finalizeTriageAudit({
-          auditId,
-          durationMs: Date.now() - startedAt.getTime(),
-          pagespeedCalls: ctx.pagespeedCalls,
-          usage: {
-            inputTokens: ctx.usage.inputTokens,
-            outputTokens: ctx.usage.outputTokens,
-            model: ctx.usage.models.join(','),
-          },
-          evidence: {
-            desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
-            mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
-            metadata: pageRuns.every((page) => Boolean(page.metadata)),
-            aiAssessment: pageRuns.every((page) => Boolean(page.triage)),
-            desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
-            mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
-            flowScan: pageRuns.some((page) => page.flowScan),
-          },
-        })
-        triageSucceeded = true
-
-        if (ctx.includeAi) {
-          await enqueueAiReview(auditId)
-        }
-      } catch (triageError) {
-        if (triageSucceeded) throw triageError
-        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_failed_fallback' })
+      const hasTriage = pageRuns.some((page) => page.triage)
+      if (!hasTriage) {
+        await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_unavailable' })
         await tryResolveEvidenceAnchorsForAudit(
           auditId,
           audit.url,
@@ -190,6 +145,84 @@ export async function runAudit(auditId: string): Promise<void> {
             flowScan: pageRuns.some((page) => page.flowScan),
           },
         })
+      } else {
+        let triageSucceeded = false
+        try {
+          const combinedTriage = buildCombinedTriageOutput(pageRuns)
+          const flags = pageRuns.flatMap((page) => page.flags)
+          const rubricScores = averageScores(pageRuns)
+          await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
+          await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
+          await tryResolveEvidenceAnchorsForAudit(
+            auditId,
+            audit.url,
+            flags.map((flag) => ({
+              checkId: flag.checkId,
+              problem: flag.problem,
+              evidence: flag.evidence,
+            }))
+          )
+          const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
+          if (primaryFlow) {
+            await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
+          }
+
+          await finalizeTriageAudit({
+            auditId,
+            durationMs: Date.now() - startedAt.getTime(),
+            pagespeedCalls: ctx.pagespeedCalls,
+            usage: {
+              inputTokens: ctx.usage.inputTokens,
+              outputTokens: ctx.usage.outputTokens,
+              model: ctx.usage.models.join(','),
+            },
+            evidence: {
+              desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
+              mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
+              metadata: pageRuns.every((page) => Boolean(page.metadata)),
+              aiAssessment: pageRuns.every((page) => Boolean(page.triage)),
+              desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
+              mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+              flowScan: pageRuns.some((page) => page.flowScan),
+            },
+          })
+          triageSucceeded = true
+
+          if (ctx.includeAi) {
+            await enqueueAiReview(auditId)
+          }
+        } catch (triageError) {
+          if (triageSucceeded) throw triageError
+          await logPipelineEvent(auditId, { stage: 'finalizing', event: 'triage_failed_fallback' })
+          await tryResolveEvidenceAnchorsForAudit(
+            auditId,
+            audit.url,
+            pageRuns.flatMap((page) =>
+              page.flags.map((flag) => ({
+                checkId: flag.checkId,
+                problem: flag.problem,
+                evidence: flag.evidence,
+              }))
+            )
+          )
+          const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
+          if (primaryFlow) {
+            await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
+          }
+          await finalizeDeterministicOnly({
+            auditId,
+            durationMs: Date.now() - startedAt.getTime(),
+            pagespeedCalls: ctx.pagespeedCalls,
+            evidence: {
+              desktopScreenshot: pageRuns.every((page) => page.desktopScreenshot),
+              mobileScreenshot: pageRuns.every((page) => page.mobileScreenshot),
+              metadata: pageRuns.every((page) => Boolean(page.metadata)),
+              desktopPageSpeed: pageRuns.every((page) => Boolean(page.desktop)),
+              mobilePageSpeed: pageRuns.every((page) => Boolean(page.mobile)),
+              flowScan: pageRuns.some((page) => page.flowScan),
+            },
+          })
+        }
       }
     } catch (error) {
       const partialDone = await tryPartialFinalize(ctx, pageRuns, error)

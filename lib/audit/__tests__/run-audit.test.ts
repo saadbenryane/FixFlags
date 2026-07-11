@@ -174,4 +174,15 @@ describe('runAudit orchestrator', () => {
     expect(finalizeTriageAudit).not.toHaveBeenCalled()
     expect(updateStatuses()).not.toContain('FAILED')
   })
+
+  it('falls back to deterministic-only when runPage returns without triage', async () => {
+    ;(runPage as Mock).mockResolvedValue(makePageRun({ triage: undefined }))
+
+    await runAudit('audit-1')
+
+    expect(finalizeDeterministicOnly).toHaveBeenCalledTimes(1)
+    expect(persistTriageResults).not.toHaveBeenCalled()
+    expect(finalizeTriageAudit).not.toHaveBeenCalled()
+    expect(updateStatuses()).not.toContain('FAILED')
+  })
 })

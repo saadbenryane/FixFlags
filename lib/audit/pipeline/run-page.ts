@@ -23,6 +23,7 @@ import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
+import type { TriageResult } from '../judge-triage'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import type { PipelineContext, PageRun } from './types'
 
@@ -364,21 +365,30 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
   })
 
-  const triage = await runTriageStep(ctx, {
-    url: normalizedUrl,
-    metadata,
-    desktop: pagespeed?.desktop ?? null,
-    mobile: pagespeed?.mobile ?? null,
-    flags,
-    desktopBase64,
-    mobileBase64,
-  })
-  accumulateTriageUsage(ctx, triage)
-
-  triage.output.newFlags = triage.output.newFlags.map((flag) => ({
-    ...flag,
-    pageUrl: normalizedUrl,
-  }))
+  let triage: TriageResult | undefined
+  try {
+    const triageResult = await runTriageStep(ctx, {
+      url: normalizedUrl,
+      metadata,
+      desktop: pagespeed?.desktop ?? null,
+      mobile: pagespeed?.mobile ?? null,
+      flags,
+      desktopBase64,
+      mobileBase64,
+    })
+    accumulateTriageUsage(ctx, triageResult)
+    triageResult.output.newFlags = triageResult.output.newFlags.map((flag) => ({
+      ...flag,
+      pageUrl: normalizedUrl,
+    }))
+    triage = triageResult
+  } catch (err) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'judging',
+      event: 'triage_step_failed',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 
   await prisma.auditPage.update({
     where: { id: page.id },
