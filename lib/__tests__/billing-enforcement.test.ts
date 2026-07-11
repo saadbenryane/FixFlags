@@ -371,12 +371,18 @@ describe('canUseApiKeys', () => {
 describe('canAccessCompare', () => {
   it('blocks free users when gates enforce', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
+    assert.equal(
+      canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }),
+      false
+    )
   })
 
   it('allows paid users', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), true)
+    assert.equal(
+      canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }),
+      true
+    )
   })
 })
 
@@ -452,32 +458,61 @@ describe('canAccessPaidFeatures', () => {
   it('allows all users when not enforcing gates', () => {
     _env.NODE_ENV = 'development'
     delete _env.DEV_SIMULATE_BILLING
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), true)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }),
+      true
+    )
   })
 
   it('blocks free users when enforcing gates', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }), false)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }),
+      false
+    )
   })
 
   it('allows paid plan users when enforcing gates', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }), true)
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' }), true)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }),
+      true
+    )
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' }),
+      true
+    )
   })
 
-  it('blocks paid plan users when subscription is past_due', () => {
+  it('allows paid plan users while trialing', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'PAST_DUE' }), false)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'TRIALING' }),
+      true
+    )
   })
 
-  it('blocks paid plan users when subscription is canceled', () => {
+  it('blocks paid plan users whose subscription is past due, canceled, or unpaid', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'CANCELED' }), false)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'PAST_DUE' }),
+      false
+    )
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'CANCELED' }),
+      false
+    )
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'UNPAID' }),
+      false
+    )
   })
 
-  it('allows paid plan users on trialing', () => {
+  it('still allows admins with a past-due subscription', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canAccessPaidFeatures({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'TRIALING' }), true)
+    assert.equal(
+      canAccessPaidFeatures({ id: 'u1', role: 'admin', plan: 'BUILDER', subscriptionStatus: 'PAST_DUE' }),
+      true
+    )
   })
 })

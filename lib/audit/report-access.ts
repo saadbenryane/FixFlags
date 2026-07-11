@@ -26,7 +26,7 @@ export function canViewPrescriptionContent(
   return false
 }
 
-export function canViewAiViaAgencyPublicShare(
+export function canViewAiViaMaxPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
 ): boolean {
@@ -45,7 +45,7 @@ export async function canViewPrescriptionContentForAudit(
     where: { id: audit.userId },
     select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
-  return canViewAiViaAgencyPublicShare(audit, owner ? canSharePublicly(owner) : false)
+  return canViewAiViaMaxPublicShare(audit, owner ? canSharePublicly(owner) : false)
 }
 
 type FlagLike = {
@@ -85,11 +85,6 @@ export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] 
     evidence: null,
     fix: null,
   }))
-}
-
-/** @deprecated Use stripPrescriptionFromFlags */
-export function stripAiFromFlags<T extends FlagLike>(flags: T[]): T[] {
-  return stripPrescriptionFromFlags(flags)
 }
 
 export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {

@@ -71,6 +71,7 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
     { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
+    { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
     { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },

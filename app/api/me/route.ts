@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         subscriptionStatus: true,
         vibecodingLevel: true,
         preferredTools: true,
+        subscriptionStatus: true,
       },
     })
 

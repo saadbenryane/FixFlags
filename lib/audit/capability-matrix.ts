@@ -247,7 +247,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     id: 'security-headers-scan',
     dimension: 'REACH',
     category: 'trust',
-    label: 'HTTP security headers audit',
+    label: 'CSP, HSTS, X-Frame-Options, and other response security headers',
     tool: 'html-parse',
     status: 'live',
     checkIds: [
@@ -260,7 +260,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'security-content-type-options-missing',
       'security-xss-protection-missing',
     ],
-    notes: 'Reads raw response headers from browser capture, not PageMetadata.',
+    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
+    notes: 'Reads raw HTTP response headers captured during page navigation, not PageMetadata.',
   },
 
   // REACH - metadata & SEO

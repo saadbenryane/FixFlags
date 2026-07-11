@@ -229,7 +229,7 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
   'template-default-copy': { device: 'both', selectors: ['main h1', 'main p'] },
   'unreplaced-template-token': { device: 'both', selectors: ['main h1', 'main p', 'main'] },
   'visual-typography-sprawl': { device: 'both', selectors: ['main h1', 'main p', 'main button'] },
-  'visual-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button'] },
+  'visual-radius-inconsistent': { device: 'both', selectors: ['main a[href]', 'main button', '.demo-cta-primary'] },
   'motion-ignores-reduced-preference': {
     device: 'both',
     selectors: ['main h1', '.demo-hero', 'main section:first-of-type', '[class*="animate" i]'],

@@ -98,21 +98,19 @@ async function handleInvoicePaymentFailed(
   })
 }
 
-async function handleInvoicePaymentSucceeded(
-  tx: Prisma.TransactionClient,
-  invoice: Stripe.Invoice
-): Promise<void> {
+/** Recovers entitlement immediately on a successful retry, rather than waiting for the next subscription.updated event. */
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
   if (!invoice.subscription) return
 
   const subscriptionId =
     typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
 
-  const user = await tx.user.findFirst({
+  const user = await prisma.user.findFirst({
     where: { stripeSubscriptionId: subscriptionId },
   })
-  if (!user) return
+  if (!user || user.subscriptionStatus !== 'PAST_DUE') return
 
-  await tx.user.update({
+  await prisma.user.update({
     where: { id: user.id },
     data: { subscriptionStatus: 'ACTIVE' as SubscriptionStatus },
   })
@@ -173,7 +171,7 @@ export async function POST(req: NextRequest) {
           break
 
         case 'invoice.payment_succeeded':
-          await handleInvoicePaymentSucceeded(tx, event.data.object)
+          await handleInvoicePaymentSucceeded(event.data.object)
           break
 
         case 'checkout.session.expired': {

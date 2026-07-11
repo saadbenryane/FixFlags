@@ -1,28 +1,28 @@
 import type { DeterministicFlag } from './index'
 
+function parseMaxAge(value: string): number | null {
+  const match = value.match(/max-age\s*=\s*(\d+)/i)
+  return match ? Number(match[1]) : null
+}
+
+function cspDirective(csp: string, name: string): string | null {
+  const match = csp
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.toLowerCase().startsWith(`${name} `) || part.toLowerCase() === name)
+  return match ?? null
+}
+
 export function runSecurityHeaderChecks(
   url: string,
-  responseHeaders: Record<string, string> | null
+  headers: Record<string, string> | null
 ): DeterministicFlag[] {
+  if (headers == null) return []
+
   const findings: DeterministicFlag[] = []
-
-  if (!responseHeaders) return findings
-
-  const normalize = (key: string) => key.toLowerCase()
-  const headers: Record<string, string> = {}
-  for (const [k, v] of Object.entries(responseHeaders)) {
-    headers[normalize(k)] = v
-  }
-
-  const csp = headers['content-security-policy']
-  const hsts = headers['strict-transport-security']
-  const xfo = headers['x-frame-options']
-  const ct = headers['x-content-type-options']
-  const xss = headers['x-xss-protection']
-
   const isHttps = url.startsWith('https://')
+  const csp = headers['content-security-policy'] ?? null
 
-  // CSP checks
   if (!csp) {
     findings.push({
       checkId: 'security-csp-missing',
@@ -32,24 +32,21 @@ export function runSecurityHeaderChecks(
       problem: 'Content Security Policy (CSP) header is missing',
       evidence:
         'No Content-Security-Policy header found in the HTTP response. Pages without CSP are vulnerable to XSS and data injection attacks.',
-      fix: 'Add a Content-Security-Policy header. Start with: default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'',
+      fix: "Add a Content-Security-Policy header. Start with: Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
   } else {
-    const hasUnsafeInline = /\bunsafe-inline\b/.test(csp)
-    const inScriptSrc = /script-src[^;]*unsafe-inline/.test(csp)
-    const inDefaultSrc = !/script-src\s/.test(csp) && /default-src[^;]*unsafe-inline/.test(csp)
-    if (hasUnsafeInline && (inScriptSrc || inDefaultSrc)) {
+    const scriptSrc = cspDirective(csp, 'script-src') ?? cspDirective(csp, 'default-src')
+    if (scriptSrc?.includes('unsafe-inline')) {
       findings.push({
         checkId: 'security-csp-unsafe-inline',
         rubric: 'REACH',
         impactTag: 'TRUST',
         severity: 'IMPORTANT',
         problem: 'CSP allows unsafe-inline in script sources',
-        evidence:
-          'Content-Security-Policy includes unsafe-inline in script-src or default-src. This weakens XSS protection significantly.',
-        fix: 'Replace unsafe-inline with a nonce or hash-based approach for inline scripts. Example: script-src \'nonce-<random>\'',
+        evidence: `Content-Security-Policy includes 'unsafe-inline' in ${scriptSrc.split(' ')[0]}, which defeats most CSP script protections.`,
+        fix: "Remove unsafe-inline from CSP. Use nonce/credit-hash for scripts, or move inline code to external files.",
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
@@ -58,6 +55,7 @@ export function runSecurityHeaderChecks(
 
   // HSTS checks (only meaningful on HTTPS)
   if (isHttps) {
+    const hsts = headers['strict-transport-security'] ?? null
     if (!hsts) {
       findings.push({
         checkId: 'security-hsts-missing',
@@ -72,30 +70,28 @@ export function runSecurityHeaderChecks(
         source: 'DETERMINISTIC',
       })
     } else {
-      const maxAgeMatch = hsts.match(/max-age=(\d+)/i)
-      if (maxAgeMatch) {
-        const maxAge = parseInt(maxAgeMatch[1], 10)
-        if (maxAge < 31536000) {
-          findings.push({
-            checkId: 'security-hsts-too-short',
-            rubric: 'REACH',
-            impactTag: 'TRUST',
-            severity: 'POLISH',
-            problem: 'HSTS max-age is less than the recommended 1 year (31536000s)',
-            evidence: `Strict-Transport-Security max-age is ${maxAge}s. The recommended minimum is 31536000s (1 year).`,
-            fix: 'Set max-age to at least 31536000 (e.g., Strict-Transport-Security: max-age=31536000; includeSubDomains)',
-            confidence: 1.0,
-            source: 'DETERMINISTIC',
-          })
-        }
+      const maxAge = parseMaxAge(hsts)
+      if (maxAge !== null && maxAge < 31536000) {
+        findings.push({
+          checkId: 'security-hsts-too-short',
+          rubric: 'REACH',
+          impactTag: 'TRUST',
+          severity: 'POLISH',
+          problem: 'HSTS max-age is less than the recommended 1 year (31536000s)',
+          evidence: `Strict-Transport-Security max-age is ${maxAge} seconds (recommended: 31536000, one year).`,
+          fix: 'Set HSTS max-age to at least 31536000 (1 year). Consider adding includeSubDomains and preload directives for maximum security.',
+          confidence: 1.0,
+          source: 'DETERMINISTIC',
+        })
       }
     }
   }
 
-  // X-Frame-Options checks
-  const hasFrameAncestors = csp ? /\bframe-ancestors\b/.test(csp) : false
-  if (!hasFrameAncestors) {
-    if (!xfo) {
+  // CSP frame-ancestors supersedes X-Frame-Options in modern browsers; skip both
+  // frame-options checks when it's present to avoid flagging the same risk twice.
+  if (!csp || !cspDirective(csp, 'frame-ancestors')) {
+    const frameOptions = headers['x-frame-options'] ?? null
+    if (!frameOptions) {
       findings.push({
         checkId: 'security-frame-options-missing',
         rubric: 'REACH',
@@ -108,31 +104,30 @@ export function runSecurityHeaderChecks(
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
-    } else if (xfo !== 'DENY' && xfo !== 'SAMEORIGIN') {
+    } else if (!['deny', 'sameorigin'].includes(frameOptions.trim().toLowerCase())) {
       findings.push({
         checkId: 'security-frame-options-too-permissive',
         rubric: 'REACH',
         impactTag: 'TRUST',
         severity: 'IMPORTANT',
-        problem: 'X-Frame-Options is set to a permissive value',
-        evidence: `X-Frame-Options is "${xfo}". Only DENY and SAMEORIGIN provide clickjacking protection.`,
-        fix: 'Change X-Frame-Options to DENY (preferred) or SAMEORIGIN',
+        problem: 'X-Frame-Options is not DENY or SAMEORIGIN',
+        evidence: `X-Frame-Options is set to "${frameOptions}", which most browsers no longer honor safely.`,
+        fix: 'Set X-Frame-Options to DENY or SAMEORIGIN. For embedding pages, use a CSP frame-ancestors directive with specific trusted origins.',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
     }
   }
 
-  // X-Content-Type-Options checks
-  if (!ct || ct.toLowerCase() !== 'nosniff') {
+  if (!headers['x-content-type-options']?.toLowerCase().includes('nosniff')) {
     findings.push({
       checkId: 'security-content-type-options-missing',
       rubric: 'REACH',
       impactTag: 'TRUST',
       severity: 'IMPORTANT',
       problem: 'X-Content-Type-Options header is missing or not set to nosniff',
-      evidence: ct
-        ? `X-Content-Type-Options is "${ct}" instead of "nosniff"`
+      evidence: headers['x-content-type-options']
+        ? `X-Content-Type-Options is "${headers['x-content-type-options']}" instead of "nosniff"`
         : 'No X-Content-Type-Options header found. Browsers may MIME-sniff resources, enabling certain attacks.',
       fix: 'Add X-Content-Type-Options: nosniff',
       confidence: 1.0,
@@ -140,8 +135,7 @@ export function runSecurityHeaderChecks(
     })
   }
 
-  // X-XSS-Protection checks
-  if (!xss) {
+  if (!headers['x-xss-protection']) {
     findings.push({
       checkId: 'security-xss-protection-missing',
       rubric: 'REACH',
@@ -149,7 +143,7 @@ export function runSecurityHeaderChecks(
       severity: 'POLISH',
       problem: 'X-XSS-Protection header is missing',
       evidence:
-        'No X-XSS-Protection header found. Note: modern browsers have deprecated this header in favor of CSP, but including it provides defense-in-depth for legacy browsers.',
+        'No X-XSS-Protection header found. Modern browsers have deprecated this header in favor of CSP, but including it provides defense-in-depth for legacy browsers.',
       fix: 'Add X-XSS-Protection: 1; mode=block (though CSP is the modern replacement)',
       confidence: 1.0,
       source: 'DETERMINISTIC',

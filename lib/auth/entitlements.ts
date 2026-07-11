@@ -56,7 +56,9 @@ export function canExportSummary(
   return canSharePublicly(user)
 }
 
-export function canUseApiKeys(user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>): boolean {
+export function canUseApiKeys(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
   return canAccessPaidFeatures(user)
 }
 

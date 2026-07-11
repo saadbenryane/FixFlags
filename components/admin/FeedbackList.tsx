@@ -11,7 +11,7 @@ interface FeedbackItem {
   rubric: string
   severity: string
   evidence: string
-  auditId: string
+  sampleAuditId: string
   count: number
 }
 
@@ -40,8 +40,8 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
           <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
             {item.evidence}
           </div>
-          <TextLink href={`/admin/audits/${item.auditId}`} className="text-xs">
-            View audit →
+          <TextLink href={`/admin/audits/${item.sampleAuditId}`} className="text-xs">
+            View source audit &rarr;
           </TextLink>
         </Card>
       ))}

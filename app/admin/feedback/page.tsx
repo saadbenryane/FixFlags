@@ -32,7 +32,7 @@ export default async function AdminFeedbackPage() {
         rubric: string
         severity: string
         evidence: string
-        auditId: string
+        sampleAuditId: string
         count: number
       }
     >
@@ -45,7 +45,7 @@ export default async function AdminFeedbackPage() {
         rubric: item.flag.rubric,
         severity: item.flag.severity,
         evidence: item.flag.evidence,
-        auditId: item.flag.auditId,
+        sampleAuditId: item.flag.auditId,
         count: 0,
       }
     }
