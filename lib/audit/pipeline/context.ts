@@ -8,8 +8,9 @@ import type { PipelineContext, PageRun } from './types'
 export function sanitizeAuditErrorMessage(message: string): string {
   return message
     .replace(/https?:\/\/[^\s]+/gi, '[url]')
-    .replace(/\bsk-[a-zA-Z0-9_-]{8,}\b/g, '[redacted-key]')
-    .replace(/\bsk-ant-[a-zA-Z0-9_-]{8,}\b/g, '[redacted-key]')
+    .replace(/\bsk-[a-zA-Z0-9_*-]{8,}\b/g, '[redacted-key]')
+    .replace(/\bsk-ant-[a-zA-Z0-9_*-]{8,}\b/g, '[redacted-key]')
+    .replace(/:\s*sk-[a-zA-Z0-9_*-]+/g, ': [redacted-key]')
     .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, (match) =>
       match.includes('API') || match.includes('KEY') ? '[config]' : match
     )

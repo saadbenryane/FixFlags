@@ -9,6 +9,8 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
 
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +25,6 @@ jobs:
       - run: npx prisma generate
 
       - run: npm run typecheck
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
 
       - run: npm run lint
 
