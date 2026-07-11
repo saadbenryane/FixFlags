@@ -18,19 +18,19 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Callout } from '@/components/ui/callout'
+import { Surface } from '@/components/ui/surface'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import {
   Sheet,
   SheetTrigger,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
   SheetClose,
 } from '@/components/ui/sheet'
 
@@ -60,8 +60,6 @@ interface ShareDrawerProps {
 
 export function ShareDrawer({
   auditId,
-  score,
-  topIssue,
   isLoggedIn,
   isOwner,
   isPublic: initialIsPublic,
@@ -230,31 +228,27 @@ export function ShareDrawer({
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {!canPublicShare && isOwner && !isAnonymous && !isPublic && (
-            <div className="rounded-lg border border-border/20 bg-brand/5 p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Private report</p>
-                  <p className="text-xs text-muted-foreground">
-                    Only you can see this report. Upgrade to Agency for public share links.
-                  </p>
+            <Callout variant="neutral" title="Private report">
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Only you can see this report. Upgrade to Agency for public share links.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={() => copyToClipboard(shareUrl)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy private link
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/pricing">Agency</Link>
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 gap-2"
-                  onClick={() => copyToClipboard(shareUrl)}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy private link
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/pricing">Agency</Link>
-                </Button>
-              </div>
-            </div>
+            </Callout>
           )}
 
           {isOwner && !isAnonymous && !isPublic && canPublicShare && (
@@ -324,7 +318,7 @@ export function ShareDrawer({
                       )}
                     </div>
 
-                    <div className="rounded-lg border border-border/20 bg-card p-4 space-y-3">
+                    <Card className="p-4 space-y-3">
                       <Input
                         placeholder="Label (e.g. Client review)"
                         value={newLabel}
@@ -372,7 +366,7 @@ export function ShareDrawer({
                         <Plus className="h-3.5 w-3.5" />
                         {creating ? 'Creating...' : 'Create share link'}
                       </Button>
-                    </div>
+                    </Card>
                   </div>
 
                   {activeLinks.length > 0 && (
@@ -380,9 +374,9 @@ export function ShareDrawer({
                       {activeLinks.map((link) => {
                         const linkUrl = `${SITE_URL}/api/share/${link.token}`
                         return (
-                          <div
+                          <Card
                             key={link.id}
-                            className="rounded-lg border border-border/20 bg-card p-3 space-y-2"
+                            className="p-3 space-y-2"
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 min-w-0">
@@ -448,14 +442,14 @@ export function ShareDrawer({
                                 </a>
                               </Button>
                             </div>
-                          </div>
+                          </Card>
                         )
                       })}
                     </div>
                   )}
 
                   {activeLinks.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border/20 p-6 text-center">
+                    <div className="rounded-card border border-dashed border-border/20 p-6 text-center">
                       <p className="text-xs text-muted-foreground">
                         No share links yet. Create one above.
                       </p>
@@ -468,9 +462,10 @@ export function ShareDrawer({
                         Revoked ({revokedLinks.length})
                       </Label>
                       {revokedLinks.map((link) => (
-                        <div
+                        <Surface
                           key={link.id}
-                          className="rounded-lg border border-border/10 bg-muted/50 p-3 opacity-50"
+                          variant="flat"
+                          className="p-3 opacity-50"
                         >
                           <div className="flex items-center gap-2">
                             <Lock className="h-3 w-3 text-muted-foreground" />
@@ -481,7 +476,7 @@ export function ShareDrawer({
                           <p className="text-[10px] text-muted-foreground mt-1">
                             {link.viewCount} views · Revoked
                           </p>
-                        </div>
+                        </Surface>
                       ))}
                     </div>
                   )}
@@ -491,15 +486,16 @@ export function ShareDrawer({
           )}
 
           {!isLoggedIn && !isAnonymous && (
-            <div className="rounded-lg border border-border/20 bg-brand/5 p-4 space-y-3">
-              <p className="text-sm font-medium">Sign in to share this report</p>
-              <p className="text-xs text-muted-foreground">
-                Create a free account to save and share your reports.
-              </p>
-              <Button size="sm" asChild className="w-full">
-                <Link href={`/sign-up?next=/report/${auditId}`}>Sign in</Link>
-              </Button>
-            </div>
+            <Callout variant="info" title="Sign in to share this report">
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Create a free account to save and share your reports.
+                </p>
+                <Button size="sm" asChild className="w-full">
+                  <Link href={`/sign-up?next=/report/${auditId}`}>Sign in</Link>
+                </Button>
+              </div>
+            </Callout>
           )}
         </div>
       </SheetContent>

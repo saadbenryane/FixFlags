@@ -21,12 +21,12 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const post = findPost(slug)
-  if (!post) return { title: `Blog — ${BRAND.name}` }
+  if (!post) return { title: `Blog: ${BRAND.name}` }
 
   const url = `${SITE_URL}/blog/${post.slug}`
 
   return {
-    title: `${post.title} — ${BRAND.name} Blog`,
+    title: `${post.title}: ${BRAND.name} Blog`,
     description: post.excerpt,
     alternates: { canonical: url },
     robots: { index: true, follow: true },

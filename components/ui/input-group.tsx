@@ -9,7 +9,7 @@ export function InputGroup({ className, ...props }: InputGroupProps) {
       className={cn(
         'flex flex-col gap-1.5 overflow-hidden rounded-card p-1.5 glass-surface-elevated shadow-glass sm:rounded-full',
         'transition-shadow duration-200',
-        'focus-within:shadow-card-hover focus-within:ring-2 focus-within:ring-ring/25',
+        'focus-within:shadow-card-hover focus-within:ring-2 focus-within:ring-focus-ring/25',
         'sm:flex-row sm:items-stretch sm:gap-0',
         className
       )}

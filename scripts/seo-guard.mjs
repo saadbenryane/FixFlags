@@ -7,17 +7,15 @@ import { join } from 'node:path'
 
 const ROOT = process.cwd()
 const copyPath = join(ROOT, 'lib/marketing/copy.ts')
-const seoRoutesPath = join(ROOT, 'lib/marketing/seo-routes.ts')
-const llmsRoutesPath = join(ROOT, 'lib/marketing/seo-routes.ts')
+const routesPath = join(ROOT, 'lib/marketing/seo-routes.ts')
 
 const copy = readFileSync(copyPath, 'utf8')
-const seoRoutes = readFileSync(seoRoutesPath, 'utf8')
-const llmsRoutes = readFileSync(llmsRoutesPath, 'utf8')
+const routes = readFileSync(routesPath, 'utf8')
 
 function extractSeoKeys(source) {
   const match = source.match(/export const SEO = \{([\s\S]*?)\} as const/)
   if (!match) throw new Error('Could not find SEO block in copy.ts')
-  return [...match[1].matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1])
+  return [...match[1].matchAll(/^[ \t]+(\w+):\s*\{/gm)].map((m) => m[1])
 }
 
 function extractRouteKeys(source) {
@@ -29,8 +27,8 @@ function extractLlmsPaths(source) {
 }
 
 const seoKeys = extractSeoKeys(copy)
-const routeKeys = extractRouteKeys(seoRoutes)
-const llmsPaths = extractLlmsPaths(llmsRoutes)
+const routeKeys = extractRouteKeys(routes)
+const llmsPaths = extractLlmsPaths(routes)
 
 const errors = []
 
@@ -46,7 +44,7 @@ for (const key of seoKeys) {
   }
 }
 
-const requiredLlmsPaths = ['/', '/samples', '/pricing', '/docs/mcp', '/faq', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
+const requiredLlmsPaths = ['/', '/how-it-works', '/samples', '/pricing', '/docs/mcp', '/faq', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
 for (const path of requiredLlmsPaths) {
   if (!llmsPaths.includes(path)) {
     errors.push(`LLMS_SECTIONS missing path "${path}"`)

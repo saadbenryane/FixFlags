@@ -56,7 +56,6 @@ export function ShareLinkPageClient({ token, auditId }: Props) {
             placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoFocus
           />
           <Button type="submit" className="w-full" disabled={loading || !password}>
             {loading ? 'Checking...' : 'View report'}

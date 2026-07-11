@@ -57,7 +57,7 @@ function SocialPreview({ result }: { result: MetaPreviewResult }) {
   const hasImage = !!result.ogImage
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+    <Card variant="solid" className="overflow-hidden">
       <div className="aspect-[1.91/1] bg-muted flex items-center justify-center">
         {hasImage ? (
           /* eslint-disable-next-line @next/next/no-img-element -- external user-supplied URL */
@@ -81,7 +81,7 @@ function SocialPreview({ result }: { result: MetaPreviewResult }) {
         <p className="font-semibold leading-snug">{displayTitle}</p>
         <p className="text-sm leading-snug text-muted-foreground line-clamp-2">{displayDesc}</p>
       </div>
-    </div>
+    </Card>
   )
 }
 

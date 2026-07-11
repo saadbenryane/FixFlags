@@ -5,6 +5,9 @@ import {
   aiImpactToEnum,
   buildDeterministicFlagRow,
   buildAiFlagRow,
+  buildTriageAiFlagRow,
+  flagKeyForRow,
+  isBlankText,
 } from '@/lib/audit/persist'
 import { flagFingerprint } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
@@ -304,5 +307,64 @@ describe('buildAiFlagRow', () => {
     const rMap = rubricMap([['MESSAGE', 'rubric-message-id']])
     const row = buildAiFlagRow(flag, 0, new Map(), rMap, 0)
     assert.equal(row.rubricId, 'rubric-message-id')
+  })
+})
+
+describe('buildTriageAiFlagRow', () => {
+  const rMap = rubricMap([['MESSAGE', 'r1'], ['EXPERIENCE', 'r2']])
+  const emptyPageMap = new Map<string, string>()
+
+  it('builds a row with locked triage evidence', () => {
+    const flag = { rubric: 'MESSAGE' as const, problem: 'Unclear value', impactTag: 'CONVERSION' as const, severity: 'IMPORTANT' as const, confidence: 0.8, pageUrl: null }
+    const row = buildTriageAiFlagRow(flag, 0, emptyPageMap, rMap, 0)
+    assert.equal(row.severity, 'IMPORTANT')
+    assert.equal(row.impactTag, 'CONVERSION')
+    assert.equal(row.rubricId, 'r1')
+    assert.ok(row.evidence.length > 0)
+    assert.ok(!row.evidence.includes('undefined'))
+  })
+
+  it('maps invalid impactTag to null', () => {
+    const flag = { rubric: 'MESSAGE' as const, problem: 'Test', impactTag: 'INVALID', severity: 'POLISH' as const, confidence: 0.5, pageUrl: null }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = buildTriageAiFlagRow(flag as any, 0, emptyPageMap, rMap, 0)
+    assert.equal(row.impactTag, null)
+  })
+
+  it('sets correct position', () => {
+    const flag = { rubric: 'EXPERIENCE' as const, problem: 'Slow load', impactTag: 'ACCESSIBILITY' as const, severity: 'CRITICAL' as const, confidence: 0.9, pageUrl: null }
+    const row = buildTriageAiFlagRow(flag, 5, emptyPageMap, rMap, 0)
+    assert.equal(row.position, 5)
+  })
+})
+
+describe('flagKeyForRow', () => {
+  it('uses checkId when available', () => {
+    assert.equal(flagKeyForRow({ checkId: 'ck-1', fingerprint: 'fp-1' }), 'ck-1')
+  })
+
+  it('falls back to fingerprint when no checkId', () => {
+    assert.equal(flagKeyForRow({ checkId: null, fingerprint: 'fp-1' }), 'fp-1')
+  })
+
+  it('falls back to empty string when neither available', () => {
+    assert.equal(flagKeyForRow({ checkId: null, fingerprint: null }), '')
+    assert.equal(flagKeyForRow({ checkId: null, fingerprint: null }), '')
+  })
+})
+
+describe('isBlankText', () => {
+  it('returns true for null, undefined, empty, whitespace', () => {
+    assert.equal(isBlankText(null), true)
+    assert.equal(isBlankText(undefined), true)
+    assert.equal(isBlankText(''), true)
+    assert.equal(isBlankText('   '), true)
+    assert.equal(isBlankText('\n\t '), true)
+  })
+
+  it('returns false for non-blank strings', () => {
+    assert.equal(isBlankText('hello'), false)
+    assert.equal(isBlankText(' a '), false)
+    assert.equal(isBlankText('0'), false)
   })
 })

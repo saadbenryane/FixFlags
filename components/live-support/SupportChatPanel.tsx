@@ -3,36 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Textarea } from '@/components/ui/textarea'
+import { MessageBubble } from '@/components/support/MessageBubble'
 import type { SupportMessageDto } from '@/lib/live-support/types'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
-
-function MessageBubble({ message }: { message: SupportMessageDto }) {
-  const isVisitor = message.role === 'VISITOR'
-  const isSystem = message.role === 'SYSTEM'
-
-  if (isSystem) {
-    return (
-      <p className="text-center text-xs text-muted-foreground px-2 py-1">{message.body}</p>
-    )
-  }
-
-  return (
-    <div className={cn('flex', isVisitor ? 'justify-end' : 'justify-start')}>
-      <div
-        className={cn(
-          'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed',
-          isVisitor
-            ? 'bg-brand text-brand-foreground rounded-br-md'
-            : 'bg-muted text-foreground rounded-bl-md'
-        )}
-      >
-        {message.body}
-      </div>
-    </div>
-  )
-}
 
 export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   const { sessionId, setSessionId, auditId: contextAuditId } = useSupportContext()
@@ -106,9 +81,16 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
             Ask us anything about FixFlags, your audit, or getting started.
           </p>
         )}
-        {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
+        {messages.map((m) => {
+          if (m.role === 'SYSTEM') {
+            return <p key={m.id} className="text-center text-xs text-muted-foreground px-2 py-1">{m.body}</p>
+          }
+          return (
+            <MessageBubble key={m.id} variant={m.role === 'VISITOR' ? 'visitor' : 'agent'}>
+              {m.body}
+            </MessageBubble>
+          )
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -119,12 +101,12 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
           </p>
         )}
         <div className="flex gap-2">
-          <textarea
+          <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Type a message…"
             rows={2}
-            className="flex-1 resize-none rounded-full border-0 bg-[var(--glass-bg-subtle)] px-4 py-2.5 text-sm shadow-glass backdrop-blur-md placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex-1 resize-none"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

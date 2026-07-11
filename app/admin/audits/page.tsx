@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { formatUsd } from '@/lib/billing/costs'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'

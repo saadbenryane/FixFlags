@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Share2, Check, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { SITE_URL } from '@/lib/marketing/copy'
 
@@ -64,7 +65,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-card p-3">
+    <Card className="flex items-center gap-2 p-3">
       <Input
         value={link}
         readOnly
@@ -80,6 +81,6 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </Button>
-    </div>
+    </Card>
   )
 }

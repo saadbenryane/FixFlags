@@ -1272,7 +1272,7 @@ export const SEO = {
   },
   blog: {
     title: 'Blog',
-    description: 'Notes on shipping AI-built products without the embarrassing bugs — QA, launch checklists, and what breaks when you ship fast.',
+    description: 'Notes on shipping AI-built products without the embarrassing bugs. QA, launch checklists, and what breaks when you ship fast.',
   },
   privacy: {
     title: 'Privacy Policy',

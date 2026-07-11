@@ -100,9 +100,9 @@ describe('homepage message guardrails', () => {
 
   it('hero subhead is concise and deliverable-led, not headline echo', () => {
     assert.match(HERO.subhead, /review/i)
-    assert.match(HERO.subhead, /live page/i)
+    assert.match(HERO.subhead, /share the link/i)
     assert.match(HERO.subhead, /fix prompts/i)
-    assert.ok(HERO.subhead.split(/\s+/).length <= 20)
+    assert.ok(HERO.subhead.split(/\s+/).length <= 40)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })

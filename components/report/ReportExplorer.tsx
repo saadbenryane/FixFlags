@@ -233,8 +233,11 @@ export function ReportExplorer({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'ArrowLeft') showPrevious()
-      if (e.key === 'ArrowRight') showNext()
+      const target = e.target as HTMLElement
+      const isInput = target.matches('input, textarea, select, [contenteditable]')
+      if (isInput) return
+      if (e.key === 'ArrowLeft') { e.preventDefault(); showPrevious() }
+      if (e.key === 'ArrowRight') { e.preventDefault(); showNext() }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

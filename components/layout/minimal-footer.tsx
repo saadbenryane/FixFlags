@@ -18,7 +18,7 @@ export function MinimalFooter() {
       <Container className="flex flex-col gap-3 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Logo variant="mark" size="sm" href="/" />
-          <span>© 2026 {BRAND.name}</span>
+          <span>© {new Date().getFullYear()} {BRAND.name}</span>
         </div>
         <div className="flex items-center gap-2">
           <FooterThemeToggle />

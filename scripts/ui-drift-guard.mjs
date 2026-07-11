@@ -20,7 +20,7 @@ const FONT_DISPLAY_ALLOW = [
 ]
 
 const PANEL_RE =
-  /className=(?:"[^"]*rounded-(xl|lg)[^"]*(?:border|bg-|shadow|p-\d)[^"]*"|'[^']*rounded-(xl|lg)[^']*(?:border|bg-|shadow|p-\d)[^']*')/
+  /className=(?:"[^"]*rounded-(xl|lg)[^"]*(?:border|bg-|shadow|p-\d+)[^"]*"|'[^']*rounded-(xl|lg)[^']*(?:border|bg-|shadow|p-\d+)[^']*')/
 
 function walk(dir, files = []) {
   for (const name of readdirSync(dir)) {

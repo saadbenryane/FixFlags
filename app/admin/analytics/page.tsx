@@ -229,7 +229,7 @@ export default async function AdminAnalyticsPage() {
             </CardHeader>
             <CardContent>
               <StatValue>
-                {avgAuditDurationSeconds === null ? '—' : `${avgAuditDurationSeconds.toFixed(1)}s`}
+                {avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`}
               </StatValue>
               <span className="text-xs text-muted-foreground">Target: under 30s</span>
             </CardContent>

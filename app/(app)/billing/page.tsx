@@ -96,16 +96,13 @@ export default async function BillingPage() {
         </div>
 
         {(user.subscriptionStatus === 'PAST_DUE' || user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
-            <p className="font-medium text-destructive">Payment issue</p>
-            <p className="text-destructive/80 mt-1">
-              {user.subscriptionStatus === 'PAST_DUE'
-                ? 'Your subscription payment is past due. Update your payment method to avoid losing access.'
-                : user.subscriptionStatus === 'CANCELED'
-                  ? 'Your subscription has been canceled. Features may be downgraded.'
-                  : 'Your subscription is unpaid. Please check your payment method.'}
-            </p>
-          </div>
+          <Callout variant="danger" title="Payment issue">
+            {user.subscriptionStatus === 'PAST_DUE'
+              ? 'Your subscription payment is past due. Update your payment method to avoid losing access.'
+              : user.subscriptionStatus === 'CANCELED'
+                ? 'Your subscription has been canceled. Features may be downgraded.'
+                : 'Your subscription is unpaid. Please check your payment method.'}
+          </Callout>
         )}
         <UsageMeter
           used={user.auditsUsed}

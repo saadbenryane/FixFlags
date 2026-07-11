@@ -4,6 +4,13 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { LeadStatus } from '@prisma/client'
 
 const STATUSES: LeadStatus[] = ['NEW', 'QUALIFIED', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED']
@@ -43,18 +50,21 @@ export function LeadEditor({ domain, initialStatus, initialNotes }: LeadEditorPr
         <label htmlFor="lead-status" className="text-sm font-medium">
           Status
         </label>
-        <select
-          id="lead-status"
+        <Select
           value={status}
-          onChange={(e) => setStatus(e.target.value as LeadStatus)}
-          className="w-full rounded-full border-0 bg-[var(--glass-bg-subtle)] px-4 py-2 text-sm shadow-glass backdrop-blur-md"
+          onValueChange={(v) => setStatus(v as LeadStatus)}
         >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="lead-status" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">

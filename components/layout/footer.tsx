@@ -37,7 +37,7 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border/30 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 {BRAND.name}</p>
+          <p>© {new Date().getFullYear()} {BRAND.name}</p>
           <p>{madeWith}</p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <FooterThemeToggle />

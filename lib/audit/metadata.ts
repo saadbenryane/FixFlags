@@ -360,10 +360,3 @@ export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> 
   const { metadata } = await fetchAndParseMetadataWithHeaders(url)
   return metadata
 }
-
-export async function fetchAndParseMetadataWithHeaders(
-  url: string
-): Promise<{ metadata: PageMetadata; responseHeaders: Record<string, string> }> {
-  const { html, finalUrl, headers } = await safeFetchHtml(url)
-  return { metadata: parseMetadataFromHtml(html, finalUrl), responseHeaders: headers }
-}

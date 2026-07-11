@@ -143,7 +143,7 @@ export default async function McpAnalyticsPage() {
                 {recentFailures.map((f, i) => (
                   <div
                     key={i}
-                    className="rounded-md border border-red-100 bg-red-50/50 px-3 py-2 dark:border-red-900 dark:bg-red-950/20"
+                    className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2"
                   >
                     <div className="flex items-center gap-2 text-xs">
                       <code className="font-mono text-[10px]">
@@ -155,7 +155,7 @@ export default async function McpAnalyticsPage() {
                       </span>
                     </div>
                     {f.errorCode && (
-                      <p className="mt-0.5 text-[10px] font-mono text-red-600 dark:text-red-400">
+                      <p className="mt-0.5 text-[10px] font-mono text-destructive">
                         {f.errorCode}
                       </p>
                     )}

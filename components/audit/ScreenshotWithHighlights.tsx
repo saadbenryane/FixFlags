@@ -84,7 +84,7 @@ function EvidencePin({
       />
       <span
         className={cn(
-          'relative rounded-full bg-white ring-2 transition-transform',
+          'relative rounded-full bg-background ring-2 transition-transform',
           selected ? 'h-4 w-4 scale-110 ring-brand' : 'h-3.5 w-3.5',
           isCritical ? 'ring-destructive/60' : 'ring-brand/70',
           active && 'scale-110'

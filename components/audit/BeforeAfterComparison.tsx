@@ -58,7 +58,7 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={afterUrl} alt="After" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-top" />
-        <div className="absolute bottom-2 right-2 rounded-md bg-[hsl(var(--terminal))]/80 px-2 py-0.5 text-xs text-[hsl(var(--terminal-foreground))]">
+        <div className="absolute bottom-2 right-2 rounded-md bg-terminal/80 px-2 py-0.5 text-xs text-terminal-foreground">
           After
         </div>
       </div>
@@ -73,7 +73,7 @@ export function BeforeAfterComparison({ beforeUrl, afterUrl, device = 'desktop' 
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         />
         <div
-          className="absolute bottom-2 left-2 rounded-md bg-[hsl(var(--terminal))]/80 px-2 py-0.5 text-xs text-[hsl(var(--terminal-foreground))]"
+          className="absolute bottom-2 left-2 rounded-md bg-terminal/80 px-2 py-0.5 text-xs text-terminal-foreground"
           style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
         >
           Before

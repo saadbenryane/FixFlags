@@ -31,7 +31,7 @@ function DimensionScene({ id }: { id: DimensionId }) {
   const imagePosition = isMessage ? 'object-[8%_52%]' : isExperience ? 'object-[43%_50%]' : 'object-[70%_50%]'
 
   return (
-    <div className="relative mb-6 h-40 overflow-hidden rounded-nested-md border border-white/60 bg-muted/35 shadow-card">
+    <div className="relative mb-6 h-40 overflow-hidden rounded-nested-md border border-border-subtle bg-muted/35 shadow-card">
       <Image
         src="/marketing/brand-product-moments.webp"
         alt=""
@@ -50,7 +50,7 @@ function DimensionScene({ id }: { id: DimensionId }) {
 
       {isMessage ? (
         <>
-          <div className="absolute right-4 top-4 w-40 rounded-[1rem] border border-white/70 bg-background/72 p-3 shadow-glass backdrop-blur-xl">
+          <div className="absolute right-4 top-4 w-40 rounded-nested-md border border-border-subtle bg-background/72 p-3 shadow-glass backdrop-blur-xl">
             <span className="mb-2 block h-2 w-16 rounded-full bg-brand/80" />
             <span className="mb-1.5 block h-1.5 w-28 rounded-full bg-foreground/18" />
             <span className="mb-3 block h-1.5 w-20 rounded-full bg-foreground/12" />
@@ -64,14 +64,14 @@ function DimensionScene({ id }: { id: DimensionId }) {
         </>
       ) : isExperience ? (
         <>
-          <div className="absolute left-5 top-4 h-28 w-16 rounded-[1.25rem] border border-white/75 bg-background/64 shadow-glass backdrop-blur-xl">
+          <div className="absolute left-5 top-4 h-28 w-16 rounded-nested-sm border border-border-subtle bg-background/64 shadow-glass backdrop-blur-xl">
             <span className="absolute left-1/2 top-2 h-1 w-5 -translate-x-1/2 rounded-full bg-foreground/16" />
             <span className="absolute left-3 top-8 h-3 w-10 rounded-full bg-foreground/10" />
             <span className="absolute left-3 top-14 h-3 w-10 rounded-full bg-foreground/10" />
             <span className="absolute bottom-3 left-3 h-4 w-10 rounded-full bg-brand" />
             <span className="absolute bottom-8 left-2 h-8 w-12 rounded-sm border-2 border-dashed border-brand/85 bg-brand/10 shadow-[0_0_0_2px_hsl(var(--brand)/0.12)]" />
           </div>
-          <div className="absolute bottom-4 right-4 rounded-[0.9rem] border border-white/70 bg-background/78 px-3 py-2 shadow-card backdrop-blur-xl">
+          <div className="absolute bottom-4 right-4 rounded-nested-md border border-border-subtle bg-background/78 px-3 py-2 shadow-card backdrop-blur-xl">
             <span className="block font-mono text-[10px] font-bold uppercase tracking-label text-brand">
               High
             </span>
@@ -82,12 +82,12 @@ function DimensionScene({ id }: { id: DimensionId }) {
         </>
       ) : (
         <>
-          <div className="absolute left-5 top-5 h-20 w-32 rounded-[1rem] border border-white/70 bg-background/70 p-3 shadow-glass backdrop-blur-xl">
+          <div className="absolute left-5 top-5 h-20 w-32 rounded-nested-md border border-border-subtle bg-background/70 p-3 shadow-glass backdrop-blur-xl">
             <span className="mb-2 block h-2 w-10 rounded-full bg-brand/70" />
             <span className="mb-1.5 block h-1.5 w-24 rounded-full bg-foreground/16" />
             <span className="block h-1.5 w-16 rounded-full bg-foreground/10" />
           </div>
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-white/70 bg-background/78 px-3 py-2 text-[11px] font-semibold shadow-card backdrop-blur-xl">
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-full border border-border-subtle bg-background/78 px-3 py-2 text-[11px] font-semibold shadow-card backdrop-blur-xl">
             <span className="h-2 w-2 rounded-full bg-info" />
             Share preview ready
           </div>

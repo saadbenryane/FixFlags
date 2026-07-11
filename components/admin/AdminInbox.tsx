@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { TextLink } from '@/components/ui/text-link'
 import { cn } from '@/lib/utils'
+import { MessageBubble } from '@/components/support/MessageBubble'
 import {
   useAdminSupportMessages,
   useAdminSupportSessions,
@@ -62,16 +63,9 @@ function AdminMessage({ message }: { message: SupportMessageDto }) {
     return <p className="text-center text-xs text-muted-foreground">{message.body}</p>
   }
   return (
-    <div className={cn('flex', isAgent ? 'justify-end' : 'justify-start')}>
-      <div
-        className={cn(
-          'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
-          isAgent ? 'bg-brand text-brand-foreground' : 'bg-muted'
-        )}
-      >
-        {message.body}
-      </div>
-    </div>
+    <MessageBubble variant={isAgent ? 'agent' : 'visitor'}>
+      {message.body}
+    </MessageBubble>
   )
 }
 

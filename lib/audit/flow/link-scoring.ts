@@ -165,22 +165,6 @@ export function isDeadHref(href: string): boolean {
   return classifyCtaHref(href).isPlaceholder
 }
 
-/**
- * Self-contained (no-import) CTA actionability predicate that can be serialized
- * via .toString() and passed to page.evaluate() for in-browser use.
- * Callers: `page.evaluate(isBrowserActionablePredicate)` then filter the result.
- */
-export function isBrowserActionableHref(href: string | null, tag: string): boolean {
-  if (tag === 'button' || tag === 'input') return true
-  if (!href || href === '#' || href.startsWith('javascript:') || href === 'about:blank') return false
-  try {
-    const url = new URL(href)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return true
-  }
-}
-
 export function resolveSameOrigin(origin: string, href: string): string | null {
   try {
     if (href.startsWith('/')) return new URL(href, origin).toString()

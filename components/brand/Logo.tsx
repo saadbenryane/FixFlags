@@ -65,7 +65,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
       <a
         href={href}
         aria-label={BRAND.name}
-        className="inline-flex shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         {content}
       </a>
