@@ -99,11 +99,11 @@ export const HERO = {
   audienceLine: '',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use.',
+    'Review your AI-built site before you share the link. Catch broken messaging, mobile layout issues, and missing link previews. Get copy-ready fix prompts your builder can run.',
   trustLine: 'Check the page before users see it.',
   supportingLine: 'Check the page before users see it.',
   primaryCta: 'Review my site',
-  navSignUpCta: 'Sign up',
+  navSignUpCta: 'Try free',
   trySampleCta: 'View sample report',
   urlPlaceholder: 'your-site.com',
   trustBadgesSubtitle: 'See what users see',
