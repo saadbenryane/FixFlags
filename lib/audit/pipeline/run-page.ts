@@ -24,6 +24,9 @@ import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
 import type { TriageResult } from '../judge-triage'
+import { parseTriageFailure } from './triage-failure'
+import { MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
+import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import type { PipelineContext, PageRun } from './types'
 
@@ -356,38 +359,62 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
-  await prisma.auditPage.update({
-    where: { id: page.id },
-    data: { status: 'JUDGING' },
-  })
-  await prisma.audit.update({
-    where: { id: ctx.auditId },
-    data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
-  })
-
+  const shouldRunTriage = input.primary && input.position === 0
   let triage: TriageResult | undefined
-  try {
-    const triageResult = await runTriageStep(ctx, {
-      url: normalizedUrl,
-      metadata,
-      desktop: pagespeed?.desktop ?? null,
-      mobile: pagespeed?.mobile ?? null,
-      flags,
-      desktopBase64,
-      mobileBase64,
+  let triageFailure: ReturnType<typeof parseTriageFailure> | undefined
+
+  if (shouldRunTriage) {
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: { status: 'JUDGING' },
     })
-    accumulateTriageUsage(ctx, triageResult)
-    triageResult.output.newFlags = triageResult.output.newFlags.map((flag) => ({
-      ...flag,
-      pageUrl: normalizedUrl,
-    }))
-    triage = triageResult
-  } catch (err) {
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
+    })
+
+    const remainingMs = ctx.deadline - Date.now()
+    const triageBudgetMs = remainingMs - MIN_JUDGE_BUDGET_MS
     await logPipelineEvent(ctx.auditId, {
       stage: 'judging',
-      event: 'triage_step_failed',
-      error: err instanceof Error ? err.message : String(err),
+      event: 'triage_budget_ms',
+      detail: String(Math.max(0, triageBudgetMs)),
     })
+
+    if (remainingMs < MIN_JUDGE_BUDGET_MS) {
+      triageFailure = parseTriageFailure(new AuditDeadlineError('judging'))
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'judging',
+        event: 'triage_skipped_deadline',
+        error: triageFailure.message,
+      })
+    } else {
+      try {
+        const triageResult = await runTriageStep(ctx, {
+          url: normalizedUrl,
+          metadata,
+          desktop: pagespeed?.desktop ?? null,
+          mobile: pagespeed?.mobile ?? null,
+          flags,
+          desktopBase64,
+          mobileBase64,
+        })
+        accumulateTriageUsage(ctx, triageResult)
+        triageResult.output.newFlags = triageResult.output.newFlags.map((flag) => ({
+          ...flag,
+          pageUrl: normalizedUrl,
+        }))
+        triage = triageResult
+      } catch (err) {
+        triageFailure = parseTriageFailure(err)
+        await logPipelineEvent(ctx.auditId, {
+          stage: 'judging',
+          event: 'triage_step_failed',
+          error: triageFailure.message,
+          detail: triageFailure.reason,
+        })
+      }
+    }
   }
 
   await prisma.auditPage.update({
@@ -415,6 +442,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     flags,
     failedModules,
     triage,
+    triageFailure,
+    runTriage: shouldRunTriage,
     detectedTech,
     industryGuess,
   }

@@ -105,6 +105,11 @@ export function isProdStorageConfigured(): boolean {
   return missingStorageVars().length === 0
 }
 
+/** Whether at least one LLM provider key is set for triage and prescription. */
+export function isAiProviderConfigured(): boolean {
+  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)
+}
+
 export function validateWorkerEnv(): void {
   const required = ['DATABASE_URL', 'REDIS_URL'] as const
   const missing = required.filter((k) => !process.env[k])
@@ -113,15 +118,19 @@ export function validateWorkerEnv(): void {
     // queue. There is nothing to degrade to.
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
   }
-  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    // Deterministic (anonymous/free) audits do not call the LLM judge, so the
-    // worker must still boot and process jobs without an AI key. Only AI review
-    // degrades: audits finalize with deterministic results instead of hanging.
-    // Crashing here would take the whole worker down and stall every scan.
-    console.warn(
-      '[env] No OPENAI_API_KEY or ANTHROPIC_API_KEY set. AI review is disabled; ' +
-        'audits will complete with deterministic checks only.'
-    )
+  if (!isAiProviderConfigured()) {
+    // Triage runs inline for every audit; prescription runs in a follow-up job.
+    // Both require at least one provider key. Boot continues so the app stays
+    // up, but scans finalize without AI until keys are set. /api/health reports
+    // aiConfigured: false for operators.
+    const message =
+      '[env] No OPENAI_API_KEY or ANTHROPIC_API_KEY set. Triage and prescription ' +
+      'are disabled; audits will complete with deterministic checks only.'
+    if (process.env.NODE_ENV === 'production') {
+      console.error(message)
+    } else {
+      console.warn(message)
+    }
   }
   if (process.env.NODE_ENV === 'production') {
     if (!isProdStorageConfigured()) {

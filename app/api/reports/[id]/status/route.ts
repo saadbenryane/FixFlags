@@ -46,6 +46,7 @@ export async function GET(
         isPublic: true,
         parentId: true,
         aiReviewAt: true,
+        triageAt: true,
         includeAi: true,
         performanceData: true,
         screenshots: {

@@ -23,6 +23,8 @@ Read before changing product logic or writing copy that promises a feature.
 | Entitlements | `lib/auth/entitlements.ts` |
 | Scan limits (dev bypass) | `lib/auth/permissions.ts` |
 | Audit create/queue | `lib/audit/create-audit.ts`, `lib/audit/recover-audit-job.ts`, `worker/index.ts` |
+| Audit pipeline | `docs/audit-pipeline.md`, `.cursor/skills/fixflags-audit-pipeline/SKILL.md` |
+| Triage / prescription | `lib/audit/runner.ts`, `pipeline/finalize-from-outcome.ts`, `run-ai-review.ts` |
 | Re-check | `lib/audit/recheck.ts` |
 | Rubric order | `lib/audit/constants.ts` (`RUBRIC_ORDER`) |
 | MCP poll helper | `lib/audit/poll-audit.ts` |
@@ -58,6 +60,15 @@ Do not market white-label reports or priority support — not implemented.
 | Re-check (owned report) | **No** (`skipUsageCount: true` in `recheck.ts`) |
 
 Copy must say: monthly limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
+
+## Audit pipeline (triage vs prescription)
+
+- **Triage** runs inline in every `audit` job (primary page). Sets `triageAt`.
+- **Prescription** runs in separate `ai-review` job. Sets `aiReviewAt`. Gated by `includeAi` + credits.
+- **`includeAi`** does NOT skip triage — it only controls prescription enqueue.
+- Health: `/api/health` (`aiConfigured`), `/api/health/ai`
+- Post-deploy smoke: `npm run smoke:triage:prod`
+- Full reference: `docs/audit-pipeline.md`
 
 ## Entitlements (`shouldEnforcePlanGates()`)
 

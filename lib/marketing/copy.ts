@@ -1175,6 +1175,12 @@ export const AUDIT_ERRORS = {
   notHtml: 'This URL did not return a normal web page. Check the link and try again.',
   aiReviewFailed: 'AI review could not finish for this check. Please try again.',
   partialAiReview: 'AI review could not finish. Deterministic checks are shown below.',
+  triageDegradedAnonymous:
+    'Automated checks are complete. AI summary was unavailable for this run. Sign up to retry with full AI review and fix prompts.',
+  triageDegradedSignedIn:
+    'Automated checks are complete. AI summary was unavailable for this run. Deterministic flags and screenshots are shown below.',
+  triageDegradedTimeout:
+    'This scan ran out of time before AI summary could finish. Deterministic checks and screenshots are shown below.',
   partialReport: 'This report is partial. Some checks or screenshots could not complete.',
   pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
 } as const

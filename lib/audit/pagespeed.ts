@@ -33,6 +33,26 @@ export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeed
   return stored
 }
 
+async function runPageSpeedWithRetry(
+  url: string,
+  strategy: 'desktop' | 'mobile'
+): Promise<PageSpeedResult> {
+  const maxAttempts = 3
+  let lastError: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await runPageSpeed(url, strategy)
+    } catch (err) {
+      lastError = err
+      const message = err instanceof Error ? err.message : String(err)
+      const retryable = message.includes('429') || message.includes('503')
+      if (!retryable || attempt === maxAttempts) break
+      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+    }
+  }
+  throw lastError
+}
+
 async function runPageSpeed(
   url: string,
   strategy: 'desktop' | 'mobile'
@@ -159,7 +179,7 @@ export async function fetchPageSpeedData(url: string): Promise<{
 
   if (!cachedDesktop) {
     promises.push(
-      runPageSpeed(url, 'desktop').then((result) => {
+      runPageSpeedWithRetry(url, 'desktop').then((result) => {
         auditCache.set(desktopKey, result, 60 * 60 * 1000)
         return { strategy: 'desktop', result }
       })
@@ -168,7 +188,7 @@ export async function fetchPageSpeedData(url: string): Promise<{
 
   if (!cachedMobile) {
     promises.push(
-      runPageSpeed(url, 'mobile').then((result) => {
+      runPageSpeedWithRetry(url, 'mobile').then((result) => {
         auditCache.set(mobileKey, result, 60 * 60 * 1000)
         return { strategy: 'mobile', result }
       })

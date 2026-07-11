@@ -33,6 +33,7 @@
 | `lib/marketing/copy.ts` | **Single source of truth** for all marketing copy |
 | `lib/design/tokens.css` | **Canonical design tokens** (colors, shadows, radii, type scale) |
 | `lib/audit/` | Audit pipeline (runner, checks, scoring, flow, judge, persist) |
+| `docs/audit-pipeline.md` | **Canonical audit pipeline reference** (triage, prescription, recovery) |
 | `lib/queue/` | BullMQ queue (client, worker, inline-worker, recovery) |
 | `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only |
 | `lib/billing/` | Subscription limits, credits, Stripe integration |
@@ -90,7 +91,8 @@
 ### Architecture
 - **Pipeline stages:** QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
 - **22 check modules** run via `checks/index.ts` barrel; `slow-replay.ts` imported directly by `deterministic-audit.ts` (side-channel).
-- **AI two-phase:** Triage (cheap, anonymous, 2500 chars pageText) → Prescription (post-signup, 5000 chars pageText from stored metadata).
+- **AI two-phase:** Triage (inline in audit job, 2500 chars pageText, all scans) → Prescription (async `ai-review` job, 5000 chars pageText, gated by `includeAi` + credits). **`includeAi` does not gate triage.**
+- **Triage success criterion:** `triageAt` set on COMPLETED audits. Degraded triage (`triageAt` null + `failureCode`) still COMPLETED with deterministic flags.
 - **Tech stack** for prescription comes from `auditPage.performanceData.detectedTech`, not `htmlMetadata`.
 - **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
 - **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**

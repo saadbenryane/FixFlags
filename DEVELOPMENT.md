@@ -68,6 +68,7 @@ See `.env.example` for full list.
 | `npm run demo:audit:offline` | Demo fixture audit (CLI, no server) |
 | `npm run demo:audit:flow` | Flow audit on demo fixture |
 | `npm run demo:audit` | Demo audit against dev server |
+| `npm run smoke:triage:prod` | Post-deploy prod smoke (health + triageAt assertion) |
 | `npm run audit:capabilities` | Report check module coverage |
 
 ### Build
@@ -112,9 +113,11 @@ Use the sandbox databases defined in `.claude/launch.json`:
 
 ## Debugging
 
-- Health check: `curl http://localhost:3000/api/health`
+- Health check: `curl http://localhost:3000/api/health` (DB, `storageConfigured`, `aiConfigured`)
+- AI readiness: `GET /api/health/ai`
 - Worker diagnostics: `GET /api/health/worker` (heartbeat age, queue depth)
 - Browser diagnostics: `GET /api/health/browser` (Puppeteer + R2)
+- Audit pipeline: see `docs/audit-pipeline.md`
 - Prisma Studio: `npm run db:studio`
 - Worker logs: pino JSON, pipe through `pino-pretty` in dev
 - Screenshots: stored in `.data/screenshots/` locally, served at `/api/screenshots/{auditId}/{device}`
@@ -125,10 +128,21 @@ Use the sandbox databases defined in `.claude/launch.json`:
 |---------|-------------|-----|
 | `Error: NEXT_PUBLIC_APP_URL is required` | Running CLI script without `.env.local` | Use `DOTENV_CONFIG_PATH=.env.local` prefix |
 | "scanner temporarily unavailable" | Missing R2 config in production | Set all `R2_*` env vars |
+| Scan completes but no AI score/verdict | Missing `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Set on Railway web service, redeploy. Check `/api/health` `aiConfigured` |
+| PageSpeed partial / 429 | No `PAGESPEED_API_KEY` | Set key in Railway; retries added in pipeline |
 | Audits stuck in QUEUED | Redis not running | `docker compose up -d` |
+| Audits stuck then fail | Worker down past give-up window | Check `/api/health/worker`; see `recover-audit-job.ts` |
 | OAuth buttons hidden | Google/GitHub env vars not set at runtime | Set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` |
 | `better-auth.session_token` mismatch | Cookie name difference | Check `proxy.ts` matcher (handles both dev and `__Secure-` prefix) |
 | Build fails with TS2589 | Deep type instantiation | Check `zodToJsonSchema` calls; add explicit type annotation |
+
+### Railway AI keys (production)
+
+1. Railway dashboard → FixFlags web service → Variables
+2. Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`
+3. Redeploy (SDK clients init at module load)
+4. Verify: `curl https://fixflags.com/api/health` → `"aiConfigured":true`
+5. Smoke: `npm run smoke:triage:prod`
 
 ## Local admin
 

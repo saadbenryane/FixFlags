@@ -32,21 +32,11 @@ vi.mock('@/lib/audit/pipeline-log', () => ({
 }))
 vi.mock('@/lib/audit/critical-path', () => ({ discoverCriticalPathUrls: vi.fn(() => []) }))
 vi.mock('@/lib/audit/copy-parent-artifacts', () => ({ copyParentArtifacts: vi.fn() }))
-vi.mock('@/lib/audit/persist', () => ({ persistTriageResults: vi.fn() }))
-vi.mock('@/lib/audit/persist-evidence-anchors', () => ({
-  tryResolveEvidenceAnchorsForAudit: vi.fn(),
-  mergeFlowCtaEvidenceAnchors: vi.fn(),
-}))
-vi.mock('@/lib/audit/finalize', () => ({
-  finalizeTriageAudit: vi.fn(),
-  finalizeDeterministicOnly: vi.fn(),
-  persistFailedAuditCost: vi.fn(),
-}))
-vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview: vi.fn() }))
+vi.mock('@/lib/audit/finalize', () => ({ persistFailedAuditCost: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
-vi.mock('@/lib/audit/pipeline/combine-pages', () => ({
-  averageScores: vi.fn(() => ({})),
-  buildCombinedTriageOutput: vi.fn(() => ({})),
+vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
+  finalizeFromOutcome: vi.fn(),
+  retryPrimaryTriage: vi.fn(async (ctx: unknown, runs: unknown[]) => runs),
 }))
 vi.mock('@/lib/audit/pipeline/context', () => ({
   sanitizeAuditErrorMessage: (msg: string) => msg,
@@ -58,11 +48,7 @@ vi.mock('@/lib/audit/pipeline/failure', () => ({
 
 import { runAudit } from '@/lib/audit/runner'
 import { runPage } from '@/lib/audit/pipeline/run-page'
-import { persistTriageResults } from '@/lib/audit/persist'
-import {
-  finalizeTriageAudit,
-  finalizeDeterministicOnly,
-} from '@/lib/audit/finalize'
+import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
 import { tryPartialFinalize } from '@/lib/audit/pipeline/context'
 
 function makeAudit(overrides: Record<string, unknown> = {}) {
@@ -112,9 +98,7 @@ describe('runAudit orchestrator', () => {
     prismaMock.audit.findUnique.mockResolvedValue(makeAudit())
     prismaMock.audit.update.mockResolvedValue({})
     ;(runPage as Mock).mockResolvedValue(makePageRun())
-    ;(persistTriageResults as Mock).mockResolvedValue(undefined)
-    ;(finalizeTriageAudit as Mock).mockResolvedValue(undefined)
-    ;(finalizeDeterministicOnly as Mock).mockResolvedValue(undefined)
+    ;(finalizeFromOutcome as Mock).mockResolvedValue(true)
     ;(tryPartialFinalize as Mock).mockResolvedValue(false)
   })
 
@@ -128,14 +112,12 @@ describe('runAudit orchestrator', () => {
     expect(runPage).not.toHaveBeenCalled()
   })
 
-  it('runs the happy path: CAPTURING -> persist -> triage finalize, no FAILED', async () => {
+  it('runs the happy path: CAPTURING -> finalizeFromOutcome, no FAILED', async () => {
     await runAudit('audit-1')
 
     const first = prismaMock.audit.update.mock.calls[0][0] as { data: { status: string } }
     expect(first.data.status).toBe('CAPTURING')
-    expect(persistTriageResults).toHaveBeenCalledTimes(1)
-    expect(finalizeTriageAudit).toHaveBeenCalledTimes(1)
-    expect(finalizeDeterministicOnly).not.toHaveBeenCalled()
+    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
     expect(updateStatuses()).not.toContain('FAILED')
   })
 
@@ -165,24 +147,12 @@ describe('runAudit orchestrator', () => {
     expect(updateStatuses()).not.toContain('FAILED')
   })
 
-  it('falls back to deterministic-only when triage persistence fails', async () => {
-    ;(persistTriageResults as Mock).mockRejectedValue(new Error('db down mid-persist'))
-
-    await runAudit('audit-1')
-
-    expect(finalizeDeterministicOnly).toHaveBeenCalledTimes(1)
-    expect(finalizeTriageAudit).not.toHaveBeenCalled()
-    expect(updateStatuses()).not.toContain('FAILED')
-  })
-
-  it('falls back to deterministic-only when runPage returns without triage', async () => {
+  it('delegates finalize to finalizeFromOutcome after page runs complete', async () => {
     ;(runPage as Mock).mockResolvedValue(makePageRun({ triage: undefined }))
 
     await runAudit('audit-1')
 
-    expect(finalizeDeterministicOnly).toHaveBeenCalledTimes(1)
-    expect(persistTriageResults).not.toHaveBeenCalled()
-    expect(finalizeTriageAudit).not.toHaveBeenCalled()
+    expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
     expect(updateStatuses()).not.toContain('FAILED')
   })
 })

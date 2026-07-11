@@ -129,7 +129,7 @@ Tech stack for prescription: `auditPage.performanceData.detectedTech`, not `html
 
 ### Job types
 - `audit` — full audit execution
-- `ai-review` — AI triage + prescription
+- `ai-review` — phase-2 prescription only (triage runs in `audit` job)
 - `repo-scan` — codebase scan (Agency plan)
 - `repo-fix-pr` — automated fix PR (Agency plan)
 
@@ -188,27 +188,28 @@ Internal-only system for organic growth. Never queried directly by public pages.
 3. Runs deterministic checks (22 modules)
 4. Runs AI triage (cheap model, 2500 chars page text)
 5. Persists flags + scores + screenshots
-6. If user is signed up → runs AI prescription (500 chars from DB)
-7. Audit marked COMPLETED → user sees report with flags + fix prompts
+6. If user is signed up and `includeAi` → enqueues `ai-review` job for prescription (5000 chars page text)
+7. Audit marked COMPLETED → user sees report (fix prompts when `aiReviewAt` set)
 8. Re-check: same URL → new capture → diff against previous flags
 
-### Saas flow
-1. Anonymous user: triage + deterministic → upsell at "sign up to see fix prompts"
-2. Authenticated user: triage + prescription → full report with fix prompts
-3. Re-checks: unlimited, free, gated only by URL ownership
+### SaaS flow
+1. Anonymous user: triage + deterministic flags → upsell at sign up for fix prompts
+2. Authenticated user with credits: triage → prescription job → full report with fix prompts
+3. Triage degraded: COMPLETED with flags/screenshots and honest partial-AI message (see `docs/audit-pipeline.md`)
+4. Re-checks: unlimited, free, gated only by URL ownership
 
 ## Technical invariants
 
 - No Prisma/Node imports on edge runtime (proxy.ts)
 - `serverExternalPackages`: puppeteer, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.
 - R2 is required for production screenshots. Missing R2 → service boots, scans fail with clear message.
-- Missing AI keys → deterministic-only audits
+- Missing AI keys → triage/prescription disabled; scans complete with deterministic checks (`/api/health` reports `aiConfigured: false`)
 - No `next build`-time OAuth gating (resolved at runtime via `/api/auth/providers`)
 - OAuth callback URL: `https://fixflags.com/api/auth/callback/google`
 
 ## Database snapshot
 
-34 models across:
+39 models across:
 - **Auth:** User, Session, Account, Verification
 - **Audit:** Audit, AuditPage, Screenshot, Flag, FlagFeedback, ReportRubric, AuditRunCost
 - **Billing:** CreditPurchase, ProcessedStripeEvent

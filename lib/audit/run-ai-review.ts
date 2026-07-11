@@ -10,6 +10,8 @@ import { logPipelineEvent } from './pipeline-log'
 import { remainingAiReportCredits } from './ai-report-entitlement'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import { runPrescriptionWithRetry } from './judge-prescription'
+import { isRetryableJudgeError } from './judge'
+import { enqueueAiReview } from './enqueue-ai-review'
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
 export async function runAiReview(auditId: string): Promise<void> {
@@ -98,15 +100,30 @@ export async function runAiReview(auditId: string): Promise<void> {
       mobileBase64
     )
   } catch (error) {
+    const failureCode =
+      error instanceof JudgeContractError ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED'
+    const errorMsg = error instanceof Error ? error.message : 'Prescription failed'
+
+    await logPipelineEvent(auditId, {
+      stage: 'judging',
+      event: 'prescription_failed',
+      error: errorMsg,
+    })
+
     await prisma.audit.update({
       where: { id: auditId },
       data: {
         status: 'COMPLETED',
-        errorMsg: error instanceof Error ? error.message : 'Prescription failed',
-        failureCode: error instanceof JudgeContractError ? 'AI_CONTRACT_INVALID' : 'AI_REVIEW_FAILED',
+        errorMsg,
+        failureCode,
         failureStage: 'judging',
       },
     })
+
+    if (isRetryableJudgeError(error)) {
+      await enqueueAiReview(auditId, 30_000)
+    }
+
     throw error
   }
 

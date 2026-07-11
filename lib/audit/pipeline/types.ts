@@ -5,6 +5,8 @@ import type { DeterministicFlag } from '../checks'
 import type { TriageResult } from '../judge-triage'
 import type { DetectedTech } from '../tech-detect'
 
+import type { TriageFailure } from './triage-failure'
+
 /** Result of running the pipeline against a single page (primary or critical-path). */
 export interface PageRun {
   pageId: string
@@ -23,10 +25,14 @@ export interface PageRun {
   flags: DeterministicFlag[]
   failedModules: string[]
   triage?: TriageResult
+  /** Set when triage was attempted but failed (primary page only). */
+  triageFailure?: TriageFailure
   /** Detected technologies from HTML + headers analysis. */
   detectedTech: DetectedTech[]
   /** Inferred industry from hostname + page content. */
   industryGuess: string | null
+  /** When false, skip triage (secondary critical-path pages). */
+  runTriage?: boolean
 }
 
 /** Shared state threaded through one audit run. */

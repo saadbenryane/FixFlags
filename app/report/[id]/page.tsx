@@ -145,7 +145,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showPrescription, aiReviewPending } = result
+  const { audit, isLoggedIn, session, showPrescription, aiReviewPending, triageDegraded, prescriptionFailed } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -296,6 +296,8 @@ export default async function ReportPage({ params }: Props) {
           screenshotPartial={partial}
           showPrescription={showPrescription}
           aiReviewPending={aiReviewPending}
+          triageDegraded={triageDegraded}
+          prescriptionFailed={prescriptionFailed}
           actions={
             <AuditPageActions
               auditId={id}

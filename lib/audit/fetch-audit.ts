@@ -111,9 +111,20 @@ export async function getGatedAuditForRequest(id: string) {
     session?.user
   )
   const hasTriage = Boolean(audit.triageAt)
-  const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt
+  const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt && !audit.failureCode
+  const triageDegraded =
+    audit.status === 'COMPLETED' && !hasTriage && Boolean(audit.failureCode)
+  const prescriptionFailed =
+    hasTriage &&
+    Boolean(audit.includeAi) &&
+    !audit.aiReviewAt &&
+    (audit.failureCode === 'AI_REVIEW_FAILED' || audit.failureCode === 'AI_CONTRACT_INVALID')
   const aiReviewPending =
-    hasTriage && Boolean(audit.includeAi) && !audit.aiReviewAt && audit.status !== 'FAILED'
+    hasTriage &&
+    Boolean(audit.includeAi) &&
+    !audit.aiReviewAt &&
+    audit.status !== 'FAILED' &&
+    !prescriptionFailed
 
   let sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
   let reportFlags = audit.flags
@@ -216,6 +227,8 @@ export async function getGatedAuditForRequest(id: string) {
     isLoggedIn: !!session?.user,
     showPrescription,
     aiReviewPending,
+    triageDegraded,
+    prescriptionFailed,
     session,
   }
 }

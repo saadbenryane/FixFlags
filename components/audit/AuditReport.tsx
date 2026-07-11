@@ -15,7 +15,7 @@ import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
-import { UPSELLS, REPORT_COPY, HERO } from '@/lib/marketing/copy'
+import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
@@ -95,6 +95,8 @@ interface AuditReportProps {
   screenshotPartial?: boolean
   showPrescription?: boolean
   aiReviewPending?: boolean
+  triageDegraded?: boolean
+  prescriptionFailed?: boolean
   actions?: ReactNode
 }
 
@@ -112,6 +114,8 @@ export function AuditReport({
   screenshotPartial = false,
   showPrescription = true,
   aiReviewPending = false,
+  triageDegraded = false,
+  prescriptionFailed = false,
   actions,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
@@ -145,6 +149,8 @@ export function AuditReport({
   const showOverview =
     !isSample &&
     (aiReviewPending ||
+      triageDegraded ||
+      prescriptionFailed ||
       audit.reportCompleteness !== 'FULL' ||
       hasLaunchGates ||
       Boolean(audit.previewMeta) ||
@@ -260,6 +266,18 @@ export function AuditReport({
           {aiReviewPending && (
             <Callout variant="info" title="Unlocking fix prompts">
               Generating copy-paste fix prompts for every flag. This usually takes under a minute.
+            </Callout>
+          )}
+
+          {prescriptionFailed && (
+            <Callout variant="warning" title="Fix prompts unavailable">
+              {AUDIT_ERRORS.partialAiReview}
+            </Callout>
+          )}
+
+          {triageDegraded && (
+            <Callout variant="warning" title="AI summary unavailable">
+              {audit.verdict ?? AUDIT_ERRORS.partialReport}
             </Callout>
           )}
 

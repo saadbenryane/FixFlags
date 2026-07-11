@@ -42,17 +42,21 @@ export function averageScores(
 }
 
 /**
- * Merge every page's triage output into the primary page's output.
+ * Merge triage output from pages that ran triage (primary page only on critical-path).
  */
 export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
+  const triagePages = pageRuns.filter((page) => page.triage)
   const primaryTriage = pageRuns[0]?.triage
   if (!primaryTriage) {
     throw new Error('Cannot combine triage output without a primary triage result')
   }
   const combined = { ...primaryTriage.output, rubrics: [...primaryTriage.output.rubrics] }
-  combined.newFlags = pageRuns.flatMap((page) => page.triage?.output.newFlags ?? [])
+  combined.newFlags = triagePages.flatMap((page) => page.triage?.output.newFlags ?? [])
+  if (triagePages.length <= 1) {
+    return combined
+  }
   combined.rubrics = combined.rubrics.map((rubric) => {
-    const pageRubrics = pageRuns
+    const pageRubrics = triagePages
       .map((page) => page.triage?.output.rubrics.find((item) => item.name === rubric.name))
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
     const scores = pageRubrics
@@ -61,11 +65,11 @@ export function buildCombinedTriageOutput(pageRuns: PageRun[]): TriageOutput {
     return {
       ...rubric,
       score:
-        scores.length === pageRuns.length
+        scores.length === triagePages.length
           ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
           : null,
       assessmentState:
-        scores.length === pageRuns.length ? ('ASSESSED' as const) : ('PARTIAL' as const),
+        scores.length === triagePages.length ? ('ASSESSED' as const) : ('PARTIAL' as const),
       confidence:
         pageRubrics.reduce((sum, item) => sum + item.confidence, 0) / pageRubrics.length,
     }

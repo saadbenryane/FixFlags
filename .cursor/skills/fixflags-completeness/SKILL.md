@@ -47,6 +47,15 @@ Search canonical docs and skills for:
 | `CI is not on GitHub` | CI exists; claim must match `ci.yml` |
 | `second pass` | Banned marketing phrase |
 | `34 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
+| `ai-review.*triage` in docs | ai-review is prescription only |
+| `includeAi` skips triage | includeAi gates prescription only |
+
+## Phase 2.5 — Audit pipeline grep
+
+- `grep -r "500 char" docs/` — prescription is 5000 chars
+- `grep -r "34 model" docs/` — use `grep -c '^model ' prisma/schema.prisma`
+- Confirm `docs/audit-pipeline.md` matches `lib/audit/runner.ts` flow
+- Post-deploy: `npm run smoke:triage:prod` when changing triage/finalize
 
 ## Phase 3 — Cross-check facts against code
 

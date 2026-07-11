@@ -7,6 +7,9 @@ import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
 import { persistAuditGraphSnapshot } from '@/lib/graph/snapshot'
 import { logger } from '@/lib/logger'
+import { triageDegradedVerdict } from '@/lib/audit/triage-verdict'
+import { triageFailureCode } from '@/lib/audit/pipeline/triage-failure'
+import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
 
 interface FinalizeAuditInput {
   auditId: string
@@ -113,11 +116,110 @@ export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<v
       failureCode: null,
       failureStage: null,
       failureMetadata: undefined,
+      errorMsg: null,
     },
   })
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage finalize', err)
+  })
+}
+
+interface TriageDegradedFinalizeInput {
+  auditId: string
+  durationMs: number
+  pagespeedCalls: number
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+    model: string
+  }
+  evidence: {
+    desktopScreenshot: boolean
+    mobileScreenshot: boolean
+    metadata: boolean
+    desktopPageSpeed: boolean
+    mobilePageSpeed: boolean
+    flowScan?: boolean
+  }
+  reason: TriageFailureReason
+  errorMsg: string
+}
+
+/** Complete with deterministic evidence when triage failed after capture and checks. */
+export async function finalizeTriageDegraded(
+  input: TriageDegradedFinalizeInput
+): Promise<void> {
+  const audit = await prisma.audit.findUnique({
+    where: { id: input.auditId },
+    select: {
+      id: true,
+      status: true,
+      userId: true,
+      parentId: true,
+      completedAt: true,
+    },
+  })
+  if (!audit) return
+  if (audit.status === 'COMPLETED' && audit.completedAt) return
+
+  if (input.usage && (input.usage.inputTokens > 0 || input.usage.outputTokens > 0)) {
+    await persistAuditRunCost(input.auditId, {
+      durationMs: input.durationMs,
+      llmInputTokens: input.usage.inputTokens,
+      llmOutputTokens: input.usage.outputTokens,
+      llmModel: input.usage.model || 'none',
+      pagespeedCalls: input.pagespeedCalls,
+      phase: 'triage',
+    })
+  } else {
+    await persistAuditRunCost(input.auditId, {
+      durationMs: input.durationMs,
+      llmInputTokens: 0,
+      llmOutputTokens: 0,
+      llmModel: 'none',
+      pagespeedCalls: input.pagespeedCalls,
+    })
+  }
+
+  if (audit.parentId) {
+    await diffFlagsAgainstParent(input.auditId, audit.parentId)
+  }
+
+  const failureCode = triageFailureCode(input.reason)
+  const verdict = triageDegradedVerdict(input.reason, Boolean(audit.userId))
+
+  await logPipelineEvent(input.auditId, {
+    stage: 'judging',
+    event: 'triage_degraded_completed',
+    error: input.errorMsg,
+    detail: input.reason,
+  })
+
+  const completeness =
+    input.evidence.desktopScreenshot && input.evidence.metadata ? 'FULL' : 'PARTIAL'
+
+  await prisma.audit.update({
+    where: { id: input.auditId },
+    data: {
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: completeness,
+      evidenceCoverage: {
+        ...input.evidence,
+        aiAssessment: false,
+      },
+      verdict,
+      completedAt: audit.completedAt ?? new Date(),
+      finalizedAt: new Date(),
+      errorMsg: input.errorMsg,
+      failureCode,
+      failureStage: 'judging',
+    },
+  })
+
+  await upsertLeadFromAudit(input.auditId).catch((err) => {
+    logger.error('Lead upsert failed after triage degraded finalize', err)
   })
 }
 
