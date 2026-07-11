@@ -4,6 +4,8 @@
 
 FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
 
+See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue, customer, and growth targets.
+
 ## What We Ship
 
 - **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
@@ -47,14 +49,15 @@ Why: habit over scarcity. More users = more data = stronger moat = more upgrades
 
 ## Pricing Tiers (Current)
 
-| Tier | Price | New URL checks | Key Hook |
-|------|-------|----------------|----------|
-| Free | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
-| Pro | $29/mo | 25/mo | Compare, MCP, 25 new checks/month |
-| Agency | $99/mo | 100/mo | Share links, exports, up to 5 projects |
-| High Volume | Custom | 500+ | Contact sales |
+Live tiers, as defined in `lib/billing/plans.ts` (`Plan` enum: `FREE | BUILDER | TEAM`):
 
-Studio tier ($999) is retained in schema but not marketed.
+| Tier | Plan enum | Price | New URL checks | Key Hook |
+|------|-----------|-------|----------------|----------|
+| Free | `FREE` | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
+| Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP integration |
+| Max | `TEAM` | $99/mo | 100/mo | Everything in Pro, public share links, up to 5 projects |
+
+There is no "Agency," "High Volume," or "Studio" tier in the schema — those names were aspirational placeholders and have been retired from the docs. Any future higher tier (agency-focused, custom volume) needs to be designed and added to `PLAN_DEFINITIONS` before it's real.
 
 ## Target Customer
 

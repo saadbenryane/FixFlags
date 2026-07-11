@@ -12,7 +12,8 @@ Finish what your AI started. FixFlags is the QA layer for AI-built products: the
 - **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
 - **Before/after compare** (Pro+): side-by-side proof after re-checks.
 - **MCP integration** (Pro+): 6 MCP tools for Cursor and Claude Code. Lovable/Bolt MCP not supported yet.
-- **Share links and proof export** (Agency+): public report links and client-ready summaries.
+- **Share links and proof export** (Max+): public report links and client-ready summaries.
+- **Repository-connected scanning** (Max+): connect GitHub, allow-list specific repos, and scan the codebase directly for exposed secrets, dependency hygiene, and dangerous patterns — separate from URL audits. Fully shipped and discoverable at `/settings/integrations`: OAuth connect, repo allow-listing, scan trigger, recent-scan history, and a dedicated report view at `/report/repo/[id]`. This is Year 1 product priority #5 ("repository-connected fixes") and was already live when that priority was written — the roadmap/docs just hadn't caught up. It currently reports findings; it does not yet open PRs or auto-apply fixes.
 
 ## What We Do Not Ship (Current)
 
@@ -20,11 +21,19 @@ Finish what your AI started. FixFlags is the QA layer for AI-built products: the
 - Localhost or private network checks.
 - CI/CD integration (GitHub Actions, Vercel deploy hooks). Not yet.
 - Custom rubric creation.
-- Team workspaces / seat management.
+- Team workspaces / seat management (multi-seat, multiple logins per account).
 - API for batch scanning.
-- White-label reports.
+- White-label reports — **except** the scoped agency exception below.
 
 These are not planned until 100 paying users validate demand.
+
+### Agency exception: white-labeled share links
+
+Agencies are a Year 1 sales target (see `docs/year-1-operating-plan.md`) and repeatedly audit client sites, but they typically won't close without branding control over what they hand a client — full team seats aren't the blocker, the FixFlags logo on a client-facing report is. This is a narrow, deliberate carve-out from the freeze above, scoped to exactly one thing:
+
+- **In scope:** on an existing Max-plan public share link (`ShareAuditButton` / `/report/[id]`), let the owner swap the FixFlags name/logo shown in the report header (`BRAND.name` usage in `components/audit/AuditPageClient.tsx`) for their own agency name/logo. Backed by two new nullable `User` fields (e.g. `agencyBrandName`, `agencyBrandLogoUrl`) and a small settings control, both additive and gated to `TEAM`/Max plan.
+- **Out of scope:** multi-seat access, custom domains, removing FixFlags attribution from non-agency accounts, white-labeling anything beyond the public report view. Team workspaces stay frozen.
+- **Status:** scoped and documented here; not yet built. Needs a live dev environment (DB migration + UI + report-rendering change) to implement and verify safely — flagged as the next concrete step for whoever picks up the agency motion.
 
 ## Scans
 

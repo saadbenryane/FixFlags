@@ -79,8 +79,10 @@ flowchart TD
 
 | Deliverable | Notes |
 |-------------|-------|
+| ~~Repo-connected codebase scanning~~ | **Shipped, not roadmap.** GitHub OAuth connect, repo allow-listing, on-demand scan, and a dedicated report at `/report/repo/[id]` are live behind the Max plan (`/settings/integrations`). Findings-only today (secrets, dependency hygiene, dangerous patterns) — see `docs/offering.md`. Corrected here because this phase previously listed it as unbuilt. |
 | CI deploy gate | GitHub Action / webhook; fail on launch gate regression |
 | Weekly pulse | Scheduled re-check; email on REGRESSED flags |
+| Auto-fix PRs on repo scans | Open a PR with fixes applied, not just findings — natural next step once repo scanning has usage data |
 
 **Exit criteria:** One CI integration doc; pulse cron job in worker.
 

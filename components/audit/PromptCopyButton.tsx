@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
   prompt: string
@@ -17,6 +18,7 @@ export function PromptCopyButton({ prompt, label = 'Copy prompt', className, com
 
   async function handleCopy() {
     await navigator.clipboard.writeText(prompt)
+    trackEvent('fix_prompt_copied')
     setCopied(true)
     toast.success('Prompt copied')
     setTimeout(() => setCopied(false), 2000)

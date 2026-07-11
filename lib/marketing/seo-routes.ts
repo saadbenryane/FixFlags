@@ -17,6 +17,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/examples', seoKey: 'examples', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/changelog', seoKey: 'changelog', priority: 0.5, changeFrequency: 'weekly' },
+  { path: '/blog', seoKey: 'blog', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/samples', seoKey: 'samples', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/docs/mcp', seoKey: 'mcp', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/privacy', seoKey: 'privacy', priority: 0.3, changeFrequency: 'yearly' },

@@ -18,6 +18,7 @@ export const FOOTER_COLUMNS = {
     { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
     { href: '/samples', label: 'Sample report' },
+    { href: '/blog', label: 'Blog' },
   ],
   company: [
     { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
