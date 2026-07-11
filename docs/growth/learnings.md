@@ -6,7 +6,7 @@ earlier one, say so explicitly and leave both.
 
 ## 2026-07-10: Check quality iteration 2
 
-- **Use an audit agent to systematically review check modules.** Running an exploration agent across all 23+ check modules produced a thorough findings doc in <30s. Would have taken much longer reading each file manually.
+- **Use an audit agent to systematically review check modules.** Running an exploration agent across all 22 check modules produced a thorough findings doc in <30s. Would have taken much longer reading each file manually.
 - **Audit reports can hallucinate.** The agent reported `layout.ts` missing `impactTag` — but it was there. Always verify findings by reading the actual file before editing.
 - **Severity changes in check modules cascade to regression tests.** Fix 9 (measurement consent severity) broke 1 fixture in `regression-sites.test.ts`. The fixture had analytics but was expecting POLISH — our fix correctly promoted it to IMPORTANT. Updating the test expectation was the right call.
 - **`slow-replay.ts` sentinel value pattern.** The probe sets a sentinel of 30_000ms for "never appeared." The check used this value as-is in evidence text, misleading users. Fix: detect the sentinel and use different wording ("was not detected" vs "appeared after Xms"). Simpler than refactoring the probe to return null.
@@ -35,17 +35,8 @@ prompt context (pageText 500→5000, tech stack, H2 headings).
 
 **What we learned:**
 
-- **`trimMetadataForStorage` truncates pageText to 500 chars — any change to
-  the prompt template's `.slice()` is meaningless unless this limit is raised.**
-  The prescription AI reads from stored metadata, which is always run through
-  `trimMetadataForStorage`. The `buildPrescriptionPrompt` `.slice(0, 5000)` was
-  a no-op over 500-char input. Always trace the complete storage→retrieval
-  chain before changing prompt input sizes.
-- **Triage gets fresh metadata (8000-char pageText); prescription gets stored
-  (500-char).** The triage runs inline during the pipeline with the just-parsed
-  metadata. Prescription runs as a separate job and reads from the DB. The AI
-  that writes fix prompts gets 6% of the page text the triage AI sees. This is
-  an information bottleneck for fix quality.
+- **`page-text-limits.ts` defines storage and prompt limits (5000 chars stored/prescription, 2500 triage).** Always trace the complete storage→retrieval chain before changing prompt input sizes. See `lib/audit/page-text-limits.ts`.
+- **Triage gets fresh metadata (up to 8000-char raw text); prescription gets stored metadata (up to 5000 chars).** The triage runs inline during the pipeline with the just-parsed metadata. Prescription runs as a separate job and reads from the DB.
 - **`topFixPrompt && !explorerModel` is logically impossible.** When
   `topFixPrompt` is truthy (fix prompts exist), `explorerModel` is always
   truthy (built from same flags array). The dead section and `showFix` nav
@@ -180,8 +171,7 @@ and identified 6 architectural gaps.
 - **The existing codebase is remarkably well-structured for pre-launch.**
   The knowledge graph schema covers the right entities, the persist/query
   boundary is correctly enforced, and the audit pipeline already captures
-  everything needed for rich public pages. The 164 check IDs across 15+
-  categories are a goldmine of data waiting to be aggregated.
+  everything needed for rich public pages. The 133 check IDs across 22 modules are a goldmine of data waiting to be aggregated.
 
 - **Industry/tech detection is the single biggest blocker to benchmark
   pages.** The `htmlMetadata` JSON on `AuditPage` likely already contains

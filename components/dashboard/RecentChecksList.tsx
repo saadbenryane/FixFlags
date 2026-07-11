@@ -35,6 +35,7 @@ interface AuditItem {
 
 interface RecentChecksListProps {
   audits: AuditItem[]
+  initialHasMore: boolean
   canCompare: boolean
   bestScore: number | null
   worstScore: number | null
@@ -42,13 +43,14 @@ interface RecentChecksListProps {
 
 export function RecentChecksList({
   audits: initialAudits,
+  initialHasMore,
   canCompare,
   bestScore,
   worstScore,
 }: RecentChecksListProps) {
   const [audits, setAudits] = useState(initialAudits)
   const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMore, setHasMore] = useState(initialHasMore)
   const [loadError, setLoadError] = useState(false)
 
   const completedAudits = audits.filter((a) => a.status === 'COMPLETED')
@@ -195,10 +197,10 @@ export function RecentChecksList({
                         )
                       })}
                       {audit.monitoringAudits.length > 0 && canCompare && (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground">
+                        <Badge variant="outline" size="sm" className="gap-1 text-muted-foreground">
                           <ArrowLeftRight className="h-3 w-3" />
                           Trend
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   )}

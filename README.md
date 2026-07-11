@@ -115,7 +115,7 @@ Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`; use ~`2` on a smal
 
 All services share the same `DATABASE_URL` and `REDIS_URL`.
 
-> CI is not on GitHub Actions. Run `npm run verify` locally before pushing; Railway's Docker build (`npm run build` + `npm run worker:build`) is the deploy-time gate.
+> GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build` on push to main and PRs. It does **not** run `db:validate`, `db:check`, or `db:drift`. Local `npm run verify` is the stricter bar (requires Postgres). Railway's Docker build is the deploy-time gate.
 
 Local dev: `npm run dev` runs Next.js **and** the inline worker, so audits process end-to-end with a single command (set `INLINE_WORKER=false` to use `npm run dev:all` with a separate worker instead).
 

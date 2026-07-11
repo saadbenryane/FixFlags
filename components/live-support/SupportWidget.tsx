@@ -9,6 +9,7 @@ import { extractAuditIdFromPath } from '@/lib/live-support/extract-audit-id'
 import { SupportProvider, useSupportContext } from '@/components/live-support/SupportProvider'
 import { SupportChatPanel } from '@/components/live-support/SupportChatPanel'
 import { useSupportSession } from '@/components/live-support/useSupportPolling'
+import { toast } from 'sonner'
 
 function SupportWidgetInner() {
   const pathname = usePathname()
@@ -43,7 +44,10 @@ function SupportWidgetInner() {
   async function openPanel() {
     setPanelOpen(true)
     if (!sessionId) {
-      await ensureSession().catch(() => {})
+      const id = await ensureSession()
+      if (!id) {
+        toast.error('Could not start chat. Try again in a moment.')
+      }
     }
   }
 

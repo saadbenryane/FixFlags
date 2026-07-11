@@ -40,6 +40,7 @@ export const TOOLS = {
       'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
     ctaCheck: 'Check preview',
     ctaAudit: 'Run full audit on this URL',
+    socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
       title: 'Title',

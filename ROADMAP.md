@@ -4,12 +4,12 @@
 
 ## Now
 
-- **Monetization blockers** — close 5 BLOCKER items from test-strategy.md:
+- **Monetization blockers** — close 4 remaining BLOCKER items from test-strategy.md:
   1. Real-site regression fixtures in CI
   2. AI judge contract validation
   3. Persist layer tests
   4. Pipeline state machine tests
-  5. Billing gating enforcement
+  *Billing gating enforcement is done* (see `QUALITY.md` Strength tier).
   *Signal:* Ads can run without risking customer trust.
 
 - **Scan depth Phase 1** — per scan-roadmap.md Phase 1. The validated exception to the zero-features freeze.

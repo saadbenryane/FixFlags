@@ -5,7 +5,7 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 
 # FixFlags UI Upgrade
 
-Run this skill when improving visual quality project-wide. **Read the project skill first**, then pull from global skills as needed.
+**Read [`AGENTS.md`](../../AGENTS.md) first.** Run this skill when improving visual quality project-wide.
 
 ## Step 0 — Always read first
 

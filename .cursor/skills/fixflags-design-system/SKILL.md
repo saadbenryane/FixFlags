@@ -5,7 +5,7 @@ description: FixFlags visual design tokens, kerning, spacing, border radius, 60-
 
 # FixFlags Design System
 
-Final Brand Guideline. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
+**Read [`AGENTS.md`](../../AGENTS.md) first** for architecture counts. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/brand-spec.ts`. Rules: `lib/design/brand-rules.md`.
 
 ## Color theory (60-30-10)
 
@@ -80,7 +80,7 @@ Final Brand Guideline. Tokens: `lib/design/tokens.css`. Brand hex: `lib/design/b
 
 ## Pre-ship checklist
 
-- [ ] Headings use `font-sans`, balance wrap on h1–h2
+- [ ] Marketing headlines use Fraunces (`font-serif` / `font-display`); product UI uses Satoshi (`font-sans`)
 - [ ] Primary buttons: orange, `rounded-full`
 - [ ] Inputs and selects: `rounded-full`, borderless or glass fill
 - [ ] Cards: frosted glass, no borders

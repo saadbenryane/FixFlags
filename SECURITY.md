@@ -72,7 +72,7 @@
 
 ## Prompt injection risks
 
-- User-provided URL → page content sent to AI. Page text trimmed to 2500/500 chars. Sanitized before prompt injection.
+- User-provided URL → page content sent to AI. Page text trimmed to 2500/5000 chars (see `lib/audit/page-text-limits.ts`). Sanitized before prompt injection.
 - Sanitization: `lib/audit/metadata.ts` `sanitizeText()` strips scripts, event handlers, embedded content.
 - AI prompt templates in `lib/prompts/system-prompt.ts` do not interpolate raw user input into system instructions.
 

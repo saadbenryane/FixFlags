@@ -75,13 +75,13 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 ## Current capabilities (verified)
 
 - Pipeline v2.3.0, 180s deadline per audit
-- 22 deterministic check modules live (30/31 mapped, 1 partial: visual-polish)
-- 1,629 tests passing across 98 test files (`npm run test:unit`)
+- 22 deterministic check modules live (30/31 mapped, 1 partial: visual-polish). See `AGENTS.md` Project facts for counts.
+- Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production
 - Technology detection engine + /madewith/[hostname] pages
 - Sample size gate (20 distinct sites minimum for programmatic pages)
-- MCP integration (6 tools for Cursor + Claude Code)
+- MCP integration (13 tools; see `lib/mcp/tools.ts`)
 - Free tools: meta preview, placeholder copy detector
 
 ## Limitations and technical debt
@@ -91,7 +91,6 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - No component tests (Touch tier at 10%)
 - No staging/password-protected site support
 - No localhost or private network checks
-- No CI/CD integration (GitHub Actions, Vercel)
 - No team workspaces or white-label reports
 - Lovable/Bolt MCP not yet supported
 

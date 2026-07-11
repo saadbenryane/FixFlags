@@ -70,6 +70,7 @@ export function ShareDrawer({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [links, setLinks] = useState<ShareLink[]>([])
+  const [linksError, setLinksError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -86,14 +87,17 @@ export function ShareDrawer({
 
   const fetchLinks = useCallback(async () => {
     if (!canViewLinks) return
+    setLinksError(false)
     try {
       const res = await fetch(`/api/audits/${auditId}/share-links`)
-      if (res.ok) {
-        const data = await res.json()
-        setLinks(data)
+      if (!res.ok) {
+        setLinksError(true)
+        return
       }
+      const data = await res.json()
+      setLinks(data)
     } catch {
-      // silently fail
+      setLinksError(true)
     }
   }, [auditId, canViewLinks])
 
@@ -283,9 +287,11 @@ export function ShareDrawer({
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <div className="flex-1 rounded-md border border-border/20 bg-muted px-3 py-2 text-xs text-muted-foreground truncate font-mono">
-                    {shareUrl}
-                  </div>
+                  <Input
+                    readOnly
+                    value={shareUrl}
+                    className="flex-1 font-mono text-xs text-muted-foreground"
+                  />
                   <Button
                     variant="outline"
                     size="sm"
@@ -317,6 +323,17 @@ export function ShareDrawer({
                         </span>
                       )}
                     </div>
+
+                    {linksError && (
+                      <Callout variant="warning" title="Could not load share links">
+                        <p className="text-sm text-muted-foreground">
+                          Check your connection and try again.
+                        </p>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => void fetchLinks()}>
+                          Retry
+                        </Button>
+                      </Callout>
+                    )}
 
                     <Card className="p-4 space-y-3">
                       <Input

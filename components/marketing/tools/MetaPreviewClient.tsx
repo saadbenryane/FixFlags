@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalLink, ImageIcon, Loader2, Search, AlertCircle, CheckCircle2, XCircle } from 'lucide-react'
+import { ExternalLink, ImageIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { ToolUrlForm } from '@/components/marketing/tools/ToolUrlForm'
 
 interface MetaPreviewResult {
   url: string
@@ -106,12 +107,13 @@ export function MetaPreviewClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
       })
-      const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-      } else {
-        setResult(data)
+      if (!res.ok) {
+        const err = await parseApiErrorResponse(res)
+        setError(err.message)
+        return
       }
+      const data = await res.json()
+      setResult(data)
     } catch {
       setError('Something went wrong. Try again.')
     } finally {
@@ -129,38 +131,21 @@ export function MetaPreviewClient() {
         <p className="text-base leading-relaxed text-muted-foreground">{copy.subhead}</p>
       </div>
 
-      <Card variant="strong" className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            type="text"
-            inputMode="url"
-            placeholder="https://yoursite.com"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setError('') }}
-            disabled={loading}
-            className="flex-1 text-base"
-            aria-label="Website URL"
-          />
-          <Button type="submit" disabled={loading} className="shrink-0 gap-2">
-            {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Checking...</>
-            ) : (
-              <><Search className="h-4 w-4" /> {copy.ctaCheck}</>
-            )}
-          </Button>
-        </form>
-        {error && (
-          <p className="mt-3 flex items-center gap-1.5 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden /> {error}
-          </p>
-        )}
-      </Card>
+      <ToolUrlForm
+        url={url}
+        onUrlChange={(value) => { setUrl(value); setError('') }}
+        onSubmit={handleSubmit}
+        loading={loading}
+        error={error}
+        ctaLabel={copy.ctaCheck}
+        loadingLabel="Checking..."
+      />
 
       {result && (
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Card variant="strong" className="p-5">
-              <h2 className="mb-4 text-sm font-semibold text-muted-foreground">{copy.metaTagsHeading.replace('Meta Tags', 'Social Preview')}</h2>
+              <h2 className="mb-4 text-sm font-semibold text-muted-foreground">{copy.socialPreviewHeading}</h2>
               <SocialPreview result={result} />
             </Card>
 

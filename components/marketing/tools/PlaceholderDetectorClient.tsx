@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertCircle, FileText, Loader2, Search, ExternalLink, AlertTriangle } from 'lucide-react'
+import { FileText, ExternalLink, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { ToolUrlForm } from '@/components/marketing/tools/ToolUrlForm'
 
 interface PlaceholderMatch {
   type: 'placeholder' | 'template-copy' | 'ai-builder' | 'template-token' | 'social-proof'
@@ -33,6 +34,7 @@ export function PlaceholderDetectorClient() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [matches, setMatches] = useState<PlaceholderMatch[]>([])
+  const [normalizedUrl, setNormalizedUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
 
@@ -40,6 +42,7 @@ export function PlaceholderDetectorClient() {
     e.preventDefault()
     setError('')
     setMatches([])
+    setNormalizedUrl(null)
     setSearched(false)
 
     const normalized = url.trim()
@@ -55,13 +58,15 @@ export function PlaceholderDetectorClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalized }),
       })
-      const data = await res.json()
-      if (data.error) {
-        setError(data.error)
-      } else {
-        setMatches(data.matches)
-        setSearched(true)
+      if (!res.ok) {
+        const err = await parseApiErrorResponse(res)
+        setError(err.message)
+        return
       }
+      const data = await res.json()
+      setMatches(data.matches)
+      setNormalizedUrl(data.url)
+      setSearched(true)
     } catch {
       setError('Something went wrong. Try again.')
     } finally {
@@ -79,32 +84,15 @@ export function PlaceholderDetectorClient() {
         <p className="text-base leading-relaxed text-muted-foreground">{copy.subhead}</p>
       </div>
 
-      <Card variant="strong" className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            type="text"
-            inputMode="url"
-            placeholder="https://yoursite.com"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setError('') }}
-            disabled={loading}
-            className="flex-1 text-base"
-            aria-label="Website URL"
-          />
-          <Button type="submit" disabled={loading} className="shrink-0 gap-2">
-            {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Scanning...</>
-            ) : (
-              <><Search className="h-4 w-4" /> {copy.ctaScan}</>
-            )}
-          </Button>
-        </form>
-        {error && (
-          <p className="mt-3 flex items-center gap-1.5 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" aria-hidden /> {error}
-          </p>
-        )}
-      </Card>
+      <ToolUrlForm
+        url={url}
+        onUrlChange={(value) => { setUrl(value); setError('') }}
+        onSubmit={handleSubmit}
+        loading={loading}
+        error={error}
+        ctaLabel={copy.ctaScan}
+        loadingLabel="Scanning..."
+      />
 
       {searched && matches.length === 0 && (
         <Card variant="strong" className="p-6 text-center">
@@ -143,7 +131,7 @@ export function PlaceholderDetectorClient() {
 
           <div className="flex justify-center pt-2">
             <Button variant="outline" asChild>
-              <Link href={`/report?url=${encodeURIComponent(url.startsWith('http') ? url : `https://${url}`)}`}>
+              <Link href={`/report?url=${encodeURIComponent(normalizedUrl ?? url)}`}>
                 {TOOLS.shared.ctaAudit}
                 <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden />
               </Link>

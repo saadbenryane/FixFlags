@@ -15,7 +15,7 @@ See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue,
 - **Fix prompts** (free): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from your page.
 - **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
 - **Before/after compare** (Pro+): side-by-side proof after re-checks.
-- **MCP integration** (Pro+): 6 MCP tools for Cursor and Claude Code. Lovable/Bolt MCP not supported yet.
+- **MCP integration** (Pro+): 13 MCP tools for Cursor and Claude Code (see `AGENTS.md` Project facts). Lovable/Bolt MCP not supported yet.
 - **Share links and proof export** (Agency+): public report links and client-ready summaries.
 
 ## What We Do Not Ship (Current)
@@ -55,9 +55,9 @@ Live tiers, as defined in `lib/billing/plans.ts` (`Plan` enum: `FREE | BUILDER |
 |------|-----------|-------|----------------|----------|
 | Free | `FREE` | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
 | Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP integration |
-| Max | `TEAM` | $99/mo | 100/mo | Everything in Pro, public share links, up to 5 projects |
+| Agency | `TEAM` | $99/mo | 100/mo | Everything in Pro, public share links, up to 5 projects |
 
-There is no "Agency," "High Volume," or "Studio" tier in the schema — those names were aspirational placeholders and have been retired from the docs. Any future higher tier (agency-focused, custom volume) needs to be designed and added to `PLAN_DEFINITIONS` before it's real.
+Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the schema.
 
 ## Target Customer
 

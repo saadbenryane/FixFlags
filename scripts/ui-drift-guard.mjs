@@ -20,7 +20,15 @@ const FONT_DISPLAY_ALLOW = [
 ]
 
 const PANEL_RE =
-  /className=(?:"[^"]*rounded-(xl|lg)[^"]*(?:border|bg-|shadow|p-\d+)[^"]*"|'[^']*rounded-(xl|lg)[^']*(?:border|bg-|shadow|p-\d+)[^']*')/
+  /className=(?:"[^"]*rounded-(xl|lg)[^"]*(?:border|bg-|shadow|\sp-\d)[^"]*"|'[^']*rounded-(xl|lg)[^']*(?:border|bg-|shadow|\sp-\d)[^']*')/
+
+const CN_PANEL_RE =
+  /cn\([^)]*['"`][^'"`]*rounded-(xl|lg)[^'"`]*(?:\sborder|\sbg-)/
+
+function hasPanelDrift(content) {
+  if (PANEL_RE.test(content)) return true
+  return CN_PANEL_RE.test(content)
+}
 
 function walk(dir, files = []) {
   for (const name of readdirSync(dir)) {
@@ -45,7 +53,7 @@ for (const dir of SCAN_DIRS) {
       violations.push(`${rel}: font-display outside marketing/pricing surfaces`)
     }
 
-    if (PANEL_RE.test(content)) {
+    if (hasPanelDrift(content)) {
       violations.push(`${rel}: rounded-xl/lg panel shell (use Card/Surface + rounded-card)`)
     }
   }

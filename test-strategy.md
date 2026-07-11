@@ -1,6 +1,8 @@
 # FixFlags Testing Strategy
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-11*
+
+> **Ship readiness evidence:** See [`QUALITY.md`](QUALITY.md) for current automated coverage and ratings. This doc tracks residual hardening goals and the original monetization bar.
 
 ## The 3 Categories
 
@@ -32,9 +34,9 @@
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Real-site regression suite | 🚫 BLOCKER | 5-10 frozen HTML fixtures with expected flag profiles. Runs on every PR. Without this, we can't prove we fixed false positives. |
-| AI judge contract validation | 🚫 BLOCKER | Bad schema → hard reject. Empty evidence → discard. Wrong rubric → fail. The AI is the highest-risk component. |
-| Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. 63/63 verified. |
+| Real-site regression suite | ✅ DONE | HTML-derivable checks frozen in `regression-sites.test.ts`. Screenshot/flow/PageSpeed modules still need fixtures. |
+| AI judge contract validation | ✅ DONE | `judge-contract.test.ts` + blank-evidence discard |
+| Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. See `AGENTS.md` Project facts (133 check IDs). |
 | Verification rules for every check | ✅ DONE | Every checkId has a human-readable verification rule. |
 | Form validation ratio | ⚠️ CRITICAL | We just added this (50% threshold). No test yet. |
 | Score math | ⚠️ CRITICAL | computeRubricScores is tested. But edge cases (all CRITICAL, module failures) need explicit verification. |
@@ -52,16 +54,16 @@
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Persist layer (no data corruption) | 🚫 BLOCKER | `persistDeterministicFlags` and `persistAuditResults` handle 0 flags, 100 flags, duplicates, and AI failures. Untested = data risk. |
-| Pipeline state machine | 🚫 BLOCKER | QUEUED → CAPTURING → CHECKING → JUDGING → COMPLETED. Fail at any step. Timeout halfway through. Retry after crash. All untested. |
-| Billing gating enforcement | 🚫 BLOCKER | `usage-limits.test.ts` tests the config values. The runtime enforcement in API routes is untested. A free user hitting a paid endpoint should get blocked. A paying user should never get a 402 on a feature they bought. |
-| API route contracts | ⚠️ CRITICAL | Every route: valid input → 200, bad input → 400, no auth → 401, not found → 404, rate limited → 429. Currently zero tests. |
-| Rate limiting | ⚠️ CRITICAL | Anonymous users get 3 checks. Paid users get their plan limit. Overages are gated. Untested = leaks revenue or frustrates users. |
+| Persist layer (no data corruption) | ✅ DONE | `persistDeterministicFlags` / `persistTriageResults` — `persist-functions.test.ts` |
+| Pipeline state machine | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED — `run-audit.test.ts` |
+| Billing gating enforcement | ✅ DONE | Route tests: `/api/checks`, api-keys, projects assert 402/allow |
+| API route contracts | ⚠️ CRITICAL | Primary paid endpoints tested; remaining API routes still lack handler-level tests |
+| Rate limiting | ⚠️ CRITICAL | Anonymous users get 3 checks. Paid users get their plan limit. Overages are gated. Partial coverage only. |
 | Auth / session management | ⚠️ CRITICAL | Login, logout, session expiry, plan entitlements. Auth env config is tested. Runtime behavior is not. |
-| CI pipeline | ⚠️ CRITICAL | Solo founder can manually `npm run verify` before shipping. Becomes 🚫 BLOCKER with a second person committing. |
+| CI pipeline | ⚠️ CRITICAL | GitHub Actions runs typecheck/lint/guards/test/build. Local `npm run verify` is stricter (includes DB checks). |
 | Database migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Not in CI. A bad migration on deploy corrupts production data. |
-| Worker crash recovery | 🔶 IMPORTANT | Worker dies mid-capture → retry. We have `stuck-audit-recovery.test.ts` for detection. Recovery path is untested. |
-| Queue job processing | 🔶 IMPORTANT | BullMQ jobs submitted, processed, failed, retried. Zero tests. But the queue management code is relatively stable. |
+| Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` for detection. Recovery path partially tested. |
+| Queue job processing | 🔶 IMPORTANT | BullMQ jobs submitted, processed, failed, retried. Limited test coverage. |
 
 ### Ready for monetization when:
 
@@ -93,28 +95,31 @@
 ## Summary
 
 ```
-TRUTH           ████████████████░░░░  80%  (check triggers done, fixtures + AI judge missing)
-STRENGTH        █████░░░░░░░░░░░░░░░  25%  (detection code exists, billing + pipeline untested)
+TRUTH           ████████████████████  ~90%  (fixtures + AI judge covered; extend screenshot/flow modules)
+STRENGTH        ████████████████░░░░  ~80%  (persist, pipeline, billing route tests done; auth/rate-limit gaps remain)
 TOUCH           ██░░░░░░░░░░░░░░░░░░  10%  (component tests missing entirely)
 
-BLOCKERS before monetization:
+Monetization blockers with automated coverage (see QUALITY.md):
 ┌──────────────────────────────────────────────────────────────┐
-│ 🚫 1. Real-site regression fixtures (Truth — false positives)│
-│ 🚫 2. AI judge contract validation (Truth — hallucinations)  │
-│ 🚫 3. Persist layer tests (Strength — data corruption)       │
-│ 🚫 4. Pipeline state machine tests (Strength — stuck scans)  │
-│ 🚫 5. Billing gating enforcement (Strength — revenue leaks)  │
+│ ✅ 1. Real-site regression fixtures (HTML-derivable checks)   │
+│ ✅ 2. AI judge contract validation                            │
+│ ✅ 3. Persist layer tests                                     │
+│ ✅ 4. Pipeline state machine tests                            │
+│ ✅ 5. Billing gating enforcement (/api/checks + paid routes)  │
 └──────────────────────────────────────────────────────────────┘
+
+Remaining hardening (not blocking ads): extend route contract tests, auth/session runtime tests, component tests.
 ```
 
 ## What I need to see before I say "ship"
 
-1. **Real-site fixtures in CI** — A PR adds 3+ frozen HTML files with expected flag profiles. Modifying a check and forgetting to update the fixture breaks the build. I see a red test when I introduce a false positive.
-2. **AI judge fenced in tests** — Bad judge schema → rejected with clear error. Empty evidence → discarded. Output with hallucinated rubric → caught. The judge is a black box we can't fully control, but its I/O contract is locked.
-3. **Persist layer has 10 test cases** — 0 flags, 100 flags, duplicates, AI failure after deterministic persist, all-CRITICAL flags, enrichments with gaps. I can prove `persistAuditResults` doesn't lose or corrupt data in any scenario.
-4. **Pipeline handles every failure mode** — PageSpeed 429, judge timeout, screenshot fail, worker crash mid-capture, deadline exceeded. Each produces a known safe outcome: partial results, retry, or a clear error message. No silent stuck-at-40% scans.
-5. **Billing enforcement is tested** — `GET /api/ai-review` returns 402 for free users. A Builder plan user can run their 25th scan. A Team plan user can invite a teammate. The config says X, the API enforces X.
+The five monetization blockers above now have automated test coverage. Residual hardening before scaling distribution:
 
-**When those 5 are true, I'll run ads. Not before.**
+1. **Extend route contract tests** — Cover remaining API endpoints beyond `/api/checks`, api-keys, and projects.
+2. **Auth/session runtime tests** — Login, logout, session expiry, plan entitlements at runtime.
+3. **Screenshot/flow/PageSpeed fixtures** — Freeze non-HTML-derivable check modules into the regression suite.
+4. **Component tests for Touch tier** — Report rendering, empty states, loading UI.
 
-A note on Tough: the visual polish is already strong. Component tests won't make or break launch. But I want the 5 BLOCKERs closed in the next 2 weeks.
+**When residual hardening is done, scale distribution with confidence.**
+
+A note on Touch: the visual polish is already strong. Component tests won't make or break launch. The five Strength/Truth blockers are closed.

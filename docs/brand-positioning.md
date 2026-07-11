@@ -44,7 +44,7 @@ Flag → Fix → Re-check. Run an audit, see the flags, copy the fix prompts, an
 
 ## Positioning
 
-- **FixFlags completes the AI loop.** AI coding tools (Cursor, Claude Code, Lovable, Bolt) ship fast. They ship UIs that look right at a glance. FixFlags is the second pass that catches what speed skipped: message gaps, UX issues, missing metadata. With fix prompts your AI can run immediately.
+- **FixFlags completes the AI loop.** AI coding tools (Cursor, Claude Code, Lovable, Bolt) ship fast. They ship UIs that look right at a glance. FixFlags is the calm reviewer that catches what speed skipped: message gaps, UX issues, missing metadata. With fix prompts your AI can run immediately.
 - **The fix prompt is the differentiator, not the AI.** Anyone can screenshot a page and ask GPT what is wrong. The unique value is: evidence + fix prompt tuned for your AI editor in one step. Paste and ship.
 - **Re-check loop proves improvement.** Not just finding issues, but verifying they are resolved. Before/after comparison is the proof.
 - **Not a Lighthouse wrapper.** Lighthouse scores performance and best practices. FixFlags reads screenshots for message clarity, UX gaps, and shareability.

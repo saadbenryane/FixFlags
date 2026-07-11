@@ -41,7 +41,8 @@ export default async function DashboardPage({
 
   const user = await prisma.user.findUnique({ where: { id: userId } })
 
-  const audits = await prisma.audit.findMany({
+  const PAGE_SIZE = 20
+  const auditBatch = await prisma.audit.findMany({
     where: { userId, parentId: null },
     include: {
       rubrics: {
@@ -59,8 +60,10 @@ export default async function DashboardPage({
       },
     },
     orderBy: { createdAt: 'desc' },
-    take: 20,
+    take: PAGE_SIZE + 1,
   })
+  const initialHasMore = auditBatch.length > PAGE_SIZE
+  const audits = initialHasMore ? auditBatch.slice(0, PAGE_SIZE) : auditBatch
 
   const completedAudits = audits.filter((audit) => audit.status === 'COMPLETED')
 
@@ -161,6 +164,7 @@ export default async function DashboardPage({
         <div className="space-y-6">
           <RecentChecksList
             audits={audits}
+            initialHasMore={initialHasMore}
             canCompare={canCompare}
             bestScore={bestScore}
             worstScore={worstScore}

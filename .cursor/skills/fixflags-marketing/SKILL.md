@@ -5,6 +5,8 @@ description: FixFlags go-to-market, ICP segmentation, message research, copy fra
 
 # FixFlags Marketing
 
+**Read [`AGENTS.md`](../../AGENTS.md) first.** Volatile facts and banned phrases live there. Do not hardcode counts.
+
 Read before changing marketing copy, positioning, or GTM.
 
 **Canonical sources (always check first):**
@@ -83,9 +85,9 @@ From `docs/voice-and-copy.md`:
 - **KISS:** One idea per sentence. Cut adjectives. No "still broken" or "graded" in marketing copy.
 - Operator clarity: short sentences, verb-first CTAs, name tools when relevant
 - Prefer: ship, fix, evidence, report, outcome, proof, check
-- Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes
+- Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes, **second pass**, Fix my live site (see AGENTS.md banned phrases)
 - CTAs are **promises**: `HERO.primaryCta` is **"Run audit"** — verb-first, not "Get started"
-- Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM), Studio — never promise unbuilt Agency/Studio bullets
+- Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM) only — never promise unbuilt features
 - One contextual CTA angle per page; never paste the same block everywhere
 - **Rule of one** per block: one reader, one pain, one outcome, one action
 
@@ -125,7 +127,7 @@ Full research methods: [research-workflows.md](research-workflows.md).
 | Channel | AI shipper angle | Existing site owner angle |
 |---------|------------------|---------------------------|
 | **Homepage hero** | Check before you ship | Live site — see what to fix first |
-| **Homepage post-hero** | How to start toggle → grades+loop | Same path; Fix my live site tab |
+| **Homepage post-hero** | How to start toggle → grades+loop | Same path; audit your live URL |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
@@ -146,11 +148,11 @@ Full research methods: [research-workflows.md](research-workflows.md).
 
 Before shipping marketing changes, verify against `fixflags-product` skill:
 
-- Re-check: paid = unlimited, no quota; free = 1 trial compare
-- Share links: Agency (TEAM)+ only
+- Re-check: unlimited on owned reports (never gated); compare: Pro+ only
+- Share links: Agency (TEAM) only
 - MCP: Pro+ only, HTTP config in docs
 - Prices/teaser: from `getMarketingPlans()`, not hardcoded
-- Local dev: document `npm run dev:all` when mentioning audit speed
+- Local dev: `npm run dev` runs inline worker by default
 
 ## Anti-patterns
 

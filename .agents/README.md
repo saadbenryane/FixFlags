@@ -11,7 +11,7 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 | `BOARD.md` | Active task board — claim here before starting |
 | `sessions/` | Implementation records for substantial work |
 | `handoffs/` | Handoff documents for incomplete work between agents |
-| `learnings/` | Validated project learnings (durable, not guesses) |
+| `learnings/` | Validated project learnings (durable, not guesses). Active growth notes may live in `docs/growth/learnings.md` until promoted here. |
 | `evals/` | Evaluation suites for quality verification |
 
 ## Rules
@@ -47,7 +47,7 @@ File: `.agents/handoffs/<task-id>.md`
 
 ## Learning conventions
 
-Store durable, validated learnings under `.agents/learnings/`. Each must include: date, scope, confidence, evidence, discovery, why it matters, correct approach, where prevention was encoded.
+Store durable, validated learnings under `.agents/learnings/`. Active growth notes may live in `docs/growth/learnings.md` until promoted here. Each entry must include: date, scope, confidence, evidence, discovery, why it matters, correct approach, where prevention was encoded.
 
 Prefer permanent prevention (in order): tests → types → scripts → CI → canonical docs → AGENTS.md rules.
 

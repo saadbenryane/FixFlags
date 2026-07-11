@@ -8,7 +8,20 @@
 
 - **Stage:** Pre-revenue / testing. Prioritizing distribution over depth.
 - **Domain:** fixflags.com | **Pricing:** Free (3 lifetime), Pro $29/mo (25/mo), Agency $99/mo (100/mo)
-- **Status:** 888 tests passing, 30/31 check modules live, pipeline v2.3.0
+
+### Project facts (canonical — update these in place, do not duplicate elsewhere)
+
+| Fact | Value | Source / regenerate command |
+|------|-------|-----------------------------|
+| Prisma models | **39** | `prisma/schema.prisma` (`grep -c '^model '`) |
+| Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
+| Check capabilities | 30 live / 1 partial | `npm run audit:capabilities` |
+| Check IDs | **133** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| MCP tools | **13** | `lib/mcp/tools.ts` `server.tool()` |
+| Pipeline version | **2.3.0** | `lib/audit/pipeline-config.ts` |
+| Test count | measured per run | `npm run test:unit` (do not hardcode) |
+
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (30) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (133) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
 
 ## Key directories and authoritative files
 
@@ -24,7 +37,7 @@
 | `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only |
 | `lib/billing/` | Subscription limits, credits, Stripe integration |
 | `lib/prompts/system-prompt.ts` | AI triage + prescription prompts |
-| `prisma/schema.prisma` | Database schema (34 models) |
+| `prisma/schema.prisma` | Database schema (39 models) |
 | `scripts/` | CLI scripts (demo audits, backfills, guards) |
 | `worker/` | Standalone audit worker |
 | `docs/` | Strategy, positioning, voice, growth docs |
@@ -33,6 +46,7 @@
 | `docs/brand-positioning.md` | Brand identity and positioning |
 | `docs/offering.md` | Product scope and philosophy |
 | `test-strategy.md` | Testing strategy with readiness ratings |
+| `.cursor/skills/fixflags-completeness/SKILL.md` | Repeatable completeness/docs-accuracy pass |
 | `docs/scan-catalog.md` | All check modules catalog |
 | `docs/scan-roadmap.md` | Scan module roadmap |
 
@@ -76,7 +90,7 @@
 ### Architecture
 - **Pipeline stages:** QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
 - **22 check modules** run via `checks/index.ts` barrel; `slow-replay.ts` imported directly by `deterministic-audit.ts` (side-channel).
-- **AI two-phase:** Triage (cheap, anonymous, 2500 chars pageText) → Prescription (post-signup, 500 chars pageText from stored metadata).
+- **AI two-phase:** Triage (cheap, anonymous, 2500 chars pageText) → Prescription (post-signup, 5000 chars pageText from stored metadata).
 - **Tech stack** for prescription comes from `auditPage.performanceData.detectedTech`, not `htmlMetadata`.
 - **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
 - **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
@@ -84,8 +98,8 @@
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. "Copy all N fix prompts" uses `collectAllFixPrompts()` with `=== Fix N: Problem ===` separators.
 - **Report UI — MiniNav:** `showFix` prop exists but is **always false** (old standalone fix section removed iteration 4). Fix prompt tab inserted after Flags. Do not reintroduce.
 - **Dead code to avoid:** `topFixPrompt && !explorerModel` is a logically impossible condition; never use `Boolean(topFixPrompt && !explorerModel)` for `showFix`.
-- **If increasing AI pageText**, change **both**: `trimMetadataForStorage` in `lib/audit/metadata.ts` (storage limit) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
-- **Dedup rules** live in `lib/audit/checks/index.ts` `DEDUP_RULES` array. Each rule has a `keep` and a `suppress` checkId pattern.
+- **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
+- **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.
 - **impactTag** is set on all deterministic checks.
 
 ### Design
@@ -118,7 +132,7 @@
    - Worktree: `../qewos-<task-id>/`
 5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work.**
 6. **Stop and document** ambiguous ownership or conflicting state.
-7. **Create a handoff** (`/Users/saadbenryane/Code/qewos/.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
+7. **Create a handoff** (`.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
 8. **Solo operation on `main`** (the primary workflow) is fine for single-agent sessions. The parallel rules above are for multi-agent scenarios.
 
 ## Verification and definition of done
@@ -127,7 +141,7 @@ Before claiming completion:
 - [ ] **Inspect** the relevant code, UI, docs, git state, and `.agents/BOARD.md`
 - [ ] **Understand** the user outcome and product intent, not just the literal ticket
 - [ ] **Run** `npm run typecheck` and `npm run lint` — zero errors
-- [ ] **Run** `npm run test:unit` — all passing (888+)
+- [ ] **Run** `npm run test:unit` — all passing (count measured per run; do not hardcode)
 - [ ] **Run** relevant guards (`brand:hex-guard`, `ui:drift-guard`, `seo:guard`)
 - [ ] **Verify** behavior by running the actual code path, not just assuming passing tests means correct behavior
 - [ ] **Check** edge cases, responsive states, loading/empty/error states

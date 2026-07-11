@@ -12,7 +12,7 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   const { sessionId, setSessionId, auditId: contextAuditId } = useSupportContext()
   const resolvedAuditId = auditId ?? contextAuditId
   const { panelOpen } = useSupportContext()
-  const { data, mutate } = useSupportMessages(sessionId, panelOpen)
+  const { data, mutate, error: pollError } = useSupportMessages(sessionId, panelOpen)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +75,12 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0">
-        {messages.length === 0 && (
+        {pollError && messages.length === 0 && (
+          <p className="text-sm text-destructive text-center py-8" role="alert">
+            Could not load messages. Try sending a message to reconnect.
+          </p>
+        )}
+        {!pollError && messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">
             Ask us anything about FixFlags, your audit, or getting started.
           </p>

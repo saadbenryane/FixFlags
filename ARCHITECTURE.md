@@ -5,7 +5,7 @@
 ## System overview
 
 Next.js 15 application (App Router) with:
-- PostgreSQL 16 database (Prisma 6 ORM, 34 models)
+- PostgreSQL 16 database (Prisma 6 ORM, 39 models)
 - Redis 7 queue (BullMQ 5) for async audit processing
 - Inline worker mode (default) or separate worker process
 - Self-hosted scheduler for recovery + nurture (no external cron)
@@ -90,7 +90,7 @@ Each page in an audit progresses through these stages independently.
 | `lib/audit/pipeline/combine-pages.ts` | Multi-page result merging |
 | `lib/audit/pipeline-config.ts` | Version (v2.3.0), deadlines (180s) |
 | `lib/audit/deterministic-audit.ts` | 22 check modules via barrel |
-| `lib/audit/checks/index.ts` | Check runner (22 modules, dedup rules) |
+| `lib/audit/checks/index.ts` | Check runner (22 modules, `suppressOverlappingFlags()`) |
 | `lib/audit/checks/registry.ts` | Check descriptor registry |
 | `lib/audit/judge-triage.ts` | Phase 1: AI triage |
 | `lib/audit/judge-prescription.ts` | Phase 2: AI prescription |
@@ -110,7 +110,7 @@ Metadata, og-image, performance, accessibility, seo, trust, mobile, content, slo
 | Phase | pageText source | Max chars | When run |
 |-------|----------------|-----------|----------|
 | Triage | Freshly parsed HTML (in-memory) | 2500 | Always (deterministic + AI) |
-| Prescription | Stored `audit.htmlMetadata` | 500 | Post-signup only |
+| Prescription | Stored `audit.htmlMetadata` | 5000 | Post-signup only |
 
 Tech stack for prescription: `auditPage.performanceData.detectedTech`, not `htmlMetadata`.
 

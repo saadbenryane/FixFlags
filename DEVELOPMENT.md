@@ -150,7 +150,7 @@ INLINE_WORKER=false npm run worker:build && npm run worker:start
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
-CI: GitHub Actions (`ci.yml`) runs on push to main + PRs. But "CI is not on GitHub Actions" (per README) — the production gate is Railway Docker build. Run `npm run verify` before pushing.
+CI: GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build`. It does **not** run DB migration checks. Local `npm run verify` is the stricter bar. Run `npm run verify` locally before pushing.
 
 ## Screenshot regeneration
 

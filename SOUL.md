@@ -4,7 +4,7 @@
 
 ## Why FixFlags deserves to exist
 
-AI coding tools ship astonishingly fast. They also ship surfaces that look right at a glance and break in ways a user will feel in the first 30 seconds. FixFlags is the missing second pass: a calm, sharp reviewer who catches what speed skipped.
+AI coding tools ship astonishingly fast. They also ship surfaces that look right at a glance and break in ways a user will feel in the first 30 seconds. FixFlags is the calm, sharp reviewer who catches what speed skipped.
 
 The product exists because building with AI is not a shortcut around quality. It is a shift in who checks quality. The AI built it. FixFlags finishes it.
 

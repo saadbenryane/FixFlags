@@ -38,7 +38,7 @@ export function RubricDiff({
       <div className="flex items-center gap-4 flex-wrap">
         <span
           className={cn(
-            'rounded-lg border px-3 py-1 text-sm font-medium',
+            'rounded-nested-sm border px-3 py-1 text-sm font-medium',
             statusBadge(beforeShareStatus)
           )}
         >
@@ -47,7 +47,7 @@ export function RubricDiff({
         <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden />
         <span
           className={cn(
-            'rounded-lg border px-3 py-1 text-sm font-medium',
+            'rounded-nested-sm border px-3 py-1 text-sm font-medium',
             statusBadge(afterShareStatus)
           )}
         >
