@@ -49,6 +49,7 @@ export function RecentChecksList({
   const [audits, setAudits] = useState(initialAudits)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const completedAudits = audits.filter((a) => a.status === 'COMPLETED')
   const scores = completedAudits.map((a) => a.score).filter((s): s is number => s !== null)
@@ -56,6 +57,7 @@ export function RecentChecksList({
   const loadMore = async () => {
     if (loading || !hasMore) return
     setLoading(true)
+    setLoadError(false)
     const cursor = audits[audits.length - 1]?.id
     try {
       const res = await fetch(`/api/recent-checks?cursor=${cursor}`)
@@ -64,6 +66,7 @@ export function RecentChecksList({
       setAudits((prev) => [...prev, ...data.audits])
       setHasMore(data.hasMore)
     } catch {
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -207,7 +210,10 @@ export function RecentChecksList({
         )
       })}
       {hasMore && (
-        <div className="flex justify-center pt-2">
+        <div className="flex flex-col items-center gap-2 pt-2">
+          {loadError && (
+            <p className="text-xs text-destructive">Failed to load more checks.</p>
+          )}
           <Button variant="outline" size="sm" onClick={loadMore} disabled={loading}>
             {loading ? (
               <>

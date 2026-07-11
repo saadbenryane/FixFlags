@@ -5,7 +5,6 @@ import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { MessageBubble } from '@/components/support/MessageBubble'
-import type { SupportMessageDto } from '@/lib/live-support/types'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
 
