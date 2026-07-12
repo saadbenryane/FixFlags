@@ -22,10 +22,10 @@ export function validateMonitoringParent(
     return { ok: false, status: 404, error: 'Audit not found' }
   }
   if (parent.userId !== userId) {
-    return { ok: false, status: 403, error: 'You can only monitor your own audits' }
+    return { ok: false, status: 403, error: 'You can only re-check your own reports' }
   }
   if (parent.status !== 'COMPLETED') {
-    return { ok: false, status: 400, error: 'Can only monitor completed audits' }
+    return { ok: false, status: 400, error: 'You can only re-check completed reports' }
   }
   return { ok: true }
 }

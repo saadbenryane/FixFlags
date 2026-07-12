@@ -23,7 +23,11 @@ export function DashboardCheckoutToast() {
     refresh().then((data) => {
       const planKey = (planParam ?? data?.user?.plan ?? 'BUILDER') as Plan
       const planName = PLAN_DEFINITIONS[planKey]?.name ?? 'Pro'
-      toast.success(`Welcome to ${planName}! Unlimited monitoring and MCP are now active.`)
+      const paidFeatures =
+        planKey === 'TEAM'
+          ? 'Client sharing, projects, compare, and MCP are now active.'
+          : 'Before/after compare and MCP are now active.'
+      toast.success(`Welcome to ${planName}. ${paidFeatures}`)
     })
 
     const next = new URLSearchParams(searchParams.toString())

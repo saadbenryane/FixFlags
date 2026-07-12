@@ -41,7 +41,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
                 </span>
               </>
             ) : null}
-            . Paste your URL for a free deterministic check. Sign up to unlock AI fix prompts.
+            . Paste your URL for a free deterministic check. Create a free account for AI fix prompts.
           </p>
           <Button
             variant="ghost"

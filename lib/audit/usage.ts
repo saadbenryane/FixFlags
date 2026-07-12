@@ -28,7 +28,7 @@ function readAnonAuditIds(raw: string | undefined): string[] {
 
 /**
  * Anonymous users get one free scan (the "teaser"). After they've used it, any
- * further scan requires a free account, which also unlocks the AI fix prompts.
+ * further scan requires a free account, which also provides the AI fix prompts.
  */
 export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   if (isDevUnlimitedScans()) return { allowed: true }
@@ -47,7 +47,7 @@ export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
     if (used > 0) {
       return {
         allowed: false,
-        error: 'You’ve used your free scan. Create a free account to unlock fix prompts and keep scanning.',
+        error: 'You’ve used your free scan. Create a free account for fix prompts and more checks.',
         code: 'AUTH_REQUIRED',
         action: 'signup',
       }

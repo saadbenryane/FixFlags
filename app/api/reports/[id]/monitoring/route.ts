@@ -15,7 +15,7 @@ export async function POST(
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
     if (!session?.user) {
-      return apiError('Sign in to start monitoring', 401)
+      return apiError('Sign in to start a re-check', 401)
     }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })

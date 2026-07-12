@@ -38,10 +38,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     features: [
       'Unlimited deterministic checks',
       '3 AI reports with fix prompts',
-      'Unlimited Monitoring on your reports',
+      'Unlimited re-checks on your reports',
     ],
     highlight: false,
-    cta: 'Audit Free',
+    cta: 'Start free',
     href: '/sign-up?from=pricing',
   },
   BUILDER: {
@@ -57,9 +57,9 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     auditLimitLabel: '25 / month',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      'Unlimited Monitoring + before/after compare',
+      'Before/after comparisons',
       'MCP in Cursor or Claude',
-      '25 audits per month',
+      '25 new URL checks per month',
     ],
     highlight: true,
     cta: 'Start Pro',

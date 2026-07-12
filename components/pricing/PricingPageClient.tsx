@@ -36,7 +36,7 @@ export function PricingPageClient() {
             {PRICING.subhead}
           </Body>
           <div className="mt-5 inline-flex items-center rounded-full bg-brand-muted px-3 py-1 text-xs font-medium text-brand">
-            {PRICING.foundingBadge}
+            {PRICING.trustBadge}
           </div>
         </div>
 

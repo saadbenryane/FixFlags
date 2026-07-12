@@ -16,7 +16,7 @@ interface ReportAiGateProps {
 export function ReportAiGate({
   locked,
   signUpHref = '/sign-up',
-  headline = 'Unlock AI review',
+  headline = 'Get the AI review',
   body = 'Create a free account to see fix prompts, rubric analysis, and the full AI review.',
   children,
   className,

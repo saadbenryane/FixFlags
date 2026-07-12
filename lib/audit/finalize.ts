@@ -9,6 +9,7 @@ import { persistAuditGraphSnapshot } from '@/lib/graph/snapshot'
 import { logger } from '@/lib/logger'
 import { triageDegradedVerdict } from '@/lib/audit/triage-verdict'
 import { triageFailureCode } from '@/lib/audit/pipeline/triage-failure'
+import { DETERMINISTIC_SCAN_VERDICT } from '@/lib/audit/verdict'
 import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
 
 interface FinalizeAuditInput {
@@ -445,8 +446,7 @@ export async function finalizeDeterministicOnly(
         ...input.evidence,
         aiAssessment: false,
       },
-      verdict:
-        'Deterministic scan complete. Sign up to unlock AI review, fix prompts, and rubric analysis.',
+      verdict: DETERMINISTIC_SCAN_VERDICT,
       completedAt: audit.completedAt ?? new Date(),
       finalizedAt: new Date(),
       failureCode: null,

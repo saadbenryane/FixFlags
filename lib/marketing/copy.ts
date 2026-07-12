@@ -29,7 +29,7 @@ export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
   fixPrompt: 'Fix prompt (copy-ready)',
   seeFullSample: 'See full sample report',
-  nextStep: 'Paste into editor → run → monitor.',
+  nextStep: 'Paste into editor → run → re-check.',
 } as const
 
 export const TOOLS = {
@@ -145,8 +145,8 @@ export const HERO_FIX_PROMPT = {
 
 export const HOW_IT_WORKS_SECTION = {
   label: 'How it works',
-  headline: 'Flag, fix, monitor',
-  subhead: 'Three steps: flag, fix, monitor.',
+  headline: 'Flag, fix, re-check',
+  subhead: 'Three steps: flag, fix, re-check.',
   steps: [
     {
       step: 1,
@@ -160,8 +160,8 @@ export const HOW_IT_WORKS_SECTION = {
     },
     {
       step: 3,
-      title: 'Monitor',
-      body: 'Run the audit again on the same URL to confirm Flags cleared before users find the problems.',
+      title: 'Re-check',
+      body: 'Run the same URL again to confirm which Flags cleared before users find the problems.',
     },
   ],
 } as const
@@ -196,7 +196,7 @@ export const WORKFLOW_STEPS = [
   },
   {
     step: 4,
-    title: 'Monitor',
+    title: 'Re-check',
     body: 'Confirm Flags cleared',
   },
 ] as const
@@ -233,7 +233,7 @@ export const DIFFERENTIATION = {
   is: [
     'A review layer that finishes what your AI started',
     'Flags with evidence, impact, and copy-ready fix prompts',
-    'Monitoring loop to prove fixes landed',
+    'A re-check loop to prove fixes landed',
   ],
   isNot: [
     'Not a generic Lighthouse wrapper',
@@ -243,7 +243,7 @@ export const DIFFERENTIATION = {
   bullets: [
     'AI reads screenshots for message, experience, and reach gaps',
     'Every Flag ships with a copy-ready fix prompt',
-    'Monitoring proves fixes landed (Pro)',
+    'Re-checks prove fixes landed',
   ],
   rows: [
     { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
@@ -251,8 +251,8 @@ export const DIFFERENTIATION = {
     { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
     { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
-    { feature: 'Monitoring after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
-    { feature: 'Monitoring proof loop', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
+    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
+    { feature: 'Before/after comparison', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
     { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
     { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
@@ -319,16 +319,16 @@ export const CASE_STUDIES = [
 ] as const
 
 export const CASE_STUDIES_SECTION = {
-  label: 'Monitoring',
+  label: 'Re-check results',
   headline: 'Fixes that clear Flags',
-  subhead: 'Illustrative monitoring after applying fix prompts.',
+  subhead: 'Illustrative results after applying fix prompts and running a re-check.',
 } as const
 
 export const PROOF_SECTION = {
   label: OUTPUT_LABELS.whatYouGet,
   headline: 'Flags, screenshots, and fix prompts',
   subhead:
-    'Real output from a public URL. Copy a fix prompt, paste it into your editor, then monitor to prove the fix.',
+    'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
   nextStep: OUTPUT_LABELS.nextStep,
   cta: 'Check My Site',
   sample: {
@@ -368,7 +368,7 @@ export const FLOW_SCAN_STATUS = {
   },
   skipped: {
     label: 'Skipped',
-    description: 'Flow scan could not run during this audit. Try a full monitoring.',
+    description: 'Flow scan could not run during this audit. Run a new check to try again.',
   },
   timeout: {
     label: 'Timed out',
@@ -394,7 +394,7 @@ export const SEVERITY_LABELS = {
 
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'Fixed', description: 'Resolved in a monitoring audit' },
+  FIXED: { label: 'Fixed', description: 'Cleared on a re-check' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Came back after a fix' },
 } as const
@@ -410,7 +410,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'BUILDER',
       title: 'Prove',
-      body: 'Unlimited monitoring, before/after compare, and MCP in your editor.',
+      body: 'Before/after comparison, 25 new checks per month, and MCP in your editor.',
     },
     {
       plan: 'TEAM',
@@ -422,9 +422,9 @@ export const PRODUCT_LADDER = {
 
 export const MCP_SECTION = {
   headline: 'Run checks from your editor',
-  body: 'Connect via MCP so your agent finds Flags, fixes them, and monitors without copy-pasting URLs.',
+  body: 'Connect via MCP so your agent finds Flags, fixes them, and re-checks without copy-pasting URLs.',
   intro: 'A typical prompt sequence looks like this:',
-  closing: 'Then monitor to prove the improvement.',
+  closing: 'Then re-check to prove the improvement.',
   cta: 'See MCP setup',
   workflow: `User: "Check https://myapp.com and review the Experience rubric"
 
@@ -444,7 +444,7 @@ export const HOW_IT_WORKS_PAGE = {
     eyebrow: 'How FixFlags works',
     headline: 'Check your site from the browser or your coding agent.',
     subhead:
-      'Paste a URL for an instant report, or connect FixFlags through MCP so Cursor, Claude Code, and Windsurf can find issues, fetch fix prompts, and monitor the page.',
+      'Paste a URL for an instant report, or connect FixFlags through MCP so Cursor, Claude Code, and Windsurf can find Flags, fetch fix prompts, and re-check the page.',
     primaryCta: 'Run a browser check',
     secondaryCta: 'Set up MCP',
   },
@@ -468,7 +468,7 @@ export const HOW_IT_WORKS_PAGE = {
       bullets: [
         'Check a URL from chat',
         'Fetch the exact flag and fix prompt',
-        'Monitor after the agent applies changes',
+        'Re-check after the agent applies changes',
       ],
       cta: 'View MCP setup',
       href: '/docs/mcp',
@@ -512,7 +512,7 @@ export const HOW_IT_WORKS_PAGE = {
         body: 'Copy the prompt manually or let MCP hand the exact Flag to your coding agent.',
       },
       {
-        title: 'Monitor the shipped change',
+        title: 'Re-check the shipped change',
         body: 'Run the same URL again and keep the history in your dashboard.',
       },
     ],
@@ -538,14 +538,14 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 } as const
 
 const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
-  FREE: ['Unlimited monitoring on your reports', 'No share links', 'No export'],
-  BUILDER: ['Monitoring loop', 'Before/after compare', 'Editor integration (MCP)'],
+  FREE: ['Unlimited re-checks on your reports', 'No share links', 'No export'],
+  BUILDER: ['25 new checks per month', 'Before/after compare', 'Editor integration (MCP)'],
   TEAM: ['Client-ready share links', 'Proof exports', 'Up to 5 projects'],
 }
 
 export const PRICING_TEASER = {
   headline: PRODUCT_LADDER.headline,
-  subhead: 'Full report on every plan. Pro adds unlimited monitoring and MCP in your editor.',
+  subhead: 'Full report and unlimited re-checks on every plan. Pro adds compare, more new checks, and MCP.',
   trustLine: 'Cancel anytime · No account for first check · Recurring monthly',
   plans: getMarketingPlans()
     .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
@@ -563,7 +563,7 @@ export const PRICING_TEASER = {
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: 'Run an audit, copy fix prompts, and re-scan to watch your score climb. Create a free account to save history and get fix prompts.',
+  body: 'Run a check, copy the fix prompts, then re-check to see what cleared. Create a free account to save your report history.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -583,15 +583,15 @@ export const CHANGELOG_ENTRIES = [
 export const BLOG_POSTS = [
   {
     slug: 'why-ai-built-sites-need-a-second-pass',
-    title: 'Why AI-built sites need a second pass',
+    title: 'Why AI-built sites still need a final review',
     date: '2026-07-02',
     excerpt:
-      'AI coding tools ship fast, but speed skips the boring checks: dead CTAs, broken previews, missing alt text. Here is why a second pass matters before you share the link.',
+      'AI coding tools ship fast, but speed skips the boring checks: dead CTAs, broken previews, missing alt text. Here is why a final review matters before you share the link.',
     body: [
       'AI coding tools are very good at producing a page that looks finished. They are much less good at noticing the things that only show up when someone else actually uses the page: a call-to-action that points nowhere, an Open Graph image that never loads, a form input with no label.',
       'None of these are hard to fix. Almost all of them are invisible until a real user, or a QA pass, goes looking.',
       'That gap is what "finish what your AI started" means in practice. The build gets you 90% of the way. The last 10% is the pass that catches what speed skipped, and it is exactly the kind of checklist work that is easy to automate and easy to skip when you are moving fast.',
-      'A second pass does not need to be a person. It needs to be systematic: run the checks, get the flags, fix what matters, ship. The habit is the re-check, not the first check.',
+      'The final review can be systematic: run the checks, get the Flags, fix what matters, then re-check. That loop is the habit.',
     ],
   },
 ] as const
@@ -664,7 +664,7 @@ export const LANDING_PAGE = {
     label: 'How it works',
     headline: 'From scan to ship. In one loop.',
     subhead:
-      'Paste a URL. Get findings and fix prompts. Monitor when you ship fixes.',
+      'Paste a URL. Get Flags and fix prompts. Re-check after you ship fixes.',
     sampleLink: 'View full sample review',
     steps: [
       {
@@ -688,9 +688,9 @@ export const LANDING_PAGE = {
       },
       {
         step: 4,
-        title: 'Verify',
-        body: 'We monitor and show what improved.',
-        preview: 'Monitoring complete',
+        title: 'Re-check',
+        body: 'Run the same URL to see which Flags cleared.',
+        preview: 'Re-check complete',
         previewBadge: 'Improved',
       },
     ] as const,
@@ -812,12 +812,12 @@ export const FAQ = [
   {
     question: 'Do I need an account for my first check?',
     answer:
-      'No. Your first scan is free, no account needed. Create a free account to keep scanning and to unlock 3 AI reports with fix prompts and saved history.',
+      'No. Your first scan is free, no account needed. Create a free account to keep scanning and get 3 AI reports with fix prompts and saved history.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: unlimited deterministic checks, 3 AI reports with fix prompts, and unlimited monitoring on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
+      'Free: unlimited deterministic checks, 3 AI reports with fix prompts, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
   },
   {
     question: 'Can it check sites built with Lovable/Bolt/v0?',
@@ -830,9 +830,9 @@ export const FAQ = [
       'Each Flag includes a copy-ready prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
   },
   {
-    question: 'Can I monitor after my agent fixes issues?',
+    question: 'Can I re-check after my agent fixes issues?',
     answer:
-      'All registered users can monitor reports they own as often as needed. Monitoring does not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
+      'Yes. All registered users can re-check reports they own as often as needed. Re-checks do not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
   },
   {
     question: 'Does it work on staging/password-protected sites?',
@@ -864,7 +864,7 @@ export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
     answer:
-      'Yes. Your first scan is free without an account. Create a free account to keep scanning and unlock 3 AI reports with fix prompts, then upgrade to Pro when you need unlimited monitoring and MCP.',
+      'Yes. Your first scan is free without an account. Create a free account for 3 AI reports with fix prompts and unlimited re-checks, then upgrade for more new checks, compare, and MCP.',
   },
   {
     question: 'What happens when I hit my check limit?',
@@ -878,37 +878,41 @@ export const PRICING_FAQ = [
   {
     question: 'What\u2019s included in every plan?',
     answer:
-      'Every plan includes the full report and copy-ready fix prompts. Paid plans add unlimited monitoring, MCP, higher check volume, and team features.',
+      'Every plan includes the full report, copy-ready fix prompts, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.',
   },
 ] as const
 
 export const PRICING = {
   headline: 'Start free. Pay when you ship.',
   subhead:
-    'Start free with the full report. Upgrade when you ship weekly and need unlimited monitoring and MCP.',
-  foundingBadge: 'Founding price. Keep this rate as we grow.',
+    'Start free with the full report and unlimited re-checks. Upgrade for more new checks, before/after compare, and MCP.',
+  trustBadge: 'Unlimited re-checks on every plan',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   allPlansInclude:
-    'Every check includes evidence, fix prompts, and rubric summaries. Pro adds the ship loop: monitoring, compare, and check from your editor.',
+    'Every check includes evidence, fix prompts, and rubric summaries. Re-checks stay free. Pro adds compare, more new checks, and MCP.',
 } as const
 
 export const PLANS = getMarketingPlans()
 
 export const SAMPLES_PAGE = {
   subhead: 'This is what a completed FixFlags report looks like: full report, all Flags.',
-  tierNote: 'Free includes the full report. Pro adds unlimited monitoring and MCP in your editor.',
+  tierNote: 'Free includes the full report and unlimited re-checks. Pro adds compare and MCP in your editor.',
 } as const
 
 export const REPORT_COPY = {
+  recheck: {
+    label: 'Re-check',
+    error: 'Could not start the re-check. Try again.',
+  },
   launchGates: {
     title: 'Launch gates',
     body: 'Five concrete checks from your report evidence. Fix any failed gates before you ship.',
   },
-  monitoringHint: {
+  recheckHint: {
     title: 'Next: prove your fixes worked',
-    bodyPrefix: 'Paste fix prompts into your editor, ship the changes, then hit',
-    bodySuffix: 'above to compare before/after.',
+    bodyPrefix: 'Paste the fix prompts into your editor, ship the changes, then select',
+    bodySuffix: 'above to see which Flags cleared.',
   },
   sampleCta: {
     title: 'Run the same check on your site',
@@ -1055,7 +1059,7 @@ export const AUTH = {
     footer: 'Already have an account?',
     footerLink: 'Sign in',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro, unlimited monitoring and MCP from day one',
+      BUILDER: 'You\u2019re signing up for Pro, with 25 monthly checks, compare, and MCP from day one',
       TEAM: 'You\u2019re signing up for Agency, ship client-ready share links and organize across up to 5 projects',
     },
     planSteps: [
@@ -1067,7 +1071,7 @@ export const AUTH = {
   valueProps: [
     { icon: 'history' as const, text: 'Report history saved to your account' },
     { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
-    { icon: 'monitoring' as const, text: 'Monitor after fixes to track improvement' },
+    { icon: 'monitoring' as const, text: 'Re-check after fixes to see what cleared' },
   ],
   privacyNote: 'By creating an account, you agree to our Privacy Policy and Terms of Service.',
   forgotPassword: {
@@ -1096,8 +1100,8 @@ export const AUTH = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Unlock copy-paste fix prompts',
-    body: 'You already see your score and issues. Create a free account to unlock the fix prompts, save scan history, and re-scan to verify your fixes.',
+    headline: 'Get copy-paste fix prompts',
+    body: 'You already see your score and issues. Create a free account to get the fix prompts, save report history, and re-check your fixes.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -1107,7 +1111,7 @@ export const UPSELLS = {
   },
   signedInAiDegraded: {
     headline: 'Deterministic fixes are ready',
-    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every flag below. Re-scan to retry the AI pass.',
+    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.',
   },
   atLimit: 'AI report limit reached. Upgrade to continue',
 } as const
@@ -1115,20 +1119,20 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your 3 AI reports',
-    body: 'Upgrade to Pro for 25 checks per month, unlimited monitoring, and MCP in Cursor or Claude.',
+    body: 'Upgrade to Pro for 25 new checks per month, before/after compare, and MCP in Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   compare_improved: {
     headline: (scoreDelta: number) =>
       `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
-    body: 'Keep proving every ship with unlimited monitoring and MCP in Cursor.',
+    body: 'Keep the loop in your editor with MCP and 25 new checks each month.',
     cta: proUpgradeCta('Start Pro'),
     plan: 'BUILDER' as const,
   },
   compare_flat: {
-    headline: 'Still Flags after your monitoring',
-    body: 'Pro gives unlimited monitoring and MCP so your agent can close what remains without copy-pasting URLs.',
+    headline: 'Still Flags after your re-check',
+    body: 'Use MCP so your agent can close what remains without copy-pasting URLs.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -1140,19 +1144,19 @@ export const UPGRADE_MOMENTS = {
   },
   export_locked: {
     headline: 'Proof exports are on Agency',
-    body: 'Copy a client-ready summary with rubrics and top Flags. Upgrade to Agency to unlock exports.',
+    body: 'Agency includes client-ready summaries with rubrics and top Flags.',
     cta: 'Upgrade to Agency',
     plan: 'TEAM' as const,
   },
   free_default: {
     headline: 'Ship weekly? Automate the loop',
-    body: 'Pro adds unlimited monitoring, before/after compare, and MCP so checks run inside Cursor or Claude.',
+    body: 'Pro adds 25 new checks per month, before/after compare, and MCP so checks run inside Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   report_completed: {
-    headline: 'Unlock full report history and automation',
-    body: 'Pro adds unlimited monitoring, before/after proof, MCP in Cursor or Claude, and saved report history.',
+    headline: 'Automate the report loop',
+    body: 'Pro adds 25 new checks each month, before/after proof, and MCP in Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -1246,12 +1250,12 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with the full report and 3 checks. Upgrade to Pro for unlimited monitoring and MCP. Founding pricing for early users.',
+      'Start free with the full report, 3 AI checks, and unlimited re-checks. Pro adds 25 new checks per month, compare, and MCP.',
   },
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Run FixFlags from the website or through MCP in Cursor, Claude Code, and Windsurf. Find Flags, copy fix prompts, and monitor shipped changes.',
+      'Run FixFlags from the website or through MCP in Cursor, Claude Code, and Windsurf. Find Flags, copy fix prompts, and re-check shipped changes.',
   },
   samples: {
     title: 'Sample Report',
@@ -1303,6 +1307,6 @@ export const SEO = {
 
 export const MARKETING_ILLUSTRATION_PROMPTS = {
   hero: 'Minimal editorial SaaS hero: browser window with Flag list and fix prompt snippet, warm neutral palette, no text labels.',
-  steps: 'Three-step horizontal flow: URL check, clipboard fix prompt, monitoring with cleared Flags, flat vector, muted ochre accent.',
+  steps: 'Three-step horizontal flow: URL check, clipboard fix prompt, re-check with cleared Flags, flat vector, muted ochre accent.',
   proof: 'Split panel: website screenshot with highlighted Flags and copy-ready prompt card, calm dark UI, product marketing style.',
 } as const

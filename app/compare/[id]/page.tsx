@@ -110,7 +110,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
           <Container variant="report" className="space-y-8 py-8">
             <PageHeader
               title="Before vs After"
-              description="Monitoring is required to compare scores."
+              description="Before/after comparison is available on Pro. Re-checks stay free."
             />
             <ContextualUpgradeCard
               moment="compare_flat"

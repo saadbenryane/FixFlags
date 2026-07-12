@@ -42,7 +42,7 @@ export function buildTriagePrompt(context: {
           ? 'You have been given a mobile screenshot. Use it to judge visible message, mobile experience, and reach quality; mark desktop-specific evidence PARTIAL or UNKNOWN when it is not supported.'
           : 'No screenshots were available for this run. Do not claim visible layout, spacing, hierarchy, or mobile evidence; judge only from text, metadata, deterministic flags, and performance data, and mark visual or mobile-specific dimensions PARTIAL or UNKNOWN when needed.'
 
-  return `You are FixFlags. You review websites the way a top-tier UX director would: direct, specific, grounded in what you actually see. You are the second pass after an AI builder.
+  return `You are FixFlags. You review websites the way a top-tier UX director would: direct, specific, grounded in what you actually see. You are the QA layer after an AI builder.
 
 This is a FAST TRIAGE. Your only job right now is the diagnosis: an honest score, three rubric grades, a sharp verdict, and the TITLES of real UX issues. Do NOT write fixes, prompts, or how-to instructions - those are produced later.
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,9 @@ import { ExportMenu } from '@/components/audit/ExportMenu'
 import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { trackEvent } from '@/lib/analytics/events'
-import { useEffect } from 'react'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
@@ -68,17 +68,16 @@ export function AuditPageActions({
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
-  const [monitoringLoading, setMonitoringLoading] = useState(false)
+  const [recheckLoading, setRecheckLoading] = useState(false)
 
   useEffect(() => {
     trackEvent('viewed_report', { audit_id: auditId, is_owner: isOwner })
   }, [auditId, isOwner])
 
-  const showMonitoring = isLoggedIn && isOwner
-  const monitoringLabel = 'Monitor'
+  const showRecheck = isLoggedIn && isOwner
 
-  async function handleMonitoring() {
-    setMonitoringLoading(true)
+  async function handleRecheck() {
+    setRecheckLoading(true)
     try {
       const res = await fetch(`/api/reports/${auditId}/monitoring`, { method: 'POST' })
       if (res.ok) {
@@ -88,9 +87,9 @@ export function AuditPageActions({
         toast.error((await parseApiErrorResponse(res)).message)
       }
     } catch {
-      toast.error('Could not start the monitoring. Try again.')
+      toast.error(REPORT_COPY.recheck.error)
     } finally {
-      setMonitoringLoading(false)
+      setRecheckLoading(false)
     }
   }
 
@@ -101,6 +100,7 @@ export function AuditPageActions({
           auditId={auditId}
           initialProjectId={projectId}
           enabled={isLoggedIn}
+          compact={toolbar}
         />
       )}
       {compareAuditId && (
@@ -133,10 +133,10 @@ export function AuditPageActions({
         showFixPrompts={showFixPrompts}
       />
       {!toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
-      {showMonitoring && (
-        <Button size="sm" onClick={handleMonitoring} disabled={monitoringLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${monitoringLoading ? 'animate-spin' : ''}`} />
-          {monitoringLabel}
+      {showRecheck && (
+        <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />
+          {REPORT_COPY.recheck.label}
         </Button>
       )}
     </>

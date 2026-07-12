@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Container } from '@/components/ui/container'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
   { id: 'report-flags', label: 'Flags' },
   { id: 'report-rubrics', label: 'Rubrics' },
-  { id: 'report-monitoring', label: 'Monitoring' },
 ] as const
+const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
 
 type NavSection = { id: string; label: string }
 
@@ -21,6 +22,7 @@ interface Props {
   showFix?: boolean
   showLaunchGates?: boolean
   showJourney?: boolean
+  showRecheckSection?: boolean
   siteUrl?: string
   score?: number | null
   actions?: ReactNode
@@ -34,6 +36,7 @@ export function ReportStickyToolbar({
   showFix,
   showLaunchGates,
   showJourney,
+  showRecheckSection = true,
   siteUrl,
   score,
   actions,
@@ -56,8 +59,17 @@ export function ReportStickyToolbar({
       const flagsIndex = items.findIndex((s) => s.id === 'report-flags')
       items.splice(flagsIndex + 1, 0, { id: 'report-fix', label: 'Fix prompt' })
     }
+    if (showRecheckSection) items.push(RECHECK_SECTION)
     return items
-  }, [showOverview, showPreviews, showFlow, showFix, showLaunchGates, showJourney])
+  }, [
+    showOverview,
+    showPreviews,
+    showFlow,
+    showFix,
+    showLaunchGates,
+    showJourney,
+    showRecheckSection,
+  ])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
 
@@ -137,8 +149,11 @@ export function ReportStickyToolbar({
         isStuck && 'shadow-glass'
       )}
     >
-      <Container variant="report" className="flex items-center gap-3 py-0 sm:gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto scrollbar-thin">
+      <Container
+        variant="report"
+        className="flex flex-col items-stretch gap-0 px-0 py-0 xl:flex-row xl:items-center xl:gap-4"
+      >
+        <div className="order-2 flex w-full min-w-0 items-center gap-4 overflow-x-auto scrollbar-thin xl:order-1 xl:w-auto xl:flex-1">
           {hostname && isStuck && (
             <span className="hidden max-w-[140px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground sm:flex">
               <span
@@ -172,7 +187,9 @@ export function ReportStickyToolbar({
           </nav>
         </div>
         {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 py-2">{actions}</div>
+          <div className="order-1 flex w-full min-w-0 flex-wrap items-center justify-end gap-2 py-2 xl:order-2 xl:w-auto xl:shrink-0">
+            {actions}
+          </div>
         ) : null}
       </Container>
     </div>

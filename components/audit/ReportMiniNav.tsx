@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Container } from '@/components/ui/container'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 
 const BASE_SECTIONS = [
   { id: 'report-flags', label: 'Flags' },
   { id: 'report-rubrics', label: 'Rubrics' },
-  { id: 'report-monitoring', label: 'Monitoring' },
+  { id: 'report-monitoring', label: REPORT_COPY.recheck.label },
 ] as const
 
 type NavSection = { id: string; label: string }

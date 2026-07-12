@@ -20,9 +20,10 @@ interface Props {
   auditId: string
   initialProjectId?: string | null
   enabled: boolean
+  compact?: boolean
 }
 
-export function ProjectAssignSelect({ auditId, initialProjectId, enabled }: Props) {
+export function ProjectAssignSelect({ auditId, initialProjectId, enabled, compact = false }: Props) {
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [projectId, setProjectId] = useState(initialProjectId ?? '')
   const [saving, setSaving] = useState(false)
@@ -63,13 +64,13 @@ export function ProjectAssignSelect({ auditId, initialProjectId, enabled }: Prop
 
   return (
     <div className="inline-flex items-center gap-2 text-sm">
-      <span className="text-muted-foreground">Project</span>
+      <span className={compact ? 'sr-only' : 'text-muted-foreground'}>Project</span>
       <Select
         value={projectId}
         disabled={saving || projects.length === 0}
         onValueChange={(v) => handleChange(v)}
       >
-        <SelectTrigger className="h-8 w-auto px-3 text-xs">
+        <SelectTrigger aria-label="Project" className="h-8 w-auto px-3 text-xs">
           <SelectValue placeholder="None" />
         </SelectTrigger>
         <SelectContent>

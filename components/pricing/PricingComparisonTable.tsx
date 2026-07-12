@@ -14,7 +14,7 @@ const ROWS = [
     agency: 'Client-ready share links + proof exports + up to 5 projects',
   },
   {
-    feature: 'Monitoring',
+    feature: 'Re-checks',
     free: 'Unlimited on reports you own',
     pro: 'Unlimited (no quota)',
     agency: 'Unlimited (no quota)',

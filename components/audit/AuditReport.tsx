@@ -202,6 +202,7 @@ export function AuditReport({
             showFlow={Boolean(audit.flowData)}
             showLaunchGates={hasLaunchGates}
             showJourney={pages.length > 1}
+            showRecheckSection={!(isLoggedIn && isViewerOwner)}
             siteUrl={audit.url}
             score={audit.score}
             actions={toolbarActions ?? actions}
@@ -353,10 +354,10 @@ export function AuditReport({
       <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         {showMonitoringHint && isLoggedIn && isViewerOwner && (
           <Card className="space-y-2 p-5">
-            <CardTitle className="text-sm">{REPORT_COPY.monitoringHint.title}</CardTitle>
+            <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">
-              {REPORT_COPY.monitoringHint.bodyPrefix}{' '}
-              <strong>Monitor</strong> {REPORT_COPY.monitoringHint.bodySuffix}
+              {REPORT_COPY.recheckHint.bodyPrefix}{' '}
+              <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}
             </p>
           </Card>
         )}

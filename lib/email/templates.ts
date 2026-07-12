@@ -27,18 +27,18 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You have 3 free checks. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>You have 3 AI reports. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first check</a></p>
   <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first checks: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
 `),
   },
   firstAuditNudge: {
-    subject: `Still have 3 free checks`,
+    subject: `Your 3 AI reports are waiting`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You signed up for ${BRAND.name} yesterday. Your 3 free checks are still waiting.</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your 3 AI reports are still waiting.</p>
   <p>Paste any public URL. You will get Flags with evidence and a fix prompt for each one. The whole thing takes about 60 seconds.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
@@ -49,8 +49,8 @@ export const NURTURE_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>You ran a ${BRAND.name} check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
-  <p>A monitoring run checks the same URL again and shows exactly what cleared and what is still open.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Monitor your site</a></p>
+  <p>A re-check runs the same URL again and shows exactly what cleared and what is still open.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Re-check your site</a></p>
 `),
   },
   launchChecklist: {

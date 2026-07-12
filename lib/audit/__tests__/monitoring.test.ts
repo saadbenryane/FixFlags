@@ -15,7 +15,10 @@ describe('validateMonitoringParent', () => {
       'u1'
     )
     assert.equal(result.ok, false)
-    if (!result.ok) assert.equal(result.status, 403)
+    if (!result.ok) {
+      assert.equal(result.status, 403)
+      assert.equal(result.error, 'You can only re-check your own reports')
+    }
   })
 
   it('rejects incomplete parent', () => {
@@ -24,7 +27,10 @@ describe('validateMonitoringParent', () => {
       'u1'
     )
     assert.equal(result.ok, false)
-    if (!result.ok) assert.equal(result.status, 400)
+    if (!result.ok) {
+      assert.equal(result.status, 400)
+      assert.equal(result.error, 'You can only re-check completed reports')
+    }
   })
 
   it('accepts completed owned parent', () => {

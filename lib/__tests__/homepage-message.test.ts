@@ -12,12 +12,16 @@ import {
   LANDING_PAGE,
   MCP_SECTION,
   OUTPUT_LABELS,
+  PRICING,
+  PRICING_FAQ,
   PROBLEM_SECTION,
   PROOF_SECTION,
+  REPORT_COPY,
   SEGMENT_PROOF_SECTION,
   SEO,
   TRUST_STRIP,
 } from '@/lib/marketing/copy'
+import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 
 const FORBIDDEN_TAXONOMY = /\b7 areas\b|\bseven areas\b/i
 
@@ -55,6 +59,17 @@ function collectStrings(value: unknown, out: string[] = []): string[] {
 const LANDING_MARKETING_STRINGS = [
   ...collectStrings(LANDING_PAGE),
   ...collectStrings(FINAL_CTA),
+]
+
+const CORE_LOOP_STRINGS = [
+  ...collectStrings(HOW_IT_WORKS_SECTION),
+  ...collectStrings(LANDING_PAGE.howItWorks),
+  ...collectStrings(FINAL_CTA),
+]
+
+const PRICING_STRINGS = [
+  ...collectStrings(PRICING),
+  ...collectStrings(PRICING_FAQ),
 ]
 
 const ABOVE_FOLD_COPY = [
@@ -132,7 +147,40 @@ describe('homepage message guardrails', () => {
 
   it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
     assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt (copy-ready)')
-    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → monitor.')
+    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → re-check.')
+  })
+
+  it('report copy names the free core-loop action as re-check', () => {
+    assert.equal(REPORT_COPY.recheck.label, 'Re-check')
+    assert.match(REPORT_COPY.recheckHint.title, /prove your fixes worked/i)
+    assert.match(REPORT_COPY.recheckHint.bodySuffix, /Flags cleared/i)
+  })
+
+  it('core-loop copy consistently uses re-check', () => {
+    assert.ok(CORE_LOOP_STRINGS.some((line) => /re-check/i.test(line)))
+    for (const line of CORE_LOOP_STRINGS) {
+      assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
+      assert.doesNotMatch(line, /\bre-?scan\b/i)
+    }
+    assert.equal(LANDING_PAGE.howItWorks.steps.at(-1)?.title, 'Re-check')
+  })
+
+  it('pricing keeps re-checks free and sells actual paid value', () => {
+    assert.match(PRICING.trustBadge, /unlimited re-checks/i)
+    assert.ok(
+      PLAN_DEFINITIONS.FREE.features.some((feature) => /unlimited re-checks/i.test(feature))
+    )
+    assert.ok(
+      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /before\/after/i.test(feature))
+    )
+    assert.ok(
+      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /25 new URL checks/i.test(feature))
+    )
+    assert.doesNotMatch(PLAN_DEFINITIONS.BUILDER.features.join(' '), /unlimited re-check/i)
+    for (const line of PRICING_STRINGS) {
+      assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
+      assert.doesNotMatch(line, /founding price/i)
+    }
   })
 
   it('sample output section uses merged label', () => {
@@ -202,11 +250,11 @@ describe('homepage message guardrails', () => {
     assert.ok(!/\b\d+\b/.test(flag!.preview))
   })
 
-  it('verify step avoids synthetic score delta in preview', () => {
-    const verify = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Verify')
-    assert.ok(verify)
-    assert.ok(!verify!.preview.includes('+32%'))
-    assert.ok(!verify!.preview.toLowerCase().includes('score improved'))
+  it('re-check step avoids synthetic score delta in preview', () => {
+    const recheck = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Re-check')
+    assert.ok(recheck)
+    assert.ok(!recheck!.preview.includes('+32%'))
+    assert.ok(!recheck!.preview.toLowerCase().includes('score improved'))
   })
 
   it('dimension cards have checklists and proof examples', () => {

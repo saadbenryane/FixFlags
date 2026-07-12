@@ -260,9 +260,9 @@ export async function persistDeterministicFlags(
   })
 }
 
-const TRIAGE_LOCKED_EVIDENCE = 'Create a free account to unlock evidence and fix prompts.'
+const TRIAGE_LOCKED_EVIDENCE = 'Create a free account to see evidence and fix prompts.'
 const TRIAGE_LOCKED_WHY = 'Sign up to see why this matters and get a copy-paste fix prompt.'
-const TRIAGE_LOCKED_FIX = 'Sign up to unlock the copy-paste fix prompt.'
+const TRIAGE_LOCKED_FIX = 'Sign up to get the copy-paste fix prompt.'
 
 export function buildTriageAiFlagRow(
   flag: TriageOutput['newFlags'][number],
@@ -289,7 +289,7 @@ export function buildTriageAiFlagRow(
     claudePrompt: null,
     lovablePrompt: null,
     boltPrompt: null,
-    verificationRule: 'Sign up to unlock verification steps.',
+    verificationRule: 'Sign up to see verification steps.',
     checkId: null,
     pageUrl: flag.pageUrl ?? null,
     fingerprint: flagFingerprint(flag),
