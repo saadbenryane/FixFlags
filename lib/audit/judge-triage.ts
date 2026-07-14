@@ -25,6 +25,15 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
+/**
+ * Whether at least one LLM provider is configured. When false, triage cannot
+ * run and the pipeline should skip straight to a deterministic-only report
+ * instead of attempting (and failing) an LLM call on every scan.
+ */
+export function isTriageProviderConfigured(): boolean {
+  return Boolean(anthropic || openai)
+}
+
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
 type ScreenshotHint = 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
