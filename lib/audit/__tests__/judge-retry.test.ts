@@ -61,8 +61,20 @@ describe('validatePrescriptionOutput', () => {
   it('passes when outputs match existing flags exactly', () => {
     const output = {
       flagPrescriptions: [
-        { flagKey: 'flag-a', evidence: 'e', whyItMatters: 'w', fix: 'f', verificationRule: 'v' },
-        { flagKey: 'flag-b', evidence: 'e', whyItMatters: 'w', fix: 'f', verificationRule: 'v' },
+        {
+          flagKey: 'flag-a',
+          evidence: 'The page title is missing, showing generic browser default text instead of a descriptive headline.',
+          whyItMatters: 'Without a descriptive title, visitors cannot understand what the page offers, reducing click-through rates from search results.',
+          fix: '1. Open your page layout file and locate the <title> tag in the <head> section.\n2. Replace the generic text with a specific description: <title>Your Product Name - Key Benefit</title>',
+          verificationRule: 'Reload the page and check the browser tab shows your new title',
+        },
+        {
+          flagKey: 'flag-b',
+          evidence: 'The primary CTA button text reads "Submit" which is generic and does not communicate the value of clicking.',
+          whyItMatters: 'Vague button text reduces conversion rates because visitors do not know what they will get after clicking.',
+          fix: '1. Find the <button> element with text "Submit" in your form component.\n2. Change the button text to a benefit-focused label like "Start Free Trial" or "Get My Quote".',
+          verificationRule: 'Check the button now displays the new action-oriented text',
+        },
       ],
       rubricPrescriptions: [
         { name: 'MESSAGE' as const, rubricPrompt: 'r' },

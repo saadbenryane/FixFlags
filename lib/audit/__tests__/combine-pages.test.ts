@@ -148,13 +148,13 @@ describe('averageScores', () => {
       { checkId: 'c3', rubric: 'MESSAGE', severity: 'POLISH', problem: 'p3', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
     )
 
-    // Page 1: MESSAGE=85 (100-15), EXPERIENCE=85 (100-15), REACH=100
-    // Page 2: MESSAGE=95 (100-5), EXPERIENCE=75 (penalized baseline, no PS data), REACH=100
-    // Avg: MESSAGE=90, EXPERIENCE=80, REACH=100
+    // Page 1: MESSAGE=96 (log penalty for 1 IMPORTANT), EXPERIENCE=96 (log penalty for 1 IMPORTANT), REACH=100
+    // Page 2: MESSAGE=99 (log penalty for 1 POLISH), EXPERIENCE=75 (penalized baseline, no PS data), REACH=100
+    // Avg: MESSAGE=98, EXPERIENCE=86, REACH=100
     const scores = averageScores([page1, page2])
 
-    expect(scores.MESSAGE).toBe(90)
-    expect(scores.EXPERIENCE).toBe(80)
+    expect(scores.MESSAGE).toBe(98)
+    expect(scores.EXPERIENCE).toBe(86)
     expect(scores.REACH).toBe(100)
   })
 

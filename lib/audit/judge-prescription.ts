@@ -92,7 +92,78 @@ export function validatePrescriptionOutput(
     throw new JudgeContractError('expected exactly 3 rubric prescriptions')
   }
 
+  // Quality gate: validate fix prompt specificity
+  for (const rx of output.flagPrescriptions) {
+    validateFixQuality(rx)
+  }
+
   return output
+}
+
+function validateFixQuality(rx: {
+  flagKey: string
+  fix: string
+  evidence: string
+  whyItMatters: string
+  agentPrompt?: string
+  verificationRule: string
+}): void {
+  const fix = rx.fix.trim()
+
+  // Fix must contain at least 2 lines (numbered steps or bullet points)
+  const lines = fix.split('\n').filter((l) => l.trim().length > 0)
+  if (lines.length < 2) {
+    throw new JudgeContractError(
+      `fix for ${rx.flagKey} must contain at least 2 numbered steps, got ${lines.length} line(s)`
+    )
+  }
+
+  // Fix must contain concrete replacements (before/after pattern or specific selectors)
+  const hasSpecificity =
+    fix.includes('→') ||
+    fix.includes('replace') ||
+    fix.includes('change') ||
+    fix.includes('update') ||
+    fix.includes('add') ||
+    fix.includes('remove') ||
+    fix.includes('delete') ||
+    fix.includes('set') ||
+    fix.includes('href=') ||
+    fix.includes('alt=') ||
+    fix.includes('content=') ||
+    fix.includes('class=') ||
+    fix.includes('aria-') ||
+    fix.includes('`') ||
+    /\b(title|description|og:|meta|h1|h2|button|link|nav|header|footer|section|img|input|form)\b/i.test(fix)
+  if (!hasSpecificity) {
+    throw new JudgeContractError(
+      `fix for ${rx.flagKey} lacks specificity: must include element selectors, attribute names, or before/after text`
+    )
+  }
+
+  // Evidence must reference something concrete on the page
+  const evidence = rx.evidence.trim()
+  if (evidence.length < 20) {
+    throw new JudgeContractError(
+      `evidence for ${rx.flagKey} is too brief (${evidence.length} chars), must describe what is visible on the page`
+    )
+  }
+
+  // WhyItMatters must explain business impact, not just technical description
+  const why = rx.whyItMatters.trim()
+  if (why.length < 15) {
+    throw new JudgeContractError(
+      `whyItMatters for ${rx.flagKey} is too brief (${why.length} chars), must explain real-world impact`
+    )
+  }
+
+  // Verification rule must be checkable
+  const vr = rx.verificationRule.trim()
+  if (vr.length < 10) {
+    throw new JudgeContractError(
+      `verificationRule for ${rx.flagKey} is too brief (${vr.length} chars), must describe how to verify the fix`
+    )
+  }
 }
 
 async function runAnthropicPrescription(

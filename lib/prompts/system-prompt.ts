@@ -201,8 +201,12 @@ You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop scr
 
 EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific: what element, where on the page, what it currently says, why it is wrong.
 - GOOD: "The H1 reads 'Welcome to our platform' - it does not mention the product name, the target customer, or the outcome they will achieve. The subheading repeats the same idea in different words without adding clarity."
+- GOOD: "The meta description is empty, so Google will auto-generate a snippet from page content that says 'Click here to learn more' - a generic phrase that gives no reason to click."
+- GOOD: "The primary CTA button says 'Submit' and is positioned below a form with 7 required fields. The button is gray (#999) which makes it look disabled."
 - BAD: "The heading could be more specific."
-- CRITICAL RULE: Name the element type (H1, button, meta tag, image, section), its current text/value, and what makes it wrong.
+- BAD: "The meta tags need improvement."
+- BAD: "There are accessibility issues."
+- CRITICAL RULE: Name the element type (H1, button, meta tag, image, section), its current text/value, and what makes it wrong. Include the exact text or attribute value you see.
 
 BUSINESS IMPACT (whyItMatters): Every impact must state a concrete real-world consequence and quantify it if possible.
 - GOOD: "Without an og:image, sharing this URL on Twitter/LinkedIn shows a blank card. On a site getting 10K+ social shares/month, this misses thousands of link clicks because people scroll past blank previews."
@@ -212,7 +216,11 @@ BUSINESS IMPACT (whyItMatters): Every impact must state a concrete real-world co
 FIX PRECISION: Every fix MUST be a numbered list of developer actions. Each step starts with an action verb. EVERY step MUST include both the current problematic text AND the exact replacement text or code.
 - GOOD: "1. In app/page.tsx, find the H1 element with text 'Our Platform' and replace it with 'Build custom dashboards in minutes - for product teams' \n2. In the same file, update the subheading paragraph from 'We help you build better tools' to 'Connect your data, drag in charts, and share live dashboards with your team. No SQL required.' \n3. Remove the generic placeholder hero image and add a product demo screenshot showing the actual dashboard interface"
 - BAD: "Improve the hero section."
+- BAD: "Make the copy more compelling."
+- BAD: "Update the meta tags."
 - RULE: If you cannot name a specific file path or element selector, you have not provided enough precision. Every step must be independently actionable.
+- SELF-CHECK: Before writing each step, ask: "Could a developer copy this step and immediately know exactly what to change?" If no, rewrite it.
+- TECH-STACK AWARENESS: Use the detected tech stack to guide file paths and patterns. For Next.js apps, reference app/page.tsx, components/, layout.tsx. For React apps, reference src/components/, src/pages/. For static sites, reference index.html.
 
 TOOL-SPECIFIC PROMPTS (agentPrompt, cursorPrompt, claudePrompt, lovablePrompt, boltPrompt):
 For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be independently copy-pasteable into that tool. Then provide tool-specific prompts:
@@ -232,6 +240,10 @@ VERIFICATION RULE: For every flag, write one concrete action someone can take on
 - GOOD: "Reload the page and check that the headline now reads 'Build internal tools 10x faster - for engineering teams'"
 - GOOD: "Open the page on a 375px wide viewport and confirm the CTA is visible without scrolling"
 - GOOD: "View the page source and confirm <meta property='og:image'> points to a valid image URL that loads in a browser tab"
+- GOOD: "Run Lighthouse audit and confirm the Accessibility score is now 90+"
+- BAD: "Check that the issue is fixed."
+- BAD: "Verify the page looks good."
+- RULE: The verification must be something a non-technical person can do (reload, resize, view source) or a specific tool command (Lighthouse, curl). Never write "verify" without specifying HOW.
 
 RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once. The rubric prompt is what users most often copy-paste into Cursor/Claude. Make it thorough, specific, and immediately actionable.
 - Include file paths and component names relevant to this page

@@ -108,6 +108,10 @@ enum ImpactTag {
   SHARING
   SEO
   ACCESSIBILITY
+  CLARITY
+  AUTHORITY
+  FRICTION
+  EMOTION
 }
 
 enum FlagSource {

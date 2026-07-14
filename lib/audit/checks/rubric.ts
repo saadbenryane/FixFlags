@@ -80,11 +80,15 @@ export function computeRubricScores(
   let experience: number
   if (perfScores.length > 0) {
     let score = Math.round(perfScores.reduce((a, b) => a + b, 0) / perfScores.length)
+    const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 }
     for (const f of experienceFindings) {
-      score -= rubricPenalty(f.severity)
+      counts[f.severity]++
     }
+    score -= counts.CRITICAL * Math.log(1 + counts.CRITICAL) * 10
+    score -= counts.IMPORTANT * Math.log(1 + counts.IMPORTANT) * 6
+    score -= counts.POLISH * Math.log(1 + counts.POLISH) * 2
     if (failedExperienceModules) score -= SCAN_STEP_FAILURE_PENALTY
-    experience = clampRubricScore(score)
+    experience = clampRubricScore(Math.round(score))
   } else if (experienceFindings.length > 0) {
     const penalty = failedExperienceModules ? SCAN_STEP_FAILURE_PENALTY : 0
     experience = clampRubricScore(scoreFromFindings(experienceFindings) - penalty)
@@ -137,8 +141,13 @@ function rubricPenalty(severity: DeterministicFlag['severity']): number {
 
 function scoreFromFindings(findings: DeterministicFlag[]): number {
   let score = 100
+  const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 }
   for (const f of findings) {
-    score -= rubricPenalty(f.severity)
+    counts[f.severity]++
   }
-  return clampRubricScore(score)
+  // Logarithmic decay: first flag has most impact, diminishing returns for additional flags
+  score -= counts.CRITICAL * Math.log(1 + counts.CRITICAL) * 10
+  score -= counts.IMPORTANT * Math.log(1 + counts.IMPORTANT) * 6
+  score -= counts.POLISH * Math.log(1 + counts.POLISH) * 2
+  return clampRubricScore(Math.round(score))
 }

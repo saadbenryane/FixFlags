@@ -19,7 +19,6 @@ interface Props {
   showOverview?: boolean
   showPreviews?: boolean
   showFlow?: boolean
-  showFix?: boolean
   showLaunchGates?: boolean
   showJourney?: boolean
   showRecheckSection?: boolean
@@ -33,7 +32,6 @@ export function ReportStickyToolbar({
   showOverview,
   showPreviews,
   showFlow,
-  showFix,
   showLaunchGates,
   showJourney,
   showRecheckSection = true,
@@ -55,17 +53,12 @@ export function ReportStickyToolbar({
     if (optional.length > 0) {
       items.splice(insertAt, 0, ...optional)
     }
-    if (showFix) {
-      const flagsIndex = items.findIndex((s) => s.id === 'report-flags')
-      items.splice(flagsIndex + 1, 0, { id: 'report-fix', label: 'Fix prompt' })
-    }
     if (showRecheckSection) items.push(RECHECK_SECTION)
     return items
   }, [
     showOverview,
     showPreviews,
     showFlow,
-    showFix,
     showLaunchGates,
     showJourney,
     showRecheckSection,

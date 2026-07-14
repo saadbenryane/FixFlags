@@ -945,7 +945,7 @@ describe('computeRubricScores', () => {
       healthyDesktopPs({ score: 88 }),
       healthyMobilePs({ score: 77 })
     )
-    assert.equal(scores.EXPERIENCE, 68)
+    assert.equal(scores.EXPERIENCE, 79)
     assert.equal(scores.MESSAGE, 100)
     assert.equal(scores.REACH, 100)
   })
