@@ -20,6 +20,8 @@ interface FinalizeAuditInput {
     inputTokens: number
     outputTokens: number
     model: string
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
   }
   evidence: {
     desktopScreenshot: boolean
@@ -40,6 +42,8 @@ interface FinalizeTriageInput {
     inputTokens: number
     outputTokens: number
     model: string
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
   }
   evidence: {
     desktopScreenshot: boolean
@@ -77,6 +81,8 @@ export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<v
     llmOutputTokens: input.usage.outputTokens,
     llmModel: input.usage.model,
     pagespeedCalls: input.pagespeedCalls,
+    llmCacheReadTokens: input.usage.cacheReadTokens,
+    llmCacheWriteTokens: input.usage.cacheWriteTokens,
     phase: 'triage',
   })
 
@@ -245,6 +251,8 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
     llmOutputTokens: input.usage.outputTokens,
     llmModel: input.usage.model,
     pagespeedCalls: input.pagespeedCalls,
+    llmCacheReadTokens: input.usage.cacheReadTokens,
+    llmCacheWriteTokens: input.usage.cacheWriteTokens,
     phase: 'prescription',
   })
 

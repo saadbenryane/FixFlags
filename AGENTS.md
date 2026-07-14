@@ -19,6 +19,7 @@
 | Check IDs | **133** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **13** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.3.0** | `lib/audit/pipeline-config.ts` |
+| AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
 > **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (30) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (133) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
@@ -103,6 +104,12 @@
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.
 - **impactTag** is set on all deterministic checks.
+
+### AI calls & cost
+- **Providers:** OpenAI (`gpt-4o-mini`) primary, Anthropic fallback. Chain is `JUDGE_PROVIDER_CHAIN` (default `openai,anthropic`). Models resolve in `lib/audit/judge-config.ts`; override with `ANTHROPIC_JUDGE_MODEL` / `TRIAGE_MODEL` / `OPENAI_JUDGE_MODEL`.
+- **Prompts live in `lib/prompts/system-prompt.ts`**, split into `build*SystemPrompt()` (stable, cacheable) and `build*UserPrompt()` (per-request). **Never interleave per-request page data into the system block** — that breaks the prompt-cache prefix match. Anthropic: send the system block via the `system` param with `cache_control: {type:'ephemeral'}`. OpenAI: send it as a leading `system` message (enables automatic caching).
+- **Model IDs are load-bearing and go stale.** A retired ID 404s and silently falls through to the other provider. Keep `judge-config.ts`, `health/ai-providers.ts`, and `MODEL_RATES` in `lib/billing/costs.ts` in sync; add new IDs to `MODEL_RATES` (unknown models fall back to the Sonnet-tier default rate).
+- **Cost tracking is cache-aware.** `estimateLlmCostUsd` prices cache reads (~0.1× Anthropic / ~0.5× OpenAI) and writes (1.25× Anthropic). When adding an LLM call site, thread `cacheReadTokens` / `cacheWriteTokens` from the judge usage object through to `persistAuditRunCost`.
 
 ### Design
 - Use semantic CSS tokens (`bg-card`, `text-brand`, `shadow-card`, `rounded-card`), never raw hex except `grade.*`

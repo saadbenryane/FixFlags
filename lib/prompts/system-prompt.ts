@@ -2,76 +2,18 @@ import { formatRubricForJudgePrompt } from '@/lib/audit/rubric'
 import { TRIAGE_TEXT, PRESCRIPTION_TEXT } from '@/lib/audit/page-text-limits'
 
 /**
- * Phase-1 triage prompt. Diagnosis only - no fix prompts, no evidence briefs.
- * This is what a cold visitor sees on their own site before signing up, so it
- * must be sharp and honest, but must NOT hand over the copy-paste payload.
+ * Phase-1 triage prompt, split into a stable SYSTEM block and a per-request USER
+ * block so the instructions can be prompt-cached.
+ *
+ * The system block is byte-identical on every audit, so senders MUST pass it as
+ * the top-level `system` param with `cache_control` (Anthropic) or as a leading
+ * `system` message (OpenAI auto-caching). Do NOT interleave the per-request page
+ * data into the system block - that is what breaks the cache prefix match.
  */
-export function buildTriagePrompt(context: {
-  screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
-  url: string
-  pageText: string
-  metadata: {
-    title: string | null
-    description: string | null
-    h1s: string[]
-    ctaTexts: string[]
-    hasStructuredData: boolean
-  }
-  scores: {
-    desktopPerf: number | null
-    mobilePerf: number | null
-    mobileLcp: number | null
-    desktopLcp: number | null
-    cls: number | null
-  }
-  topOpportunities: Array<{ id: string; title: string; savings: number }>
-  deterministicFlags: Array<{
-    checkId: string
-    problem: string
-    evidence: string
-    rubric: string
-    severity: string
-  }>
-}): string {
-  const screenshotEvidence =
-    context.screenshotHint === 'desktop-and-mobile'
-      ? 'You have been given desktop and mobile screenshots. Use them to judge message, experience, and reach quality.'
-      : context.screenshotHint === 'desktop-only'
-        ? 'You have been given a desktop screenshot. Use it to judge visible message, desktop experience, and reach quality; mark mobile-specific evidence PARTIAL or UNKNOWN when it is not supported.'
-        : context.screenshotHint === 'mobile-only'
-          ? 'You have been given a mobile screenshot. Use it to judge visible message, mobile experience, and reach quality; mark desktop-specific evidence PARTIAL or UNKNOWN when it is not supported.'
-          : 'No screenshots were available for this run. Do not claim visible layout, spacing, hierarchy, or mobile evidence; judge only from text, metadata, deterministic flags, and performance data, and mark visual or mobile-specific dimensions PARTIAL or UNKNOWN when needed.'
-
+export function buildTriageSystemPrompt(): string {
   return `You are FixFlags. You review websites the way a top-tier UX director would: direct, specific, grounded in what you actually see. You are the QA layer after an AI builder.
 
 This is a FAST TRIAGE. Your only job right now is the diagnosis: an honest score, three rubric grades, a sharp verdict, and the TITLES of real UX issues. Do NOT write fixes, prompts, or how-to instructions - those are produced later.
-
-URL: ${context.url}
-
-Page text (first ${TRIAGE_TEXT} chars):
-${context.pageText.slice(0, TRIAGE_TEXT)}
-
-Technical metadata:
-- Title: ${context.metadata.title || 'MISSING'}
-- Description: ${context.metadata.description || 'MISSING'}
-- H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
-- CTAs found: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
-- Structured data: ${context.metadata.hasStructuredData ? 'Yes' : 'No'}
-
-Performance scores:
-- Desktop: ${context.scores.desktopPerf ?? 'N/A'}/100
-- Mobile: ${context.scores.mobilePerf ?? 'N/A'}/100
-- Desktop LCP: ${context.scores.desktopLcp ? (context.scores.desktopLcp / 1000).toFixed(2) + 's' : 'N/A'}
-- Mobile LCP: ${context.scores.mobileLcp ? (context.scores.mobileLcp / 1000).toFixed(2) + 's' : 'N/A'}
-- CLS: ${context.scores.cls ?? 'N/A'}
-
-Top optimization opportunities:
-${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 1000)}KB or ${o.savings}ms savings`).join('\n') || 'None'}
-
-Deterministic flags already identified (do NOT restate these as new flags):
-${context.deterministicFlags.map((f) => `[${f.severity}] ${f.checkId} (${f.rubric}): ${f.problem}`).join('\n') || 'None'}
-
-${screenshotEvidence}
 
 GRADE BENCHMARKS (same thresholds for every rubric):
 - A >=90, B >=75, C >=60, D >=40, F below 40
@@ -138,66 +80,93 @@ For each new flag, provide just the TITLE (problem field, one line). Do NOT writ
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
 
-/**
- * Phase-2 prescription prompt. The diagnosis is already done - generate evidence,
- * whyItMatters, fixes, and copy-paste prompts keyed to existing flags.
- */
-export function buildPrescriptionPrompt(context: {
-  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
+interface TriageContext {
+  screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
   url: string
   pageText: string
-  verdict: string
-  score: number
   metadata: {
     title: string | null
     description: string | null
     h1s: string[]
-    h2s: string[]
     ctaTexts: string[]
+    hasStructuredData: boolean
   }
-  techStack: string[]
-  existingFlags: Array<{
-    flagKey: string
-    source: string
+  scores: {
+    desktopPerf: number | null
+    mobilePerf: number | null
+    mobileLcp: number | null
+    desktopLcp: number | null
+    cls: number | null
+  }
+  topOpportunities: Array<{ id: string; title: string; savings: number }>
+  deterministicFlags: Array<{
+    checkId: string
+    problem: string
+    evidence: string
     rubric: string
     severity: string
-    problem: string
-    checkId: string | null
   }>
-  rubrics: Array<{
-    name: string
-    grade: string
-    score: number | null
-    summary: string
-  }>
-}): string {
-  return `You are FixFlags. Phase 1 triage is complete - the founder already sees their score, verdict, and flag titles. Your job now is the PRESCRIPTION: evidence, business impact, concrete fixes, and copy-paste agent prompts that are specific enough to hand to any AI coding tool.
+}
 
-Do NOT change scores, verdicts, or flag titles. Key every flagPrescription by the exact flagKey provided below.
+/** Per-request triage data. Everything here varies per audit - keep it OUT of the cached system block. */
+export function buildTriageUserPrompt(context: TriageContext): string {
+  const screenshotEvidence =
+    context.screenshotHint === 'desktop-and-mobile'
+      ? 'You have been given desktop and mobile screenshots. Use them to judge message, experience, and reach quality.'
+      : context.screenshotHint === 'desktop-only'
+        ? 'You have been given a desktop screenshot. Use it to judge visible message, desktop experience, and reach quality; mark mobile-specific evidence PARTIAL or UNKNOWN when it is not supported.'
+        : context.screenshotHint === 'mobile-only'
+          ? 'You have been given a mobile screenshot. Use it to judge visible message, mobile experience, and reach quality; mark desktop-specific evidence PARTIAL or UNKNOWN when it is not supported.'
+          : 'No screenshots were available for this run. Do not claim visible layout, spacing, hierarchy, or mobile evidence; judge only from text, metadata, deterministic flags, and performance data, and mark visual or mobile-specific dimensions PARTIAL or UNKNOWN when needed.'
 
-URL: ${context.url}
-Overall score: ${context.score}/100
-Verdict: ${context.verdict}
+  return `URL: ${context.url}
 
-Page text (first ${PRESCRIPTION_TEXT} chars):
-${context.pageText.slice(0, PRESCRIPTION_TEXT)}
-${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
+Page text (first ${TRIAGE_TEXT} chars):
+${context.pageText.slice(0, TRIAGE_TEXT)}
 
-Metadata:
+Technical metadata:
 - Title: ${context.metadata.title || 'MISSING'}
 - Description: ${context.metadata.description || 'MISSING'}
 - H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
-- H2s: ${(context.metadata.h2s ?? []).join(', ').slice(0, 300) || 'NONE'}
-- CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
-${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
+- CTAs found: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
+- Structured data: ${context.metadata.hasStructuredData ? 'Yes' : 'No'}
 
-Rubric grades from triage:
-${context.rubrics.map((r) => `- ${r.name}: ${r.grade}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
+Performance scores:
+- Desktop: ${context.scores.desktopPerf ?? 'N/A'}/100
+- Mobile: ${context.scores.mobilePerf ?? 'N/A'}/100
+- Desktop LCP: ${context.scores.desktopLcp ? (context.scores.desktopLcp / 1000).toFixed(2) + 's' : 'N/A'}
+- Mobile LCP: ${context.scores.mobileLcp ? (context.scores.mobileLcp / 1000).toFixed(2) + 's' : 'N/A'}
+- CLS: ${context.scores.cls ?? 'N/A'}
 
-Existing flags (prescribe for EVERY one using its flagKey):
-${context.existingFlags.map((f) => `[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`).join('\n') || 'None'}
+Top optimization opportunities:
+${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 1000)}KB or ${o.savings}ms savings`).join('\n') || 'None'}
 
-You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence.
+Deterministic flags already identified (do NOT restate these as new flags):
+${context.deterministicFlags.map((f) => `[${f.severity}] ${f.checkId} (${f.rubric}): ${f.problem}`).join('\n') || 'None'}
+
+${screenshotEvidence}`
+}
+
+/**
+ * Back-compat: full triage prompt as a single string (system + user).
+ * Prefer the split builders above at call sites so the system block can be cached.
+ */
+export function buildTriagePrompt(context: TriageContext): string {
+  return `${buildTriageSystemPrompt()}\n\n${buildTriageUserPrompt(context)}`
+}
+
+/**
+ * Phase-2 prescription prompt, split into a stable SYSTEM block and a per-request
+ * USER block so the (large) instructions can be prompt-cached.
+ *
+ * The system block is byte-identical on every audit - send it as the cached
+ * `system` param (Anthropic) or a leading `system` message (OpenAI). Keep the
+ * per-request flags, metadata, and page text in the USER block only.
+ */
+export function buildPrescriptionSystemPrompt(): string {
+  return `You are FixFlags. Phase 1 triage is complete - the founder already sees their score, verdict, and flag titles. Your job now is the PRESCRIPTION: evidence, business impact, concrete fixes, and copy-paste agent prompts that are specific enough to hand to any AI coding tool.
+
+Do NOT change scores, verdicts, or flag titles. Key every flagPrescription by the exact flagKey provided in the request.
 
 EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific: what element, where on the page, what it currently says, why it is wrong.
 - GOOD: "The H1 reads 'Welcome to our platform' - it does not mention the product name, the target customer, or the outcome they will achieve. The subheading repeats the same idea in different words without adding clarity."
@@ -252,4 +221,69 @@ RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comp
 - End with a verification command the user can run to confirm everything was applied
 
 If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters and tool-specific prompts that the deterministic check could not provide. The deterministic fix is a starting point; your job is to make it specific to this URL, this page structure, and these screenshots.`
+}
+
+interface PrescriptionContext {
+  screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
+  url: string
+  pageText: string
+  verdict: string
+  score: number
+  metadata: {
+    title: string | null
+    description: string | null
+    h1s: string[]
+    h2s: string[]
+    ctaTexts: string[]
+  }
+  techStack: string[]
+  existingFlags: Array<{
+    flagKey: string
+    source: string
+    rubric: string
+    severity: string
+    problem: string
+    checkId: string | null
+  }>
+  rubrics: Array<{
+    name: string
+    grade: string
+    score: number | null
+    summary: string
+  }>
+}
+
+/** Per-request prescription data. Everything here varies per audit - keep it OUT of the cached system block. */
+export function buildPrescriptionUserPrompt(context: PrescriptionContext): string {
+  return `URL: ${context.url}
+Overall score: ${context.score}/100
+Verdict: ${context.verdict}
+
+Page text (first ${PRESCRIPTION_TEXT} chars):
+${context.pageText.slice(0, PRESCRIPTION_TEXT)}
+${context.pageText.length > PRESCRIPTION_TEXT ? `\n[...truncated, full length: ${context.pageText.length} chars]` : ''}
+
+Metadata:
+- Title: ${context.metadata.title || 'MISSING'}
+- Description: ${context.metadata.description || 'MISSING'}
+- H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
+- H2s: ${(context.metadata.h2s ?? []).join(', ').slice(0, 300) || 'NONE'}
+- CTAs: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
+${context.techStack && context.techStack.length > 0 ? `- Detected tech: ${context.techStack.join(', ')}` : ''}
+
+Rubric grades from triage:
+${context.rubrics.map((r) => `- ${r.name}: ${r.grade}${r.score != null ? ` (${r.score}/100)` : ''} - ${r.summary}`).join('\n')}
+
+Existing flags (prescribe for EVERY one using its flagKey):
+${context.existingFlags.map((f) => `[${f.severity}] flagKey=${f.flagKey} (${f.source}, ${f.rubric}): ${f.problem}`).join('\n') || 'None'}
+
+You have been given ${context.screenshotHint === 'desktop-only' ? 'a desktop screenshot' : 'desktop and mobile screenshots'}. Use ${context.screenshotHint === 'desktop-only' ? 'it' : 'them'} for evidence.`
+}
+
+/**
+ * Back-compat: full prescription prompt as a single string (system + user).
+ * Prefer the split builders above at call sites so the system block can be cached.
+ */
+export function buildPrescriptionPrompt(context: PrescriptionContext): string {
+  return `${buildPrescriptionSystemPrompt()}\n\n${buildPrescriptionUserPrompt(context)}`
 }

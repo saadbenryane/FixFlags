@@ -49,7 +49,7 @@ export async function validateAiProviderCredentials(): Promise<AiProviderValidat
       if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
       const anthropic = new Anthropic({ apiKey: key })
       await anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5',
         max_tokens: 5,
         messages: [{ role: 'user', content: 'ok' }],
       })
