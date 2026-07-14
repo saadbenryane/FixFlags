@@ -15,7 +15,7 @@ const DEFAULTS: Record<string, ProviderConfig> = {
     imageDetail: 'low',
   },
   anthropic: {
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-5',
     maxTokens: 8192,
     timeoutMs: 45_000,
     imageDetail: 'auto',
@@ -82,7 +82,7 @@ export function getTriageProviderConfig(provider: string, maxTimeoutMs?: number)
     ...base,
     model:
       env.TRIAGE_MODEL ??
-      (provider === 'anthropic' ? 'claude-3-5-haiku-20241022' : 'gpt-4o-mini'),
+      (provider === 'anthropic' ? 'claude-haiku-4-5' : 'gpt-4o-mini'),
     maxTokens,
   }
 }

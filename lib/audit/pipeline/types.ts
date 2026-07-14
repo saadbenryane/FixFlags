@@ -41,6 +41,12 @@ export interface PipelineContext {
   deadline: number
   startedAt: Date
   pagespeedCalls: number
-  usage: { inputTokens: number; outputTokens: number; models: string[] }
+  usage: {
+    inputTokens: number
+    outputTokens: number
+    models: string[]
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
+  }
   includeAi: boolean
 }

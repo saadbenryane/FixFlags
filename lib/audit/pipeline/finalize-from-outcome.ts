@@ -83,6 +83,8 @@ async function finalizeTriageComplete(
       inputTokens: ctx.usage.inputTokens,
       outputTokens: ctx.usage.outputTokens,
       model: ctx.usage.models.join(','),
+      cacheReadTokens: ctx.usage.cacheReadTokens,
+      cacheWriteTokens: ctx.usage.cacheWriteTokens,
     },
     evidence: buildEvidence(pageRuns, true),
   })

@@ -6,7 +6,7 @@ import {
   QUALITY_TRIAGE_TOOL,
   type TriageOutput,
 } from './judge-triage-schema'
-import { buildTriagePrompt } from '../prompts/system-prompt'
+import { buildTriageSystemPrompt, buildTriageUserPrompt } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
@@ -33,6 +33,10 @@ export interface TriageUsage {
   inputTokens: number
   outputTokens: number
   model: string
+  /** Prompt-cache tokens served from cache (Anthropic: cache_read_input_tokens). */
+  cacheReadTokens?: number
+  /** Prompt-cache tokens written to cache this call (Anthropic: cache_creation_input_tokens). */
+  cacheWriteTokens?: number
 }
 
 export interface TriageResult {
@@ -164,6 +168,15 @@ async function runAnthropicTriage(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
+        // Stable instructions live in `system` with a cache breakpoint so the
+        // tools + system prefix is prompt-cached across audits (~0.1x on reads).
+        system: [
+          {
+            type: 'text',
+            text: buildTriageSystemPrompt(),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
         tools: [QUALITY_TRIAGE_TOOL],
         tool_choice: { type: 'tool', name: 'quality_triage' },
         messages: [
@@ -173,7 +186,7 @@ async function runAnthropicTriage(
               ...imageContent,
               {
                 type: 'text',
-                text: buildTriagePrompt({
+                text: buildTriageUserPrompt({
                   ...context,
                   screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
                 }),
@@ -196,6 +209,8 @@ async function runAnthropicTriage(
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
         model: cfg.model,
+        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
       },
     }
   } finally {
@@ -233,7 +248,7 @@ async function runOpenAITriage(
   }
   content.push({
     type: 'text',
-    text: buildTriagePrompt({
+    text: buildTriageUserPrompt({
       ...context,
       screenshotHint: getScreenshotHint(desktopBase64, mobileBase64),
     }),
@@ -248,7 +263,12 @@ async function runOpenAITriage(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        messages: [{ role: 'user', content }],
+        // System-first ordering makes the stable instruction block the cacheable
+        // prefix for OpenAI's automatic prompt caching (~0.5x on cached input).
+        messages: [
+          { role: 'system', content: buildTriageSystemPrompt() },
+          { role: 'user', content },
+        ],
         tools: [
           {
             type: 'function',

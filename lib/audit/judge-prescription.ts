@@ -6,7 +6,10 @@ import {
   QUALITY_PRESCRIPTION_TOOL,
   type PrescriptionOutput,
 } from './judge-prescription-schema'
-import { buildPrescriptionPrompt } from '../prompts/system-prompt'
+import {
+  buildPrescriptionSystemPrompt,
+  buildPrescriptionUserPrompt,
+} from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { getProviderConfig, getConfiguredJudgeProviderChain } from './judge-config'
 import { JudgeContractError } from './validate-judge-output'
@@ -28,6 +31,10 @@ export interface PrescriptionUsage {
   inputTokens: number
   outputTokens: number
   model: string
+  /** Prompt-cache tokens served from cache (Anthropic: cache_read_input_tokens). */
+  cacheReadTokens?: number
+  /** Prompt-cache tokens written to cache this call (Anthropic: cache_creation_input_tokens). */
+  cacheWriteTokens?: number
 }
 
 export interface PrescriptionResult {
@@ -126,6 +133,15 @@ async function runAnthropicPrescription(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
+        // Stable instructions live in `system` with a cache breakpoint so the
+        // tools + system prefix is prompt-cached across audits (~0.1x on reads).
+        system: [
+          {
+            type: 'text',
+            text: buildPrescriptionSystemPrompt(),
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
         tools: [QUALITY_PRESCRIPTION_TOOL],
         tool_choice: { type: 'tool', name: 'quality_prescription' },
         messages: [
@@ -135,7 +151,7 @@ async function runAnthropicPrescription(
               ...imageContent,
               {
                 type: 'text',
-                text: buildPrescriptionPrompt({
+                text: buildPrescriptionUserPrompt({
                   url: context.url,
                   pageText: context.metadata.pageText,
                   verdict: context.verdict,
@@ -172,6 +188,8 @@ async function runAnthropicPrescription(
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
         model: cfg.model,
+        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
       },
     }
   } finally {
@@ -204,7 +222,7 @@ async function runOpenAIPrescription(
     desktopBase64 && mobileBase64 ? 'desktop-and-mobile' : 'desktop-only'
   content.push({
     type: 'text',
-    text: buildPrescriptionPrompt({
+    text: buildPrescriptionUserPrompt({
       url: context.url,
       pageText: context.metadata.pageText,
       verdict: context.verdict,
@@ -232,7 +250,12 @@ async function runOpenAIPrescription(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        messages: [{ role: 'user', content }],
+        // System-first ordering makes the stable instruction block the cacheable
+        // prefix for OpenAI's automatic prompt caching (~0.5x on cached input).
+        messages: [
+          { role: 'system', content: buildPrescriptionSystemPrompt() },
+          { role: 'user', content },
+        ],
         tools: [
           {
             type: 'function',

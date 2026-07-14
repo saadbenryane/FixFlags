@@ -30,6 +30,9 @@ export function assertDeadline(ctx: PipelineContext, stage: string): void {
 export function accumulateTriageUsage(ctx: PipelineContext, triage: TriageResult): void {
   ctx.usage.inputTokens += triage.usage.inputTokens
   ctx.usage.outputTokens += triage.usage.outputTokens
+  ctx.usage.cacheReadTokens = (ctx.usage.cacheReadTokens ?? 0) + (triage.usage.cacheReadTokens ?? 0)
+  ctx.usage.cacheWriteTokens =
+    (ctx.usage.cacheWriteTokens ?? 0) + (triage.usage.cacheWriteTokens ?? 0)
   if (!ctx.usage.models.includes(triage.usage.model)) {
     ctx.usage.models.push(triage.usage.model)
   }

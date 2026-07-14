@@ -155,6 +155,8 @@ export async function runAiReview(auditId: string): Promise<void> {
       inputTokens: prescription.usage.inputTokens,
       outputTokens: prescription.usage.outputTokens,
       model: prescription.usage.model,
+      cacheReadTokens: prescription.usage.cacheReadTokens,
+      cacheWriteTokens: prescription.usage.cacheWriteTokens,
     },
     evidence: {
       desktopScreenshot: true,

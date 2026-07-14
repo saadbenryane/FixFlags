@@ -3,11 +3,16 @@ import { prisma } from '@/lib/db'
 
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
   'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  // Current models (USD per million tokens, sticker rates).
+  'claude-sonnet-5': { input: 3, output: 15 },
+  'claude-haiku-4-5': { input: 1, output: 5 },
+  'claude-opus-4-8': { input: 5, output: 25 },
+  // Legacy / retired IDs kept so historical audit rows still price correctly.
   'claude-sonnet-4-20250514': { input: 3, output: 15 },
   'claude-3-5-haiku-20241022': { input: 0.8, output: 4 },
 }
 
-// Claude Sonnet 4 approximate rates (USD per million tokens), fallback
+// Sonnet-tier approximate rates (USD per million tokens), fallback for unknown models.
 const DEFAULT_INPUT_RATE = 3
 const DEFAULT_OUTPUT_RATE = 15
 
@@ -23,29 +28,75 @@ function getOutputRatePerMtok(model: string): number {
   return MODEL_RATES[model]?.output ?? DEFAULT_OUTPUT_RATE
 }
 
+/**
+ * Cached-input read multiplier vs. the base input rate.
+ * Anthropic serves cache reads at ~0.1x; OpenAI cached input is ~0.5x.
+ */
+function cacheReadMultiplier(model: string): number {
+  return model.includes('claude') ? 0.1 : 0.5
+}
+
+/**
+ * Cache-write multiplier vs. the base input rate.
+ * Anthropic charges 1.25x to write a 5-minute cache entry; OpenAI cache writes are free.
+ */
+function cacheWriteMultiplier(model: string): number {
+  return model.includes('claude') ? 1.25 : 0
+}
+
 function estimateSingleModelCostUsd(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  cacheReadTokens = 0,
+  cacheWriteTokens = 0
 ): number {
-  const inputCost = (inputTokens / 1_000_000) * getInputRatePerMtok(model)
+  const inputRate = getInputRatePerMtok(model)
+  const inputCost = (inputTokens / 1_000_000) * inputRate
   const outputCost = (outputTokens / 1_000_000) * getOutputRatePerMtok(model)
-  return inputCost + outputCost
+  const cacheReadCost = (cacheReadTokens / 1_000_000) * inputRate * cacheReadMultiplier(model)
+  const cacheWriteCost = (cacheWriteTokens / 1_000_000) * inputRate * cacheWriteMultiplier(model)
+  return inputCost + outputCost + cacheReadCost + cacheWriteCost
 }
 
+/**
+ * Estimate LLM spend for a call (or a comma-joined multi-model run).
+ *
+ * `inputTokens` is the *uncached* input (both providers report this separately
+ * from cache reads/writes). Pass cache tokens so the estimate reflects the
+ * ~0.1x (Anthropic) / ~0.5x (OpenAI) discount instead of full input price.
+ */
 export function estimateLlmCostUsd(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  cacheReadTokens = 0,
+  cacheWriteTokens = 0
 ): number {
   const models = model.split(',').map((m) => m.trim()).filter(Boolean)
   if (models.length <= 1) {
-    return estimateSingleModelCostUsd(model, inputTokens, outputTokens)
+    return estimateSingleModelCostUsd(
+      model,
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheWriteTokens
+    )
   }
   const perModelInput = inputTokens / models.length
   const perModelOutput = outputTokens / models.length
+  const perModelCacheRead = cacheReadTokens / models.length
+  const perModelCacheWrite = cacheWriteTokens / models.length
   return models.reduce(
-    (sum, m) => sum + estimateSingleModelCostUsd(m, perModelInput, perModelOutput),
+    (sum, m) =>
+      sum +
+      estimateSingleModelCostUsd(
+        m,
+        perModelInput,
+        perModelOutput,
+        perModelCacheRead,
+        perModelCacheWrite
+      ),
     0
   )
 }
@@ -59,6 +110,10 @@ export interface AuditRunCostMetrics {
   llmModel: string
   pagespeedCalls: number
   phase?: LlmCostPhase
+  /** Prompt-cache tokens served from cache this run (priced at the cache-read rate). */
+  llmCacheReadTokens?: number
+  /** Prompt-cache tokens written to cache this run (Anthropic 5-min write premium). */
+  llmCacheWriteTokens?: number
 }
 
 const PAGESPEED_COST_PER_CALL = Number(process.env.COST_PAGESPEED_PER_CALL ?? 0.005)
@@ -76,7 +131,9 @@ export async function persistAuditRunCost(
   const llmCostUsd = estimateLlmCostUsd(
     metrics.llmModel,
     metrics.llmInputTokens,
-    metrics.llmOutputTokens
+    metrics.llmOutputTokens,
+    metrics.llmCacheReadTokens ?? 0,
+    metrics.llmCacheWriteTokens ?? 0
   )
   const infraOverheadUsd = computeInfraOverheadUsd(metrics.pagespeedCalls, metrics.durationMs)
 
