@@ -27,7 +27,18 @@ one tempting change was investigated and correctly rejected as churn.
    billing-gate regression can no longer slip through green. Verified: full
    suite goes 1698→1705 passing without any `NODE_ENV=test` prefix.
 
-2. **`AGENTS.md` — corrected stale homepage-order invariant.** The doc claimed
+2. **Plan-label consistency for paying customers.** Three surfaces rendered the
+   raw plan enum instead of the customer-facing name: the dashboard header badge
+   was hardcoded to "Pro" for every paid user (an Agency/`TEAM` subscriber saw
+   "Pro"), and the sidebar + `UsageMeter` rendered `{plan.toLowerCase()} plan`
+   ("team plan", "builder plan"). A paying customer seeing a name they never
+   bought reads as a billing bug. Added a canonical `planLabel(plan)` helper in
+   `lib/billing/plans.ts` (`BUILDER`→"Pro", `TEAM`→"Agency", unknown→"Free") and
+   routed all three sites through it. Verified: the authenticated dashboard HTML
+   now shows "Agency" for the TEAM admin with no "team plan"/"builder" leak;
+   added `lib/billing/__tests__/plans.test.ts` as the regression guard.
+
+3. **`AGENTS.md` — corrected stale homepage-order invariant.** The doc claimed
    "Hero → Logo cloud → Three dimensions ... (no duplication of report explorer
    below hero)". Reality (verified in `app/(marketing)/page.tsx`, stable across
    history): Hero (logo cloud is inside it) → **Sample review (the one report

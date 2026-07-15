@@ -112,6 +112,15 @@ export function scanLimitForPlan(plan: Plan): number {
   return PLAN_DEFINITIONS[plan].auditLimit
 }
 
+/**
+ * Customer-facing plan name (Free / Pro / Agency). Never render the raw enum
+ * (FREE / BUILDER / TEAM): "Builder" and "Team" are internal codes that do not
+ * match what users bought, which reads as a billing bug to a paying customer.
+ */
+export function planLabel(plan: Plan | string): string {
+  return PLAN_DEFINITIONS[plan as Plan]?.label ?? PLAN_DEFINITIONS.FREE.label
+}
+
 export function projectLimitForPlan(plan: Plan): number {
   return PLAN_DEFINITIONS[plan].projectLimit ?? 0
 }

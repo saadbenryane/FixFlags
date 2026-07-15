@@ -23,6 +23,7 @@ import { SignOutButton } from '@/components/auth/SignOutButton'
 import { AvatarMenu } from '@/components/layout/AvatarMenu'
 import { useMe } from '@/hooks/useMe'
 import { isNavActive } from '@/lib/site/nav-active'
+import { planLabel } from '@/lib/billing/plans'
 
 interface SidebarItem {
   href: string
@@ -99,8 +100,8 @@ function SidebarFooter() {
             <p className="truncate text-sm font-medium">
               {user.name ?? user.email}
             </p>
-            <p className="truncate text-xs text-muted-foreground capitalize">
-              {user.plan.toLowerCase()} plan
+            <p className="truncate text-xs text-muted-foreground">
+              {planLabel(user.plan)} plan
             </p>
           </div>
         </div>

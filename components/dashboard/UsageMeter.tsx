@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { UPSELLS } from '@/lib/marketing/copy'
 import { checkUsageProgress } from '@/lib/audit/check-limit'
+import { planLabel } from '@/lib/billing/plans'
 
 interface Props {
   used: number
@@ -30,7 +31,7 @@ export function UsageMeter({ used, limit, pending = 0, plan, purchasedCredits = 
               : `${used + pending} / ${limit} checks`}
           </span>
           {plan !== 'FREE' && !isUnlimited && (
-            <span className="text-xs text-muted-foreground capitalize">{plan.toLowerCase()} plan</span>
+            <span className="text-xs text-muted-foreground">{planLabel(plan)} plan</span>
           )}
         </div>
 

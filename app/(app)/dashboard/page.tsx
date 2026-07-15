@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { planLabel } from '@/lib/billing/plans'
 import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 
@@ -114,7 +115,7 @@ export default async function DashboardPage({
         <div className="flex items-center gap-3">
           {!isEffectivelyFree && (
             <Badge variant="outline" className="text-success border-success/30 bg-success/5 text-xs gap-1.5">
-              Pro
+              {planLabel(user?.plan ?? 'FREE')}
             </Badge>
           )}
           {isEffectivelyFree && !isUnlimited && <UpgradeButton context="free_default" />}
