@@ -167,6 +167,56 @@ export function collectAllFixPrompts(flags: RankableFlag[]): string {
   return parts.join('\n\n')
 }
 
+function titleCaseRubric(rubric: string): string {
+  return rubric.charAt(0).toUpperCase() + rubric.slice(1).toLowerCase()
+}
+
+/**
+ * One prompt that turns the whole report into a plan-mode task for an AI editor
+ * (Cursor, Claude Code). Paste it, put the editor in plan mode, and it produces a
+ * prioritized fix plan instead of editing blindly. Every flag with a fix prompt is
+ * included, ranked by priority, with its evidence and copy-ready fix guidance.
+ * Returns an empty string when no flag has a usable fix prompt.
+ */
+export function buildPlanModePrompt(
+  flags: RankableFlag[],
+  options: { url?: string | null } = {}
+): string {
+  const sorted = [...flags].sort(compareFlagsByPriority)
+  const items: string[] = []
+  for (const flag of sorted) {
+    const prompt = resolveFixPrompt(flag)
+    if (!prompt) continue
+    const tag = `[${flag.severity} · ${titleCaseRubric(flag.rubric)}]`
+    const lines = [`${items.length + 1}. ${tag} ${flag.problem}`]
+    if (flag.evidence?.trim()) lines.push(`   Evidence: ${flag.evidence.trim()}`)
+    lines.push(`   Fix: ${prompt.replace(/\n/g, '\n   ')}`)
+    items.push(lines.join('\n'))
+  }
+  if (items.length === 0) return ''
+
+  const site = options.url?.trim()
+  const target = site ? ` of ${site}` : ''
+  const count = items.length
+  const noun = count === 1 ? 'issue' : 'issues'
+
+  const header = [
+    `This is a QA review${target}. It found ${count} ${noun} to fix. Work in plan mode: do not change any files yet.`,
+    '',
+    'First, write a fix plan:',
+    '- Group related issues so they can be fixed together.',
+    '- Order the work by user impact, starting with anything that blocks a visitor.',
+    '- For each group, name the file or component you expect to change and any decision you need from me.',
+    '- Call out anything ambiguous or risky before touching it.',
+    '',
+    'Then stop and wait for my go-ahead before editing. After the fixes are in, I will re-check the same URL to confirm each issue is cleared.',
+    '',
+    `Issues to plan around:`,
+  ].join('\n')
+
+  return `${header}\n\n${items.join('\n\n')}`
+}
+
 export function countFixPrompts(flags: RankableFlag[]): number {
   return flags.filter(flagHasFixPrompt).length
 }

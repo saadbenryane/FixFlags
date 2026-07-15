@@ -28,7 +28,7 @@ import {
   auditHasFixPrompts,
   rankFlagsByPriority,
   countFixPrompts,
-  collectAllFixPrompts,
+  buildPlanModePrompt,
   resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
@@ -225,8 +225,8 @@ export function AuditReport({
               if (total === 0) return null
               return (
                 <PromptCopyButton
-                  prompt={collectAllFixPrompts(audit.flags)}
-                  label={`Copy all ${total} fix prompt${total > 1 ? 's' : ''}`}
+                  prompt={buildPlanModePrompt(audit.flags, { url: audit.url })}
+                  label={`Copy fix plan (${total})`}
                   compact
                 />
               )

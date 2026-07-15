@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
 import {
+  buildPlanModePrompt,
   collectAllFixPrompts,
   collectFixPromptsByRubric,
   countFixPrompts,
@@ -132,6 +133,13 @@ export function ExportMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() =>
+                copyText('fix-plan', buildPlanModePrompt(flags, { url }), 'Copied fix plan prompt')
+              }
+            >
+              Fix plan for your editor
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
                 copyText('all-prompts', collectAllFixPrompts(flags), `Copied ${totalPrompts} fix prompts`)

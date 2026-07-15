@@ -5,6 +5,7 @@ import {
   getTopFixPromptFromFlags,
   rankFlagsByPriority,
   collectAllFixPrompts,
+  buildPlanModePrompt,
   collectFixPromptsByRubric,
   countFixPrompts,
   type RankableFlag,
@@ -111,6 +112,37 @@ describe('priority-flags', () => {
     ])
     assert.match(result, /Fix 1: Has prompt/)
     assert.equal(result.includes('Fix 2'), false)
+  })
+
+  it('buildPlanModePrompt returns empty string when no flags have prompts', () => {
+    assert.equal(buildPlanModePrompt([flag({ id: 'a', fix: undefined })], { url: 'https://x.com' }), '')
+  })
+
+  it('buildPlanModePrompt wraps ranked fixes in a plan-mode instruction', () => {
+    const result = buildPlanModePrompt(
+      [
+        flag({ id: 'a', severity: 'POLISH', rubric: 'REACH', problem: 'Low', agentPrompt: 'Fix low', confidence: 0.4 }),
+        flag({ id: 'b', severity: 'CRITICAL', rubric: 'MESSAGE', problem: 'Blocker', evidence: 'CTA is dead', agentPrompt: 'Fix blocker', confidence: 0.9 }),
+      ],
+      { url: 'https://acme.com' }
+    )
+    // plan-mode framing + target url + issue count
+    assert.match(result, /plan mode/i)
+    assert.match(result, /https:\/\/acme\.com/)
+    assert.match(result, /2 issues/)
+    // CRITICAL is ranked before POLISH, and evidence + fix are included
+    assert.ok(result.indexOf('Blocker') < result.indexOf('Low'))
+    assert.match(result, /\[CRITICAL · Message\] Blocker/)
+    assert.match(result, /Evidence: CTA is dead/)
+    assert.match(result, /Fix: Fix blocker/)
+    // no em dashes (product voice)
+    assert.equal(result.includes('\u2014'), false)
+  })
+
+  it('buildPlanModePrompt omits the target phrase when no url is given', () => {
+    const result = buildPlanModePrompt([flag({ id: 'a', problem: 'Thing', agentPrompt: 'Fix thing' })])
+    assert.match(result, /found 1 issue to fix/)
+    assert.equal(result.includes(' of '), false)
   })
 
   it('collectFixPromptsByRubric scopes prompts to one rubric', () => {

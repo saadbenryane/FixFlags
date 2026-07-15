@@ -98,7 +98,7 @@
 - **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
 - **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
-- **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. "Copy all N fix prompts" uses `collectAllFixPrompts()` with `=== Fix N: Problem ===` separators.
+- **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
 - **Report UI — MiniNav:** `showFix` prop exists but is **always false** (old standalone fix section removed iteration 4). Fix prompt tab inserted after Flags. Do not reintroduce.
 - **Dead code to avoid:** `topFixPrompt && !explorerModel` is a logically impossible condition; never use `Boolean(topFixPrompt && !explorerModel)` for `showFix`.
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
