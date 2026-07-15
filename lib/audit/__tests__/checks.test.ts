@@ -198,11 +198,6 @@ describe('runAccessibilityChecks', () => {
       )
     )
     assert.ok(
-      checkIds(runAccessibilityChecks(healthyMeta({ imagesWithEmptyAlt: 4 }), null)).includes(
-        'images-empty-alt'
-      )
-    )
-    assert.ok(
       checkIds(runAccessibilityChecks(healthyMeta({ inputsWithoutLabel: 1 }), null)).includes(
         'form-inputs-no-label'
       )
@@ -282,14 +277,6 @@ describe('runSeoChecks', () => {
       checkIds(
         await runSeoChecks('https://example.com', healthyMeta({ hasStructuredData: false }))
       ).includes('no-structured-data')
-    )
-  })
-
-  it('flags unsafe external links', async () => {
-    assert.ok(
-      checkIds(
-        await runSeoChecks('https://example.com', healthyMeta({ externalLinksWithoutNoopener: 2 }))
-      ).includes('external-links-unsafe')
     )
   })
 
@@ -552,9 +539,9 @@ describe('runSecurityHeaderChecks', () => {
     )
   })
 
-  it('flags missing X-XSS-Protection', () => {
+  it('does not flag the deprecated X-XSS-Protection header', () => {
     assert.ok(
-      checkIds(
+      !checkIds(
         runSecurityHeaderChecks('https://example.com', {})
       ).includes('security-xss-protection-missing')
     )
@@ -1108,8 +1095,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(runPerformanceChecks(null, healthyMobilePs({ inp: 300 }))),
     'images-missing-alt': () =>
       checkIds(runAccessibilityChecks(healthyMeta({ imagesWithoutAlt: 1 }), null)),
-    'images-empty-alt': () =>
-      checkIds(runAccessibilityChecks(healthyMeta({ imagesWithEmptyAlt: 4 }), null)),
     'form-inputs-no-label': () =>
       checkIds(runAccessibilityChecks(healthyMeta({ inputsWithoutLabel: 1 }), null)),
     'buttons-no-text': () =>
@@ -1142,13 +1127,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'no-structured-data': async () =>
       checkIds(
         await runSeoChecks('https://example.com', healthyMeta({ hasStructuredData: false }))
-      ),
-    'external-links-unsafe': async () =>
-      checkIds(
-        await runSeoChecks(
-          'https://example.com',
-          healthyMeta({ externalLinksWithoutNoopener: 1 })
-        )
       ),
     'sitemap-missing': async () => {
       restoreFetch = mockFetchHead({ 'sitemap.xml': 404, 'robots.txt': 200 })
@@ -1289,7 +1267,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'placeholder-copy-detected': () =>
       checkIds(runSlopChecks(healthyMeta({ pageText: 'Lorem ipsum dolor sit amet.' }))),
     'template-default-copy': () =>
-      checkIds(runSlopChecks(healthyMeta({ pageText: 'Welcome to our platform.' }))),
+      checkIds(runSlopChecks(healthyMeta({ h1s: ['Welcome to Your Website'] }))),
     'unreplaced-template-token': () =>
       checkIds(runSlopChecks(healthyMeta({ pageText: 'Hello {{user_name}}!' }))),
     'cta-dead-link': () =>
@@ -1396,14 +1374,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           'content-security-policy': "default-src 'self'",
           'x-frame-options': 'DENY',
           'x-xss-protection': '1; mode=block',
-        })
-      ),
-    'security-xss-protection-missing': () =>
-      checkIds(
-        runSecurityHeaderChecks('https://example.com', {
-          'content-security-policy': "default-src 'self'",
-          'x-frame-options': 'DENY',
-          'x-content-type-options': 'nosniff',
         })
       ),
     'visual-radius-inconsistent': () =>

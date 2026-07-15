@@ -71,7 +71,19 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
   }
 
   const sentLengthThreshold = 30
-  const sentences = bodyText.split(/[.!?]+/).filter((s) => s.trim().length > 0)
+  // Only analyze prose. Page-text extraction mashes adjacent UI elements (nav
+  // labels, pricing cells, buttons) into one punctuation-free run, which looks
+  // like a giant run-on "sentence" (e.g. "unitsUsage meterTokens used..."). Those
+  // fragments show camelCase joins and low alphabetic-word ratios that never
+  // occur in real sentences, so drop them before measuring sentence length.
+  const isProse = (s: string): boolean => {
+    const words = s.trim().split(/\s+/).filter(Boolean)
+    if (words.length < 5) return false
+    if ((s.match(/[a-z][A-Z]/g) || []).length >= 2) return false
+    const alphaWords = words.filter((w) => /^[A-Za-z][A-Za-z'’-]*$/.test(w)).length
+    return alphaWords / words.length >= 0.6
+  }
+  const sentences = bodyText.split(/[.!?]+/).filter(isProse)
   const longSentences = sentences.filter((s) => s.trim().split(/\s+/).filter(Boolean).length > sentLengthThreshold)
 
   const hasRepeatedLongSentences = longSentences.length >= 3

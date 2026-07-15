@@ -11,11 +11,16 @@ const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\bundefined\b/, label: 'literal "undefined" in page text' },
 ]
 
+// Template-default phrases are only a real signal when they dominate a heading
+// or the title (an unedited starter template). Matched against body prose they
+// false-positive on legitimate copy ("start your company", "welcome to the
+// future of…"), so these patterns are the full template phrases and are checked
+// against headings/title only, never the page body.
 const TEMPLATE_COPY_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /welcome to/i, label: 'Welcome to…' },
-  { pattern: /your company/i, label: 'Your Company' },
-  { pattern: /coming soon/i, label: 'Coming soon' },
-  { pattern: /hello world/i, label: 'Hello world' },
+  { pattern: /your company name/i, label: 'Your Company Name' },
+  { pattern: /welcome to your (website|company|site|store|page|app|brand)/i, label: 'Welcome to Your…' },
+  { pattern: /\bhello world\b/i, label: 'Hello world' },
+  { pattern: /\buntitled\b/i, label: 'Untitled' },
 ]
 
 const AI_BUILDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
@@ -89,8 +94,11 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     }
   }
 
+  // Headings and title only: template defaults live in the headline, and matching
+  // body prose produced false positives on legitimate copy.
+  const headingText = [meta.title ?? '', ...meta.h1s].join(' • ')
   for (const { pattern, label } of TEMPLATE_COPY_PATTERNS) {
-    const match = sampleText.match(pattern)
+    const match = headingText.match(pattern)
     if (match) {
       findings.push({
         checkId: 'template-default-copy',
@@ -98,7 +106,7 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
         impactTag: 'TRUST',
         severity: 'IMPORTANT',
         problem: 'Template or generic default copy detected',
-        evidence: `Found "${label}": ${matchedSnippet(sampleText, pattern)}`,
+        evidence: `Found "${label}" in the page heading: ${matchedSnippet(headingText, pattern)}`,
         fix: '1. Replace generic template copy with a specific headline\n2. Name the product, audience, and outcome in the headline\n3. Review other sections for template defaults (CTAs, subheadings)',
         confidence: 0.85,
         source: 'DETERMINISTIC',

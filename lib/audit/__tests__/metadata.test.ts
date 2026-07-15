@@ -78,27 +78,25 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.linksWithoutText, 1)
     assert.equal(meta.iframesWithoutTitle, 1)
     assert.equal(meta.positiveTabindex, 1)
-    assert.equal(meta.externalLinksWithoutNoopener, 1)
     assert.equal(meta.ctaTexts.length, 0)
   })
 
-  it('treats a lookalike domain as external, not a substring match on the hostname', () => {
-    // Regression test: externalLinksWithoutNoopener used to check
-    // `href.includes(new URL(url).hostname)`, so any domain containing the
-    // page's hostname as a substring anywhere (prefix, suffix, or embedded) was
-    // wrongly treated as internal, silently skipping the noopener/reverse-
-    // tabnabbing check on a genuinely external, unrelated link.
+  it('counts an icon-only link labeled by a child as named, not missing text', () => {
+    // Regression: linksWithoutText used to check only the <a>'s own text, so
+    // icon-only links labeled by a child img[alt], svg <title>, or aria-label
+    // were wrongly counted as unnamed (28 false positives on stripe.com).
     const html = `<!DOCTYPE html>
 <html>
-<head><title>Lookalike domain test page title</title></head>
+<head><title>Icon link accessible name test page</title></head>
 <body>
-  <a href="https://example.com.evil-attacker.com/phish">Suspicious</a>
-  <a href="https://notexample.com/other">Lookalike prefix</a>
-  <a href="https://example.com/pricing">Real internal link</a>
+  <a href="/github"><img src="/gh.svg" alt="GitHub" /></a>
+  <a href="/twitter" aria-label="Twitter"><svg></svg></a>
+  <a href="/search"><svg><title>Search</title></svg></a>
+  <a href="/broken"><svg></svg></a>
 </body>
 </html>`
     const meta = parseMetadataFromHtml(html, BASE_URL)
-    assert.equal(meta.externalLinksWithoutNoopener, 2)
+    assert.equal(meta.linksWithoutText, 1)
   })
 
   it('detects analytics without cookie consent', () => {

@@ -22,20 +22,6 @@ export function runAccessibilityChecks(
     })
   }
 
-  if (meta.imagesWithEmptyAlt > 3) {
-    findings.push({
-      checkId: 'images-empty-alt',
-      rubric: 'EXPERIENCE',
-      impactTag: 'ACCESSIBILITY',
-      severity: 'POLISH',
-      problem: `${meta.imagesWithEmptyAlt} images have empty alt text`,
-      evidence: `${meta.imagesWithEmptyAlt} images with alt=""`,
-      fix: '1. Review each image with alt="" to confirm it is purely decorative\n2. Replace empty alt with descriptive text on informational images\n3. Treat logo, icon, and chart images as informational by default',
-      confidence: 0.8,
-      source: 'DETERMINISTIC',
-    })
-  }
-
   if (meta.inputsWithoutLabel > 0) {
     findings.push({
       checkId: 'form-inputs-no-label',

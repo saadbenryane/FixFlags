@@ -68,8 +68,19 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
   const hasTestimonialLikeContent = TESTIMONIAL_PRESENCE_MARKERS.some((p) => p.test(bodyText))
   const hasSpecificTestimonial = TESTIMONIAL_QUALITY_MARKERS.some((p) => p.test(bodyText))
   const hasDataClaim = DATA_SPECIFICITY.some((p) => p.test(bodyText))
+  // A customer/partner logo wall is an authority signal even without matching
+  // text. Several brand-name-like image alts count as one.
+  const hasCustomerLogos =
+    (meta.images ?? []).filter((img) => {
+      const alt = (img.alt ?? '').trim()
+      if (/logo/i.test(alt)) return true
+      return /^[A-Z][A-Za-z0-9.&' ]{1,24}$/.test(alt) && alt.split(/\s+/).length <= 3 && alt.length >= 2
+    }).length >= 4
 
-  if (!hasAuthorityRef && !hasMediaName && ctaTexts.length > 0) {
+  // Only flag a total absence of trust signals. If the page shows testimonials or
+  // a customer/partner logo wall, it has authority proof (just not press badges),
+  // so flagging "no authority signals" there is a false positive.
+  if (!hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-no-authority-signals',
       rubric: 'MESSAGE',

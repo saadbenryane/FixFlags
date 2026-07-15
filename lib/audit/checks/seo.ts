@@ -47,19 +47,9 @@ export async function runSeoChecks(
     })
   }
 
-  if (meta.externalLinksWithoutNoopener > 0) {
-    findings.push({
-      checkId: 'external-links-unsafe',
-      rubric: 'REACH',
-      impactTag: 'TRUST',
-      severity: 'POLISH',
-      problem: `${meta.externalLinksWithoutNoopener} external link${meta.externalLinksWithoutNoopener > 1 ? 's' : ''} without rel="noopener"`,
-      evidence: `External links found without rel="noopener noreferrer"`,
-      fix: '1. Add rel="noopener noreferrer" to every external link\n2. Apply this to links opening in new tabs (target=_blank)\n3. Verify with DevTools that the attribute is present on external links',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
+  // Note: rel="noopener" is intentionally not checked. Every major browser has
+  // defaulted target="_blank" to noopener behaviour since 2021, so its absence is
+  // no longer a real vulnerability. Flagging it produced noise on well-built sites.
 
   // Check sitemap
   try {

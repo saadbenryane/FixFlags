@@ -26,13 +26,11 @@ function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata {
     h2s: ['Features', 'Pricing', 'Testimonials', 'FAQ'],
     images: [{ src: 'https://example.com/hero.png', alt: 'Product screenshot' }],
     imagesWithoutAlt: 0,
-    imagesWithEmptyAlt: 0,
     links: [
       { href: '/features', text: 'Features', rel: null },
       { href: '/pricing', text: 'Pricing', rel: null },
       { href: 'https://example.com/docs', text: 'Docs', rel: null },
     ],
-    externalLinksWithoutNoopener: 0,
     forms: 0,
     inputsWithoutLabel: 0,
     buttonsWithoutText: 0,

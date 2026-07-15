@@ -20,12 +20,10 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     h2s: ['How it works'],
     images: [{ src: '/hero.png', alt: 'Product screenshot' }],
     imagesWithoutAlt: 0,
-    imagesWithEmptyAlt: 0,
     links: [
       { href: 'https://external.com', text: 'Partner', rel: 'noopener noreferrer' },
       { href: '/pricing', text: 'Pricing', rel: null },
     ],
-    externalLinksWithoutNoopener: 0,
     forms: 1,
     inputsWithoutLabel: 0,
     buttonsWithoutText: 0,

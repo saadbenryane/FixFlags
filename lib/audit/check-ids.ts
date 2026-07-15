@@ -31,7 +31,6 @@ export const ALL_CHECK_IDS = [
   'inp-poor',
   // accessibility.ts
   'images-missing-alt',
-  'images-empty-alt',
   'form-inputs-no-label',
   'buttons-no-text',
   'links-no-text',
@@ -45,7 +44,6 @@ export const ALL_CHECK_IDS = [
   'h1-missing',
   'h1-multiple',
   'no-structured-data',
-  'external-links-unsafe',
   'sitemap-missing',
   'robots-txt-missing',
   'broken-internal-links',
@@ -99,7 +97,6 @@ export const ALL_CHECK_IDS = [
   'security-frame-options-missing',
   'security-frame-options-too-permissive',
   'security-content-type-options-missing',
-  'security-xss-protection-missing',
   // visual-polish.ts
   'visual-radius-inconsistent',
   'visual-typography-sprawl',

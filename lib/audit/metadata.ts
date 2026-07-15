@@ -16,9 +16,7 @@ export interface PageMetadata {
   h2s: string[]
   images: Array<{ src: string; alt: string | null }>
   imagesWithoutAlt: number
-  imagesWithEmptyAlt: number
   links: Array<{ href: string; text: string; rel: string | null }>
-  externalLinksWithoutNoopener: number
   forms: number
   inputsWithoutLabel: number
   buttonsWithoutText: number
@@ -102,41 +100,62 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     } catch {}
   })
 
-  // Images analysis
+  // Images analysis. An image only needs alt text if it is exposed to assistive
+  // tech and not already named by ARIA. Skip images hidden (aria-hidden,
+  // role=presentation/none) or labeled via aria-label/aria-labelledby, otherwise
+  // correctly-marked decorative and ARIA-labeled images produce false positives.
   const images: Array<{ src: string; alt: string | null }> = []
   let imagesWithoutAlt = 0
-  let imagesWithEmptyAlt = 0
   $('img').each((_, el) => {
-    const src = $(el).attr('src') || ''
-    const alt = $(el).attr('alt')
+    const $el = $(el)
+    const src = $el.attr('src') || ''
+    const alt = $el.attr('alt')
     images.push({ src, alt: alt ?? null })
-    if (alt === undefined) imagesWithoutAlt++
-    else if (alt.trim() === '') imagesWithEmptyAlt++
+    if (alt !== undefined) return
+    const role = ($el.attr('role') || '').toLowerCase()
+    const hiddenOrLabeled =
+      $el.attr('aria-hidden') === 'true' ||
+      role === 'presentation' ||
+      role === 'none' ||
+      Boolean($el.attr('aria-label')) ||
+      Boolean($el.attr('aria-labelledby'))
+    if (!hiddenOrLabeled) imagesWithoutAlt++
   })
 
   // Links analysis
-  const pageHostname = new URL(url).hostname
   const links: Array<{ href: string; text: string; rel: string | null }> = []
-  let externalLinksWithoutNoopener = 0
   $('a[href]').each((_, el) => {
     const href = $(el).attr('href') || ''
     const text = $(el).text().trim()
     const rel = $(el).attr('rel') || null
     links.push({ href, text, rel })
-    if (!href.startsWith('http')) return
-    // Parse and compare hostnames rather than substring-matching: a string-contains
-    // check treats any lookalike domain (e.g. "notexample.com" or
-    // "example.com.evil-attacker.com" for hostname "example.com") as internal,
-    // silently skipping the noopener/reverse-tabnabbing check on a genuinely
-    // external, unrelated link.
-    let isExternal: boolean
-    try {
-      isExternal = new URL(href).hostname !== pageHostname
-    } catch {
-      isExternal = false
-    }
-    if (isExternal && !rel?.includes('noopener')) externalLinksWithoutNoopener++
   })
+
+  // Accessible-name detection shared by links and buttons. An interactive element
+  // is "named" if it has visible text, an aria-label/aria-labelledby/title, or a
+  // labeled child: img[alt], an svg with <title>/aria-label, or any descendant
+  // carrying aria-label/title. Icon-only controls on well-built sites are labeled
+  // through these sources, so checking only the element's own text produced large
+  // false-positive counts (e.g. 28 "unnamed links" on stripe.com). aria-hidden
+  // elements are removed from the accessibility tree and need no name.
+  const hasAccessibleName = ($el: ReturnType<typeof $>): boolean => {
+    if ($el.attr('aria-hidden') === 'true') return true
+    if ($el.text().trim()) return true
+    if (($el.attr('aria-label') || '').trim()) return true
+    if (($el.attr('aria-labelledby') || '').trim()) return true
+    if (($el.attr('title') || '').trim()) return true
+    const hasLabeledImg = $el
+      .find('img')
+      .toArray()
+      .some((img) => ($(img).attr('alt') || '').trim() !== '')
+    if (hasLabeledImg) return true
+    if ($el.find('svg[aria-label], svg > title').length > 0) return true
+    const hasLabeledChild = $el
+      .find('[aria-label], [title]')
+      .toArray()
+      .some((c) => (($(c).attr('aria-label') ?? $(c).attr('title')) || '').trim() !== '')
+    return hasLabeledChild
+  }
 
   // Forms and inputs
   let inputsWithoutLabel = 0
@@ -173,21 +192,16 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     })
   }
 
-  // Buttons without text
+  // Buttons without an accessible name
   let buttonsWithoutText = 0
   $('button, [role="button"]').each((_, el) => {
-    const text = $(el).text().trim()
-    const ariaLabel = $(el).attr('aria-label')
-    if (!text && !ariaLabel) buttonsWithoutText++
+    if (!hasAccessibleName($(el))) buttonsWithoutText++
   })
 
-  // Links without text
+  // Links without an accessible name
   let linksWithoutText = 0
   $('a').each((_, el) => {
-    const text = $(el).text().trim()
-    const ariaLabel = $(el).attr('aria-label')
-    const title = $(el).attr('title')
-    if (!text && !ariaLabel && !title) linksWithoutText++
+    if (!hasAccessibleName($(el))) linksWithoutText++
   })
 
   // iframes without title
@@ -228,11 +242,14 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     htmlStr.includes('google-analytics') ||
     htmlStr.includes('googletagmanager') ||
     htmlStr.includes('gtag(') ||
+    htmlStr.includes('gtag/js') ||
     htmlStr.includes('segment.com') ||
+    htmlStr.includes('segment.io') ||
+    htmlStr.includes('cdn.segment') ||
     htmlStr.includes('mixpanel') ||
     htmlStr.includes('plausible') ||
     htmlStr.includes('fathom') ||
-    htmlStr.includes('amplitude.com') ||
+    htmlStr.includes('amplitude') ||
     htmlStr.includes('hotjar') ||
     htmlStr.includes('hubspot') ||
     htmlStr.includes('fbq(') ||
@@ -242,7 +259,26 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     htmlStr.includes('matomo') ||
     htmlStr.includes('heap-analytics') ||
     htmlStr.includes('fullstory.com') ||
-    htmlStr.includes('cdn.heapanalytics.com')
+    htmlStr.includes('cdn.heapanalytics.com') ||
+    // Commonly-missed modern vendors (these caused false "no analytics" flags on
+    // well-instrumented sites like Vercel and PostHog-based apps).
+    htmlStr.includes('posthog') ||
+    htmlStr.includes('/_vercel/insights') ||
+    htmlStr.includes('vercel-scripts.com') ||
+    htmlStr.includes('vercel-analytics') ||
+    htmlStr.includes('clarity.ms') ||
+    htmlStr.includes('cloudflareinsights.com') ||
+    htmlStr.includes('static.cloudflareinsights') ||
+    htmlStr.includes('pendo') ||
+    htmlStr.includes('datadog') ||
+    htmlStr.includes('newrelic') ||
+    htmlStr.includes('nr-data.net') ||
+    htmlStr.includes('june.so') ||
+    htmlStr.includes('umami') ||
+    htmlStr.includes('rudderstack') ||
+    htmlStr.includes('rudderlabs') ||
+    htmlStr.includes('statsig') ||
+    htmlStr.includes('growthbook')
   )
 
   // Cookie consent
@@ -303,13 +339,26 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     if (id) elementIds.push(id)
   })
 
+  // Resolve og:image and canonical against the page URL. Social crawlers
+  // (Slack, Twitter, Facebook) require an absolute og:image, so a relative value
+  // like "/og.png" produces a blank preview even though the tag is present.
+  const toAbsolute = (value: string | null | undefined): string | null => {
+    const trimmed = value?.trim()
+    if (!trimmed) return null
+    try {
+      return new URL(trimmed, url).toString()
+    } catch {
+      return trimmed
+    }
+  }
+
   return {
     title: $('title').first().text().trim() || null,
     description: $('meta[name="description"]').attr('content') || null,
     ogTitle: $('meta[property="og:title"]').attr('content') || null,
     ogDescription: $('meta[property="og:description"]').attr('content') || null,
-    ogImage: $('meta[property="og:image"]').attr('content') || null,
-    canonical: $('link[rel="canonical"]').attr('href') || null,
+    ogImage: toAbsolute($('meta[property="og:image"]').attr('content')),
+    canonical: toAbsolute($('link[rel="canonical"]').attr('href')),
     lang: $('html').attr('lang') || null,
     viewport: $('meta[name="viewport"]').attr('content') || null,
     robots: $('meta[name="robots"]').attr('content') || null,
@@ -317,9 +366,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     h2s,
     images,
     imagesWithoutAlt,
-    imagesWithEmptyAlt,
     links,
-    externalLinksWithoutNoopener,
     forms: $('form').length,
     inputsWithoutLabel,
     buttonsWithoutText,

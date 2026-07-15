@@ -13,7 +13,9 @@ describe('runMeasurementChecks', () => {
     const flag = flags[0]
     expect(flag.rubric).toBe('REACH')
     expect(flag.impactTag).toBe('MEASUREMENT')
-    expect(flag.severity).toBe('IMPORTANT')
+    // Analytics can load via a tag manager, proxy, or post-consent, so absence in
+    // HTML is a hint, not a blocker: POLISH, never leading a report.
+    expect(flag.severity).toBe('POLISH')
   })
 
   it('does not flag a page that already loads analytics', () => {

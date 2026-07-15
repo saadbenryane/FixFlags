@@ -109,7 +109,7 @@ export async function safeFetchHtml(
   options: { timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = {}
 ): Promise<{ html: string; finalUrl: string; headers: Record<string, string> }> {
   const timeoutMs = options.timeoutMs ?? 10_000
-  const maxBytes = options.maxBytes ?? 2_000_000
+  const maxBytes = options.maxBytes ?? 5_000_000
   const maxRedirects = options.maxRedirects ?? 5
   let current = (await assertPublicAuditUrl(rawUrl)).toString()
 
@@ -140,8 +140,6 @@ export async function safeFetchHtml(
         throw new Error('Destination did not return an HTML document')
       }
 
-      const declaredLength = Number(response.headers.get('content-length') ?? '0')
-      if (declaredLength > maxBytes) throw new Error('HTML response is too large')
       if (!response.body) throw new Error('Destination returned an empty response')
 
       const responseHeaders: Record<string, string> = {}
@@ -149,17 +147,22 @@ export async function safeFetchHtml(
         responseHeaders[key] = value
       })
 
+      // Read up to maxBytes, then stop and scan what we have. A large page (heavy
+      // inlined markup, big Next.js flight payloads) must not fail the whole audit
+      // - the <head> and the top of the body carry almost all of what the checks
+      // need, so a truncated document still yields an accurate scan.
       const reader = response.body.getReader()
       const chunks: Uint8Array[] = []
       let total = 0
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        total += value.byteLength
-        if (total > maxBytes) {
+        if (total + value.byteLength > maxBytes) {
+          chunks.push(value.subarray(0, maxBytes - total))
           await reader.cancel()
-          throw new Error('HTML response is too large')
+          break
         }
+        total += value.byteLength
         chunks.push(value)
       }
 

@@ -28,10 +28,13 @@ export function runSecurityHeaderChecks(
       checkId: 'security-csp-missing',
       rubric: 'REACH',
       impactTag: 'TRUST',
-      severity: 'CRITICAL',
-      problem: 'Content Security Policy (CSP) header is missing',
+      // Hardening recommendation, not a live vulnerability: most static marketing
+      // pages ship without a CSP and are fine. Kept at POLISH so it never leads a
+      // report with a false "critically vulnerable" alarm on a normal landing page.
+      severity: 'POLISH',
+      problem: 'No Content-Security-Policy header',
       evidence:
-        'No Content-Security-Policy header found in the HTTP response. Pages without CSP are vulnerable to XSS and data injection attacks.',
+        'No Content-Security-Policy header found. A CSP is defense-in-depth that limits which scripts and resources can run, reducing the blast radius if a script injection ever occurs.',
       fix: "Add a Content-Security-Policy header. Start with: Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
       confidence: 1.0,
       source: 'DETERMINISTIC',
@@ -43,10 +46,12 @@ export function runSecurityHeaderChecks(
         checkId: 'security-csp-unsafe-inline',
         rubric: 'REACH',
         impactTag: 'TRUST',
-        severity: 'IMPORTANT',
+        // A site that ships a CSP at all is ahead of most; unsafe-inline is a
+        // common, often unavoidable tradeoff (inline analytics, framework runtime).
+        severity: 'POLISH',
         problem: 'CSP allows unsafe-inline in script sources',
-        evidence: `Content-Security-Policy includes 'unsafe-inline' in ${scriptSrc.split(' ')[0]}, which defeats most CSP script protections.`,
-        fix: "Remove unsafe-inline from CSP. Use nonce/credit-hash for scripts, or move inline code to external files.",
+        evidence: `Content-Security-Policy includes 'unsafe-inline' in ${scriptSrc.split(' ')[0]}, which weakens its script protection.`,
+        fix: "Where practical, replace unsafe-inline with per-request nonces or hashes, or move inline scripts to external files.",
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
@@ -61,7 +66,7 @@ export function runSecurityHeaderChecks(
         checkId: 'security-hsts-missing',
         rubric: 'REACH',
         impactTag: 'TRUST',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: 'HTTP Strict-Transport-Security (HSTS) header is missing',
         evidence:
           'No Strict-Transport-Security header on HTTPS response. Users may be vulnerable to SSL-strip attacks on first visit.',
@@ -96,7 +101,7 @@ export function runSecurityHeaderChecks(
         checkId: 'security-frame-options-missing',
         rubric: 'REACH',
         impactTag: 'TRUST',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: 'X-Frame-Options header is missing',
         evidence:
           'No X-Frame-Options header. The page could be embedded in a frame on another domain (clickjacking risk).',
@@ -109,7 +114,7 @@ export function runSecurityHeaderChecks(
         checkId: 'security-frame-options-too-permissive',
         rubric: 'REACH',
         impactTag: 'TRUST',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: 'X-Frame-Options is not DENY or SAMEORIGIN',
         evidence: `X-Frame-Options is set to "${frameOptions}", which most browsers no longer honor safely.`,
         fix: 'Set X-Frame-Options to DENY or SAMEORIGIN. For embedding pages, use a CSP frame-ancestors directive with specific trusted origins.',
@@ -124,7 +129,7 @@ export function runSecurityHeaderChecks(
       checkId: 'security-content-type-options-missing',
       rubric: 'REACH',
       impactTag: 'TRUST',
-      severity: 'IMPORTANT',
+      severity: 'POLISH',
       problem: 'X-Content-Type-Options header is missing or not set to nosniff',
       evidence: headers['x-content-type-options']
         ? `X-Content-Type-Options is "${headers['x-content-type-options']}" instead of "nosniff"`
@@ -135,20 +140,10 @@ export function runSecurityHeaderChecks(
     })
   }
 
-  if (!headers['x-xss-protection']) {
-    findings.push({
-      checkId: 'security-xss-protection-missing',
-      rubric: 'REACH',
-      impactTag: 'TRUST',
-      severity: 'POLISH',
-      problem: 'X-XSS-Protection header is missing',
-      evidence:
-        'No X-XSS-Protection header found. Modern browsers have deprecated this header in favor of CSP, but including it provides defense-in-depth for legacy browsers.',
-      fix: 'Add X-XSS-Protection: 1; mode=block (though CSP is the modern replacement)',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
+  // Note: X-XSS-Protection is intentionally not checked. The header is deprecated
+  // and OWASP recommends against setting it (it can introduce vulnerabilities in
+  // older browsers); CSP is the modern replacement. Flagging its absence would be
+  // a false positive on correctly configured modern sites.
 
   return findings
 }

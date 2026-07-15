@@ -73,19 +73,19 @@ function testFixture(
 describe('regression: clean-page.html', () => {
   testFixture(
     'clean-page.html',
-    2,
+    1,
     [
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    []
+    // consent flag must stay absent: no analytics detected means no consent gap.
+    ['measurement-consent-blocking-incomplete']
   )
 })
 
 describe('regression: broken-page.html', () => {
   testFixture(
     'broken-page.html',
-    20,
+    18,
     [
       { checkId: 'title-missing', severity: 'CRITICAL' },
       { checkId: 'description-missing', severity: 'IMPORTANT' },
@@ -104,26 +104,25 @@ describe('regression: broken-page.html', () => {
       { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
       { checkId: 'buttons-no-text', severity: 'IMPORTANT' },
       { checkId: 'iframe-no-title', severity: 'POLISH' },
-      { checkId: 'template-default-copy', severity: 'IMPORTANT' },
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['scroll-ghost-sections', 'visual-radius-inconsistent']
+    // template-default-copy must stay absent: this fixture's generic body prose is
+    // not a heading template default. consent flag absent: no analytics detected.
+    ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy', 'measurement-consent-blocking-incomplete']
   )
 })
 
 describe('regression: saadbenryane-com.html', () => {
   testFixture(
     'saadbenryane-com.html',
-    5,
+    4,
     [
       { checkId: 'no-cta-detected', severity: 'IMPORTANT' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent']
+    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent', 'measurement-consent-blocking-incomplete']
   )
 })
 
@@ -139,7 +138,7 @@ describe('regression: html5up-paradigm-shift.html', () => {
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
       { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'IMPORTANT' },
+      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
     ],
     ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )
@@ -148,27 +147,25 @@ describe('regression: html5up-paradigm-shift.html', () => {
 describe('regression: nextjs-org.html', () => {
   testFixture(
     'nextjs-org.html',
-    4,
+    2,
     [
       { checkId: 'canonical-missing', severity: 'POLISH' },
-      { checkId: 'images-empty-alt', severity: 'POLISH' },
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation']
+    ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation', 'images-empty-alt', 'measurement-consent-blocking-incomplete']
   )
 })
 
 describe('regression: vercel-com.html', () => {
   testFixture(
     'vercel-com.html',
-    4,
+    2,
     [
       { checkId: 'description-too-short', severity: 'POLISH' },
-      { checkId: 'links-no-text', severity: 'IMPORTANT' },
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections']
+    // links-no-text must stay absent: vercel.com's icon links are labeled via
+    // aria-label / child svg title, which the accessible-name parser now honors.
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text', 'measurement-consent-blocking-incomplete']
   )
 })
