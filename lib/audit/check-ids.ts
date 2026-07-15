@@ -83,7 +83,6 @@ export const ALL_CHECK_IDS = [
   'form-missing-validation',
   // measurement.ts
   'measurement-ga-gtm-posthog-missing',
-  'measurement-consent-blocking-incomplete',
   // auth-checkout.ts
   'checkout-link-dead',
   'auth-page-broken',

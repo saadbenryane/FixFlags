@@ -131,7 +131,7 @@ describe('runMessagingClarityChecks', () => {
 
   it('flags missing audience in headline', () => {
     assert.ok(
-      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Build dashboards faster'] }))).includes('messaging-no-audience')
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Beautiful dashboards'] }))).includes('messaging-no-audience')
     )
   })
 

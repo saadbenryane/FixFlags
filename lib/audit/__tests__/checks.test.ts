@@ -1297,8 +1297,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
-    'measurement-consent-blocking-incomplete': () =>
-      checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: true, hasCookieConsent: false }))),
     'checkout-link-dead': async () => {
       restoreFetch = mockFetchHead({ '/checkout': 404 })
       return checkIds(
@@ -1706,7 +1704,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'messaging-jargon-overload': () =>
       checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Leverage our disruptive ecosystem'], h2s: [], pageText: '' }))),
     'messaging-no-audience': () =>
-      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [], pageText: '' }))),
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['Beautiful dashboards'], h2s: [], pageText: '' }))),
     'messaging-long-sentences': () =>
       checkIds(
         runMessagingClarityChecks(

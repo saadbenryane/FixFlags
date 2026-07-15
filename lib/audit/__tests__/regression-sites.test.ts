@@ -129,7 +129,7 @@ describe('regression: saadbenryane-com.html', () => {
 describe('regression: html5up-paradigm-shift.html', () => {
   testFixture(
     'html5up-paradigm-shift.html',
-    8,
+    7,
     [
       { checkId: 'description-missing', severity: 'IMPORTANT' },
       { checkId: 'lang-missing', severity: 'POLISH' },
@@ -138,9 +138,10 @@ describe('regression: html5up-paradigm-shift.html', () => {
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
       { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
-      { checkId: 'measurement-consent-blocking-incomplete', severity: 'POLISH' },
     ],
-    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
+    // measurement-consent-blocking-incomplete removed as a duplicate of
+    // cookie-consent-absent.
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent', 'measurement-consent-blocking-incomplete']
   )
 })
 

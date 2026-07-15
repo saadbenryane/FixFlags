@@ -323,8 +323,13 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     }
   })
 
-  // Page text (stripped)
-  $('script, style, noscript').remove()
+  // Page text (stripped). Remove code samples (pre/code/kbd/samp) too: displayed
+  // code legitimately contains template tokens (${company}, {{var}}), TODO
+  // markers, and non-prose runs, which otherwise produce false positives in the
+  // placeholder, template-token, and sentence-quality checks. Code is never
+  // marketing prose, so excluding it makes copy analysis accurate on dev-tool
+  // and API sites (Resend, Stripe, etc.) that show code on the page.
+  $('script, style, noscript, pre, code, kbd, samp').remove()
   const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, MAX_RAW_TEXT)
 
   const h1s: string[] = []

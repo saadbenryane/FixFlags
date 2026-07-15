@@ -8,7 +8,7 @@ const JARGON_PATTERNS = [
 ]
 
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
-const OUTCOME_REGEX = /\b(build|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support)\b|\b\d+(?:x|%)\b/i
+const OUTCOME_REGEX = /\b(build|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard)\b|\b\d+(?:x|%)\b/i
 
 export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
@@ -56,7 +56,11 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
     })
   }
 
-  if (h1 && !hasAudience) {
+  // Only flag when the headline names neither who it is for nor what outcome the
+  // visitor gets. A strong outcome-driven headline ("grow your revenue") does not
+  // also need to name an audience, so requiring both signals to be absent stops
+  // this from firing on the majority of well-written headlines.
+  if (h1 && !hasAudience && !hasOutcome) {
     findings.push({
       checkId: 'messaging-no-audience',
       rubric: 'MESSAGE',

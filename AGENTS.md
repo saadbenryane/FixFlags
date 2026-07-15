@@ -16,13 +16,13 @@
 | Prisma models | **39** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
 | Check capabilities | 30 live / 1 partial | `npm run audit:capabilities` |
-| Check IDs | **130** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| Check IDs | **129** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **13** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.3.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (30) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (130) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (30) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (129) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
 
 ## Key directories and authoritative files
 

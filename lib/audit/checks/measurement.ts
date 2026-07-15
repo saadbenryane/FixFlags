@@ -23,23 +23,8 @@ export function runMeasurementChecks(meta: PageMetadata): DeterministicFlag[] {
     })
   }
 
-  // Only flag missing consent when analytics ARE present: a consent banner exists
-  // to gate tracking, so complaining about its absence on a site with no detected
-  // analytics is circular and confusing.
-  if (meta.hasAnalytics && !meta.hasCookieConsent) {
-    findings.push({
-      checkId: 'measurement-consent-blocking-incomplete',
-      rubric: 'REACH',
-      impactTag: 'MEASUREMENT',
-      severity: 'POLISH',
-      problem: 'Analytics load without a detected cookie consent control',
-      evidence:
-        'Analytics were detected but no consent banner or cookie control was found. In the EU/UK, tracking cookies generally require prior consent.',
-      fix: '1. Add a consent management platform (Cookiebot, Osano, or CookieYes)\n2. Block analytics scripts from loading until consent is given\n3. Link to the privacy policy and include a cookie settings button in the footer',
-      confidence: 0.6,
-      source: 'DETERMINISTIC',
-    })
-  }
+  // Analytics-without-consent is flagged once by `cookie-consent-absent`
+  // (trust.ts). It intentionally lives there, not here, to avoid a duplicate flag.
 
   return findings
 }
