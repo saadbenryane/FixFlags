@@ -85,7 +85,7 @@
 - **Marketing copy** lives in `lib/marketing/copy.ts` only — never hardcoded in components.
 - **Banned marketing phrases:** "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds", unlock, 10x, game-changing, world-class, comprehensive, robust, leverage, holistic.
 - **No em dashes** anywhere in copy. Use periods, commas, or colons.
-- **Homepage section order:** Hero → Logo cloud → Three dimensions → Fix loop → Example feedback → Final CTA (no duplication of report explorer below hero). Hero copy changes only when explicitly requested.
+- **Homepage section order:** Hero (with editor logo cloud) → Sample review (the single live report explorer) → Three dimensions → Fix loop → Example feedback → Final CTA. Exactly one report explorer, in the Sample review section (`SampleReportSection` → `HeroProductPreview`); do not add a second. Hero copy changes only when explicitly requested.
 - **Changelog** (`CHANGELOG_ENTRIES` in copy.ts) is user-facing only: plain language, outcomes and benefits, never implementation details or internal terminology.
 - **Social proof** must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts.
 
