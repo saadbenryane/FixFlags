@@ -19,18 +19,24 @@ export async function runSeoChecks(
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })
-  } else if (meta.h1s.length > 1) {
-    findings.push({
-      checkId: 'h1-multiple',
-      rubric: 'REACH',
-      impactTag: 'SEO',
-      severity: 'POLISH',
-      problem: `Multiple H1 headings found (${meta.h1s.length})`,
-      evidence: `H1 tags found: ${meta.h1s.slice(0, 3).map((h) => `"${h}"`).join(', ')}`,
-      fix: '1. Keep only one H1 as the main page heading\n2. Change additional H1s to H2 or H3\n3. Maintain a logical heading hierarchy throughout the page',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
+  } else {
+    // Only flag genuinely competing headings. Responsive layouts render the same
+    // H1 twice (one hidden per breakpoint), which is not an SEO problem, so
+    // dedupe by text and flag only when more than one distinct H1 remains.
+    const distinctH1s = [...new Set(meta.h1s.map((h) => h.trim().toLowerCase()).filter(Boolean))]
+    if (distinctH1s.length > 1) {
+      findings.push({
+        checkId: 'h1-multiple',
+        rubric: 'REACH',
+        impactTag: 'SEO',
+        severity: 'POLISH',
+        problem: `Multiple different H1 headings found (${distinctH1s.length})`,
+        evidence: `Distinct H1 tags: ${[...new Set(meta.h1s.map((h) => h.trim()).filter(Boolean))].slice(0, 3).map((h) => `"${h}"`).join(', ')}`,
+        fix: '1. Keep only one H1 as the main page heading\n2. Change additional H1s to H2 or H3\n3. Maintain a logical heading hierarchy throughout the page',
+        confidence: 1.0,
+        source: 'DETERMINISTIC',
+      })
+    }
   }
 
   if (!meta.hasStructuredData) {
