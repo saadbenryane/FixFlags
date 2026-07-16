@@ -21,6 +21,7 @@ import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
+import { ReportFeedback } from '@/components/report/ReportFeedback'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
@@ -413,6 +414,8 @@ export function AuditReport({
             currentPlan={viewerPlan}
           />
         )}
+
+        {!isSample && auditId && <ReportFeedback auditId={auditId} />}
 
         {!isSample && (
           <AuditPipelineProof

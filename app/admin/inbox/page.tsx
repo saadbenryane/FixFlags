@@ -1,15 +1,14 @@
-import { Suspense } from 'react'
-import { Container } from '@/components/ui/container'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { AdminInbox } from '@/components/admin/AdminInbox'
+import { redirect } from 'next/navigation'
 
-export default function AdminInboxPage() {
-  return (
-    <Container variant="wide" className="space-y-6 py-8">
-      <PageHeader title="Inbox" description="Live chat sessions from public visitors." />
-      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading inbox…</div>}>
-        <AdminInbox />
-      </Suspense>
-    </Container>
-  )
+// The live-chat inbox now lives inside the unified Feedback & Support hub.
+// Keep this route working for old links and admin email notifications.
+export default async function AdminInboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string }>
+}) {
+  const { session } = await searchParams
+  const params = new URLSearchParams({ tab: 'conversations' })
+  if (session) params.set('session', session)
+  redirect(`/admin/feedback?${params.toString()}`)
 }

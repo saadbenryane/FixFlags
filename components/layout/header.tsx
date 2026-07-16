@@ -111,7 +111,7 @@ export function Header({
               >
                 <span className="inline-flex items-center gap-1.5">
                   {link.label}
-                  {variant === 'admin' && link.href === '/admin/inbox' && adminInboxUnread > 0 && (
+                  {variant === 'admin' && link.href === '/admin/feedback' && adminInboxUnread > 0 && (
                     <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
                       {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
                     </Badge>
@@ -154,7 +154,7 @@ export function Header({
                     >
                       <span className="inline-flex items-center gap-1.5">
                         {link.label}
-                        {variant === 'admin' && link.href === '/admin/inbox' && adminInboxUnread > 0 && (
+                        {variant === 'admin' && link.href === '/admin/feedback' && adminInboxUnread > 0 && (
                           <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
                             {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
                           </Badge>

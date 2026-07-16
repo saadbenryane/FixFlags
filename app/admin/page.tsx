@@ -65,8 +65,8 @@ export default async function AdminPage() {
   const opsStats = [
     { label: 'New leads (7d)', value: newLeadsWeek.toLocaleString(), href: '/admin/leads' },
     { label: 'Qualified leads', value: qualifiedLeads.toLocaleString(), href: '/admin/leads' },
-    { label: 'Open chat sessions', value: openChatSessions.toLocaleString(), href: '/admin/inbox' },
-    { label: 'Inbox unread', value: inboxUnread.toLocaleString(), href: '/admin/inbox' },
+    { label: 'Open chat sessions', value: openChatSessions.toLocaleString(), href: '/admin/feedback?tab=conversations' },
+    { label: 'Inbox unread', value: inboxUnread.toLocaleString(), href: '/admin/feedback?tab=conversations' },
   ]
 
   const stats = [
@@ -150,7 +150,7 @@ export default async function AdminPage() {
         <SectionTitle>Admin tools</SectionTitle>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
-            <Link href="/admin/inbox">Live chat inbox</Link>
+            <Link href="/admin/feedback">Feedback &amp; Support</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/admin/leads">Leads</Link>

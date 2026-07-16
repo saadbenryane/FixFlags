@@ -148,7 +148,7 @@ export default async function AdminLeadDetailPage({
                     </span>
                   )}
                 </div>
-                <TextLink href={`/admin/inbox?session=${s.id}`}>Open in inbox</TextLink>
+                <TextLink href={`/admin/feedback?tab=conversations&session=${s.id}`}>Open in inbox</TextLink>
               </div>
             ))}
           </Card>
