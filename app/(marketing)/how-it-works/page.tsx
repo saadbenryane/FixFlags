@@ -136,6 +136,9 @@ export default function HowItWorksPage() {
             <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
               {HOW_IT_WORKS_PAGE.reportPreview.body}
             </p>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              {HOW_IT_WORKS_PAGE.reportPreview.rubricLine}
+            </p>
           </div>
 
           <Card variant="strong" className="overflow-hidden p-0">

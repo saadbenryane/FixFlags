@@ -444,7 +444,7 @@ export const HOW_IT_WORKS_PAGE = {
     eyebrow: 'How FixFlags works',
     headline: 'Check your site from the browser or your coding agent.',
     subhead:
-      'Paste a URL for an instant report, or connect FixFlags through MCP so Cursor, Claude Code, and Windsurf can find Flags, fetch fix prompts, and re-check the page.',
+      'Paste a URL for an instant report. Or connect MCP and let Cursor, Claude Code, or Windsurf find Flags, apply the fixes, and re-check the page.',
     primaryCta: 'Run a browser check',
     secondaryCta: 'Set up MCP',
   },
@@ -476,8 +476,10 @@ export const HOW_IT_WORKS_PAGE = {
   ],
   reportPreview: {
     label: 'What the report gives you',
-    title: 'Not a score dump. A fix queue.',
+    title: 'A fix queue, not a score dump.',
     body: 'Each Flag explains what broke, where we saw it, why it matters, and what to paste into your builder.',
+    rubricLine:
+      'Message is what the page says. Experience is how it works. Reach is how people find and share it.',
     flags: [
       {
         rubric: 'Experience',
@@ -505,7 +507,7 @@ export const HOW_IT_WORKS_PAGE = {
     steps: [
       {
         title: 'Scan the public page',
-        body: 'FixFlags loads the page like a user, captures evidence, and grades the three rubrics.',
+        body: 'FixFlags loads the page like a user, captures evidence, and scores Message, Experience, and Reach.',
       },
       {
         title: 'Send the fix to your builder',
@@ -519,8 +521,8 @@ export const HOW_IT_WORKS_PAGE = {
   },
   mcp: {
     label: 'MCP workflow',
-    title: 'The agent can use the same product API you do.',
-    body: 'MCP turns FixFlags into a tool your agent can call, so site QA is part of the coding loop instead of a separate tab.',
+    title: 'Your agent reads the same report you do.',
+    body: 'MCP is the open standard that lets coding agents call outside tools. Connect FixFlags and site QA becomes part of the coding loop instead of a separate tab.',
     transcript: `User: "Check the landing page and fix the highest-impact issue"
 
 Agent calls: ff_check_url
