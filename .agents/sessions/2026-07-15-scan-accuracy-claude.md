@@ -74,6 +74,34 @@ Reliability + correctness:
   new correct output; new tests lock in the parser and label fixes).
 - Live re-probe of stripe/vercel/linear confirms the removed FPs stay gone.
 
+## Second batch (deployed to main / prod)
+
+- Excluded `pre/code/kbd/samp` from `pageText`: a displayed code sample
+  (`${company}`) was firing a CRITICAL `unreplaced-template-token` on resend.com.
+- Removed `measurement-consent-blocking-incomplete` (duplicate of
+  `cookie-consent-absent`).
+- `messaging-no-audience` now fires only when the headline names neither an
+  audience nor an outcome; outcome verb list broadened.
+- `sitemap-missing` now honors a `Sitemap:` directive in robots.txt (GET, not
+  HEAD) before flagging.
+- `h1-multiple` dedupes by text: responsive-duplicate H1s no longer flagged.
+- `/api/health` now returns `commit` (RAILWAY_GIT_COMMIT_SHA) + `pipelineVersion`
+  so a deploy is observable; used to detect the prod deploy.
+- Fixed brand-hex-guard false positive on `lib/prompts/` (example hexes in prompt
+  text), which had CI red on main.
+
+## Deploy + prod validation workflow (for future runs)
+
+- Merged branch to main via `git push origin <branch>:main` (Railway auto-deploys
+  from main; no Railway CLI in the sandbox). Poll
+  `https://fixflags.com/api/health` `.commit` until it equals the pushed short SHA
+  to know the deploy is live.
+- The sandbox blocks Python `urllib` through the agent proxy (403) but `curl`
+  works. Prod audits: POST `/api/checks` then poll `/api/reports/{id}/status`
+  (returns flags with severity/rubric/problem) with a browser User-Agent + Origin
+  header. Harness: `scratchpad/prod-audit.sh`. This is the only way to exercise
+  the browser/flow/PageSpeed/AI path, which the sandbox cannot run locally.
+
 ## Remaining (acceptable at POLISH, or follow-ups)
 
 - `messaging-no-audience`, `friction-no-risk-reversal` still fire on some strong
