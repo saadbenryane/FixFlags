@@ -102,6 +102,32 @@ Reliability + correctness:
   header. Harness: `scratchpad/prod-audit.sh`. This is the only way to exercise
   the browser/flow/PageSpeed/AI path, which the sandbox cannot run locally.
 
+## Third batch: browser/flow-path false positives (found only via prod audits)
+
+Real prod audit of vercel.com surfaced flow-path (critical-path) false positives
+that the sandbox cannot reproduce (browser egress blocked):
+
+- `flow-destination-cta-overload` reported "44 competing CTAs" because it counted
+  every link/button (nav excluded) on the destination. Now counts DISTINCT
+  high-intent conversion CTAs (deduped by label), flags only > 5.
+  (`lib/audit/flow/destination-ux-probes.ts`, `checks/flow-ux.ts`)
+- Two probes flagged the same persistent-loading destination
+  (`flow-cta-stuck-loading` + `flow-destination-stuck-loading`); added a
+  suppression pair in `suppressOverlappingFlags`.
+- Console-error flags were filed under MESSAGE; moved to EXPERIENCE (broken
+  interactions). (`checks/trust.ts`)
+- `flow-mobile-menu-broken` fired on sites with a WORKING hamburger (vercel)
+  because a portal/overlay-rendered menu's links were not counted after the
+  toggle click. Now a found+clicked toggle only yields ok/skipped; only the
+  no-menu-at-all case reports broken. (`lib/audit/flow/nav-probes.ts`)
+
+Left as-is (defensible or needs screenshot to judge): `flow-cta-message-mismatch`
+(word-overlap logic is reasonable), `Primary CTA hidden below the fold on mobile`
+(the flagship check; likely legitimate). Stripe.com FAILS on prod entirely
+(Cloudflare bot-blocks the headless browser) - bot-protected sites are poor
+browser-path test targets; use the target-user profile (indie/Framer/Vercel
+landing pages that do not block bots) or the owner's own site.
+
 ## Remaining (acceptable at POLISH, or follow-ups)
 
 - `messaging-no-audience`, `friction-no-risk-reversal` still fire on some strong
