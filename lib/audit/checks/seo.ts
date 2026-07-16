@@ -51,35 +51,19 @@ export async function runSeoChecks(
   // defaulted target="_blank" to noopener behaviour since 2021, so its absence is
   // no longer a real vulnerability. Flagging it produced noise on well-built sites.
 
-  // Check sitemap
-  try {
-    const sitemapUrl = new URL('/sitemap.xml', url).toString()
-    const controller = new AbortController()
-    setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(sitemapUrl, { method: 'HEAD', signal: controller.signal })
-    if (res.status === 404) {
-      findings.push({
-        checkId: 'sitemap-missing',
-        rubric: 'REACH',
-        impactTag: 'SEO',
-        severity: 'POLISH',
-        problem: 'XML sitemap not found at /sitemap.xml',
-        evidence: `HEAD ${sitemapUrl} returned 404`,
-        fix: '1. Generate a sitemap.xml listing all public pages\n2. In Next.js, create a sitemap.ts file for auto-generation\n3. Submit the sitemap to Google Search Console',
-        confidence: 1.0,
-        source: 'DETERMINISTIC',
-      })
-    }
-  } catch {
-    // sitemap fetch failed, skip flagging
-  }
-
-  // Check robots.txt
+  // Check robots.txt (GET, so its Sitemap: directives can be read). Large sites
+  // often declare their sitemap in robots.txt rather than serving /sitemap.xml,
+  // so reading it prevents a false "sitemap missing" flag.
+  let robotsSitemapDeclared = false
   try {
     const robotsUrl = new URL('/robots.txt', url).toString()
     const controller = new AbortController()
-    setTimeout(() => controller.abort(), 5000)
-    const res = await fetch(robotsUrl, { method: 'HEAD', signal: controller.signal })
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(robotsUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)' },
+    })
+    clearTimeout(timeout)
     if (res.status === 404) {
       findings.push({
         checkId: 'robots-txt-missing',
@@ -87,14 +71,44 @@ export async function runSeoChecks(
         impactTag: 'SEO',
         severity: 'POLISH',
         problem: 'robots.txt not found',
-        evidence: `HEAD ${robotsUrl} returned 404`,
+        evidence: `${robotsUrl} returned 404`,
         fix: '1. Create a robots.txt file at the root of your domain\n2. Add: User-agent: * / Allow: /\n3. Optionally point to your sitemap: Sitemap: https://yourdomain.com/sitemap.xml',
         confidence: 1.0,
         source: 'DETERMINISTIC',
       })
+    } else if (res.ok) {
+      const body = (await res.text()).slice(0, 100_000)
+      robotsSitemapDeclared = /^\s*sitemap\s*:\s*\S+/im.test(body)
     }
   } catch {
     // robots.txt fetch failed, skip flagging
+  }
+
+  // Only flag a missing sitemap when neither /sitemap.xml exists nor robots.txt
+  // declares one.
+  if (!robotsSitemapDeclared) {
+    try {
+      const sitemapUrl = new URL('/sitemap.xml', url).toString()
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000)
+      const res = await fetch(sitemapUrl, { method: 'HEAD', signal: controller.signal })
+      clearTimeout(timeout)
+      if (res.status === 404) {
+        findings.push({
+          checkId: 'sitemap-missing',
+          rubric: 'REACH',
+          impactTag: 'SEO',
+          severity: 'POLISH',
+          problem: 'No XML sitemap found',
+          evidence: `${sitemapUrl} returned 404 and robots.txt declares no Sitemap:`,
+          fix: '1. Generate a sitemap.xml listing all public pages\n2. In Next.js, create a sitemap.ts file for auto-generation\n3. Reference it in robots.txt (Sitemap: https://yourdomain.com/sitemap.xml) and submit it to Google Search Console',
+          confidence: 1.0,
+          source: 'DETERMINISTIC',
+        })
+      }
+    } catch {
+      // sitemap fetch failed, skip flagging
+    }
   }
 
   const brokenLinks = await findBrokenInternalLinks(url, meta)
