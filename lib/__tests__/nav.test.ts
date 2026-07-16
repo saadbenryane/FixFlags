@@ -21,11 +21,11 @@ describe('marketing nav labels', () => {
 })
 
 describe('ADMIN_NAV', () => {
-  it('includes Inbox and Leads', () => {
+  it('includes Feedback and Leads', () => {
     const labels = ADMIN_NAV.map((link) => link.label)
-    assert.ok(labels.includes('Inbox'))
+    assert.ok(labels.includes('Feedback'))
     assert.ok(labels.includes('Leads'))
-    assert.equal(ADMIN_NAV.find((l) => l.label === 'Inbox')?.href, '/admin/inbox')
+    assert.equal(ADMIN_NAV.find((l) => l.label === 'Feedback')?.href, '/admin/feedback')
     assert.equal(ADMIN_NAV.find((l) => l.label === 'Leads')?.href, '/admin/leads')
   })
 })

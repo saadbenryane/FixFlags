@@ -45,7 +45,7 @@ export async function notifyAdminOfVisitorMessage(
   }
 
   const appUrl = getAppUrl()
-  const inboxLink = `${appUrl}/admin/inbox?session=${sessionId}`
+  const inboxLink = `${appUrl}/admin/feedback?tab=conversations&session=${sessionId}`
   const visitorLabel =
     session.visitorEmail ??
     session.user?.email ??

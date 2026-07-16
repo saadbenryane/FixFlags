@@ -31,11 +31,10 @@ export const ADMIN_NAV = [
   { href: '/admin', label: 'Metrics' },
   { href: '/admin/operating-plan', label: 'Operating Plan' },
   { href: '/admin/analytics', label: 'Analytics' },
-  { href: '/admin/inbox', label: 'Inbox' },
+  { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/leads', label: 'Leads' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/audits', label: 'Audits' },
-  { href: '/admin/feedback', label: 'Feedback' },
 ] as const
 
 export const LEGAL_LINKS = [
