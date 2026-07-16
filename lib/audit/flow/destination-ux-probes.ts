@@ -26,6 +26,8 @@ export interface DestinationUXQuality {
   frictionSignals: {
     tooManyCTAs: boolean
     ctaCount: number
+    /** Distinct high-intent conversion CTAs (deduped by label); drives tooManyCTAs. */
+    distinctCtaCount: number
     hasDeadEnd: boolean
     formRequiredForValue: boolean
   }
@@ -130,6 +132,18 @@ export async function runDestinationUXProbes(
 
     const actionableCtas = ctas.filter((c) => isActionableHref(c.href, c.tag))
 
+    // "Too many CTAs" must mean genuine choice overload: several DIFFERENT
+    // high-intent conversion actions. Counting every link/button (nav excluded)
+    // reported absurd numbers (e.g. 44 on a normal page) by including footer and
+    // body links. Count distinct high-intent CTA labels instead.
+    const CTA_TEXT =
+      /\b(sign\s?up|log\s?in|get started|start (free|now|today|building|for free)|try (it|for free|free|now)|buy|book (a )?(demo|call)|subscribe|contact sales|download|request (a )?(demo|quote)|create (an )?account|join (now|free|us)?|get (a )?demo|start (a )?(free )?trial|add to cart|checkout|upgrade|get the app)\b/i
+    const distinctCtaCount = new Set(
+      actionableCtas
+        .filter((c) => CTA_TEXT.test(c.text))
+        .map((c) => c.text.toLowerCase().replace(/\s+/g, ' ').trim())
+    ).size
+
     const viewportMeta = !!document.querySelector('meta[name="viewport"]')
 
     const smallTapTargets = Array.from(document.querySelectorAll('a[href], button, [role="button"]'))
@@ -146,6 +160,7 @@ export async function runDestinationUXProbes(
       ctaHref: primaryCta?.href ?? null,
       ctaCount: ctas.length,
       actionableCtaCount: actionableCtas.length,
+      distinctCtaCount,
       primaryCtaExists: primaryCta !== null,
       hasViewportMeta: viewportMeta,
       tapTargetsSmall: smallTapTargets,
@@ -198,8 +213,12 @@ export async function runDestinationUXProbes(
       tapTargetsSmall: pageData.tapTargetsSmall,
     },
     frictionSignals: {
-      tooManyCTAs: pageData.ctaCount > 3,
+      // More than 5 DIFFERENT high-intent conversion CTAs is genuine choice
+      // overload; repeated instances of one CTA (pricing cards) and nav/footer
+      // links no longer inflate this.
+      tooManyCTAs: pageData.distinctCtaCount > 5,
       ctaCount: pageData.ctaCount,
+      distinctCtaCount: pageData.distinctCtaCount,
       hasDeadEnd: !pageData.primaryCtaExists && !pageData.headline,
       formRequiredForValue: pageData.hasFormForValue,
     },

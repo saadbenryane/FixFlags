@@ -51,13 +51,14 @@ export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicF
     }
 
     if (ux.frictionSignals.tooManyCTAs) {
+      const competing = ux.frictionSignals.distinctCtaCount ?? ux.frictionSignals.ctaCount
       findings.push({
         checkId: 'flow-destination-cta-overload',
         rubric: 'MESSAGE',
         impactTag: 'CONVERSION',
         severity: 'IMPORTANT',
-        problem: `Destination page has ${ux.frictionSignals.ctaCount} competing CTAs`,
-        evidence: `After clicking "${flowScan.ctaText ?? 'CTA'}", the user lands on a page with ${ux.frictionSignals.ctaCount} different calls-to-action. Choice overload reduces conversion. Destination: ${flowScan.finalUrl}`,
+        problem: `Destination page has ${competing} competing calls-to-action`,
+        evidence: `After clicking "${flowScan.ctaText ?? 'CTA'}", the user lands on a page with ${competing} distinct high-intent CTAs. Choice overload reduces conversion. Destination: ${flowScan.finalUrl}`,
         fix: '1. Designate one primary action per page - everything else is secondary or tertiary\n2. Use visual hierarchy: filled btn for primary, outline/ghost for secondary, text links for tertiary\n3. Remove or demote CTAs that compete with the main conversion goal\n4. Group related actions in a single location rather than scattered across the page',
         confidence: 0.75,
         source: 'DETERMINISTIC',
