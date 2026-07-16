@@ -73,7 +73,6 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
     { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
-    { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
     { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata) },
     { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata) },
@@ -108,25 +107,20 @@ export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric'
 export type { RubricScoreContext } from './rubric'
 
 function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag[] {
+  // Suppression graph: [broader_flag, specific_flag] pairs.
+  // When both flags are present, the broader one is suppressed.
+  const SUPPRESSIONS: Array<[string, string]> = [
+    ['no-contact-info', 'trust-no-direct-contact'],
+    ['hierarchy-competing-actions', 'competing-ctas'],
+    ['mobile-input-zoom', 'form-inputs-zoom-mobile'],
+    ['mobile-stuck-loading', 'loading-indicator-stuck'],
+    ['mobile-load-delay-content', 'loading-state-slow'],
+    ['heading-hierarchy-missing', 'hierarchy-no-sections'],
+  ]
   const ids = new Set(flags.map((flag) => flag.checkId))
   return flags.filter((flag) => {
-    if (flag.checkId === 'no-contact-info' && ids.has('trust-no-direct-contact')) {
-      return false
-    }
-    if (flag.checkId === 'hierarchy-competing-actions' && ids.has('competing-ctas')) {
-      return false
-    }
-    if (flag.checkId === 'mobile-input-zoom' && ids.has('form-inputs-zoom-mobile')) {
-      return false
-    }
-    if (flag.checkId === 'mobile-stuck-loading' && ids.has('loading-indicator-stuck')) {
-      return false
-    }
-    if (flag.checkId === 'mobile-load-delay-content' && ids.has('loading-state-slow')) {
-      return false
-    }
-    if (flag.checkId === 'heading-hierarchy-missing' && ids.has('hierarchy-no-sections')) {
-      return false
+    for (const [broader, specific] of SUPPRESSIONS) {
+      if (flag.checkId === broader && ids.has(specific)) return false
     }
     return true
   })

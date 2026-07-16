@@ -147,12 +147,15 @@ describe('runAudit orchestrator', () => {
     expect(updateStatuses()).not.toContain('FAILED')
   })
 
-  it('delegates finalize to finalizeFromOutcome after page runs complete', async () => {
+  it('delegates finalize to finalizeFromOutcome after page runs complete (even with no triage)', async () => {
+    // runPage swallows LLM failures and returns with triage undefined; the
+    // runner must still call finalizeFromOutcome, never mark FAILED.
     ;(runPage as Mock).mockResolvedValue(makePageRun({ triage: undefined }))
 
     await runAudit('audit-1')
 
     expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
+    expect(tryPartialFinalize).not.toHaveBeenCalled()
     expect(updateStatuses()).not.toContain('FAILED')
   })
 })

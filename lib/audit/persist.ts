@@ -166,6 +166,10 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
     'SHARING',
     'SEO',
     'ACCESSIBILITY',
+    'CLARITY',
+    'AUTHORITY',
+    'FRICTION',
+    'EMOTION',
   ]
   return valid.includes(tag as ImpactTag) ? (tag as ImpactTag) : null
 }

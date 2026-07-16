@@ -23,7 +23,7 @@ import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
-import type { TriageResult } from '../judge-triage'
+import { isTriageProviderConfigured, type TriageResult } from '../judge-triage'
 import { parseTriageFailure } from './triage-failure'
 import { MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
@@ -359,11 +359,22 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
+  // Triage is the only per-page step that depends on an external LLM. Once a
+  // page's screenshot has been captured we must never throw the whole report
+  // away: a triage failure degrades to deterministic results and returns with
+  // no triage, so the runner can finalize instead of marking the audit FAILED.
   const shouldRunTriage = input.primary && input.position === 0
   let triage: TriageResult | undefined
   let triageFailure: ReturnType<typeof parseTriageFailure> | undefined
 
-  if (shouldRunTriage) {
+  if (shouldRunTriage && !isTriageProviderConfigured()) {
+    // No LLM key: don't transition to JUDGING or attempt a call that can only
+    // fail. Matches lib/env.ts intent for keyless deploys.
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'judging',
+      event: 'triage_skipped_no_provider',
+    })
+  } else if (shouldRunTriage) {
     await prisma.auditPage.update({
       where: { id: page.id },
       data: { status: 'JUDGING' },
