@@ -5,6 +5,7 @@
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
 | app-polish-shipping | done | claude | claude/app-polish-shipping-tqeab1 | Ship-readiness review, scan-accuracy false-positive removal, plan-mode fix prompt | audit checks, metadata parser, priority-flags, billing plan labels | — | 2026-07-15 |
+| branch-integration | done | claude | main | Merged feedback-loop-system (report reactions + AI digest, +1 Prisma model + migration) and fix-flags-docs (how-it-works copy) into main | admin/report feedback, prisma schema, marketing copy | — | 2026-07-16 |
 | merge-conflicts | done | auto | main | Merge origin/main into local main; resolve prompt-cache × flag-quality conflicts | lib/audit/judge-prescription.ts, lib/prompts/system-prompt.ts | — | 2026-07-14 |
 | recheck-clarity | done | codex | main | Align core-loop and paid-value copy with Flag → Fix → Re-check | report actions/nav, pricing, marketing copy/tests | — | 2026-07-12 |
 | report-quality-release | done | agent | main | Report quality + UX release plan | audit checks, report UI, gating | — | 2026-07-11 |

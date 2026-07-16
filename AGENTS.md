@@ -13,7 +13,7 @@
 
 | Fact | Value | Source / regenerate command |
 |------|-------|-----------------------------|
-| Prisma models | **39** | `prisma/schema.prisma` (`grep -c '^model '`) |
+| Prisma models | **40** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
 | Check capabilities | 30 live / 1 partial | `npm run audit:capabilities` |
 | Check IDs | **129** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
