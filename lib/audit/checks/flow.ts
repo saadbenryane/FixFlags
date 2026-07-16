@@ -253,5 +253,15 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
       break
   }
 
+  // Two probes can flag the same persistent-loading destination
+  // (flow-cta-stuck-loading from the post-click probe, flow-destination-stuck-loading
+  // from the destination-UX probe). Keep the post-click one (it carries the loading
+  // element label) and drop the duplicate. Flow flags are concatenated after
+  // runAllChecks, so the barrel's suppressOverlappingFlags never sees them.
+  const ids = new Set(findings.map((f) => f.checkId))
+  if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {
+    return findings.filter((f) => f.checkId !== 'flow-destination-stuck-loading')
+  }
+
   return findings
 }

@@ -1844,3 +1844,38 @@ describe('trigger matrix - one failing signal per checkId', () => {
     })
   }
 })
+
+describe('runFlowChecks dedup', () => {
+  it('drops the destination stuck-loading flag when the post-click one is present', () => {
+    const ids = checkIds(
+      runFlowChecks({
+        status: 'success',
+        steps: [],
+        finalUrl: 'https://example.com/signup',
+        postClickMetrics: {
+          timeToFirstContentMs: 1000,
+          blankScreenMs: 1000,
+          stuckLoading: true,
+          stuckLoadingLabel: 'skeleton',
+        },
+        destinationUX: {
+          hasClearHeadline: true,
+          hasPrimaryCTA: true,
+          headline: 'Welcome',
+          ctaText: null,
+          ctaPromisesMatch: true,
+          pageType: null,
+          visibleCtaCount: 1,
+          actionableCtaCount: 1,
+          primaryCtaHref: null,
+          frictionSignals: { ctaCount: 1, distinctCtaCount: 1, tooManyCTAs: false, hasDeadEnd: false, formRequiredForValue: false },
+          loadQuality: { hadStuckLoading: true, timeToContentMs: 5000, layoutShift: false },
+          trustSignals: { hasPrivacyPolicy: true, hasContactInfo: true, isHttps: true },
+          mobileReadiness: { hasViewportMeta: true, tapTargetsSmall: false },
+        },
+      })
+    )
+    assert.ok(ids.includes('flow-cta-stuck-loading'))
+    assert.ok(!ids.includes('flow-destination-stuck-loading'))
+  })
+})
