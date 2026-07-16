@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isProdStorageConfigured, isAiProviderConfigured } from '@/lib/env'
 import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/audit/judge-config'
+import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 
 export const dynamic = 'force-dynamic'
+
+// Deployed build markers, so a deploy is observable from the outside (the
+// platform sets RAILWAY_GIT_COMMIT_SHA at build time).
+const COMMIT_SHA =
+  process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ??
+  process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
+  null
 
 /**
  * Liveness + readiness probe (the platform healthcheck path).
@@ -31,6 +39,8 @@ export async function GET() {
     return NextResponse.json({
       status: 'ok',
       database: 'ok',
+      commit: COMMIT_SHA,
+      pipelineVersion: PIPELINE_VERSION,
       storageConfigured,
       aiConfigured: ai.configured,
       aiProviderChain: ai.providerChain,
