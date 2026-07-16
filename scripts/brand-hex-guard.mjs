@@ -17,8 +17,11 @@ const ALLOWED = new Set([
 
 // Path prefixes exempt from the brand palette. The /demo route is an
 // intentionally non-brand sample site (a noindex audit target styled to look
-// like a generic third-party page), so its raw colors are deliberate.
-const ALLOWED_PREFIXES = ['app/demo/']
+// like a generic third-party page), so its raw colors are deliberate. AI prompt
+// files are instruction text, not UI: they legitimately quote example hex values
+// (e.g. teaching the model to cite "the button is gray (#999)" as evidence), so
+// a raw hex there is content, never a styling violation.
+const ALLOWED_PREFIXES = ['app/demo/', 'lib/prompts/']
 
 const SCAN_DIRS = ['app', 'components', 'lib']
 const SKIP = new Set(['node_modules', '.next', 'dist'])
