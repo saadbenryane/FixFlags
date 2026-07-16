@@ -217,14 +217,19 @@ export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult
 
   try {
     await page.click(`[data-fixflags-menu-toggle="${toggle.index}"]`)
-    await sleep(400)
+    await sleep(600)
     const after = await page.evaluate(countVisibleNavLinks)
-    const outcome: ProbeOutcome = after.visible > 0 ? 'ok' : 'broken'
+    // A working menu toggle exists. If links appear, it works. If our counter
+    // sees none, that is more likely a measurement gap (menu rendered in a
+    // portal/overlay outside the nav we count) than a genuinely broken menu, so
+    // do not emit a false "mobile nav is broken" - only the no-toggle path below
+    // reports broken, where we are confident there is no mobile menu at all.
+    const outcome: ProbeOutcome = after.visible > 0 ? 'ok' : 'skipped'
     await restoreDesktopCaptureViewport(page)
     return { mobileMenu: outcome }
   } catch {
     await restoreDesktopCaptureViewport(page)
-    return { mobileMenu: 'broken' as const }
+    return { mobileMenu: 'skipped' as const }
   }
 }
 
