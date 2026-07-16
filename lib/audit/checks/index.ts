@@ -116,6 +116,9 @@ function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag
     ['mobile-stuck-loading', 'loading-indicator-stuck'],
     ['mobile-load-delay-content', 'loading-state-slow'],
     ['heading-hierarchy-missing', 'hierarchy-no-sections'],
+    // Two flow probes detect the same persistent-loading destination; keep the
+    // post-click one (it carries the loading-element label).
+    ['flow-destination-stuck-loading', 'flow-cta-stuck-loading'],
   ]
   const ids = new Set(flags.map((flag) => flag.checkId))
   return flags.filter((flag) => {

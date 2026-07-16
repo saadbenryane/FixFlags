@@ -68,7 +68,7 @@ export function runTrustChecks(
   if (criticalErrors.length >= 3) {
     findings.push({
       checkId: 'console-errors-critical',
-      rubric: 'MESSAGE',
+      rubric: 'EXPERIENCE',
       impactTag: 'TRUST',
       severity: 'IMPORTANT',
       problem: `${criticalErrors.length} JavaScript console errors detected`,
@@ -80,7 +80,7 @@ export function runTrustChecks(
   } else if (criticalErrors.length > 0) {
     findings.push({
       checkId: 'console-errors-some',
-      rubric: 'MESSAGE',
+      rubric: 'EXPERIENCE',
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: `${criticalErrors.length} JavaScript console error${criticalErrors.length > 1 ? 's' : ''} detected`,
