@@ -15,7 +15,6 @@ import { McpDashboardCard } from '@/components/dashboard/McpDashboardCard'
 import { RecentChecksList } from '@/components/dashboard/RecentChecksList'
 
 import { Container } from '@/components/ui/container'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -126,15 +125,17 @@ export default async function DashboardPage({
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
       )}
 
-      {/* Usage + MCP summary row */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Usage + MCP summary row — defer MCP upsell until the user has a check */}
+      <div className={audits.length > 0 ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
         <UsageMeter
           used={used}
           limit={isUnlimited ? null : effectiveLimit}
           pending={pending}
           plan={user?.plan ?? 'FREE'}
         />
-        <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
+        {audits.length > 0 ? (
+          <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
+        ) : null}
       </div>
 
       {/* Audit input - main action */}
@@ -158,13 +159,7 @@ export default async function DashboardPage({
       </Surface>
 
       {audits.length === 0 ? (
-        <>
-          <EmptyState
-            title="Run your first audit"
-            description="See the Flags your AI editor missed, with fix prompts it can run."
-          />
-          <FirstAuditPrompt />
-        </>
+        <FirstAuditPrompt />
       ) : (
         <div className="space-y-6">
           <RecentChecksList
@@ -174,10 +169,9 @@ export default async function DashboardPage({
             bestScore={bestScore}
             worstScore={worstScore}
           />
+          <ProjectsPanel plan={user?.plan ?? 'FREE'} />
         </div>
       )}
-
-      <ProjectsPanel plan={user?.plan ?? 'FREE'} />
     </Container>
   )
 }

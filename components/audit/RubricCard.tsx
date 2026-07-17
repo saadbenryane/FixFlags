@@ -94,7 +94,7 @@ export function RubricCard({
                   variant="compact"
                   size="sm"
                 />
-                {!open && hasSummary && !aiLocked && (
+                {!open && hasSummary && (
                   <p className="text-sm leading-snug text-muted-foreground text-pretty sm:line-clamp-2">
                     {rubricRow.summary}
                   </p>
@@ -112,13 +112,14 @@ export function RubricCard({
 
       {open && (
         <CardContent id={`rubric-panel-${rubric.name}`} className="pt-0 space-y-3">
+          {hasSummary ? (
+            <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
+          ) : null}
           {aiLocked ? (
             <LockedContentTeaser
-              label="Rubric analysis - create a free account to view"
+              label="Create a free account for fix prompts on these Flags"
               signUpHref={signUpHref}
             />
-          ) : hasSummary ? (
-            <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
           ) : null}
 
           {flagCount > 0 ? (

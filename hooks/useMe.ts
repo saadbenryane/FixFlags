@@ -104,7 +104,12 @@ export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
           )
         }
       } catch {
-        if (!cancelled) setState((s) => ({ ...s, isLoading: false }))
+        if (!cancelled) {
+          setState((s) => ({ ...s, isLoading: false }))
+          if (options.showClaimToast) {
+            toast.error('Could not save your scan to this account. Refresh and try again.')
+          }
+        }
       }
     })()
 

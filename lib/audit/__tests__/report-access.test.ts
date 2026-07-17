@@ -126,24 +126,33 @@ describe('report-access', () => {
     assert.equal(stripped[0]?.agentPrompt, null)
   })
 
-  it('strips deterministic fix content for anonymous viewers', () => {
+  it('strips deterministic fix prompts for anonymous viewers but keeps evidence', () => {
     const stripped = stripDeterministicFixesFromFlags([
-      { source: 'DETERMINISTIC', problem: 'det flag', fix: 'hidden', evidence: 'hidden' },
+      {
+        source: 'DETERMINISTIC',
+        problem: 'det flag',
+        fix: 'hidden',
+        evidence: 'kept evidence',
+        whyItMatters: 'kept why',
+      },
     ])
     assert.equal(stripped[0]?.fix, null)
-    assert.equal(stripped[0]?.evidence, null)
+    assert.equal(stripped[0]?.evidence, 'kept evidence')
+    assert.equal(stripped[0]?.whyItMatters, 'kept why')
   })
 
-  it('strips prescription fields but keeps AI flag titles when locked', () => {
+  it('strips prescription fields but keeps AI flag titles and triage fields when locked', () => {
     const stripped = stripDeterministicFixesFromFlags([
-      { source: 'AI', problem: 'ai flag', agentPrompt: 'x', whyItMatters: 'y' },
+      { source: 'AI', problem: 'ai flag', agentPrompt: 'x', whyItMatters: 'y', evidence: 'e' },
       { source: 'DETERMINISTIC', problem: 'det flag', agentPrompt: 'z', whyItMatters: 'w' },
     ])
     assert.equal(stripped.length, 2)
     assert.equal(stripped[0]?.source, 'AI')
     assert.equal(stripped[0]?.problem, 'ai flag')
     assert.equal(stripped[0]?.agentPrompt, null)
-    assert.equal(stripped[0]?.whyItMatters, null)
+    assert.equal(stripped[0]?.whyItMatters, 'y')
+    assert.equal(stripped[0]?.evidence, 'e')
     assert.equal(stripped[1]?.agentPrompt, null)
+    assert.equal(stripped[1]?.whyItMatters, 'w')
   })
 })

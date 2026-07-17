@@ -100,7 +100,7 @@ export function stripAiPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[
   }))
 }
 
-/** Strip all fix content for anonymous / non-owner viewers. */
+/** Strip fix prompts for anonymous / non-owner viewers. Keep evidence and whyItMatters (triage value). */
 export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[]): T[] {
   return flags.map((f) => ({
     ...f,
@@ -109,8 +109,6 @@ export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[])
     claudePrompt: null,
     lovablePrompt: null,
     boltPrompt: null,
-    whyItMatters: null,
-    evidence: null,
     fix: null,
   }))
 }
