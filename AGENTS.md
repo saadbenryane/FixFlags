@@ -45,6 +45,7 @@
 | `docs/` | Strategy, positioning, voice, growth docs |
 | `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) |
 | `docs/voice-and-copy.md` | Voice & copy guidelines (276 lines) |
+| `docs/design-rams-review.md` | Standing design review vs. Rams' ten principles (motion policy, status altitudes) |
 | `docs/brand-positioning.md` | Brand identity and positioning |
 | `docs/offering.md` | Product scope and philosophy |
 | `test-strategy.md` | Testing strategy with readiness ratings |

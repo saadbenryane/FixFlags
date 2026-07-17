@@ -10,11 +10,13 @@
 4. **Contained, not sprawling** — three rubrics, not forty categories. Pill-shaped controls, not sharp corners.
 5. **Recognizable, not generic** — Flag Orange, Fraunces headlines, mono labels. Unmistakably FixFlags.
 
+These five compress Dieter Rams' ten principles of good design. The standing review of how well the product lives up to them, and the rules it produced (motion policy, status-component altitudes, durable core vs. treatment), lives in `docs/design-rams-review.md`.
+
 ## Authoritative sources (in priority order)
 
 1. `lib/design/tokens.css` — CSS custom properties for all colors, shadows, radii, type scale, glass effects, animations
 2. `tailwind.config.ts` — Tailwind theme: font families, colors, box shadows, border radii, letter spacing, line heights, keyframes
-3. `components/ui/` — shadcn/ui primitives (33 components: button, card, dialog, accordion, etc.)
+3. `components/ui/` — shadcn/ui primitives (34 components: button, card, dialog, accordion, etc.)
 4. `components/` — application components following the tokens
 5. `.cursor/rules/fixflags-ui.mdc` — UI craft rules (semantic tokens, anti-slop)
 6. `.ui-craft/brief.md` — Design brief with product context
