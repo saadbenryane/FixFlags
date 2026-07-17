@@ -3,7 +3,7 @@ import { TextLink } from '@/components/ui/text-link'
 
 const LIGHTHOUSE_DOCS = 'https://developer.chrome.com/docs/lighthouse'
 
-export function LighthouseCallout({ className }: { className?: string }) {
+export function LighthouseNote({ className }: { className?: string }) {
   return (
     <p className={className}>
       {DIFFERENTIATION.subhead}{' '}

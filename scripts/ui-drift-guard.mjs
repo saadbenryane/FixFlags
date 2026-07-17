@@ -26,7 +26,7 @@ const PANEL_RE =
 const CN_PANEL_RE =
   /cn\([^)]*['"`][^'"`]*rounded-(xl|lg)[^'"`]*(?:\sborder|\sbg-)/
 
-const MICRO_TEXT_RE = /text-\[1[01]px\]/
+const MICRO_TEXT_RE = /text-\[1[012]px\]/
 
 function hasPanelDrift(content) {
   if (PANEL_RE.test(content)) return true

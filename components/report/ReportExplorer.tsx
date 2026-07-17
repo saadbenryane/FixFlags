@@ -7,6 +7,7 @@ import { FlagDetailPanel, FlagMetaPills } from '@/components/report/FlagDetailPa
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
+import { FilterPill } from '@/components/ui/filter-pill'
 import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -96,32 +97,6 @@ function FlagNavigation({
   )
 }
 
-function FilterPill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'rounded-full px-2.5 py-1 text-2xs font-medium transition-colors',
-        active
-          ? 'bg-brand/15 text-brand'
-          : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
 function RubricTabs({
   rubricFilter,
   onRubricChange,
@@ -145,21 +120,15 @@ function RubricTabs({
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-label="Filter by rubric">
       {tabs.map((tab) => (
-        <button
+        <FilterPill
           key={tab.id}
-          type="button"
-          aria-pressed={rubricFilter === tab.id}
+          size="sm"
+          active={rubricFilter === tab.id}
           onClick={() => onRubricChange(tab.id)}
-          className={cn(
-            'rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
-            rubricFilter === tab.id
-              ? 'bg-foreground text-background'
-              : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-          )}
         >
           {tab.label}
           <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{tab.count}</span>
-        </button>
+        </FilterPill>
       ))}
     </div>
   )
@@ -378,7 +347,7 @@ export function ReportExplorer({
     <div className="space-y-2">
       {hasPages && (
         <div className="flex flex-wrap gap-1.5">
-          <FilterPill active={pageFilter === null} onClick={() => setPageFilter(null)}>
+          <FilterPill size="sm" active={pageFilter === null} onClick={() => setPageFilter(null)}>
             {REPORT_COPY.explorer.allPages} ({model.flags.length})
           </FilterPill>
           {pages.map((page) => {
@@ -387,6 +356,7 @@ export function ReportExplorer({
             const label = pageFilterLabel(page.url, page.role)
             return (
               <FilterPill
+                size="sm"
                 key={page.url}
                 active={pageFilter === page.url}
                 onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
@@ -400,12 +370,14 @@ export function ReportExplorer({
       {criticalCount > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <FilterPill
+            size="sm"
             active={severityFilter === 'ALL'}
             onClick={() => setSeverityFilter('ALL')}
           >
             {REPORT_COPY.explorer.allSeverities}
           </FilterPill>
           <FilterPill
+            size="sm"
             active={severityFilter === 'CRITICAL'}
             onClick={() =>
               setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
