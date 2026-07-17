@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
 import { Mail, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,8 +21,9 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignUpForm() {
-  const { oauthCallbackURL, oauthNewUserCallbackURL, navigateAfterAuth, signInHref, plan, from } =
+  const { oauthCallbackURL, oauthNewUserCallbackURL, postLoginHref, signInHref, plan, from } =
     useAuthRedirect()
+  const router = useRouter()
   useRedirectIfAuthenticated()
   const oauth = useOAuthProviders()
 
@@ -46,7 +48,9 @@ function SignUpForm() {
         user_id: data?.user?.id,
         from: from ?? undefined,
       })
-      await navigateAfterAuth()
+      // Through /post-login so anonymous audits get claimed before the
+      // next/checkout navigation (same path OAuth takes).
+      router.push(postLoginHref)
     } catch {
       toast.error('Something went wrong')
     } finally {
