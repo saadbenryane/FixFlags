@@ -43,6 +43,7 @@ function SignUpForm() {
         plan: plan ?? undefined,
         email,
         user_id: data?.user?.id,
+        from: from ?? undefined,
       })
       await navigateAfterAuth()
     } catch {

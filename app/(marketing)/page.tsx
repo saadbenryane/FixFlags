@@ -5,34 +5,23 @@ import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSe
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
 import { TestimonialsSection } from '@/components/marketing/landing/TestimonialsSection'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
-import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 
 export const metadata = buildPageMetadata('home', '/')
 export const revalidate = 3600
 
 export default async function HomePage() {
-  let sample = null
-  try {
-    sample = await getLiveSampleAudit()
-  } catch {
-    sample = {
-      audit: getStaticSampleAudit(),
-      source: 'static' as const,
-      pipelineVersion: PIPELINE_VERSION,
-      completedAt: new Date(),
-    }
-  }
-
-  const sampleHref = sample.source === 'static' ? '/samples' : `/report/${sample.audit.id}`
+  const sample = await getLiveSampleAudit()
 
   return (
     <>
       <LandingHeroSection />
-      <SampleReportSection audit={sample.audit} illustrative={sample.source === 'static'} />
+      <SampleReportSection
+        audit={sample.audit}
+        illustrative={sample.source === 'fixture'}
+      />
       <CheckDimensionsSection />
-      <HowItWorksLoopSection sampleHref={sampleHref} />
+      <HowItWorksLoopSection sampleHref="/samples" />
       <TestimonialsSection />
       <LandingFinalCtaSection />
     </>

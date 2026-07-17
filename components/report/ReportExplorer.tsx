@@ -8,14 +8,22 @@ import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportF
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
 import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
-import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
+import {
+  RUBRIC_ORDER,
+  clampFlagIndex,
+  countFlagsByRubric,
+  filterExplorerFlags,
+  pageFilterLabel,
+  resolveRubricFilter,
+  type RubricFilter,
+  type SeverityFilter,
+} from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import { cn, rubricLabel } from '@/lib/utils'
 
-type ExplorerVariant = 'page' | 'hero' | 'live'
-type SeverityFilter = 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
-type RubricFilter = 'ALL' | RubricName
+type ExplorerVariant = 'hero' | 'live'
 
 interface ReportExplorerProps {
   model: ReportExplorerModel
@@ -29,20 +37,18 @@ interface ReportExplorerProps {
   hasFixPrompts?: boolean
   defaultSeverityFilter?: SeverityFilter
   pages?: JourneyPage[]
+  loading?: boolean
+  progress?: number
 }
 
 const VARIANT_CONFIG = {
   hero: {
     compact: true,
-    showHeader: false,
-  },
-  page: {
-    compact: false,
-    showHeader: true,
+    ownShell: true,
   },
   live: {
     compact: false,
-    showHeader: false,
+    ownShell: true,
   },
 } as const
 
@@ -70,6 +76,7 @@ function FlagNavigation({
           className="h-9 w-9"
           onClick={onPrevious}
           aria-label="Previous flag"
+          disabled={total <= 1}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -80,6 +87,7 @@ function FlagNavigation({
           className="h-9 w-9"
           onClick={onNext}
           aria-label="Next flag"
+          disabled={total <= 1}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -101,6 +109,7 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
         active
@@ -121,52 +130,37 @@ function RubricTabs({
 }: {
   rubricFilter: RubricFilter
   onRubricChange: (value: RubricFilter) => void
-  counts: Record<RubricName, number>
+  counts: Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
   total: number
 }) {
+  const tabs: Array<{ id: RubricFilter; label: string; count: number }> = [
+    { id: 'ALL', label: 'All', count: total },
+    ...RUBRIC_ORDER.map((rubric) => ({
+      id: rubric as RubricFilter,
+      label: rubricLabel(rubric),
+      count: counts[rubric],
+    })).filter((tab) => tab.count > 0),
+  ]
+
   return (
-    <div
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
-      role="tablist"
-      aria-label="Filter by rubric"
-    >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={rubricFilter === 'ALL'}
-        onClick={() => onRubricChange('ALL')}
-        className={cn(
-          'rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
-          rubricFilter === 'ALL'
-            ? 'bg-foreground text-background'
-            : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-        )}
-      >
-        All
-        <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{total}</span>
-      </button>
-      {RUBRIC_ORDER.map((rubric) => {
-        const count = counts[rubric]
-        if (count === 0) return null
-        return (
-          <button
-            key={rubric}
-            type="button"
-            role="tab"
-            aria-selected={rubricFilter === rubric}
-            onClick={() => onRubricChange(rubric)}
-            className={cn(
-              'rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
-              rubricFilter === rubric
-                ? 'bg-foreground text-background'
-                : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {rubricLabel(rubric)}
-            <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span>
-          </button>
-        )
-      })}
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-label="Filter by rubric">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          aria-pressed={rubricFilter === tab.id}
+          onClick={() => onRubricChange(tab.id)}
+          className={cn(
+            'rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
+            rubricFilter === tab.id
+              ? 'bg-foreground text-background'
+              : 'bg-muted/50 text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {tab.label}
+          <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{tab.count}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -200,7 +194,7 @@ function FlagDetailPane({
   const showMobile = flag.evidenceDevices.includes('mobile')
 
   return (
-    <div className="min-w-0" aria-live="polite">
+    <div className="min-w-0">
       <header className="mb-5">
         <div className="flex items-start justify-between gap-4">
           <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug text-balance sm:text-lg">
@@ -243,7 +237,7 @@ function FlagDetailPane({
 
 export function ReportExplorer({
   model,
-  variant = 'page',
+  variant = 'live',
   className,
   initialFlagIndex = 0,
   showFeedback = false,
@@ -253,69 +247,76 @@ export function ReportExplorer({
   hasFixPrompts = true,
   defaultSeverityFilter = 'ALL',
   pages = [],
+  loading = false,
+  progress,
 }: ReportExplorerProps) {
   const config = VARIANT_CONFIG[variant]
+  const rootRef = useRef<HTMLDivElement>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>(defaultSeverityFilter)
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
   const [pageFilter, setPageFilter] = useState<string | null>(null)
-  const [flagIndex, setFlagIndex] = useState(initialFlagIndex)
+  const [flagIndex, setFlagIndex] = useState(() =>
+    clampFlagIndex(initialFlagIndex, model.flags.length)
+  )
 
-  const rubricCounts = useMemo(() => {
-    const counts = { MESSAGE: 0, EXPERIENCE: 0, REACH: 0 } as Record<RubricName, number>
-    for (const flag of model.flags) {
-      if (severityFilter !== 'ALL' && flag.severity !== severityFilter) continue
-      if (pageFilter && flag.pageUrl !== pageFilter) continue
-      if (flag.rubric in counts) {
-        counts[flag.rubric as RubricName] += 1
-      }
+  const rubricCounts = useMemo(
+    () =>
+      countFlagsByRubric(model.flags, {
+        severityFilter,
+        pageFilter,
+      }),
+    [model.flags, severityFilter, pageFilter]
+  )
+
+  const effectiveRubricFilter = resolveRubricFilter(rubricFilter, rubricCounts)
+
+  useEffect(() => {
+    if (effectiveRubricFilter !== rubricFilter) {
+      setRubricFilter(effectiveRubricFilter)
     }
-    return counts
-  }, [model.flags, severityFilter, pageFilter])
+  }, [effectiveRubricFilter, rubricFilter])
 
-  const filteredFlags = useMemo(() => {
-    return model.flags.filter((flag) => {
-      if (severityFilter !== 'ALL' && flag.severity !== severityFilter) return false
-      if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
-      if (pageFilter && flag.pageUrl !== pageFilter) return false
-      return true
-    })
-  }, [model.flags, severityFilter, rubricFilter, pageFilter])
+  const filteredFlags = useMemo(
+    () =>
+      filterExplorerFlags(model.flags, {
+        severityFilter,
+        rubricFilter: effectiveRubricFilter,
+        pageFilter,
+      }),
+    [model.flags, severityFilter, effectiveRubricFilter, pageFilter]
+  )
+
+  const flagCount = filteredFlags.length
+  const safeFlagIndex = clampFlagIndex(flagIndex, flagCount)
 
   useEffect(() => {
     setFlagIndex(0)
-  }, [severityFilter, rubricFilter, pageFilter])
+  }, [severityFilter, effectiveRubricFilter, pageFilter])
 
   useEffect(() => {
-    if (rubricFilter === 'ALL') return
-    if (rubricCounts[rubricFilter] === 0) {
-      setRubricFilter('ALL')
-    }
-  }, [rubricFilter, rubricCounts])
+    setFlagIndex((current) => clampFlagIndex(current, filteredFlags.length))
+  }, [filteredFlags.length, model.flags])
 
-  const flagCount = filteredFlags.length
-  const currentFlag = filteredFlags[flagIndex] ?? filteredFlags[0]
+  const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
   const criticalCount = model.flags.filter((f) => f.severity === 'CRITICAL').length
   const hasPages = pages.length > 1
 
   const showPrevious = useCallback(() => {
-    if (flagCount <= 0) return
+    if (flagCount <= 1) return
     setFlagIndex((i) => (i - 1 + flagCount) % flagCount)
   }, [flagCount])
 
   const showNext = useCallback(() => {
-    if (flagCount <= 0) return
+    if (flagCount <= 1) return
     setFlagIndex((i) => (i + 1) % flagCount)
   }, [flagCount])
-
-  const detailRef = useRef<HTMLDivElement>(null)
 
   const goToFlag = useCallback(
     (flagId: string) => {
       const idx = filteredFlags.findIndex((f) => f.id === flagId)
       if (idx < 0) return
       setFlagIndex(idx)
-      // Mobile stacks detail below the list -- bring it into view on select.
-      // Desktop keeps sticky master-detail without scrolling.
       if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
         requestAnimationFrame(() => {
           detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -327,9 +328,12 @@ export function ReportExplorer({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement
-      const isInput = target.matches('input, textarea, select, [contenteditable]')
-      if (isInput) return
+      const root = rootRef.current
+      if (!root) return
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      if (target.matches('input, textarea, select, [contenteditable]')) return
+      if (!root.contains(target) && document.activeElement !== root) return
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
         showPrevious()
@@ -343,12 +347,6 @@ export function ReportExplorer({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [showNext, showPrevious])
 
-  const shellClass = cn(
-    'overflow-hidden rounded-card glass-surface shadow-card',
-    variant === 'hero' && 'shadow-2xl',
-    className
-  )
-
   const fixLoopFlags: FixLoopFlagItem[] = filteredFlags.map((f) => ({
     id: f.id,
     title: f.title,
@@ -361,9 +359,14 @@ export function ReportExplorer({
 
   const scoreHeader = (
     <div className="flex flex-wrap items-center gap-4 border-b border-border/30 pb-4">
-      <ScoreRingGauge score={model.score} size={config.compact ? 'sm' : 'md'} />
+      <ScoreRingGauge
+        score={model.score}
+        size={config.compact ? 'sm' : 'md'}
+        loading={loading && model.score == null}
+        progress={progress}
+      />
       <RubricTabs
-        rubricFilter={rubricFilter}
+        rubricFilter={effectiveRubricFilter}
         onRubricChange={setRubricFilter}
         counts={rubricCounts}
         total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
@@ -376,21 +379,12 @@ export function ReportExplorer({
       {hasPages && (
         <div className="flex flex-wrap gap-1.5">
           <FilterPill active={pageFilter === null} onClick={() => setPageFilter(null)}>
-            All Pages ({model.flags.length})
+            {REPORT_COPY.explorer.allPages} ({model.flags.length})
           </FilterPill>
           {pages.map((page) => {
             const count = model.flags.filter((f) => f.pageUrl === page.url).length
             if (count === 0) return null
-            const hostname = (() => {
-              try {
-                return new URL(page.url).pathname === '/'
-                  ? ''
-                  : (new URL(page.url).pathname.split('/').filter(Boolean)[0] ?? '')
-              } catch {
-                return ''
-              }
-            })()
-            const label = hostname || page.role
+            const label = pageFilterLabel(page.url, page.role)
             return (
               <FilterPill
                 key={page.url}
@@ -409,7 +403,7 @@ export function ReportExplorer({
             active={severityFilter === 'ALL'}
             onClick={() => setSeverityFilter('ALL')}
           >
-            All severities
+            {REPORT_COPY.explorer.allSeverities}
           </FilterPill>
           <FilterPill
             active={severityFilter === 'CRITICAL'}
@@ -428,10 +422,14 @@ export function ReportExplorer({
     <div className="min-w-0 space-y-3">
       {secondaryFilters}
       {flagCount === 0 ? (
-        <p className="text-sm text-muted-foreground">No flags match this filter.</p>
+        <p className="text-sm text-muted-foreground">
+          {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
+        </p>
       ) : (
         <ReportFixLoop
-          scanDetail={reportScanDetail(model.pageType)}
+          scanDetail={
+            loading ? REPORT_COPY.explorer.stillScanning : reportScanDetail(model.pageType)
+          }
           flags={fixLoopFlags}
           selectedFlagId={currentFlag?.id}
           onSelectFlag={goToFlag}
@@ -439,6 +437,7 @@ export function ReportExplorer({
           defaultExpanded
           compact={config.compact}
           variant="panel"
+          loading={loading}
         />
       )}
     </div>
@@ -449,7 +448,7 @@ export function ReportExplorer({
       <FlagDetailPane
         model={model}
         flag={currentFlag}
-        flagIndex={flagIndex}
+        flagIndex={safeFlagIndex}
         flagCount={flagCount}
         onPrevious={showPrevious}
         onNext={showNext}
@@ -460,13 +459,14 @@ export function ReportExplorer({
         onSelectFlag={goToFlag}
       />
     ) : (
-      <p className="text-sm text-muted-foreground">Select a flag to see evidence and the fix prompt.</p>
+      <p className="text-sm text-muted-foreground">
+        {loading ? REPORT_COPY.explorer.flagsAppear : REPORT_COPY.explorer.selectFlag}
+      </p>
     )
 
   const masterDetail = (
     <div className="space-y-5">
       {scoreHeader}
-
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,38%)_minmax(0,1fr)]">
         {listPane}
         <div
@@ -482,49 +482,22 @@ export function ReportExplorer({
     </div>
   )
 
-  if (variant === 'hero') {
-    return (
-      <div className={shellClass}>
-        <div className="bg-muted/10 p-4 sm:p-5">{masterDetail}</div>
-      </div>
-    )
-  }
+  const shellClass = cn(
+    'overflow-hidden rounded-card glass-surface shadow-card',
+    variant === 'hero' && 'shadow-2xl',
+    className
+  )
 
-  const inner = (
-    <>
-      {config.showHeader && (
-        <div className="flex flex-col gap-3 border-b border-border/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium">
-                {model.pageType ?? 'Landing page'}
-              </span>
-              <span className="truncate font-mono text-[11px] text-muted-foreground">
-                {model.displayHost}
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">{model.flagCount} checks</p>
-            {model.verdict && (
-              <p className="text-sm font-medium leading-snug text-balance">{model.verdict}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 sm:p-6">
+  return (
+    <div
+      ref={rootRef}
+      tabIndex={-1}
+      className={cn(config.ownShell ? shellClass : className)}
+    >
+      <div className={cn(variant === 'hero' ? 'bg-muted/10 p-4 sm:p-5' : 'p-4 sm:p-6')}>
         <h2 className="sr-only">Flags</h2>
         {masterDetail}
       </div>
-    </>
-  )
-
-  if (variant === 'live') {
-    return <div className={cn(className)}>{inner}</div>
-  }
-
-  return (
-    <div className={cn(className)}>
-      <div className={shellClass}>{inner}</div>
     </div>
   )
 }

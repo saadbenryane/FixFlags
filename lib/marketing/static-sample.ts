@@ -1,6 +1,7 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
+import { calculateOverallScore, gradeFromScore, statusFromScore } from '@/lib/audit/scoring'
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
@@ -156,38 +157,43 @@ const STATIC_FLAGS: RankableFlag[] = [
   },
 ]
 
-const STATIC_RUBRIC_ROWS: ReportRubricRow[] = [
-  {
-    id: 'rubric-message',
-    name: 'MESSAGE',
-    grade: 'B',
-    score: 82,
-    status: 'NEEDS_ATTENTION',
-    summary:
-      'CTA visible above fold on desktop. Value proposition clear but could target developers more directly.',
-    flags: STATIC_FLAGS.filter((f) => f.rubric === 'MESSAGE'),
-  },
-  {
-    id: 'rubric-experience',
-    name: 'EXPERIENCE',
-    grade: 'C',
-    score: 62,
-    status: 'BLOCKED',
-    summary:
-      'CTA below fold at 375px viewport. Tap targets meet minimum size. Third-party scripts add render delay.',
-    flags: STATIC_FLAGS.filter((f) => f.rubric === 'EXPERIENCE'),
-  },
-  {
-    id: 'rubric-reach',
-    name: 'REACH',
-    grade: 'C',
-    score: 65,
-    status: 'BLOCKED',
-    summary:
-      'og:image missing. Link previews show blank cards on social platforms. Heading hierarchy is good.',
-    flags: STATIC_FLAGS.filter((f) => f.rubric === 'REACH'),
-  },
-]
+const RUBRIC_SCORES = {
+  MESSAGE: 82,
+  EXPERIENCE: 62,
+  REACH: 65,
+} as const
+
+const STATIC_RUBRIC_ROWS: ReportRubricRow[] = (
+  [
+    {
+      id: 'rubric-message',
+      name: 'MESSAGE' as const,
+      summary:
+        'CTA visible above fold on desktop. Value proposition clear but could target developers more directly.',
+    },
+    {
+      id: 'rubric-experience',
+      name: 'EXPERIENCE' as const,
+      summary:
+        'CTA below fold at 375px viewport. Tap targets meet minimum size. Third-party scripts add render delay.',
+    },
+    {
+      id: 'rubric-reach',
+      name: 'REACH' as const,
+      summary:
+        'og:image missing. Link previews show blank cards on social platforms. Heading hierarchy is good.',
+    },
+  ] as const
+).map((row) => {
+  const score = RUBRIC_SCORES[row.name]
+  return {
+    ...row,
+    score,
+    grade: gradeFromScore(score),
+    status: statusFromScore(score),
+    flags: STATIC_FLAGS.filter((f) => f.rubric === row.name),
+  }
+})
 
 export function getStaticSampleAudit(): LiveSampleAudit {
   const rubricSources = STATIC_RUBRIC_ROWS.map((r) => ({
@@ -198,13 +204,19 @@ export function getStaticSampleAudit(): LiveSampleAudit {
   }))
   const rubrics = computeRubricsFromRows(rubricSources, STATIC_FLAGS)
   const shareStatus = computeShareStatusFromRubrics(rubricSources, STATIC_FLAGS)
+  const overall =
+    calculateOverallScore({
+      MESSAGE: RUBRIC_SCORES.MESSAGE,
+      EXPERIENCE: RUBRIC_SCORES.EXPERIENCE,
+      REACH: RUBRIC_SCORES.REACH,
+    }) ?? 70
 
   return {
     id: 'static-sample',
     url: SAMPLE_URL,
     pageJob: 'Landing page',
     pageType: 'Landing page',
-    score: 78,
+    score: overall,
     verdict:
       'Solid foundation with gaps in mobile hero layout, vague messaging, and social preview metadata.',
     completedAt: new Date('2026-06-10T14:30:00Z'),

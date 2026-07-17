@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Check, ChevronDown, Loader2, Sparkles } from 'lucide-react'
 import { cn, rubricIcon, rubricLabel, impactTagIcon, impactTagLabel } from '@/lib/utils'
+import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export type FixLoopFlagItem = {
   id: string
@@ -47,12 +49,6 @@ function SeverityDot({ severity }: { severity: string }) {
       aria-hidden
     />
   )
-}
-
-function priorityLabelForIndex(index: number): string {
-  if (index === 0) return 'Fix first'
-  if (index === 1) return 'Next'
-  return `Priority ${index + 1}`
 }
 
 function FlagList({
@@ -153,7 +149,7 @@ export function ReportFixLoop({
             <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
           )}
           <span className="min-w-0 truncate">
-            {loading ? 'Scanning' : 'Scanned'}
+            {loading ? REPORT_COPY.explorer.scanning : REPORT_COPY.explorer.scanned}
             <span className="text-muted-foreground/50"> · </span>
             <span className="text-foreground/80">{scanDetail}</span>
           </span>
@@ -164,7 +160,7 @@ export function ReportFixLoop({
 
         {count === 0 ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">
-            {loading ? 'Checking for issues…' : 'No flags. Nice work.'}
+            {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}
           </p>
         ) : interactive ? (
           <FlagList
@@ -193,7 +189,7 @@ export function ReportFixLoop({
           <Check className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
         )}
         <span>
-          {loading ? 'Scanning' : 'Scanned'}
+          {loading ? REPORT_COPY.explorer.scanning : REPORT_COPY.explorer.scanned}
           <span className="text-muted-foreground/50"> · </span>
           <span className="text-foreground/80">{scanDetail}</span>
         </span>
@@ -225,7 +221,7 @@ export function ReportFixLoop({
           <div className="space-y-1 px-1.5 pb-2 pt-1">
             {count === 0 ? (
               <p className="px-2 py-2 text-xs text-muted-foreground">
-                {loading ? 'Checking for issues…' : 'No flags. Nice work.'}
+                {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}
               </p>
             ) : interactive ? (
               <FlagList

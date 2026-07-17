@@ -4,18 +4,16 @@ import { ReportExplorer } from '@/components/report/ReportExplorer'
 import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
 import type { SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 
-type ExplorerVariant = 'page' | 'hero'
-
 interface SampleReportExplorerProps {
   report: SampleReportDisplay
-  variant?: ExplorerVariant
+  variant?: 'hero' | 'live'
   className?: string
   initialFlagIndex?: number
 }
 
 export function SampleReportExplorer({
   report,
-  variant = 'page',
+  variant = 'hero',
   className,
   initialFlagIndex = 0,
 }: SampleReportExplorerProps) {

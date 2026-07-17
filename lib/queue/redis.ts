@@ -1,5 +1,6 @@
 import IORedis, { type Redis, type RedisOptions } from 'ioredis'
 import { getRedisUrl } from '@/lib/env'
+import { logger } from '@/lib/logger'
 
 /**
  * ioredis only parses connection details (host, port, auth, TLS) when the URL
@@ -13,9 +14,11 @@ import { getRedisUrl } from '@/lib/env'
  */
 function createRedis(options: RedisOptions): Redis {
   const client = new IORedis(getRedisUrl(), { family: 0, ...options })
-  // Swallow connection-level 'error' events so a transient Redis blip can't
-  // crash the process; callers still see command-level rejections.
-  client.on('error', () => {})
+  // Log connection-level errors for observability; callers still see
+  // command-level rejections.
+  client.on('error', (err) => {
+    logger.error('Redis connection error', err)
+  })
   return client
 }
 

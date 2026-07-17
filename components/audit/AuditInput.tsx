@@ -20,12 +20,15 @@ export function AuditInput({
   source,
   idSuffix = '',
   initialUrl = '',
+  ctaPlacement,
 }: {
   variant?: 'default' | 'landing'
   /** Audit attribution source sent to POST /api/checks (defaults from variant). */
   source?: 'homepage' | 'dashboard' | 'report' | 'tool_page' | 'issue_page' | 'benchmark_page'
   idSuffix?: string
   initialUrl?: string
+  /** Distinguishes hero vs final CTA on the landing page for funnel attribution. */
+  ctaPlacement?: 'hero' | 'final'
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
@@ -39,6 +42,8 @@ export function AuditInput({
     code?: string
     action?: string
   } | null>(null)
+  const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
+  const funnelFrom = resolvedPlacement === 'final' ? 'final' : 'hero'
 
   async function submitUrl(inputUrl?: string, isSample = false) {
     setUrlError('')
@@ -84,7 +89,11 @@ export function AuditInput({
       const nextParams = new URLSearchParams({ url: normalized })
       const signUpParams = new URLSearchParams({
         next: `/dashboard?${nextParams.toString()}`,
-        from: 'hero',
+        from: funnelFrom,
+      })
+      trackEvent('audit_intent', {
+        cta_placement: funnelFrom,
+        from: funnelFrom,
       })
 
       router.push(`/sign-up?${signUpParams.toString()}`)
@@ -126,6 +135,7 @@ export function AuditInput({
       trackEvent('started_audit', {
         source: auditSource,
         is_logged_in: data.isLoggedIn ?? false,
+        cta_placement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
       })
       if (reportId) {
         setActiveAudit({
@@ -153,6 +163,7 @@ export function AuditInput({
 
   /** Scroll to the inline sample explorer -- no scan, no account. */
   function handleLandingTrySample() {
+    trackEvent('clicked_sample_cta', { placement: 'hero' })
     const target = document.getElementById('sample-review')
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })

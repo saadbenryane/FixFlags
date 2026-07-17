@@ -268,12 +268,20 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('testimonials avoid second-pass framing', () => {
-    assert.match(LANDING_PAGE.testimonials.headline, /example feedback/i)
+  it('testimonial examples are framed honestly without a duplicate eyebrow', () => {
+    assert.ok(!/example feedback/i.test(LANDING_PAGE.testimonials.headline))
     assert.ok(!/second pass/i.test(LANDING_PAGE.testimonials.headline))
+    assert.match(LANDING_PAGE.testimonials.disclaimer, /illustrative scenarios/i)
+    assert.match(LANDING_PAGE.testimonials.disclaimer, /not customer testimonials/i)
+    assert.equal(LANDING_PAGE.testimonials.cardLabel, 'Example finding')
     for (const quote of LANDING_PAGE.testimonials.quotes) {
       assert.ok(!/second pass/i.test(quote.quote))
+      assert.ok(!/\b(John|Jane|Sarah|Alex|Mike)\b/i.test(quote.role))
     }
+  })
+
+  it('sample report section exposes a full-sample CTA', () => {
+    assert.match(LANDING_PAGE.sampleReport.cta, /full sample/i)
   })
 
   it('landing page exposes three-rubric check story', () => {

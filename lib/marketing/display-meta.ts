@@ -149,10 +149,10 @@ export function sampleStatusLabel(
   const parts: string[] = []
   if (source === 'live') {
     parts.push('Live sample')
-  } else if (source === 'archived') {
-    parts.push('Last published')
+  } else if (source === 'curated') {
+    parts.push('Curated sample')
   } else {
-    parts.push('Sample report')
+    parts.push('Sample fixture')
   }
   parts.push(formatPipelineVersion(version))
   if (dateStr) parts.push(dateStr)

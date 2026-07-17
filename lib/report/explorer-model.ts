@@ -26,6 +26,9 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
+import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
+
+export { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 
 export interface ExplorerFlag {
   id: string
@@ -61,12 +64,6 @@ export interface ReportExplorerModel {
 
 function sortFlags(flags: RankableFlag[]): RankableFlag[] {
   return [...flags].sort(compareFlagsByPriority)
-}
-
-function priorityLabelForIndex(index: number): string {
-  if (index === 0) return 'Fix first'
-  if (index === 1) return 'Next'
-  return `Priority ${index + 1}`
 }
 
 function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {

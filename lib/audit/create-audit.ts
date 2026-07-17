@@ -7,10 +7,9 @@ import {
   isAdminUser,
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
-import { isAtCheckLimit } from '@/lib/audit/usage'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
-import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
+import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 
@@ -45,11 +44,50 @@ export class AuditLimitError extends Error {
   }
 }
 
+export class ParentAuditError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ParentAuditError'
+    this.status = status
+  }
+}
+
+async function assertParentAuditAllowed(
+  parentId: string,
+  userId: string | null | undefined
+): Promise<void> {
+  if (!userId) {
+    throw new ParentAuditError('Sign in to continue from an existing report', 401)
+  }
+
+  const parent = await prisma.audit.findUnique({
+    where: { id: parentId },
+    select: { id: true, userId: true, status: true },
+  })
+
+  if (!parent) {
+    throw new ParentAuditError('Parent report not found', 404)
+  }
+  if (parent.userId !== userId) {
+    throw new ParentAuditError('You can only continue from your own reports', 403)
+  }
+  if (parent.status !== 'COMPLETED') {
+    throw new ParentAuditError('You can only continue from a completed report', 400)
+  }
+}
+
 export async function createAndEnqueueAudit(
   options: CreateAuditOptions
 ): Promise<CreateAuditResult> {
   const url = (await assertPublicAuditUrl(options.url)).toString()
   const attribution = options.attribution
+
+  if (options.parentId) {
+    await assertParentAuditAllowed(options.parentId, options.userId)
+  }
+
   const includeAi = await resolveIncludeAiForNewAudit(options.userId ?? null)
 
   const data = {
@@ -89,29 +127,25 @@ export async function createAndEnqueueAudit(
             if (!hasUnlimitedScans(user) && !isAdminUser(user)) {
               const limit = getEffectiveScanLimit(user)
               if (!isUnlimitedScanLimit(limit)) {
-                const pendingAi = await tx.audit.count({
+                const pending = await tx.audit.count({
                   where: {
                     userId: user.id,
-                    includeAi: true,
-                    aiReviewAt: null,
+                    skipUsageCount: false,
                     status: { notIn: ['COMPLETED', 'FAILED'] },
                   },
                 })
-                const atAiCap = isAtCheckLimit(user.auditsUsed, pendingAi, limit)
-                // A revoked subscription (payment failure, cancellation) is treated as
-                // free-tier here too, matching resolveIncludeAiForNewAudit's "deny outright"
-                // policy: no partial credit for a plan that's no longer actually paid for.
-                // Falling through (same as an actual FREE user) means the audit still gets
-                // created without a hard TOKEN_LIMIT error - it just won't include AI review.
-                if (
-                  atAiCap &&
-                  user.plan !== 'FREE' &&
-                  !hasRevokedSubscriptionStatus(user.subscriptionStatus)
-                ) {
-                  const purchased = await getPurchasedCreditsRemaining(user.id)
-                  if (purchased <= 0) {
-                    throw new AuditLimitError('TOKEN_LIMIT')
-                  }
+
+                // Revoked paid subscriptions are treated as FREE for hard gates.
+                const gateUser =
+                  user.plan !== 'FREE' && hasRevokedSubscriptionStatus(user.subscriptionStatus)
+                    ? { ...user, plan: 'FREE' as const }
+                    : user
+
+                const gate = await wouldBlockNewCheckWithCredits(gateUser, pending)
+                if (!gate.allowed) {
+                  throw new AuditLimitError(
+                    gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED'
+                  )
                 }
               }
             }

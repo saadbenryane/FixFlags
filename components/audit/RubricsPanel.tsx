@@ -6,7 +6,6 @@ import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 import { RubricCard } from '@/components/audit/RubricCard'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import type { JourneyPage } from '@/components/audit/JourneyBar'
 
 interface RubricRow {
   id: string
@@ -24,19 +23,15 @@ interface Props {
   showFeedback?: boolean
   aiLocked?: boolean
   signUpHref?: string
-  showFlagList?: boolean
-  pages?: JourneyPage[]
 }
 
-/** One rubric panel: summary tiles that expand the selected rubric's detail in place. */
+/** Rubric summaries only. Flag detail browsing lives in ReportExplorer. */
 export function RubricsPanel({
   rubrics,
   rubricRows,
   showFeedback = true,
   aiLocked = false,
   signUpHref,
-  showFlagList = true,
-  pages,
 }: Props) {
   const [openName, setOpenName] = useState<string | null>(null)
 
@@ -62,8 +57,6 @@ export function RubricsPanel({
             showFeedback={showFeedback}
             aiLocked={aiLocked}
             signUpHref={signUpHref}
-            showFlagList={showFlagList}
-            pages={pages}
             open
             onOpenChange={() => setOpenName(null)}
           />

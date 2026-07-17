@@ -232,7 +232,7 @@ export function AuditReport({
       {!isSample && explorerModel && hasFixPrompts && showPrescription && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
-            <SectionTitle>Top priorities</SectionTitle>
+            <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
             {(() => {
               const total = countFixPrompts(audit.flags)
               if (total === 0) return null
@@ -275,25 +275,23 @@ export function AuditReport({
 
       {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-          <div className="overflow-hidden rounded-card glass-surface shadow-card">
-            <LiveReportExplorer
-              model={explorerModel}
-              showFeedback={showFeedback}
-              aiLocked={fixPromptLocked}
-              aiEnhancementPending={!aiPrescriptionLocked ? false : isLoggedIn && aiReviewPending}
-              signUpHref={signUpHref}
-              hasFixPrompts={showDeterministicFixes && hasFixPrompts}
-              defaultSeverityFilter={
-                audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
-              }
-              pages={pages}
-            />
-          </div>
+          <LiveReportExplorer
+            model={explorerModel}
+            showFeedback={showFeedback}
+            aiLocked={fixPromptLocked}
+            aiEnhancementPending={!aiPrescriptionLocked ? false : isLoggedIn && aiReviewPending}
+            signUpHref={signUpHref}
+            hasFixPrompts={showDeterministicFixes && hasFixPrompts}
+            defaultSeverityFilter={
+              audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
+            }
+            pages={pages}
+          />
         </section>
       ) : (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-          <Callout variant="neutral" title="No flags found">
-            This scan did not surface any issues. Nice work.
+          <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
+            {REPORT_COPY.noFlags.body}
           </Callout>
         </section>
       )}
@@ -303,8 +301,8 @@ export function AuditReport({
           {!isViewerOwner && <ThirdPartyAuditDisclaimer variant="compact" />}
 
           {aiReviewPending && (
-            <Callout variant="info" title="Unlocking fix prompts">
-              Generating copy-paste fix prompts for every flag. This usually takes under a minute.
+            <Callout variant="info" title={REPORT_COPY.aiPending.title}>
+              {REPORT_COPY.aiPending.body}
             </Callout>
           )}
 
@@ -323,9 +321,8 @@ export function AuditReport({
           )}
 
           {audit.reportCompleteness !== 'FULL' && !triageDegraded && (
-            <Callout variant="warning" title="Partial report">
-              Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than
-              being inferred.
+            <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
+              {REPORT_COPY.partialReport.body}
             </Callout>
           )}
 
@@ -351,15 +348,13 @@ export function AuditReport({
 
       {!isSample && (
         <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-3">
-          <SectionTitle>Summary by rubric</SectionTitle>
+          <SectionTitle>{REPORT_COPY.sectionTitles.summaryByRubric}</SectionTitle>
           <RubricsPanel
             rubrics={audit.rubrics}
             rubricRows={audit.rubricRows}
             showFeedback={showFeedback}
             aiLocked={fixPromptLocked}
             signUpHref={signUpHref}
-            showFlagList={!explorerModel}
-            pages={pages}
           />
         </section>
       )}
@@ -426,7 +421,7 @@ export function AuditReport({
         {!isSample && !isViewerOwner && (
           <p className="text-center text-sm text-muted-foreground">
             <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
-              Run your own audit
+              {REPORT_COPY.runYourOwnAudit}
             </Link>
           </p>
         )}

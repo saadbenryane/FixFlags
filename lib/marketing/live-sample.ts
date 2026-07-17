@@ -27,7 +27,8 @@ const sampleInclude = {
   },
 }
 
-export type SampleSource = 'live' | 'archived' | 'static'
+/** Marketing sample provenance. Prefer live curated audits; fixture is offline/demo only. */
+export type SampleSource = 'live' | 'curated' | 'fixture'
 
 export type LiveSampleAudit = {
   id: string
@@ -61,6 +62,13 @@ export type SampleResult = {
   completedAt: Date | null
 }
 
+export type SampleEligibilityInput = {
+  reportCompleteness?: string | null
+  flags: { id: string }[]
+  rubrics: { name: string }[]
+  screenshots: { device: string; url: string }[]
+}
+
 function sampleUrlCandidates(raw: string): string[] {
   const domain = normalizeDomain(raw)
   if (!domain) {
@@ -78,58 +86,40 @@ function sampleUrlCandidates(raw: string): string[] {
   ]
 }
 
-export async function getLiveSampleAudit(): Promise<SampleResult> {
-  const defaultSampleUrl = process.env.SAMPLE_AUDIT_URL ?? DEFAULT_SAMPLE_AUDIT_URL
-  const sampleDomain = normalizeDomain(defaultSampleUrl)
-  let audit = null
-  let source: SampleSource = 'static'
-
-  if (sampleDomain) {
-    audit = await prisma.audit.findFirst({
-      where: {
-        status: 'COMPLETED',
-        reportCompleteness: { in: ['FULL', 'PARTIAL'] },
-        OR: [
-          { normalizedDomain: sampleDomain },
-          { url: { in: sampleUrlCandidates(defaultSampleUrl) } },
-        ],
-      },
-      orderBy: { completedAt: 'desc' },
-      include: sampleInclude,
-    })
-    if (audit) source = audit.isPublic ? 'live' : 'archived'
+/** Eligibility for marketing display: completeness, screenshots, and rubric rows. Score is not a gate. */
+export function isEligibleMarketingSample(audit: SampleEligibilityInput): boolean {
+  if (audit.reportCompleteness !== 'FULL' && audit.reportCompleteness !== 'PARTIAL') {
+    return false
   }
+  if (audit.flags.length === 0) return false
+  if (audit.rubrics.length === 0) return false
+  return audit.screenshots.some(
+    (s) => s.device === 'DESKTOP' && typeof s.url === 'string' && s.url.length > 0
+  )
+}
 
-  if (!audit) {
-    audit = await prisma.audit.findFirst({
-      where: {
-        status: 'COMPLETED',
-        isPublic: true,
-        reportCompleteness: { in: ['FULL', 'PARTIAL'] },
-      },
-      orderBy: { completedAt: 'desc' },
-      include: sampleInclude,
-    })
-    if (audit) source = 'archived'
+async function fixtureSample(): Promise<SampleResult> {
+  const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
+  const audit = getStaticSampleAudit()
+  return {
+    audit,
+    source: 'fixture',
+    pipelineVersion: PIPELINE_VERSION,
+    completedAt: audit.completedAt,
   }
+}
 
-  // Marketing surfaces need a believable mid-range score. Near-zero live scans
-  // read as "broken product" rather than "real problems to fix." Prefer the
-  // curated static sample when the live score is missing or too low.
-  const MIN_MARKETING_SCORE = 40
-  const liveScoreTooLow =
-    audit != null && (audit.score == null || audit.score < MIN_MARKETING_SCORE)
-
-  if (!audit || liveScoreTooLow) {
-    const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
-    return {
-      audit: getStaticSampleAudit(),
-      source: 'static',
-      pipelineVersion: PIPELINE_VERSION,
-      completedAt: new Date(),
-    }
-  }
-
+function enrichDbAudit(audit: {
+  rubrics: Array<{
+    name: string
+    grade: string | null
+    score: number | null
+    flags: Array<{ severity: string }>
+  }>
+  flags: Array<{ severity: string; rubric: string }>
+  launchReadiness: unknown
+  [key: string]: unknown
+}): LiveSampleAudit {
   const rubricSources = audit.rubrics.map((r) => ({
     name: r.name,
     grade: r.grade,
@@ -143,19 +133,74 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
   const rubrics = computeRubricsFromRows(rubricSources, flatFlags)
   const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
   const { rubricRows, flags } = buildReportShapeFromDb(audit.rubrics, audit.flags, shareStatus)
-  const enriched: LiveSampleAudit = {
-    ...audit,
+  return {
+    ...(audit as unknown as LiveSampleAudit),
     launchReadiness: parseLaunchReadiness(audit.launchReadiness),
     rubrics,
     rubricRows,
     flags,
     shareStatus,
   }
+}
 
-  return {
-    audit: enriched,
-    source,
-    pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
-    completedAt: audit.completedAt,
+export async function getLiveSampleAudit(): Promise<SampleResult> {
+  try {
+    const defaultSampleUrl = process.env.SAMPLE_AUDIT_URL ?? DEFAULT_SAMPLE_AUDIT_URL
+    const sampleDomain = normalizeDomain(defaultSampleUrl)
+
+    let audit = null
+    let source: SampleSource = 'fixture'
+
+    if (sampleDomain) {
+      // Prefer a public curated audit for the configured sample URL.
+      audit = await prisma.audit.findFirst({
+        where: {
+          status: 'COMPLETED',
+          isPublic: true,
+          reportCompleteness: { in: ['FULL', 'PARTIAL'] },
+          OR: [
+            { normalizedDomain: sampleDomain },
+            { url: { in: sampleUrlCandidates(defaultSampleUrl) } },
+          ],
+        },
+        orderBy: { completedAt: 'desc' },
+        include: sampleInclude,
+      })
+      if (audit && isEligibleMarketingSample(audit)) {
+        source = 'live'
+      } else {
+        audit = null
+      }
+    }
+
+    if (!audit) {
+      audit = await prisma.audit.findFirst({
+        where: {
+          status: 'COMPLETED',
+          isPublic: true,
+          reportCompleteness: { in: ['FULL', 'PARTIAL'] },
+        },
+        orderBy: { completedAt: 'desc' },
+        include: sampleInclude,
+      })
+      if (audit && isEligibleMarketingSample(audit)) {
+        source = 'curated'
+      } else {
+        audit = null
+      }
+    }
+
+    if (!audit) {
+      return fixtureSample()
+    }
+
+    return {
+      audit: enrichDbAudit(audit),
+      source,
+      pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
+      completedAt: audit.completedAt,
+    }
+  } catch {
+    return fixtureSample()
   }
 }

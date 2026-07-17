@@ -6,7 +6,7 @@ Phased plan to expand FixFlags scans. Every phase must serve the core loop: **ch
 
 Full scan list by rubric: [scan-catalog.md](./scan-catalog.md).
 
-**Policy note:** [offering.md](./offering.md) defers most new features until 100 paying users. Phase 1 was the validated exception — flow scan, slop detection, and preview cards directly strengthen the loop for AI builders shipping public URLs. Phase 1 is shipped.
+**Policy note:** Every scan module must serve the core loop (Flag → Fix → Re-check). Ship fewer things better, not more things worse.
 
 ---
 

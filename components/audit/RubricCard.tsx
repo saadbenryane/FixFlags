@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Surface } from '@/components/ui/surface'
-import { FlagCard } from '@/components/audit/FlagCard'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
@@ -12,7 +10,6 @@ import { rubricLabel, cn } from '@/lib/utils'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import type { JourneyPage } from '@/components/audit/JourneyBar'
 
 interface RubricRow {
   id: string
@@ -29,21 +26,20 @@ interface Props {
   showFeedback?: boolean
   aiLocked?: boolean
   signUpHref?: string
-  showFlagList?: boolean
-  pages?: JourneyPage[]
   /** Controlled open state. Omit to let the card manage its own (uncontrolled). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
+/**
+ * Rubric summary card. Flag browsing lives in ReportExplorer; this surface
+ * links back to #report-flags instead of rendering a parallel FlagCard stack.
+ */
 export function RubricCard({
   rubric,
   rubricRow,
-  showFeedback = true,
   aiLocked = false,
   signUpHref,
-  showFlagList = true,
-  pages,
   open: openProp,
   onOpenChange,
 }: Props) {
@@ -124,78 +120,22 @@ export function RubricCard({
             <p className="text-sm text-muted-foreground leading-snug text-pretty">{rubricRow.summary}</p>
           ) : null}
 
-          {showFlagList ? (
-            rubricRow.flags.length > 0 ? (
-              <Surface variant="nested" className="overflow-hidden p-0">
-                {pages && pages.length > 1 ? (
-                  (() => {
-                    const grouped = new Map<string, RankableFlag[]>()
-                    for (const flag of rubricRow.flags) {
-                      const key = flag.pageUrl ?? '__primary__'
-                      const arr = grouped.get(key) ?? []
-                      arr.push(flag)
-                      grouped.set(key, arr)
-                    }
-                    const entries = Array.from(grouped.entries())
-                    return entries.map(([pageUrl, flags], gi) => {
-                      const page = pages.find((p) => p.url === pageUrl)
-                      const label = page
-                        ? (() => {
-                            try {
-                              const path = new URL(page.url).pathname
-                              return path === '/' ? 'Homepage' : path.split('/').filter(Boolean)[0] ?? page.role
-                            } catch { return page.role }
-                          })()
-                        : 'Primary'
-                      return (
-                        <div key={pageUrl} className={gi > 0 ? 'border-t border-border/30' : ''}>
-                          <div className="px-3 py-1.5 bg-muted/30">
-                            <span className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
-                              {label}
-                            </span>
-                          </div>
-                          {flags.map((flag) => (
-                            <FlagCard
-                              key={flag.id}
-                              flag={flag}
-                              showFeedback={showFeedback}
-                              variant="row"
-                            />
-                          ))}
-                        </div>
-                      )
-                    })
-                  })()
-                ) : (
-                  rubricRow.flags.map((flag) => (
-                    <FlagCard
-                      key={flag.id}
-                      flag={flag}
-                      showFeedback={showFeedback}
-                      variant="row"
-                    />
-                  ))
-                )}
-              </Surface>
-            ) : rubricRow.grade === 'A' ? (
-              <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
-            ) : rubricRow.grade === null ? (
-              <p className="text-sm text-muted-foreground">
-                This rubric could not be assessed from the available evidence.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No individual Flags listed, see the rubric summary above.
-              </p>
-            )
+          {flagCount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              <Link href="#report-flags" className="text-link underline-offset-2 hover:underline">
+                See {flagCount} Flag{flagCount !== 1 ? 's' : ''} above
+              </Link>
+            </p>
+          ) : rubricRow.grade === 'A' ? (
+            <p className="text-sm text-grade-A font-medium">No Flags in this rubric</p>
+          ) : rubricRow.grade === null ? (
+            <p className="text-sm text-muted-foreground">
+              This rubric could not be assessed from the available evidence.
+            </p>
           ) : (
-            flagCount > 0 && (
-              <p className="text-sm text-muted-foreground">
-                <Link href="#report-flags" className="text-link underline-offset-2 hover:underline">
-                  See {flagCount} Flag{flagCount !== 1 ? 's' : ''} above
-                </Link>
-              </p>
-            )
+            <p className="text-sm text-muted-foreground">
+              No individual Flags listed, see the rubric summary above.
+            </p>
           )}
         </CardContent>
       )}

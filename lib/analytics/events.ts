@@ -25,10 +25,23 @@ type FunnelEvent =
   | 'audit_limit_reached'
   | 'viewed_report'
   | 'fix_prompt_copied'
+  | 'viewed_sample'
+  | 'clicked_sample_cta'
+  | 'audit_intent'
 
 type EventParams = {
-  started_audit: { source?: string; is_logged_in?: boolean }
-  signed_up: { method?: string; plan?: string; email?: string; user_id?: string }
+  started_audit: {
+    source?: string
+    is_logged_in?: boolean
+    cta_placement?: 'hero' | 'final' | 'dashboard' | 'other'
+  }
+  signed_up: {
+    method?: string
+    plan?: string
+    email?: string
+    user_id?: string
+    from?: string
+  }
   signed_in: { method?: string }
   audit_completed: { audit_id?: string; score?: number }
   viewed_pricing: { from?: string; plan?: string }
@@ -37,6 +50,9 @@ type EventParams = {
   audit_limit_reached: { reason?: string }
   viewed_report: { audit_id?: string; is_owner?: boolean }
   fix_prompt_copied: Record<string, never>
+  viewed_sample: { placement: 'homepage' | 'samples' }
+  clicked_sample_cta: { placement: 'hero' | 'how_it_works' | 'sample_section' }
+  audit_intent: { cta_placement: 'hero' | 'final'; from: 'hero' | 'final' }
 }
 
 export function trackEvent<T extends FunnelEvent>(

@@ -566,9 +566,10 @@ export const LANDING_PAGE = {
     ] as const,
   },
   testimonials: {
-    label: 'Example feedback',
-    headline: 'Example feedback from builders',
-    subhead: 'What people tend to notice after a first audit.',
+    headline: 'What builders catch before launch',
+    subhead: 'Small misses become obvious once the page gets a proper review.',
+    disclaimer: 'Illustrative scenarios based on common audit outcomes. Not customer testimonials.',
+    cardLabel: 'Example finding',
     quotes: [
       {
         id: 'prelaunch-mobile',
@@ -773,6 +774,35 @@ export const REPORT_COPY = {
     title: 'Run the same check on your site',
     body: 'Paste a URL. See Flags across three rubrics and copy-ready fix prompts for your agent.',
   },
+  noFlags: {
+    title: 'No flags found',
+    body: 'This scan did not surface any issues. Nice work.',
+  },
+  aiPending: {
+    title: 'Unlocking fix prompts',
+    body: 'Generating copy-paste fix prompts for every flag. This usually takes under a minute.',
+  },
+  partialReport: {
+    title: 'Partial report',
+    body: 'Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.',
+  },
+  sectionTitles: {
+    topPriorities: 'Top priorities',
+    summaryByRubric: 'Summary by rubric',
+  },
+  explorer: {
+    allSeverities: 'All severities',
+    allPages: 'All Pages',
+    noMatchFilter: 'No flags match this filter.',
+    checkingIssues: 'Checking for issues…',
+    selectFlag: 'Select a flag to see evidence and the fix prompt.',
+    flagsAppear: 'Flags appear here as the scan finishes.',
+    stillScanning: 'Still scanning this page',
+    scanning: 'Scanning',
+    scanned: 'Scanned',
+    noFlagsNice: 'No flags. Nice work.',
+  },
+  runYourOwnAudit: 'Run your own audit',
 } as const
 
 export const MCP_DOCS = {

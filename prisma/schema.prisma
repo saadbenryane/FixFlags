@@ -767,15 +767,17 @@ model Flag {
 }
 
 model FlagFeedback {
-  id        String   @id @default(cuid())
-  flagId    String
-  flag      Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
-  userId    String?
-  vote      Int
-  comment   String?  @db.Text
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  flagId       String
+  flag         Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  userId       String?
+  visitorToken String?
+  vote         Int
+  comment      String?  @db.Text
+  createdAt    DateTime @default(now())
 
   @@unique([flagId, userId])
+  @@unique([flagId, visitorToken])
   @@index([flagId])
   @@map("flag_feedback")
 }

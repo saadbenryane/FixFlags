@@ -278,17 +278,28 @@ describe('incrementUsageOnCompleteForAudit', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('returns early when audit has no aiReviewAt', async () => {
+  it('increments when prescription is not yet available', async () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     mockAuditFindUnique.mockResolvedValue({
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: null,
       skipUsageCount: false,
     })
+    mockUserFindUnique
+      .mockResolvedValueOnce({ role: 'user' })
+      .mockResolvedValueOnce({ auditsUsed: 1, auditsLimit: 3 })
+    mockUserUpdate.mockResolvedValue({})
+    mockAuditUpdate.mockResolvedValue({})
     await incrementUsageOnCompleteForAudit('audit1', 'user1')
-    expect(mockUserUpdate).not.toHaveBeenCalled()
+    expect(mockUserUpdate).toHaveBeenCalledWith({
+      where: { id: 'user1' },
+      data: { auditsUsed: { increment: 1 } },
+    })
+    expect(mockAuditUpdate).toHaveBeenCalledWith({
+      where: { id: 'audit1' },
+      data: { usageCountedAt: expect.any(Date) },
+    })
     delete process.env.DEV_SIMULATE_BILLING
   })
 
@@ -298,7 +309,6 @@ describe('incrementUsageOnCompleteForAudit', () => {
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: new Date(),
       skipUsageCount: false,
     })
     mockUserFindUnique.mockResolvedValue({ role: 'admin' })
@@ -318,7 +328,6 @@ describe('incrementUsageOnCompleteForAudit', () => {
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: new Date(),
       skipUsageCount: true,
     })
     mockUserFindUnique.mockResolvedValue({ role: 'user' })
@@ -338,17 +347,21 @@ describe('incrementUsageOnCompleteForAudit', () => {
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: new Date(),
       skipUsageCount: false,
     })
     mockUserFindUnique
       .mockResolvedValueOnce({ role: 'user' })
       .mockResolvedValueOnce({ auditsUsed: 2, auditsLimit: 25 })
     mockUserUpdate.mockResolvedValue({})
+    mockAuditUpdate.mockResolvedValue({})
     await incrementUsageOnCompleteForAudit('audit1', 'user1')
     expect(mockUserUpdate).toHaveBeenCalledWith({
       where: { id: 'user1' },
       data: { auditsUsed: { increment: 1 } },
+    })
+    expect(mockAuditUpdate).toHaveBeenCalledWith({
+      where: { id: 'audit1' },
+      data: { usageCountedAt: expect.any(Date) },
     })
     delete process.env.DEV_SIMULATE_BILLING
   })
@@ -359,7 +372,6 @@ describe('incrementUsageOnCompleteForAudit', () => {
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: new Date(),
       skipUsageCount: false,
     })
     mockUserFindUnique
@@ -367,10 +379,15 @@ describe('incrementUsageOnCompleteForAudit', () => {
       .mockResolvedValueOnce({ auditsUsed: 25, auditsLimit: 25 })
     mockFindFirst.mockResolvedValue({ id: 'pack1', creditsRemaining: 10 })
     mockUpdate.mockResolvedValue({})
+    mockAuditUpdate.mockResolvedValue({})
     await incrementUsageOnCompleteForAudit('audit1', 'user1')
     expect(mockFindFirst).toHaveBeenCalled()
     expect(mockUpdate).toHaveBeenCalled()
     expect(mockUserUpdate).not.toHaveBeenCalled()
+    expect(mockAuditUpdate).toHaveBeenCalledWith({
+      where: { id: 'audit1' },
+      data: { usageCountedAt: expect.any(Date) },
+    })
     delete process.env.DEV_SIMULATE_BILLING
   })
 
@@ -380,17 +397,21 @@ describe('incrementUsageOnCompleteForAudit', () => {
       id: 'audit1',
       userId: 'user1',
       usageCountedAt: null,
-      aiReviewAt: new Date(),
       skipUsageCount: false,
     })
     mockUserFindUnique
       .mockResolvedValueOnce({ role: 'user' })
       .mockResolvedValueOnce({ auditsUsed: 25, auditsLimit: 25 })
     mockFindFirst.mockResolvedValue(null)
+    mockAuditUpdate.mockResolvedValue({})
     await incrementUsageOnCompleteForAudit('audit1', 'user1')
     expect(mockUserUpdate).toHaveBeenCalledWith({
       where: { id: 'user1' },
       data: { auditsUsed: { increment: 1 } },
+    })
+    expect(mockAuditUpdate).toHaveBeenCalledWith({
+      where: { id: 'audit1' },
+      data: { usageCountedAt: expect.any(Date) },
     })
     delete process.env.DEV_SIMULATE_BILLING
   })

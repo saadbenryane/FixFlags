@@ -8,36 +8,24 @@ import { cn } from '@/lib/utils'
 
 type TestimonialQuote = (typeof LANDING_PAGE.testimonials.quotes)[number]
 
-function TestimonialCard({ quote }: { quote: TestimonialQuote }) {
+function ExampleFindingCard({ quote }: { quote: TestimonialQuote }) {
   return (
-    <figure
+    <article
       data-carousel-item
-      className={cn(
-        'flex h-full w-[min(100%,20rem)] shrink-0 snap-start flex-col rounded-card glass-surface-elevated p-6 shadow-card sm:w-[22rem] sm:p-7',
-        'motion-safe:transition-[box-shadow,transform] motion-safe:duration-300 motion-safe:ease-out',
-        'hover:shadow-card-hover motion-reduce:transition-none'
-      )}
+      className="flex h-full w-[min(100%,20rem)] shrink-0 snap-start flex-col rounded-card glass-surface-elevated p-6 shadow-card sm:w-[22rem] sm:p-7"
     >
       <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-        {quote.context}
+        {LANDING_PAGE.testimonials.cardLabel} · {quote.context}
       </span>
 
-      <blockquote className="relative mt-4 flex-1">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -left-0.5 -top-3 text-4xl font-bold leading-none text-muted-foreground/12 select-none"
-        >
-          &ldquo;
-        </span>
-        <p className="relative text-[15px] leading-relaxed text-foreground/85 text-pretty sm:text-base">
-          {quote.quote}
-        </p>
-      </blockquote>
+      <p className="mt-4 flex-1 text-[15px] leading-relaxed text-foreground/85 text-pretty sm:text-base">
+        {quote.quote}
+      </p>
 
-      <figcaption className="mt-5 border-t border-border/40 pt-4">
-        <cite className="not-italic text-sm font-medium text-foreground">{quote.role}</cite>
-      </figcaption>
-    </figure>
+      <p className="mt-5 border-t border-border/40 pt-4 text-sm font-medium text-foreground">
+        {quote.role}
+      </p>
+    </article>
   )
 }
 
@@ -81,12 +69,13 @@ export function TestimonialsCarousel({ quotes }: { quotes: readonly TestimonialQ
     const gap = 20
     const delta = direction === 'next' ? cardWidth + gap : -(cardWidth + gap)
 
-    node.scrollBy({ left: delta, behavior: 'smooth' })
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    node.scrollBy({ left: delta, behavior: reduceMotion ? 'auto' : 'smooth' })
   }, [])
 
   return (
     <div className="space-y-4">
-      <div className="relative -mx-4 sm:-mx-6">
+      <div className="relative w-[calc(50vw+50%)] max-w-none">
         <div
           aria-hidden
           className={cn(
@@ -95,27 +84,19 @@ export function TestimonialsCarousel({ quotes }: { quotes: readonly TestimonialQ
           )}
         />
         <div
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-muted/20 to-transparent transition-opacity duration-200 sm:w-12',
-            canScrollNext ? 'opacity-100' : 'opacity-0'
-          )}
-        />
-
-        <div
           ref={scrollRef}
           role="region"
-          aria-label="Example feedback quotes"
+          aria-label="Example findings"
           tabIndex={0} /* eslint-disable-line jsx-a11y/no-noninteractive-tabindex -- needed for keyboard scrolling of overflow-x */
           className={cn(
-            'flex gap-5 overflow-x-auto scroll-smooth px-4 py-1 sm:px-6',
+            'flex gap-5 overflow-x-auto scroll-smooth py-1 pr-5 sm:pr-6 lg:pr-8',
             'snap-x snap-mandatory',
             '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
           )}
         >
           {quotes.map((quote) => (
-            <TestimonialCard key={quote.id} quote={quote} />
+            <ExampleFindingCard key={quote.id} quote={quote} />
           ))}
         </div>
       </div>
@@ -125,8 +106,8 @@ export function TestimonialsCarousel({ quotes }: { quotes: readonly TestimonialQ
           type="button"
           variant="outline"
           size="icon"
-          className="h-9 w-9 shrink-0 bg-background/70"
-          aria-label="Show previous feedback"
+          className="h-11 w-11 min-h-11 min-w-11 shrink-0 bg-background/70"
+          aria-label="Show previous finding"
           disabled={!canScrollPrev}
           onClick={() => scrollByPage('prev')}
         >
@@ -136,8 +117,8 @@ export function TestimonialsCarousel({ quotes }: { quotes: readonly TestimonialQ
           type="button"
           variant="outline"
           size="icon"
-          className="h-9 w-9 shrink-0 bg-background/70"
-          aria-label="Show next feedback"
+          className="h-11 w-11 min-h-11 min-w-11 shrink-0 bg-background/70"
+          aria-label="Show next finding"
           disabled={!canScrollNext}
           onClick={() => scrollByPage('next')}
         >

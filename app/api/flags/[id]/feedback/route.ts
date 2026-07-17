@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { getOrCreateVisitorToken } from '@/lib/live-support/visitor-token'
 
 const feedbackSchema = z.object({
   vote: z.number().min(-1).max(1),
@@ -31,29 +32,24 @@ export async function POST(
     }
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    const visitorToken = await getOrCreateVisitorToken()
+    const comment = parsed.data.comment ?? null
 
-    let feedback
-    if (session?.user?.id) {
-      feedback = await prisma.flagFeedback.upsert({
-        where: { flagId_userId: { flagId, userId: session.user.id } },
-        create: {
-          flagId,
-          userId: session.user.id,
-          vote: parsed.data.vote,
-          comment: parsed.data.comment ?? null,
-        },
-        update: { vote: parsed.data.vote, comment: parsed.data.comment ?? null },
-      })
-    } else {
-      feedback = await prisma.flagFeedback.create({
-        data: {
-          flagId,
-          userId: null,
-          vote: parsed.data.vote,
-          comment: parsed.data.comment ?? null,
-        },
-      })
-    }
+    const feedback = await prisma.flagFeedback.upsert({
+      where: { flagId_visitorToken: { flagId, visitorToken } },
+      create: {
+        flagId,
+        visitorToken,
+        userId: session?.user?.id ?? null,
+        vote: parsed.data.vote,
+        comment,
+      },
+      update: {
+        vote: parsed.data.vote,
+        comment,
+        userId: session?.user?.id ?? null,
+      },
+    })
 
     return NextResponse.json(feedback)
   } catch (error) {

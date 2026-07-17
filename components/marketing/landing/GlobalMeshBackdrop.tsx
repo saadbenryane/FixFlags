@@ -4,7 +4,7 @@ interface GlobalMeshBackdropProps {
   className?: string
   fixed?: boolean
   /**
-   * `full` shows the restrained marketing canvas (hairline grid + brand glow).
+   * `full` shows the restrained marketing canvas (brand glow + warm depth).
    * `minimal` is a quiet static grid for dense app/admin screens. `off`
    * renders nothing.
    */
@@ -16,7 +16,10 @@ const GRID_LAYER =
 
 /**
  * Quiet, premium canvas. A restrained brand wash at the top,
- * a faint hairline grid, and soft stone-toned depth.
+ * and soft stone-toned depth.
+ *
+ * Marketing (`full`) must not use grid/dot backgrounds behind the hero
+ * (see DESIGN.md). `GRID_LAYER` is app/admin-only via `minimal`.
  */
 export function GlobalMeshBackdrop({
   className,
@@ -55,15 +58,6 @@ export function GlobalMeshBackdrop({
         className
       )}
     >
-      {/* Faint hairline grid for depth */}
-      <div
-        className={cn(
-          'absolute inset-0 opacity-[0.5] dark:opacity-[0.4]',
-          GRID_LAYER,
-          '[mask-image:radial-gradient(120%_80%_at_50%_0%,black,transparent_70%)]'
-        )}
-      />
-
       {/* Broad brand wash, centered above the fold */}
       <div
         className={cn(

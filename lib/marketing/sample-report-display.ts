@@ -4,7 +4,7 @@ import {
   type RubricScoreContext,
 } from '@/lib/audit/checks/rubric'
 import type { DeterministicFlag } from '@/lib/audit/checks'
-import { calculateOverallScore } from '@/lib/audit/scoring'
+import { calculateOverallScore, gradeFromScore as productionGradeFromScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
 import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
@@ -91,11 +91,7 @@ function sortFlags(flags: RankableFlag[]): RankableFlag[] {
 
 function gradeFromScore(score: number | null): string | null {
   if (score == null) return null
-  if (score >= 90) return 'A'
-  if (score >= 80) return 'B'
-  if (score >= 70) return 'C'
-  if (score >= 60) return 'D'
-  return 'F'
+  return productionGradeFromScore(score)
 }
 
 function flagToDeterministic(flag: RankableFlag): DeterministicFlag | null {
@@ -163,7 +159,9 @@ const STATIC_ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
 function resolveSampleAnchors(audit: LiveSampleAudit): EvidenceAnchorMap {
   const live = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   if (live && Object.keys(live).length > 0) return live
-  return STATIC_ANCHORS
+  // Static pin map is only valid for the curated fixture screenshots.
+  if (audit.id === 'static-sample') return STATIC_ANCHORS
+  return {}
 }
 
 function buildEvidenceHighlights(

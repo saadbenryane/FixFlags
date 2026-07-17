@@ -14,6 +14,8 @@ interface LiveReportExplorerProps {
   defaultSeverityFilter?: 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   className?: string
   pages?: JourneyPage[]
+  loading?: boolean
+  progress?: number
 }
 
 export function LiveReportExplorer({
@@ -26,8 +28,10 @@ export function LiveReportExplorer({
   defaultSeverityFilter = 'ALL',
   className,
   pages,
+  loading = false,
+  progress,
 }: LiveReportExplorerProps) {
-  if (model.flags.length === 0) return null
+  if (model.flags.length === 0 && !loading) return null
 
   return (
     <ReportExplorer
@@ -41,6 +45,8 @@ export function LiveReportExplorer({
       defaultSeverityFilter={defaultSeverityFilter}
       className={className}
       pages={pages}
+      loading={loading}
+      progress={progress}
     />
   )
 }

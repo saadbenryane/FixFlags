@@ -40,7 +40,7 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
 3. **Fix prompts are the product** — the unique value is not "what is wrong" but "here is exactly what to paste into your editor."
 4. **Re-check is the habit** — never gate it. A user who re-checks is a user who sees value.
-5. **Distribution before depth** — more users matter more than more checks. Zero new features until 100 paying users (except scan depth Phase 1).
+5. **Distribution before depth** — more users matter more than more checks. Build what serves the core loop; cut what doesn't.
 6. **Calm before loud** — the product earns trust through accuracy, not marketing volume.
 7. **Human before technical** — flags describe user impact, not HTML violations.
 

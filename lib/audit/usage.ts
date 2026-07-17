@@ -78,6 +78,11 @@ export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   })
 }
 
+/**
+ * Count a completed new-URL check against the user's plan quota.
+ * Idempotent via usageCountedAt. Re-checks (skipUsageCount) are marked counted
+ * but never increment. Does not require prescription (aiReviewAt).
+ */
 export async function incrementUsageOnCompleteForAudit(
   auditId: string,
   userId: string
@@ -87,10 +92,9 @@ export async function incrementUsageOnCompleteForAudit(
   await prisma.$transaction(async (tx) => {
     const audit = await tx.audit.findUnique({
       where: { id: auditId },
-      select: { usageCountedAt: true, userId: true, skipUsageCount: true, aiReviewAt: true },
+      select: { usageCountedAt: true, userId: true, skipUsageCount: true },
     })
     if (!audit || audit.userId !== userId || audit.usageCountedAt) return
-    if (!audit.aiReviewAt) return
 
     const user = await tx.user.findUnique({
       where: { id: userId },
@@ -130,5 +134,10 @@ export async function incrementUsageOnCompleteForAudit(
         })
       }
     }
+
+    await tx.audit.update({
+      where: { id: auditId },
+      data: { usageCountedAt: new Date() },
+    })
   })
 }

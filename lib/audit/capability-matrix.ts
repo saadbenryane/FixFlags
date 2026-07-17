@@ -207,9 +207,10 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     category: 'loading',
     label: 'Privacy consent controls',
     tool: 'html-parse',
-    status: 'live',
-    checkIds: ['measurement-consent-blocking-incomplete'],
+    status: 'planned',
+    checkIds: [],
     verify: 'npm run demo:audit:offline',
+    notes: 'Planned: consent-blocking-incomplete check not yet implemented.',
   },
   {
     id: 'measurement-analytics-scan',
@@ -258,7 +259,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'security-frame-options-missing',
       'security-frame-options-too-permissive',
       'security-content-type-options-missing',
-      'security-xss-protection-missing',
     ],
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Reads raw HTTP response headers captured during page navigation, not PageMetadata.',
@@ -331,7 +331,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     label: 'Broken internal links',
     tool: 'html-parse',
     status: 'live',
-    checkIds: ['broken-internal-links', 'external-links-unsafe'],
+    checkIds: ['broken-internal-links'],
   },
 
   // REACH - trust
@@ -404,7 +404,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: [
       'images-missing-alt',
-      'images-empty-alt',
       'form-inputs-no-label',
       'buttons-no-text',
       'links-no-text',

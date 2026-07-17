@@ -104,7 +104,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Constraints
 
-- **Zero new features until 100 paying users** — except scan depth in scan-roadmap.md Phase 1. Distribution, not depth, is the bottleneck.
+- **Core loop above all.** Every feature must serve Flag → Fix → Re-check.
 - **Every feature must serve the core loop.** If it does not fit Flag → Fix → Re-check, it does not ship.
 - **Re-checks are never gated.** A user who re-checks is a user who sees value.
 - **No staging, localhost, or password-protected site support.**

@@ -82,7 +82,7 @@ async function main() {
 
   console.log(`\nDone. Live sample audit: ${audit.id}`)
   console.log(`   Anchors: ${Object.keys(merged).length} checkIds`)
-  console.log('   Verify: /, /#sample-report, /samples')
+  console.log('   Verify: /, /#sample-review, /samples')
 }
 
 main()

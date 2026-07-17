@@ -80,7 +80,6 @@
 ### Product
 - **Core loop:** Flag → Fix → Re-check. Every feature must serve this loop.
 - **Re-checks are free and unlimited.** Never gate them.
-- **Zero new features until 100 paying users** — except scan depth in scan-roadmap.md Phase 1.
 - **Three rubrics only:** Message, Experience, Reach.
 - **Marketing copy** lives in `lib/marketing/copy.ts` only — never hardcoded in components.
 - **Banned marketing phrases:** "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds", unlock, 10x, game-changing, world-class, comprehensive, robust, leverage, holistic.

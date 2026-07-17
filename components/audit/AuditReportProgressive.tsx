@@ -164,10 +164,15 @@ export function AuditReportProgressive({
       </div>
 
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-        <div className="overflow-hidden rounded-card glass-surface shadow-card">
-          {explorerModel ? (
-            <LiveReportExplorer model={explorerModel} hasFixPrompts={false} />
-          ) : (
+        {explorerModel ? (
+          <LiveReportExplorer
+            model={explorerModel}
+            hasFixPrompts={false}
+            loading={isLoading}
+            progress={displayProgress}
+          />
+        ) : (
+          <div className="overflow-hidden rounded-card glass-surface shadow-card">
             <div className="space-y-6 p-4 sm:p-6">
               <ReportScoreOverview
                 score={score}
@@ -192,8 +197,6 @@ export function AuditReportProgressive({
                   <Skeleton className="h-5 w-3/4 max-w-sm" />
                   <Skeleton className="h-3 w-24" />
                 </div>
-                {/* Desktop screenshot leads; the tall mobile frame only joins it
-                    side-by-side on large screens so it can't dominate on phones. */}
                 <div className="flex flex-row items-start gap-4 sm:gap-6">
                   <div className="min-w-0 flex-1">
                     <BrowserFrame
@@ -216,8 +219,8 @@ export function AuditReportProgressive({
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-3">

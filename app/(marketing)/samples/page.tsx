@@ -27,10 +27,15 @@ export default async function SamplesPage() {
         source={sample.source}
         completedAt={sample.completedAt}
         pipelineVersion={sample.pipelineVersion}
-        isDemoFixture={site.isDemoFixture}
+        isDemoFixture={site.isDemoFixture || sample.source === 'fixture'}
         isDogfood={site.isDogfood}
       />
 
+      {sample.source === 'fixture' ? (
+        <p className="mb-4 text-center font-mono text-[11px] uppercase tracking-label text-muted-foreground/80">
+          Illustrative scores · curated fixture
+        </p>
+      ) : null}
       <AuditReport
         audit={{
           pageJob: sample.audit.pageJob,

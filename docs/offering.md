@@ -39,13 +39,11 @@ Agencies are a Year 1 sales target (see `docs/year-1-operating-plan.md`) and rep
 
 Full catalog by rubric: [scan-catalog.md](./scan-catalog.md). Phased build plan: [scan-roadmap.md](./scan-roadmap.md).
 
-Phase 1 (flow scan, slop detection, preview cards) is the validated exception to the freeze below — it directly serves the core loop for AI builders.
-
 ## Feature Philosophy
 
-- **Zero new features until 100 paying users** — except scan depth in [scan-roadmap.md](./scan-roadmap.md) Phase 1. What is missing is distribution, not depth.
 - **Every feature must serve the core loop:** Flag, Fix, Re-check. If it does not fit that loop, it does not ship.
 - **Re-checks are the habit.** Never gate them. A user who re-checks is a user who sees value. A user who hits a paywall on re-check is a user who churns.
+- **Build for quality, not feature count.** Ship fewer things better, not more things worse.
 
 ## The Core Loop
 

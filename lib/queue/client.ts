@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq'
 import { createQueueRedis } from './redis'
+import { logger } from '@/lib/logger'
 import type Redis from 'ioredis'
 
 let _auditQueue: Queue | null = null
@@ -18,13 +19,15 @@ export function getAuditQueue(): Queue {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       connection: getAuditRedis() as any,
       defaultJobOptions: {
-        attempts: 1,
+        attempts: 2,
         backoff: { type: 'fixed', delay: 10_000 },
         removeOnComplete: { count: 1000, age: 7 * 24 * 3600 },
         removeOnFail: { count: 5000, age: 30 * 24 * 3600 },
       },
     })
-    _auditQueue.on('error', () => {})
+    _auditQueue.on('error', (err) => {
+      logger.error('Audit queue error', err)
+    })
   }
   return _auditQueue
 }

@@ -121,6 +121,34 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(body.action).toBe('upgrade')
   })
 
+  it('returns 403 when parentId belongs to another user', async () => {
+    getSession.mockResolvedValue({ user: { id: 'user-1' } })
+    const { ParentAuditError } = await import('@/lib/audit/create-audit')
+    createAndEnqueueAudit.mockRejectedValue(
+      new ParentAuditError('You can only continue from your own reports', 403)
+    )
+
+    const res = await POST(postReq({ url: 'https://example.com', parentId: 'parent-1' }))
+
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.code).toBe('PARENT_AUDIT_INVALID')
+    expect(createAndEnqueueAudit).toHaveBeenCalled()
+  })
+
+  it('returns 401 when anonymous caller passes parentId', async () => {
+    const { ParentAuditError } = await import('@/lib/audit/create-audit')
+    createAndEnqueueAudit.mockRejectedValue(
+      new ParentAuditError('Sign in to continue from an existing report', 401)
+    )
+
+    const res = await POST(postReq({ url: 'https://example.com', parentId: 'parent-1' }))
+
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.code).toBe('AUTH_REQUIRED')
+  })
+
   it('returns 201 for anonymous user within limit', async () => {
     const res = await POST(postReq())
 

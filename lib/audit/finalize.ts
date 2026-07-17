@@ -120,6 +120,10 @@ export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<v
     },
   })
 
+  if (audit.userId) {
+    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
+  }
+
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage finalize', err)
   })
@@ -214,6 +218,10 @@ export async function finalizeTriageDegraded(
       failureStage: 'judging',
     },
   })
+
+  if (audit.userId) {
+    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
+  }
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage degraded finalize', err)

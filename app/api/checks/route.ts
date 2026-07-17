@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import {
   AuditLimitError,
+  ParentAuditError,
   createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
 import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/usage'
@@ -145,6 +146,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     if (err instanceof AuditLimitError) {
       return apiError(err.message, 402, { code: err.code, action: 'upgrade' })
+    }
+    if (err instanceof ParentAuditError) {
+      return apiError(err.message, err.status, {
+        code: err.status === 401 ? 'AUTH_REQUIRED' : 'PARENT_AUDIT_INVALID',
+        action: err.status === 401 ? 'signup' : undefined,
+      })
     }
     return handleRouteError(err)
   }
