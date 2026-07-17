@@ -20,7 +20,8 @@ export interface CreateAuditOptions {
   parentId?: string
   skipUsageCount?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
-  monitoringMode?: 'FULL' | 'SUMMARY_ONLY'
+  /** Always FULL. Legacy SUMMARY_ONLY enum value remains in Prisma but is never written. */
+  monitoringMode?: 'FULL'
   delayMs?: number
   attribution?: AuditAttribution
 }

@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL, SHARE_COPY } from '@/lib/marketing/copy'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import {
   Sheet,
@@ -172,6 +172,12 @@ export function ShareDrawer({
       setCopiedId(linkId)
       setTimeout(() => setCopiedId(null), 2000)
     }
+    if (!canPublicShare && isOwner && !isAnonymous && !isPublic && !linkId) {
+      toast.success(SHARE_COPY.privateLinkCopied, {
+        description: SHARE_COPY.privateLinkCopiedDetail,
+      })
+      return
+    }
     toast.success('Copied to clipboard')
   }
 
@@ -220,7 +226,7 @@ export function ShareDrawer({
                 ? 'Anyone with the link can view'
                 : isPublic
                   ? 'Anyone with the link can view'
-                  : 'Only you can view this report'}
+                  : SHARE_COPY.privateLinkCopiedDetail}
             </p>
           </div>
           <SheetClose asChild>
@@ -232,10 +238,10 @@ export function ShareDrawer({
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {!canPublicShare && isOwner && !isAnonymous && !isPublic && (
-            <Callout variant="neutral" title="Private report">
+            <Callout variant="neutral" title={SHARE_COPY.privateTitle}>
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Only you can see this report. Upgrade to Agency for public share links.
+                  {SHARE_COPY.privateBody}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -245,10 +251,10 @@ export function ShareDrawer({
                     onClick={() => copyToClipboard(shareUrl)}
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Copy private link
+                    {SHARE_COPY.privateLinkCta}
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href="/pricing">Agency</Link>
+                    <Link href="/pricing">{SHARE_COPY.agencyCta}</Link>
                   </Button>
                 </div>
               </div>

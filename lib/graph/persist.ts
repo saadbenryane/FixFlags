@@ -15,13 +15,10 @@
  */
 import { prisma } from '@/lib/db'
 import type { SiteSnapshot, FlagSnapshot, PersistResult } from './types'
+import { parseSiteHostname } from '@/lib/utils/url-helpers'
 
 function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
-  } catch {
-    return ''
-  }
+  return parseSiteHostname(url).toLowerCase()
 }
 
 function pathOf(url: string): string {

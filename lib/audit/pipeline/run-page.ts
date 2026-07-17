@@ -1,25 +1,22 @@
 import { prisma } from '../../db'
-import { captureScreenshots, getAuditBrowser } from '../screenshot'
+import { captureScreenshots } from '../screenshot'
 import {
   fetchAndParseMetadata,
   mergeRuntimeHeadMetadata,
   parseMetadataFromHtml,
   trimMetadataForStorage,
-  type PageMetadata,
 } from '../metadata'
 import {
   fetchPageSpeedData,
   toStoredPageSpeedResult,
-  type PageSpeedResult,
 } from '../pagespeed'
 import { runAllChecks, computeRubricScores } from '../checks'
 import { runFlowChecks } from '../checks/flow'
-import { runFlowScanStandalone, type FlowScanResult } from '../flow/run-flow-scan'
+import type { FlowScanResult } from '../flow/run-flow-scan'
 import { serializeFlowData } from '../flow/flow-url'
 import { persistDeterministicFlags } from '../persist'
 import { AUDIT_PROGRESS, AUDIT_PROGRESS_SUBSTEP } from '../progress'
 import { logPipelineEvent } from '../pipeline-log'
-import { loadParentScreenshotBase64 } from '../copy-parent-artifacts'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
@@ -35,14 +32,12 @@ interface RunPageInput {
   position: number
   role: string
   primary: boolean
-  skipCapture?: boolean
-  parentId?: string
 }
 
 /** Capture, check, and (optionally) judge a single page within an audit run. */
 export async function runPage(ctx: PipelineContext, input: RunPageInput): Promise<PageRun> {
   const normalizedUrl = new URL(input.url).toString()
-  assertDeadline(ctx, input.skipCapture ? 'checking' : 'capturing')
+  assertDeadline(ctx, 'capturing')
 
   const page = await prisma.auditPage.create({
     data: {
@@ -51,187 +46,138 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       normalizedUrl,
       position: input.position,
       role: input.role,
-      status: input.skipCapture ? 'CHECKING' : 'CAPTURING',
+      status: 'CAPTURING',
     },
   })
 
   let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
   let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
   let flowResult: FlowScanResult | null = null
-  let capturedMetadata: PageMetadata | null = null
   let desktopBase64 = ''
   let mobileBase64: string | null = null
 
-  if (input.skipCapture && input.parentId) {
+  await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
+  if (input.primary && input.position === 0) {
+    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
+  }
+  const captureStart = Date.now()
+
+  const [captured, speed] = await Promise.all([
+    captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
+      runFlow: input.primary && input.position === 0,
+    }),
+    fetchPageSpeedData(normalizedUrl),
+  ])
+  screenshots = captured
+  pagespeed = speed
+  flowResult = captured.flowResult ?? null
+  if (flowResult && input.primary) {
     await logPipelineEvent(ctx.auditId, {
       stage: 'capturing',
-      event: 'skipped_reusing_parent',
+      event: 'flow_completed',
     })
-    const parentImages = await loadParentScreenshotBase64(input.parentId)
-    desktopBase64 = parentImages.desktopBase64 ?? ''
-    mobileBase64 = parentImages.mobileBase64
-    const parentPerf = await prisma.audit.findUnique({
-      where: { id: input.parentId },
-      select: { performanceData: true, htmlMetadata: true },
-    })
-    const perf = parentPerf?.performanceData as {
-      desktop?: PageSpeedResult
-      mobile?: PageSpeedResult
-    } | null
-    pagespeed = {
-      desktop: perf?.desktop ?? null,
-      mobile: perf?.mobile ?? null,
-      desktopError: undefined,
-      mobileError: undefined,
-    }
-    const meta = parentPerf?.htmlMetadata as PageMetadata | null
-    if (!desktopBase64) {
-      throw new Error('Desktop screenshot capture failed, parent has no desktop image')
-    }
+  }
+  ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
+
+  await logPipelineEvent(ctx.auditId, {
+    stage: 'capturing',
+    event: 'capture_completed',
+    durationMs: Date.now() - captureStart,
+  })
+
+  if (!screenshots.desktopUrl || !screenshots.desktopBase64) {
     await prisma.auditPage.update({
       where: { id: page.id },
       data: {
-        status: 'CHECKING',
-        title: meta?.title,
-        htmlMetadata: meta ? (trimMetadataForStorage(meta) as never) : undefined,
+        status: 'FAILED',
+        failureCode: 'DESKTOP_CAPTURE_FAILED',
+        failureMessage: 'Desktop screenshot capture is required',
       },
     })
-  } else {
-    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
-    if (input.primary && input.position === 0) {
-      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
-    }
-    const captureStart = Date.now()
-
-    const [captured, speed] = await Promise.all([
-      captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
-        runFlow: input.primary && input.position === 0,
-      }),
-      fetchPageSpeedData(normalizedUrl),
-    ])
-    screenshots = captured
-    pagespeed = speed
-    flowResult = captured.flowResult ?? null
-    if (flowResult && input.primary) {
-      await logPipelineEvent(ctx.auditId, {
-        stage: 'capturing',
-        event: 'flow_completed',
-      })
-    }
-    ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
-
-    await logPipelineEvent(ctx.auditId, {
-      stage: 'capturing',
-      event: 'capture_completed',
-      durationMs: Date.now() - captureStart,
-    })
-
-    if (!screenshots.desktopUrl || !screenshots.desktopBase64) {
-      await prisma.auditPage.update({
-        where: { id: page.id },
-        data: {
-          status: 'FAILED',
-          failureCode: 'DESKTOP_CAPTURE_FAILED',
-          failureMessage: 'Desktop screenshot capture is required',
-        },
-      })
-      throw new Error(`Desktop screenshot capture failed for ${normalizedUrl}`)
-    }
-
-    desktopBase64 = screenshots.desktopBase64
-    mobileBase64 = screenshots.mobileBase64
-
-    const metadataFromHtml = mergeRuntimeHeadMetadata(
-      screenshots.desktopHtml
-        ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
-        : await fetchAndParseMetadata(normalizedUrl),
-      screenshots.runtimeHeadMetadata
-    )
-    capturedMetadata = metadataFromHtml
-    const storedPerformance = {
-      desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
-      mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
-      desktopError: pagespeed.desktopError ?? null,
-      mobileError: pagespeed.mobileError ?? null,
-      screenshots: screenshots.captureStatus,
-      captureFailures: screenshots.captureFailures,
-      loadExperience: screenshots.loadExperience ?? null,
-    }
-
-    await prisma.$transaction([
-      prisma.screenshot.create({
-        data: {
-          auditId: ctx.auditId,
-          pageId: page.id,
-          device: 'DESKTOP',
-          url: screenshots.desktopUrl,
-          width: DESKTOP_VIEWPORT.width,
-          height: DESKTOP_VIEWPORT.height,
-        },
-      }),
-      ...(screenshots.mobileUrl
-        ? [
-            prisma.screenshot.create({
-              data: {
-                auditId: ctx.auditId,
-                pageId: page.id,
-                device: 'MOBILE',
-                url: screenshots.mobileUrl,
-                width: MOBILE_VIEWPORT.width,
-                height: MOBILE_VIEWPORT.height,
-              },
-            }),
-          ]
-        : []),
-      prisma.auditPage.update({
-        where: { id: page.id },
-        data: {
-          status: 'CHECKING',
-          title: metadataFromHtml.title,
-          htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
-          performanceData: storedPerformance as never,
-          consoleErrors: screenshots.consoleErrors as never,
-        },
-      }),
-    ])
-
-    if (input.primary) {
-      await prisma.audit.update({
-        where: { id: ctx.auditId },
-        data: {
-          status: 'CHECKING',
-          progress: AUDIT_PROGRESS.CHECKING,
-          htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
-          performanceData: storedPerformance as never,
-          consoleErrors: screenshots.consoleErrors as never,
-          ...(flowResult
-            ? {
-                flowData: serializeFlowData(flowResult) as never,
-              }
-            : {}),
-        },
-      })
-    }
+    throw new Error(`Desktop screenshot capture failed for ${normalizedUrl}`)
   }
 
-  const metadata =
-    capturedMetadata ??
-    (screenshots?.desktopHtml
-      ? mergeRuntimeHeadMetadata(
-          parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl),
-          screenshots.runtimeHeadMetadata
-        )
-      : ((await prisma.auditPage.findUnique({
-          where: { id: page.id },
-          select: { htmlMetadata: true },
-        }))?.htmlMetadata as PageMetadata | null) ??
-        (await fetchAndParseMetadata(normalizedUrl)))
+  desktopBase64 = screenshots.desktopBase64
+  mobileBase64 = screenshots.mobileBase64
+
+  const metadataFromHtml = mergeRuntimeHeadMetadata(
+    screenshots.desktopHtml
+      ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
+      : await fetchAndParseMetadata(normalizedUrl),
+    screenshots.runtimeHeadMetadata
+  )
+  const storedPerformance = {
+    desktop: pagespeed.desktop ? toStoredPageSpeedResult(pagespeed.desktop) : null,
+    mobile: pagespeed.mobile ? toStoredPageSpeedResult(pagespeed.mobile) : null,
+    desktopError: pagespeed.desktopError ?? null,
+    mobileError: pagespeed.mobileError ?? null,
+    screenshots: screenshots.captureStatus,
+    captureFailures: screenshots.captureFailures,
+    loadExperience: screenshots.loadExperience ?? null,
+  }
+
+  await prisma.$transaction([
+    prisma.screenshot.create({
+      data: {
+        auditId: ctx.auditId,
+        pageId: page.id,
+        device: 'DESKTOP',
+        url: screenshots.desktopUrl,
+        width: DESKTOP_VIEWPORT.width,
+        height: DESKTOP_VIEWPORT.height,
+      },
+    }),
+    ...(screenshots.mobileUrl
+      ? [
+          prisma.screenshot.create({
+            data: {
+              auditId: ctx.auditId,
+              pageId: page.id,
+              device: 'MOBILE',
+              url: screenshots.mobileUrl,
+              width: MOBILE_VIEWPORT.width,
+              height: MOBILE_VIEWPORT.height,
+            },
+          }),
+        ]
+      : []),
+    prisma.auditPage.update({
+      where: { id: page.id },
+      data: {
+        status: 'CHECKING',
+        title: metadataFromHtml.title,
+        htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
+        performanceData: storedPerformance as never,
+        consoleErrors: screenshots.consoleErrors as never,
+      },
+    }),
+  ])
+
+  if (input.primary) {
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: {
+        status: 'CHECKING',
+        progress: AUDIT_PROGRESS.CHECKING,
+        htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
+        performanceData: storedPerformance as never,
+        consoleErrors: screenshots.consoleErrors as never,
+        ...(flowResult
+          ? {
+              flowData: serializeFlowData(flowResult) as never,
+            }
+          : {}),
+      },
+    })
+  }
+
+  const metadata = metadataFromHtml
 
   // Technology detection from HTML + response headers (primary page only)
   const detectedTech = input.primary
     ? detectTechnologies(
-        screenshots?.desktopHtml ?? '',
-        screenshots?.responseHeaders ?? {},
+        screenshots.desktopHtml ?? '',
+        screenshots.responseHeaders ?? {},
       )
     : []
   const industryGuess = input.primary
@@ -248,22 +194,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           detectedTech,
           industryGuess,
         } as never,
-      },
-    })
-  }
-
-  if (input.skipCapture && input.primary && input.position === 0) {
-    await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started' })
-    const browser = await getAuditBrowser()
-    flowResult = await runFlowScanStandalone(browser, ctx.auditId, normalizedUrl)
-    await logPipelineEvent(ctx.auditId, {
-      stage: 'checking',
-      event: 'flow_completed',
-    })
-    await prisma.audit.update({
-      where: { id: ctx.auditId },
-      data: {
-        flowData: serializeFlowData(flowResult) as never,
       },
     })
   }

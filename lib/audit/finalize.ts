@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
-import { applyDeterministicVerification } from '@/lib/audit/verify-flags'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
@@ -87,14 +86,8 @@ export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<v
   })
 
   if (audit.parentId) {
+    // Child already has fresh flags from FULL capture; diff vs parent only.
     await diffFlagsAgainstParent(input.auditId, audit.parentId)
-    const parent = await prisma.audit.findUnique({
-      where: { id: audit.parentId },
-      select: { url: true },
-    })
-    if (parent?.url) {
-      await applyDeterministicVerification(input.auditId, audit.parentId, parent.url)
-    }
   }
 
   const requiredComplete =
@@ -258,13 +251,6 @@ export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
 
   if (audit.parentId) {
     await diffFlagsAgainstParent(input.auditId, audit.parentId)
-    const parent = await prisma.audit.findUnique({
-      where: { id: audit.parentId },
-      select: { url: true },
-    })
-    if (parent?.url) {
-      await applyDeterministicVerification(input.auditId, audit.parentId, parent.url)
-    }
   }
 
   const requiredComplete =

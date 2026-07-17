@@ -1,4 +1,6 @@
 /** Shared CTA / conversion-path link scoring for critical path and flow scan. */
+import { normalizeSiteHost } from '@/lib/utils/url-helpers'
+export { normalizeSiteHost }
 
 const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
 const PRICING_PATTERN = /pricing|plans?\b|price/
@@ -205,11 +207,6 @@ export { CATEGORY_MAX }
 
 export function isDeadHref(href: string): boolean {
   return classifyCtaHref(href).isPlaceholder
-}
-
-/** Normalize hostname for same-site comparisons (www vs apex). */
-export function normalizeSiteHost(hostname: string): string {
-  return hostname.toLowerCase().replace(/^www\./, '')
 }
 
 export function isSameSiteOrigin(originA: string, originB: string): boolean {

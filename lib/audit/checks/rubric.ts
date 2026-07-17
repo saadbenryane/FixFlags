@@ -80,7 +80,7 @@ export function computeRubricScores(
   let experience: number
   if (perfScores.length > 0) {
     let score = Math.round(perfScores.reduce((a, b) => a + b, 0) / perfScores.length)
-    const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 }
+    const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 } as Record<string, number>
     for (const f of experienceFindings) {
       counts[f.severity]++
     }
@@ -136,12 +136,14 @@ function rubricPenalty(severity: DeterministicFlag['severity']): number {
       return 15
     case 'POLISH':
       return 5
+    default:
+      return 0
   }
 }
 
 function scoreFromFindings(findings: DeterministicFlag[]): number {
   let score = 100
-  const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 }
+  const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 } as Record<string, number>
   for (const f of findings) {
     counts[f.severity]++
   }

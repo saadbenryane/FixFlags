@@ -3,6 +3,9 @@ import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
 import { severityRank } from '@/lib/utils'
 import type { FlagStatus, Severity } from '@prisma/client'
+import type { FlagDiffSummaryItem } from './flag-types'
+
+export type { FlagDiffSummaryItem } from './flag-types'
 
 type FlagRow = {
   id: string
@@ -76,14 +79,6 @@ export async function diffFlagsAgainstParent(
       )
     )
   }
-}
-
-export interface FlagDiffSummaryItem {
-  checkId: string | null
-  problem: string
-  rubric: string
-  severity: string
-  status?: string
 }
 
 export type FlagDiffSummaryBucket = 'fixed' | 'unchanged' | 'regressed'

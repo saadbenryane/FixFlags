@@ -14,6 +14,39 @@ ai-review job (optional, gated):
 
 Triage runs **inline in the audit job** for every scan. Prescription runs in a **separate async job** after triage completes.
 
+## Audit modes
+
+| Mode | Enum | Behavior |
+|------|------|----------|
+| Single URL | `SINGLE` | Primary page only |
+| Critical path | `CRITICAL_PATH` | Primary page + up to 5 additional same-origin URLs discovered from link metadata (`discoverCriticalPathUrls` in `lib/audit/critical-path.ts`). Categories: pricing, CTA destination, features, trust, resources. Max 6 pages total; category diversity enforced. Each page runs capture + deterministic checks; triage runs on primary only. Rubric scores combine across pages via `combine-pages.ts`. |
+
+Default for new audits: `CRITICAL_PATH` unless the client passes `mode: single` (`app/api/checks/route.ts`, MCP `fixflags_audit`).
+
+## Report completeness (`FULL` vs `PARTIAL`)
+
+`reportCompleteness` on the audit and `completeness` on each `AuditPage` reflect missing evidence, not scan failure:
+
+| Condition | Completeness |
+|-----------|--------------|
+| Desktop screenshot + metadata + both PageSpeed results + mobile screenshot | `FULL` |
+| PageSpeed 429 or partial capture | `PARTIAL` — flags still run; perf data or screenshots may be missing |
+| Triage degraded (no LLM) | `PARTIAL` — deterministic flags + honest degraded verdict |
+| Rubric dimension missing score on any page | Rubric `assessmentState: PARTIAL`, score `null` |
+
+Users still get a usable report on `PARTIAL`; UI should not treat it as a failed scan.
+
+## Re-check (post-change FULL path)
+
+Manual re-check is the core loop habit. Implementation invariants:
+
+1. **Always `monitoringMode: FULL`** — `startMonitoringAudit` in `lib/audit/monitoring.ts` always enqueues FULL. App code never writes `SUMMARY_ONLY` (legacy Prisma enum value only).
+2. **Fresh capture** — `runAudit` deletes prior screenshots and audit pages, then re-captures from live URL (including parented re-checks). There is no skipCapture / copy-parent path.
+3. **No usage charge** — re-checks set `skipUsageCount: true`.
+4. **Flag diff on finalize** — when `audit.parentId` is set, finalize calls `diffFlagsAgainstParent` (`lib/audit/diff-flags.ts`) to mark child flags FIXED / REGRESSED / NEW vs the parent report.
+
+Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` from the **current** audit's stored screenshots (`lib/audit/load-screenshot-base64.ts`).
+
 ## AI phases
 
 | Phase | When | Job | Gated by |

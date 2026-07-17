@@ -5,7 +5,6 @@ import {
   RubricGrade,
   ImpactTag,
 } from '@prisma/client'
-import { DeterministicFlag } from './checks'
 import type { JudgeOutput } from './judge-schema'
 import type { TriageOutput } from './judge-triage-schema'
 import type { PrescriptionOutput } from './judge-prescription-schema'
@@ -20,56 +19,9 @@ import {
 } from './scoring'
 import { RUBRIC_ORDER } from './constants'
 import { flagFingerprint } from './deduplicate'
+import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
 
-export interface DeterministicFlagRow {
-  auditId: string
-  pageId: string | null
-  rubricId: string | null
-  source: 'DETERMINISTIC'
-  rubric: string
-  impactTag: ImpactTag | null
-  severity: Severity
-  problem: string
-  evidence: string
-  whyItMatters: string
-  fix: string
-  confidence: number
-  verificationRule: string | null
-  checkId: string
-  pageUrl: string | null
-  fingerprint: string
-  position: number
-  agentPrompt?: string | null
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-}
-
-export interface AiFlagRow {
-  auditId: string
-  pageId: string | null
-  rubricId: string | null
-  source: 'AI'
-  rubric: string
-  impactTag: ImpactTag | null
-  severity: Severity
-  problem: string
-  evidence: string
-  whyItMatters: string
-  fix: string
-  confidence: number
-  verificationRule: string
-  checkId: null
-  pageUrl: string | null
-  fingerprint: string
-  position: number
-  agentPrompt?: string | null
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-}
+export type { DeterministicFlagRow, AiFlagRow } from './flag-types'
 
 export function buildDeterministicFlagRow(
   flag: DeterministicFlag,

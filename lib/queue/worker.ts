@@ -9,15 +9,9 @@ import { touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
+import { WORKER_CONCURRENCY } from './estimate'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
-
-function parseWorkerConcurrency(): number {
-  const raw = process.env.AUDIT_WORKER_CONCURRENCY
-  if (!raw) return 5
-  const parsed = Number.parseInt(raw, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5
-}
 
 export function startWorker() {
   void touchWorkerHeartbeat().catch((err) => {
@@ -58,7 +52,7 @@ export function startWorker() {
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       connection: createWorkerRedis() as any,
-      concurrency: parseWorkerConcurrency(),
+      concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
     }
   )

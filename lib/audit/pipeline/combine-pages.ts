@@ -4,35 +4,25 @@ import type { TriageOutput } from '../judge-triage-schema'
 import type { PageRun } from './types'
 
 /**
- * Average each rubric's deterministic score across pages, preferring the
- * deterministic score and falling back to the triage score.
+ * Average each rubric's deterministic score across pages.
+ * `computeRubricScores` always returns a number per rubric, so there is no
+ * triage-score fallback here (that branch was dead).
  */
 export function averageScores(
   pageRuns: PageRun[]
 ): Partial<Record<RubricName, number | null>> {
   const output: Partial<Record<RubricName, number | null>> = {}
   for (const rubricName of RUBRIC_ORDER) {
-    const values = pageRuns
-      .map((page) => {
-        const deterministic = computeRubricScores(
-          page.flags,
-          page.desktop,
-          page.mobile,
-          {
-            pageSpeedAvailable: {
-              desktop: Boolean(page.desktop),
-              mobile: Boolean(page.mobile),
-            },
-            failedModules: page.failedModules,
-          }
-        )[rubricName]
-        return (
-          deterministic ??
-          page.triage?.output.rubrics.find((item) => item.name === rubricName)?.score ??
-          null
-        )
-      })
-      .filter((score): score is number => score !== null)
+    const values = pageRuns.map(
+      (page) =>
+        computeRubricScores(page.flags, page.desktop, page.mobile, {
+          pageSpeedAvailable: {
+            desktop: Boolean(page.desktop),
+            mobile: Boolean(page.mobile),
+          },
+          failedModules: page.failedModules,
+        })[rubricName]
+    )
     output[rubricName] =
       values.length > 0 && values.length === pageRuns.length
         ? Math.round(values.reduce((sum, score) => sum + score, 0) / values.length)

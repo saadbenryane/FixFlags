@@ -136,71 +136,6 @@ export const SEGMENT_PROOF_SECTION = {
   ],
 } as const
 
-export const HERO_FIX_PROMPT = {
-  label: OUTPUT_LABELS.fixPrompt,
-  finding: 'Primary CTA below fold at 375px',
-  prompt:
-    'Move the primary CTA above the fold on 375px viewport. Current button starts at 1,200px from top. Hero should fit in first viewport with the main action visible without scrolling.',
-} as const
-
-export const HOW_IT_WORKS_SECTION = {
-  label: 'How it works',
-  headline: 'Flag, fix, re-check',
-  subhead: 'Three steps: flag, fix, re-check.',
-  steps: [
-    {
-      step: 1,
-      title: 'Flag',
-      body: 'Paste a URL and run an audit. Get Flags across Message, Experience, and Reach with desktop and mobile screenshots.',
-    },
-    {
-      step: 2,
-      title: 'Fix',
-      body: `Copy-ready prompts for ${AI_TOOLS}. Paste into your editor or repo and ship fixes.`,
-    },
-    {
-      step: 3,
-      title: 'Re-check',
-      body: 'Run the same URL again to confirm which Flags cleared before users find the problems.',
-    },
-  ],
-} as const
-
-export const SAMPLE_FINDINGS = [
-  { area: 'Experience', grade: 'C', issue: 'Primary CTA below fold at 375px' },
-  { area: 'Reach', grade: 'D', issue: 'Social preview image missing. Link previews show blank.' },
-  { area: 'Experience', grade: 'B', issue: '320KB of unused JavaScript' },
-] as const
-
-export const SAMPLE_FINDINGS_HEADER = OUTPUT_LABELS.whatYouGet
-
-export const WORKFLOW_SECTION = {
-  headline: 'From Flag to fix',
-} as const
-
-export const WORKFLOW_STEPS = [
-  {
-    step: 1,
-    title: 'Paste your URL',
-    body: 'Any public page',
-  },
-  {
-    step: 2,
-    title: 'Read the Flags',
-    body: 'Evidence and why each issue matters',
-  },
-  {
-    step: 3,
-    title: 'Copy a fix prompt',
-    body: `Into ${AI_TOOLS}, or to your dev`,
-  },
-  {
-    step: 4,
-    title: 'Re-check',
-    body: 'Confirm Flags cleared',
-  },
-] as const
-
 export const PROBLEM_SECTION = {
   label: 'Why you miss this in reviews',
   headline: 'Your builder shipped fast. The gaps show up when someone opens the link.',
@@ -279,45 +214,6 @@ export const SOCIAL_PROOF = {
   },
 } as const
 
-export const CASE_STUDIES = [
-  {
-    id: 'og-image',
-    company: 'SaaS landing page',
-    title: 'Fixed social preview image',
-    outcome: 'Added per-page social preview images. Each page type returns a unique preview card.',
-    area: 'Reach',
-    scoreBefore: 64,
-    scoreAfter: 78,
-    link: '/examples#example-vercel',
-    proofLink: '/examples#ex-vercel-seo-1',
-    proofType: 'Sample report' as const,
-  },
-  {
-    id: 'mobile-cta',
-    company: 'E-commerce storefront',
-    title: 'Moved primary button up on mobile',
-    outcome: 'Restructured mobile hero. Main action visible without scrolling at 375px.',
-    area: 'Experience',
-    scoreBefore: 58,
-    scoreAfter: 78,
-    link: '/examples#example-vercel',
-    proofLink: '/examples#ex-vercel-mobile-1',
-    proofType: 'Sample report' as const,
-  },
-  {
-    id: 'hero-clarity',
-    company: 'DevTools homepage',
-    title: 'Rewrote hero copy',
-    outcome: 'Headline now names audience and outcome. Message rubric improved.',
-    area: 'Message',
-    gradeBefore: 'D' as const,
-    gradeAfter: 'B' as const,
-    link: '/examples#example-vercel',
-    proofLink: '/examples#ex-vercel-conv-2',
-    proofType: 'Sample report' as const,
-  },
-] as const
-
 export const CASE_STUDIES_SECTION = {
   label: 'Re-check results',
   headline: 'Fixes that clear Flags',
@@ -376,27 +272,21 @@ export const FLOW_SCAN_STATUS = {
   },
 } as const
 
-export const IMPACT_TAGS = {
-  CONVERSION: { label: 'Conversion', description: 'Affects whether visitors take the next step' },
-  REVENUE: { label: 'Revenue', description: 'Affects willingness to pay or upgrade' },
-  TRUST: { label: 'Trust', description: 'Affects credibility and safety signals' },
-  MEASUREMENT: { label: 'Measurement', description: 'Affects analytics and event tracking' },
-  SHARING: { label: 'Sharing', description: 'Affects link previews and social cards' },
-  SEO: { label: 'SEO', description: 'Affects search visibility and metadata' },
-  ACCESSIBILITY: { label: 'Accessibility', description: 'Affects keyboard, contrast, and assistive use' },
-} as const
-
-export const SEVERITY_LABELS = {
-  CRITICAL: { label: 'Critical', description: 'Fix before you share the link' },
-  IMPORTANT: { label: 'Important', description: 'Fix soon; hurts conversion or trust' },
-  POLISH: { label: 'Polish', description: 'Worth fixing; not blocking launch' },
-} as const
-
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
   FIXED: { label: 'Fixed', description: 'Cleared on a re-check' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
-  REGRESSED: { label: 'Regressed', description: 'Came back after a fix' },
+  REGRESSED: { label: 'Regressed', description: 'Same issue, worse than before' },
+} as const
+
+export const RECHECK_DIFF_COPY = {
+  title: 'Re-check results',
+  cleared: 'Cleared',
+  remaining: 'Still open',
+  newIssues: 'New',
+  regressed: 'Regressed',
+  empty: 'No flag changes on this re-check.',
+  compareCta: 'Open full before/after',
 } as const
 
 export const PRODUCT_LADDER = {
@@ -544,23 +434,6 @@ const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly strin
   BUILDER: ['25 new checks per month', 'Before/after compare', 'Editor integration (MCP)'],
   TEAM: ['Client-ready share links', 'Proof exports', 'Up to 5 projects'],
 }
-
-export const PRICING_TEASER = {
-  headline: PRODUCT_LADDER.headline,
-  subhead: 'Full report and unlimited re-checks on every plan. Pro adds compare, more new checks, and MCP.',
-  trustLine: 'Cancel anytime · No account for first check · Recurring monthly',
-  plans: getMarketingPlans()
-    .filter((p) => p.plan === 'FREE' || p.plan === 'BUILDER' || p.plan === 'TEAM')
-    .map((p) => ({
-      name: p.name,
-      outcome: p.outcome,
-      price: `${p.price}${p.period}`,
-      features: PRICING_TEASER_BULLETS[p.plan as 'FREE' | 'BUILDER' | 'TEAM'],
-      cta: p.cta,
-      href: p.href,
-    })),
-  cta: 'See full pricing',
-} as const
 
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
@@ -853,15 +726,6 @@ export const FAQ = [
   },
 ] as const
 
-/** Top objections for the home page: full list lives on /faq */
-export const HOME_FAQ = [
-  FAQ[0],
-  FAQ[5],
-  FAQ[11],
-  FAQ[8],
-  FAQ[12],
-] as const
-
 export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
@@ -896,11 +760,6 @@ export const PRICING = {
 } as const
 
 export const PLANS = getMarketingPlans()
-
-export const SAMPLES_PAGE = {
-  subhead: 'This is what a completed FixFlags report looks like: full report, all Flags.',
-  tierNote: 'Free includes the full report and unlimited re-checks. Pro adds compare and MCP in your editor.',
-} as const
 
 export const REPORT_COPY = {
   recheck: {
@@ -1118,10 +977,57 @@ export const UPSELLS = {
   atLimit: 'AI report limit reached. Upgrade to continue',
 } as const
 
+export const FLAG_FEEDBACK_COPY = {
+  thanksUp: 'Thanks for the feedback!',
+  thanksDown: "Got it, we'll improve this.",
+  saveFailed: 'Failed to save feedback',
+} as const
+
+export const FIRST_AUDIT_PROMPT = {
+  headline: 'Paste the URL you are about to share.',
+  body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach. Each Flag includes a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.',
+  examplesLabel: 'Common first checks',
+  examples: [
+    { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
+    { label: 'Your demo day landing page', hint: 'yourstartup.com' },
+    { label: 'A client site before handoff', hint: 'clientsite.com' },
+  ],
+  footerPrefix: 'Not sure what to check first?',
+  footerLink: 'See a sample report',
+  footerSuffix: 'to know what you will get.',
+} as const
+
+export const PROJECT_ASSIGN_COPY = {
+  assigned: 'Assigned to project',
+  removed: 'Removed from project',
+  updateFailed: 'Could not update the project. Try again.',
+  loadFailed: 'Could not load projects. Try refreshing the page.',
+} as const
+
+export const SHARE_COPY = {
+  privateTitle: 'Private report',
+  privateBody: 'This link only works for you while signed in. Upgrade to Agency for public share links anyone can open.',
+  privateLinkCta: 'Copy private link',
+  privateLinkCopied: 'Private link copied',
+  privateLinkCopiedDetail: 'This link only works for you while signed in.',
+  agencyCta: 'Agency',
+} as const
+
+export const ANON_CLAIM_GUIDE = {
+  headline: 'Save this report, then prove your fixes',
+  body: 'Create a free account to unlock fix prompts, keep this report, and re-check when you ship changes. Re-checks stay free.',
+  primaryCta: 'Create free account',
+  steps: [
+    'Create an account to claim this report',
+    'Copy a fix prompt into your editor',
+    'Re-check to see which Flags cleared',
+  ],
+} as const
+
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your 3 AI reports',
-    body: 'Upgrade to Pro for 25 new checks per month, before/after compare, and MCP in Cursor or Claude.',
+    body: 'Deterministic checks and unlimited re-checks still work. Upgrade to Pro for 25 AI reports per month, before/after compare, and MCP in Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -1305,10 +1211,4 @@ export const SEO = {
     title: 'Terms of Service',
     description: 'Terms for using FixFlags.',
   },
-} as const
-
-export const MARKETING_ILLUSTRATION_PROMPTS = {
-  hero: 'Minimal editorial SaaS hero: browser window with Flag list and fix prompt snippet, warm neutral palette, no text labels.',
-  steps: 'Three-step horizontal flow: URL check, clipboard fix prompt, re-check with cleared Flags, flat vector, muted ochre accent.',
-  proof: 'Split panel: website screenshot with highlighted Flags and copy-ready prompt card, calm dark UI, product marketing style.',
 } as const

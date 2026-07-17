@@ -218,5 +218,11 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     )
   }
 
-  return null
+  // COMPLETED: keep the progressive frame until router.refresh() swaps in the
+  // server-rendered AuditReport. Returning null here blanked the payoff moment.
+  return (
+    <AuditShell session={session}>
+      <AuditReportProgressive {...progressiveProps} />
+    </AuditShell>
+  )
 }

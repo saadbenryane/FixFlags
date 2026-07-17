@@ -17,6 +17,8 @@ import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
+import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -91,13 +93,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'FixFlags report' }
   }
 
-  const hostname = (() => {
-    try {
-      return new URL(audit.url).hostname
-    } catch {
-      return audit.url
-    }
-  })()
+  const hostname = displayHostname(audit.url)
 
   const topIssue = topIssueFromFlags(audit.flags)
   const title = audit.score != null
@@ -217,6 +213,11 @@ export default async function ReportPage({ params }: Props) {
 
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
 
+  const recheckDiff =
+    audit.status === 'COMPLETED' && audit.parentId
+      ? await getFlagDiffSummary(audit.parentId, id)
+      : null
+
   if (audit.status === 'COMPLETED') {
     const rubricRows = audit.rubricRows as Array<{
       id: string
@@ -331,6 +332,10 @@ export default async function ReportPage({ params }: Props) {
           prescriptionFailed={prescriptionFailed}
           failureCode={audit.failureCode ?? null}
           pages={journeyPages}
+          recheckDiff={recheckDiff}
+          compareHref={
+            canAccessCompareView && audit.parentId ? `/compare/${id}` : null
+          }
           toolbarActions={
             <AuditPageActions
               auditId={id}

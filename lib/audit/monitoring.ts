@@ -48,12 +48,13 @@ export async function startMonitoringAudit(
     return validation
   }
 
+  // Manual re-check is always a FULL fresh capture.
   const { auditId, status } = await createAndEnqueueAudit({
     url: parent!.url,
     userId: user.id,
     parentId,
     skipUsageCount: true,
-    monitoringMode: 'SUMMARY_ONLY',
+    monitoringMode: 'FULL',
     delayMs: options.delayMs,
     attribution: buildAttribution({
       url: parent!.url,

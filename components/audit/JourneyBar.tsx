@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { displayHostname, parsePageLabel } from '@/lib/utils/url-helpers'
 
 export interface JourneyPage {
   id: string
@@ -38,21 +41,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 function roleLabel(role: string, url: string): string {
   if (ROLE_LABELS[role]) return ROLE_LABELS[role]
-  try {
-    const path = new URL(url).pathname
-    if (path === '/') return 'Homepage'
-    const segment = path.split('/').filter(Boolean)[0]
-    if (segment) return segment.charAt(0).toUpperCase() + segment.slice(1)
-  } catch {}
+  const label = parsePageLabel(url)
+  if (label) return label.charAt(0).toUpperCase() + label.slice(1)
   return role
-}
-
-function pageHostname(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
 }
 
 function dotColor(page: JourneyPage): string {
@@ -80,10 +71,14 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
           mode: 'critical_path',
         }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        router.push(`/report/${data.reportId}`)
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message)
+        return
       }
+      const data = await res.json()
+      router.push(`/report/${data.reportId}`)
+    } catch {
+      toast.error('Could not start the deeper scan. Try again.')
     } finally {
       setScanning(false)
     }
@@ -123,7 +118,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
                 )}
               </div>
               <span className="max-w-[120px] truncate text-[10px] text-muted-foreground sm:max-w-[180px]">
-                {pageHostname(page.url)}
+                {displayHostname(page.url)}
               </span>
             </div>
 

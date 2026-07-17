@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 const BASE_SECTIONS = [
   { id: 'report-flags', label: 'Flags' },
@@ -124,14 +125,7 @@ export function ReportStickyToolbar({
     }
   }
 
-  const hostname = (() => {
-    if (!siteUrl) return null
-    try {
-      return new URL(siteUrl).hostname
-    } catch {
-      return null
-    }
-  })()
+  const hostname = siteUrl ? displayHostname(siteUrl) : null
   const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
 
   return (
@@ -146,7 +140,7 @@ export function ReportStickyToolbar({
         variant="report"
         className="flex flex-col items-stretch gap-0 px-0 py-0 xl:flex-row xl:items-center xl:gap-4"
       >
-        <div className="order-2 flex w-full min-w-0 items-center gap-4 overflow-x-auto scrollbar-thin xl:order-1 xl:w-auto xl:flex-1">
+        <div className="order-2 flex w-full min-w-0 items-center gap-3 overflow-x-auto scrollbar-thin max-xl:gap-2 sm:gap-4 xl:order-1 xl:w-auto xl:flex-1 xl:gap-4">
           {hostname && isStuck && (
             <span className="hidden max-w-[140px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground sm:flex">
               <span
@@ -159,7 +153,7 @@ export function ReportStickyToolbar({
           )}
           <nav
             aria-label="Report sections"
-            className={cn('flex min-w-max items-center gap-4 sm:gap-5', className)}
+            className={cn('flex min-w-max items-center gap-3 sm:gap-5', className)}
           >
             {sections.map((section) => (
               <button
@@ -168,7 +162,8 @@ export function ReportStickyToolbar({
                 onClick={() => scrollTo(section.id)}
                 aria-current={active === section.id ? 'page' : undefined}
                 className={cn(
-                  'relative h-12 shrink-0 border-b-2 px-0.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
+                  'relative shrink-0 border-b-2 px-0.5 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
+                  'h-10 text-xs max-xl:h-10 sm:h-12 sm:text-sm',
                   active === section.id
                     ? 'border-brand text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -180,7 +175,7 @@ export function ReportStickyToolbar({
           </nav>
         </div>
         {actions ? (
-          <div className="order-1 flex w-full min-w-0 flex-wrap items-center justify-end gap-2 py-2 xl:order-2 xl:w-auto xl:shrink-0">
+          <div className="order-1 flex w-full min-w-0 flex-wrap items-center justify-end gap-1.5 py-1.5 max-xl:gap-1.5 sm:gap-2 sm:py-2 xl:order-2 xl:w-auto xl:shrink-0">
             {actions}
           </div>
         ) : null}

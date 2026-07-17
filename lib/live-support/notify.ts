@@ -1,10 +1,9 @@
-import { Resend } from 'resend'
+import { resend } from '@/lib/email/client'
 import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
 import { logger } from '@/lib/logger'
 import { getAppUrl } from '@/lib/get-app-url'
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL

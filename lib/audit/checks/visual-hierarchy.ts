@@ -1,4 +1,5 @@
 import { PageMetadata } from '../metadata'
+import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from './index'
 
@@ -7,7 +8,7 @@ export function runVisualHierarchyChecks(
   captureMetrics: CaptureMetrics | null
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const bodyText = (meta.pageText ?? '').slice(0, 6000)
+  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const h1s = meta.h1s ?? []
   const h2s = meta.h2s ?? []
 

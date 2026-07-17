@@ -31,7 +31,6 @@ vi.mock('@/lib/audit/pipeline-log', () => ({
   logPipelineEvent: vi.fn(),
 }))
 vi.mock('@/lib/audit/critical-path', () => ({ discoverCriticalPathUrls: vi.fn(() => []) }))
-vi.mock('@/lib/audit/copy-parent-artifacts', () => ({ copyParentArtifacts: vi.fn() }))
 vi.mock('@/lib/audit/finalize', () => ({ persistFailedAuditCost: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
@@ -157,5 +156,29 @@ describe('runAudit orchestrator', () => {
     expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
     expect(tryPartialFinalize).not.toHaveBeenCalled()
     expect(updateStatuses()).not.toContain('FAILED')
+  })
+
+  it('runs fresh capture for parented re-checks', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      makeAudit({ parentId: 'parent-1', monitoringMode: 'FULL' })
+    )
+
+    await runAudit('audit-1')
+
+    const first = prismaMock.audit.update.mock.calls[0][0] as {
+      data: { status: string; progress: number }
+    }
+    expect(first.data.status).toBe('CAPTURING')
+    expect(runPage).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        url: 'https://example.com',
+        primary: true,
+        position: 0,
+      })
+    )
+    const pageArgs = (runPage as Mock).mock.calls[0][1] as Record<string, unknown>
+    expect(pageArgs).not.toHaveProperty('skipCapture')
+    expect(pageArgs).not.toHaveProperty('parentId')
   })
 })

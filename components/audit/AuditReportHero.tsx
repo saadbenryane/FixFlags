@@ -7,6 +7,7 @@ import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 type Props = {
   variant?: 'default' | 'minimal'
@@ -65,13 +66,7 @@ export function AuditReportHero({
   const shareMessage = shareStatusMessage(shareStatus, criticalCount, flagTotal)
   const isReady = shareStatus === 'good_to_share'
 
-  const hostname = (() => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return url
-    }
-  })()
+  const hostname = displayHostname(url)
 
   const firstScreenshot = screenshots?.[0]
   const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'

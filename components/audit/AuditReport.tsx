@@ -15,7 +15,7 @@ import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
-import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_CLAIM_GUIDE } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
@@ -39,6 +39,10 @@ import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import { PreviewCards } from '@/components/audit/PreviewCards'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
+import {
+  RecheckDiffStrip,
+  type RecheckDiffSummary,
+} from '@/components/audit/RecheckDiffStrip'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
@@ -104,6 +108,8 @@ interface AuditReportProps {
   actions?: ReactNode
   toolbarActions?: ReactNode
   pages?: JourneyPage[]
+  recheckDiff?: RecheckDiffSummary | null
+  compareHref?: string | null
 }
 
 export function AuditReport({
@@ -127,6 +133,8 @@ export function AuditReport({
   actions,
   toolbarActions,
   pages = [],
+  recheckDiff = null,
+  compareHref = null,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample
@@ -213,6 +221,10 @@ export function AuditReport({
             <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
               {userVerdict}
             </blockquote>
+          ) : null}
+
+          {recheckDiff ? (
+            <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
           ) : null}
         </>
       )}
@@ -374,12 +386,24 @@ export function AuditReport({
         )}
 
         {!isSample && fixPromptLocked && (
-          <Card className="space-y-3 p-6 text-center">
-            <CardTitle>{UPSELLS.anon.headline}</CardTitle>
-            <p className="text-sm text-muted-foreground">{UPSELLS.anon.body}</p>
-            <div className="flex justify-center gap-3">
+          <Card className="space-y-4 p-6 text-center sm:p-8">
+            <div className="space-y-2">
+              <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>
+              <p className="text-sm text-muted-foreground text-pretty">{ANON_CLAIM_GUIDE.body}</p>
+            </div>
+            <ol className="mx-auto max-w-md space-y-2 text-left text-sm text-foreground">
+              {ANON_CLAIM_GUIDE.steps.map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {index + 1}.
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="flex flex-wrap justify-center gap-3">
               <Button asChild>
-                <Link href={signUpHref}>{UPSELLS.anon.primaryCta}</Link>
+                <Link href={signUpHref}>{ANON_CLAIM_GUIDE.primaryCta}</Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>

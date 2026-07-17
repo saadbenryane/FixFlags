@@ -130,6 +130,7 @@ describe('flag-copy', () => {
     assert.equal(
       resolveFixPrompt({
         id: '1',
+        checkId: 'test-check',
         rubric: 'MESSAGE',
         severity: 'IMPORTANT',
         problem: 'Generic headline',

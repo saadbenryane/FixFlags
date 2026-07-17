@@ -1,4 +1,5 @@
 import { PageMetadata } from '../metadata'
+import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { DeterministicFlag } from './index'
 
 const WEAK_VALUE_WORDS = /\b(solution|platform|tool|app|software|product|company|business)\b/i
@@ -12,7 +13,7 @@ const OUTCOME_REGEX = /\b(build|ship|launch|convert|grow|save|reduce|increase|au
 
 export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const bodyText = (meta.pageText ?? '').slice(0, 6000)
+  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const h1s = meta.h1s ?? []
   const h1 = h1s[0] ?? ''
   const h2s = meta.h2s ?? []

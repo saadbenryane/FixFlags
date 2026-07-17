@@ -13,6 +13,7 @@ import {
   buildAllEvidenceHighlights,
   type EvidenceHighlight,
 } from '@/lib/audit/evidence-highlights'
+import { displayHostname } from '@/lib/utils/url-helpers'
 import {
   buildRubricScoreRows,
   type RubricScoreRow,
@@ -107,13 +108,7 @@ export function buildLiveExplorerModel(input: {
   const mobileScreenshot = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
   const desktop = desktopScreenshot ? normalizeInternalScreenshotUrl(desktopScreenshot) : null
   const mobile = mobileScreenshot ? normalizeInternalScreenshotUrl(mobileScreenshot) : null
-  const displayHost = (() => {
-    try {
-      return new URL(input.url).hostname.replace(/^www\./, '')
-    } catch {
-      return input.url
-    }
-  })()
+  const displayHost = displayHostname(input.url)
 
   return {
     displayHost,

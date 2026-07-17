@@ -15,14 +15,14 @@
 |------|-------|-----------------------------|
 | Prisma models | **40** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
-| Check capabilities | 30 live / 1 partial | `npm run audit:capabilities` |
+| Check capabilities | 44 live / 1 partial | `npm run audit:capabilities` |
 | Check IDs | **129** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **13** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.3.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (30) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (129) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (44) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (129) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
 
 ## Key directories and authoritative files
 
@@ -99,8 +99,8 @@
 - **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
-- **Report UI — MiniNav:** `showFix` prop exists but is **always false** (old standalone fix section removed iteration 4). Fix prompt tab inserted after Flags. Do not reintroduce.
-- **Dead code to avoid:** `topFixPrompt && !explorerModel` is a logically impossible condition; never use `Boolean(topFixPrompt && !explorerModel)` for `showFix`.
+- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Flags, optional Journey/Overview/Previews/Flow/Launch, Re-check for non-owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.
 - **impactTag** is set on all deterministic checks.

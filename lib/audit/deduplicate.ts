@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'
 import type { TriageOutput } from '@/lib/audit/judge-triage-schema'
+import type { ThemeMatchableFlag } from './flag-types'
 
 function normalizedWords(value: string): Set<string> {
   return new Set(
@@ -64,12 +65,6 @@ const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> =
     keywords: /tap target|touch target|48x48|48×48/i,
   },
 ]
-
-interface ThemeMatchableFlag {
-  problem: string
-  evidence: string
-  whyItMatters?: string
-}
 
 function matchesDeterministicTheme(
   deterministic: DeterministicFlag[],

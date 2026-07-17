@@ -39,25 +39,23 @@ Steps 4-7 are the differentiator. Re-check is the habit.
 ## What we ship
 
 ### Free (forever)
-- Deterministic checks (metadata, accessibility, performance, SEO, trust, mobile, content, slop, og:image)
+- Unlimited deterministic checks (metadata, accessibility, performance, SEO, trust, mobile, content, slop, og:image)
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
-- AI review across Message, Experience, Reach
+- 3 AI reports lifetime (full report with rubric scores, AI flags, and fix prompts)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
-- Re-checks (free and unlimited)
-- 3 new URL audits lifetime
+- Re-checks (free and unlimited on owned reports)
 
-### Pro ($29/mo)
-- 25 new URL audits per month
-- Monitoring (re-curated URL checks)
+### Pro ($29/mo) — `BUILDER` in schema
+- 25 new URL checks per month
 - Before/after compare
 - MCP integration (Cursor + Claude Code)
 
-### Agency ($99/mo)
-- 100 new URL audits per month
+### Agency ($99/mo) — `TEAM` in schema
+- 100 new URL checks per month
 - Share links and exports
 - 5 projects
-- GitHub repo scanning (code-level fix PRs)
+- GitHub repo scanning (findings-only: secrets, dependency hygiene, dangerous patterns — no auto-fix PRs)
 
 ### High Volume (custom)
 - 500+ audits
@@ -114,7 +112,6 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Unresolved questions
 
-- Are paying users willing to pay for monitoring (re-curated checks)?
-- Is repo scanning enough to close Agency sales?
-- Will free users convert to Pro before exhausting their 3 lifetime checks?
-- What is the right re-check cadence for monitoring?
+- Is findings-only repo scanning enough to close Agency sales?
+- Will free users convert to Pro before exhausting their 3 lifetime AI reports?
+- What re-check cadence builds the strongest Flag → Fix → Re-check habit?

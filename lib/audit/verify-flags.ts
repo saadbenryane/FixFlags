@@ -1,10 +1,6 @@
-import { prisma } from '@/lib/db'
 import { DeterministicFlag } from './checks'
-import { runDeterministicAudit } from './deterministic-audit'
-import { serializeFlowData } from './flow/flow-url'
 import { verifiableCheckIds } from './verification-rules'
-import { resolveMonitoringFlagStatus } from './flag-status-resolution'
-import type { FlagStatus } from '@prisma/client'
+import { diffFlagsAgainstParent } from './diff-flags'
 
 export {
   allCheckIdsHaveVerificationRules,
@@ -29,91 +25,22 @@ export function buildCurrentVerifiableCheckIds(flags: DeterministicFlag[]): Set<
   return currentVerifiableCheckIds(flags)
 }
 
-/** Re-run deterministic checks on monitoring and mark flags verified when checkId clears. */
+/**
+ * Sync FIXED / REGRESSED / OPEN statuses from the child's own fresh flags vs parent.
+ * Re-checks run FULL capture + checks in the main pipeline; this must never start a
+ * second Puppeteer / deterministic-audit sidecar.
+ *
+ * `@deprecated` Prefer calling `diffFlagsAgainstParent` directly from finalize.
+ * Kept as a thin alias for callers that still pass a URL argument.
+ */
 export async function applyDeterministicVerification(
   monitoringAuditId: string,
   parentAuditId: string,
-  url: string
+  // URL retained for call-site compatibility; verification uses persisted child flags.
+  url?: string
 ): Promise<void> {
-  const parentFlags = await prisma.flag.findMany({
-    where: {
-      auditId: parentAuditId,
-      checkId: { in: [...VERIFIABLE_CHECK_IDS] },
-    },
-  })
-
-  if (parentFlags.length === 0) return
-
-  let auditResult
-  try {
-    auditResult = await runDeterministicAudit(url, {
-      includeFlow: true,
-      auditId: monitoringAuditId,
-    })
-  } catch {
-    return
-  }
-
-  if (auditResult.flowResult) {
-    await prisma.audit.update({
-      where: { id: monitoringAuditId },
-      data: {
-        flowData: serializeFlowData(auditResult.flowResult) as never,
-      },
-    })
-  }
-
-  const currentCheckIds = currentVerifiableCheckIds(auditResult.flags)
-  const currentSeverityByCheckId = new Map(
-    auditResult.flags.filter((f) => f.checkId).map((f) => [f.checkId as string, f.severity])
-  )
-
-  for (const flag of parentFlags) {
-    if (!flag.checkId || !VERIFIABLE_CHECK_IDS.has(flag.checkId)) continue
-    const stillFails = currentCheckIds.has(flag.checkId)
-    const status = resolveMonitoringFlagStatus({
-      parentStatus: flag.status,
-      parentSeverity: flag.severity,
-      // Look up this checkId's fresh severity from the just-run monitoring audit
-      // instead of reusing the parent's own severity - passing flag.severity for
-      // both parentSeverity and monitoringSeverity made a same-severity comparison
-      // by construction, so a genuine regression (this issue now firing at a worse
-      // severity) could never be detected on the parent flag's own status field.
-      monitoringSeverity: currentSeverityByCheckId.get(flag.checkId) ?? flag.severity,
-      stillFails,
-    })
-    await prisma.flag.update({
-      where: { id: flag.id },
-      data: {
-        status,
-        resolvedInId: stillFails ? null : monitoringAuditId,
-      },
-    })
-  }
-
-  const monitoringFlags = await prisma.flag.findMany({
-    where: {
-      auditId: monitoringAuditId,
-      checkId: { in: [...VERIFIABLE_CHECK_IDS] },
-    },
-  })
-
-  for (const flag of monitoringFlags) {
-    if (!flag.checkId) continue
-    const parentMatch = parentFlags.find((p) => p.checkId === flag.checkId)
-    if (!parentMatch) continue
-    const stillFails = currentCheckIds.has(flag.checkId)
-    const status: FlagStatus = resolveMonitoringFlagStatus({
-      parentStatus: parentMatch.status,
-      parentSeverity: parentMatch.severity,
-      monitoringSeverity: flag.severity,
-      stillFails,
-    })
-    await prisma.flag.update({
-      where: { id: flag.id },
-      data: { status },
-    })
-  }
+  void url
+  await diffFlagsAgainstParent(monitoringAuditId, parentAuditId)
 }
 
 export type { DeterministicFlag }

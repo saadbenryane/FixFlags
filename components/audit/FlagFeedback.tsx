@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ThumbsUp, ThumbsDown } from 'lucide-react'
 import { toast } from 'sonner'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { FLAG_FEEDBACK_COPY } from '@/lib/marketing/copy'
 
 interface Props {
   flagId: string
@@ -18,14 +20,18 @@ export function FlagFeedback({ flagId }: Props) {
   async function save(v: number, c?: string) {
     setSending(true)
     try {
-      await fetch(`/api/flags/${flagId}/feedback`, {
+      const res = await fetch(`/api/flags/${flagId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vote: v, comment: c }),
       })
+      if (!res.ok) {
+        toast.error((await parseApiErrorResponse(res)).message || FLAG_FEEDBACK_COPY.saveFailed)
+        return false
+      }
       return true
     } catch {
-      toast.error('Failed to save feedback')
+      toast.error(FLAG_FEEDBACK_COPY.saveFailed)
       return false
     } finally {
       setSending(false)
@@ -34,16 +40,20 @@ export function FlagFeedback({ flagId }: Props) {
 
   async function handleVote(v: number) {
     if (vote === v) return
+    const previous = vote
     const wasNew = vote === null
     setVote(v)
     const ok = await save(v)
-    if (!ok) return
+    if (!ok) {
+      setVote(previous)
+      return
+    }
     if (v === -1) {
       // Invite a quick note on what's wrong (the most useful signal for us).
       setShowComment(true)
     } else {
       setShowComment(false)
-      if (wasNew) toast.success('Thanks for the feedback!')
+      if (wasNew) toast.success(FLAG_FEEDBACK_COPY.thanksUp)
     }
   }
 

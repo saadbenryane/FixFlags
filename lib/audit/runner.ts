@@ -7,7 +7,6 @@ import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import { discoverCriticalPathUrls } from './critical-path'
-import { copyParentArtifacts } from './copy-parent-artifacts'
 import { persistFailedAuditCost } from './finalize'
 import { runPage } from './pipeline/run-page'
 import {
@@ -37,30 +36,16 @@ export async function runAudit(auditId: string): Promise<void> {
       includeAi: audit.includeAi,
     }
 
-    const isSummaryOnly = audit.monitoringMode === 'SUMMARY_ONLY'
-    const summarySourceId = isSummaryOnly ? (audit.parentId ?? auditId) : null
-
-    if (isSummaryOnly && summarySourceId) {
-      if (summarySourceId !== auditId) {
-        await prisma.$transaction([
-          prisma.screenshot.deleteMany({ where: { auditId } }),
-          prisma.auditPage.deleteMany({ where: { auditId } }),
-        ])
-        await copyParentArtifacts(auditId, summarySourceId)
-      } else {
-        await prisma.auditPage.deleteMany({ where: { auditId } })
-      }
-    } else {
-      await prisma.$transaction([
-        prisma.screenshot.deleteMany({ where: { auditId } }),
-        prisma.auditPage.deleteMany({ where: { auditId } }),
-      ])
-    }
+    // Always fresh capture, including parented re-checks.
+    await prisma.$transaction([
+      prisma.screenshot.deleteMany({ where: { auditId } }),
+      prisma.auditPage.deleteMany({ where: { auditId } }),
+    ])
 
     await prisma.audit.update({
       where: { id: auditId },
       data: {
-        status: isSummaryOnly ? 'CHECKING' : 'CAPTURING',
+        status: 'CAPTURING',
         startedAt,
         completedAt: null,
         finalizedAt: null,
@@ -68,7 +53,7 @@ export async function runAudit(auditId: string): Promise<void> {
         failureCode: null,
         failureStage: null,
         failureMetadata: Prisma.JsonNull,
-        progress: isSummaryOnly ? AUDIT_PROGRESS.CHECKING : AUDIT_PROGRESS.CAPTURING,
+        progress: AUDIT_PROGRESS.CAPTURING,
       },
     })
 
@@ -82,13 +67,11 @@ export async function runAudit(auditId: string): Promise<void> {
         position: 0,
         role: 'primary',
         primary: true,
-        skipCapture: isSummaryOnly,
-        parentId: summarySourceId ?? undefined,
       })
       pageRuns.push(primary)
 
       const discovered =
-        audit.auditMode === 'CRITICAL_PATH' && !isSummaryOnly
+        audit.auditMode === 'CRITICAL_PATH'
           ? discoverCriticalPathUrls(audit.url, primary.metadata)
           : [{ url: audit.url, category: 'primary' as const }]
 

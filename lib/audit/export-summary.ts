@@ -3,6 +3,7 @@ import { formatScoreInline } from '@/lib/audit/score-display'
 import { displayVerdict } from '@/lib/audit/verdict'
 import { rubricLabel, shareStatusLabel } from '@/lib/utils'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 import {
   buildRubricInput,
@@ -10,11 +11,7 @@ import {
   computeShareStatus,
 } from '@/lib/audit/rubric'
 
-interface ExportFlag {
-  severity: string
-  problem: string
-  rubric?: string
-}
+import type { ExportFlag } from './flag-types'
 
 interface ExportRubricRow {
   name: string
@@ -46,13 +43,7 @@ function formatRubricScore(row: ExportRubricRow): string {
 }
 
 export function buildAuditExportSummary(audit: ExportAuditInput): string {
-  const hostname = (() => {
-    try {
-      return new URL(audit.url).hostname
-    } catch {
-      return audit.url
-    }
-  })()
+  const hostname = displayHostname(audit.url)
 
   const overallGrade = audit.score != null ? gradeFromScore(audit.score) : null
   const scoreLine =

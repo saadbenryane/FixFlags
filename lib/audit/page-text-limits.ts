@@ -20,6 +20,13 @@ export const TRIAGE_TEXT = 2500
 export const PRESCRIPTION_TEXT = 5000
 
 /**
+ * Truncation limit used by check modules when analyzing page text.
+ * Set to MAX_STORED_TEXT so check modules see exactly what was stored.
+ * All check modules must import this constant: never hardcode a slice length.
+ */
+export const CHECK_TEXT_LIMIT = MAX_STORED_TEXT
+
+/**
  * Validates the invariant relationships between text limits.
  * Called in tests to catch configuration drift.
  */

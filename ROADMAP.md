@@ -4,23 +4,36 @@
 
 ## Now
 
-- **Monetization blockers** — close 4 remaining BLOCKER items from test-strategy.md:
-  1. Real-site regression fixtures in CI
-  2. AI judge contract validation
-  3. Persist layer tests
-  4. Pipeline state machine tests
-  *Billing gating enforcement is done* (see `QUALITY.md` Strength tier).
-  *Signal:* Ads can run without risking customer trust.
-
-- **Scan depth Phase 1** — per scan-roadmap.md Phase 1. The validated exception to the zero-features freeze.
-
-## Next
-
 - **Growth distribution** — improve conversion from anonymous → signed-up → paying:
   - Smooth onboarding flow
   - Better upsell timing and copy
-  - Re-engagement for users who exhausted free checks
+  - Re-engagement for users who exhausted free AI reports
   *Signal:* >5% free-to-paid conversion.
+
+- **Residual hardening** — not blocking ads, but required before scaling:
+  - Extend API route contract tests beyond primary paid endpoints
+  - Auth/session runtime tests (login, logout, expiry, plan entitlements)
+  - Touch-tier component tests (report states, empty states)
+  *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).
+
+## Recently closed
+
+- **Monetization blockers — CLOSED.** All five items have automated coverage in CI via `npm run test:unit`. See [QUALITY.md § Monetization blockers](./QUALITY.md#monetization-blockers).
+- **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation. See [scan-roadmap.md](./docs/scan-roadmap.md).
+
+## Readiness (reconciled)
+
+Single honest baseline across [QUALITY.md](./QUALITY.md) and [test-strategy.md](./test-strategy.md):
+
+| Tier | Readiness | Residual CRITICAL |
+|------|-----------|-------------------|
+| Truth | ~90% | Form validation ratio test; score math edge cases (all-CRITICAL, module failures) |
+| Strength | ~80% | API route contracts (most routes untested); rate limiting; auth/session runtime; CI parity with local `verify` |
+| Touch | 10% | Report rendering per audit state; empty states (no scans, no flags, deleted audit) |
+
+Monetization blockers (regression fixtures, judge contract, persist layer, pipeline state machine, billing gating) are closed. Strength ~80% reflects that; QUALITY.md's tier table (25%) lags the closed-blocker evidence.
+
+## Next
 
 - **Knowledge graph Phase 2** — deeper issue frequency pages, more benchmark content.
   *Signal:* Organic traffic from issue pages exceeds homepage traffic.

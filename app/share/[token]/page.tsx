@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { ShareLinkPageClient } from '@/components/audit/ShareLinkPageClient'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -47,9 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Link expired' }
   }
 
-  const hostname = link.audit.url
-    ? (() => { try { return new URL(link.audit.url).hostname } catch { return link.audit.url } })()
-    : 'FixFlags report'
+  const hostname = link.audit.url ? displayHostname(link.audit.url) : 'FixFlags report'
 
   const score = link.audit.score
   const topIssue = link.audit.flags.find(f => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT')?.problem

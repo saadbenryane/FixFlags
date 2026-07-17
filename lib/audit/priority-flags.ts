@@ -1,24 +1,7 @@
 import { gradeRank, severityRank } from '@/lib/utils'
+import type { RankableFlag } from './flag-types'
 
-export interface RankableFlag {
-  id: string
-  checkId?: string | null
-  rubric: string
-  severity: string
-  impactTag?: string | null
-  problem: string
-  evidence?: string
-  whyItMatters?: string
-  fix?: string
-  agentPrompt?: string | null
-  cursorPrompt?: string | null
-  claudePrompt?: string | null
-  lovablePrompt?: string | null
-  boltPrompt?: string | null
-  verificationRule?: string | null
-  pageUrl?: string | null
-  confidence?: number | null
-}
+export type { RankableFlag } from './flag-types'
 
 const IMPACT_PRIORITY: Record<string, number> = {
   REVENUE: 0,

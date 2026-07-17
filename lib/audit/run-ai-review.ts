@@ -4,7 +4,7 @@ import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
 import { AUDIT_PROGRESS } from './progress'
 import { JudgeContractError } from './validate-judge-output'
-import { loadParentScreenshotBase64 } from './copy-parent-artifacts'
+import { loadAuditScreenshotBase64 } from './load-screenshot-base64'
 import type { PageMetadata } from './metadata'
 import { logPipelineEvent } from './pipeline-log'
 import { remainingAiReportCredits } from './ai-report-entitlement'
@@ -51,7 +51,7 @@ export async function runAiReview(auditId: string): Promise<void> {
     throw new Error('Triage verdict missing for prescription')
   }
 
-  const { desktopBase64, mobileBase64 } = await loadParentScreenshotBase64(auditId)
+  const { desktopBase64, mobileBase64 } = await loadAuditScreenshotBase64(auditId)
   if (!desktopBase64) throw new Error('Desktop screenshot missing for prescription')
 
   const techStack: string[] = (() => {

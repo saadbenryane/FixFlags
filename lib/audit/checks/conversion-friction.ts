@@ -1,4 +1,5 @@
 import { PageMetadata } from '../metadata'
+import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { DeterministicFlag } from './index'
 
 const FREE_TRIAL_MARKERS = /(free trial|try free|start free|no credit card|no cc|free plan|get started free|14.day trial|7.day trial|30.day trial)/i
@@ -32,7 +33,7 @@ function hasLogoWall(images: Array<{ alt: string | null }>): boolean {
 
 export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const bodyText = (meta.pageText ?? '').slice(0, 6000)
+  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const ctaTexts = meta.ctaTexts ?? []
   const links = meta.links ?? []
   const h1s = meta.h1s ?? []

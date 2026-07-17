@@ -1,4 +1,5 @@
 import { PageMetadata } from '../metadata'
+import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { DeterministicFlag } from './index'
 
 const AUTHORITY_MARKERS = [
@@ -58,7 +59,7 @@ function isInternalNavigationHref(href: string, pageHostname: string | null): bo
 
 export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
-  const bodyText = (meta.pageText ?? '').slice(0, 6000)
+  const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const htmlText = bodyText.toLowerCase()
   const ctaTexts = meta.ctaTexts ?? []
   const links = meta.links ?? []

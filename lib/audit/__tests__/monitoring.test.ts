@@ -1,6 +1,23 @@
-import { describe, it } from 'vitest'
+import { describe, it, vi, expect, beforeEach } from 'vitest'
 import assert from 'node:assert/strict'
-import { validateMonitoringParent } from '@/lib/audit/monitoring'
+import type { User } from '@prisma/client'
+
+const { createAndEnqueueAudit, prismaMock } = vi.hoisted(() => ({
+  createAndEnqueueAudit: vi.fn(),
+  prismaMock: {
+    audit: { findUnique: vi.fn() },
+  },
+}))
+
+vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+vi.mock('@/lib/audit/create-audit', () => ({
+  createAndEnqueueAudit,
+}))
+vi.mock('@/lib/leads/attribution', () => ({
+  buildAttribution: () => ({ source: 'DASHBOARD' }),
+}))
+
+import { validateMonitoringParent, startMonitoringAudit } from '@/lib/audit/monitoring'
 
 describe('validateMonitoringParent', () => {
   it('rejects missing parent', () => {
@@ -39,5 +56,32 @@ describe('validateMonitoringParent', () => {
       'u1'
     )
     assert.equal(result.ok, true)
+  })
+})
+
+describe('startMonitoringAudit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    prismaMock.audit.findUnique.mockResolvedValue({
+      userId: 'u1',
+      status: 'COMPLETED',
+      url: 'https://example.com',
+    })
+    createAndEnqueueAudit.mockResolvedValue({ auditId: 'child-1', status: 'QUEUED' })
+  })
+
+  it('enqueues a FULL fresh capture re-check (not SUMMARY_ONLY)', async () => {
+    const user = { id: 'u1' } as User
+    const outcome = await startMonitoringAudit('parent-1', user)
+    assert.equal(outcome.ok, true)
+    expect(createAndEnqueueAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://example.com',
+        userId: 'u1',
+        parentId: 'parent-1',
+        skipUsageCount: true,
+        monitoringMode: 'FULL',
+      })
+    )
   })
 })

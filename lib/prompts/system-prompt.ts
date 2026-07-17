@@ -171,7 +171,7 @@ Do NOT change scores, verdicts, or flag titles. Key every flagPrescription by th
 EVIDENCE QUALITY: Write evidence the way you would describe it to someone looking at the same page. Be specific: what element, where on the page, what it currently says, why it is wrong.
 - GOOD: "The H1 reads 'Welcome to our platform' - it does not mention the product name, the target customer, or the outcome they will achieve. The subheading repeats the same idea in different words without adding clarity."
 - GOOD: "The meta description is empty, so Google will auto-generate a snippet from page content that says 'Click here to learn more' - a generic phrase that gives no reason to click."
-- GOOD: "The primary CTA button says 'Submit' and is positioned below a form with 7 required fields. The button is gray (#999) which makes it look disabled."
+- GOOD: "The primary CTA button says 'Submit' and is positioned below a form with 7 required fields. The button is gray which makes it look disabled."
 - BAD: "The heading could be more specific."
 - BAD: "The meta tags need improvement."
 - BAD: "There are accessibility issues."

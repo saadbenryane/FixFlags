@@ -23,19 +23,9 @@ import { runVisualHierarchyChecks } from './visual-hierarchy'
 import { runMobileUXQualityChecks } from './mobile-ux-quality'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
+import type { DeterministicFlag } from '../flag-types'
 
-export interface DeterministicFlag {
-  checkId: string
-  rubric: 'MESSAGE' | 'EXPERIENCE' | 'REACH'
-  impactTag?: 'CONVERSION' | 'REVENUE' | 'TRUST' | 'MEASUREMENT' | 'SHARING' | 'SEO' | 'ACCESSIBILITY' | 'CLARITY' | 'AUTHORITY' | 'FRICTION' | 'EMOTION' | null
-  severity: 'CRITICAL' | 'IMPORTANT' | 'POLISH'
-  problem: string
-  evidence: string
-  fix: string
-  confidence: number
-  source: 'DETERMINISTIC'
-  pageUrl?: string
-}
+export type { DeterministicFlag } from '../flag-types'
 
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]

@@ -13,6 +13,7 @@ import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
 import { buildRubricScoreRows, reportScanDetail } from '@/lib/audit/report-pipeline-steps'
+import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getScanningLabel, statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
@@ -134,15 +135,7 @@ export function AuditReportProgressive({
     hasFixPrompt: false,
   }))
 
-  const hostname = url
-    ? (() => {
-        try {
-          return new URL(url).hostname
-        } catch {
-          return url
-        }
-      })()
-    : undefined
+  const hostname = url ? displayHostname(url) : undefined
 
   const desktopScreenshotUrl = screenshots.find((s) => s.device === 'DESKTOP')?.url ?? null
   const mobileScreenshotUrl = screenshots.find((s) => s.device === 'MOBILE')?.url ?? null

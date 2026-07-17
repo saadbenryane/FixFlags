@@ -560,7 +560,7 @@ describe('runSecurityHeaderChecks', () => {
     )
   })
 
-  it('returns no findings when responseHeaders is null (skipCapture path)', () => {
+  it('returns no findings when responseHeaders is null', () => {
     assert.equal(runSecurityHeaderChecks('https://example.com', null).length, 0)
   })
 })

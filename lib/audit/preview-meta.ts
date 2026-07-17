@@ -33,10 +33,4 @@ export function truncatePreview(text: string | null, max: number): string {
   return `${text.slice(0, max - 1)}…`
 }
 
-export function displayHostname(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
-}
+export { displayHostname } from '@/lib/utils/url-helpers'

@@ -27,6 +27,7 @@ import {
   type EvidenceHighlight,
 } from '@/lib/audit/evidence-highlights'
 import { rubricLabel, severityLabel } from '@/lib/utils'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 export type { PipelineStep, PipelineStepState }
 export type { EvidenceHighlight }
@@ -166,14 +167,6 @@ export function buildAllEvidenceHighlights(flags: SampleFlagDisplay[]): Evidence
   return flags.flatMap((flag) => flag.evidenceHighlights)
 }
 
-function hostFromUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
-}
-
 function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
   return {
     id: flag.id,
@@ -220,7 +213,7 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
   return {
     id: audit.id,
     url: audit.url,
-    host: hostFromUrl(audit.url),
+    host: displayHostname(audit.url),
     displayHost: site.displayHost,
     contextTag: site.contextTag,
     isDemoFixture: site.isDemoFixture,

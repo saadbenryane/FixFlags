@@ -436,15 +436,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     notes: 'Uses CaptureMetrics from mobile Puppeteer viewport.',
   },
   {
-    id: 'message-cta-focus',
-    dimension: 'MESSAGE',
-    category: 'copy',
-    label: 'Single primary CTA focus',
-    tool: 'browser-capture',
-    status: 'partial',
-    checkIds: [],
-  },
-  {
     id: 'experience-auth-checkout',
     dimension: 'EXPERIENCE',
     category: 'flow',

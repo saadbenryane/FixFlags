@@ -127,16 +127,6 @@ export function impactTagIcon(tag: string | null | undefined): LucideIcon | null
   return map[tag] ?? null
 }
 
-export function flagStatusLabel(status: string): string {
-  const map: Record<string, string> = {
-    OPEN: 'Open',
-    FIXED: 'Fixed',
-    IGNORED: 'Ignored',
-    REGRESSED: 'Regressed',
-  }
-  return map[status] ?? status
-}
-
 export function rubricStatusColor(status: string): string {
   const map: Record<string, string> = {
     PASS: 'text-grade-A bg-grade-A/10 border-grade-A/25',

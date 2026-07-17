@@ -1,12 +1,12 @@
 # Scan Roadmap
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-14*
 
 Phased plan to expand FixFlags scans. Every phase must serve the core loop: **check → fix → re-check → prove**.
 
 Full scan list by rubric: [scan-catalog.md](./scan-catalog.md).
 
-**Policy note:** [offering.md](./offering.md) defers most new features until 100 paying users. Phase 1 is the validated exception — flow scan, slop detection, and preview cards directly strengthen the loop for AI builders shipping public URLs.
+**Policy note:** [offering.md](./offering.md) defers most new features until 100 paying users. Phase 1 was the validated exception — flow scan, slop detection, and preview cards directly strengthen the loop for AI builders shipping public URLs. Phase 1 is shipped.
 
 ---
 
@@ -22,6 +22,8 @@ flowchart TD
   slop --> judge[AI_judge]
   judge --> report[Report_with_preview_cards]
 ```
+
+**Version:** `PIPELINE_VERSION` `2.3.0` (`lib/audit/pipeline-config.ts`)
 
 ---
 
@@ -46,20 +48,20 @@ flowchart TD
 - [x] Preview cards use design tokens; broken og:image flagged and shown
 - [x] `npm run verify` green
 
-**Version:** `PIPELINE_VERSION` `2.1.0`
-
 ---
 
-## Phase 2 (next)
+## Phase 2 — Complete
 
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
 | Measurement scan | Reach | GA4/GTM/PostHog/Plausible presence (`analytics-missing`) — **Shipped** |
 | CTA focus scan | Message | Competing primary CTAs above the fold (`competing-ctas`) — **Shipped** |
 | Auth & checkout smoke | Experience | Auth/checkout links resolve, incl. cross-origin Stripe (`auth-page-broken`, `checkout-link-dead`) — **Shipped** |
-| Flow scan (message layer) | Message | CTA destination matches headline promise |
+| Flow scan (message layer) | Message | CTA destination matches headline promise (`flow-cta-message-mismatch`) — **Shipped** |
 
-**Exit criteria:** 3 new scan modules — **met** (measurement, CTA focus, auth & checkout smoke), each verified on re-check. CTA contrast deferred: reliable in-browser contrast needs background/gradient resolution that is error-prone, so it was omitted rather than shipped flaky.
+**Exit criteria:** 3 new scan modules — **met** (measurement, CTA focus, auth & checkout smoke), each verified on re-check.
+
+**Deferred (not shipped):** CTA contrast scan — reliable in-browser contrast needs background/gradient resolution that is error-prone, so it was omitted rather than shipped flaky.
 
 ---
 
@@ -68,7 +70,7 @@ flowchart TD
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
 | Secret leak scan | Reach | API keys in source/bundles |
-| Expanded critical path | Experience / Reach | 5–7 URLs; cross-page OG consistency |
+| Expanded critical path | Experience / Reach | Cross-page OG consistency |
 | Real device mobile | Experience | iPhone Safari + Android Chrome via BrowserStack/LambdaTest |
 
 **Exit criteria:** Real device screenshots in report; 2 device profiles minimum.
@@ -79,7 +81,7 @@ flowchart TD
 
 | Deliverable | Notes |
 |-------------|-------|
-| ~~Repo-connected codebase scanning~~ | **Shipped, not roadmap.** GitHub OAuth connect, repo allow-listing, on-demand scan, and a dedicated report at `/report/repo/[id]` are live behind the Max plan (`/settings/integrations`). Findings-only today (secrets, dependency hygiene, dangerous patterns) — see `docs/offering.md`. Corrected here because this phase previously listed it as unbuilt. |
+| ~~Repo-connected codebase scanning~~ | **Shipped, not roadmap.** GitHub OAuth connect, repo allow-listing, on-demand scan, and a dedicated report at `/report/repo/[id]` are live on Agency plan (`/settings/integrations`). Findings-only today (secrets, dependency hygiene, dangerous patterns) — see `docs/offering.md`. |
 | CI deploy gate | GitHub Action / webhook; fail on launch gate regression |
 | Weekly pulse | Scheduled re-check; email on REGRESSED flags |
 | Auto-fix PRs on repo scans | Open a PR with fixes applied, not just findings — natural next step once repo scanning has usage data |
@@ -95,7 +97,7 @@ flowchart TD
 | Native app scan | Real device tap-through for mobile apps |
 | Store listing scan | App Store / Play Store metadata |
 
-**Exit criteria:** Studio-tier native app audit mode documented and gated.
+**Exit criteria:** Native app audit mode documented and gated.
 
 ---
 

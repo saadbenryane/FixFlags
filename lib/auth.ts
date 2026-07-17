@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { prisma } from './db'
 import { getEnv } from './env'
-import { Resend } from 'resend'
+import { resend } from '@/lib/email/client'
 import { deleteUserProductData } from '@/lib/account/cleanup'
 import { recordSignupConversion } from '@/lib/analytics/signup-conversion'
 import { BRAND } from '@/lib/marketing/copy'
@@ -12,7 +12,6 @@ import {
   isGithubOAuthConfigured,
 } from '@/lib/auth/env'
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export const auth = betterAuth({

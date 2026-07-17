@@ -15,6 +15,7 @@ import { getProviderConfig, getConfiguredJudgeProviderChain } from './judge-conf
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import { logger } from '@/lib/logger'
+import type { ExistingFlagForPrescription } from './flag-types'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -42,14 +43,7 @@ export interface PrescriptionResult {
   usage: PrescriptionUsage
 }
 
-export interface ExistingFlagForPrescription {
-  flagKey: string
-  source: string
-  rubric: string
-  severity: string
-  problem: string
-  checkId: string | null
-}
+export type { ExistingFlagForPrescription } from './flag-types'
 
 export interface PrescriptionContext {
   url: string

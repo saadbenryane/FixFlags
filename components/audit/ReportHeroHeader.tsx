@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { displayVerdict } from '@/lib/audit/verdict'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 type Props = {
   url?: string
@@ -17,15 +18,7 @@ export function ReportHeroHeader({
 }: Props) {
   const userVerdict = displayVerdict(verdict ?? null)
   const badgeLabel = pageType ?? 'Scanning'
-  const hostname = url
-    ? (() => {
-        try {
-          return new URL(url).hostname
-        } catch {
-          return url
-        }
-      })()
-    : null
+  const hostname = url ? displayHostname(url) : null
 
   return (
     <div className="min-w-0 space-y-2">

@@ -1,29 +1,22 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-
-const EXAMPLE_URLS = [
-  { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
-  { label: 'Your demo day landing page', hint: 'yourstartup.com' },
-  { label: 'A client site before handoff', hint: 'clientsite.com' },
-]
+import { FIRST_AUDIT_PROMPT } from '@/lib/marketing/copy'
 
 export function FirstAuditPrompt() {
   return (
     <Card className="border-0 p-6 shadow-card sm:p-8 space-y-6">
       <div className="space-y-2">
-        <p className="text-base font-semibold">Paste the URL you are about to share.</p>
-        <p className="text-sm text-muted-foreground">
-          FixFlags reviews your page before anyone else sees it. You get Flags across Message,
-          Experience, and Reach. Each Flag includes a fix prompt ready to paste into
-          Cursor, Claude, Lovable, or Bolt.
-        </p>
+        <p className="text-base font-semibold">{FIRST_AUDIT_PROMPT.headline}</p>
+        <p className="text-sm text-muted-foreground">{FIRST_AUDIT_PROMPT.body}</p>
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Common first checks</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {FIRST_AUDIT_PROMPT.examplesLabel}
+        </p>
         <ul className="space-y-2">
-          {EXAMPLE_URLS.map((item) => (
+          {FIRST_AUDIT_PROMPT.examples.map((item) => (
             <li key={item.hint} className="flex items-center gap-2 text-sm text-muted-foreground">
               <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
               <span>
@@ -37,11 +30,14 @@ export function FirstAuditPrompt() {
 
       <div className="border-t border-border pt-4">
         <p className="text-sm text-muted-foreground">
-          Not sure what to check first?{' '}
-          <Link href="/samples" className="text-foreground underline underline-offset-2 hover:text-foreground/80">
-            See a sample report
+          {FIRST_AUDIT_PROMPT.footerPrefix}{' '}
+          <Link
+            href="/samples"
+            className="text-foreground underline underline-offset-2 hover:text-foreground/80"
+          >
+            {FIRST_AUDIT_PROMPT.footerLink}
           </Link>{' '}
-          to know what you will get.
+          {FIRST_AUDIT_PROMPT.footerSuffix}
         </p>
       </div>
     </Card>

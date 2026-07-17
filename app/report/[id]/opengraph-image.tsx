@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { ReportOgImage } from '@/lib/design/og-templates'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 export const runtime = 'nodejs'
 export const alt = 'FixFlags report'
@@ -40,15 +41,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     return new ImageResponse(<ReportOgImage mode="light" generic />, { ...size })
   }
 
-  const hostname = audit.url
-    ? (() => {
-        try {
-          return new URL(audit.url).hostname
-        } catch {
-          return audit.url
-        }
-      })()
-    : 'yoursite.com'
+  const hostname = audit.url ? displayHostname(audit.url) : 'yoursite.com'
 
   const score = audit.score ?? null
   const topIssue =

@@ -1,5 +1,6 @@
 export type ExampleFlag = {
   id: string
+  checkId?: string | null
   rubric: 'MESSAGE' | 'EXPERIENCE' | 'REACH'
   severity: 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   problem: string

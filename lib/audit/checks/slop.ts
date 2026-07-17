@@ -1,7 +1,7 @@
 import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
 import { DeterministicFlag } from './index'
-import { MAX_RAW_TEXT } from '../page-text-limits'
+import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 
 const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /lorem ipsum/i, label: 'Lorem ipsum placeholder text' },
@@ -62,8 +62,8 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
     ['home', 'welcome', 'welcome to', 'untitled', 'coming soon', 'hello world'].some((p) =>
       meta.h1s[0].toLowerCase().includes(p)
     )
-  const bodyText = meta.pageText.slice(0, MAX_RAW_TEXT)
-  const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, MAX_RAW_TEXT)
+  const bodyText = meta.pageText.slice(0, CHECK_TEXT_LIMIT)
+  const sampleText = h1Generic ? bodyText : [meta.pageText, ...meta.h1s].join(' ').slice(0, CHECK_TEXT_LIMIT)
 
   function matchedSnippet(text: string, pattern: RegExp, contextChars = 40): string {
     const match = text.match(pattern)

@@ -20,15 +20,30 @@ export function ActiveAuditBanner() {
       setStillRunning(false)
       return
     }
+    let cancelled = false
     fetch(`/api/reports/${active.auditId}/status`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          // Status endpoint gone or unauthorized: clear stuck banner.
+          clearActiveAudit(active.auditId)
+          setStillRunning(false)
+          return
+        }
+        const data = (await res.json()) as { status?: string }
         if (data.status === 'COMPLETED' || data.status === 'FAILED') {
           clearActiveAudit(active.auditId)
           setStillRunning(false)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (cancelled) return
+        clearActiveAudit(active.auditId)
+        setStillRunning(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [active, pathname])
 
   if (!active || !stillRunning) return null
