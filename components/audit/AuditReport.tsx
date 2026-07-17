@@ -260,7 +260,7 @@ export function AuditReport({
                     >
                       {severityLabel(flag.severity)}
                     </Badge>
-                    <span className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                    <span className="meta-label text-muted-foreground">
                       {rubricLabel(rubricName)}
                     </span>
                   </div>

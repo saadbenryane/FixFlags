@@ -69,7 +69,7 @@ export function BrowserFrame({
           <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
           <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
         </div>
-        <div className="flex-1 min-w-0 rounded-md bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground truncate">
+        <div className="flex-1 min-w-0 rounded-md bg-background/80 px-2.5 py-1 text-2xs text-muted-foreground truncate">
           {displayUrl}
         </div>
         <span className="meta-label text-muted-foreground shrink-0">

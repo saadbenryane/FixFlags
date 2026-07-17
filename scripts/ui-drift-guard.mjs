@@ -3,6 +3,7 @@
  * Flags design-system drift in app and product components:
  * - font-display outside marketing/pricing surfaces
  * - rounded-xl / rounded-lg on panel-like shells (border + bg/padding combos)
+ * - arbitrary micro font sizes (use text-2xs/text-3xs or .section-label/.meta-label)
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -24,6 +25,8 @@ const PANEL_RE =
 
 const CN_PANEL_RE =
   /cn\([^)]*['"`][^'"`]*rounded-(xl|lg)[^'"`]*(?:\sborder|\sbg-)/
+
+const MICRO_TEXT_RE = /text-\[1[01]px\]/
 
 function hasPanelDrift(content) {
   if (PANEL_RE.test(content)) return true
@@ -55,6 +58,10 @@ for (const dir of SCAN_DIRS) {
 
     if (hasPanelDrift(content)) {
       violations.push(`${rel}: rounded-xl/lg panel shell (use Card/Surface + rounded-card)`)
+    }
+
+    if (MICRO_TEXT_RE.test(content)) {
+      violations.push(`${rel}: arbitrary micro font size (use text-2xs/text-3xs or .section-label/.meta-label)`)
     }
   }
 }

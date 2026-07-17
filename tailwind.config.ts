@@ -29,6 +29,12 @@ const config: Config = {
         display: ['var(--font-serif)', 'Georgia', 'ui-serif', 'serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
+      fontSize: {
+        // Micro sizes set font-size only (no line-height), matching the
+        // inline text-[10px]/text-[11px] they replace. Labels inherit leading.
+        '3xs': 'var(--text-3xs)',
+        '2xs': 'var(--text-2xs)',
+      },
       colors: {
         border: 'hsl(var(--border))',
         'border-subtle': 'hsl(var(--border-subtle))',

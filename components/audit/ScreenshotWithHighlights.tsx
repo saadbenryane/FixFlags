@@ -103,8 +103,8 @@ function PinTooltipContent({
 }) {
   return (
     <div className={className}>
-      <p className="text-[11px] font-semibold text-foreground">{highlight.label}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground text-pretty">
+      <p className="text-2xs font-semibold text-foreground">{highlight.label}</p>
+      <p className="mt-1 text-2xs leading-relaxed text-muted-foreground text-pretty">
         {highlight.detail}
       </p>
     </div>

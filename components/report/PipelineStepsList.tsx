@@ -29,7 +29,7 @@ function StepDot({ state }: { state: PipelineStep['state'] }) {
 function PipelineStepIndicator({ step }: { step: PipelineStep }) {
   if (step.id === 'flags' && step.state === 'active') {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold leading-none text-brand-foreground">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-3xs font-bold leading-none text-brand-foreground">
         {step.detail}
       </span>
     )

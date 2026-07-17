@@ -29,7 +29,7 @@ export function SampleReportSection({ audit, illustrative = false }: SampleRepor
             {body}
           </p>
           {illustrative ? (
-            <p className="mx-auto mt-2 text-center font-mono text-[11px] uppercase tracking-label text-muted-foreground/80">
+            <p className="mx-auto mt-2 text-center section-label">
               {illustrativeLabel}
             </p>
           ) : null}

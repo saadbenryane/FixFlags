@@ -65,7 +65,7 @@ function FlagNavigation({
 }) {
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+      <span className="font-mono text-2xs tabular-nums text-muted-foreground">
         {index + 1} / {total}
       </span>
       <div className="flex items-center gap-1">
@@ -111,7 +111,7 @@ function FilterPill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+        'rounded-full px-2.5 py-1 text-2xs font-medium transition-colors',
         active
           ? 'bg-brand/15 text-brand'
           : 'bg-muted/50 text-muted-foreground hover:text-foreground'
@@ -158,7 +158,7 @@ function RubricTabs({
           )}
         >
           {tab.label}
-          <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{tab.count}</span>
+          <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{tab.count}</span>
         </button>
       ))}
     </div>

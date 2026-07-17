@@ -86,7 +86,7 @@ export function RepoFindingCard({
               <span className="meta-label text-muted-foreground/80">{finding.category}</span>
             </div>
             <p className="text-sm font-medium leading-snug text-pretty">{finding.problem}</p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-3xs text-muted-foreground">
               <span className="break-all font-mono sm:truncate">{locationLabel(finding)}</span>
               <span className="hidden text-border sm:inline">/</span>
               <span className="inline-flex min-w-0 items-center gap-1 font-mono">

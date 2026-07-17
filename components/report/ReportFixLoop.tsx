@@ -153,7 +153,7 @@ export function ReportFixLoop({
             <span className="text-muted-foreground/50"> · </span>
             <span className="text-foreground/80">{scanDetail}</span>
           </span>
-          <span className="ml-auto rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-brand">
+          <span className="ml-auto rounded-full bg-brand/10 px-2 py-0.5 font-mono text-2xs font-semibold tabular-nums text-brand">
             {count}
           </span>
         </div>
@@ -204,7 +204,7 @@ export function ReportFixLoop({
         >
           <span className="meta-label text-muted-foreground">Flags</span>
           <span className="flex items-center gap-1.5">
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-brand">
+            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-2xs font-semibold tabular-nums text-brand">
               {count}
             </span>
             <ChevronDown

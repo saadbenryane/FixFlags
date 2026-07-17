@@ -73,7 +73,7 @@ function StepCopy({ step, index }: { step: LoopStep; index: number }) {
       <div className="mt-4 flex min-h-9 items-center gap-2 rounded-full bg-muted/55 px-3 py-2">
         {index === 0 ? <span className="h-2 w-2 rounded-full bg-success" aria-hidden /> : null}
         {'previewBadge' in step && step.previewBadge ? (
-          <span className="rounded-full bg-brand/12 px-2 py-0.5 text-[11px] font-bold text-brand">
+          <span className="rounded-full bg-brand/12 px-2 py-0.5 text-2xs font-bold text-brand">
             {step.previewBadge}
           </span>
         ) : null}

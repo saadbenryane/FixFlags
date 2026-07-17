@@ -20,7 +20,7 @@ interface FixPromptBlockProps {
 }
 
 const promptBodyClassName =
-  'w-full border-0 bg-transparent px-3 py-3 font-mono text-[11px] leading-relaxed text-terminal-foreground sm:px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0'
+  'w-full border-0 bg-transparent px-3 py-3 font-mono text-2xs leading-relaxed text-terminal-foreground sm:px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0'
 
 function PromptBody({
   prompt,

@@ -62,7 +62,7 @@ export default async function BlogPostPage({ params }: Props) {
         <div className="space-y-3">
           <time
             dateTime={post.date}
-            className="font-mono text-[11px] uppercase tracking-label text-muted-foreground"
+            className="font-mono text-2xs uppercase tracking-label text-muted-foreground"
           >
             {post.date}
           </time>

@@ -128,6 +128,9 @@
   --radius: var(--radius-pill);
 
   /* ── Typography (Fraunces serif display + Satoshi UI scale) ── */
+  /* Micro sizes: mono meta/section labels only (see .meta-label/.section-label) */
+  --text-3xs: 0.625rem;
+  --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;

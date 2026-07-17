@@ -22,7 +22,7 @@ export default function ChangelogPage() {
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <time
                   dateTime={entry.date}
-                  className="font-mono text-[11px] uppercase tracking-label text-muted-foreground"
+                  className="font-mono text-2xs uppercase tracking-label text-muted-foreground"
                 >
                   {entry.date}
                 </time>

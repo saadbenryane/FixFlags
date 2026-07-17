@@ -58,7 +58,7 @@ function SocialPreview({ preview }: Props) {
           </div>
         )}
         <div className="space-y-1 border-t border-border/60 p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-3xs uppercase tracking-wide text-muted-foreground">
             {displayHostname(preview.url)}
           </p>
           <p className="line-clamp-2 text-sm font-semibold leading-snug">{title}</p>

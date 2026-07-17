@@ -39,7 +39,7 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
           <CardTitle className="flex items-center gap-2 text-base">
             <Cpu className="h-4 w-4 text-brand" />
             MCP
-            <Badge variant="secondary" className="text-[10px]">Pro</Badge>
+            <Badge variant="secondary" size="sm">Pro</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -60,7 +60,7 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Cpu className="h-4 w-4 text-brand" />
           MCP
-          <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/5">
+          <Badge variant="outline" size="sm" className="text-success border-success/30 bg-success/5">
             Active
           </Badge>
         </CardTitle>
@@ -85,11 +85,11 @@ export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
 
         {configLines && (
           <div className="space-y-1">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-3xs font-medium text-muted-foreground uppercase tracking-wider">
               Quick config
             </p>
             <div className="relative">
-              <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-[10px] leading-relaxed">
+              <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-3xs leading-relaxed">
                 <code>{configLines}</code>
               </pre>
               <Button

@@ -119,7 +119,7 @@ export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
       <RubricPill rubric={flag.rubric} label={flag.rubricLabel} />
       <SeverityBadge severity={flag.severity} />
       {impactLabel && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2.5 py-1 text-2xs text-muted-foreground">
           {ImpactIcon && <ImpactIcon className="h-3 w-3 shrink-0" aria-hidden />}
           {impactLabel}
         </span>

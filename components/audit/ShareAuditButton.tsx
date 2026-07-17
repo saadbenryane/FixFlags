@@ -126,7 +126,7 @@ export function ShareAuditButton({
   return (
     <div className="flex items-center gap-2">
       {isOwner && !isAnonymous && (
-        <Badge variant="secondary" className="gap-1 text-[10px] font-mono uppercase tracking-label">
+        <Badge variant="secondary" className="gap-1 meta-label">
           {shareState === 'public' ? (
             <>
               <Globe className="h-3 w-3" /> Public
