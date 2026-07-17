@@ -199,7 +199,7 @@ export function ReportFixLoop({
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
-          className="flex w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40"
+          className="flex w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
           aria-expanded={expanded}
         >
           <span className="meta-label text-muted-foreground">Flags</span>

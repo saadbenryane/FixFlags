@@ -65,10 +65,11 @@ export function RubricCard({
     >
       <CardHeader className="pb-3">
         <button
+          type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
           aria-controls={`rubric-panel-${rubric.name}`}
-          className="flex min-h-11 w-full items-start justify-between gap-4 text-left"
+          className="flex min-h-11 w-full items-start justify-between gap-4 rounded-nested-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
         >
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <RubricStatusBadge status={rubric.status} size="md" className="mt-0.5 shrink-0" />

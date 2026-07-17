@@ -32,7 +32,7 @@ function SessionRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full text-left px-4 py-3 border-b border-border transition-colors',
+        'w-full text-left px-4 py-3 border-b border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring',
         selected ? 'bg-muted/60' : 'hover:bg-muted/30'
       )}
     >

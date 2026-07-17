@@ -2,6 +2,7 @@
 
 import './globals.css'
 import { fontVariables } from '@/lib/design/fonts'
+import { Button } from '@/components/ui/button'
 import { PageTitle } from '@/components/ui/typography'
 
 export default function GlobalError({
@@ -21,12 +22,9 @@ export default function GlobalError({
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           A critical error occurred. Please try again or refresh the page.
         </p>
-        <button
-          onClick={() => reset()}
-          className="mt-6 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-brand-hover"
-        >
+        <Button type="button" onClick={() => reset()} className="mt-6">
           Try again
-        </button>
+        </Button>
       </body>
     </html>
   )

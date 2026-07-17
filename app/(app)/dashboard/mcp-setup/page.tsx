@@ -123,7 +123,7 @@ export default function McpSetupWizard() {
                   key={l.key}
                   type="button"
                   onClick={() => setVibecodingLevel(l.key)}
-                  className={`w-full text-left rounded-card p-3 text-sm transition-[box-shadow,background-color] ${
+                  className={`w-full text-left rounded-card p-3 text-sm transition-[box-shadow,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                     vibecodingLevel === l.key
                       ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
                       : 'glass-surface hover:bg-[var(--glass-bg)]'
@@ -143,7 +143,7 @@ export default function McpSetupWizard() {
                   key={e.key}
                   type="button"
                   onClick={() => setEditor(e.key)}
-                  className={`w-full text-left rounded-card p-4 transition-[box-shadow,background-color] ${
+                  className={`w-full text-left rounded-card p-4 transition-[box-shadow,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${
                     editor === e.key
                       ? 'bg-brand/5 ring-2 ring-brand/20 shadow-glass'
                       : 'glass-surface hover:bg-[var(--glass-bg)]'
