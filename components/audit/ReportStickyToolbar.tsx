@@ -12,6 +12,7 @@ const BASE_SECTIONS = [
   { id: 'report-rubrics', label: 'Rubrics' },
 ] as const
 const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
+const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
 
 type NavSection = { id: string; label: string }
 
@@ -23,6 +24,8 @@ interface Props {
   showLaunchGates?: boolean
   showJourney?: boolean
   showRecheckSection?: boolean
+  /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
+  hasRecheckDiff?: boolean
   siteUrl?: string
   score?: number | null
   actions?: ReactNode
@@ -36,6 +39,7 @@ export function ReportStickyToolbar({
   showLaunchGates,
   showJourney,
   showRecheckSection = true,
+  hasRecheckDiff = false,
   siteUrl,
   score,
   actions,
@@ -54,7 +58,9 @@ export function ReportStickyToolbar({
     if (optional.length > 0) {
       items.splice(insertAt, 0, ...optional)
     }
-    if (showRecheckSection) items.push(RECHECK_SECTION)
+    if (showRecheckSection) {
+      items.push(hasRecheckDiff ? RECHECK_RESULTS_SECTION : RECHECK_SECTION)
+    }
     return items
   }, [
     showOverview,
@@ -63,6 +69,7 @@ export function ReportStickyToolbar({
     showLaunchGates,
     showJourney,
     showRecheckSection,
+    hasRecheckDiff,
   ])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)

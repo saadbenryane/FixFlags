@@ -45,6 +45,7 @@ export default async function ExamplesPage({
           <LandingSectionHeader
             label="Examples"
             headline="Example audits from recognizable sites"
+            as="h1"
           />
           <Body className="text-muted-foreground text-pretty">
             Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix

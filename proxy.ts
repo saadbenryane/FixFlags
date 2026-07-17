@@ -26,13 +26,13 @@ function buildCsp(): string {
     "default-src 'self'",
     // 'unsafe-eval' is required by GTM in dev but should NOT be in production
     // 'unsafe-inline' is needed for inline styles from Tailwind/next-themes
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com https://connect.facebook.net`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' blob: data: https:",
     "font-src 'self' https://fonts.gstatic.com",
     // ws://localhost:* only needed for dev hot-reload WebSocket
-    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com${isDev ? ' ws://localhost:*' : ''}`,
-    "frame-src https://*.stripe.com https://js.stripe.com",
+    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com https://www.facebook.com https://connect.facebook.net${isDev ? ' ws://localhost:*' : ''}`,
+    "frame-src https://*.stripe.com https://js.stripe.com https://www.facebook.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

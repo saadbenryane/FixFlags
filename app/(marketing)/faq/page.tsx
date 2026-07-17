@@ -22,7 +22,7 @@ export default function FaqPage() {
         <Container>
           <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
             <div className="text-center">
-              <LandingSectionHeader label="FAQ" headline={FAQ_PAGE.title} />
+              <LandingSectionHeader label="FAQ" headline={FAQ_PAGE.title} as="h1" />
               <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
             </div>
 

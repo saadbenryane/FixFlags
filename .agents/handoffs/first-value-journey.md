@@ -52,8 +52,15 @@ Shortest credible path: paste URL → anonymous triage value → earn signup for
 
 1. Live verify on `fixflags.com` after deploy: anon `example.com` scan → report → signup claim → fix prompt appears without reload.
 2. Meta Pixel CSP block and OAuth GA signup tracking still open (deferred; not required for path fix).
-3. `ExportMenu` fix-prompt copies still untracked.
-4. Confirm autoStart does not surprise returning users who land on `/dashboard?url=` from a bookmark (mitigation: only when query present; one-shot ref).
+3. ~~`ExportMenu` fix-prompt copies still untracked.~~ Done 2026-07-17: `fix_prompt_copied` with `kind: 'plan' | 'export'`.
+4. ~~Confirm autoStart does not surprise returning users who land on `/dashboard?url=` from a bookmark.~~ Done 2026-07-17: autoStart now strips `?url=` from history before submitting, so Back/bookmark cannot re-submit.
+
+## Review close-out (2026-07-17, session `2026-07-17-app-polish-review-claude.md`)
+
+Reviewed and marked done on the board. Three fixes applied on top: autoStart
+history strip (duplicate-scan on Back), AiReviewPendingRefresh polling survives
+transient non-OK responses, and AuditLimitGate funnel `from` now reflects real
+placement instead of hardcoded `'report'`.
 
 ## Stop condition
 

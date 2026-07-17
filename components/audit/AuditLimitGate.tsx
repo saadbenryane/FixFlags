@@ -12,23 +12,26 @@ interface Props {
   message: string
   /** Preserve scan intent after signup/sign-in (e.g. /dashboard?url=...). */
   nextPath?: string
+  /** Funnel attribution for the signed_up event (e.g. 'hero', 'final'). */
+  from?: string
   onDismiss?: () => void
 }
 
-function authHref(base: '/sign-up' | '/sign-in', nextPath?: string): string {
+function authHref(base: '/sign-up' | '/sign-in', nextPath?: string, from?: string): string {
   if (!nextPath || !nextPath.startsWith('/') || nextPath.startsWith('//')) return base
-  const params = new URLSearchParams({ next: nextPath, from: 'report' })
+  const params = new URLSearchParams({ next: nextPath })
+  if (from) params.set('from', from)
   return `${base}?${params.toString()}`
 }
 
-export function AuditLimitGate({ code, action, message, nextPath, onDismiss }: Props) {
+export function AuditLimitGate({ code, action, message, nextPath, from, onDismiss }: Props) {
   const needsSignup =
     code === 'ANON_LIMIT' ||
     code === 'AUTH_REQUIRED' ||
     action === 'signup'
 
-  const signUpHref = useMemo(() => authHref('/sign-up', nextPath), [nextPath])
-  const signInHref = useMemo(() => authHref('/sign-in', nextPath), [nextPath])
+  const signUpHref = useMemo(() => authHref('/sign-up', nextPath, from), [nextPath, from])
+  const signInHref = useMemo(() => authHref('/sign-in', nextPath, from), [nextPath, from])
 
   useEffect(() => {
     trackEvent('audit_limit_reached', { reason: code ?? action })

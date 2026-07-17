@@ -34,10 +34,14 @@ function appendAuthParams(
 function buildPostLoginQuery(
   next: string | null,
   plan: string | null,
-  from: string | null
+  from: string | null,
+  options?: { newUser?: boolean }
 ): string {
   const params = new URLSearchParams()
   appendAuthParams(params, next, plan, from)
+  // Marks first-time OAuth accounts (better-auth's newUserCallbackURL) so
+  // post-login can fire the signed_up event; email signups track on the form.
+  if (options?.newUser) params.set('signup', '1')
   const qs = params.toString()
   return qs ? `/post-login?${qs}` : '/post-login'
 }
@@ -58,6 +62,10 @@ export function useAuthRedirect() {
 
   const oauthCallbackURL = useMemo(
     () => buildPostLoginQuery(next, plan, from),
+    [next, plan, from]
+  )
+  const oauthNewUserCallbackURL = useMemo(
+    () => buildPostLoginQuery(next, plan, from, { newUser: true }),
     [next, plan, from]
   )
 
@@ -111,6 +119,7 @@ export function useAuthRedirect() {
     plan,
     from,
     oauthCallbackURL,
+    oauthNewUserCallbackURL,
     navigateAfterAuth,
     signInHref,
     signUpHref,

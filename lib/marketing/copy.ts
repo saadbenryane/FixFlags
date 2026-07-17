@@ -285,6 +285,8 @@ export const RECHECK_DIFF_COPY = {
   regressed: 'Regressed',
   empty: 'No flag changes on this re-check.',
   compareCta: 'Open full before/after',
+  compareProHint: 'Want side-by-side screenshots?',
+  compareProCta: 'See Pro compare',
 } as const
 
 export const PRODUCT_LADDER = {
@@ -293,7 +295,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'FREE',
       title: 'Check',
-      body: 'Full report with Flags and fix prompts. Three checks total.',
+      body: 'Score, Flags, evidence, and screenshots. Free account for fix prompts. Three AI reports total.',
     },
     {
       plan: 'BUILDER',
@@ -736,19 +738,19 @@ export const PRICING_FAQ = [
   {
     question: 'What\u2019s included in every plan?',
     answer:
-      'Every plan includes the full report, copy-ready fix prompts, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.',
+      'Every plan includes Flags with evidence, fix prompts after you create an account, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.',
   },
 ] as const
 
 export const PRICING = {
   headline: 'Start free. Pay when you ship.',
   subhead:
-    'Start free with the full report and unlimited re-checks. Upgrade for more new checks, before/after compare, and MCP.',
+    'Start free with Flags, evidence, and unlimited re-checks. Create an account for fix prompts. Upgrade for more new checks, before/after compare, and MCP.',
   trustBadge: 'Unlimited re-checks on every plan',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   allPlansInclude:
-    'Every check includes evidence, fix prompts, and rubric summaries. Re-checks stay free. Pro adds compare, more new checks, and MCP.',
+    'Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.',
 } as const
 
 export const PLANS = getMarketingPlans()
@@ -995,7 +997,7 @@ export const AUTH = {
 export const UPSELLS = {
   anon: {
     headline: 'Get copy-paste fix prompts',
-    body: 'You already see your score and Flags. Create a free account for the fix prompts, save this report, and re-check after you ship.',
+    body: 'You already see your score, Flags, and evidence. Create a free account for the fix prompts, save this report, and re-check after you ship.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -1018,7 +1020,7 @@ export const FLAG_FEEDBACK_COPY = {
 
 export const FIRST_AUDIT_PROMPT = {
   headline: 'Paste the URL you are about to share.',
-  body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach. Each Flag includes a fix prompt ready to paste into Cursor, Claude, Lovable, or Bolt.',
+  body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach with evidence. Create a free account for fix prompts ready to paste into Cursor, Claude, Lovable, or Bolt.',
   examplesLabel: 'Common first checks',
   examples: [
     { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
@@ -1048,7 +1050,7 @@ export const SHARE_COPY = {
 
 export const ANON_CLAIM_GUIDE = {
   headline: 'Get fix prompts for these Flags',
-  body: 'Create a free account to claim this report, copy fix prompts into your editor, and re-check when you ship. Re-checks stay free.',
+  body: 'You can already see the evidence. Create a free account to claim this report, copy fix prompts into your editor, and re-check when you ship. Re-checks stay free.',
   primaryCta: 'Create free account',
   steps: [
     'Create an account to claim this report',

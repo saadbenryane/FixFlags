@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
 import { useMe } from '@/hooks/useMe'
 
+const AUTOSTART_DONE_KEY = 'ff:autostart-url'
+
 export function AuditInput({
   variant = 'default',
   source,
@@ -36,7 +38,7 @@ export function AuditInput({
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
-  const { user, isLoading: authLoading } = useMe()
+  const { user } = useMe()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [urlError, setUrlError] = useState('')
@@ -152,12 +154,22 @@ export function AuditInput({
   }
 
   useEffect(() => {
-    if (!autoStart || !initialUrl || autoStartedRef.current || authLoading) return
+    if (!autoStart || !initialUrl || autoStartedRef.current) return
     autoStartedRef.current = true
+    // One-shot per tab: Back from the report page restores /dashboard?url= and
+    // remounts this component, which would silently re-submit a duplicate scan.
+    // (Stripping the query via history.replaceState is unreliable - the router's
+    // own hydration sync can restore it - so persist the guard instead.)
+    try {
+      if (sessionStorage.getItem(AUTOSTART_DONE_KEY) === initialUrl) return
+      sessionStorage.setItem(AUTOSTART_DONE_KEY, initialUrl)
+    } catch {
+      // sessionStorage unavailable: fall through and submit once for this mount.
+    }
     void submitUrl(initialUrl)
     // Intentionally one-shot on mount when handoff URL is present.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, initialUrl, authLoading])
+  }, [autoStart, initialUrl])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -186,7 +198,6 @@ export function AuditInput({
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
-  const landingDisabled = loading || (isLanding && authLoading)
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
@@ -208,7 +219,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              disabled={landingDisabled}
+              disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
             />
@@ -216,7 +227,7 @@ export function AuditInput({
               type="submit"
               variant="default"
               size="lg"
-              disabled={landingDisabled}
+              disabled={loading}
               className={cn(
                 fieldHeightClass,
                 'w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6'
@@ -310,6 +321,7 @@ export function AuditInput({
           code={limitGate.code}
           action={limitGate.action}
           nextPath={limitGate.nextPath}
+          from={resolvedPlacement}
           onDismiss={() => setLimitGate(null)}
         />
       )}

@@ -14,6 +14,7 @@ export default function ChangelogPage() {
           label="Changelog"
           headline="What shipped recently"
           align="left"
+          as="h1"
         />
 
         <ol className="space-y-8">

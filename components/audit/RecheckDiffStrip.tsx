@@ -51,7 +51,14 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
           <Button asChild variant="outline" size="sm" className="rounded-full">
             <Link href={compareHref}>{RECHECK_DIFF_COPY.compareCta}</Link>
           </Button>
-        ) : null}
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {RECHECK_DIFF_COPY.compareProHint}{' '}
+            <Link href="/pricing" className="text-link font-medium underline-offset-2 hover:underline">
+              {RECHECK_DIFF_COPY.compareProCta}
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -80,7 +80,9 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
     severityLabel: severityLabel(flag.severity),
     impactTag: flag.impactTag ?? null,
     whyItMatters: resolveWhyItMatters(flag),
-    evidence: formatDisplayEvidence(flag.checkId, flag.evidence ?? flag.problem),
+    evidence: flag.evidence
+      ? formatDisplayEvidence(flag.checkId, flag.evidence)
+      : '',
     fixPrompt,
     copyFixPrompt,
     verificationRule: flag.verificationRule ?? null,

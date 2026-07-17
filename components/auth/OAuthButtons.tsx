@@ -9,13 +9,15 @@ import { authClient } from '@/lib/auth-client'
 
 interface Props {
   callbackURL: string
+  /** Where first-time OAuth accounts land (adds the signup marker for analytics). */
+  newUserCallbackURL?: string
   /** Which providers to render. Resolved at runtime via useOAuthProviders(). */
   google?: boolean
   github?: boolean
   disabled?: boolean
 }
 
-export function OAuthButtons({ callbackURL, google, github, disabled }: Props) {
+export function OAuthButtons({ callbackURL, newUserCallbackURL, google, github, disabled }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
   const showGoogle = !!google
   const showGithub = !!github
@@ -27,7 +29,7 @@ export function OAuthButtons({ callbackURL, google, github, disabled }: Props) {
   async function handleOAuth(provider: 'google' | 'github') {
     setLoading(provider)
     try {
-      const { error } = await authClient.signIn.social({ provider, callbackURL })
+      const { error } = await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL })
       if (error) {
         toast.error(error.message || 'Sign in failed. Try again.')
         setLoading(null)

@@ -212,6 +212,7 @@ export function AuditReport({
             showLaunchGates={hasLaunchGates}
             showJourney={pages.length > 1}
             showRecheckSection={isLoggedIn && isViewerOwner}
+            hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
             score={audit.score}
             actions={toolbarActions ?? actions}
