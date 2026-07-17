@@ -20,7 +20,8 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignUpForm() {
-  const { oauthCallbackURL, navigateAfterAuth, signInHref, plan, from } = useAuthRedirect()
+  const { oauthCallbackURL, oauthNewUserCallbackURL, navigateAfterAuth, signInHref, plan, from } =
+    useAuthRedirect()
   useRedirectIfAuthenticated()
   const oauth = useOAuthProviders()
 
@@ -84,6 +85,7 @@ function SignUpForm() {
       {oauth.anyEnabled && (
         <OAuthButtons
           callbackURL={oauthCallbackURL}
+          newUserCallbackURL={oauthNewUserCallbackURL}
           google={oauth.google}
           github={oauth.github}
           disabled={loading}

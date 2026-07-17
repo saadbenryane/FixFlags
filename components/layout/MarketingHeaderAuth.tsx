@@ -15,10 +15,11 @@ export function MarketingHeaderAuth({
   mode?: 'desktop' | 'mobileTop' | 'mobileSheet'
   onNavigate?: () => void
 }) {
-  const { user, isLoading } = useMe()
+  const { user } = useMe()
 
-  if (isLoading) return null
-
+  // While the session fetch is in flight, user is null and we render the
+  // logged-out state. Most marketing visitors are logged out, so this avoids a
+  // late CTA pop-in; a signed-in visitor sees a brief swap to their avatar.
   if (!user) {
     if (mode === 'mobileSheet') {
       return (

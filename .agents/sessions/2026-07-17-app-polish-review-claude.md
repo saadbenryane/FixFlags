@@ -19,13 +19,18 @@ were fixed and verified this session.
 
 ### Shipped
 
-1. **`AuditInput` autoStart: strip `?url=` from history before submitting.**
-   The post-signup handoff (`/dashboard?url=...`) auto-submits once, then pushes
-   to `/report/[id]`. Pressing Back remounted the dashboard with `?url=` intact
-   and silently re-submitted a duplicate scan (burns quota, pollutes the
-   dashboard, duplicate audit rows). Now the effect rewrites the history entry
-   via `window.history.replaceState` (removing only `url`, preserving UTM
-   params) before submitting, so Back lands on a clean `/dashboard`.
+1. **`AuditInput` autoStart: one-shot sessionStorage guard against duplicate
+   scans.** The post-signup handoff (`/dashboard?url=...`) auto-submits once,
+   then pushes to `/report/[id]`. Pressing Back remounted the dashboard with
+   `?url=` intact and silently re-submitted a duplicate scan (burns quota,
+   duplicate audit rows). First attempt stripped the query with
+   `window.history.replaceState` before submitting; the live browser E2E proved
+   that LOSES A RACE with the Next router's own hydration-time history sync
+   (Back still restored `?url=` and created a third audit). Replaced with a
+   per-tab `sessionStorage` marker (`ff:autostart-url`); the browser E2E now
+   confirms exactly one audit per URL across signup handoff + Back navigation.
+   Lesson recorded: do not trust `history.replaceState` to persist over App
+   Router hydration; verify history-sensitive fixes in a real browser.
 
 2. **`AiReviewPendingRefresh`: survive transient poll errors.** A single non-OK
    response (e.g. 502 during a deploy) permanently stopped the `aiReviewAt`
@@ -65,12 +70,70 @@ were fixed and verified this session.
 - `npm run demo:audit:offline` — 18 accurate flags on broken fixture, 0 on the
   fixed fork, actionable prompts (pipeline behavior verified end to end offline)
 
-## Environment notes (for future runs)
+## Second pass (same session): full-stack browser E2E + production validation
 
-- This remote sandbox has **no docker**, so no Postgres/Redis — the dev server
-  and live audits cannot run. Offline fixture audits, builds, tests, and guards
-  all work. Same limitation as the 2026-07-15 session: a live external audit
-  smoke test still needs an environment with network + AI keys.
+The sandbox turned out to be more capable than prior sessions assumed:
+
+- **Native Postgres 16 + redis-server ARE installed** (no docker needed).
+  Recipe: `initdb` as a `postgres` user under `/tmp/ff-pg`, `pg_ctl start`,
+  `redis-server --daemonize yes`, create `fixflags` role + db, `npm run
+  db:deploy && npm run db:seed`, then `npm run dev`. Full stack boots.
+- **Outbound HTTPS works via the agent proxy for curl/node-fetch** (even
+  "direct" node fetch is transparently intercepted and succeeds).
+  **Chromium/Puppeteer HTTPS egress is blocked at the sandbox level**
+  (ERR_CONNECTION_RESET; `--proxy-server` flags do not help — plain-HTTP
+  reaches the proxy, CONNECT never does). So: local audits of external sites
+  fail at screenshot capture, but localhost browsing is unrestricted and
+  production can be exercised via curl.
+- **`DEV_SIMULATE_BILLING=true`** enables the real billing gates under
+  `npm run dev` (needed to test the anon limit gate; otherwise
+  `isDevUnlimitedScans()` bypasses them).
+
+### Verified via browser E2E (billing gates active)
+
+Full first-value journey, all PASS: anon hero scan → report; second anon scan
+→ signup gate; gate → `/sign-up?next=%2Fdashboard%3Furl%3D...&from=hero`;
+email signup → post-login → dashboard autoStart → report; Back → dashboard
+with NO duplicate scan (DB: exactly 1 audit per URL). Failure UX (capture
+fails in sandbox) is calm; private reports correctly deny logged-out visitors.
+
+### Additional fixes shipped in this pass
+
+5. **Missing `<h1>` on /faq, /examples, /changelog.** `LandingSectionHeader`
+   hardcoded `h2`; added an `as` prop and used `as="h1"` at the three page-top
+   call sites. Every marketing route now has exactly one h1 (curl-verified
+   across 15 routes). The product flags this exact issue on customers' sites.
+6. **Marketing header CTA pop-in.** `MarketingHeaderAuth` returned `null`
+   while `/api/me` was in flight, so "Log in / Try free" appeared ~1s late
+   (and never, if the request hung). Now renders the logged-out state
+   immediately (SSR HTML contains it) and swaps to the avatar when a session
+   resolves.
+7. **Meta Pixel CSP block (residual from handoff) fixed.** `proxy.ts` CSP now
+   allows `connect.facebook.net` (script), `www.facebook.com` +
+   `connect.facebook.net` (connect), `www.facebook.com` (frame). Verified live
+   prod CSP was blocking fbevents.js whenever `NEXT_PUBLIC_META_PIXEL_ID` is
+   set.
+8. **OAuth signups now fire `signed_up` (residual from handoff) fixed.**
+   better-auth's `newUserCallbackURL` (supported in installed v1.6.15, schema
+   verified) routes first-time OAuth accounts to `/post-login?...&signup=1`;
+   post-login fires `signed_up` (method: 'oauth') once, with a ref guard.
+   Email signups keep tracking on the form. Server-side ad conversions were
+   already covered by `recordSignupConversion` on user-create.
+
+### Production validation (read-only + one intended-flow anon scan)
+
+- `/api/health`: db ok, storage ok, `aiConfiguredProviders: ["openai"]`
+  (Anthropic key not set in prod), pipeline 2.3.0, commit `28cf321` (not in
+  local history; but deployed API returns `isLoggedIn` so the
+  first-value-journey surface is live).
+- Security headers all present; CSP confirmed missing facebook domains
+  (fix #7 addresses it on next deploy).
+- **Live core loop**: anon `example.com` scan via prod API → CAPTURING →
+  JUDGING → COMPLETED, score 67, 24 flags, all accurate for that bare page (no
+  false positives). Anon claim CTA renders. **Observation:** this run took the
+  degraded-triage path (`failureCode` set, `triageAt` null) — deterministic
+  flags shipped, "AI summary unavailable" callout displayed gracefully. Worth
+  watching whether prod triage failures are frequent (single datapoint here).
 
 ## Cleanup
 
@@ -81,11 +144,19 @@ were fixed and verified this session.
   no code or docs, but it looks like the founder's original brand source
   assets. Candidate for removal or moving out of the repo — needs a human call.
 
-## Remaining risks / follow-ups (carried forward)
+## Remaining risks / follow-ups
 
-- Live verify on fixflags.com after deploy: anon scan → report → signup claim →
-  fix prompt appears without reload (AiReviewPendingRefresh now hardened).
-- Meta Pixel CSP block and OAuth GA signup tracking still open (measurement
-  polish, deferred).
+- ~~Live verify on fixflags.com: anon scan → report~~ Done this session (see
+  production validation). Still untested live: signup **claim on prod** and
+  fix-prompt appearance without reload (validated locally via browser E2E and
+  code review; needs a real prod signup to fully close).
+- ~~Meta Pixel CSP block~~ / ~~OAuth GA signup tracking~~ Fixed this session
+  (#7, #8). OAuth E2E untestable in sandbox (no OAuth creds): flow falls back
+  to the previous behavior if `newUserCallbackURL` is ignored, so risk is low.
+  Verify a real Google/GitHub signup fires `signed_up` after deploy.
+- Prod triage failed on the one live scan observed (degraded path, graceful
+  UX). Check triage failure rate in prod logs/admin; Anthropic fallback key is
+  not configured (`aiConfiguredProviders: ["openai"]`), so an OpenAI hiccup
+  has no fallback.
 - Confirm in production analytics that `fix_prompt_copied.kind` distribution
-  looks sane after this change (flag vs plan vs export).
+  looks sane (flag vs plan vs export).

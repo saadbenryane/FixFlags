@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
 import { useMe } from '@/hooks/useMe'
 
+const AUTOSTART_DONE_KEY = 'ff:autostart-url'
+
 export function AuditInput({
   variant = 'default',
   source,
@@ -154,14 +156,15 @@ export function AuditInput({
   useEffect(() => {
     if (!autoStart || !initialUrl || autoStartedRef.current) return
     autoStartedRef.current = true
-    // Strip the handoff url from the history entry before submitting: Back from
-    // the report page would otherwise remount this component with ?url= intact
-    // and silently re-submit a duplicate scan.
-    const params = new URLSearchParams(window.location.search)
-    if (params.has('url')) {
-      params.delete('url')
-      const qs = params.toString()
-      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    // One-shot per tab: Back from the report page restores /dashboard?url= and
+    // remounts this component, which would silently re-submit a duplicate scan.
+    // (Stripping the query via history.replaceState is unreliable - the router's
+    // own hydration sync can restore it - so persist the guard instead.)
+    try {
+      if (sessionStorage.getItem(AUTOSTART_DONE_KEY) === initialUrl) return
+      sessionStorage.setItem(AUTOSTART_DONE_KEY, initialUrl)
+    } catch {
+      // sessionStorage unavailable: fall through and submit once for this mount.
     }
     void submitUrl(initialUrl)
     // Intentionally one-shot on mount when handoff URL is present.

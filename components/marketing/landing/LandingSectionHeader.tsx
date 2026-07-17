@@ -7,6 +7,8 @@ interface LandingSectionHeaderProps {
   className?: string
   align?: 'center' | 'left'
   showLabel?: boolean
+  /** Use "h1" when this header is the page's top-level heading (e.g. /faq). */
+  as?: 'h1' | 'h2'
 }
 
 export function LandingSectionHeader({
@@ -15,6 +17,7 @@ export function LandingSectionHeader({
   className,
   align = 'center',
   showLabel = Boolean(label),
+  as = 'h2',
 }: LandingSectionHeaderProps) {
   return (
     <div
@@ -25,7 +28,7 @@ export function LandingSectionHeader({
       )}
     >
       {showLabel && label ? <p className="section-label">{label}</p> : null}
-      <Heading as="h2">{headline}</Heading>
+      <Heading as={as}>{headline}</Heading>
     </div>
   )
 }
