@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| first-value-journey | review | auto | main | Restore anon first scan, remove post-signup double-submit, align promise, core-loop analytics | AuditInput, dashboard, copy, analytics, report claim CTA | — | 2026-07-17 |
+| first-value-journey | done | auto | main | Restore anon first scan, remove post-signup double-submit, align promise, core-loop analytics | AuditInput, dashboard, copy, analytics, report claim CTA | — | 2026-07-17 |
 | completeness-refactor | done | auto | main | Completeness: billing gates, sample provenance, report cleanup, trust, skills/docs | create-audit, usage, feedback, live-sample, ReportExplorer, copy, skills | homepage-art-direction (visual ownership) | 2026-07-17 |
 | homepage-art-direction | done | codex | main | World-class homepage visual system, generated brand imagery, section flow, responsive polish | marketing homepage components, assets, copy hierarchy, visual QA | — | 2026-07-17 |
 | convert-ready-pass | done | auto | main | Conversion + report UX + marketing foundation pass | marketing nav/hero/copy, sample report master-detail, demo score, annotations | — | 2026-07-17 |

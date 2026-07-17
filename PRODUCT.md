@@ -73,7 +73,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 ## Current capabilities (verified)
 
 - Pipeline v2.3.0, 180s deadline per audit
-- 22 deterministic check modules live (30/31 mapped, 1 partial: visual-polish). See `AGENTS.md` Project facts for counts.
+- 22 deterministic check modules live; 45 capabilities (43 live, 1 partial: visual-polish, 1 planned). See `AGENTS.md` Project facts for counts.
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production

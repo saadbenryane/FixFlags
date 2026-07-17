@@ -25,6 +25,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface ExportRubric {
   name: string
@@ -59,9 +60,17 @@ export function ExportMenu({
   const router = useRouter()
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
-  async function copyText(key: string, text: string, successMessage: string) {
+  async function copyText(
+    key: string,
+    text: string,
+    successMessage: string,
+    promptKind?: 'plan' | 'export'
+  ) {
     try {
       await navigator.clipboard.writeText(text)
+      if (promptKind) {
+        trackEvent('fix_prompt_copied', { kind: promptKind, audit_id: auditId })
+      }
       setCopiedKey(key)
       setTimeout(() => setCopiedKey(null), 2000)
       toast.success(successMessage)
@@ -135,14 +144,14 @@ export function ExportMenu({
             <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() =>
-                copyText('fix-plan', buildPlanModePrompt(flags, { url }), 'Copied fix plan prompt')
+                copyText('fix-plan', buildPlanModePrompt(flags, { url }), 'Copied fix plan prompt', 'plan')
               }
             >
               Fix plan for your editor
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
-                copyText('all-prompts', collectAllFixPrompts(flags), `Copied ${totalPrompts} fix prompts`)
+                copyText('all-prompts', collectAllFixPrompts(flags), `Copied ${totalPrompts} fix prompts`, 'export')
               }
             >
               All prompts ({totalPrompts})
@@ -157,7 +166,8 @@ export function ExportMenu({
                     copyText(
                       rubric,
                       collectFixPromptsByRubric(flags, rubric),
-                      `Copied ${count} ${rubricLabel(rubric)} prompts`
+                      `Copied ${count} ${rubricLabel(rubric)} prompts`,
+                      'export'
                     )
                   }
                 >

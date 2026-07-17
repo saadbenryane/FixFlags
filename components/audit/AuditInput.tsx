@@ -36,7 +36,7 @@ export function AuditInput({
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
-  const { user, isLoading: authLoading } = useMe()
+  const { user } = useMe()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [urlError, setUrlError] = useState('')
@@ -152,12 +152,21 @@ export function AuditInput({
   }
 
   useEffect(() => {
-    if (!autoStart || !initialUrl || autoStartedRef.current || authLoading) return
+    if (!autoStart || !initialUrl || autoStartedRef.current) return
     autoStartedRef.current = true
+    // Strip the handoff url from the history entry before submitting: Back from
+    // the report page would otherwise remount this component with ?url= intact
+    // and silently re-submit a duplicate scan.
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('url')) {
+      params.delete('url')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    }
     void submitUrl(initialUrl)
     // Intentionally one-shot on mount when handoff URL is present.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, initialUrl, authLoading])
+  }, [autoStart, initialUrl])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -186,7 +195,6 @@ export function AuditInput({
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
-  const landingDisabled = loading || (isLanding && authLoading)
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
@@ -208,7 +216,7 @@ export function AuditInput({
                 setUrl(e.target.value)
                 setUrlError('')
               }}
-              disabled={landingDisabled}
+              disabled={loading}
               aria-invalid={Boolean(urlError)}
               aria-describedby={describedBy}
             />
@@ -216,7 +224,7 @@ export function AuditInput({
               type="submit"
               variant="default"
               size="lg"
-              disabled={landingDisabled}
+              disabled={loading}
               className={cn(
                 fieldHeightClass,
                 'w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6'
@@ -310,6 +318,7 @@ export function AuditInput({
           code={limitGate.code}
           action={limitGate.action}
           nextPath={limitGate.nextPath}
+          from={resolvedPlacement}
           onDismiss={() => setLimitGate(null)}
         />
       )}

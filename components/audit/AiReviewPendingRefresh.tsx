@@ -28,11 +28,12 @@ export function AiReviewPendingRefresh({
       attempts += 1
       try {
         const res = await fetch(`/api/reports/${auditId}/status`)
-        if (!res.ok) return
-        const data = (await res.json()) as { aiReviewAt?: string | null }
-        if (data.aiReviewAt) {
-          router.refresh()
-          return
+        if (res.ok) {
+          const data = (await res.json()) as { aiReviewAt?: string | null }
+          if (data.aiReviewAt) {
+            router.refresh()
+            return
+          }
         }
       } catch {
         // ignore transient poll errors
