@@ -35,14 +35,16 @@ export function VibecodingProfilePrompt() {
             </Button>
           </div>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setDismissed(true)}
-          className="shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </Card>
   )

@@ -23,7 +23,7 @@ export default function BlogPage() {
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <time
                   dateTime={post.date}
-                  className="font-mono text-[11px] uppercase tracking-label text-muted-foreground"
+                  className="font-mono text-2xs uppercase tracking-label text-muted-foreground"
                 >
                   {post.date}
                 </time>

@@ -47,7 +47,7 @@ export function FeedbackHub({ reactions, reactionCount, unread }: Props) {
         <TabsTrigger value="conversations" className="gap-1.5">
           Conversations
           {unread > 0 && (
-            <Badge variant="destructive" className="text-[10px]">
+            <Badge variant="destructive" size="sm">
               {unread > 9 ? '9+' : unread}
             </Badge>
           )}
@@ -55,7 +55,7 @@ export function FeedbackHub({ reactions, reactionCount, unread }: Props) {
         <TabsTrigger value="reactions" className="gap-1.5">
           Reactions
           {reactionCount > 0 && (
-            <span className="text-[10px] text-muted-foreground">{reactionCount}</span>
+            <span className="text-3xs text-muted-foreground">{reactionCount}</span>
           )}
         </TabsTrigger>
         <TabsTrigger value="digest">AI Digest</TabsTrigger>

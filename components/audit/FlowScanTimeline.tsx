@@ -89,7 +89,7 @@ export function FlowScanTimeline({ flowData }: Props) {
                       </div>
                     )}
                   </Card>
-                  <p className="truncate font-mono text-[10px] text-muted-foreground">
+                  <p className="truncate font-mono text-3xs text-muted-foreground">
                     {step.url}
                   </p>
                 </div>

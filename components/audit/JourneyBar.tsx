@@ -112,12 +112,12 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
                   {roleLabel(page.role, page.url)}
                 </span>
                 {page.flagCount > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-3xs font-mono tabular-nums text-muted-foreground">
                     {page.flagCount}
                   </span>
                 )}
               </div>
-              <span className="max-w-[120px] truncate text-[10px] text-muted-foreground sm:max-w-[180px]">
+              <span className="max-w-[120px] truncate text-3xs text-muted-foreground sm:max-w-[180px]">
                 {displayHostname(page.url)}
               </span>
             </div>

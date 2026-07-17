@@ -10,7 +10,7 @@ import { ExampleAuditCard } from '@/components/marketing/ExampleAuditCard'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
 import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
-import { LighthouseCallout } from '@/components/marketing/LighthouseCallout'
+import { LighthouseNote } from '@/components/marketing/LighthouseNote'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('examples', '/examples')
@@ -51,7 +51,7 @@ export default async function ExamplesPage({
             Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix
             prompt. Illustrative only, not endorsements.
           </Body>
-          <LighthouseCallout className="text-sm text-muted-foreground" />
+          <LighthouseNote className="text-sm text-muted-foreground" />
         </div>
 
         <Suspense fallback={null}>

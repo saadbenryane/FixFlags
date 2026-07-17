@@ -96,7 +96,7 @@ export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpan
   return (
     <span
       className={cn(
-        'font-mono text-[11px] font-medium uppercase tracking-label text-muted-foreground',
+        'font-mono text-2xs font-medium uppercase tracking-label text-muted-foreground',
         className
       )}
       {...props}

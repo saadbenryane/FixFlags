@@ -24,11 +24,11 @@ export default function ReportPageError({
     <AuditShell>
       <Container variant="report" className="flex flex-1 flex-col items-center justify-center py-24 text-center">
         <Heading as="h1">Could not load report</Heading>
-        <Muted className="mt-2 max-w-md">Something went wrong. Try again or return to the dashboard.</Muted>
+        <Muted className="mt-2 max-w-md">Something went wrong. Try again or go home.</Muted>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Button onClick={reset}>Try again</Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/">Go home</Link>
           </Button>
         </div>
       </Container>

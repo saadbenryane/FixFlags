@@ -36,7 +36,7 @@ When two options tie, pick the one with **less**.
 | # | Heuristic | What it means here | Where it lives |
 |---|-----------|--------------------|----------------|
 | 1 | **Visibility of system status** | The user always knows what's happening: scan progress (Scan → Flag → Fix), partial report fill-in, save/share status. | `AuditReportProgressive`, `ReportFixLoop`, `Callout`, `ShareStatusBanner`, `ActiveAuditBanner` |
-| 2 | **Match system & real world** | Plain language, not jargon. "Flag", "fix prompt", "re-check" — verbs a builder uses. Grades (A–F) are a universal mental model. | `GradeBadge`, rubric labels, verdict copy |
+| 2 | **Match system & real world** | Plain language, not jargon. "Flag", "fix prompt", "re-check" — verbs a builder uses. Grades (A–F) are a universal mental model. | `ScoreDisplay`, rubric labels, verdict copy |
 | 3 | **User control & freedom** | Reversible actions, clear exits, no dead ends. Collapsible sections; every error state offers a next step. | `RubricCard` accordion, error panels with CTAs |
 | 4 | **Consistency & standards** | One way to do a thing. Same card = same radius, surface, shadow. Use shared primitives, never bespoke one-offs. | `Card`, `Callout`, `Button`, typography components |
 | 5 | **Error prevention** | Validate before damage. Disable/guard destructive actions; confirm spend (plan changes). Re-checks are free — never gate behind quota. | `LaunchGates`, `AuditLimitGate`, checkout flows |

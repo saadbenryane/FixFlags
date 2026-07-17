@@ -86,7 +86,7 @@ export function RepoFindingCard({
               <span className="meta-label text-muted-foreground/80">{finding.category}</span>
             </div>
             <p className="text-sm font-medium leading-snug text-pretty">{finding.problem}</p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-3xs text-muted-foreground">
               <span className="break-all font-mono sm:truncate">{locationLabel(finding)}</span>
               <span className="hidden text-border sm:inline">/</span>
               <span className="inline-flex min-w-0 items-center gap-1 font-mono">
@@ -97,14 +97,17 @@ export function RepoFindingCard({
           </div>
           <div className="flex shrink-0 items-center justify-end gap-1 sm:justify-start">
             <PromptCopyButton prompt={fixTask.prompt} label="Copy branch prompt" compact />
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setExpanded(!expanded)}
-              className="min-h-11 min-w-11 rounded-pill p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="h-11 w-11 text-muted-foreground hover:text-foreground"
               aria-expanded={expanded}
               aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
+            </Button>
           </div>
         </div>
 

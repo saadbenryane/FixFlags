@@ -32,20 +32,20 @@ function SessionRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full text-left px-4 py-3 border-b border-border transition-colors',
+        'w-full text-left px-4 py-3 border-b border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring',
         selected ? 'bg-muted/60' : 'hover:bg-muted/30'
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium truncate">{label}</span>
         {session.unreadByAgent > 0 && (
-          <Badge variant="destructive" className="text-[10px] shrink-0">
+          <Badge variant="destructive" size="sm" className="shrink-0">
             {session.unreadByAgent}
           </Badge>
         )}
       </div>
       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" size="sm">
           {session.status}
         </Badge>
         {session.lead?.normalizedDomain && (
@@ -245,7 +245,7 @@ export function AdminInbox() {
               <div>
                 <p className="text-xs text-muted-foreground">Account</p>
                 <p>{selected.user.email}</p>
-                <Badge variant="outline" className="mt-1 text-[10px]">
+                <Badge variant="outline" size="sm" className="mt-1">
                   {selected.user.plan}
                 </Badge>
               </div>

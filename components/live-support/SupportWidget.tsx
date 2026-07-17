@@ -87,7 +87,7 @@ function SupportWidgetInner() {
         >
           <MessageCircle className="h-6 w-6" />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-3xs font-bold text-destructive-foreground">
               {unread > 9 ? '9+' : unread}
             </span>
           )}

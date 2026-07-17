@@ -49,53 +49,53 @@ export default async function McpAnalyticsPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-3xs font-medium uppercase tracking-wider text-muted-foreground">
                 All time
               </p>
               <p className="text-2xl font-semibold tabular-nums">{total}</p>
-              <p className="text-[10px] text-muted-foreground">MCP calls</p>
+              <p className="text-3xs text-muted-foreground">MCP calls</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-3xs font-medium uppercase tracking-wider text-muted-foreground">
                 Last 7 days
               </p>
               <p className="text-2xl font-semibold tabular-nums">{last7d}</p>
-              <p className="text-[10px] text-muted-foreground">calls</p>
+              <p className="text-3xs text-muted-foreground">calls</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-3xs font-medium uppercase tracking-wider text-muted-foreground">
                 Last 30 days
               </p>
               <p className="text-2xl font-semibold tabular-nums">{last30d}</p>
-              <p className="text-[10px] text-muted-foreground">calls</p>
+              <p className="text-3xs text-muted-foreground">calls</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-3xs font-medium uppercase tracking-wider text-muted-foreground">
                 Success rate
               </p>
               <p className="text-2xl font-semibold tabular-nums">
                 {totalOk > 0 ? `${successRate}%` : '-'}
               </p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-3xs text-muted-foreground">
                 {successful} ok / {failed} failed
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-3xs font-medium uppercase tracking-wider text-muted-foreground">
                 Avg duration
               </p>
               <p className="text-2xl font-semibold tabular-nums">
                 {avgDuration !== null ? `${avgDuration}ms` : '-'}
               </p>
-              <p className="text-[10px] text-muted-foreground">per call</p>
+              <p className="text-3xs text-muted-foreground">per call</p>
             </CardContent>
           </Card>
         </div>
@@ -146,7 +146,7 @@ export default async function McpAnalyticsPage() {
                     className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2"
                   >
                     <div className="flex items-center gap-2 text-xs">
-                      <code className="font-mono text-[10px]">
+                      <code className="font-mono text-3xs">
                         {f.method}
                         {f.tool ? `:${f.tool}` : ''}
                       </code>
@@ -155,7 +155,7 @@ export default async function McpAnalyticsPage() {
                       </span>
                     </div>
                     {f.errorCode && (
-                      <p className="mt-0.5 text-[10px] font-mono text-destructive">
+                      <p className="mt-0.5 text-3xs font-mono text-destructive">
                         {f.errorCode}
                       </p>
                     )}

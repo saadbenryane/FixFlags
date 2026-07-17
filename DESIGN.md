@@ -10,11 +10,13 @@
 4. **Contained, not sprawling** — three rubrics, not forty categories. Pill-shaped controls, not sharp corners.
 5. **Recognizable, not generic** — Flag Orange, Fraunces headlines, mono labels. Unmistakably FixFlags.
 
+These five compress Dieter Rams' ten principles of good design. The standing review of how well the product lives up to them, and the rules it produced (motion policy, status-component altitudes, durable core vs. treatment), lives in `docs/design-rams-review.md`.
+
 ## Authoritative sources (in priority order)
 
 1. `lib/design/tokens.css` — CSS custom properties for all colors, shadows, radii, type scale, glass effects, animations
 2. `tailwind.config.ts` — Tailwind theme: font families, colors, box shadows, border radii, letter spacing, line heights, keyframes
-3. `components/ui/` — shadcn/ui primitives (33 components: button, card, dialog, accordion, etc.)
+3. `components/ui/` — shadcn/ui primitives (34 components: button, card, dialog, accordion, etc.)
 4. `components/` — application components following the tokens
 5. `.cursor/rules/fixflags-ui.mdc` — UI craft rules (semantic tokens, anti-slop)
 6. `.ui-craft/brief.md` — Design brief with product context
@@ -71,8 +73,14 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s)
 - List/accordion: `accordion-down/up` (0.2s)
 - No `transition: all`. Be specific about what animates.
-- Glow pulses on cards: 6s cycle, subtle opacity shift.
 - Peach orbs: gentle drift (22-30s cycle), breathe (14s cycle).
+- **Ambient motion is a marketing-landing signature only.** App, report,
+  dashboard, and admin surfaces idle at zero running animations — motion there
+  communicates state (progress, expansion, feedback) or does not exist.
+  `SiteShell` enforces this via its `backdrop` prop; surfaces that use the
+  marketing header for anonymous visitors (report/compare views) pass
+  `backdrop="minimal"`. All ambient loops are `motion-safe:` gated. See
+  `docs/design-rams-review.md` (principles 5 and 9).
 
 ## Spacing
 

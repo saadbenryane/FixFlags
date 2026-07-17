@@ -3,8 +3,10 @@
 import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Callout } from '@/components/ui/callout'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -55,6 +57,9 @@ export function AuditReportHero({
   rubrics,
   totalFlags = 0,
   screenshots,
+  screenshotLimited = false,
+  screenshotPartial = false,
+  pageSpeedPartial = false,
   durationMs,
   startedAt,
   completedAt,
@@ -157,6 +162,26 @@ export function AuditReportHero({
         <p className="text-xs text-muted-foreground font-mono tabular-nums">
           Audited in {durationSec}s
         </p>
+      )}
+
+      {(screenshotLimited || screenshotPartial || pageSpeedPartial) && (
+        <div className="space-y-2">
+          {screenshotLimited ? (
+            <Callout variant="warning" title={REPORT_COPY.captureLimited.title}>
+              {REPORT_COPY.captureLimited.body}
+            </Callout>
+          ) : null}
+          {!screenshotLimited && screenshotPartial ? (
+            <Callout variant="warning" title={REPORT_COPY.capturePartial.title}>
+              {REPORT_COPY.capturePartial.body}
+            </Callout>
+          ) : null}
+          {pageSpeedPartial ? (
+            <Callout variant="neutral" title={REPORT_COPY.pageSpeedPartial.title}>
+              {REPORT_COPY.pageSpeedPartial.body}
+            </Callout>
+          ) : null}
+        </div>
       )}
     </div>
   )

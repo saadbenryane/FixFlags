@@ -211,7 +211,7 @@ export function AuditReport({
             showFlow={Boolean(audit.flowData)}
             showLaunchGates={hasLaunchGates}
             showJourney={pages.length > 1}
-            showRecheckSection={!(isLoggedIn && isViewerOwner)}
+            showRecheckSection={isLoggedIn && isViewerOwner}
             siteUrl={audit.url}
             score={audit.score}
             actions={toolbarActions ?? actions}
@@ -260,7 +260,7 @@ export function AuditReport({
                     >
                       {severityLabel(flag.severity)}
                     </Badge>
-                    <span className="text-[10px] font-mono uppercase tracking-label text-muted-foreground">
+                    <span className="meta-label text-muted-foreground">
                       {rubricLabel(rubricName)}
                     </span>
                   </div>
@@ -428,9 +428,14 @@ export function AuditReport({
           </p>
         )}
 
-        {!isSample && isLoggedIn && !viewerIsPaid && showPrescription && (
+        {!isSample &&
+          isLoggedIn &&
+          !viewerIsPaid &&
+          showPrescription &&
+          upgradeMoment &&
+          upgradeMoment !== 'free_default' && (
           <ContextualUpgradeCard
-            moment={upgradeMoment && upgradeMoment !== 'free_default' ? upgradeMoment : 'report_completed'}
+            moment={upgradeMoment}
             isLoggedIn
             currentPlan={viewerPlan}
           />

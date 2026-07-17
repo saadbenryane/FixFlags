@@ -96,12 +96,12 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
             : cta}
       </Button>
       {isPaidPlan && !isCurrent && (
-        <p className="text-[10px] text-center text-muted-foreground leading-snug">
+        <p className="text-3xs text-center text-muted-foreground leading-snug">
           {isLoggedIn ? PRICING.upgradeStepsLoggedIn : PRICING.upgradeSteps}
         </p>
       )}
       {isPaidPlan && !isLoggedIn && (
-        <p className="text-[10px] text-center text-muted-foreground">
+        <p className="text-3xs text-center text-muted-foreground">
           <Link href={signUpHref} className="underline hover:text-foreground">
             Sign up first
           </Link>{' '}

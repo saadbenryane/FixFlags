@@ -287,7 +287,7 @@ export function ShareDrawer({
                     Report link
                   </Label>
                   {isPublic && (
-                    <Badge variant="secondary" className="gap-1 text-[10px] font-mono uppercase">
+                    <Badge variant="secondary" className="gap-1 text-3xs font-mono uppercase">
                       <Globe className="h-3 w-3" /> Public
                     </Badge>
                   )}
@@ -350,7 +350,7 @@ export function ShareDrawer({
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">Password (optional)</Label>
+                          <Label className="text-3xs text-muted-foreground">Password (optional)</Label>
                           <Input
                             placeholder="••••••"
                             type="password"
@@ -360,7 +360,7 @@ export function ShareDrawer({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground">Max views</Label>
+                          <Label className="text-3xs text-muted-foreground">Max views</Label>
                           <Input
                             placeholder="Unlimited"
                             type="number"
@@ -372,7 +372,7 @@ export function ShareDrawer({
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Expires</Label>
+                        <Label className="text-3xs text-muted-foreground">Expires</Label>
                         <Input
                           type="date"
                           value={newExpiry}
@@ -420,7 +420,7 @@ export function ShareDrawer({
                                 </Button>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
+                            <div className="flex items-center gap-3 text-3xs text-muted-foreground font-mono">
                               <span className="flex items-center gap-1">
                                 <Eye className="h-3 w-3" />
                                 {link.viewCount}
@@ -442,7 +442,7 @@ export function ShareDrawer({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 gap-1.5 h-7 text-[11px]"
+                                className="flex-1 gap-1.5 h-7 text-2xs"
                                 onClick={() => {
                                   copyToClipboard(linkUrl, link.id)
                                 }}
@@ -496,7 +496,7 @@ export function ShareDrawer({
                               {link.label || link.token.slice(0, 8)}
                             </span>
                           </div>
-                          <p className="text-[10px] text-muted-foreground mt-1">
+                          <p className="text-3xs text-muted-foreground mt-1">
                             {link.viewCount} views · Revoked
                           </p>
                         </Surface>

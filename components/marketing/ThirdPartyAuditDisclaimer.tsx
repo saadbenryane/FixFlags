@@ -15,7 +15,7 @@ export function ThirdPartyAuditDisclaimer({
 }: ThirdPartyAuditDisclaimerProps) {
   if (variant === 'compact') {
     return (
-      <p className={cn('text-[10px] leading-relaxed text-muted-foreground', className)}>
+      <p className={cn('text-3xs leading-relaxed text-muted-foreground', className)}>
         {COMPACT_DISCLAIMER}
         {showPipeline ? ` ${formatPipelineVersion()}.` : null}
       </p>

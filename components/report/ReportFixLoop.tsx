@@ -153,7 +153,7 @@ export function ReportFixLoop({
             <span className="text-muted-foreground/50"> · </span>
             <span className="text-foreground/80">{scanDetail}</span>
           </span>
-          <span className="ml-auto rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-brand">
+          <span className="ml-auto rounded-full bg-brand/10 px-2 py-0.5 font-mono text-2xs font-semibold tabular-nums text-brand">
             {count}
           </span>
         </div>
@@ -199,12 +199,12 @@ export function ReportFixLoop({
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
-          className="flex w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40"
+          className="flex w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
           aria-expanded={expanded}
         >
           <span className="meta-label text-muted-foreground">Flags</span>
           <span className="flex items-center gap-1.5">
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-brand">
+            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-2xs font-semibold tabular-nums text-brand">
               {count}
             </span>
             <ChevronDown

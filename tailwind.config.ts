@@ -29,6 +29,24 @@ const config: Config = {
         display: ['var(--font-serif)', 'Georgia', 'ui-serif', 'serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
+      fontSize: {
+        // Micro sizes set font-size only (no line-height), matching the
+        // inline text-[10px]/text-[11px] they replace. Labels inherit leading.
+        '3xs': 'var(--text-3xs)',
+        '2xs': 'var(--text-2xs)',
+        // Full scale routed through tokens.css so DESIGN.md's type table is
+        // true at runtime. xs-2xl match Tailwind defaults; 3xl-5xl follow the
+        // documented editorial scale with heading/display leading tokens.
+        xs: ['var(--text-xs)', { lineHeight: '1rem' }],
+        sm: ['var(--text-sm)', { lineHeight: '1.25rem' }],
+        base: ['var(--text-base)', { lineHeight: '1.5rem' }],
+        lg: ['var(--text-lg)', { lineHeight: '1.75rem' }],
+        xl: ['var(--text-xl)', { lineHeight: '1.75rem' }],
+        '2xl': ['var(--text-2xl)', { lineHeight: '2rem' }],
+        '3xl': ['var(--text-3xl)', { lineHeight: 'var(--leading-heading)' }],
+        '4xl': ['var(--text-4xl)', { lineHeight: 'var(--leading-heading)' }],
+        '5xl': ['var(--text-5xl)', { lineHeight: 'var(--leading-display)' }],
+      },
       colors: {
         border: 'hsl(var(--border))',
         'border-subtle': 'hsl(var(--border-subtle))',
@@ -177,10 +195,6 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
-        'word-reveal': {
-          from: { opacity: '0', transform: 'translateY(100%)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
         'gradient-shift': {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
@@ -188,10 +202,6 @@ const config: Config = {
         'pulse': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
-        },
-        'loop-progress': {
-          from: { opacity: '0', transform: 'scaleX(0)' },
-          to: { opacity: '1', transform: 'scaleX(1)' },
         },
         'peach-drift-a': {
           '0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
@@ -209,14 +219,6 @@ const config: Config = {
           '0%, 100%': { opacity: '0.6', transform: 'scale(1)' },
           '50%': { opacity: '0.95', transform: 'scale(1.06)' },
         },
-        'peach-surface-shift': {
-          '0%, 100%': { backgroundPosition: '0% 40%' },
-          '50%': { backgroundPosition: '100% 60%' },
-        },
-        'card-glow-pulse': {
-          '0%, 100%': { opacity: '0.45' },
-          '50%': { opacity: '0.75' },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -225,15 +227,10 @@ const config: Config = {
         'scale-in': 'scale-in 0.3s ease-out',
         'slide-up-fade': 'slide-up-fade 0.4s ease-out',
         'soft-reveal': 'soft-reveal 0.2s ease-out',
-        'word-reveal': 'word-reveal 0.5s ease-out',
         'gradient-shift': 'gradient-shift 3s ease infinite',
-        'gradient-shift-slow': 'gradient-shift 7s ease infinite',
-        'loop-progress': 'loop-progress 0.7s var(--ease-out) 0.12s both',
         'peach-drift-a': 'peach-drift-a 22s ease-in-out infinite',
         'peach-drift-b': 'peach-drift-b 30s ease-in-out infinite',
         'peach-breathe': 'peach-breathe 14s ease-in-out infinite',
-        'peach-surface-shift': 'peach-surface-shift 18s ease-in-out infinite',
-        'card-glow-pulse': 'card-glow-pulse 6s ease-in-out infinite',
       },
     },
   },

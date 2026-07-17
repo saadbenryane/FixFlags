@@ -32,7 +32,7 @@ export default async function SamplesPage() {
       />
 
       {sample.source === 'fixture' ? (
-        <p className="mb-4 text-center font-mono text-[11px] uppercase tracking-label text-muted-foreground/80">
+        <p className="mb-4 text-center section-label">
           Illustrative scores · curated fixture
         </p>
       ) : null}

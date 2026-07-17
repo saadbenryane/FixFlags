@@ -14,7 +14,7 @@ function ExampleFindingCard({ quote }: { quote: TestimonialQuote }) {
       data-carousel-item
       className="flex h-full w-[min(100%,20rem)] shrink-0 snap-start flex-col rounded-card glass-surface-elevated p-6 shadow-card sm:w-[22rem] sm:p-7"
     >
-      <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+      <span className="font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground/70">
         {LANDING_PAGE.testimonials.cardLabel} · {quote.context}
       </span>
 

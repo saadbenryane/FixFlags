@@ -1,3 +1,11 @@
+/*
+ * Deliberately outside the FixFlags design system. This styles "LaunchPad",
+ * the fictional third-party product that serves as the audit demo fixture
+ * (lib/demo/brand.ts). The alien palette, system-ui stack, and bespoke
+ * components are the point: the demo must look like someone else's site,
+ * and fixture audit results depend on this CSS staying as-is. Do not
+ * migrate it to tokens.css or the ui/ primitives.
+ */
 .demo-root {
   --demo-bg: #faf9f7;
   --demo-fg: #1a1a2e;

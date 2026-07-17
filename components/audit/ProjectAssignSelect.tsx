@@ -109,7 +109,7 @@ export function ProjectAssignSelect({ auditId, initialProjectId, enabled, compac
         </Select>
       </div>
       {loadError ? (
-        <p className="max-w-[14rem] text-[11px] text-destructive" role="alert">
+        <p className="max-w-[14rem] text-2xs text-destructive" role="alert">
           {loadError}
         </p>
       ) : null}

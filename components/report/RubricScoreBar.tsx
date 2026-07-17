@@ -38,7 +38,7 @@ export function RubricScoreBar({
         <span
           className={cn(
             'flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground',
-            compact ? 'text-[10px] leading-tight' : 'text-xs'
+            compact ? 'text-3xs leading-tight' : 'text-xs'
           )}
         >
           {Icon ? (

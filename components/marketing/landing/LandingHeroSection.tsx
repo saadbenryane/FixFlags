@@ -10,12 +10,6 @@ export function LandingHeroSection() {
     <Section spacing="marketing" className="pb-10 sm:pb-14 lg:pb-16">
       <Container className="relative">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          {HERO.audienceLine ? (
-            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-subtle bg-[var(--glass-bg)] px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-glass backdrop-blur-md motion-safe:animate-fade-in-up">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
-              {HERO.audienceLine}
-            </span>
-          ) : null}
           <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
             <span className="text-brand">{HERO.headlineAccent}</span>{' '}
             {HERO.headlineLine1}{' '}
