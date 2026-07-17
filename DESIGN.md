@@ -72,6 +72,13 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - List/accordion: `accordion-down/up` (0.2s)
 - No `transition: all`. Be specific about what animates.
 - Peach orbs: gentle drift (22-30s cycle), breathe (14s cycle).
+- **Ambient motion is a marketing-landing signature only.** App, report,
+  dashboard, and admin surfaces idle at zero running animations — motion there
+  communicates state (progress, expansion, feedback) or does not exist.
+  `SiteShell` enforces this via its `backdrop` prop; surfaces that use the
+  marketing header for anonymous visitors (report/compare views) pass
+  `backdrop="minimal"`. All ambient loops are `motion-safe:` gated. See
+  `docs/design-rams-review.md` (principles 5 and 9).
 
 ## Spacing
 

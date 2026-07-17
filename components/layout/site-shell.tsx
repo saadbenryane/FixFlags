@@ -16,6 +16,13 @@ interface SiteShellProps {
   footer?: 'default' | 'minimal'
   showAdmin?: boolean
   adminInboxUnread?: number
+  /**
+   * Backdrop intensity. Defaults from variant (marketing gets the animated
+   * 'full' mesh, app/admin the static 'minimal' grid). Work surfaces that
+   * render with the marketing header (e.g. anonymous report views) must pass
+   * 'minimal': ambient motion is a marketing-landing signature only.
+   */
+  backdrop?: 'full' | 'minimal' | 'off'
 }
 
 export function SiteShell({
@@ -27,14 +34,16 @@ export function SiteShell({
   footer,
   showAdmin,
   adminInboxUnread = 0,
+  backdrop,
 }: SiteShellProps) {
   const showSupport = variant !== 'admin'
   const hasSidebar = variant === 'app'
   const resolvedFooter = footer ?? (variant === 'marketing' ? 'default' : 'minimal')
+  const resolvedBackdrop = backdrop ?? (variant === 'marketing' ? 'full' : 'minimal')
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      <GlobalMeshBackdrop fixed intensity={variant === 'marketing' ? 'full' : 'minimal'} />
+      {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}
       <div className="relative z-0 flex min-h-screen flex-col">
         {hasSidebar ? (
           <div className="flex flex-1">

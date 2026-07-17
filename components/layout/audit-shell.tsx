@@ -18,6 +18,7 @@ export function AuditShell({ children, actions, session, showAdmin = false }: Au
       variant={variant}
       headerRight={variant === 'marketing' ? <MarketingHeaderAuth /> : undefined}
       showAdmin={showAdmin}
+      backdrop="minimal"
     >
       {session && <ClaimAnonymousAudits />}
       {actions && (
