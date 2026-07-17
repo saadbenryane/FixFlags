@@ -36,7 +36,7 @@
 |-------|--------|-------------|
 | Real-site regression suite | ✅ DONE | HTML-derivable checks frozen in `regression-sites.test.ts`. Screenshot/flow/PageSpeed modules still need fixtures. |
 | AI judge contract validation | ✅ DONE | `judge-contract.test.ts` + blank-evidence discard |
-| Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. See `AGENTS.md` Project facts (133 check IDs). |
+| Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. Count: AGENTS.md Project facts (`ALL_CHECK_IDS` in `lib/audit/check-ids.ts`). |
 | Verification rules for every check | ✅ DONE | Every checkId has a human-readable verification rule. |
 | Form validation ratio | ⚠️ CRITICAL | We just added this (50% threshold). No test yet. |
 | Score math | ⚠️ CRITICAL | computeRubricScores is tested. But edge cases (all CRITICAL, module failures) need explicit verification. |

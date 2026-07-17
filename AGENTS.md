@@ -39,7 +39,7 @@
 | `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only |
 | `lib/billing/` | Subscription limits, credits, Stripe integration |
 | `lib/prompts/system-prompt.ts` | AI triage + prescription prompts |
-| `prisma/schema.prisma` | Database schema (39 models) |
+| `prisma/schema.prisma` | Database schema (see AGENTS.md Project facts for model count) |
 | `scripts/` | CLI scripts (demo audits, backfills, guards) |
 | `worker/` | Standalone audit worker |
 | `docs/` | Strategy, positioning, voice, growth docs |

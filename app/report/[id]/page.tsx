@@ -13,6 +13,7 @@ import { isAtCheckLimit } from '@/lib/audit/usage'
 import { normalizeInternalScreenshotUrl, resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus, AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
+import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefresh'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
@@ -376,6 +377,7 @@ export default async function ReportPage({ params }: Props) {
           }
         />
         <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
+        <AiReviewPendingRefresh auditId={id} enabled={aiReviewPending} />
       </AuditShell>
     )
   }

@@ -82,6 +82,7 @@ export function AuditPageActions({
       const res = await fetch(`/api/reports/${auditId}/monitoring`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
+        trackEvent('recheck_started', { audit_id: auditId })
         router.push(`/report/${data.reportId}`)
       } else {
         toast.error((await parseApiErrorResponse(res)).message)

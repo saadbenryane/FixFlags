@@ -273,6 +273,7 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">audit_completed</code> &mdash; Audit finished processing</p>
           <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code> &mdash; Free tier limit hit</p>
           <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code> &mdash; Fix prompt copied to clipboard</p>
+          <p><code className="text-foreground font-mono text-xs">recheck_started</code> &mdash; Owner started a re-check</p>
           <p><code className="text-foreground font-mono text-xs">viewed_report</code> &mdash; Completed report viewed</p>
         </div>
       </section>

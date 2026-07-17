@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +20,7 @@ export function AuditInput({
   source,
   idSuffix = '',
   initialUrl = '',
+  autoStart = false,
   ctaPlacement,
 }: {
   variant?: 'default' | 'landing'
@@ -27,6 +28,8 @@ export function AuditInput({
   source?: 'homepage' | 'dashboard' | 'report' | 'tool_page' | 'issue_page' | 'benchmark_page'
   idSuffix?: string
   initialUrl?: string
+  /** When true and initialUrl is set, submit once on mount (post-signup handoff). */
+  autoStart?: boolean
   /** Distinguishes hero vs final CTA on the landing page for funnel attribution. */
   ctaPlacement?: 'hero' | 'final'
 }) {
@@ -41,11 +44,12 @@ export function AuditInput({
     message: string
     code?: string
     action?: string
+    nextPath?: string
   } | null>(null)
+  const autoStartedRef = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
-  const funnelFrom = resolvedPlacement === 'final' ? 'final' : 'hero'
 
-  async function submitUrl(inputUrl?: string, isSample = false) {
+  async function submitUrl(inputUrl?: string) {
     setUrlError('')
     setLimitGate(null)
 
@@ -85,21 +89,6 @@ export function AuditInput({
       return
     }
 
-    if (isLanding && !authLoading && !user && !isSample) {
-      const nextParams = new URLSearchParams({ url: normalized })
-      const signUpParams = new URLSearchParams({
-        next: `/dashboard?${nextParams.toString()}`,
-        from: funnelFrom,
-      })
-      trackEvent('audit_intent', {
-        cta_placement: funnelFrom,
-        from: funnelFrom,
-      })
-
-      router.push(`/sign-up?${signUpParams.toString()}`)
-      return
-    }
-
     setLoading(true)
     try {
       const params = new URLSearchParams(window.location.search)
@@ -123,7 +112,10 @@ export function AuditInput({
           res.status === 402 ||
           (res.status === 401 && parsed.code === 'AUTH_REQUIRED')
         ) {
-          setLimitGate(parsed)
+          setLimitGate({
+            ...parsed,
+            nextPath: `/dashboard?url=${encodeURIComponent(normalized)}`,
+          })
         } else {
           toast.error(parsed.message)
         }
@@ -132,15 +124,23 @@ export function AuditInput({
 
       const data = await res.json()
       const reportId = typeof data.reportId === 'string' ? data.reportId : ''
+      const isLoggedIn =
+        typeof data.isLoggedIn === 'boolean' ? data.isLoggedIn : Boolean(user)
       trackEvent('started_audit', {
         source: auditSource,
-        is_logged_in: data.isLoggedIn ?? false,
+        is_logged_in: isLoggedIn,
         cta_placement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
       })
       if (reportId) {
         setActiveAudit({
           auditId: reportId,
           url: normalized,
+          estimatedWaitSeconds:
+            typeof data.estimatedWaitSeconds === 'number'
+              ? data.estimatedWaitSeconds
+              : undefined,
+          queuePosition:
+            typeof data.queuePosition === 'number' ? data.queuePosition : undefined,
         })
       }
       router.push(reportId ? `/report/${reportId}` : '/dashboard')
@@ -151,6 +151,14 @@ export function AuditInput({
     }
   }
 
+  useEffect(() => {
+    if (!autoStart || !initialUrl || autoStartedRef.current || authLoading) return
+    autoStartedRef.current = true
+    void submitUrl(initialUrl)
+    // Intentionally one-shot on mount when handoff URL is present.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, initialUrl, authLoading])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     await submitUrl()
@@ -158,7 +166,7 @@ export function AuditInput({
 
   async function handleTrySample() {
     setUrl(SAMPLE_AUDIT_URL)
-    await submitUrl(SAMPLE_AUDIT_URL, true)
+    await submitUrl(SAMPLE_AUDIT_URL)
   }
 
   /** Scroll to the inline sample explorer -- no scan, no account. */
@@ -301,6 +309,7 @@ export function AuditInput({
           message={limitGate.message}
           code={limitGate.code}
           action={limitGate.action}
+          nextPath={limitGate.nextPath}
           onDismiss={() => setLimitGate(null)}
         />
       )}

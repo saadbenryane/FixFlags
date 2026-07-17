@@ -10,8 +10,8 @@ import { AUDIT_CAPABILITIES, capabilitySummary, type AuditDimension } from '@/li
 import { StatValue } from '@/components/admin/StatValue'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 
-/** docs/offering.md, docs/business-model.md: feature freeze lifts at 100 paying users */
-const PAYING_USER_FREEZE_THRESHOLD = 100
+/** Growth target for monitoring progress */
+const PAYING_USER_TARGET = 100
 
 export default async function OperatingPlanPage() {
   const monthAgo = startOf(30)
@@ -42,8 +42,7 @@ export default async function OperatingPlanPage() {
     }),
   ])
 
-  const freezePct = Math.min(100, pct(paidUsers, PAYING_USER_FREEZE_THRESHOLD))
-  const featureFreezeActive = paidUsers < PAYING_USER_FREEZE_THRESHOLD
+  const growthPct = Math.min(100, pct(paidUsers, PAYING_USER_TARGET))
 
   const recheckRate = pct(rechecksMonth, completedRootAuditsMonth)
 
@@ -82,25 +81,21 @@ export default async function OperatingPlanPage() {
       <PageHeader title="Operating plan" />
 
       <section className="space-y-4">
-        <SectionTitle>Feature freeze gate</SectionTitle>
+        <SectionTitle>Growth progress</SectionTitle>
         <Card variant="solid">
           <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
             <CardTitle className="text-xs text-muted-foreground font-medium">
-              Paying users toward the {PAYING_USER_FREEZE_THRESHOLD}-user threshold
+              Paying users toward {PAYING_USER_TARGET}-user target
             </CardTitle>
-            <Badge variant={featureFreezeActive ? 'secondary' : 'default'}>
-              {featureFreezeActive ? 'Freeze active' : 'Freeze lifted'}
+            <Badge variant="default">
+              {paidUsers.toLocaleString()} / {PAYING_USER_TARGET}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
             <StatValue>
-              {paidUsers.toLocaleString()} / {PAYING_USER_FREEZE_THRESHOLD}
+              {paidUsers.toLocaleString()} / {PAYING_USER_TARGET}
             </StatValue>
-            <Progress value={freezePct} />
-            <p className="text-xs text-muted-foreground">
-              docs/offering.md: &ldquo;Zero new features until 100 paying users&rdquo; &mdash; scan depth
-              (Phase 1, scan-roadmap.md) is the validated exception.
-            </p>
+            <Progress value={growthPct} />
           </CardContent>
         </Card>
       </section>

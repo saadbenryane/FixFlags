@@ -50,8 +50,27 @@ description: FixFlags visual design tokens, kerning, spacing, border radius, 60-
 ## Page canvas
 
 - Global peach mesh: `GlobalMeshBackdrop` in `SiteShell`
+- Marketing (`intensity="full"`): brand glow + warm depth only — **no grid/dot layer behind hero** (grid is `minimal` app/admin only; see `DESIGN.md`)
 - Cards use `.glass-surface` or `.glass-surface-elevated` — frosted, borderless
 - Hero URL input: concentric pill group (`InputGroup` + `AuditInput` landing variant)
+
+## Layout widths
+
+| Container variant | Max width | Use |
+|-------------------|-----------|-----|
+| `default` | `max-w-5xl` | Marketing pages, header, footer |
+| `report` | `max-w-6xl` | Report pages, admin detail — wide enough for master-detail explorer |
+| `prose` | `max-w-[720px]` | Long-form docs, legal |
+| `narrow` | `max-w-2xl` | Settings, billing, account flows |
+
+Report surfaces use `Container variant="report"` so `ReportExplorer` master-detail layout has room.
+
+## Report explorer & screenshots
+
+- **Flag browsing:** `ReportExplorer` only — list, filters, detail panel, fix prompts
+- **Rubric summaries:** `RubricsPanel` / `RubricCard` link into explorer; no duplicate flag lists
+- **Screenshot highlights:** `ScreenshotWithHighlights` for evidence overlays; carousel/prev-next controls ≥ `min-h-11 min-w-11` (44px)
+- **Sticky nav:** `ReportStickyToolbar` for section jumps (Flags, Journey, Overview, etc.)
 
 ## Logo
 
@@ -88,6 +107,9 @@ description: FixFlags visual design tokens, kerning, spacing, border radius, 60-
 - [ ] Focus rings on all interactive elements
 - [ ] Scores use `font-mono tabular-nums`
 - [ ] Logo lockup in header (light/dark SVG swap)
+- [ ] Report pages use `Container variant="report"` (`max-w-6xl`)
+- [ ] Marketing full mesh has no hero grid (see `GlobalMeshBackdrop` `intensity="full"`)
+- [ ] Carousel and screenshot controls ≥ 44px touch targets
 
 ## Companion skills
 

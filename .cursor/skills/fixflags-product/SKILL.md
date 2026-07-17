@@ -26,6 +26,10 @@ Read before changing product logic or writing copy that promises a feature.
 | Audit pipeline | `docs/audit-pipeline.md`, `.cursor/skills/fixflags-audit-pipeline/SKILL.md` |
 | Triage / prescription | `lib/audit/runner.ts`, `pipeline/finalize-from-outcome.ts`, `run-ai-review.ts` |
 | Re-check | `lib/audit/recheck.ts` |
+| Sample provenance | `lib/marketing/live-sample.ts` (`SampleSource`: live \| curated \| fixture) |
+| Billing gate | `lib/billing/credits.ts` (`wouldBlockNewCheckWithCredits`) |
+| Report explorer | `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
+| Rubric summaries | `components/audit/RubricsPanel.tsx` (summary/link-only) |
 | Rubric order | `lib/audit/constants.ts` (`RUBRIC_ORDER`) |
 | MCP poll helper | `lib/audit/poll-audit.ts` |
 | Production env | `lib/env.ts`, `instrumentation.ts` |
@@ -60,6 +64,42 @@ Do not market white-label reports or priority support — not implemented.
 | Re-check (owned report) | **No** (`skipUsageCount: true` in `recheck.ts`) |
 
 Copy must say: monthly limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
+
+## Report surface ownership
+
+| Surface | Owns | Does not own |
+|---------|------|--------------|
+| `ReportExplorer` | Flag list, filters, detail panel, fix prompts, screenshot evidence | Rubric score summaries |
+| `RubricsPanel` | Three-rubric summary cards, links into explorer | Flag browsing or duplicate flag lists |
+| `ReportStickyToolbar` | Section nav (Flags, Journey, Overview, Re-check) | Fix prompt editing |
+
+Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`).
+
+## Sample provenance
+
+Marketing samples use `SampleSource`: **`live` | `curated` | `fixture`** (`lib/marketing/live-sample.ts`).
+
+- **live** — fresh production audit meeting eligibility
+- **curated** — hand-picked completed audit (still real data)
+- **fixture** — offline/demo only (`static-sample.ts`, demo routes)
+
+Eligibility (`isEligibleMarketingSample`): `reportCompleteness === FULL`, at least one flag, rubrics present, desktop screenshot. **Not** score floors. Tests: `lib/marketing/__tests__/sample-provenance.test.ts`.
+
+## Billing gates (new URL checks)
+
+FREE plan: 3 lifetime checks enforced in `create-audit.ts` via `wouldBlockNewCheckWithCredits` (counts pending non-terminal audits). Revoked paid subscriptions downgrade to FREE for hard gates.
+
+Re-checks set `skipUsageCount: true` and bypass this gate entirely.
+
+## parentId validation
+
+When `parentId` is set (re-check/monitoring), `assertParentAuditAllowed` in `create-audit.ts` verifies:
+
+- Parent audit exists and is `COMPLETED`
+- Caller owns the parent (or admin)
+- Parent is not itself a child re-check chain violation
+
+Finalize diffs child vs parent via `diffFlagsAgainstParent` when `audit.parentId` is set.
 
 ## Audit pipeline (triage vs prescription)
 
@@ -107,7 +147,7 @@ UI must gate before API 402:
 - `npm run test:unit` — full Vitest suite (`lib/**/*.test.ts`, `app/api/**/__tests__`)
 - `.github/workflows/ci.yml` — typecheck, lint, guards, test, build, worker:build (no DB steps)
 - Local `npm run verify` is stricter (includes `db:validate`, `db:check`, `db:drift`)
-- Billing route tests: `app/api/checks/__tests__/route.test.ts`, api-keys, projects
+- Billing route tests: `app/api/checks/__tests__/route.test.ts` (402 paths + 201 success), api-keys, projects
 - `*.db` gitignored; use Postgres via `npm run setup`
 
 ## Anti-patterns (product)

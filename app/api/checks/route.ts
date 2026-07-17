@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
       {
         reportId: auditId,
         status,
+        isLoggedIn: Boolean(session?.user),
         estimatedWaitSeconds,
         queuePosition,
         scheduledStartAt,

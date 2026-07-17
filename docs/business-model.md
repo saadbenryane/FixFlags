@@ -28,7 +28,7 @@ See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue,
 - API for batch scanning.
 - White-label reports.
 
-These are not planned until 100 paying users validate demand.
+These ship when they serve the core loop and users ask for them.
 
 ## Free Tier Strategy
 

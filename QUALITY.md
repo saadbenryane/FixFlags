@@ -20,7 +20,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 |------|--------|---------------|----------|
 | False positives after check changes | ✅ DONE | Real-site regression suite: frozen HTML fixtures with expected flag profiles | 6 fixtures in `regression-sites.test.ts`, run in CI (HTML-derivable checks) |
 | AI judge hallucinates rubrics | ✅ DONE | Bad schema → hard reject. Empty evidence → discard. Wrong rubric → fail. | `judge-contract.test.ts` + prescription contract; blank evidence discarded in `mergePrescriptionResults` |
-| CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | 133/133 via `checks.test.ts` (see `AGENTS.md` Project facts) |
+| CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | All IDs via `checks.test.ts` (count: AGENTS.md Project facts → `ALL_CHECK_IDS`) |
 | Unclear what each check verifies | ✅ DONE | Verification rules for every checkId | All documented |
 | Form validation | ⚠️ CRITICAL | Form validation ratio test (50% threshold) | Not implemented |
 | Score math edge cases | ⚠️ CRITICAL | computeRubricScores tested. Edge cases: all CRITICAL, module failures | Partial |

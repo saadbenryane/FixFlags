@@ -45,7 +45,7 @@
 - One accent per surface. Do not layer multiple accent colors.
 - Grade colors (A-F) used only in report score contexts, not marketing.
 
-See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/brand-spec.ts` for non-CSS consumers.
+See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
 ## Shapes and radius
 
@@ -90,7 +90,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/brand-spec
 - Pill shape, `rounded-full`
 - `active:scale-[0.96]` press effect
 - Layered shadow on hover
-- Min 40x40px hit target
+- Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
 
 ### Card (`glass-surface`)
@@ -131,14 +131,14 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 
 - Focus rings on all interactive elements
 - `prefers-reduced-motion` respected
-- 40x40px minimum hit targets
+- 44×44px minimum hit targets (`min-h-11 min-w-11`)
 - Screen reader support in shadcn primitives (Radix)
 - Heading hierarchy (h1 > h2 > h3) enforced by lint rules
 - Color contrast: brand orange on backgrounds at WCAG AA minimum
 
 ## What to avoid
 
-- Grid/dot backgrounds behind hero
+- Grid/dot backgrounds behind hero (marketing `GlobalMeshBackdrop intensity="full"` is glow only; grid is app/admin `minimal` only)
 - Rotated cards with blur halos
 - Traffic-light window chrome (unless showing real product UI)
 - Staggered translate-y on grid items for fake depth

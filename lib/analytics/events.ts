@@ -25,6 +25,7 @@ type FunnelEvent =
   | 'audit_limit_reached'
   | 'viewed_report'
   | 'fix_prompt_copied'
+  | 'recheck_started'
   | 'viewed_sample'
   | 'clicked_sample_cta'
   | 'audit_intent'
@@ -49,7 +50,11 @@ type EventParams = {
   completed_checkout: { plan: string }
   audit_limit_reached: { reason?: string }
   viewed_report: { audit_id?: string; is_owner?: boolean }
-  fix_prompt_copied: Record<string, never>
+  fix_prompt_copied: {
+    kind?: 'flag' | 'plan' | 'export'
+    audit_id?: string
+  }
+  recheck_started: { audit_id?: string }
   viewed_sample: { placement: 'homepage' | 'samples' }
   clicked_sample_cta: { placement: 'hero' | 'how_it_works' | 'sample_section' }
   audit_intent: { cta_placement: 'hero' | 'final'; from: 'hero' | 'final' }

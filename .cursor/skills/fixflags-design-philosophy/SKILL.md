@@ -39,12 +39,12 @@ When two options tie, pick the one with **less**.
 | 2 | **Match system & real world** | Plain language, not jargon. "Flag", "fix prompt", "re-check" — verbs a builder uses. Grades (A–F) are a universal mental model. | `GradeBadge`, rubric labels, verdict copy |
 | 3 | **User control & freedom** | Reversible actions, clear exits, no dead ends. Collapsible sections; every error state offers a next step. | `RubricCard` accordion, error panels with CTAs |
 | 4 | **Consistency & standards** | One way to do a thing. Same card = same radius, surface, shadow. Use shared primitives, never bespoke one-offs. | `Card`, `Callout`, `Button`, typography components |
-| 5 | **Error prevention** | Validate before damage. Disable/guard destructive actions; confirm spend (re-checks, plan changes). | `LaunchGates`, `AuditLimitGate`, checkout flows |
-| 6 | **Recognition over recall** | Show, don't make them remember. Persistent `ReportMiniNav`, inline definitions, visible legends. | `ReportMiniNav`, `ScoringLegend` |
+| 5 | **Error prevention** | Validate before damage. Disable/guard destructive actions; confirm spend (plan changes). Re-checks are free — never gate behind quota. | `LaunchGates`, `AuditLimitGate`, checkout flows |
+| 6 | **Recognition over recall** | Show, don't make them remember. Persistent `ReportStickyToolbar`, inline definitions, visible legends. | `ReportStickyToolbar`, `ScoringLegend` |
 | 7 | **Flexibility & efficiency** | Defaults for novices, accelerators for pros. One-click copy fix prompts; keyboard focus order; sensible zero-config. | `FixPromptBlock`, `PromptCopyButton` |
 | 8 | **Aesthetic & minimalist design** | Every element competes for attention — so most shouldn't exist. Prefer whitespace over dividers, one accent over many. | All layouts; the 60-30-10 rule |
 | 9 | **Help users recognize & recover from errors** | Errors in human terms + a remedy. Never a raw stack trace; always "here's what to do next." | `AuditFailurePanel`, partial-report `Callout` |
-| 10 | **Help & documentation** | Searchable, task-oriented, close to the point of need. Contextual hints beat a separate manual. | `/docs`, inline tooltips, `CompletenessHeader` |
+| 10 | **Help & documentation** | Searchable, task-oriented, close to the point of need. Contextual hints beat a separate manual. | `/docs`, inline tooltips, report section headers |
 
 **Review move:** for any new surface, walk these 10 in order and name which ones it satisfies and which it ignores on purpose.
 
@@ -55,7 +55,7 @@ When two options tie, pick the one with **less**.
 - **Hick's Law** — more choices = slower decisions. Cap primary actions per view (ideally 1 primary CTA). Progressive-disclose the rest.
 - **Fitts's Law** — targets that are bigger and closer are faster. Interactive rows ≥ `min-h-11` (44px, Apple's minimum). Primary CTAs are large and reachable.
 - **Jakob's Law** — users expect us to work like everything else. Don't reinvent nav, forms, or scroll. Convention first; novelty only where it adds real value.
-- **Miller's Law (~7±2)** — chunk. Six rubrics, not thirty raw checks. Group flags by severity, summaries before detail.
+- **Miller's Law (~7±2)** — chunk. Three rubrics (Message, Experience, Reach), not thirty raw checks. Group flags by severity, summaries before detail.
 - **Von Restorff (isolation)** — the different thing is remembered. Exactly one orange focal point per region; if everything pops, nothing does.
 - **Aesthetic-Usability Effect** — polished UI is *perceived* as more usable and trustworthy. Optical alignment, tabular numbers on scores, real italics (never faux), tuned shadows — these compound into credibility.
 - **Peak-End Rule** — people judge an experience by its peak and its end. Our peak is the **score reveal**; our end is the **fix prompt**. Invest disproportionately in both.
@@ -73,6 +73,8 @@ The report is read in this emotional arc — design to it:
 3. **Triage** — rubric grid + flags by severity. Scannable in 5 seconds (Miller + recognition).
 4. **Act (the end)** — copy-paste fix prompts. The most valuable pixels on the site; make copying frictionless and the result obviously useful.
 5. **Trust** — pipeline proof, partial-data honesty. We never infer what we didn't measure; ungraded > guessed.
+
+**Surface ownership:** `ReportExplorer` owns flag browsing (master-detail, filters, fix prompts). `RubricsPanel` is summary/link-only — it links into the explorer, not a second flag browser.
 
 Rules:
 - Numbers (scores, grades, counts) are `font-mono tabular-nums` so they don't jitter.
@@ -119,8 +121,9 @@ This philosophy is versioned on purpose.
 
 ### Changelog
 
+- **v1.5 (Jul 2026)** — Report surface cleanup: `ReportExplorer` owns flag browsing; `RubricsPanel` summary-only; removed `ReportMiniNav`/`CompletenessHeader`; homepage nav How it works / Sample / Pricing; primary CTA **Review my site**; re-checks free and unlimited.
 - **v1.4 (Jun 2026)** — Landing language refinement: removed How-to-Start toggle and evidence section; logo cloud below hero; dimension cards restore checklists + example findings; outcome-led final CTA; concentric nested fix prompts via `FixPromptBlock nested`.
-- **v1.3 (Jun 2026)** — Landing conversion restructure: one hero report, path-first How to Start toggle, grades+loop two-column section, slim dimension cards with proof examples, evidence screenshots, honest social proof strip; cut synthetic before/after impact section.
+- **v1.3 (Jun 2026)** — Landing conversion restructure: one hero report, grades+loop two-column section, slim dimension cards with proof examples, evidence screenshots, honest social proof strip; cut synthetic before/after impact section.
 - **v1.2 (Jun 2026)** — Landing completion: 3-dimension marketing model (Trust lives in Experience); live sample + wired CTAs; orphaned marketing components removed; app-wide `Card`/`Surface`/`Callout` adoption; `ui:drift-guard` script; Expert Review audit picker dialog.
 - **v1.1 (Jun 2026)** — Design completion pass: live report `#report-fix` + `FixPromptBlock` arc; terminal tokens on fix prompts; `Callout` / `Card` / `Surface` standardized across audit surfaces; layout `Container variant="report"` alignment; `EmptyState` primitive; removed `surface-raised` utility.
 - **v1.0 (Jun 2026)** — Established pillars, heuristics map, laws, report + layout doctrine, review rubric. Introduced `Callout` primitive and pull-quote verdict; standardized report radii on `rounded-card`.

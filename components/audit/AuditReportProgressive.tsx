@@ -17,8 +17,9 @@ import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getScanningLabel, statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
-import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { AUDIT_PROGRESS, formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
+import { getActiveAudit } from '@/lib/audit/active-audit'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -86,6 +87,23 @@ export function AuditReportProgressive({
 
   const showWorkerWarning =
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && tick >= 12
+
+  const [queueWaitSeconds, setQueueWaitSeconds] = useState<number | undefined>()
+
+  useEffect(() => {
+    if (status !== 'QUEUED') {
+      setQueueWaitSeconds(undefined)
+      return
+    }
+    setQueueWaitSeconds(getActiveAudit()?.estimatedWaitSeconds)
+  }, [status])
+
+  const showQueueWait =
+    status === 'QUEUED' &&
+    typeof queueWaitSeconds === 'number' &&
+    queueWaitSeconds > 5 &&
+    !workerIdle &&
+    !showWorkerWarning
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 2500)
@@ -159,6 +177,12 @@ export function AuditReportProgressive({
         {(workerIdle || showWorkerWarning) && (
           <Callout variant="warning" title="Still preparing">
             {getWorkerQueuedWarning(workerIdle || showWorkerWarning)}
+          </Callout>
+        )}
+
+        {showQueueWait && queueWaitSeconds != null && (
+          <Callout variant="info" title="Queued">
+            {formatQueueWaitHint(queueWaitSeconds)}
           </Callout>
         )}
       </div>

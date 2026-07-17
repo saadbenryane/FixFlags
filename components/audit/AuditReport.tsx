@@ -241,6 +241,8 @@ export function AuditReport({
                   prompt={buildPlanModePrompt(audit.flags, { url: audit.url })}
                   label={`Copy fix plan (${total})`}
                   compact
+                  kind="plan"
+                  auditId={auditId}
                 />
               )
             })()}
@@ -294,6 +296,33 @@ export function AuditReport({
             {REPORT_COPY.noFlags.body}
           </Callout>
         </section>
+      )}
+
+      {!isSample && fixPromptLocked && (
+        <Card className="space-y-4 p-6 text-center sm:p-8">
+          <div className="space-y-2">
+            <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>
+            <p className="text-sm text-muted-foreground text-pretty">{ANON_CLAIM_GUIDE.body}</p>
+          </div>
+          <ol className="mx-auto max-w-md space-y-2 text-left text-sm text-foreground">
+            {ANON_CLAIM_GUIDE.steps.map((step, index) => (
+              <li key={step} className="flex gap-3">
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {index + 1}.
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href={signUpHref}>{ANON_CLAIM_GUIDE.primaryCta}</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
+            </Button>
+          </div>
+        </Card>
       )}
 
       {showOverview && (
@@ -377,33 +406,6 @@ export function AuditReport({
             <Button asChild>
               <Link href="/">{HERO.primaryCta}</Link>
             </Button>
-          </Card>
-        )}
-
-        {!isSample && fixPromptLocked && (
-          <Card className="space-y-4 p-6 text-center sm:p-8">
-            <div className="space-y-2">
-              <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>
-              <p className="text-sm text-muted-foreground text-pretty">{ANON_CLAIM_GUIDE.body}</p>
-            </div>
-            <ol className="mx-auto max-w-md space-y-2 text-left text-sm text-foreground">
-              {ANON_CLAIM_GUIDE.steps.map((step, index) => (
-                <li key={step} className="flex gap-3">
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {index + 1}.
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button asChild>
-                <Link href={signUpHref}>{ANON_CLAIM_GUIDE.primaryCta}</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
-              </Button>
-            </div>
           </Card>
         )}
 

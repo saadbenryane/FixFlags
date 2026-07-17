@@ -433,7 +433,7 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: 'Run a check, copy the fix prompts, then re-check to see what cleared. Create a free account to save your report history.',
+  body: 'Your first scan is free, no account needed. Create a free account for fix prompts, then re-check after you ship.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -682,7 +682,7 @@ export const FAQ = [
   {
     question: 'Do I need an account for my first check?',
     answer:
-      'No. Your first scan is free, no account needed. Create a free account to keep scanning and get 3 AI reports with fix prompts and saved history.',
+      'No. Your first scan is free, no account needed. You see the score, verdict, and Flags right away. Create a free account for fix prompts, saved report history, and 3 AI reports.',
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
@@ -725,7 +725,7 @@ export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
     answer:
-      'Yes. Your first scan is free without an account. Create a free account for 3 AI reports with fix prompts and unlimited re-checks, then upgrade for more new checks, compare, and MCP.',
+      'Yes. Your first scan is free without an account. Create a free account for fix prompts, 3 AI reports, and unlimited re-checks, then upgrade for more new checks, compare, and MCP.',
   },
   {
     question: 'What happens when I hit my check limit?',
@@ -779,7 +779,7 @@ export const REPORT_COPY = {
     body: 'This scan did not surface any issues. Nice work.',
   },
   aiPending: {
-    title: 'Unlocking fix prompts',
+    title: 'Fix prompts generating',
     body: 'Generating copy-paste fix prompts for every flag. This usually takes under a minute.',
   },
   partialReport: {
@@ -986,7 +986,7 @@ export const AUTH = {
 export const UPSELLS = {
   anon: {
     headline: 'Get copy-paste fix prompts',
-    body: 'You already see your score and issues. Create a free account to get the fix prompts, save report history, and re-check your fixes.',
+    body: 'You already see your score and Flags. Create a free account for the fix prompts, save this report, and re-check after you ship.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -1038,8 +1038,8 @@ export const SHARE_COPY = {
 } as const
 
 export const ANON_CLAIM_GUIDE = {
-  headline: 'Save this report, then prove your fixes',
-  body: 'Create a free account to unlock fix prompts, keep this report, and re-check when you ship changes. Re-checks stay free.',
+  headline: 'Get fix prompts for these Flags',
+  body: 'Create a free account to claim this report, copy fix prompts into your editor, and re-check when you ship. Re-checks stay free.',
   primaryCta: 'Create free account',
   steps: [
     'Create an account to claim this report',
@@ -1172,6 +1172,13 @@ export const AUDIT_PROGRESS = {
     FINALIZING: ['Packaging your review...', 'Scoring all 3 rubrics...', 'Almost ready...'],
   },
 } as const
+
+export function formatQueueWaitHint(seconds: number): string {
+  if (seconds >= 60) {
+    return `About ${Math.ceil(seconds / 60)} min before the scan starts.`
+  }
+  return `About ${Math.max(1, Math.round(seconds))}s before the scan starts.`
+}
 
 export const SEO = {
   home: {

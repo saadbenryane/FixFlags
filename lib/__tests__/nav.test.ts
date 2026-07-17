@@ -19,6 +19,12 @@ describe('marketing nav labels', () => {
     assert.ok(changelog)
     assert.equal(changelog.href, '/changelog')
   })
+
+  it('keeps Sample nav pointed at the inline homepage explorer', () => {
+    const sample = MARKETING_LINKS.find((link) => link.label === 'Sample')
+    assert.ok(sample)
+    assert.equal(sample.href, '/#sample-review')
+  })
 })
 
 describe('ADMIN_NAV', () => {

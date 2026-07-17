@@ -5,7 +5,7 @@
 ## System overview
 
 Next.js 15 application (App Router) with:
-- PostgreSQL 16 database (Prisma 6 ORM, 39 models)
+- PostgreSQL 16 database (Prisma 6 ORM; model count in AGENTS.md Project facts)
 - Redis 7 queue (BullMQ 5) for async audit processing
 - Inline worker mode (default) or separate worker process
 - Self-hosted scheduler for recovery + nurture (no external cron)
@@ -209,7 +209,9 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ## Database snapshot
 
-39 models across:
+Model count: regenerate with `grep -c '^model ' prisma/schema.prisma` (canonical value in AGENTS.md Project facts).
+
+Models span:
 - **Auth:** User, Session, Account, Verification
 - **Audit:** Audit, AuditPage, Screenshot, Flag, FlagFeedback, ReportRubric, AuditRunCost
 - **Billing:** CreditPurchase, ProcessedStripeEvent

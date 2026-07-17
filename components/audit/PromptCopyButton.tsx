@@ -11,14 +11,23 @@ interface Props {
   label?: string
   className?: string
   compact?: boolean
+  kind?: 'flag' | 'plan' | 'export'
+  auditId?: string
 }
 
-export function PromptCopyButton({ prompt, label = 'Copy prompt', className, compact }: Props) {
+export function PromptCopyButton({
+  prompt,
+  label = 'Copy prompt',
+  className,
+  compact,
+  kind = 'flag',
+  auditId,
+}: Props) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
     await navigator.clipboard.writeText(prompt)
-    trackEvent('fix_prompt_copied')
+    trackEvent('fix_prompt_copied', { kind, audit_id: auditId })
     setCopied(true)
     toast.success('Prompt copied')
     setTimeout(() => setCopied(false), 2000)

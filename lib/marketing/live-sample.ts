@@ -110,13 +110,8 @@ async function fixtureSample(): Promise<SampleResult> {
 }
 
 function enrichDbAudit(audit: {
-  rubrics: Array<{
-    name: string
-    grade: string | null
-    score: number | null
-    flags: Array<{ severity: string }>
-  }>
-  flags: Array<{ severity: string; rubric: string }>
+  rubrics: Parameters<typeof buildReportShapeFromDb>[0]
+  flags: Parameters<typeof buildReportShapeFromDb>[1]
   launchReadiness: unknown
   [key: string]: unknown
 }): LiveSampleAudit {

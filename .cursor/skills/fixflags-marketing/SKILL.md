@@ -86,7 +86,7 @@ From `docs/voice-and-copy.md`:
 - Operator clarity: short sentences, verb-first CTAs, name tools when relevant
 - Prefer: ship, fix, evidence, report, outcome, proof, check
 - Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes, **second pass**, Fix my live site (see AGENTS.md banned phrases)
-- CTAs are **promises**: `HERO.primaryCta` is **"Run audit"** — verb-first, not "Get started"
+- CTAs are **promises**: `HERO.primaryCta` is **"Review my site"** — verb-first, not "Get started"
 - Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM) only — never promise unbuilt features
 - One contextual CTA angle per page; never paste the same block everywhere
 - **Rule of one** per block: one reader, one pain, one outcome, one action
@@ -127,7 +127,8 @@ Full research methods: [research-workflows.md](research-workflows.md).
 | Channel | AI shipper angle | Existing site owner angle |
 |---------|------------------|---------------------------|
 | **Homepage hero** | Check before you ship | Live site — see what to fix first |
-| **Homepage post-hero** | How to start toggle → grades+loop | Same path; audit your live URL |
+| **Homepage nav** | How it works / Sample / Pricing | Same three links; Sample anchors to `#sample-review` |
+| **Homepage body** | Sample review (one explorer) → dimensions → fix loop → testimonials → final CTA | Same order; exactly one report explorer in Sample review |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
@@ -143,6 +144,13 @@ Full research methods: [research-workflows.md](research-workflows.md).
 5. Check visual/copy alignment with design system skill
 6. Update `copy.ts` only, pages import from there
 7. For FAQ/objections, add question in visitor language, answer with evidence + boundary
+
+## Homepage contract
+
+- **Nav links:** How it works · Sample · Pricing (`MARKETING_LINKS` in `lib/site/nav.ts`)
+- **Section order:** Hero (logo cloud inside) → Sample review → Three dimensions → Fix loop → Example feedback → Final CTA
+- **One explorer:** the live sample report lives only in `SampleReportSection`; do not add a second explorer in hero or elsewhere
+- **Sample provenance:** label as live, curated, or fixture (`SampleSource`); eligibility is completeness-based, not score floors
 
 ## Product–copy alignment
 

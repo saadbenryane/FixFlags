@@ -1,6 +1,4 @@
 import { z } from 'zod'
-import { zodToJsonSchema } from 'zod-to-json-schema'
-import type Anthropic from '@anthropic-ai/sdk'
 
 export const rubricNameSchema = z.enum(['MESSAGE', 'EXPERIENCE', 'REACH'])
 
@@ -139,19 +137,3 @@ export const judgeOutputSchema = z.object({
 })
 
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const generatedSchema = zodToJsonSchema(judgeOutputSchema as any, {
-  target: 'openApi3',
-  $refStrategy: 'none',
-})
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type Check = typeof generatedSchema
-
-export const QUALITY_REPORT_SCHEMA = generatedSchema
-
-export const QUALITY_REPORT_TOOL: Anthropic.Tool = {
-  name: 'quality_report',
-  description: 'Output a structured quality audit report for a website',
-  input_schema: QUALITY_REPORT_SCHEMA as Anthropic.Tool.InputSchema,
-}

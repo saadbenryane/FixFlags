@@ -46,7 +46,12 @@ Search canonical docs and skills for:
 | `/Users/saadbenryane/Code/qewos` | Use repo-relative paths |
 | `CI is not on GitHub` | CI exists; claim must match `ci.yml` |
 | `second pass` | Banned marketing phrase |
-| `34 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
+| `34 models`, `39 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
+| `133`, `133 check`, `133/133` | Hardcoded check ID counts — use `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| `ReportMiniNav`, `CompletenessHeader` | Removed; use `ReportStickyToolbar`, inline report sections |
+| `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
+| `How to Start`, `How to start toggle` | Removed homepage pattern — nav is How it works / Sample / Pricing |
+| `six rubrics`, `Six rubrics` | Three rubrics only: Message, Experience, Reach |
 | `ai-review.*triage` in docs | ai-review is prescription only |
 | `includeAi` skips triage | includeAi gates prescription only |
 
@@ -93,11 +98,42 @@ Core scan endpoint must have route tests:
 
 Re-checks are never gated (separate route; document in test comments).
 
+## Phase 7 — Conversion & report completeness
+
+Marketing and report surfaces must match product contracts:
+
+- **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit" or "Get started").
+- **Homepage nav:** How it works / Sample / Pricing (`lib/site/nav.ts` `MARKETING_LINKS`).
+- **One explorer:** exactly one report explorer on homepage (`SampleReportSection`); no second in hero.
+- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricsPanel` is summary/link-only.
+- **Re-checks:** free and unlimited on owned reports; never gate behind quota.
+- **Billing gate:** new URL checks enforce FREE lifetime limit via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
+- **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
+
+Grep skills/docs for stale conversion terms:
+
+```bash
+rg -i 'ReportMiniNav|CompletenessHeader|six rubrics|"Run audit"|How to Start|39 models|133 check|\\b133/133\\b' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md
+```
+
+## Phase 8 — Sample provenance
+
+Marketing sample audits use provenance `live | curated | fixture` (`SampleSource` in `lib/marketing/live-sample.ts`). Eligibility is completeness + flags + rubrics + desktop screenshot — **not** score floors.
+
+Checks:
+
+- `lib/marketing/__tests__/sample-provenance.test.ts` passes
+- `isEligibleMarketingSample()` rejects near-empty audits regardless of score
+- Homepage/sample pages label provenance honestly (live preferred; fixture offline/demo only)
+- Display scores derive from production helpers (`resolveDisplayScores`, `calculateOverallScore`)
+
 ## Definition of done
 
 - [ ] All Phase 1 commands pass (verify green locally if DB available)
 - [ ] Phase 2 grep clean in canonical docs/skills
 - [ ] Phase 3 facts match code
+- [ ] Phase 7 conversion/report contracts verified (CTA, nav, one explorer, billing gates)
+- [ ] Phase 8 sample provenance tests pass; no score-floor eligibility
 - [ ] No silent UX failures in touched surfaces
 - [ ] `test-strategy.md` aligned with `QUALITY.md`
 - [ ] Skills updated; `lean-visual.md` exists for UI passes

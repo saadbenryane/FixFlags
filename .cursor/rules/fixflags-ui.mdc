@@ -22,7 +22,11 @@ Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/3
 
 ## Type
 
-`font-sans` body · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Reserve `font-display` for marketing hero only.
+`font-sans` body · `font-serif`/`font-display` (Fraunces) for marketing headlines only · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never serif on dense report UI.
+
+## Layout
+
+Report pages: `Container variant="report"` (`max-w-6xl`). Marketing: `default` (`max-w-5xl`). Marketing full mesh (`GlobalMeshBackdrop intensity="full"`) has no hero grid.
 
 ## Radius
 
@@ -34,4 +38,4 @@ No icon grids, gradient heroes, colored trend pills, `transition: all`, or defau
 
 ## Polish
 
-`active:scale-[0.96]` on buttons · layered shadows · `prefers-reduced-motion` · focus rings on `--ring` · 40×40px min hit targets.
+`active:scale-[0.96]` on buttons · layered shadows · `prefers-reduced-motion` · focus rings on `--ring` · 44×44px min hit targets (`min-h-11 min-w-11`).
