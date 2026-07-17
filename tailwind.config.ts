@@ -34,6 +34,18 @@ const config: Config = {
         // inline text-[10px]/text-[11px] they replace. Labels inherit leading.
         '3xs': 'var(--text-3xs)',
         '2xs': 'var(--text-2xs)',
+        // Full scale routed through tokens.css so DESIGN.md's type table is
+        // true at runtime. xs-2xl match Tailwind defaults; 3xl-5xl follow the
+        // documented editorial scale with heading/display leading tokens.
+        xs: ['var(--text-xs)', { lineHeight: '1rem' }],
+        sm: ['var(--text-sm)', { lineHeight: '1.25rem' }],
+        base: ['var(--text-base)', { lineHeight: '1.5rem' }],
+        lg: ['var(--text-lg)', { lineHeight: '1.75rem' }],
+        xl: ['var(--text-xl)', { lineHeight: '1.75rem' }],
+        '2xl': ['var(--text-2xl)', { lineHeight: '2rem' }],
+        '3xl': ['var(--text-3xl)', { lineHeight: 'var(--leading-heading)' }],
+        '4xl': ['var(--text-4xl)', { lineHeight: 'var(--leading-heading)' }],
+        '5xl': ['var(--text-5xl)', { lineHeight: 'var(--leading-display)' }],
       },
       colors: {
         border: 'hsl(var(--border))',
