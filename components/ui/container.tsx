@@ -11,8 +11,8 @@ const containerVariants = cva('container mx-auto w-full', {
       narrow: 'max-w-2xl',
       /** Long-form docs, legal */
       prose: 'max-w-[720px]',
-      /** Report pages, admin detail */
-      report: 'max-w-4xl',
+      /** Report pages, admin detail -- wide enough for master-detail explorer */
+      report: 'max-w-6xl',
       /** MCP docs, compare, review deliverables */
       content: 'max-w-3xl',
       /** Admin tables and dashboards */

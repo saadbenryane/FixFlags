@@ -8,10 +8,12 @@ import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 interface SampleReportSectionProps {
   audit?: LiveSampleAudit
+  /** When true, show the illustrative-scores disclosure on the explorer. */
+  illustrative?: boolean
 }
 
-export function SampleReportSection({ audit }: SampleReportSectionProps) {
-  const { label, headline, body } = LANDING_PAGE.sampleReport
+export function SampleReportSection({ audit, illustrative = false }: SampleReportSectionProps) {
+  const { label, headline, body, illustrativeLabel } = LANDING_PAGE.sampleReport
 
   return (
     <Section spacing="marketing" id="sample-review" className="scroll-mt-[var(--header-offset)]">
@@ -21,6 +23,11 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           <p className="mx-auto mt-3 max-w-2xl text-balance text-center text-base leading-relaxed text-muted-foreground">
             {body}
           </p>
+          {illustrative ? (
+            <p className="mx-auto mt-2 text-center font-mono text-[11px] uppercase tracking-label text-muted-foreground/80">
+              {illustrativeLabel}
+            </p>
+          ) : null}
         </RevealOnView>
 
         <div className="relative motion-safe:animate-fade-in-up motion-safe:opacity-0 motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:forwards]">

@@ -1,6 +1,7 @@
 import { AuditReport } from '@/components/audit/AuditReport'
 import { DevSampleMetaLogger } from '@/components/marketing/DevSampleMetaLogger'
 import { Section } from '@/components/ui/section'
+import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-highlights'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic'
 export default async function SamplesPage() {
   const sample = await getLiveSampleAudit()
   const site = getSampleSiteDisplay(sample.audit.url)
+  const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(sample.audit.performanceData)
 
   const screenshots = sample.audit.screenshots ?? []
   const { limited, partial } = resolveScreenshotUx(
@@ -48,6 +50,7 @@ export default async function SamplesPage() {
           startedAt: sample.audit.startedAt,
           completedAt: sample.audit.completedAt,
           pageSpeedErrors: sample.audit.pageSpeedErrors,
+          evidenceAnchors,
         }}
         auditId={sample.audit.id}
         viewerIsPaid={false}

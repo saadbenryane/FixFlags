@@ -8,7 +8,7 @@ import {
   DIFFERENTIATION,
   FINAL_CTA,
   HERO,
-  HOW_IT_WORKS_SECTION,
+  HOW_IT_WORKS_PAGE,
   LANDING_PAGE,
   MCP_SECTION,
   OUTPUT_LABELS,
@@ -62,7 +62,7 @@ const LANDING_MARKETING_STRINGS = [
 ]
 
 const CORE_LOOP_STRINGS = [
-  ...collectStrings(HOW_IT_WORKS_SECTION),
+  ...collectStrings(HOW_IT_WORKS_PAGE),
   ...collectStrings(LANDING_PAGE.howItWorks),
   ...collectStrings(FINAL_CTA),
 ]
@@ -83,8 +83,8 @@ const ABOVE_FOLD_COPY = [
   ...TRUST_STRIP,
   PROOF_SECTION.headline,
   PROOF_SECTION.subhead,
-  HOW_IT_WORKS_SECTION.subhead,
-  ...HOW_IT_WORKS_SECTION.steps.map((s) => s.body),
+  HOW_IT_WORKS_PAGE.hero.subhead,
+  ...LANDING_PAGE.howItWorks.steps.map((s) => s.body),
   SEO.home.title,
   SEO.home.description,
   BRAND.tagline,
@@ -219,7 +219,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('how-it-works and case studies avoid duplicate before/after phrasing', () => {
-    assert.ok(!HOW_IT_WORKS_SECTION.subhead.toLowerCase().includes('before/after'))
+    assert.ok(!HOW_IT_WORKS_PAGE.hero.subhead.toLowerCase().includes('before/after'))
     assert.ok(!CASE_STUDIES_SECTION.headline.toLowerCase().includes('before/after'))
   })
 
@@ -289,7 +289,6 @@ describe('homepage message guardrails', () => {
       'Windsurf',
     ])
     assert.ok(LANDING_PAGE.logoCloud.disclaimer.length > 0)
-    assert.ok(!LANDING_PAGE.testimonials.disclaimer.includes('2,000'))
     assert.ok(LANDING_PAGE.testimonials.quotes.length >= 4)
   })
 
@@ -313,11 +312,6 @@ describe('homepage message guardrails', () => {
       }
       assert.ok(entry.items.length >= 3, `Changelog entry has too few items: ${entry.title}`)
     }
-  })
-
-  it('social proof disclaimer avoids invented member counts', () => {
-    // Should not contain specific numbers like "2,000+ users" or "500 companies"
-    assert.ok(!/[\d,]+(?:\+|\s*(?:users?|customers?|companies?|teams?))/i.test(LANDING_PAGE.testimonials.disclaimer))
   })
 
   it('samples SEO references LaunchPad demo, not homepage dogfood', () => {

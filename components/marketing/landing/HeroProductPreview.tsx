@@ -16,7 +16,7 @@ export function HeroProductPreview({ className, audit }: HeroProductPreviewProps
   const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit())
 
   return (
-    <div className={cn('relative mx-auto w-full max-w-[760px]', className)}>
+    <div className={cn('relative mx-auto w-full max-w-5xl', className)}>
       <div
         aria-hidden
         className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--foreground)/0.04),transparent_68%)]"

@@ -100,19 +100,20 @@ export const HERO = {
   audienceLine: '',
   headlineAccentLegacy: false,
   subhead:
-    'Code review checks syntax. FixFlags checks messaging, experience, and reach. So what you ship feels complete.',
+    'Code review checks syntax. FixFlags checks messaging, experience, and reach. So what you ship actually works.',
   trustLine: 'Check the page before users see it.',
   supportingLine: 'Check the page before users see it.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'View sample report',
+  trySampleHint: 'Demo site. No account needed.',
   urlPlaceholder: 'your-site.com',
   trustBadgesSubtitle: 'See what users see',
   trustBadges: [
     'See what users see',
-    'Copy-ready fix prompts',
+    'Agent fix prompts',
     'Evidence & screenshots',
-    'Try it for Free',
+    'Free to try',
   ] as const,
 } as const
 
@@ -429,12 +430,6 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
   },
 } as const
 
-const PRICING_TEASER_BULLETS: Record<'FREE' | 'BUILDER' | 'TEAM', readonly string[]> = {
-  FREE: ['Unlimited re-checks on your reports', 'No share links', 'No export'],
-  BUILDER: ['25 new checks per month', 'Before/after compare', 'Editor integration (MCP)'],
-  TEAM: ['Client-ready share links', 'Proof exports', 'Up to 5 projects'],
-}
-
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
@@ -473,7 +468,7 @@ export const BLOG_POSTS = [
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Trusted by builders using',
+    label: 'Copy fix prompts into',
     disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
     logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
   },
@@ -574,7 +569,6 @@ export const LANDING_PAGE = {
     label: 'Example feedback',
     headline: 'Example feedback from builders',
     subhead: 'What people tend to notice after a first audit.',
-    disclaimer: 'Paraphrased examples. Not verbatim quotes or named endorsements.',
     quotes: [
       {
         id: 'prelaunch-mobile',

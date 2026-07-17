@@ -73,11 +73,21 @@ export function GlobalMeshBackdrop({
         )}
       />
 
+      {/* Secondary drift orb -- keeps the canvas alive without competing with content */}
+      <div
+        className={cn(
+          'absolute left-[12%] top-[8%] h-[22rem] w-[34rem] blur-[100px]',
+          '[background:radial-gradient(ellipse_60%_50%_at_50%_50%,hsl(var(--brand)/0.08),transparent_70%)] opacity-80 dark:opacity-60',
+          'motion-safe:animate-peach-drift-a motion-safe:will-change-transform'
+        )}
+      />
+
       {/* Soft stone reflection, low and offset, barely there */}
       <div
         className={cn(
           'absolute bottom-[-11rem] right-[-16rem] h-[28rem] w-[48rem] -rotate-6 blur-[110px]',
-          '[background:radial-gradient(ellipse_70%_46%_at_50%_50%,hsl(38_22%_74%/0.2),transparent_70%)] opacity-70 dark:opacity-45'
+          '[background:radial-gradient(ellipse_70%_46%_at_50%_50%,hsl(38_22%_74%/0.2),transparent_70%)] opacity-70 dark:opacity-45',
+          'motion-safe:animate-peach-drift-b motion-safe:will-change-transform'
         )}
       />
     </div>

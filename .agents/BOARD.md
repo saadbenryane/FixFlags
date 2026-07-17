@@ -4,6 +4,8 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| homepage-art-direction | in_progress | codex | main | World-class homepage visual system, generated brand imagery, section flow, responsive polish | marketing homepage components, assets, copy hierarchy, visual QA | — | 2026-07-17 |
+| convert-ready-pass | done | auto | main | Conversion + report UX + marketing foundation pass | marketing nav/hero/copy, sample report master-detail, demo score, annotations | — | 2026-07-17 |
 | completeness-dead-paths | done | auto | main | Purge SUMMARY_ONLY/skipCapture dead paths + live re-check proof | load-screenshot-base64, run-page, create-audit, smoke-recheck-full | completeness-core-loop | 2026-07-14 |
 | completeness-core-loop | done | auto | main | Completeness ship: FULL re-check, Free cleared UI, silent UX, docs/facts, habit loops | lib/audit/*, components/audit/*, copy.ts, AGENTS/PRODUCT/ROADMAP/docs | — | 2026-07-14 |
 | app-polish-shipping | done | claude | claude/app-polish-shipping-tqeab1 | Ship-readiness review, scan-accuracy false-positive removal, plan-mode fix prompt | audit checks, metadata parser, priority-flags, billing plan labels | — | 2026-07-15 |

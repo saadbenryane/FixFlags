@@ -363,21 +363,7 @@ function EvidenceRegionGlow({
         height: `${highlight.height * 100}%`,
       }}
       aria-hidden={!selected}
-    >
-      {selected && (
-        <span
-          className={cn(
-            'absolute left-0 top-0 max-w-[min(100%,15rem)] -translate-y-[calc(100%+0.35rem)] rounded-sm bg-background/92 px-2 py-1 text-[10px] font-semibold leading-tight shadow-sm backdrop-blur-md text-pretty',
-            isCritical
-              ? 'text-destructive ring-1 ring-destructive/20'
-              : 'text-brand ring-1 ring-brand/20',
-            isPage && 'left-3 top-3 translate-y-0'
-          )}
-        >
-          {highlight.visualTarget}
-        </span>
-      )}
-    </div>
+    />
   )
 }
 
@@ -418,6 +404,8 @@ function InteractiveLayer({
   const visible = highlights.filter((h) => {
     if (h.device !== device) return false
     if (selectedFlagId && h.flagId !== selectedFlagId) return false
+    // Selected element flags use the rectangle highlight only -- no center pin.
+    if (selectedFlagId && h.flagId === selectedFlagId && h.scope === 'element') return false
     return true
   })
   if (visible.length === 0) return null

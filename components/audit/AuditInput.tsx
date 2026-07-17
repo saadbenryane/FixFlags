@@ -151,46 +151,14 @@ export function AuditInput({
     await submitUrl(SAMPLE_AUDIT_URL, true)
   }
 
-  /** For sample URL, bypass auth redirect so anonymous users can try the demo. */
-  async function handleLandingTrySample() {
-    setUrl(SAMPLE_AUDIT_URL)
-    setLoading(true)
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const res = await fetch('/api/checks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: SAMPLE_AUDIT_URL,
-          source: 'homepage',
-          utmSource: params.get('utm_source') ?? undefined,
-          utmMedium: params.get('utm_medium') ?? undefined,
-          utmCampaign: params.get('utm_campaign') ?? undefined,
-        }),
-      })
-
-      if (!res.ok) {
-        const parsed = await parseApiErrorResponse(res)
-        if (res.status === 402 || (res.status === 401 && parsed.code === 'AUTH_REQUIRED')) {
-          setLimitGate(parsed)
-        } else {
-          toast.error(parsed.message)
-        }
-        return
-      }
-
-      const data = await res.json()
-      const reportId = typeof data.reportId === 'string' ? data.reportId : ''
-      trackEvent('started_audit', { source: 'homepage', is_logged_in: false })
-      if (reportId) {
-        setActiveAudit({ auditId: reportId, url: SAMPLE_AUDIT_URL })
-      }
-      router.push(reportId ? `/report/${reportId}` : '/dashboard')
-    } catch {
-      toast.error('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
+  /** Scroll to the inline sample explorer -- no scan, no account. */
+  function handleLandingTrySample() {
+    const target = document.getElementById('sample-review')
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
     }
+    router.push('/#sample-review')
   }
 
   const isLanding = variant === 'landing'
@@ -300,20 +268,22 @@ export function AuditInput({
         )}
       </form>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={loading}
-        onClick={isLanding ? handleLandingTrySample : handleTrySample}
-        className={cn(
-          'px-0 text-sm text-muted-foreground hover:text-foreground',
-          isLanding ? 'self-center' : 'self-start'
+      <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={loading}
+          onClick={isLanding ? handleLandingTrySample : handleTrySample}
+          className="px-0 text-sm text-muted-foreground hover:text-foreground"
+        >
+          {HERO.trySampleCta}
+          <ArrowRight className="ml-1 h-3.5 w-3.5" />
+        </Button>
+        {isLanding && (
+          <p className="text-[11px] text-muted-foreground/80">{HERO.trySampleHint}</p>
         )}
-      >
-        {HERO.trySampleCta}
-        <ArrowRight className="ml-1 h-3.5 w-3.5" />
-      </Button>
+      </div>
 
       {limitGate && (
         <AuditLimitGate

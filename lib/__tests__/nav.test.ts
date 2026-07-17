@@ -8,6 +8,7 @@ describe('marketing nav labels', () => {
       MARKETING_LINKS.map((link) => [link.label, link.href]),
       [
         ['How it works', '/how-it-works'],
+        ['Sample', '/#sample-review'],
         ['Pricing', '/pricing'],
       ]
     )

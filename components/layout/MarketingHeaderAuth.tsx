@@ -43,8 +43,8 @@ export function MarketingHeaderAuth({
     return (
       <div
         className={cn(
-          'flex items-center gap-2 sm:gap-3',
-          mode === 'desktop' && 'ml-2'
+          'flex items-center gap-3 sm:gap-4',
+          mode === 'desktop' && 'ml-3'
         )}
       >
         <Link
@@ -53,6 +53,10 @@ export function MarketingHeaderAuth({
         >
           Log in
         </Link>
+        <span
+          className="hidden h-4 w-px bg-border/70 sm:block"
+          aria-hidden
+        />
         <Button variant="ink" size="sm" asChild>
           <Link href="/sign-up">
             {HERO.navSignUpCta}

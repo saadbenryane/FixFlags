@@ -113,7 +113,14 @@ export async function getLiveSampleAudit(): Promise<SampleResult> {
     if (audit) source = 'archived'
   }
 
-  if (!audit) {
+  // Marketing surfaces need a believable mid-range score. Near-zero live scans
+  // read as "broken product" rather than "real problems to fix." Prefer the
+  // curated static sample when the live score is missing or too low.
+  const MIN_MARKETING_SCORE = 40
+  const liveScoreTooLow =
+    audit != null && (audit.score == null || audit.score < MIN_MARKETING_SCORE)
+
+  if (!audit || liveScoreTooLow) {
     const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
     return {
       audit: getStaticSampleAudit(),

@@ -112,10 +112,10 @@ async function main() {
 
   const fixed = done.flags.filter((f) => f.status === 'FIXED').length
   const open = done.flags.filter((f) => f.status === 'OPEN').length
-  const newFlags = done.flags.filter((f) => f.status === 'NEW').length
+  const ignored = done.flags.filter((f) => f.status === 'IGNORED').length
   const regressed = done.flags.filter((f) => f.status === 'REGRESSED').length
   console.log(
-    `Flag statuses: FIXED=${fixed} OPEN=${open} NEW=${newFlags} REGRESSED=${regressed} total=${done.flags.length}`
+    `Flag statuses: FIXED=${fixed} OPEN=${open} IGNORED=${ignored} REGRESSED=${regressed} total=${done.flags.length}`
   )
   console.log('OK: FULL re-check fresh capture proven')
 }

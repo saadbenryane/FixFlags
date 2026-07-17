@@ -30,7 +30,7 @@ export default async function HomePage() {
   return (
     <>
       <LandingHeroSection />
-      <SampleReportSection audit={sample.audit} />
+      <SampleReportSection audit={sample.audit} illustrative={sample.source === 'static'} />
       <CheckDimensionsSection />
       <HowItWorksLoopSection sampleHref={sampleHref} />
       <TestimonialsSection />

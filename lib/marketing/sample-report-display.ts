@@ -24,6 +24,7 @@ import {
 } from '@/lib/audit/flag-copy'
 import {
   buildEvidenceHighlightsForFlag,
+  parseEvidenceAnchorsFromPerformanceData,
   type EvidenceHighlight,
 } from '@/lib/audit/evidence-highlights'
 import { rubricLabel, severityLabel } from '@/lib/utils'
@@ -157,17 +158,31 @@ export function resolveDisplayScores(audit: LiveSampleAudit): {
   return { overall, rubrics }
 }
 
-const ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
+const STATIC_ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
 
-function buildEvidenceHighlights(flag: RankableFlag, index: number): EvidenceHighlight[] {
-  return buildEvidenceHighlightsForFlag(flag, index, ANCHORS)
+function resolveSampleAnchors(audit: LiveSampleAudit): EvidenceAnchorMap {
+  const live = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
+  if (live && Object.keys(live).length > 0) return live
+  return STATIC_ANCHORS
+}
+
+function buildEvidenceHighlights(
+  flag: RankableFlag,
+  index: number,
+  anchors: EvidenceAnchorMap
+): EvidenceHighlight[] {
+  return buildEvidenceHighlightsForFlag(flag, index, anchors)
 }
 
 export function buildAllEvidenceHighlights(flags: SampleFlagDisplay[]): EvidenceHighlight[] {
   return flags.flatMap((flag) => flag.evidenceHighlights)
 }
 
-function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
+function mapFlag(
+  flag: RankableFlag,
+  index: number,
+  anchors: EvidenceAnchorMap
+): SampleFlagDisplay {
   return {
     id: flag.id,
     checkId: flag.checkId ?? null,
@@ -185,7 +200,7 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
     fixPrompt: buildExpertFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
-    evidenceHighlights: buildEvidenceHighlights(flag, index),
+    evidenceHighlights: buildEvidenceHighlights(flag, index, anchors),
     evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
     pageUrl: flag.pageUrl ?? null,
@@ -193,8 +208,9 @@ function mapFlag(flag: RankableFlag, index: number): SampleFlagDisplay {
 }
 
 export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDisplay {
+  const anchors = resolveSampleAnchors(audit)
   const sorted = sortFlags(audit.flags)
-  const flags = sorted.map((flag, index) => mapFlag(flag, index))
+  const flags = sorted.map((flag, index) => mapFlag(flag, index, anchors))
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
   const { overall, rubrics } = resolveDisplayScores(audit)
