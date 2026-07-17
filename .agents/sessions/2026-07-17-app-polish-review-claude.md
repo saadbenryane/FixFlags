@@ -72,6 +72,15 @@ were fixed and verified this session.
   all work. Same limitation as the 2026-07-15 session: a live external audit
   smoke test still needs an environment with network + AI keys.
 
+## Cleanup
+
+- Deleted `output/playwright/` (5.2MB of committed session QA screenshots;
+  `.gitignore` already declared `/output/` untracked — these predated the rule)
+  and root `screenshot.png` (an example.com debug capture, referenced nowhere).
+- Left `_VBRANDING/` (7.7MB, UUID-named brand imagery) untouched: referenced by
+  no code or docs, but it looks like the founder's original brand source
+  assets. Candidate for removal or moving out of the repo — needs a human call.
+
 ## Remaining risks / follow-ups (carried forward)
 
 - Live verify on fixflags.com after deploy: anon scan → report → signup claim →
