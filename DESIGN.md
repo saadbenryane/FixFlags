@@ -71,7 +71,6 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s)
 - List/accordion: `accordion-down/up` (0.2s)
 - No `transition: all`. Be specific about what animates.
-- Glow pulses on cards: 6s cycle, subtle opacity shift.
 - Peach orbs: gentle drift (22-30s cycle), breathe (14s cycle).
 
 ## Spacing

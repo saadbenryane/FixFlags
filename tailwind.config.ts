@@ -177,10 +177,6 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
-        'word-reveal': {
-          from: { opacity: '0', transform: 'translateY(100%)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
         'gradient-shift': {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
@@ -188,10 +184,6 @@ const config: Config = {
         'pulse': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
-        },
-        'loop-progress': {
-          from: { opacity: '0', transform: 'scaleX(0)' },
-          to: { opacity: '1', transform: 'scaleX(1)' },
         },
         'peach-drift-a': {
           '0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
@@ -209,14 +201,6 @@ const config: Config = {
           '0%, 100%': { opacity: '0.6', transform: 'scale(1)' },
           '50%': { opacity: '0.95', transform: 'scale(1.06)' },
         },
-        'peach-surface-shift': {
-          '0%, 100%': { backgroundPosition: '0% 40%' },
-          '50%': { backgroundPosition: '100% 60%' },
-        },
-        'card-glow-pulse': {
-          '0%, 100%': { opacity: '0.45' },
-          '50%': { opacity: '0.75' },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -225,15 +209,10 @@ const config: Config = {
         'scale-in': 'scale-in 0.3s ease-out',
         'slide-up-fade': 'slide-up-fade 0.4s ease-out',
         'soft-reveal': 'soft-reveal 0.2s ease-out',
-        'word-reveal': 'word-reveal 0.5s ease-out',
         'gradient-shift': 'gradient-shift 3s ease infinite',
-        'gradient-shift-slow': 'gradient-shift 7s ease infinite',
-        'loop-progress': 'loop-progress 0.7s var(--ease-out) 0.12s both',
         'peach-drift-a': 'peach-drift-a 22s ease-in-out infinite',
         'peach-drift-b': 'peach-drift-b 30s ease-in-out infinite',
         'peach-breathe': 'peach-breathe 14s ease-in-out infinite',
-        'peach-surface-shift': 'peach-surface-shift 18s ease-in-out infinite',
-        'card-glow-pulse': 'card-glow-pulse 6s ease-in-out infinite',
       },
     },
   },
