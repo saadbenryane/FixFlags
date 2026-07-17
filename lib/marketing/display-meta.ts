@@ -1,8 +1,6 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { HERO, SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL } from '@/lib/marketing/copy'
 import type { SampleSource } from '@/lib/marketing/live-sample'
-
-export const TRUST_LINE = HERO.trustLine
 
 import { DEMO_BRAND } from '@/lib/demo/brand'
 

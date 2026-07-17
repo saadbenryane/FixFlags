@@ -97,12 +97,9 @@ export const HERO = {
   headlineLine1: 'what your',
   headlineLine2: 'AI started.',
   headlineAccent: 'Finish',
-  audienceLine: '',
   headlineAccentLegacy: false,
   subhead:
     'Code review checks syntax. FixFlags checks messaging, experience, and reach. So what you ship actually works.',
-  trustLine: 'Check the page before users see it.',
-  supportingLine: 'Check the page before users see it.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'View sample report',
@@ -111,7 +108,7 @@ export const HERO = {
   trustBadgesSubtitle: 'See what users see',
   trustBadges: [
     'See what users see',
-    'Agent fix prompts',
+    'Fix prompts after signup',
     'Evidence & screenshots',
     'Free to try',
   ] as const,
@@ -785,6 +782,18 @@ export const REPORT_COPY = {
   partialReport: {
     title: 'Partial report',
     body: 'Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.',
+  },
+  captureLimited: {
+    title: 'Limited screenshots',
+    body: 'We could only capture a limited view of this page. Flags still reflect what we could verify.',
+  },
+  capturePartial: {
+    title: 'Partial screenshots',
+    body: 'Desktop or mobile capture was incomplete. Some visual evidence may be missing.',
+  },
+  pageSpeedPartial: {
+    title: 'PageSpeed incomplete',
+    body: 'PageSpeed data was unavailable for this run. Experience flags that need it may be thinner.',
   },
   sectionTitles: {
     topPriorities: 'Top priorities',

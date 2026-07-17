@@ -138,12 +138,14 @@ export async function getGatedAuditForRequest(id: string) {
     Boolean(audit.includeAi) &&
     !audit.aiReviewAt &&
     (audit.failureCode === 'AI_REVIEW_FAILED' || audit.failureCode === 'AI_CONTRACT_INVALID')
+  // includeAi is set at claim enqueue time (before the job starts) so pending UI works
+  // immediately after signup refresh; JUDGING covers in-flight prescription.
   const aiReviewPending =
     hasTriage &&
-    Boolean(audit.includeAi) &&
     !audit.aiReviewAt &&
     audit.status !== 'FAILED' &&
-    !prescriptionFailed
+    !prescriptionFailed &&
+    (Boolean(audit.includeAi) || audit.status === 'JUDGING')
 
   let sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
   let reportFlags = audit.flags

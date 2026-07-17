@@ -77,7 +77,6 @@ const ABOVE_FOLD_COPY = [
   HERO.headlineLine1,
   HERO.headlineLine2,
   HERO.subhead,
-  HERO.audienceLine,
   HERO.trustBadgesSubtitle,
   ...HERO.trustBadges,
   ...TRUST_STRIP,
@@ -107,10 +106,6 @@ describe('homepage message guardrails', () => {
     for (const line of ABOVE_FOLD_COPY) {
       assert.ok(!FORBIDDEN_TAXONOMY.test(line), `Taxonomy leak: ${line}`)
     }
-  })
-
-  it('hero audience badge is intentionally absent', () => {
-    assert.equal(HERO.audienceLine, '')
   })
 
   it('hero subhead is concise and names the three rubrics', () => {

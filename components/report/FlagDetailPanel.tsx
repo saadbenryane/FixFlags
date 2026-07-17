@@ -75,11 +75,11 @@ export function FlagDetailPanel({
         </FlagDetailCard>
       )}
 
-      {flag.hasFixPrompt && (
+      {(flag.hasFixPrompt || aiLocked) && (
         <FlagDetailCard title="Fix" icon={Sparkles} emphasis>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Sign in to view fix prompts for this flag"
+              label="Create a free account to get the fix prompt for this flag"
               signUpHref={signUpHref}
             />
           ) : aiEnhancementPending && !flag.fixPrompt ? (

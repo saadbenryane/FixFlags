@@ -52,6 +52,12 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     for (const auditId of unlockCandidates) {
       if (credits <= 0) break
       try {
+        // Mark includeAi before the job runs so the report shows "prompts generating"
+        // and AiReviewPendingRefresh can poll immediately after claim refresh.
+        await prisma.audit.update({
+          where: { id: auditId },
+          data: { includeAi: true },
+        })
         await enqueueAiReview(auditId)
         credits -= 1
       } catch {
@@ -61,6 +67,10 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
   } else if (user && hasUnlimitedScans(user)) {
     for (const audit of audits.filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)) {
       try {
+        await prisma.audit.update({
+          where: { id: audit.id },
+          data: { includeAi: true },
+        })
         await enqueueAiReview(audit.id)
       } catch {
         // skip
