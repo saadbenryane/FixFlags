@@ -179,3 +179,28 @@ fails in sandbox) is calm; private reports correctly deny logged-out visitors.
   `handleRouteError` as 400 INVALID_URL; DNS-failure copy is now
   "We could not find that domain. Check the URL and try again." Verified
   live via POST /api/checks (400 + message) and the re-check toast.
+
+## Iteration 4 (same session): schema/migration drift = likely prod triage killer
+
+`npm run verify`'s drift gate caught real drift on merged main: `schema.prisma`
+has four ImpactTag variants (CLARITY, AUTHORITY, FRICTION, EMOTION, from
+commit 8d50901 "flag quality iteration") and an `auditMode` default change
+(SINGLE -> CRITICAL_PATH) with **no migration**. All 38 migrations applied
+cleanly and the diff persisted, confirming the miss.
+
+Impact: any migrate-deployed database (prod deploys via `db:deploy`) rejects
+those enum values at persist time. The AI triage/judge schemas ACCEPT the new
+tags (`judge-triage-schema.ts`, `judge-schema.ts`), so a triage response using
+one would fail at flag persist. **Hypothesis:** this explains the degraded
+triage observed on the live prod scan earlier this session (`triageAt` null +
+`failureCode` on a COMPLETED audit). Single datapoint; confirm by checking
+prod `ImpactTag` enum values or triage failure logs after deploying the fix.
+
+Fix: migration `20260718132024_impact_tag_variants_and_critical_path_default`
+(ADD VALUE IF NOT EXISTS x4 so it is safe even on databases already patched
+via `db push`, plus the default change). Applied locally; `db:drift` clean;
+full `npm run verify` green.
+
+Lesson: run `npm run verify` (not just typecheck/lint/test/build) after any
+merge that touches `prisma/schema.prisma`; the drift gate is the only thing
+that catches schema-without-migration.
