@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| app-polish-review | done | claude | claude/app-polish-shipping-unj812 | Reviewed+closed first-value-journey and ship-ready-core-loop; browser-verified full core loop; fixed email-claim dead end, URL-error 500s, missing ImpactTag migration (likely prod triage killer) | auth pages, useAuthRedirect, lib/audit/url, lib/api/errors, prisma migration, AuditInput, ExportMenu | — | 2026-07-18 |
 | ship-ready-core-loop | done | auto | main | Post-claim unlock, AI pending poll, trust UX (partial capture, recheck nav, locked teaser, upsell, badges) | ClaimAnonymousAudits, claim-anonymous, FlagDetailPanel, AuditReport*, copy, fetch-audit | first-value-journey | 2026-07-17 |
 | first-value-journey | done | auto | main | Restore anon first scan, remove post-signup double-submit, align promise, core-loop analytics | AuditInput, dashboard, copy, analytics, report claim CTA | — | 2026-07-17 |
 | completeness-refactor | done | auto | main | Completeness: billing gates, sample provenance, report cleanup, trust, skills/docs | create-audit, usage, feedback, live-sample, ReportExplorer, copy, skills | homepage-art-direction (visual ownership) | 2026-07-17 |
