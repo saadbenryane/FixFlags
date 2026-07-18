@@ -78,7 +78,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         audit_id: id,
         score,
       })
-      // Server-rendered AuditReport replaces the progressive shell — no client full-fetch.
+      // Server-rendered AuditReport replaces the progressive shell - no client full-fetch.
       router.refresh()
     }
   }, [isComplete, router, id, statusPayload?.score, audit?.score])

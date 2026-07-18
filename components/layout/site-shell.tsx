@@ -1,17 +1,11 @@
-import dynamic from 'next/dynamic'
 import { Header, type HeaderVariant } from '@/components/layout/header'
 import { DesktopSidebar, MobileSidebar } from '@/components/layout/sidebar'
 import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
+import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
-
-const SupportWidget = dynamic(
-  () =>
-    import('@/components/live-support/SupportWidget').then((m) => m.SupportWidget),
-  { ssr: false }
-)
 
 interface SiteShellProps {
   children: React.ReactNode
@@ -81,7 +75,7 @@ export function SiteShell({
         )}
         {showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}
         {showFooter && resolvedFooter === 'default' && <Footer />}
-        {showSupport && <SupportWidget />}
+        {showSupport && <SupportWidgetLazy />}
       </div>
     </div>
   )

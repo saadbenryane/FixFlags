@@ -56,7 +56,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* Fonts are self-hosted via next/font — no Google Fonts preconnect. */}
+      {/* Fonts are self-hosted via next/font - no Google Fonts preconnect. */}
       <link rel="preconnect" href="https://www.googletagmanager.com" />
       <link rel="preconnect" href="https://connect.facebook.net" />
       <body className={`${fontVariables} font-sans antialiased`}>

@@ -9,14 +9,8 @@ import { SectionTitle } from '@/components/ui/typography'
 import { ReportHeroHeader } from '@/components/audit/ReportHeroHeader'
 import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 
-const LiveReportExplorer = dynamic(
-  () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer),
-  {
-    ssr: false,
-    loading: () => (
-      <div aria-hidden className="mt-6 h-64 animate-pulse rounded-card bg-muted/35" />
-    ),
-  }
+const LiveReportExplorer = dynamic(() =>
+  import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
