@@ -68,13 +68,20 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
+      const score =
+        typeof statusPayload?.score === 'number'
+          ? statusPayload.score
+          : typeof audit?.score === 'number'
+            ? audit.score
+            : undefined
       trackEvent('audit_completed', {
         audit_id: id,
-        score: typeof audit?.score === 'number' ? audit.score : undefined,
+        score,
       })
+      // Server-rendered AuditReport replaces the progressive shell — no client full-fetch.
       router.refresh()
     }
-  }, [isComplete, router, id, audit?.score])
+  }, [isComplete, router, id, statusPayload?.score, audit?.score])
 
   const inProgress = !isComplete && !isFailed
 

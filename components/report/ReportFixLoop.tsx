@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { Check, ChevronDown, Loader2, Sparkles } from 'lucide-react'
-import { cn, rubricIcon, rubricLabel, impactTagIcon, impactTagLabel } from '@/lib/utils'
+import { cn } from '@/lib/cn'
+import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
+import { rubricLabel, impactTagLabel } from '@/lib/utils'
 import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 

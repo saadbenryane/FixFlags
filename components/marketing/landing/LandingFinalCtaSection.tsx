@@ -1,9 +1,22 @@
+import dynamic from 'next/dynamic'
 import { CheckCircle2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { AuditInput } from '@/components/audit/AuditInput'
 import { BrandIllustration } from '@/components/marketing/landing/BrandIllustration'
 import { FINAL_CTA, HERO } from '@/lib/marketing/copy'
+
+const AuditInput = dynamic(
+  () => import('@/components/audit/AuditInput').then((m) => m.AuditInput),
+  {
+    ssr: true,
+    loading: () => (
+      <div
+        aria-hidden
+        className="h-14 w-full animate-pulse rounded-full bg-muted/45"
+      />
+    ),
+  }
+)
 
 const TRUST_BADGES = HERO.trustBadges
 

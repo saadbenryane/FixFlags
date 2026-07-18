@@ -9,19 +9,26 @@ const jsonFetcher = (url: string) =>
     return r.json()
   })
 
-export function useSupportSession(enabled: boolean) {
+/**
+ * @param enabled - When false, skip the request entirely.
+ * @param poll - When true, refresh every 10s. When false, fetch once (idle homepage).
+ */
+export function useSupportSession(enabled: boolean, poll = false) {
   return useSWR<{ session: SupportSessionDto | null }>(
     enabled ? '/api/support/sessions' : null,
     jsonFetcher,
-    { refreshInterval: 10000 }
+    {
+      refreshInterval: poll ? 10000 : 0,
+      revalidateOnFocus: poll,
+    }
   )
 }
 
 export function useSupportMessages(sessionId: string | null, panelOpen: boolean) {
   return useSWR<{ messages: SupportMessageDto[] }>(
-    sessionId ? `/api/support/sessions/${sessionId}/messages` : null,
+    sessionId && panelOpen ? `/api/support/sessions/${sessionId}/messages` : null,
     jsonFetcher,
-    { refreshInterval: panelOpen ? 2000 : 10000 }
+    { refreshInterval: panelOpen ? 2000 : 0 }
   )
 }
 

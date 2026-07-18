@@ -152,19 +152,36 @@ export default async function ReportPage({ params }: Props) {
   })
   const topIssue = topIssueFromFlags(audit.flags)
 
-  const user = session?.user
-    ? await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: {
-          id: true,
-          plan: true,
-          role: true,
-          subscriptionStatus: true,
-          auditsUsed: true,
-          auditsLimit: true,
-        },
-      })
-    : null
+  // Parallelize independent post-gate reads to cut report TTFB.
+  const [user, latestMonitoring, recheckDiff] = await Promise.all([
+    session?.user
+      ? prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: {
+            id: true,
+            plan: true,
+            role: true,
+            subscriptionStatus: true,
+            auditsUsed: true,
+            auditsLimit: true,
+          },
+        })
+      : Promise.resolve(null),
+    session?.user && !audit.parentId
+      ? prisma.audit.findFirst({
+          where: {
+            parentId: id,
+            userId: session.user.id,
+            status: 'COMPLETED',
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    audit.status === 'COMPLETED' && audit.parentId
+      ? getFlagDiffSummary(audit.parentId, id)
+      : Promise.resolve(null),
+  ])
 
   const pending = user ? await getPendingCheckCount(user.id) : 0
   const effectiveLimit = user ? getEffectiveScanLimit(user) : 3
@@ -188,19 +205,6 @@ export default async function ReportPage({ params }: Props) {
         })
     : null
 
-  const latestMonitoring =
-    session?.user && !audit.parentId
-      ? await prisma.audit.findFirst({
-          where: {
-            parentId: id,
-            userId: session.user.id,
-            status: 'COMPLETED',
-          },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true },
-        })
-      : null
-
   const compareMonitoringAudit = audit.parentId
     ? { parentId: audit.parentId, userId: session?.user?.id ?? null }
     : latestMonitoring
@@ -213,11 +217,6 @@ export default async function ReportPage({ params }: Props) {
       : false
 
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
-
-  const recheckDiff =
-    audit.status === 'COMPLETED' && audit.parentId
-      ? await getFlagDiffSummary(audit.parentId, id)
-      : null
 
   if (audit.status === 'COMPLETED') {
     const rubricRows = audit.rubricRows as Array<{

@@ -8,7 +8,9 @@ import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
-import { cn, impactTagIcon, impactTagLabel } from '@/lib/utils'
+import { cn } from '@/lib/cn'
+import { impactTagIcon } from '@/lib/rubric-icons'
+import { impactTagLabel } from '@/lib/utils'
 
 function FlagDetailCard({
   title,

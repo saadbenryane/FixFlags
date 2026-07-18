@@ -1,24 +1,21 @@
 'use client'
 
 import { ReportExplorer } from '@/components/report/ReportExplorer'
-import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
-import type { SampleReportDisplay } from '@/lib/marketing/sample-report-display'
+import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 
 interface SampleReportExplorerProps {
-  report: SampleReportDisplay
+  model: ReportExplorerModel
   variant?: 'hero' | 'live'
   className?: string
   initialFlagIndex?: number
 }
 
 export function SampleReportExplorer({
-  report,
+  model,
   variant = 'hero',
   className,
   initialFlagIndex = 0,
 }: SampleReportExplorerProps) {
-  const model = buildSampleExplorerModel(report)
-
   return (
     <ReportExplorer
       model={model}

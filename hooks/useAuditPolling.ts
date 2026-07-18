@@ -43,6 +43,20 @@ interface UseAuditPollingOptions {
   pollStatus?: boolean
 }
 
+function pollIntervalMs(latest: AuditStatusPayload | undefined): number {
+  if (!latest) return 1500
+  if (TERMINAL_STATUSES.has(latest.status)) return 0
+  const progress = typeof latest.progress === 'number' ? latest.progress : 0
+  // Faster early (queue/capture feedback), back off while long-running stages work.
+  if (progress < 25) return 1500
+  if (progress < 70) return 2500
+  return 3500
+}
+
+/**
+ * Poll lightweight `/status` until terminal. Full report HTML comes from
+ * `router.refresh()` in AuditPageClient — avoid a duplicate `/api/reports/[id]` fetch.
+ */
 export function useAuditPolling(auditId: string, options: UseAuditPollingOptions = {}) {
   const { initialAudit, pollStatus = true } = options
   const initialTerminal =
@@ -52,11 +66,7 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     pollStatus && !initialTerminal ? `/api/reports/${auditId}/status` : null,
     jsonFetcher,
     {
-      refreshInterval: (latest) => {
-        if (!latest) return 2000
-        if (TERMINAL_STATUSES.has(latest.status)) return 0
-        return 2000
-      },
+      refreshInterval: (latest) => pollIntervalMs(latest as AuditStatusPayload | undefined),
       revalidateOnFocus: false,
     }
   )
@@ -64,25 +74,12 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
   const currentStatus = (statusData?.status ?? initialAudit?.status ?? 'QUEUED') as string
   const isFailed = currentStatus === 'FAILED'
   const isComplete = currentStatus === 'COMPLETED'
-  const needsFullFetch = isComplete && !initialTerminal
 
-  const { data: fullAudit, error: fullError, isLoading: fullLoading } = useSWR(
-    needsFullFetch ? `/api/reports/${auditId}` : null,
-    jsonFetcher,
-    { revalidateOnFocus: false }
-  )
+  const audit = initialTerminal ? initialAudit : null
 
-  const audit = initialTerminal
-    ? initialAudit
-    : needsFullFetch
-      ? fullAudit
-      : null
-
-  const error = statusError ?? fullError
+  const error = statusError
   const errStatus = (error as Error & { status?: number })?.status
-  const isLoading =
-    (!initialTerminal && pollStatus && statusLoading && !statusData) ||
-    (needsFullFetch && fullLoading && !fullAudit)
+  const isLoading = !initialTerminal && pollStatus && statusLoading && !statusData
 
   const statusPayload = statusData as AuditStatusPayload | undefined
 
