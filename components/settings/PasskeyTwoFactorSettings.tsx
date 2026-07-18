@@ -222,7 +222,7 @@ export function PasskeyTwoFactorSettings({
             ) : passkeys.length === 0 ? (
               <p className="text-sm text-muted-foreground">{AUTH.security.passkeysEmpty}</p>
             ) : (
-              <ul className="divide-y divide-border/60 rounded-lg border border-border/60">
+              <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
                 {passkeys.map((passkey) => (
                   <li
                     key={passkey.id}
