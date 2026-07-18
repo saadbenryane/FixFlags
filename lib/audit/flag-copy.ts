@@ -40,15 +40,8 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
   'flow-mobile-menu-broken',
   'flow-form-no-validation',
   'flow-cta-blank-destination',
-  'flow-cta-stuck-loading',
-  'scroll-ghost-sections',
   'flow-form-slow-feedback',
-  'form-inputs-zoom-mobile',
   'flow-cta-destination-no-trust',
-  'slow-3g-blank-screen',
-  'slow-3g-cta-delayed',
-  'loading-indicator-stuck',
-  'loading-state-slow',
   'cta-dead-link',
 ])
 
@@ -80,6 +73,13 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'skip-link-missing',
   'keyboard-nav-trap',
   'focus-visible-missing',
+  'loading-indicator-stuck',
+  'loading-state-slow',
+  'flow-cta-stuck-loading',
+  'scroll-ghost-sections',
+  'slow-3g-blank-screen',
+  'slow-3g-cta-delayed',
+  'form-inputs-zoom-mobile',
 ])
 
 const GENERIC_WHY_PATTERN =

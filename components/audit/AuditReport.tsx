@@ -161,6 +161,7 @@ export function AuditReport({
           screenshots: audit.screenshots,
           rubricRows: audit.rubricRows,
           evidenceAnchors: audit.evidenceAnchors,
+          previewMeta: audit.previewMeta,
         })
       : null
 

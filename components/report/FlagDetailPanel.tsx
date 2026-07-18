@@ -1,16 +1,85 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { ClipboardCheck, ExternalLink, Lightbulb, ScanSearch, Sparkles, type LucideIcon } from 'lucide-react'
+import { ClipboardCheck, ExternalLink, Lightbulb, ScanSearch, Share2, Sparkles, type LucideIcon } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
+import type { PreviewMeta } from '@/lib/audit/preview-meta'
+import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
 import { cn, impactTagIcon, impactTagLabel } from '@/lib/utils'
 
-function FlagDetailCard({
+/** Check IDs where the issue is about social/shareable previews. */
+const SHAREABLE_CHECK_IDS = new Set([
+  'og-image-missing',
+  'og-image-broken',
+  'og-title-missing',
+  'og-description-missing',
+])
+
+export function isShareableCheck(checkId: string | null | undefined): boolean {
+  return Boolean(checkId && SHAREABLE_CHECK_IDS.has(checkId))
+}
+
+function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; checkId: string | null }) {
+  const title = preview.ogTitle ?? preview.title ?? 'Missing title'
+  const description = preview.ogDescription ?? preview.description ?? 'Missing description'
+  const hostname = displayHostname(preview.url)
+  const hasImage = Boolean(preview.ogImage)
+  const imageOk = preview.ogImageOk
+
+  return (
+    <FlagCard title="Current social preview" icon={Share2}>
+      <p className="mb-3 text-xs text-muted-foreground">
+        This is how your page appears when shared on Slack, LinkedIn, or iMessage.
+      </p>
+      <div className="max-w-sm overflow-hidden rounded-md border border-border/60 bg-card">
+        {hasImage && imageOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preview.ogImage!}
+            alt=""
+            loading="lazy"
+            className="aspect-[1.91/1] w-full bg-muted object-cover"
+          />
+        ) : hasImage && !imageOk ? (
+          <div className="flex aspect-[1.91/1] w-full flex-col items-center justify-center gap-1 bg-muted px-4 text-center text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Image URL is broken</span>
+            <span className="text-xs">The og:image URL does not load</span>
+          </div>
+        ) : (
+          <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+            {checkId === 'og-image-missing'
+              ? 'No og:image set — blank card when shared'
+              : 'No image preview'}
+          </div>
+        )}
+        <div className="space-y-1 border-t border-border/60 p-3">
+          <p className="text-3xs uppercase tracking-wide text-muted-foreground">{hostname}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-snug">
+            {checkId === 'og-title-missing' ? (
+              <span className="text-muted-foreground italic">No og:title — falls back to page title</span>
+            ) : (
+              truncatePreview(title, 70) || 'Missing title'
+            )}
+          </p>
+          <p className="line-clamp-2 text-xs text-muted-foreground">
+            {checkId === 'og-description-missing' ? (
+              <span className="italic">No og:description — falls back to meta description</span>
+            ) : (
+              truncatePreview(description, 120) || 'Missing description'
+            )}
+          </p>
+        </div>
+      </div>
+    </FlagCard>
+  )
+}
+
+function FlagCard({
   title,
   icon: Icon,
   children,
@@ -43,17 +112,25 @@ export function FlagDetailPanel({
   aiLocked = false,
   aiEnhancementPending = false,
   signUpHref,
+  previewMeta,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
   aiLocked?: boolean
   aiEnhancementPending?: boolean
   signUpHref?: string
+  previewMeta?: PreviewMeta | null
 }) {
+  const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
+
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
+      {showShareablePreview && (
+        <InlineSocialPreview preview={previewMeta!} checkId={flag.checkId} />
+      )}
+
       {flag.evidence && (
-        <FlagDetailCard title="Evidence" icon={ScanSearch}>
+        <FlagCard title="Evidence" icon={ScanSearch}>
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
           {flag.pageUrl ? (
             <a
@@ -66,17 +143,17 @@ export function FlagDetailPanel({
               <span className="truncate max-w-[300px]">{flag.pageUrl}</span>
             </a>
           ) : null}
-        </FlagDetailCard>
+        </FlagCard>
       )}
 
       {flag.whyItMatters && (
-        <FlagDetailCard title="Why it matters" icon={Lightbulb}>
+        <FlagCard title="Why it matters" icon={Lightbulb}>
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
-        </FlagDetailCard>
+        </FlagCard>
       )}
 
       {(flag.hasFixPrompt || aiLocked) && (
-        <FlagDetailCard title="Fix" icon={Sparkles} emphasis>
+        <FlagCard title="Fix" icon={Sparkles} emphasis>
           {aiLocked ? (
             <LockedContentTeaser
               label="Create a free account to get the fix prompt for this flag"
@@ -95,15 +172,15 @@ export function FlagDetailPanel({
               nested
             />
           )}
-        </FlagDetailCard>
+        </FlagCard>
       )}
 
       {flag.verificationRule && (
-        <FlagDetailCard title="How to verify" icon={ClipboardCheck}>
+        <FlagCard title="How to verify" icon={ClipboardCheck}>
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
             {flag.verificationRule}
           </p>
-        </FlagDetailCard>
+        </FlagCard>
       )}
 
       {showFeedback && <FlagFeedback flagId={flag.id} />}

@@ -23,6 +23,7 @@ import {
   type AuditScreenshot,
 } from '@/lib/audit/screenshot-types'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
+import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
@@ -32,6 +33,7 @@ export { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 
 export interface ExplorerFlag {
   id: string
+  checkId: string | null
   title: string
   priorityLabel: string
   rubric: string
@@ -60,6 +62,7 @@ export interface ReportExplorerModel {
   rubricScores: RubricScoreRow[]
   flags: ExplorerFlag[]
   allHighlights: EvidenceHighlight[]
+  previewMeta: PreviewMeta | null
 }
 
 function sortFlags(flags: RankableFlag[]): RankableFlag[] {
@@ -72,6 +75,7 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
   const sourceFix = resolveFixPrompt(flag)
   return {
     id: flag.id,
+    checkId: flag.checkId ?? null,
     title: flag.problem,
     priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
@@ -101,6 +105,7 @@ export function buildLiveExplorerModel(input: {
   screenshots?: AuditScreenshot[]
   rubricRows: Array<{ name: string; score: number | null; grade?: string | null }>
   evidenceAnchors?: EvidenceAnchorMap
+  previewMeta?: PreviewMeta | null
 }): ReportExplorerModel {
   const sorted = sortFlags(input.flags)
   const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
@@ -120,6 +125,7 @@ export function buildLiveExplorerModel(input: {
     rubricScores: buildRubricScoreRows(input.rubricRows),
     flags: sorted.map((flag, index) => mapLiveFlag(flag, index)),
     allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
+    previewMeta: input.previewMeta ?? null,
   }
 }
 
@@ -169,6 +175,7 @@ export function buildPartialExplorerModel(input: {
 function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
   return {
     id: flag.id,
+    checkId: null,
     title: flag.title,
     priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
@@ -199,5 +206,6 @@ export function buildSampleExplorerModel(report: SampleReportDisplay): ReportExp
     rubricScores: report.rubricScores,
     flags: report.flags.map(mapSampleFlag),
     allHighlights: report.flags.flatMap((f) => f.evidenceHighlights),
+    previewMeta: null,
   }
 }

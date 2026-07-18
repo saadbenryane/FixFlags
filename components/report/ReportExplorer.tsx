@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
-import { FlagDetailPanel, FlagMetaPills } from '@/components/report/FlagDetailPanel'
+import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
@@ -161,6 +161,7 @@ function FlagDetailPane({
 }) {
   const showDesktop = flag.evidenceDevices.includes('desktop')
   const showMobile = flag.evidenceDevices.includes('mobile')
+  const shareableFlag = isShareableCheck(flag.checkId)
 
   return (
     <div className="min-w-0">
@@ -181,17 +182,19 @@ function FlagDetailPane({
         </div>
       </header>
 
-      <ScreenshotWithHighlights
-        host={model.displayHost}
-        desktopScreenshot={model.desktopScreenshot}
-        mobileScreenshot={model.mobileScreenshot}
-        highlights={model.allHighlights}
-        selectedFlagId={flag.id}
-        onPinSelect={onSelectFlag}
-        showDesktop={showDesktop}
-        showMobile={showMobile}
-        className="mb-5"
-      />
+      {!shareableFlag && (
+        <ScreenshotWithHighlights
+          host={model.displayHost}
+          desktopScreenshot={model.desktopScreenshot}
+          mobileScreenshot={model.mobileScreenshot}
+          highlights={model.allHighlights}
+          selectedFlagId={flag.id}
+          onPinSelect={onSelectFlag}
+          showDesktop={showDesktop}
+          showMobile={showMobile}
+          className="mb-5"
+        />
+      )}
 
       <FlagDetailPanel
         flag={flag}
@@ -199,6 +202,7 @@ function FlagDetailPane({
         aiLocked={aiLocked}
         aiEnhancementPending={aiEnhancementPending}
         signUpHref={signUpHref}
+        previewMeta={model.previewMeta}
       />
     </div>
   )

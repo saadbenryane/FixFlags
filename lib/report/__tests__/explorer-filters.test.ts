@@ -15,6 +15,7 @@ function flag(
 ): ExplorerFlag {
   return {
     title: 'Problem',
+    checkId: null,
     priorityLabel: 'Next',
     rubricLabel: partial.rubric,
     severityLabel: partial.severity,
