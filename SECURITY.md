@@ -31,6 +31,8 @@
 
 - better-auth 1.6 with Prisma adapter (PostgreSQL)
 - Email/password + Google OAuth + GitHub OAuth resolved at runtime
+- Passkeys via `@better-auth/passkey` (WebAuthn). Users register passkeys in Settings, sign in with passkey, or use passkey as the second factor after password.
+- Optional passkey 2FA via better-auth `twoFactor` plugin (`skipVerificationOnEnable`, TOTP disabled). Email/password sign-in with `twoFactorEnabled` issues a challenge cookie; completion is passkey assertion or a one-time backup code. Enabling 2FA requires at least one registered passkey.
 - Session cookie: `better-auth.session_token` (dev), `__Secure-*` / `__Host-*` (production)
 - No Prisma import on edge — `proxy.ts` does cookie-presence check only
 - Protected pages (`/admin/`, `/settings/`) gated by middleware; server validates session on API routes

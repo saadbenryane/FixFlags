@@ -196,6 +196,7 @@ model User {
   preferredTools          String[]
   gclid                   String?
   fbclid                  String?
+  twoFactorEnabled        Boolean            @default(false)
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
   projects                Project[]
@@ -203,6 +204,8 @@ model User {
   apiKeys                 ApiKey[]
   sessions                Session[]
   accounts                Account[]
+  passkeys                Passkey[]
+  twoFactors              TwoFactor[]
   emailLogs               EmailLog[]
   linkedLeads             Lead[]             @relation("LeadLinkedUser")
   supportSessions         SupportSession[]   @relation("SupportSessionUser")
@@ -395,6 +398,42 @@ model Verification {
   @@index([identifier])
   @@index([expiresAt])
   @@map("verifications")
+}
+
+/// WebAuthn / passkey credentials (better-auth passkey plugin)
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkeys")
+}
+
+/// Two-factor secrets and backup codes (better-auth twoFactor plugin)
+model TwoFactor {
+  id                     String    @id @default(cuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret                 String
+  backupCodes            String
+  verified               Boolean   @default(true)
+  failedVerificationCount Int      @default(0)
+  lockedUntil            DateTime?
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factors")
 }
 
 model ApiKey {
