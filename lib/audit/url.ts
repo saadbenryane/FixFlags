@@ -76,9 +76,21 @@ export function normalizeAuditUrl(
   }
 }
 
+/**
+ * URL rejected before enqueue (bad format, unresolvable domain, private
+ * network). User-correctable: routes surface the message with a 400 instead
+ * of the generic 500.
+ */
+export class AuditUrlError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AuditUrlError'
+  }
+}
+
 export async function resolvePublicAddresses(hostname: string): Promise<string[]> {
   if (isBlockedHostname(hostname)) {
-    throw new Error('Destination is not publicly accessible')
+    throw new AuditUrlError('Destination is not publicly accessible')
   }
   if (isIP(hostname)) return [hostname]
 
@@ -88,17 +100,17 @@ export async function resolvePublicAddresses(hostname: string): Promise<string[]
   ])
   const addresses = [...v4, ...v6]
   if (addresses.length === 0) {
-    throw new Error('Destination hostname could not be resolved')
+    throw new AuditUrlError('We could not find that domain. Check the URL and try again.')
   }
   if (addresses.some((address) => !isPublicIp(address))) {
-    throw new Error('Destination resolves to a private or reserved network')
+    throw new AuditUrlError('Destination resolves to a private or reserved network')
   }
   return addresses
 }
 
 export async function assertPublicAuditUrl(raw: string): Promise<URL> {
   const normalized = normalizeAuditUrl(raw)
-  if (!normalized.ok) throw new Error(normalized.error)
+  if (!normalized.ok) throw new AuditUrlError(normalized.error)
   const parsed = new URL(normalized.url)
   await resolvePublicAddresses(parsed.hostname)
   return parsed
