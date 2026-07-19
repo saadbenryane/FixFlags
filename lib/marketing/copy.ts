@@ -91,6 +91,31 @@ export const TOOLS = {
   },
 } as const
 
+/** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
+export const OFFER = {
+  line: 'Free first scan. No account required to see your findings. Sign up to copy fixes, save the report, and re-check.',
+  short: 'Free first scan. No account for findings.',
+  privacy: 'Read-only review. We never modify your site.',
+  linkPrivacy:
+    'Anyone with your report link can view findings until you claim the report.',
+} as const
+
+/** User-facing score explanation. Must match lib/audit/checks/rubric.ts + scoring.ts. */
+export const SCORE_HELP = {
+  short:
+    'Score starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
+  detail:
+    'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
+  faqHref: '/faq',
+} as const
+
+/** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */
+export const SEVERITY_MEANINGS = {
+  CRITICAL: 'Prevents a core user outcome (blocking).',
+  IMPORTANT: 'Materially harms conversion, access, or acquisition.',
+  POLISH: 'Meaningful improvement or best practice.',
+} as const
+
 export const HERO = {
   badge: 'Finish what your AI started.',
   headline: 'Finish what your AI started.',
@@ -99,18 +124,18 @@ export const HERO = {
   headlineAccent: 'Finish',
   headlineAccentLegacy: false,
   subhead:
-    'Code review checks syntax. FixFlags checks messaging, experience, and reach. So what you ship actually works.',
+    'Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
-  trySampleCta: 'View sample report',
+  trySampleCta: 'See a sample review',
   trySampleHint: 'Demo site. No account needed.',
   urlPlaceholder: 'your-site.com',
   trustBadgesSubtitle: 'See what users see',
   trustBadges: [
-    'See what users see',
+    'Free first scan',
+    'Findings without signup',
     'Fix prompts after signup',
-    'Evidence & screenshots',
-    'Free to try',
+    'Read-only review',
   ] as const,
 } as const
 
@@ -278,8 +303,8 @@ export const FLAG_STATUS_LABELS = {
 } as const
 
 export const RECHECK_DIFF_COPY = {
-  title: 'Re-check results',
-  cleared: 'Cleared',
+  title: 'Prove your fixes with a re-check',
+  cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
@@ -287,7 +312,19 @@ export const RECHECK_DIFF_COPY = {
   compareCta: 'Open full before/after',
   compareProHint: 'Want side-by-side screenshots?',
   compareProCta: 'See Pro compare',
+  outcomesHint:
+    'Outcomes: Fixed, still open, unchanged severity, regressed, or unable to verify.',
 } as const
+
+export const FLAG_DISMISS_REASONS = [
+  { id: 'incorrect', label: 'Incorrect' },
+  { id: 'intentional', label: 'Intentional' },
+  { id: 'already_fixed', label: 'Already fixed' },
+  { id: 'low_priority', label: 'Low priority' },
+  { id: 'duplicate', label: 'Duplicate' },
+] as const
+
+export type FlagDismissReasonId = (typeof FLAG_DISMISS_REASONS)[number]['id']
 
 export const PRODUCT_LADDER = {
   headline: 'Start free. Upgrade when you ship weekly.',
@@ -393,7 +430,7 @@ export const HOW_IT_WORKS_PAGE = {
   },
   loop: {
     label: 'The operating loop',
-    title: 'Scan, fix, verify. Repeat when the page changes.',
+    title: 'Scan, fix, re-check. Repeat when the page changes.',
     steps: [
       {
         title: 'Scan the public page',
@@ -432,7 +469,7 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: 'Your first scan is free, no account needed. Create a free account for fix prompts, then re-check after you ship.',
+  body: OFFER.line,
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -467,13 +504,13 @@ export const BLOG_POSTS = [
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Copy fix prompts into',
-    disclaimer: '',
+    label: 'Copy fix prompts into the tools you already use',
+    disclaimer: 'Compatibility is not endorsement.',
     logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
   },
   checkDimensions: {
     label: '',
-    headline: 'Every product breaks in three places.',
+    headline: 'Every website loses momentum in three places.',
     exampleFindingLabel: 'Example finding',
     cards: [
       {
@@ -564,61 +601,52 @@ export const LANDING_PAGE = {
       },
     ] as const,
   },
-  testimonials: {
-    headline: 'What builders catch before launch',
-    subhead: 'Small misses become obvious once the page gets a proper review.',
-    disclaimer: '',
-    cardLabel: 'Example finding',
-    quotes: [
+  productEvidence: {
+    headline: 'What a review actually catches',
+    subhead:
+      'Open beta. We show real product output instead of invented quotes. Explore the sample report above for full findings.',
+    items: [
       {
-        id: 'prelaunch-mobile',
-        quote:
-          'Mobile CTA was below the fold. I would have posted the launch link without catching it.',
-        role: 'Indie builder',
-        context: 'Pre-launch',
+        id: 'message',
+        title: 'Message gaps',
+        body: 'Unclear heroes, vague CTAs, and copy that names the category instead of the outcome.',
       },
       {
-        id: 'homepage-list',
-        quote:
-          'Short prioritized list I could forward to our dev. No Lighthouse dump, no SEO rabbit hole.',
-        role: 'Founder, live SaaS',
-        context: 'Homepage audit',
+        id: 'experience',
+        title: 'Experience friction',
+        body: 'Primary actions below the fold on mobile, cramped tap targets, and layout that hides the next step.',
       },
       {
-        id: 'slack-preview',
-        quote:
-          'Fixed our social preview image after the first check. Slack links finally show our branding instead of blank cards.',
-        role: 'Founder, B2B SaaS',
-        context: 'Link previews',
-      },
-      {
-        id: 'client-handoff',
-        quote:
-          'I send clients the share link instead of a Loom walkthrough. They see the evidence themselves.',
-        role: 'Freelance designer',
-        context: 'Agency workflow',
-      },
-      {
-        id: 'cursor-fix',
-        quote:
-          'Copied the fix prompt into Cursor and shipped the change in one sitting. No back-and-forth in Slack.',
-        role: 'Solo dev',
-        context: 'Fix in editor',
-      },
-      {
-        id: 'hero-clarity',
-        quote:
-          'Our redesign looked polished but the hero still did not say who it was for. That was the first flag.',
-        role: 'Marketing lead',
-        context: 'Post-redesign',
+        id: 'reach',
+        title: 'Reach misses',
+        body: 'Blank link previews, missing metadata, and sharing cards that drop your brand.',
       },
     ] as const,
+    cta: 'See a sample review',
+    ctaHref: '/#sample-review',
+  },
+  /** @deprecated Prefer productEvidence. Kept for AGENTS social-proof disclaimer invariant. */
+  testimonials: {
+    headline: 'What a review actually catches',
+    subhead:
+      'Open beta. We show real product output instead of invented quotes.',
+    disclaimer: 'Illustrative findings only. Not attributed customer testimonials.',
+    cardLabel: 'Example finding',
+    quotes: [
+      // Empty on purpose: homepage uses productEvidence instead of quote cards.
+    ] as ReadonlyArray<{
+      id: string
+      quote: string
+      role: string
+      context: string
+    }>,
   },
   sampleReport: {
     label: '',
     headline: 'A review your AI agent can act on.',
     body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
-    cta: 'View full sample review',
+    cta: 'Explore all findings',
+    ctaWithCount: (n: number) => `Explore all ${n} findings`,
     illustrativeLabel: '',
   },
   footer: {
@@ -636,7 +664,8 @@ export const LANDING_PAGE = {
       subscribeFailed: 'Could not subscribe right now. Try again later.',
     },
     social: {
-      instagram: 'https://instagram.com/fixedflax',
+      // Instagram handle TBD. Do not ship a wrong/legacy URL.
+      instagram: '',
     },
   },
 } as const
@@ -679,9 +708,16 @@ export const FAQ = [
       'SEO metadata, live search and social preview cards, og:image validation, and indexability.',
   },
   {
+    question: 'How are scores calculated?',
+    answer: `${SCORE_HELP.short} ${SCORE_HELP.detail}`,
+  },
+  {
+    question: 'What do Critical, Important, and Polish mean?',
+    answer: `Critical: ${SEVERITY_MEANINGS.CRITICAL} Important: ${SEVERITY_MEANINGS.IMPORTANT} Polish: ${SEVERITY_MEANINGS.POLISH}`,
+  },
+  {
     question: 'Do I need an account for my first check?',
-    answer:
-      'No. Your first scan is free, no account needed. You see the score, verdict, and Flags right away. Create a free account for fix prompts, saved report history, and 3 AI reports.',
+    answer: `No. ${OFFER.line} Free accounts also include 3 AI reports.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
@@ -723,8 +759,42 @@ export const FAQ = [
 export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
+    answer: `Yes. ${OFFER.line} Free accounts include 3 AI reports. Upgrade for more new checks, compare, and MCP.`,
+  },
+  {
+    question: 'What counts as a scan?',
     answer:
-      'Yes. Your first scan is free without an account. Create a free account for fix prompts, 3 AI reports, and unlimited re-checks, then upgrade for more new checks, compare, and MCP.',
+      'A new URL check counts toward your plan limit when it runs AI reports. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not consume a credit.',
+  },
+  {
+    question: 'Is each page a separate scan?',
+    answer:
+      'Yes. Each new URL you submit is a separate check. Re-checking the same report URL does not use another credit.',
+  },
+  {
+    question: 'Do re-checks consume credits?',
+    answer:
+      'No. Re-checks on reports you own are free and unlimited on every plan.',
+  },
+  {
+    question: 'Are reports public or private?',
+    answer:
+      'Anonymous scans are viewable by anyone with the report link until you claim them. Owned reports are private by default. Agency plans can create public share links.',
+  },
+  {
+    question: 'Are screenshots stored?',
+    answer:
+      'Yes. We store screenshots and page evidence needed to show Flags and re-check diffs. See the Privacy Policy for retention details.',
+  },
+  {
+    question: 'How long are reports saved?',
+    answer:
+      'Claimed reports stay in your history while your account is active. Unclaimed anonymous reports may be removed after a retention window.',
+  },
+  {
+    question: 'Can I cancel anytime?',
+    answer:
+      'Yes. Cancel from billing settings and keep access through the end of the current billing period.',
   },
   {
     question: 'What happens when I hit my check limit?',
@@ -744,8 +814,7 @@ export const PRICING_FAQ = [
 
 export const PRICING = {
   headline: 'Start free. Pay when you ship.',
-  subhead:
-    'Start free with Flags, evidence, and unlimited re-checks. Create an account for fix prompts. Upgrade for more new checks, before/after compare, and MCP.',
+  subhead: `${OFFER.line} Upgrade for more new checks, before/after compare, and MCP.`,
   trustBadge: 'Unlimited re-checks on every plan',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
@@ -861,7 +930,7 @@ export const MCP_DOCS = {
       desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
     },
     { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-    { name: 'ff_monitoring', desc: 'Run a new check on the same URL to verify fixes.' },
+    { name: 'ff_monitoring', desc: 'Re-check the same URL to see which Flags cleared.' },
     {
       name: 'ff_compare',
       desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
@@ -1017,6 +1086,8 @@ export const FLAG_FEEDBACK_COPY = {
   thanksUp: 'Thanks for the feedback!',
   thanksDown: "Got it, we'll improve this.",
   saveFailed: 'Failed to save feedback',
+  dismissPrompt: 'Why are you dismissing this flag?',
+  dismissed: 'Flag dismissed.',
 } as const
 
 export const FIRST_AUDIT_PROMPT = {
@@ -1049,14 +1120,40 @@ export const SHARE_COPY = {
   agencyCta: 'Agency',
 } as const
 
+export const ANON_VALUE_STRIP = {
+  headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
+  body: 'Sign in to inspect evidence, screenshots, and fix prompts for every issue.',
+  primaryCta: 'Sign in to inspect',
+  secondaryCta: 'Create free account',
+} as const
+
+export const LOCKED_INSPECTION = {
+  headline: 'Sign in to inspect this issue',
+  body: 'This report includes evidence, screenshots, and fix prompts for every flag.',
+  features: [
+    'Screenshot evidence with interactive pins',
+    'Detailed explanation of the issue',
+    'Why this matters for your users',
+    'How to verify the fix',
+    'Copy-paste fix prompt for your editor',
+  ],
+  primaryCta: 'Sign in',
+  secondaryCta: 'Create free account',
+} as const
+
+export const SAMPLE_FIX = {
+  subtext: (n: number) => `This is 1 of ${n} fixes. Sign in to inspect and fix all of them.`,
+  primaryCta: 'Unlock all fixes',
+} as const
+
 export const ANON_CLAIM_GUIDE = {
-  headline: 'Get fix prompts for these Flags',
-  body: 'You can already see the evidence. Create a free account to claim this report, copy fix prompts into your editor, and re-check when you ship. Re-checks stay free.',
-  primaryCta: 'Create free account',
+  headline: 'Save this review and copy the exact fix',
+  body: `${OFFER.line} Claiming also keeps the report in your history.`,
+  primaryCta: 'Sign in to save and copy fixes',
   steps: [
-    'Create an account to claim this report',
-    'Copy a fix prompt into your editor',
-    'Re-check to see which Flags cleared',
+    'Copy fix prompts into Cursor, Claude, or Windsurf',
+    'Save the report in your history',
+    'Re-check after you ship to see which flags cleared',
   ],
 } as const
 
@@ -1157,7 +1254,7 @@ export const AUDIT_PROGRESS = {
     { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review...' },
     { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views...' },
     { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, Reach...' },
-    { status: 'JUDGING', label: 'AI review', subtitle: 'Turning issues into Flags and fix prompts...' },
+    { status: 'JUDGING', label: 'AI review', subtitle: 'Prioritizing Flags from evidence...' },
     { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results...' },
   ],
   stageActivity: {
@@ -1178,8 +1275,8 @@ export const AUDIT_PROGRESS = {
     ],
     JUDGING: [
       'AI is analyzing screenshots and evidence...',
-      'Generating agent-ready fix prompts...',
       'Prioritizing Flags by launch impact...',
+      'Preparing the report for review...',
     ],
     FINALIZING: ['Packaging your review...', 'Scoring all 3 rubrics...', 'Almost ready...'],
   },

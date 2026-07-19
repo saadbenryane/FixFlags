@@ -37,7 +37,12 @@ export function SampleViewTracker({ placement = 'homepage' }: { placement?: 'hom
   return null
 }
 
-export function SampleSectionCta() {
+export function SampleSectionCta({ flagCount }: { flagCount?: number }) {
+  const label =
+    typeof flagCount === 'number' && flagCount > 0
+      ? LANDING_PAGE.sampleReport.ctaWithCount(flagCount)
+      : LANDING_PAGE.sampleReport.cta
+
   return (
     <div className="flex justify-center">
       <Link
@@ -45,7 +50,7 @@ export function SampleSectionCta() {
         onClick={() => trackEvent('clicked_sample_cta', { placement: 'sample_section' })}
         className="inline-flex min-h-10 items-center gap-2 py-1 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
       >
-        {LANDING_PAGE.sampleReport.cta}
+        {label}
         <ArrowRight className="h-4 w-4" aria-hidden />
       </Link>
     </div>

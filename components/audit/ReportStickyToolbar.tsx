@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 const BASE_SECTIONS = [
+  { id: 'report-overview', label: 'Overview' },
   { id: 'report-flags', label: 'Flags' },
-  { id: 'report-rubrics', label: 'Rubrics' },
 ] as const
 const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
 const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
@@ -19,10 +19,6 @@ type NavSection = { id: string; label: string }
 interface Props {
   className?: string
   showOverview?: boolean
-  showPreviews?: boolean
-  showFlow?: boolean
-  showLaunchGates?: boolean
-  showJourney?: boolean
   showRecheckSection?: boolean
   /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
   hasRecheckDiff?: boolean
@@ -34,10 +30,6 @@ interface Props {
 export function ReportStickyToolbar({
   className,
   showOverview,
-  showPreviews,
-  showFlow,
-  showLaunchGates,
-  showJourney,
   showRecheckSection = true,
   hasRecheckDiff = false,
   siteUrl,
@@ -48,15 +40,8 @@ export function ReportStickyToolbar({
   const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = [...BASE_SECTIONS]
-    const insertAt = 1
-    const optional: Array<{ id: string; label: string }> = []
-    if (showJourney) optional.push({ id: 'report-journey', label: 'Journey' })
-    if (showOverview) optional.push({ id: 'report-overview', label: 'Overview' })
-    if (showPreviews) optional.push({ id: 'report-previews', label: 'Previews' })
-    if (showFlow) optional.push({ id: 'report-flow', label: 'Flow test' })
-    if (showLaunchGates) optional.push({ id: 'report-launch-gates', label: 'Launch' })
-    if (optional.length > 0) {
-      items.splice(insertAt, 0, ...optional)
+    if (!showOverview) {
+      items.shift()
     }
     if (showRecheckSection) {
       items.push(hasRecheckDiff ? RECHECK_RESULTS_SECTION : RECHECK_SECTION)
@@ -64,10 +49,6 @@ export function ReportStickyToolbar({
     return items
   }, [
     showOverview,
-    showPreviews,
-    showFlow,
-    showLaunchGates,
-    showJourney,
     showRecheckSection,
     hasRecheckDiff,
   ])

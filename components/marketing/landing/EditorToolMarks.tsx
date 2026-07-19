@@ -15,7 +15,7 @@ interface EditorToolMarksProps {
 }
 
 export function EditorToolMarks({ className, compact = false }: EditorToolMarksProps) {
-  const { label, logos } = LANDING_PAGE.logoCloud
+  const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -39,6 +39,9 @@ export function EditorToolMarks({ className, compact = false }: EditorToolMarksP
           </li>
         ))}
       </ul>
+      {disclaimer ? (
+        <p className="text-2xs text-muted-foreground/70">{disclaimer}</p>
+      ) : null}
     </div>
   )
 }

@@ -16,6 +16,7 @@ interface LiveReportExplorerProps {
   pages?: JourneyPage[]
   loading?: boolean
   progress?: number
+  auditId?: string
 }
 
 export function LiveReportExplorer({
@@ -30,6 +31,7 @@ export function LiveReportExplorer({
   pages,
   loading = false,
   progress,
+  auditId,
 }: LiveReportExplorerProps) {
   if (model.flags.length === 0 && !loading) return null
 
@@ -47,6 +49,7 @@ export function LiveReportExplorer({
       pages={pages}
       loading={loading}
       progress={progress}
+      auditId={auditId}
     />
   )
 }

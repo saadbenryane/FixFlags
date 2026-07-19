@@ -37,8 +37,6 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
   const fillColor = score != null ? scoreToScanColor(score) : undefined
   const trackColor = 'hsl(var(--muted-foreground) / 0.18)'
   const isScanning = loading && score == null
-  // When a real progress value is available, show a determinate arc that grows;
-  // otherwise fall back to the indeterminate spinning arc.
   const isDeterminate = isScanning && typeof progress === 'number'
   const scanNormalized = Math.min(100, Math.max(0, progress ?? 0))
   const scanFilled = circumference * (scanNormalized / 100)
@@ -62,7 +60,10 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
       <svg
         width={box}
         height={box}
-        className={cn('block', isScanning && !isDeterminate && 'origin-center motion-safe:animate-spin')}
+        className={cn(
+          'block',
+          isScanning && !isDeterminate && 'origin-center motion-safe:animate-[spin_3s_linear_infinite]'
+        )}
         aria-hidden
       >
         <circle
@@ -88,7 +89,10 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
                 : `${circumference * 0.25} ${circumference * 0.75}`
             }
             transform={`rotate(-90 ${center} ${center})`}
-            className={cn(isDeterminate && 'motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out')}
+            className={cn(
+              'motion-safe:animate-[pulse_2s_ease-in-out_infinite]',
+              isDeterminate && 'motion-safe:animate-none motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out'
+            )}
           />
         )}
         {score != null && fillColor && (
@@ -110,10 +114,11 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
 
       <div className="absolute inset-0 flex items-center justify-center">
         {isScanning ? (
-          <span className="flex gap-1" aria-hidden>
-            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 motion-safe:animate-pulse" />
-            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 motion-safe:animate-pulse [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50 motion-safe:animate-pulse [animation-delay:300ms]" />
+          <span
+            className="motion-safe:animate-[pulse_2s_ease-in-out_infinite] text-sm font-medium tabular-nums text-muted-foreground"
+            aria-hidden
+          >
+            {isDeterminate ? `${Math.round(scanNormalized)}` : ''}
           </span>
         ) : score == null ? (
           <span className={cn('font-mono text-xs font-bold tabular-nums text-muted-foreground', scoreText)}>

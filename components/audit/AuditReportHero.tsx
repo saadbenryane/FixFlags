@@ -8,7 +8,6 @@ import { ScoreDot } from '@/components/ui/score-dot'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
-import type { RubricComputed } from '@/lib/audit/rubric'
 import { shareStatusMessage } from '@/lib/audit/share-status'
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -20,8 +19,6 @@ type Props = {
   verdict?: string | null
   url: string
   shareStatus: string
-  rubrics: RubricComputed[]
-  totalFlags?: number
   screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
   screenshotPartial?: boolean
@@ -38,8 +35,6 @@ export function AuditReportHero({
   pageType,
   url,
   shareStatus,
-  rubrics,
-  totalFlags = 0,
   screenshots,
   screenshotLimited = false,
   screenshotPartial = false,
@@ -50,9 +45,7 @@ export function AuditReportHero({
   actions,
 }: Props) {
   const isMinimal = variant === 'minimal'
-  const criticalCount = rubrics.reduce((sum, r) => sum + r.criticalCount, 0)
-  const flagTotal = totalFlags || rubrics.reduce((sum, r) => sum + r.flagCount, 0)
-  const shareMessage = shareStatusMessage(shareStatus, criticalCount, flagTotal)
+  const shareMessage = shareStatusMessage(shareStatus)
   const isReady = shareStatus === 'good_to_share'
 
   const hostname = displayHostname(url)
@@ -101,11 +94,6 @@ export function AuditReportHero({
                     {pageType}
                   </Badge>
                 ) : null}
-                {score != null && (
-                  <span className="text-xs text-muted-foreground font-medium tabular-nums">
-                    {score}/100
-                  </span>
-                )}
               </div>
               <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
             </div>

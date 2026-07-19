@@ -24,6 +24,7 @@ import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { RubricDiff } from '@/components/compare/RubricDiff'
 import { ShareCompareButton } from '@/components/audit/ShareCompareButton'
+import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
 import type { User } from '@prisma/client'
 
 interface Props {
@@ -163,6 +164,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
 
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
+      <RecheckCompletedTracker auditId={after.id} parentAuditId={before.id} />
       <Container variant="report" className="space-y-8 py-8">
         <div className="space-y-1">
           <Muted className="truncate text-xs">{after.url}</Muted>

@@ -16,6 +16,7 @@ interface SampleReportSectionProps {
 
 export function SampleReportSection({ audit }: SampleReportSectionProps) {
   const { label, headline, body } = LANDING_PAGE.sampleReport
+  const flagCount = audit?.flags.length
 
   return (
     <Section spacing="marketing" id="sample-review" className="scroll-mt-[var(--header-offset)]">
@@ -32,7 +33,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           <HeroProductPreview audit={audit} />
         </div>
 
-        <SampleSectionCta />
+        <SampleSectionCta flagCount={flagCount} />
       </Container>
     </Section>
   )

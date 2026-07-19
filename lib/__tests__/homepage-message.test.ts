@@ -108,16 +108,16 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('hero subhead is concise and names the three rubrics', () => {
-    assert.match(HERO.subhead, /messaging/i)
-    assert.match(HERO.subhead, /experience/i)
-    assert.match(HERO.subhead, /reach/i)
-    assert.ok(HERO.subhead.split(/\s+/).length <= 30)
+  it('hero subhead explains input, analysis, and fix output', () => {
+    assert.match(HERO.subhead, /paste your site/i)
+    assert.match(HERO.subhead, /live page/i)
+    assert.match(HERO.subhead, /fix prompts/i)
+    assert.ok(HERO.subhead.split(/\s+/).length <= 35)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 
-  it('trust badges are short, outcome-led, not feature jargon', () => {
+  it('trust badges are short, offer-aligned, not feature jargon', () => {
     assert.equal(HERO.trustBadges.length, 4)
     for (const badge of HERO.trustBadges) {
       assert.ok(badge.split(/\s+/).length <= 5, `Too long: ${badge}`)
@@ -125,9 +125,22 @@ describe('homepage message guardrails', () => {
       assert.ok(!/^results in/i.test(badge), `Feature-led speed claim: ${badge}`)
       assert.ok(!/^live or preview/i.test(badge), `Capability-only badge: ${badge}`)
     }
-    assert.match(HERO.trustBadges[0], /users see/i)
-    assert.match(HERO.trustBadges[1], /fix prompts/i)
-    assert.match(HERO.trustBadges[3], /free/i)
+    assert.match(HERO.trustBadges[0], /free/i)
+    assert.match(HERO.trustBadges[1], /findings/i)
+    assert.match(HERO.trustBadges[2], /fix prompts/i)
+    assert.match(HERO.trustBadges[3], /read-only/i)
+  })
+
+  it('secondary sample CTA uses human review language', () => {
+    assert.equal(HERO.trySampleCta, 'See a sample review')
+  })
+
+  it('offer is standardized across hero surfaces and final CTA', async () => {
+    const { OFFER } = await import('@/lib/marketing/copy')
+    assert.match(OFFER.line, /free first scan/i)
+    assert.match(OFFER.privacy, /read-only/i)
+    assert.match(OFFER.linkPrivacy, /report link/i)
+    assert.equal(FINAL_CTA.body, OFFER.line)
   })
 
   it('AI tools named once in segment proof, not repeated in hero', () => {
@@ -263,24 +276,25 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('testimonial examples are framed honestly without a duplicate eyebrow', () => {
-    assert.ok(!/example feedback/i.test(LANDING_PAGE.testimonials.headline))
-    assert.ok(!/second pass/i.test(LANDING_PAGE.testimonials.headline))
-    assert.equal(LANDING_PAGE.testimonials.cardLabel, 'Example finding')
-    for (const quote of LANDING_PAGE.testimonials.quotes) {
-      assert.ok(!/second pass/i.test(quote.quote))
-      assert.ok(!/\b(John|Jane|Sarah|Alex|Mike)\b/i.test(quote.role))
-    }
+  it('product evidence replaces invented testimonials', () => {
+    assert.match(LANDING_PAGE.productEvidence.headline, /review actually catches/i)
+    assert.match(LANDING_PAGE.productEvidence.subhead, /open beta/i)
+    assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
+    assert.match(LANDING_PAGE.testimonials.disclaimer, /not attributed/i)
+    assert.equal(LANDING_PAGE.testimonials.quotes.length, 0)
   })
 
-  it('sample report section exposes a full-sample CTA', () => {
-    assert.match(LANDING_PAGE.sampleReport.cta, /full sample/i)
+  it('sample report section exposes an explore-all CTA', () => {
+    assert.match(LANDING_PAGE.sampleReport.cta, /explore all/i)
+    assert.match(LANDING_PAGE.sampleReport.ctaWithCount(7), /Explore all 7 findings/)
   })
 
   it('landing page exposes three-rubric check story', () => {
+    assert.match(LANDING_PAGE.checkDimensions.headline, /website loses momentum/i)
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
     assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
+    assert.match(LANDING_PAGE.logoCloud.label, /tools you already use/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Cursor',
       'Codex',
@@ -289,7 +303,7 @@ describe('homepage message guardrails', () => {
       'Claude Code',
       'Windsurf',
     ])
-    assert.ok(LANDING_PAGE.testimonials.quotes.length >= 4)
+    assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
   })
 
   it('CHANGELOG_ENTRIES are user-facing: no internal terminology, no implementation details', () => {

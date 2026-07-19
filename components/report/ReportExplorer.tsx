@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
+import { LockedInspectionPane } from '@/components/report/LockedInspectionPane'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ import {
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
+import { trackEvent } from '@/lib/analytics/events'
 
 type ExplorerVariant = 'hero' | 'live'
 
@@ -40,6 +42,8 @@ interface ReportExplorerProps {
   pages?: JourneyPage[]
   loading?: boolean
   progress?: number
+  /** Optional audit id for funnel analytics on live reports. */
+  auditId?: string
 }
 
 const VARIANT_CONFIG = {
@@ -184,28 +188,38 @@ function FlagDetailPane({
         </div>
       </header>
 
-      {!shareableFlag && (
-        <ScreenshotWithHighlights
-          host={model.displayHost}
-          desktopScreenshot={model.desktopScreenshot}
-          mobileScreenshot={model.mobileScreenshot}
-          highlights={model.allHighlights}
-          selectedFlagId={flag.id}
-          onPinSelect={onSelectFlag}
-          showDesktop={showDesktop}
-          showMobile={showMobile}
-          className="mb-5"
+      {aiLocked ? (
+        <LockedInspectionPane
+          flagTitle={flag.title}
+          flagSeverity={flag.severity}
+          signUpHref={signUpHref}
         />
-      )}
+      ) : (
+        <>
+          {!shareableFlag && (
+            <ScreenshotWithHighlights
+              host={model.displayHost}
+              desktopScreenshot={model.desktopScreenshot}
+              mobileScreenshot={model.mobileScreenshot}
+              highlights={model.allHighlights}
+              selectedFlagId={flag.id}
+              onPinSelect={onSelectFlag}
+              showDesktop={showDesktop}
+              showMobile={showMobile}
+              className="mb-5"
+            />
+          )}
 
-      <FlagDetailPanel
-        flag={flag}
-        showFeedback={showFeedback}
-        aiLocked={aiLocked}
-        aiEnhancementPending={aiEnhancementPending}
-        signUpHref={signUpHref}
-        previewMeta={model.previewMeta}
-      />
+          <FlagDetailPanel
+            flag={flag}
+            showFeedback={showFeedback}
+            aiLocked={aiLocked}
+            aiEnhancementPending={aiEnhancementPending}
+            signUpHref={signUpHref}
+            previewMeta={model.previewMeta}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -224,6 +238,7 @@ export function ReportExplorer({
   pages = [],
   loading = false,
   progress,
+  auditId,
 }: ReportExplorerProps) {
   const config = VARIANT_CONFIG[variant]
   const rootRef = useRef<HTMLDivElement>(null)
@@ -234,6 +249,19 @@ export function ReportExplorer({
   const [flagIndex, setFlagIndex] = useState(() =>
     clampFlagIndex(initialFlagIndex, model.flags.length)
   )
+  const firstFindingTracked = useRef(false)
+
+  useEffect(() => {
+    if (firstFindingTracked.current || variant !== 'live' || model.flags.length === 0) return
+    const flag = model.flags[flagIndex]
+    if (!flag) return
+    firstFindingTracked.current = true
+    trackEvent('first_finding_viewed', {
+      audit_id: auditId,
+      check_id: flag.checkId ?? undefined,
+      severity: flag.severity,
+    })
+  }, [variant, model.flags, auditId, flagIndex])
 
   const rubricCounts = useMemo(
     () =>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { HERO, AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { HERO, AUDIT_PROGRESS, OFFER } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
@@ -55,9 +55,17 @@ export function AuditInput({
     setUrlError('')
     setLimitGate(null)
 
+    const failValidation = (reason: string, message: string) => {
+      setUrlError(message)
+      trackEvent('scan_validation_failed', {
+        reason,
+        cta_placement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
+      })
+    }
+
     let normalized = (inputUrl ?? url).trim()
     if (!normalized) {
-      setUrlError('Enter a URL like https://yoursite.com')
+      failValidation('empty', 'Enter a URL like https://yoursite.com')
       return
     }
 
@@ -77,17 +85,17 @@ export function AuditInput({
     try {
       parsedUrl = new URL(normalized)
     } catch {
-      setUrlError('Enter a valid URL like https://yoursite.com')
+      failValidation('malformed', 'Enter a valid URL like https://yoursite.com')
       return
     }
 
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      setUrlError('Only http:// and https:// URLs can be checked')
+      failValidation('scheme', 'Only http:// and https:// URLs can be checked')
       return
     }
 
     if (normalized.includes('localhost') || normalized.includes('127.0.0.1') || normalized.includes('0.0.0.0')) {
-      setUrlError('FixFlags can only check publicly accessible URLs')
+      failValidation('localhost', 'FixFlags can only check publicly accessible URLs')
       return
     }
 
@@ -132,6 +140,8 @@ export function AuditInput({
         source: auditSource,
         is_logged_in: isLoggedIn,
         cta_placement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
+        utm_source: params.get('utm_source') ?? undefined,
+        utm_campaign: params.get('utm_campaign') ?? undefined,
       })
       if (reportId) {
         setActiveAudit({
@@ -297,6 +307,15 @@ export function AuditInput({
           </p>
         )}
       </form>
+
+      {isLanding && (
+        <div className="space-y-1 text-center text-2xs leading-relaxed text-muted-foreground/90">
+          <p>{OFFER.short}</p>
+          <p>
+            {OFFER.privacy} {OFFER.linkPrivacy}
+          </p>
+        </div>
+      )}
 
       <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>
         <Button

@@ -10,6 +10,10 @@ import { getOrCreateVisitorToken } from '@/lib/live-support/visitor-token'
 const feedbackSchema = z.object({
   vote: z.number().min(-1).max(1),
   comment: z.string().max(500).optional(),
+  reason: z
+    .enum(['incorrect', 'intentional', 'already_fixed', 'low_priority', 'duplicate'])
+    .optional(),
+  dismiss: z.boolean().optional(),
 })
 
 export async function POST(
@@ -22,7 +26,10 @@ export async function POST(
     const clientId = requestClientId(await headers())
     await recordRateLimit({ scope: 'flag-feedback', identifier: clientId, limit: 30, windowSeconds: 60 })
 
-    const flag = await prisma.flag.findUnique({ where: { id: flagId }, select: { id: true } })
+    const flag = await prisma.flag.findUnique({
+      where: { id: flagId },
+      select: { id: true, auditId: true, audit: { select: { userId: true } } },
+    })
     if (!flag) return apiError('Flag not found', 404, { code: 'NOT_FOUND' })
 
     const body = await req.json().catch(() => ({}))
@@ -33,7 +40,14 @@ export async function POST(
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const visitorToken = await getOrCreateVisitorToken()
-    const comment = parsed.data.comment ?? null
+    const reasonLabel = parsed.data.reason
+      ? parsed.data.reason.replace(/_/g, ' ')
+      : null
+    const commentParts = [
+      reasonLabel ? `Dismiss reason: ${reasonLabel}` : null,
+      parsed.data.comment?.trim() || null,
+    ].filter(Boolean)
+    const comment = commentParts.length > 0 ? commentParts.join('. ') : null
 
     const feedback = await prisma.flagFeedback.upsert({
       where: { flagId_visitorToken: { flagId, visitorToken } },
@@ -50,6 +64,15 @@ export async function POST(
         userId: session?.user?.id ?? null,
       },
     })
+
+    const isOwner =
+      Boolean(session?.user?.id) && flag.audit.userId === session?.user?.id
+    if (parsed.data.dismiss && parsed.data.reason && isOwner) {
+      await prisma.flag.update({
+        where: { id: flagId },
+        data: { status: 'IGNORED' },
+      })
+    }
 
     return NextResponse.json(feedback)
   } catch (error) {

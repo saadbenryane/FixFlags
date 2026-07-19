@@ -6,7 +6,7 @@ import {
   viewportAspectStyle,
   SCREENSHOT_FRAME,
 } from '@/lib/audit/viewports'
-import { truncateUrl } from '@/lib/audit/progress-ui'
+import { displayHostname } from '@/lib/utils/url-helpers'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
 
@@ -49,7 +49,7 @@ export function BrowserFrame({
     state ?? (imageUrl ? 'loaded' : 'loading')
   const resolvedImageUrl = imageUrl ? normalizeInternalScreenshotUrl(imageUrl) : null
 
-  const displayUrl = url ? truncateUrl(url, 56) : 'Capturing page...'
+  const displayUrl = url ? displayHostname(url) : 'Capturing page...'
 
   const resolvedViewportStyle: CSSProperties = viewportSize
     ? { height: viewportSize.height, width: viewportSize.width }

@@ -65,7 +65,7 @@ const STATIC_FLAGS: RankableFlag[] = [
     id: 'flag-reach-1',
     checkId: 'og-image-missing',
     rubric: 'REACH',
-    severity: 'CRITICAL',
+    severity: 'IMPORTANT',
     impactTag: 'SHARING',
     problem: 'Missing og:image, link previews show blank cards',
     evidence:

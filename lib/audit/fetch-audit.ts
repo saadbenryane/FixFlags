@@ -5,6 +5,7 @@ import { canAccessAudit } from '@/lib/audit/access'
 import {
   canViewPrescriptionContentForAudit,
   canViewDeterministicFixesForAudit,
+  findHighestSeverityFlagWithFix,
   stripAiPrescriptionFromRubrics,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromRubrics,
@@ -229,6 +230,11 @@ export async function getGatedAuditForRequest(id: string) {
     storedCapture
   )
 
+  const sampleFixFlag =
+    !showDeterministicFixes && !isLegacyDeterministic
+      ? findHighestSeverityFlagWithFix(audit.flags)
+      : null
+
   return {
     kind: 'ok' as const,
     audit: {
@@ -256,6 +262,7 @@ export async function getGatedAuditForRequest(id: string) {
     aiReviewPending,
     triageDegraded,
     prescriptionFailed,
+    sampleFixFlag,
     session,
   }
 }

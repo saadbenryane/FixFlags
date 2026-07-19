@@ -24,9 +24,11 @@ export function Footer() {
             <Logo variant="lockup" size="md" href="/" />
             <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{tagline}</p>
             <div className="flex items-center gap-3">
-              <FooterSocialLink href={social.instagram} label="Instagram">
-                <Instagram className="h-4 w-4" aria-hidden />
-              </FooterSocialLink>
+              {social.instagram ? (
+                <FooterSocialLink href={social.instagram} label="Instagram">
+                  <Instagram className="h-4 w-4" aria-hidden />
+                </FooterSocialLink>
+              ) : null}
             </div>
           </div>
 

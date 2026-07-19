@@ -20,6 +20,12 @@ export interface PageSpeedResult {
   raw: Record<string, unknown>
 }
 
+const PAGESPEED_TIMEOUT_MS = 60_000
+const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000
+const FAILED_SENTINEL = '__FAILED__' as const
+
+const RETRYABLE_STATUS_PATTERNS = ['429', '500', '502', '503', '504'] as const
+
 const ACCESSIBILITY_AUDIT_IDS = [
   'color-contrast',
   'bypass',
@@ -33,6 +39,12 @@ export function toStoredPageSpeedResult(result: PageSpeedResult): Omit<PageSpeed
   return stored
 }
 
+function isRetryableError(err: unknown): boolean {
+  if (err instanceof Error && err.name === 'AbortError') return true
+  const message = err instanceof Error ? err.message : String(err)
+  return RETRYABLE_STATUS_PATTERNS.some((code) => message.includes(code))
+}
+
 async function runPageSpeedWithRetry(
   url: string,
   strategy: 'desktop' | 'mobile'
@@ -44,10 +56,9 @@ async function runPageSpeedWithRetry(
       return await runPageSpeed(url, strategy)
     } catch (err) {
       lastError = err
-      const message = err instanceof Error ? err.message : String(err)
-      const retryable = message.includes('429') || message.includes('503')
-      if (!retryable || attempt === maxAttempts) break
-      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt))
+      if (!isRetryableError(err) || attempt === maxAttempts) break
+      const delayMs = Math.min(2000 * 2 ** (attempt - 1), 15_000)
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
   throw lastError
@@ -66,7 +77,7 @@ async function runPageSpeed(
   if (apiKey) apiUrl.searchParams.set('key', apiKey)
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30_000)
+  const timeout = setTimeout(() => controller.abort(), PAGESPEED_TIMEOUT_MS)
 
   try {
     const res = await fetch(apiUrl.toString(), { signal: controller.signal })
@@ -179,21 +190,33 @@ export async function fetchPageSpeedData(url: string): Promise<{
 
   if (!cachedDesktop) {
     promises.push(
-      runPageSpeedWithRetry(url, 'desktop').then((result) => {
-        auditCache.set(desktopKey, result, 60 * 60 * 1000)
-        return { strategy: 'desktop', result }
-      })
+      runPageSpeedWithRetry(url, 'desktop')
+        .then((result) => {
+          auditCache.set(desktopKey, result, 60 * 60 * 1000)
+          return { strategy: 'desktop', result }
+        })
+        .catch((err) => {
+          auditCache.set(desktopKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
+          throw err
+        })
     )
   }
 
   if (!cachedMobile) {
     promises.push(
-      runPageSpeedWithRetry(url, 'mobile').then((result) => {
-        auditCache.set(mobileKey, result, 60 * 60 * 1000)
-        return { strategy: 'mobile', result }
-      })
+      runPageSpeedWithRetry(url, 'mobile')
+        .then((result) => {
+          auditCache.set(mobileKey, result, 60 * 60 * 1000)
+          return { strategy: 'mobile', result }
+        })
+        .catch((err) => {
+          auditCache.set(mobileKey, FAILED_SENTINEL, FAILURE_CACHE_TTL_MS)
+          throw err
+        })
     )
   }
+
+  const isFailedSentinel = (v: unknown): boolean => v === FAILED_SENTINEL
 
   const output: {
     desktop: PageSpeedResult | null
@@ -201,10 +224,10 @@ export async function fetchPageSpeedData(url: string): Promise<{
     desktopError?: string
     mobileError?: string
   } = {
-    desktop: cachedDesktop ?? null,
-    mobile: cachedMobile ?? null,
-    desktopError: undefined,
-    mobileError: undefined,
+    desktop: cachedDesktop && !isFailedSentinel(cachedDesktop) ? cachedDesktop : null,
+    mobile: cachedMobile && !isFailedSentinel(cachedMobile) ? cachedMobile : null,
+    desktopError: cachedDesktop && isFailedSentinel(cachedDesktop) ? 'PageSpeed failed recently, retrying later' : undefined,
+    mobileError: cachedMobile && isFailedSentinel(cachedMobile) ? 'PageSpeed failed recently, retrying later' : undefined,
   }
 
   if (promises.length > 0) {

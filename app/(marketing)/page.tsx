@@ -2,8 +2,9 @@ import { CheckDimensionsSection } from '@/components/marketing/landing/CheckDime
 import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
+import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
+import { ProductEvidenceSection } from '@/components/marketing/landing/ProductEvidenceSection'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
-import { TestimonialsSection } from '@/components/marketing/landing/TestimonialsSection'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -15,13 +16,14 @@ export default async function HomePage() {
 
   return (
     <>
+      <LandingViewTracker />
       <LandingHeroSection />
       <SampleReportSection
         audit={sample.audit}
       />
       <CheckDimensionsSection />
       <HowItWorksLoopSection sampleHref="/samples" />
-      <TestimonialsSection />
+      <ProductEvidenceSection />
       <LandingFinalCtaSection />
     </>
   )

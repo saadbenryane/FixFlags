@@ -93,7 +93,7 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
         <Callout
           variant="success"
           title={
-            fixed.length === 1 ? '1 Flag cleared' : `${fixed.length} Flags cleared`
+            fixed.length === 1 ? '1 Flag fixed' : `${fixed.length} Flags fixed`
           }
         >
           <ul className="space-y-1.5">
@@ -118,12 +118,13 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
             ))}
             {fixed.length > 5 ? (
               <li className="text-xs text-muted-foreground">
-                +{fixed.length - 5} more cleared
+                +{fixed.length - 5} more fixed
               </li>
             ) : null}
           </ul>
         </Callout>
       ) : null}
+      <p className="text-xs text-muted-foreground">{RECHECK_DIFF_COPY.outcomesHint}</p>
     </section>
   )
 }

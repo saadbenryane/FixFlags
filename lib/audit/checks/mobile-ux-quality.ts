@@ -48,12 +48,22 @@ export function runMobileUXQualityChecks(
     }
 
     if (captureMetrics.mobilePrimaryCtaText) {
-      const ctaText = captureMetrics.mobilePrimaryCtaText.toLowerCase()
-      const weakPhrases = ['click here', 'learn more', 'read more', 'submit', 'go', 'start', 'try']
+      const ctaText = captureMetrics.mobilePrimaryCtaText.toLowerCase().trim()
+      const weakPhrases = [
+        'click here',
+        'learn more',
+        'read more',
+        'submit',
+        'go',
+        'start',
+        'try',
+      ]
 
       const isVague = weakPhrases.some((p) => {
         if (p.includes(' ')) return ctaText.startsWith(p)
-        return ctaText === p
+        // For single-word phrases, use startsWith to catch variations like
+        // "Get started" (matches "start") or "Try free" (matches "try").
+        return ctaText.startsWith(p)
       })
       if (isVague) {
         findings.push({

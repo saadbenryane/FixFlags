@@ -68,13 +68,26 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
       refreshedRef.current = true
+      const flags = Array.isArray(audit?.flags) ? (audit.flags as { severity?: string }[]) : []
+      const durationMs =
+        typeof audit?.durationMs === 'number' ? audit.durationMs : undefined
+      const highestSeverity = flags.reduce<string | undefined>((best, f) => {
+        const order = { CRITICAL: 0, IMPORTANT: 1, POLISH: 2 }
+        const s = f.severity
+        if (!s || !(s in order)) return best
+        if (!best) return s
+        return order[s as keyof typeof order] < order[best as keyof typeof order] ? s : best
+      }, undefined)
       trackEvent('audit_completed', {
         audit_id: id,
         score: typeof audit?.score === 'number' ? audit.score : undefined,
+        duration_ms: durationMs,
+        finding_count: flags.length || undefined,
+        highest_severity: highestSeverity,
       })
       router.refresh()
     }
-  }, [isComplete, router, id, audit?.score])
+  }, [isComplete, router, id, audit?.score, audit?.durationMs, audit?.flags])
 
   const inProgress = !isComplete && !isFailed
 

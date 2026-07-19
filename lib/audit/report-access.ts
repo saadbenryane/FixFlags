@@ -141,6 +141,21 @@ export function stripDeterministicFixesFromRubrics<T extends RubricLike>(rubrics
   }))
 }
 
+const SEVERITY_RANK: Record<string, number> = {
+  CRITICAL: 0,
+  IMPORTANT: 1,
+  POLISH: 2,
+}
+
+/** Find the highest-severity flag (CRITICAL > IMPORTANT > POLISH) with a fix prompt. */
+export function findHighestSeverityFlagWithFix<T extends FlagLike>(flags: T[]): T | null {
+  const withFix = flags.filter((f) => f.fix)
+  if (withFix.length === 0) return null
+  return withFix.sort(
+    (a, b) => (SEVERITY_RANK[a.severity as string] ?? 99) - (SEVERITY_RANK[b.severity as string] ?? 99)
+  )[0]
+}
+
 /** Legacy deterministic-only audits (no triageAt): hide AI fields entirely. */
 export function stripLegacyDeterministicAudit<T extends {
   verdict?: string | null

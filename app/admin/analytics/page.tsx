@@ -264,17 +264,24 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>GA4 events tracked</SectionTitle>
         <div className="rounded-card bg-muted/30 p-4 text-sm text-muted-foreground space-y-1">
-          <p><code className="text-foreground font-mono text-xs">started_audit</code> &mdash; User submitted a URL</p>
+          <p><code className="text-foreground font-mono text-xs">landing_view</code> &mdash; Homepage viewed</p>
+          <p><code className="text-foreground font-mono text-xs">started_audit</code> &mdash; User submitted a URL (scan_submitted)</p>
+          <p><code className="text-foreground font-mono text-xs">scan_validation_failed</code> &mdash; Client URL validation failed</p>
+          <p><code className="text-foreground font-mono text-xs">signup_started</code> &mdash; Sign-up form focused</p>
           <p><code className="text-foreground font-mono text-xs">signed_up</code> &mdash; Account created</p>
           <p><code className="text-foreground font-mono text-xs">signed_in</code> &mdash; User signed in</p>
           <p><code className="text-foreground font-mono text-xs">viewed_pricing</code> &mdash; Pricing page viewed</p>
           <p><code className="text-foreground font-mono text-xs">started_checkout</code> &mdash; Upgrade button clicked</p>
           <p><code className="text-foreground font-mono text-xs">completed_checkout</code> &mdash; Stripe checkout succeeded</p>
           <p><code className="text-foreground font-mono text-xs">audit_completed</code> &mdash; Audit finished processing</p>
+          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code> &mdash; Top flag shown in explorer</p>
           <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code> &mdash; Free tier limit hit</p>
           <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code> &mdash; Fix prompt copied to clipboard</p>
           <p><code className="text-foreground font-mono text-xs">recheck_started</code> &mdash; Owner started a re-check</p>
+          <p><code className="text-foreground font-mono text-xs">recheck_completed</code> &mdash; Re-check compare viewed</p>
           <p><code className="text-foreground font-mono text-xs">viewed_report</code> &mdash; Completed report viewed</p>
+          <p><code className="text-foreground font-mono text-xs">viewed_sample</code> &mdash; Sample report section viewed</p>
+          <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code> &mdash; Sample CTA clicked</p>
         </div>
       </section>
     </Container>

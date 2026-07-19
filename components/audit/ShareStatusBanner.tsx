@@ -13,8 +13,7 @@ interface Props {
 
 export function ShareStatusBanner({ shareStatus, rubrics }: Props) {
   const isReady = shareStatus === 'good_to_share'
-  const criticalCount = rubrics.reduce((sum, r) => sum + r.criticalCount, 0)
-  const message = shareStatusMessage(shareStatus, criticalCount)
+  const message = shareStatusMessage(shareStatus)
 
   return (
     <Callout variant={isReady ? 'success' : 'warning'} title={message}>

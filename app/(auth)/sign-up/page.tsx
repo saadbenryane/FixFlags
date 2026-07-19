@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { TextLink } from '@/components/ui/text-link'
 import { Mail, Loader2 } from 'lucide-react'
@@ -28,9 +28,17 @@ function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const signupStartedRef = useRef(false)
+
+  function markSignupStarted(method: string) {
+    if (signupStartedRef.current) return
+    signupStartedRef.current = true
+    trackEvent('signup_started', { method, from: from ?? undefined })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    markSignupStarted('email')
     setLoading(true)
     try {
       const { data, error } = await authClient.signUp.email({ name: '', email, password })
@@ -111,6 +119,7 @@ function SignUpForm() {
           icon={<Mail className="h-4 w-4" />}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onFocus={() => markSignupStarted('email')}
           placeholder="you@example.com"
           required
         />

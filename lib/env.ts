@@ -132,6 +132,17 @@ export function validateWorkerEnv(): void {
       console.warn(message)
     }
   }
+  if (!process.env.PAGESPEED_API_KEY) {
+    const message =
+      '[env] No PAGESPEED_API_KEY set. PageSpeed calls use IP-based quota and ' +
+      'will likely hit rate limits (429), causing Experience flags to be thinner ' +
+      'and rubric scores to be penalized. Set PAGESPEED_API_KEY for reliable results.'
+    if (process.env.NODE_ENV === 'production') {
+      console.error(message)
+    } else {
+      console.warn(message)
+    }
+  }
   if (process.env.NODE_ENV === 'production') {
     if (!isProdStorageConfigured()) {
       // Non-fatal by design. Throwing here crashes the web service (it runs the

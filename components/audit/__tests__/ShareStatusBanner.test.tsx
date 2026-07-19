@@ -23,29 +23,29 @@ const CLEAN_RUBRICS = [
 describe('ShareStatusBanner', () => {
   it('celebrates a clean report and shows every rubric badge', () => {
     render(<ShareStatusBanner shareStatus="good_to_share" rubrics={CLEAN_RUBRICS} />)
-    expect(screen.getByText('No critical Flags found. Good to share.')).toBeInTheDocument()
+    expect(screen.getByText('No critical Flags. Good to share.')).toBeInTheDocument()
     for (const r of CLEAN_RUBRICS) {
       expect(screen.getByText(rubricLabel(r.name))).toBeInTheDocument()
     }
   })
 
-  it('uses singular phrasing for exactly one critical flag', () => {
+  it('shows generic fix message for critical flags', () => {
     const rubrics = [
       rubric({ name: 'MESSAGE', status: 'BLOCKED', flagCount: 1, criticalCount: 1 }),
       rubric({ name: 'EXPERIENCE' }),
       rubric({ name: 'REACH' }),
     ]
     render(<ShareStatusBanner shareStatus="fix_before_sharing" rubrics={rubrics} />)
-    expect(screen.getByText('1 critical. Fix this before sharing.')).toBeInTheDocument()
+    expect(screen.getByText('Fix critical Flags before sharing.')).toBeInTheDocument()
   })
 
-  it('sums criticals across rubrics and uses plural phrasing', () => {
+  it('shows generic fix message for multiple critical flags', () => {
     const rubrics = [
       rubric({ name: 'MESSAGE', status: 'BLOCKED', flagCount: 2, criticalCount: 2 }),
       rubric({ name: 'EXPERIENCE', status: 'BLOCKED', flagCount: 1, criticalCount: 1 }),
       rubric({ name: 'REACH' }),
     ]
     render(<ShareStatusBanner shareStatus="fix_before_sharing" rubrics={rubrics} />)
-    expect(screen.getByText('3 critical. Fix these before sharing.')).toBeInTheDocument()
+    expect(screen.getByText('Fix critical Flags before sharing.')).toBeInTheDocument()
   })
 })

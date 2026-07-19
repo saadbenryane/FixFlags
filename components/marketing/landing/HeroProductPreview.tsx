@@ -13,7 +13,9 @@ interface HeroProductPreviewProps {
 }
 
 export function HeroProductPreview({ className, audit }: HeroProductPreviewProps) {
-  const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit())
+  const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit(), {
+    flagshipOnly: true,
+  })
 
   return (
     <div className={cn('relative mx-auto w-full max-w-5xl', className)}>

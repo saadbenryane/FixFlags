@@ -142,7 +142,7 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed } = result
+  const { audit, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed, sampleFixFlag } = result
   const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -337,6 +337,7 @@ export default async function ReportPage({ params }: Props) {
           failureCode={audit.failureCode ?? null}
           pages={journeyPages}
           recheckDiff={recheckDiff}
+          sampleFixFlag={sampleFixFlag as typeof flags[number] | null}
           compareHref={
             canAccessCompareView && audit.parentId ? `/compare/${id}` : null
           }

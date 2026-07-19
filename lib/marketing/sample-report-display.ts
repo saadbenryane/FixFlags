@@ -205,10 +205,15 @@ function mapFlag(
   }
 }
 
-export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDisplay {
+export function buildSampleReportDisplay(
+  audit: LiveSampleAudit,
+  options?: { flagshipOnly?: boolean }
+): SampleReportDisplay {
   const anchors = resolveSampleAnchors(audit)
   const sorted = sortFlags(audit.flags)
-  const flags = sorted.map((flag, index) => mapFlag(flag, index, anchors))
+  const totalFlagCount = sorted.length
+  const selected = options?.flagshipOnly ? pickFlagshipFlags(sorted) : sorted
+  const flags = selected.map((flag, index) => mapFlag(flag, index, anchors))
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
   const { overall, rubrics } = resolveDisplayScores(audit)
@@ -235,7 +240,7 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
     score: overall,
     grade: gradeFromScore(overall),
     verdict: displayVerdict(audit.verdict),
-    flagCount: flags.length,
+    flagCount: totalFlagCount,
     desktopScreenshot: desktop?.url ?? null,
     mobileScreenshot: mobile?.url ?? null,
     rubricScores,
@@ -243,10 +248,20 @@ export function buildSampleReportDisplay(audit: LiveSampleAudit): SampleReportDi
       audit.rubricRows.map((row) => [row.name, row.summary ?? ''])
     ),
     pipelineSteps: buildPipelineSteps({
-      flagCount: flags.length,
+      flagCount: totalFlagCount,
       pageType: audit.pageType,
       mode: 'sample',
     }),
     flags,
   }
+}
+
+/** One Message, one Experience, one Reach flag for homepage demo. */
+function pickFlagshipFlags(flags: RankableFlag[]): RankableFlag[] {
+  const picked: RankableFlag[] = []
+  for (const rubric of RUBRIC_ORDER) {
+    const match = flags.find((f) => f.rubric === rubric)
+    if (match) picked.push(match)
+  }
+  return picked.length > 0 ? picked : flags.slice(0, 3)
 }

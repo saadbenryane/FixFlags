@@ -152,6 +152,14 @@ export function FlagDetailPanel({
         </FlagCard>
       )}
 
+      {flag.verificationRule && (
+        <FlagCard title="How to verify" icon={ClipboardCheck}>
+          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
+            {flag.verificationRule}
+          </p>
+        </FlagCard>
+      )}
+
       {(flag.hasFixPrompt || aiLocked) && (
         <FlagCard title="Fix" icon={Sparkles} emphasis>
           {aiLocked ? (
@@ -177,15 +185,7 @@ export function FlagDetailPanel({
         </FlagCard>
       )}
 
-      {flag.verificationRule && (
-        <FlagCard title="How to verify" icon={ClipboardCheck}>
-          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
-            {flag.verificationRule}
-          </p>
-        </FlagCard>
-      )}
-
-      {showFeedback && <FlagFeedback flagId={flag.id} />}
+      {showFeedback && <FlagFeedback flagId={flag.id} canDismiss />}
     </div>
   )
 }

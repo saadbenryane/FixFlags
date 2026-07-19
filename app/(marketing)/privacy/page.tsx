@@ -25,7 +25,14 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-foreground">How we use it</h2>
           <p>
             We use this data to generate reports, enforce plan limits, and improve the product. We do
-            not sell your personal data.
+            not sell your personal data. Reviews are read-only: we never modify your site.
+          </p>
+
+          <h2 className="text-base font-semibold text-foreground">Report access</h2>
+          <p>
+            Anonymous scans are viewable by anyone with the report link until you claim the report
+            by signing in. Claimed reports are private by default. Agency plans can create public
+            share links.
           </p>
 
           <h2 className="text-base font-semibold text-foreground">Third parties</h2>

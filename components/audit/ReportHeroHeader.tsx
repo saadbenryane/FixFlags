@@ -34,11 +34,6 @@ export function ReportHeroHeader({
           {badgeLabel}
         </Badge>
       </div>
-      {url ? (
-        <p className="break-all text-sm text-muted-foreground sm:truncate">{url}</p>
-      ) : (
-        <Skeleton className="h-4 w-56" />
-      )}
       {userVerdict ? (
         <blockquote className="border-l-2 border-brand pl-3 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:pl-4 sm:text-lg">
           {userVerdict}
