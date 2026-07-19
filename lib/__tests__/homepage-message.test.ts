@@ -141,7 +141,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
-    assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt (copy-ready)')
+    assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt')
     assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → re-check.')
   })
 
@@ -314,8 +314,8 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('samples SEO references LaunchPad demo, not homepage dogfood', () => {
-    assert.match(SEO.samples.description, /LaunchPad demo/i)
+  it('samples SEO references CloudNap demo, not homepage dogfood', () => {
+    assert.match(SEO.samples.description, /CloudNap demo/i)
     assert.ok(!/our own homepage/i.test(SEO.samples.description))
   })
 })

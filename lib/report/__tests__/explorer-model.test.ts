@@ -45,7 +45,7 @@ describe('explorer-model', () => {
     assert.equal(model.displayHost, 'example.com')
     assert.equal(model.flags.length, 2)
     assert.equal(model.flags[0]?.severity, 'CRITICAL')
-    assert.equal(model.flags[0]?.priorityLabel, 'Fix first')
+    assert.equal(model.flags[0]?.priorityLabel, 'Top fix')
     assert.equal(model.flags[1]?.priorityLabel, 'Next')
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
@@ -132,7 +132,7 @@ describe('explorer-model', () => {
     )
     assert.deepEqual(
       model.flags.map((flag) => flag.priorityLabel),
-      ['Fix first', 'Next', 'Priority 3']
+      ['Top fix', 'Next', 'Priority 3']
     )
   })
 

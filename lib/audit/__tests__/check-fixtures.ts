@@ -8,7 +8,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
   return {
     title: 'FixFlags - Finish what your AI started',
     description:
-      'Paste any public URL and get graded scores, evidence-backed findings, and copy-ready fix prompts for your AI coding agent.',
+      'Paste any public URL and get graded scores, evidence-backed findings, and fix prompts for your AI coding agent.',
     ogTitle: 'FixFlags',
     ogDescription: 'Finish what your AI started',
     ogImage: 'https://example.com/og.png',

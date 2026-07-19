@@ -42,7 +42,7 @@ const FLAGS: ExplorerFlag[] = [
 
 describe('explorer-filters', () => {
   it('priorityLabelForIndex returns fix-first language', () => {
-    assert.equal(priorityLabelForIndex(0), 'Fix first')
+    assert.equal(priorityLabelForIndex(0), 'Top fix')
     assert.equal(priorityLabelForIndex(1), 'Next')
     assert.equal(priorityLabelForIndex(2), 'Priority 3')
   })

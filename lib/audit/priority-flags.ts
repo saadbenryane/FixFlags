@@ -159,7 +159,7 @@ function titleCaseRubric(rubric: string): string {
  * One prompt that turns the whole report into a plan-mode task for an AI editor
  * (Cursor, Claude Code). Paste it, put the editor in plan mode, and it produces a
  * prioritized fix plan instead of editing blindly. Every flag with a fix prompt is
- * included, ranked by priority, with its evidence and copy-ready fix guidance.
+  * included, ranked by priority, with its evidence and fix prompt guidance.
  * Returns an empty string when no flag has a usable fix prompt.
  */
 export function buildPlanModePrompt(

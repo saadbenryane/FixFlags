@@ -30,7 +30,7 @@ export const originalFixture: DemoFixture = {
       images: [],
     },
   },
-  announcement: '🚀 LaunchPad 2.0 is here. Now with more AI templates than ever before!',
+  announcement: 'CloudNap 2.0 just dropped. Now with AI-powered dream analysis and optimized nap routes.',
   navLinks: [
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
@@ -38,33 +38,33 @@ export const originalFixture: DemoFixture = {
     { label: 'Docs', href: '#docs' },
     { label: 'About', href: '#about' },
   ],
-  headline: 'Build something amazing with our innovative AI platform',
+  headline: 'Your team deserves better naps than a couch in the break room',
   subhead:
-    'LaunchPad is the next-generation AI landing page builder for modern teams who want to ship faster.',
-  primaryCta: { label: 'Get started', href: '/demo/signup' },
+    'CloudNap uses AI to schedule the perfect nap window based on your calendar, energy levels, and meeting load. Sleep smarter, ship faster.',
+  primaryCta: { label: 'Start napping', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
-  heroImageAlt: 'Product dashboard preview',
+  heroImageAlt: 'CloudNap dashboard showing optimized nap schedule',
   featuresSectionTitle: '',
   features: [
     {
-      title: 'AI-powered design',
-      description: 'Lorem ipsum dolor sit amet, generate beautiful layouts in seconds.',
+      title: 'Smart nap routing',
+      description: 'Lorem ipsum dolor sit amet, our AI finds the optimal nap window between meetings.',
     },
     {
-      title: 'One-click deploy',
-      description: 'Ship your landing page to production with a single click.',
+      title: 'One-click hibernate',
+      description: 'Auto-respond to Slack and start a power nap with a single click.',
     },
     {
-      title: 'Analytics built in',
-      description: 'Track visitors, conversions, and engagement out of the box.',
+      title: 'Dream analytics',
+      description: 'Track sleep quality, dream intensity, and REM cycles out of the box.',
     },
   ],
   footerLinks: [
     { label: 'Partner', href: 'https://example.com' },
     { label: 'Privacy', href: '#privacy' },
     { label: 'Terms', href: '#terms' },
-    { label: 'Contact', href: 'mailto:hello@launchpad-demo.app' },
+    { label: 'Contact', href: 'mailto:hello@cloudnap-demo.app' },
   ],
   layout: {
     compactMobileNav: false,
@@ -82,22 +82,22 @@ export const originalFixture: DemoFixture = {
     smallInputFont: true,
   },
   socialProof: {
-    statLine: 'Trusted by 10,000+ happy customers',
+    statLine: 'Trusted by 10,000+ well-rested professionals',
     testimonials: [
       {
-        quote: 'LaunchPad helped us ship our landing page in a day.',
+        quote: 'CloudNap helped us ship our product after our team finally got some real sleep.',
         author: 'John D.',
         role: 'CEO, Company Name',
       },
     ],
   },
   form: {
-    heading: 'Get started today',
+    heading: 'Start napping today',
     fields: [
       { name: 'name', type: 'text', label: 'Full name' },
       { name: 'email', type: 'email', label: 'Email address' },
       { name: 'plan', type: 'select', label: 'Plan', options: ['Starter', 'Pro', 'Enterprise'] },
     ],
-    submitLabel: 'Get started',
+    submitLabel: 'Start napping',
   },
 }

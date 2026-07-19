@@ -36,7 +36,7 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
       <p className="mb-3 text-xs text-muted-foreground">
         This is how your page appears when shared on Slack, LinkedIn, or iMessage.
       </p>
-      <div className="max-w-sm overflow-hidden rounded-md border border-border/60 bg-card">
+      <div className="max-w-sm overflow-hidden rounded-md ring-1 ring-border/60 bg-card">
         {hasImage && imageOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

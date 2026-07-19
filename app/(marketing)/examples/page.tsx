@@ -47,8 +47,7 @@ export default async function ExamplesPage({
             as="h1"
           />
           <Body className="text-muted-foreground text-pretty">
-            Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix
-            prompt.
+            Real audit output from recognizable sites. Each card shows top issues and fix prompts.
           </Body>
           <LighthouseNote className="text-sm text-muted-foreground" />
         </div>

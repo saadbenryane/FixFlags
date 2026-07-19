@@ -77,7 +77,7 @@ function FlagList({
           <span className="min-w-0 truncate">
             <span className="font-medium text-foreground">{activePriority}</span>
             <span className="text-muted-foreground/50"> · </span>
-            {activePromptReady ? 'Copy-ready fix' : 'Diagnosis only'}
+            {activePromptReady ? 'Fix prompt ready' : 'Diagnosis only'}
           </span>
         </div>
       )}

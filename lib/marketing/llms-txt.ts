@@ -7,7 +7,7 @@ export function buildLlmsTxt(): string {
   const lines: string[] = [
     `# ${BRAND.name}`,
     '',
-    `> ${BRAND.category} Paste a URL, get evidence-backed Flags with copy-ready fix prompts.`,
+    `> ${BRAND.category} Paste a URL, get evidence-backed Flags with fix prompts.`,
     '',
   ]
 

@@ -10,7 +10,7 @@ import {
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
 describe('getSampleSiteDisplay', () => {
-  it('labels fixflags.com/demo as LaunchPad demo fixture', () => {
+  it('labels fixflags.com/demo as CloudNap demo fixture', () => {
     const site = getSampleSiteDisplay(DEFAULT_SAMPLE_AUDIT_URL)
     assert.equal(site.displayHost, DEMO_BRAND.displayLabel)
     assert.equal(site.contextTag, DEMO_FIXTURE_CONTEXT_TAG)

@@ -11,7 +11,7 @@ describe('parseMetadataFromHtml', () => {
 <html lang="en">
 <head>
   <title>FixFlags - Finish what your AI started</title>
-  <meta name="description" content="Paste any public URL and get Flags across message, experience, and reach, with copy-ready fix prompts for your AI coding agent." />
+  <meta name="description" content="Paste any public URL and get Flags across message, experience, and reach, with fix prompts for your AI coding agent." />
   <meta property="og:title" content="FixFlags" />
   <meta property="og:description" content="Audits in 60 seconds" />
   <meta property="og:image" content="https://example.com/og.png" />

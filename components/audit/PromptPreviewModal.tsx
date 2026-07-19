@@ -80,7 +80,7 @@ export function PromptPreviewModal({
         </div>
 
         <div className="flex-1 overflow-auto mx-6 mb-2">
-          <pre className="rounded-lg bg-terminal p-4 font-mono text-2xs leading-relaxed text-terminal-foreground whitespace-pre-wrap break-words min-h-[200px] max-h-[50vh] overflow-auto">
+          <pre className="rounded-card bg-terminal p-4 font-mono text-2xs leading-relaxed text-terminal-foreground whitespace-pre-wrap break-words min-h-[200px] max-h-[50vh] overflow-auto">
             {displayPrompt}
           </pre>
         </div>

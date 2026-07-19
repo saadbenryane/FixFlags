@@ -5,7 +5,7 @@ export type SeverityFilter = 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
 export type RubricFilter = 'ALL' | RubricName
 
 export function priorityLabelForIndex(index: number): string {
-  if (index === 0) return 'Fix first'
+  if (index === 0) return 'Top fix'
   if (index === 1) return 'Next'
   return `Priority ${index + 1}`
 }

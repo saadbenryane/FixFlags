@@ -1,7 +1,7 @@
 /** Fictional product used for hosted demo landing fixtures. */
 export const DEMO_BRAND = {
-  name: 'LaunchPad',
-  tagline: 'AI landing page builder',
-  domainLabel: 'launchpad-demo.app',
-  displayLabel: 'LaunchPad demo',
+  name: 'CloudNap',
+  tagline: 'AI-powered nap scheduling for remote workers',
+  domainLabel: 'cloudnap-demo.app',
+  displayLabel: 'CloudNap demo',
 } as const

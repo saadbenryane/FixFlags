@@ -340,16 +340,40 @@ export function ReportExplorer({
         loading={loading && model.score == null}
         progress={progress}
       />
-      <RubricTabs
-        rubricFilter={effectiveRubricFilter}
-        onRubricChange={setRubricFilter}
-        counts={rubricCounts}
-        total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
-      />
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        <RubricTabs
+          rubricFilter={effectiveRubricFilter}
+          onRubricChange={setRubricFilter}
+          counts={rubricCounts}
+          total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
+        />
+        {criticalCount > 0 && (
+          <>
+            <span className="mx-1 h-4 w-px bg-border/40" aria-hidden />
+            <FilterPill
+              size="sm"
+              active={severityFilter === 'ALL'}
+              onClick={() => setSeverityFilter('ALL')}
+            >
+              {REPORT_COPY.explorer.allSeverities}
+            </FilterPill>
+            <FilterPill
+              size="sm"
+              icon={AlertTriangle}
+              active={severityFilter === 'CRITICAL'}
+              onClick={() =>
+                setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
+              }
+            >
+              Critical ({criticalCount})
+            </FilterPill>
+          </>
+        )}
+      </div>
     </div>
   )
 
-  const secondaryFilters = (hasPages || criticalCount > 0) && (
+  const secondaryFilters = hasPages && (
     <div className="space-y-2">
       {hasPages && (
         <div className="flex flex-wrap gap-1.5">
@@ -371,27 +395,6 @@ export function ReportExplorer({
               </FilterPill>
             )
           })}
-        </div>
-      )}
-      {criticalCount > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <FilterPill
-            size="sm"
-            active={severityFilter === 'ALL'}
-            onClick={() => setSeverityFilter('ALL')}
-          >
-            {REPORT_COPY.explorer.allSeverities}
-          </FilterPill>
-          <FilterPill
-            size="sm"
-            icon={AlertTriangle}
-            active={severityFilter === 'CRITICAL'}
-            onClick={() =>
-              setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
-            }
-          >
-            Critical ({criticalCount})
-          </FilterPill>
         </div>
       )}
     </div>

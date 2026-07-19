@@ -62,7 +62,7 @@ export interface SampleReportDisplay {
   url: string
   /** Raw hostname from the audited URL. */
   host: string
-  /** User-facing site label (e.g. LaunchPad demo). */
+  /** User-facing site label (e.g. CloudNap demo). */
   displayHost: string
   contextTag: string
   isDemoFixture: boolean

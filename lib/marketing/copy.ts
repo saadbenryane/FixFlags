@@ -27,7 +27,7 @@ export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com
 
 export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
-  fixPrompt: 'Fix prompt (copy-ready)',
+  fixPrompt: 'Fix prompt',
   seeFullSample: 'See full sample report',
   nextStep: 'Paste into editor → run → re-check.',
 } as const
@@ -165,7 +165,7 @@ export const DIFFERENTIATION = {
   lighthouseLinkText: 'Compare FixFlags checks with Google Lighthouse',
   is: [
     'A review layer that finishes what your AI started',
-    'Flags with evidence, impact, and copy-ready fix prompts',
+    'Flags with evidence, impact, and fix prompts',
     'A re-check loop to prove fixes landed',
   ],
   isNot: [
@@ -175,7 +175,7 @@ export const DIFFERENTIATION = {
   ],
   bullets: [
     'AI reads screenshots for message, experience, and reach gaps',
-    'Every Flag ships with a copy-ready fix prompt',
+    'Every Flag ships with a fix prompt',
     'Re-checks prove fixes landed',
   ],
   rows: [
@@ -226,7 +226,7 @@ export const PROOF_SECTION = {
   nextStep: OUTPUT_LABELS.nextStep,
   cta: 'Check My Site',
   sample: {
-    name: 'LaunchPad',
+    name: 'CloudNap',
     domain: 'fixflags.com/demo',
     finding: 'Hero headline repeats the product category instead of the outcome',
     areasFlagged: 6,
@@ -696,7 +696,7 @@ export const FAQ = [
   {
     question: 'How do fix prompts work with Cursor/Claude?',
     answer:
-      'Each Flag includes a copy-ready prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
+      'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
   },
   {
     question: 'Can I re-check after my agent fixes issues?',
@@ -771,7 +771,7 @@ export const REPORT_COPY = {
   },
   sampleCta: {
     title: 'Run the same check on your site',
-    body: 'Paste a URL. See Flags across three rubrics and copy-ready fix prompts for your agent.',
+    body: 'Paste a URL. See Flags across three rubrics and fix prompts for your agent.',
   },
   noFlags: {
     title: 'No flags found',
@@ -1211,7 +1211,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real FixFlags report of our LaunchPad demo landing page: evidence-backed Flags with copy-ready fix prompts.',
+      'See a real FixFlags report of our CloudNap demo landing page: evidence-backed Flags with fix prompts.',
   },
   examples: {
     title: 'Example Reports',
