@@ -38,7 +38,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Product',
     links: [
-      { path: '/', label: 'Home', note: 'Free first audit, graded report' },
+      { path: '/', label: 'Home', note: 'Free check, Flags, fix prompts' },
       { path: '/how-it-works', label: 'How it works', note: 'Website checks and MCP workflow' },
       { path: '/samples', label: 'Sample report', note: 'Full example output' },
       { path: '/pricing', label: 'Pricing', note: 'Free vs Pro plans' },

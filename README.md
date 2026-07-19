@@ -98,7 +98,7 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 ## Production deployment (Railway)
 
-**One service is enough.** Deploy the **Web** service (`npm run build && npm start`, the default). By default it also runs the audit worker in-process (`INLINE_WORKER` defaults on) plus a self-hosted scheduler that recovers stuck audits and sends nurture emails; no separate worker and no external cron required.
+**One service is enough.** Railway builds the **Web** service from `Dockerfile` (`railway.toml`). The image `CMD` runs `npm start` (`prestart` applies migrations). By default it also runs the audit worker in-process (`INLINE_WORKER` defaults on) plus a self-hosted scheduler that recovers stuck audits and sends nurture emails; no separate worker and no external cron required. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
 
 - Deploy healthcheck: `GET /api/health` (DB only, stays lenient).
 - Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.

@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface SharedReportBannerProps {
@@ -21,7 +22,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
   return (
     <Callout
       variant="info"
-      title="Run your own audit"
+      title={REPORT_COPY.runYourOwnAudit}
       className={cn(
         'sticky top-[var(--header-offset)] z-10 bg-brand-muted/80 backdrop-blur-sm',
         className
@@ -41,7 +42,7 @@ export function SharedReportBanner({ hostname, score, className }: SharedReportB
                 </span>
               </>
             ) : null}
-            . Paste your URL for a free deterministic check. Create a free account for AI fix prompts.
+            . {REPORT_COPY.sampleCta.body}
           </p>
           <Button
             variant="ghost"

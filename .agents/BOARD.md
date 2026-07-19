@@ -4,9 +4,10 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| marketing-copy-cya-cut | in_progress | auto | main | Cut CYA, builder vernacular across marketing + product microcopy | lib/marketing/copy.ts, landing, report UI, FAQ/pricing, tests, voice docs | — | 2026-07-19 |
 | payments-live-ready | in_progress | auto | main | Stripe live + billing harden + copy/legal + skills | lib/billing, stripe routes, webhooks, copy, env, skills/docs | ship-fully-functional | 2026-07-19 |
 | ship-fully-functional | in_progress | auto | main | Unblock Railway, journey flags, visual evidence, skills/docs | deps, persist, report, Docker, AGENTS/skills | — | 2026-07-19 |
-| railway-npm-ci-fix | in_progress | auto | main | Folded into ship-fully-functional | package.json, package-lock.json, Dockerfile/.npmrc | — | 2026-07-19 |
+| railway-npm-ci-fix | done | auto | main | Folded into ship-fully-functional (zod4 + auth pins) | package.json, package-lock.json, Dockerfile | — | 2026-07-19 |
 | merge-origin-main | done | auto | main | Merged origin/main into local main; resolved BOARD conflict; pushed 966f7b4 | local Playwright commits × remote app-polish/passkey/cwv | — | 2026-07-19 |
 | ultimate-audit-product | done | auto | main | Ultimate audit Phases 0–5: Playwright, narrative report, journey MVP, loop closure, corridor, demand-triggered docs | lib/audit/*, components/audit/*, prisma, MCP, docs | — | 2026-07-19 |
 | ship-completeness | done | auto | main | Playwright unify, visual capture, product gaps, skills/docs | lib/audit/*, report/marketing UI, analytics, AGENTS/skills | — | 2026-07-19 |

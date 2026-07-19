@@ -66,7 +66,7 @@
 
 ## Dependency risks
 
-- Playwright: downloads Chromium, large binary, security surface
+- Playwright: production Docker uses system Chromium (no browser download in image); local may use Playwright-managed browser
 - Next.js 15: regular updates, check security advisories
 - better-auth 1.6: relatively new auth library, audit updates
 - BullMQ 5: relies on Redis security

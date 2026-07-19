@@ -23,6 +23,8 @@ import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
+import { Suspense } from 'react'
+import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
 
 export default async function BillingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -64,13 +66,24 @@ export default async function BillingPage() {
   const isPaid = user.plan !== 'FREE' && !hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const isActivating = isPaid && !user.stripeCustomerId
 
+  const displayPlanName =
+    user.subscriptionStatus === 'PAST_DUE' && user.plan !== 'FREE'
+      ? `${planDef.name} (payment past due — features paused)`
+      : `${planDef.name} plan`
+
   return (
     <Container variant="narrow" className="space-y-8 py-8">
+      <Suspense fallback={null}>
+        <BillingCreditsToast />
+      </Suspense>
       <PageHeader title="Billing" description="Manage your plan and subscription" />
 
       {user.subscriptionStatus === 'PAST_DUE' && (
-        <Callout variant="warning" title="Your last payment failed">
-          <p>Update your card to keep your paid features. We&rsquo;ll retry automatically, but you can fix it now.</p>
+        <Callout variant="warning" title="Payment past due — features paused">
+          <p>
+            Update your card to restore paid features (compare, MCP, share). We&rsquo;ll retry
+            automatically, but you can fix it now. Re-checks on owned reports stay free.
+          </p>
           {user.stripeCustomerId && (
             <div className="pt-1">
               <ManageSubscriptionButton />
@@ -82,11 +95,20 @@ export default async function BillingPage() {
       <Card className="space-y-4 p-6">
         <div className="space-y-1">
           <Heading as="h2" className="text-base">
-            {planDef.name} plan
+            {displayPlanName}
           </Heading>
           <Muted>
-            {planDef.price}
-            {planDef.period} · {planDef.auditLimitLabel}
+            {isPaid ? (
+              <>
+                {planDef.price}
+                {planDef.period} · {planDef.auditLimitLabel}
+              </>
+            ) : (
+              <>
+                {PLAN_DEFINITIONS.FREE.price || '$0'} · {PLAN_DEFINITIONS.FREE.auditLimitLabel}
+                {user.plan !== 'FREE' ? ' (paid features paused)' : ''}
+              </>
+            )}
           </Muted>
           {user.subscriptionStatus !== 'NONE' && (
             <p className="text-xs text-muted-foreground">
@@ -95,13 +117,11 @@ export default async function BillingPage() {
           )}
         </div>
 
-        {(user.subscriptionStatus === 'PAST_DUE' || user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') && (
+        {(user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') && (
           <Callout variant="danger" title="Payment issue">
-            {user.subscriptionStatus === 'PAST_DUE'
-              ? 'Your subscription payment is past due. Update your payment method to avoid losing access.'
-              : user.subscriptionStatus === 'CANCELED'
-                ? 'Your subscription has been canceled. Features may be downgraded.'
-                : 'Your subscription is unpaid. Please check your payment method.'}
+            {user.subscriptionStatus === 'CANCELED'
+              ? 'Your subscription has been canceled. Features may be downgraded.'
+              : 'Your subscription is unpaid. Please check your payment method.'}
           </Callout>
         )}
         <UsageMeter

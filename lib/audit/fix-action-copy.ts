@@ -3,7 +3,7 @@ export const FIX_ACTION_COPY = {
   cursorMcpAriaLabel: 'Connect Cursor MCP to run FixFlags from your editor',
   cursorMcpAuthRedirect: '/sign-in?next=/docs/mcp',
   promptCopyLabel: 'Copy fix prompt',
-  promptCopyAriaLabel: 'Copy AI-ready fix prompt to clipboard',
+  promptCopyAriaLabel: 'Copy fix prompt to clipboard',
   promptCopiedLabel: 'Copied!',
   lovableCopyLabel: 'Copy for Lovable',
   lovableCopyAriaLabel: 'Copy visual/design fix prompt for Lovable',

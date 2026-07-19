@@ -8,9 +8,11 @@ import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgra
 
 interface Props {
   context?: UpgradeMoment
+  /** Target plan for checkout. Defaults to Pro. Use TEAM for Agency. */
+  plan?: 'BUILDER' | 'TEAM'
 }
 
-export function UpgradeButton({ context }: Props) {
+export function UpgradeButton({ context, plan = 'BUILDER' }: Props) {
   const [loading, setLoading] = useState(false)
   const momentContent = context ? getUpgradeMomentContent(context) : null
 
@@ -20,18 +22,23 @@ export function UpgradeButton({ context }: Props) {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: 'BUILDER' }),
+        body: JSON.stringify({ plan }),
       })
+      const data = await res.json().catch(() => ({}))
+      if (data.url && (res.ok || res.status === 409)) {
+        if (res.status === 409) {
+          toast.message('Opening billing portal', {
+            description: 'Change or cancel your plan there.',
+          })
+        }
+        window.location.href = data.url
+        return
+      }
       if (!res.ok) {
         toast.error((await parseApiErrorResponse(res)).message)
         return
       }
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        toast.error('Checkout did not return a destination.')
-      }
+      toast.error('Checkout did not return a destination.')
     } catch {
       toast.error('Could not start checkout. Try again.')
     } finally {
@@ -52,7 +59,7 @@ export function UpgradeButton({ context }: Props) {
         ) : (
           <Sparkles className="h-4 w-4 mr-2" />
         )}
-        {momentContent ? momentContent.cta : 'Upgrade'}
+        {momentContent ? momentContent.cta : plan === 'TEAM' ? 'Upgrade to Agency' : 'Upgrade'}
       </Button>
     </div>
   )

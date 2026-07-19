@@ -68,6 +68,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Drift | `npm run db:drift` | Schema drift | Verify script |
 | Build | `npm run build` | Next.js production build | Yes |
 | Worker build | `npm run worker:build` | Worker compile | Yes |
+| Docker image | `docker build -t fixflags:local .` | Railway packaging (`npm ci`, Chromium, Next build) | No (run locally when Dockerfile/package*.json change) |
 
 ## Monetization blockers
 

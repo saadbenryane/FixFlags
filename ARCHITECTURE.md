@@ -88,7 +88,7 @@ Each page in an audit progresses through these stages independently.
 | `lib/audit/runner.ts` | Top-level `runAudit()` orchestrator |
 | `lib/audit/pipeline/run-page.ts` | Per-page processing |
 | `lib/audit/pipeline/combine-pages.ts` | Multi-page result merging |
-| `lib/audit/pipeline-config.ts` | Version (v2.3.0), deadlines (180s) |
+| `lib/audit/pipeline-config.ts` | Version (v2.4.0), deadlines (180s) |
 | `lib/audit/deterministic-audit.ts` | 22 check modules via barrel |
 | `lib/audit/checks/index.ts` | Check runner (22 modules, `suppressOverlappingFlags()`) |
 | `lib/audit/checks/registry.ts` | Check descriptor registry |
@@ -176,7 +176,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 - **Single service (default):** Next.js + inline worker + self-hosted scheduler
 - **Dedicated worker:** `INLINE_WORKER=false`, deploy separate worker service
-- **Container:** Docker (Debian bookworm-slim), multi-stage build
+- **Container:** Single-stage Docker (Debian bookworm-slim + apt Chromium). Railway uses `Dockerfile` via `railway.toml`. Playwright launches system Chromium (`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
 - **Platform:** Railway (fly.io-compatible)
 - **Health:** `/api/health` (DB+Redis), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2)
 

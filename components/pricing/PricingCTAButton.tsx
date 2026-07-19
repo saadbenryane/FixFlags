@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { PRICING } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 
@@ -47,8 +46,21 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan }),
       })
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string
+        error?: string
+        message?: string
+      }
+      if (data.url && (res.ok || res.status === 409)) {
+        if (res.status === 409) {
+          toast.message('You already have a subscription', {
+            description: 'Opening the billing portal to change plans.',
+          })
+        }
+        window.location.href = data.url
+        return
+      }
       if (!res.ok) {
-        const parsed = await parseApiErrorResponse(res)
         if (res.status === 503) {
           toast.error('Checkout is not configured yet.', {
             description: 'Set Stripe price IDs or manage billing from your dashboard.',
@@ -58,21 +70,16 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
             },
           })
         } else {
-          toast.error(parsed.message)
+          toast.error(data.error ?? data.message ?? 'Could not start checkout')
         }
         return
       }
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        toast.error('Checkout did not return a destination.', {
-          action: {
-            label: 'Try billing',
-            onClick: () => router.push('/billing'),
-          },
-        })
-      }
+      toast.error('Checkout did not return a destination.', {
+        action: {
+          label: 'Try billing',
+          onClick: () => router.push('/billing'),
+        },
+      })
     } catch {
       toast.error('Could not start checkout. Try again.')
     } finally {

@@ -109,26 +109,22 @@ describe('homepage message guardrails', () => {
   })
 
   it('hero subhead explains input, analysis, and fix output', () => {
-    assert.match(HERO.subhead, /paste your site/i)
-    assert.match(HERO.subhead, /live page/i)
-    assert.match(HERO.subhead, /fix prompts/i)
+    assert.match(HERO.subhead, /paste your live URL/i)
+    assert.match(HERO.subhead, /visitors notice/i)
+    assert.match(HERO.subhead, /copy fixes/i)
     assert.ok(HERO.subhead.split(/\s+/).length <= 35)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
     assert.ok(!HERO.subhead.includes(PROBLEM_SECTION.headline))
   })
 
-  it('trust badges are short, offer-aligned, not feature jargon', () => {
-    assert.equal(HERO.trustBadges.length, 4)
-    for (const badge of HERO.trustBadges) {
-      assert.ok(badge.split(/\s+/).length <= 5, `Too long: ${badge}`)
-      assert.ok(!/\bdeterministic\b/i.test(badge), `Jargon leak: ${badge}`)
-      assert.ok(!/^results in/i.test(badge), `Feature-led speed claim: ${badge}`)
-      assert.ok(!/^live or preview/i.test(badge), `Capability-only badge: ${badge}`)
-    }
-    assert.match(HERO.trustBadges[0], /free/i)
-    assert.match(HERO.trustBadges[1], /findings/i)
-    assert.match(HERO.trustBadges[2], /fix prompts/i)
-    assert.match(HERO.trustBadges[3], /read-only/i)
+  it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
+    const { OFFER } = await import('@/lib/marketing/copy')
+    assert.equal(HERO.trustBadges.length, 0)
+    assert.match(OFFER.short, /free check/i)
+    assert.match(OFFER.short, /what.?s broken/i)
+    assert.ok(!/read-only/i.test(OFFER.short))
+    assert.ok(!/claim/i.test(OFFER.short))
+    assert.ok(!/never modify/i.test(OFFER.short))
   })
 
   it('secondary sample CTA uses human review language', () => {
@@ -137,15 +133,34 @@ describe('homepage message guardrails', () => {
 
   it('offer is standardized across hero surfaces and final CTA', async () => {
     const { OFFER } = await import('@/lib/marketing/copy')
-    assert.match(OFFER.line, /free first scan/i)
-    assert.match(OFFER.privacy, /read-only/i)
-    assert.match(OFFER.linkPrivacy, /report link/i)
+    assert.match(OFFER.line, /free check/i)
+    assert.match(OFFER.line, /fix prompts/i)
+    assert.match(OFFER.privacy, /do not change your site/i)
+    assert.match(OFFER.linkPrivacy, /private to your account/i)
     assert.equal(FINAL_CTA.body, OFFER.line)
   })
 
-  it('AI tools named once in segment proof, not repeated in hero', () => {
-    assert.ok(!HERO.subhead.includes(AI_TOOLS.split(',')[0]))
+  it('hero names editor tools; segment proof still covers Cursor', () => {
+    assert.ok(HERO.subhead.includes(AI_TOOLS.split(',')[0]))
     assert.ok(SEGMENT_PROOF_SECTION.tiles.some((t) => t.proof.includes('Cursor')))
+  })
+
+  it('landing and hero avoid CYA, readiness jargon, and banned unlock', () => {
+    const surfaces = [
+      ...LANDING_MARKETING_STRINGS,
+      HERO.headline,
+      HERO.subhead,
+      HERO.trySampleHint,
+      FINAL_CTA.body,
+      LANDING_PAGE.logoCloud.disclaimer,
+    ]
+    for (const line of surfaces) {
+      assert.ok(!/compatibility is not endorsement/i.test(line), `CYA disclaimer: ${line}`)
+      assert.ok(!/claim the report/i.test(line), `Claim CYA on marketing: ${line}`)
+      assert.ok(!/fix prompt ready/i.test(line), `Readiness jargon: ${line}`)
+      assert.ok(!/agent-ready/i.test(line), `Readiness jargon: ${line}`)
+      assert.ok(!/\bunlock\b/i.test(line), `Banned unlock: ${line}`)
+    }
   })
 
   it('SEGMENT_PROOF has shipper and live-site tiles', () => {

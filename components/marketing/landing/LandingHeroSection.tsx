@@ -1,6 +1,5 @@
 import { AuditInput } from '@/components/audit/AuditInput'
 import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
-import { LandingTrustBadges } from '@/components/marketing/landing/LandingTrustBadges'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { HERO } from '@/lib/marketing/copy'
@@ -20,8 +19,6 @@ export function LandingHeroSection() {
           <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground motion-safe:animate-fade-in-up motion-safe:[animation-delay:80ms] motion-safe:[animation-fill-mode:both] sm:text-lg">
             {HERO.subhead}
           </p>
-
-          <LandingTrustBadges className="mt-5" />
 
           <div
             id="audit"

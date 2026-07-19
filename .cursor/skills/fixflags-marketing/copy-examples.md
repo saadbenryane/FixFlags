@@ -5,19 +5,21 @@ Reference when drafting or rewriting `lib/marketing/copy.ts`. All examples follo
 ## Hero, Segment A (AI shipper) ✓ current default
 
 ```
-Headline: Check your site before you ship
-Subhead: Paste a URL. Get a graded report with evidence and fix prompts for your AI editor.
-Trust: Free. No account. Under 60 seconds.
-CTA: Audit my site | See sample report
+Headline: Finish what your AI started.
+Subhead: Paste your live URL. See what visitors notice. Copy fixes into Cursor, Claude, Lovable, or Bolt.
+Trust (one line under URL): Free check. See what's broken before you share the link.
+CTA: Review my site | See a sample review
 ```
+
+Do not stack privacy/claim/legal CYA under the hero. Keep that on `/privacy` and FAQ.
 
 ## Hero, Segment B (existing site owner), test variant
 
 ```
 Headline: Your site is live. See what's still costing you signups.
-Subhead: Paste your homepage. Graded on conversion, trust, and mobile, with fix prompts you can run or hand off.
-Trust: Free. No account. Under 60 seconds.
-CTA: Audit my site | See sample report
+Subhead: Paste your homepage. See what visitors notice, ranked by impact, with fix notes you can paste or hand off.
+Trust (one line): Free check. See what's broken before you share the link.
+CTA: Review my site | See a sample review
 ```
 
 Do not blend both headlines. A/B or rotate, don't stack.
@@ -51,7 +53,7 @@ A: No. FixFlags audits any public page, live or new. Most live sites still fail 
 A: Lighthouse scores performance, accessibility, and SEO. FixFlags also grades conversion, trust, and content, with evidence and fix prompts for each finding.
 
 **Q: Can I send the report to my dev or client?**  
-A: Copy fix prompts from the report, or upgrade to Team for read-only share links before a client call.
+A: Copy fix prompts from the report, or upgrade to Agency for public share links before a client call.
 
 ---
 
@@ -61,7 +63,7 @@ A: Copy fix prompts from the report, or upgrade to Team for read-only share link
 |--------|---------------------|------------------------------|
 | hidden_findings | +N issues your agent could fix | +N issues still costing you signups |
 | compare_improved | Score improved +N | Proof the last fix worked (+N) |
-| compare_flat | Unlock full prompts to fix what remains | Still gaps hurting conversion. See all findings. |
+| compare_flat | Still Flags after your re-check | Still gaps hurting conversion. See all Flags. |
 
 Implementation lives in `lib/billing/upgrade-moments.ts`. Match voice, adjust nouns (agent → dev/client).
 
@@ -87,10 +89,13 @@ Add to `copy.ts` → `SEO` when creating a dedicated landing route.
 **After:** See what's still broken on your live site.
 
 **Before:** Our AI-powered platform leverages advanced auditing.  
-**After:** Every finding ships with evidence and a fix prompt your agent can run.
+**After:** Every Flag ships with evidence and a fix prompt you can paste into your editor.
 
 **Before:** Get started today.  
-**After:** Audit my site.
+**After:** Review my site.
+
+**Before:** Compatibility is not endorsement. / Fix prompt ready. / Read-only review. We never modify your site.  
+**After:** Paste fixes into the tools you already use. / Copy fix prompt. / (privacy stays on `/privacy`, not the hero)
 
 ---
 

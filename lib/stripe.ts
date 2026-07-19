@@ -27,9 +27,7 @@ export function getStripe(): Stripe {
   return _stripe
 }
 
-export function isStripeConfigured(): boolean {
-  return !!process.env.STRIPE_SECRET_KEY
-}
+export { isBillingFullyConfigured as isStripeConfigured } from '@/lib/billing/config'
 
 // Re-export Plan for convenience in checkout routes
 export type { Plan }

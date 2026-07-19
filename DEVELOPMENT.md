@@ -153,18 +153,25 @@ Email: `saadbenryane@gmail.com` / password: `password123`
 
 ## Production deployment (Railway)
 
-```bash
-# One service (default)
-npm run build && npm start
-# Sets INLINE_WORKER=true by default
+Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `npm start` (with `prestart` → `db:deploy`).
 
-# Dedicated worker (separate service)
-INLINE_WORKER=false npm run worker:build && npm run worker:start
+```bash
+# Local parity with Railway image (required when Dockerfile / package*.json change)
+docker build -t fixflags:local .
+
+# What runs inside the container (web service default)
+npm start
+# INLINE_WORKER defaults on; prestart applies Prisma migrations via DATABASE_URL
+
+# Dedicated worker (separate Railway service from railway.worker.toml)
+INLINE_WORKER=false npm run worker:start
 ```
+
+**Docker / Playwright:** image installs apt `chromium`, sets `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`. Auth packages are pinned in `package.json` `overrides` (better-auth 1.6.22 + Zod 4). If you add an `.npmrc`, COPY it **before** `npm ci` in the Dockerfile.
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
-CI: GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build`. It does **not** run DB migration checks. Local `npm run verify` is the stricter bar. Run `npm run verify` locally before pushing.
+CI: GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build`. It does **not** run DB migration checks or `docker build`. Local `npm run verify` is stricter; run `docker build` before push when deploy packaging files change.
 
 ## Screenshot regeneration
 

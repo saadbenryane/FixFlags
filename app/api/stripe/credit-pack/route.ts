@@ -46,6 +46,11 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : session.user.email,
+      billing_address_collection: 'required',
+      automatic_tax: { enabled: true },
+      customer_update: user?.stripeCustomerId
+        ? { address: 'auto', name: 'auto' }
+        : undefined,
       success_url: `${appUrl}/billing?credits=1&pack=${pack.id}`,
       cancel_url: `${appUrl}/billing`,
       metadata: {

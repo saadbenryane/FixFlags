@@ -23,7 +23,8 @@ export const BRAND = {
 /** Named once on the page. Do not repeat in every section */
 export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
-export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://fixflags.com'
 
 export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
@@ -93,11 +94,12 @@ export const TOOLS = {
 
 /** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
 export const OFFER = {
-  line: 'Free first scan. No account required to see your findings. Sign up to copy fixes, save the report, and re-check.',
-  short: 'Free first scan. No account for findings.',
-  privacy: 'Read-only review. We never modify your site.',
+  line: 'Free check. See what\u2019s broken. Sign up when you want the fix prompts and re-check.',
+  short: 'Free check. See what\u2019s broken before you share the link.',
+  /** Privacy page / FAQ only. Do not render on marketing heroes. */
+  privacy: 'We scan your live URL. We do not change your site or touch your code.',
   linkPrivacy:
-    'Anyone with your report link can view findings until you claim the report.',
+    'Owned reports are private to your account. Anonymous scans stay on a private link until you sign in and save them.',
 } as const
 
 /** User-facing score explanation. Must match lib/audit/checks/rubric.ts + scoring.ts. */
@@ -124,19 +126,15 @@ export const HERO = {
   headlineAccent: 'Finish',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use.',
+    'Paste your live URL. See what visitors notice. Copy fixes into Cursor, Claude, Lovable, or Bolt.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
-  trySampleHint: 'Demo site. No account needed.',
+  trySampleHint: 'Open the demo report.',
   urlPlaceholder: 'your-site.com',
   trustBadgesSubtitle: 'See what users see',
-  trustBadges: [
-    'Free first scan',
-    'Findings without signup',
-    'Fix prompts after signup',
-    'Read-only review',
-  ] as const,
+  /** Empty on purpose: value lives in OFFER.short under the URL field, not a CYA badge row. */
+  trustBadges: [] as const,
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
@@ -154,7 +152,7 @@ export const SEGMENT_PROOF_SECTION = {
       id: 'live-site',
       title: 'Already live',
       job: 'See what the public page is still costing you.',
-      proof: 'Flags across Message, Experience, and Reach rubrics.',
+      proof: 'Prioritized Flags you can fix yourself or hand to whoever ships.',
     },
   ],
 } as const
@@ -483,7 +481,7 @@ export const CHANGELOG_ENTRIES = [
       'Sign up and create your account to start testing your sites',
       'Run free checks on any live or preview URL',
       'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
-      'Fix-ready prompts for Cursor, Claude Code, Lovable, Bolt, and Windsurf',
+      'Fix prompts for Cursor, Claude Code, Lovable, Bolt, and Windsurf',
       'View your report history and AI tool usage from your dashboard',
     ],
   },
@@ -507,8 +505,8 @@ export const BLOG_POSTS = [
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Copy fix prompts into the tools you already use',
-    disclaimer: 'Compatibility is not endorsement.',
+    label: 'Paste fixes into the tools you already use',
+    disclaimer: '',
     logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
   },
   checkDimensions: {
@@ -573,7 +571,7 @@ export const LANDING_PAGE = {
     label: 'How it works',
     headline: 'From scan to ship. In one loop.',
     subhead:
-      'Paste a URL. Get Flags and fix prompts. Re-check after you ship fixes.',
+      'Paste a URL. Get Flags. Paste the fix into your editor. Re-check.',
     sampleLink: 'View full sample review',
     steps: [
       {
@@ -592,8 +590,8 @@ export const LANDING_PAGE = {
       {
         step: 3,
         title: 'Fix',
-        body: 'Your AI agent gets exact prompts and context.',
-        preview: 'Agent-ready fix',
+        body: 'Copy the fix prompt into Cursor, Claude, Lovable, or Bolt.',
+        preview: 'Copy \u2192 paste',
       },
       {
         step: 4,
@@ -607,7 +605,7 @@ export const LANDING_PAGE = {
   productEvidence: {
     headline: 'What a review actually catches',
     subhead:
-      'Open beta. We show real product output instead of invented quotes. Explore the sample report above for full findings.',
+      'Real Flags from the product, not quote cards.',
     items: [
       {
         id: 'message',
@@ -631,8 +629,7 @@ export const LANDING_PAGE = {
   /** @deprecated Prefer productEvidence. Kept for AGENTS social-proof disclaimer invariant. */
   testimonials: {
     headline: 'What a review actually catches',
-    subhead:
-      'Open beta. We show real product output instead of invented quotes.',
+    subhead: 'Real Flags from the product, not quote cards.',
     disclaimer: 'Illustrative findings only. Not attributed customer testimonials.',
     cardLabel: 'Example finding',
     quotes: [
@@ -646,15 +643,15 @@ export const LANDING_PAGE = {
   },
   sampleReport: {
     label: '',
-    headline: 'A review your AI agent can act on.',
-    body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
-    cta: 'Explore all findings',
-    ctaWithCount: (n: number) => `Explore all ${n} findings`,
+    headline: 'A review you can paste into your editor.',
+    body: 'Each Flag has evidence, impact, and a fix prompt. Copy it. Paste it. Re-check.',
+    cta: 'Explore all Flags',
+    ctaWithCount: (n: number) => `Explore all ${n} Flags`,
     illustrativeLabel: '',
   },
   footer: {
     tagline:
-      'Evidence-backed reviews for AI-built and live sites. Find what visitors are missing, with fix prompts your editor can run.',
+      'Reviews for AI-built and live sites. Flags with evidence, and fix prompts you can paste.',
     madeWith: 'Built for people shipping with AI.',
     newsletter: {
       title: 'Stay in the loop',
@@ -728,6 +725,11 @@ export const FAQ = [
       'Free: unlimited deterministic checks, 3 AI reports with fix prompts, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
   },
   {
+    question: 'Do I need Cursor or MCP?',
+    answer:
+      'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt work by paste today.',
+  },
+  {
     question: 'Can it check sites built with Lovable/Bolt/v0?',
     answer:
       'Yes. FixFlags checks any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, and Bolt.',
@@ -743,6 +745,10 @@ export const FAQ = [
       'Yes. All registered users can re-check reports they own as often as needed. Re-checks do not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
   },
   {
+    question: 'Are my reports public?',
+    answer: `${OFFER.linkPrivacy} Agency plans can create public share links. Separate public pages for sites are for discovery; they are not your private audit.`,
+  },
+  {
     question: 'Does it work on staging/password-protected sites?',
     answer:
       'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
@@ -750,12 +756,12 @@ export const FAQ = [
   {
     question: 'We already have a live site. Is this only for pre-launch?',
     answer:
-      'No. FixFlags checks any public page, live or new. Most live sites still fail message, experience, or reach Flags even when performance scores look fine.',
+      'No. FixFlags checks any public page, live or new. You get a prioritized fix list with screenshots, not another performance score.',
   },
   {
     question: 'Who is FixFlags for?',
     answer:
-      'Builders and small teams shipping with AI tools like Cursor, Lovable, and Bolt. Check the page before users see the link. Not built for enterprise QA teams running manual test suites.',
+      'Builders shipping with AI tools like Cursor, Lovable, and Bolt, and teams with a live site that gets traffic but weak conversion. Not for enterprise QA suites or password-only staging.',
   },
 ] as const
 
@@ -767,12 +773,12 @@ export const PRICING_FAQ = [
   {
     question: 'What counts as a scan?',
     answer:
-      'A new URL check counts toward your plan limit when it runs AI reports. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not consume a credit.',
+      'A new URL check counts toward your plan limit when it runs AI reports. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit.',
   },
   {
     question: 'Is each page a separate scan?',
     answer:
-      'Yes. Each new URL you submit is a separate check. Re-checking the same report URL does not use another credit.',
+      'Yes. Each new URL you submit is a separate check. Re-checking the same report does not use another credit.',
   },
   {
     question: 'Do re-checks consume credits?',
@@ -781,8 +787,7 @@ export const PRICING_FAQ = [
   },
   {
     question: 'Are reports public or private?',
-    answer:
-      'Anonymous scans are viewable by anyone with the report link until you claim them. Owned reports are private by default. Agency plans can create public share links.',
+    answer: `${OFFER.linkPrivacy} Agency plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private audit.`,
   },
   {
     question: 'Are screenshots stored?',
@@ -792,7 +797,7 @@ export const PRICING_FAQ = [
   {
     question: 'How long are reports saved?',
     answer:
-      'Claimed reports stay in your history while your account is active. Unclaimed anonymous reports may be removed after a retention window.',
+      'Reports saved to your account stay in your history while the account is active. Anonymous reports you never save may be removed after a retention window.',
   },
   {
     question: 'Can I cancel anytime?',
@@ -806,7 +811,8 @@ export const PRICING_FAQ = [
   },
   {
     question: 'Do I need Pro for MCP?',
-    answer: 'Yes. MCP API access requires a Pro plan or above. Generate an API key in Settings after upgrading.',
+    answer:
+      'Yes for MCP API access. You do not need MCP to use fix prompts. Generate an API key in Settings after upgrading.',
   },
   {
     question: 'What\u2019s included in every plan?',
@@ -816,7 +822,7 @@ export const PRICING_FAQ = [
 ] as const
 
 export const PRICING = {
-  headline: 'Start free. Pay when you ship.',
+  headline: 'Start free. Upgrade when you\u2019re checking often.',
   subhead: `${OFFER.line} Upgrade for more new checks, before/after compare, and MCP.`,
   trustBadge: 'Unlimited re-checks on every plan',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
@@ -843,7 +849,7 @@ export const REPORT_COPY = {
   },
   sampleCta: {
     title: 'Run the same check on your site',
-    body: 'Paste a URL. See Flags across three rubrics and fix prompts for your agent.',
+    body: 'Paste a URL. See Flags across three rubrics. Sign up for fix prompts you can paste into your editor.',
   },
   noFlags: {
     title: 'No flags found',
@@ -851,7 +857,7 @@ export const REPORT_COPY = {
   },
   aiPending: {
     title: 'Fix prompts generating',
-    body: 'Generating copy-paste fix prompts for every flag. This usually takes under a minute.',
+    body: 'Generating fix prompts for every flag. This usually takes under a minute.',
   },
   partialReport: {
     title: 'Partial report',
@@ -1105,17 +1111,17 @@ export const AUTH = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Get copy-paste fix prompts',
+    headline: 'Get fix prompts for your editor',
     body: 'You already see your score, Flags, and evidence. Create a free account for the fix prompts, save this report, and re-check after you ship.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
   signedInAiPending: {
     headline: 'Fix prompts on the way',
-    body: 'Deterministic fixes are ready below. Enhanced copy-paste prompts usually finish within a minute.',
+    body: 'Evidence and fix steps are below. Enhanced prompts for your editor usually finish within a minute.',
   },
   signedInAiDegraded: {
-    headline: 'Deterministic fixes are ready',
+    headline: 'Fix steps are below',
     body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.',
   },
   atLimit: 'AI report limit reached. Upgrade to continue',
@@ -1131,7 +1137,7 @@ export const FLAG_FEEDBACK_COPY = {
 
 export const FIRST_AUDIT_PROMPT = {
   headline: 'Paste the URL you are about to share.',
-  body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach with evidence. Create a free account for fix prompts ready to paste into Cursor, Claude, Lovable, or Bolt.',
+  body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach with evidence. Create a free account for fix prompts you can paste into Cursor, Claude, Lovable, or Bolt.',
   examplesLabel: 'Common first checks',
   examples: [
     { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
@@ -1174,7 +1180,7 @@ export const LOCKED_INSPECTION = {
     'Detailed explanation of the issue',
     'Why this matters for your users',
     'How to verify the fix',
-    'Copy-paste fix prompt for your editor',
+    'Fix prompt for your editor',
   ],
   primaryCta: 'Sign in',
   secondaryCta: 'Create free account',
@@ -1194,12 +1200,12 @@ export const SAMPLE_FIX = {
   fixTitle: 'Fix',
   signInCta: 'Sign in',
   subtext: (n: number) => `This is 1 of ${n} fixes. Sign in to inspect and fix all of them.`,
-  primaryCta: 'Unlock all fixes',
+  primaryCta: 'See all fixes',
 } as const
 
 export const ANON_CLAIM_GUIDE = {
   headline: 'Save this review and copy the exact fix',
-  body: `${OFFER.line} Claiming also keeps the report in your history.`,
+  body: `${OFFER.line} Signing in also keeps the report in your history.`,
   primaryCta: 'Sign in to save and copy fixes',
   steps: [
     'Copy fix prompts into Cursor, Claude, or Windsurf',

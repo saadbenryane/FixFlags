@@ -37,7 +37,7 @@ The QA layer for AI-built products. Paste a URL, get Flags across Message, Exper
 | `lib/marketing/copy.ts` | All marketing copy (single source of truth) |
 | `lib/design/tokens.css` | Design tokens |
 | `lib/audit/checks/index.ts` | Check module barrel |
-| `lib/audit/check-ids.ts` | All 129 check IDs |
+| `lib/audit/check-ids.ts` | Check IDs (`ALL_CHECK_IDS`; count in AGENTS.md) |
 | `lib/audit/runner.ts` | Audit pipeline orchestrator |
 | `lib/auth/entitlements.ts` | Plan-gated feature access |
 | `lib/billing/plans.ts` | Plan definitions |

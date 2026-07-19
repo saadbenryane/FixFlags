@@ -52,7 +52,7 @@ export function PricingPageClient() {
             >
               {plan.highlight && (
                 <span className="absolute right-4 top-4 rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground">
-                  Best for shipping
+                  Best for frequent checks
                 </span>
               )}
               <CardHeader className="pb-4">
@@ -115,7 +115,7 @@ export function PricingPageClient() {
 
         <div className="space-y-5">
           <div className="mx-auto max-w-2xl text-center">
-            <Heading as="h2">Compare the launch loop</Heading>
+            <Heading as="h2">Compare plans</Heading>
             <Muted className="mt-2 text-sm">{PRICING.allPlansInclude}</Muted>
           </div>
           <PricingComparisonTable />

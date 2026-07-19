@@ -238,8 +238,8 @@ export async function persistDeterministicFlags(
 }
 
 const TRIAGE_LOCKED_EVIDENCE = 'Create a free account to see evidence and fix prompts.'
-const TRIAGE_LOCKED_WHY = 'Sign up to see why this matters and get a copy-paste fix prompt.'
-const TRIAGE_LOCKED_FIX = 'Sign up to get the copy-paste fix prompt.'
+const TRIAGE_LOCKED_WHY = 'Sign up to see why this matters and get a fix prompt for your editor.'
+const TRIAGE_LOCKED_FIX = 'Sign up to get the fix prompt.'
 
 export function buildTriageAiFlagRow(
   flag: TriageOutput['newFlags'][number],

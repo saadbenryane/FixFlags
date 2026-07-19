@@ -145,7 +145,7 @@ export const QUALITY_TRIAGE_TOOL: Anthropic.Tool = {
 /**
  * OpenAI's strict function-calling mode requires standard JSON Schema (null as
  * `anyOf` / type unions, not OpenAPI `nullable: true`) plus
- * `additionalProperties: false` on every object — and no unsupported `format`
+ * `additionalProperties: false` on every object, and no unsupported `format`
  * keywords. Zod parse still enforces `.url()` after the model responds.
  */
 export const QUALITY_TRIAGE_SCHEMA_OPENAI = stripFormatKeyword(baseJsonSchema) as Record<

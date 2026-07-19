@@ -1,9 +1,8 @@
 import dynamic from 'next/dynamic'
-import { CheckCircle2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { BrandIllustration } from '@/components/marketing/landing/BrandIllustration'
-import { FINAL_CTA, HERO } from '@/lib/marketing/copy'
+import { FINAL_CTA } from '@/lib/marketing/copy'
 
 const AuditInput = dynamic(
   () => import('@/components/audit/AuditInput').then((m) => m.AuditInput),
@@ -17,8 +16,6 @@ const AuditInput = dynamic(
     ),
   }
 )
-
-const TRUST_BADGES = HERO.trustBadges
 
 export function LandingFinalCtaSection() {
   return (
@@ -49,17 +46,6 @@ export function LandingFinalCtaSection() {
 
             <div className="space-y-5">
               <AuditInput variant="landing" idSuffix="-final-cta" ctaPlacement="final" />
-              <ul className="flex flex-col gap-3">
-                {TRUST_BADGES.map((badge) => (
-                  <li
-                    key={badge}
-                    className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground"
-                  >
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-                    {badge}
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         </div>

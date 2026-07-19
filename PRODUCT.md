@@ -72,14 +72,14 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 
 ## Current capabilities (verified)
 
-- Pipeline v2.3.0, 180s deadline per audit
-- 22 deterministic check modules live; 45 capabilities (43 live, 1 partial: visual-polish, 1 planned). See `AGENTS.md` Project facts for counts.
+- Pipeline v2.4.0, 180s deadline per audit
+- 22 deterministic check modules live; capabilities in AGENTS.md Project facts (regenerate via `npm run audit:capabilities`).
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production
 - Technology detection engine + /madewith/[hostname] pages
 - Sample size gate (20 distinct sites minimum for programmatic pages)
-- MCP integration (13 tools; see `lib/mcp/tools.ts`)
+- MCP integration (14 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
 - Free tools: meta preview, placeholder copy detector
 
 ## Limitations and technical debt

@@ -78,20 +78,15 @@ export function useAuthRedirect() {
       const checkoutRes = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, useFounding: false }),
+        body: JSON.stringify({ plan }),
       })
-      if (checkoutRes.ok) {
-        const { url } = await checkoutRes.json()
-        if (url) {
-          window.location.href = url
-          return
-        }
+      const payload = await checkoutRes.json().catch(() => ({}))
+      if (payload?.url && (checkoutRes.ok || checkoutRes.status === 409)) {
+        window.location.href = payload.url
+        return
       }
-      const parsed = checkoutRes.ok
-        ? null
-        : await checkoutRes.json().catch(() => ({ error: 'Checkout failed' }))
       toast.error('Could not start checkout', {
-        description: parsed?.error ?? 'Complete payment from the pricing page.',
+        description: payload?.error ?? 'Complete payment from the pricing page.',
         action: {
           label: 'View pricing',
           onClick: () => router.push(`/pricing?plan=${plan}`),

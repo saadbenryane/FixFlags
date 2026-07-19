@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { validateAuthEnv } from '@/lib/auth/env'
+import { validateStripeBillingEnv } from '@/lib/billing/config'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -25,7 +26,13 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_BUILDER_PRICE_ID: z.string().optional(),
+  STRIPE_TEAM_PRICE_ID: z.string().optional(),
+  STRIPE_CREDIT_PACK_10_ID: z.string().optional(),
+  STRIPE_CREDIT_PACK_25_ID: z.string().optional(),
+  STRIPE_CREDIT_PACK_50_ID: z.string().optional(),
   STRIPE_API_VERSION: z.string().default('2025-02-24.acacia'),
+  BILLING_REQUIRED: z.enum(['true', 'false']).optional(),
   DEV_SIMULATE_BILLING: z.enum(['true', 'false']).optional(),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
@@ -194,12 +201,7 @@ export function validateProductionEnv(): void {
         'The app will boot, but the related features are degraded until they are set.'
     )
   }
-  if (!!process.env.STRIPE_SECRET_KEY !== !!process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error(
-      '[env] Stripe is partially configured: set BOTH STRIPE_SECRET_KEY and ' +
-        'STRIPE_WEBHOOK_SECRET, or neither. Billing stays disabled until resolved.'
-    )
-  }
+  validateStripeBillingEnv()
 }
 
 export function getRedisUrl(): string {

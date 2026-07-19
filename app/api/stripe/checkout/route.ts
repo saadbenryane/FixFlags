@@ -9,10 +9,11 @@ import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { getAppUrl } from '@/lib/get-app-url'
 import { Plan } from '@prisma/client'
+import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 
-const PAID_PLANS = Object.values(PLAN_DEFINITIONS).filter(
-  (def) => def.plan !== 'FREE' && def.stripePriceId
-).map((def) => def.plan)
+const PAID_PLANS = Object.values(PLAN_DEFINITIONS)
+  .filter((def) => def.plan !== 'FREE' && def.stripePriceId)
+  .map((def) => def.plan)
 
 const schema = z.object({
   plan: z.enum(PAID_PLANS as [string, ...string[]]),
@@ -27,7 +28,9 @@ export async function POST(req: NextRequest) {
       windowSeconds: 60,
     })
     const session = await auth.api.getSession({ headers: await headers() })
-    if (!session?.user) return apiError('Sign in to start checkout', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+    if (!session?.user) {
+      return apiError('Sign in to start checkout', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+    }
 
     const body = await req.json().catch(() => ({}))
     const parsed = schema.safeParse(body)
@@ -35,10 +38,33 @@ export async function POST(req: NextRequest) {
 
     const plan = parsed.data.plan as Plan
     const priceId = PLAN_DEFINITIONS[plan]?.stripePriceId
-    if (!priceId) return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
+    if (!priceId) {
+      return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
+    }
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     const appUrl = getAppUrl()
+
+    const hasActiveSubscription =
+      Boolean(user?.stripeSubscriptionId) &&
+      Boolean(user?.stripeCustomerId) &&
+      user?.plan !== 'FREE' &&
+      !hasRevokedSubscriptionStatus(user.subscriptionStatus)
+
+    if (hasActiveSubscription && user?.stripeCustomerId) {
+      const portalSession = await getStripe().billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${appUrl}/billing`,
+      })
+      return NextResponse.json(
+        {
+          url: portalSession.url,
+          code: 'EXISTING_SUBSCRIPTION',
+          message: 'You already have a subscription. Manage it in the billing portal.',
+        },
+        { status: 409 }
+      )
+    }
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'subscription',
@@ -46,6 +72,11 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : session.user.email,
+      billing_address_collection: 'required',
+      automatic_tax: { enabled: true },
+      customer_update: user?.stripeCustomerId
+        ? { address: 'auto', name: 'auto' }
+        : undefined,
       success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
       cancel_url: `${appUrl}/pricing`,
       metadata: {

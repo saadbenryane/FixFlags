@@ -146,16 +146,24 @@ UI must gate before API 402:
 ## MCP
 
 - HTTP only at `/api/mcp` with `x-api-key` header — **no** `@fixflags/mcp` npm package
-- 13 tools — see `lib/mcp/tools.ts` and AGENTS.md Project facts
+- Tool count lives in AGENTS.md Project facts only (`lib/mcp/tools.ts` `server.tool()`)
 - Docs/config in `MCP_DOCS` in `copy.ts`
 - `pollAuditUntilDone()` for `waitForCompletion`; return final status, not stale `QUEUED`
 - Route aborts on client disconnect
 
+## Deploy packaging
+
+- Railway: `Dockerfile` via `railway.toml` (not Nixpacks). CI does **not** run `docker build`.
+- Pin better-auth / `@better-auth/passkey` / `@better-auth/core` together; hoist `@better-auth/core` as a direct dep (passkey imports `@better-auth/core/*` subpaths).
+- App uses Zod 4; LLM tool JSON Schema via `lib/audit/zod-json-schema.ts` (`z.toJSONSchema`), not `zod-to-json-schema`.
+- Playwright in Docker: system Chromium + `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (see DEVELOPMENT.md).
+
 ## Tests & CI
 
 - `npm run test:unit` — full Vitest suite (`lib/**/*.test.ts`, `app/api/**/__tests__`)
-- `.github/workflows/ci.yml` — typecheck, lint, guards, test, build, worker:build (no DB steps)
+- `.github/workflows/ci.yml` — typecheck, lint, guards, test, build, worker:build (no DB steps, no Docker)
 - Local `npm run verify` is stricter (includes `db:validate`, `db:check`, `db:drift`)
+- Before push when packaging files change: `docker build -t fixflags:local .`
 - Billing route tests: `app/api/checks/__tests__/route.test.ts` (402 paths + 201 success), api-keys, projects
 - `*.db` gitignored; use Postgres via `npm run setup`
 

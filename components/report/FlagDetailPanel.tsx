@@ -179,7 +179,7 @@ export function FlagDetailPanel({
             />
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">
-              Generating enhanced fix prompt. Deterministic guidance is in the evidence above.
+              Generating enhanced fix prompt. Evidence and fix steps are above.
             </p>
           ) : (
             <FixPromptBlock

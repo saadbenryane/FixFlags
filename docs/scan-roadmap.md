@@ -23,7 +23,7 @@ flowchart TD
   judge --> report[Report_with_preview_cards]
 ```
 
-**Version:** `PIPELINE_VERSION` `2.3.0` (`lib/audit/pipeline-config.ts`)
+**Version:** `PIPELINE_VERSION` `2.4.0` (`lib/audit/pipeline-config.ts`)
 
 ---
 

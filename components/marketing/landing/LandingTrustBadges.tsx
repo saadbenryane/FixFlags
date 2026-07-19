@@ -3,6 +3,8 @@ import { HERO } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 export function LandingTrustBadges({ className }: { className?: string }) {
+  if (HERO.trustBadges.length === 0) return null
+
   return (
     <div className={cn('text-center', className)}>
       <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 sm:gap-x-8">

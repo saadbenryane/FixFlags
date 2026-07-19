@@ -2,7 +2,7 @@ import { z, type ZodTypeAny } from 'zod'
 
 /**
  * Zod 4 native JSON Schema helpers for LLM tool schemas.
- * Do not use `zod-to-json-schema` with Zod 4 — it returns empty objects.
+ * Do not use `zod-to-json-schema` with Zod 4: it returns empty objects.
  */
 
 export function toJsonSchema(schema: ZodTypeAny): Record<string, unknown> {

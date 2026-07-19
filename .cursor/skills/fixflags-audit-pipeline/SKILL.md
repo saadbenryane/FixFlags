@@ -61,9 +61,17 @@ npm run demo:audit:offline  # deterministic checks only
 - Editing offering.md "fix prompts on every report" without checking `report-access.ts`
 - Conflating `ai-review` job with triage — it is prescription only
 
-## Prod triage checklist
+## Journey + visual evidence
 
-1. `GET /api/health` → `aiConfigured: true`
-2. Railway web service has `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
-3. Redeploy after key changes
-4. `npm run smoke:triage:prod`
+- Journey templates run in `runner.ts` **before** `finalizeFromOutcome`, writing `Flag` rows with `source: JOURNEY`.
+- `clearAuditResults` / `persistTriageResults` must only clear `DETERMINISTIC` + `AI` (preserve JOURNEY).
+- Visual evidence: filter severities `CRITICAL` | `IMPORTANT`; persist to `performanceData.flagVisualEvidence`; wire via report page → `AuditReport` → `buildLiveExplorerModel({ flagVisualEvidence })`.
+
+## Prod triage / deploy checklist
+
+1. `docker build` green if Dockerfile/package*.json changed
+2. `GET /api/health` → `aiConfigured: true`
+3. `GET /api/health/browser` after deploy (Chromium + R2)
+4. Railway web service has `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+5. Redeploy after key changes
+6. `npm run smoke:triage:prod`

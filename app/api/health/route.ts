@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isProdStorageConfigured, isAiProviderConfigured } from '@/lib/env'
+import { isBillingFullyConfigured } from '@/lib/billing/config'
 import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/audit/judge-config'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 
@@ -23,6 +24,7 @@ const COMMIT_SHA =
 export async function GET() {
   const storageConfigured =
     process.env.NODE_ENV === 'production' ? isProdStorageConfigured() : true
+  const billingConfigured = isBillingFullyConfigured()
   const ai = {
     configured: isAiProviderConfigured(),
     providerChain: getJudgeProviderChain(),
@@ -33,6 +35,7 @@ export async function GET() {
   const degraded: string[] = []
   if (!storageConfigured) degraded.push('storage')
   if (!ai.configured) degraded.push('ai')
+  if (!billingConfigured) degraded.push('billing')
 
   try {
     await prisma.$queryRaw`SELECT 1`
@@ -42,6 +45,7 @@ export async function GET() {
       commit: COMMIT_SHA,
       pipelineVersion: PIPELINE_VERSION,
       storageConfigured,
+      billingConfigured,
       aiConfigured: ai.configured,
       aiProviderChain: ai.providerChain,
       aiConfiguredProviders: ai.configuredProviders,
@@ -53,6 +57,7 @@ export async function GET() {
         status: 'error',
         database: 'error',
         storageConfigured,
+        billingConfigured,
         aiConfigured: ai.configured,
         aiProviderChain: ai.providerChain,
       },

@@ -317,12 +317,9 @@ export function AuditInput({
       </form>
 
       {isLanding && (
-        <div className="space-y-1 text-center text-2xs leading-relaxed text-muted-foreground/90">
-          <p>{OFFER.short}</p>
-          <p>
-            {OFFER.privacy} {OFFER.linkPrivacy}
-          </p>
-        </div>
+        <p className="text-center text-2xs leading-relaxed text-muted-foreground/90">
+          {OFFER.short}
+        </p>
       )}
 
       <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>

@@ -119,8 +119,8 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 |---------|------------|---------------------|
 | Headline | Check your site before you ship | See what's still broken on your live site |
 | Subhead | Paste a URL. Graded report + fix prompts for your AI editor. | Paste your homepage. Prioritized grades on conversion, trust, and mobile. |
-| Trust line | Free. No account. Under 60 seconds. | Same (keep friction reducers) |
-| Primary CTA | Audit my site | Audit my site (keep verb-first) |
+| Trust line | Free check. See what's broken before you share the link. | Same one-liner (no privacy/claim stack) |
+| Primary CTA | Review my site | Review my site (keep verb-first) |
 | Secondary CTA | See sample report | See sample report |
 | Problem section | Fast to ship. Easy to miss the details. | Traffic isn't the problem. The page still isn't converting. |
 | Social proof frame | Even strong sites fail these checks | Even polished sites miss conversion and trust gaps |

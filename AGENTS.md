@@ -22,7 +22,7 @@
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (45) is a named check that may span multiple modules (e.g. a module produces multiple capabilities). A *check ID* (129) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (46 total: 45 live, 1 partial) is a named check that may span multiple modules. A *check ID* (150) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
 
 ## Key directories and authoritative files
 
@@ -68,6 +68,7 @@
 | `npm run seo:guard` | SEO compliance |
 | `npm run build` | Production Next.js build |
 | `npm run worker:build` | Worker TypeScript build |
+| `docker build -t fixflags:local .` | Required before push when `Dockerfile`, `package.json`, `package-lock.json`, or `.npmrc` change (Railway uses Dockerfile) |
 | `npm run verify` | All checks: validate + migrate status + drift + typecheck + lint + guards + test + build |
 | `npm run demo:audit:offline` | Demo fixture audit (CLI, no server) |
 | `npm run demo:audit:flow` | Flow audit on demo fixture |
@@ -88,7 +89,9 @@
 - **Homepage section order:** Hero (`LandingHeroSection` + editor logo cloud) → Sample review (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`) → Three dimensions (`CheckDimensionsSection`) → Fix loop (`HowItWorksLoopSection`) → Product evidence (`ProductEvidenceSection`, not invented testimonials) → Final CTA. Exactly one report explorer. Hero copy changes only when explicitly requested.
 - **Social proof:** Use `LANDING_PAGE.productEvidence` (real product output). Do not invent member counts or quote cards; `LANDING_PAGE.testimonials.quotes` stays empty until authentic quotes exist.
 - **Browser automation:** Playwright only for audit capture (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`). Do not reintroduce Puppeteer on the audit path.
-- **Visual evidence:** `lib/audit/capture/*` runs after flags in finalize (`tryCaptureVisualEvidenceForAudit`); stores `performanceData.flagVisualEvidence`. Failures must not fail the audit.
+- **Production Chromium:** Docker image installs system Chromium; Playwright uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Do not rely on Playwright browser download in the image.
+- **Journey flags:** Created before finalize with `source: JOURNEY`. `clearAuditResults` / `persistTriageResults` must preserve them (only clear `DETERMINISTIC` + `AI`).
+- **Visual evidence:** `lib/audit/capture/*` runs after flags in finalize (`tryCaptureVisualEvidenceForAudit`); stores `performanceData.flagVisualEvidence`. Wire through report page → `buildLiveExplorerModel`. Failures must not fail the audit.
 - **Changelog** (`CHANGELOG_ENTRIES` in copy.ts) is user-facing only: plain language, outcomes and benefits, never implementation details or internal terminology.
 - **Social proof** must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts.
 

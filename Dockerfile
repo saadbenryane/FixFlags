@@ -25,12 +25,15 @@ RUN npm ci --include=dev
 COPY . .
 
 # NEXT_PUBLIC_* vars must exist at build time for Next.js to inline them.
-ARG NEXT_PUBLIC_GA_ID
-ARG NEXT_PUBLIC_APP_URL
+# Defaults keep `next build` valid when Railway/local omit build args.
+ARG NEXT_PUBLIC_GA_ID=
+ARG NEXT_PUBLIC_APP_URL=https://fixflags.com
 ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID \
     NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Generate Prisma client, build the Next.js app and compile the worker.
+# Next build is memory-hungry; Railway/local Docker often need a larger heap.
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npx prisma generate \
   && npm run build \
   && npm run worker:build

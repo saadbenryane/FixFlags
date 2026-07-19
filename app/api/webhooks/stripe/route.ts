@@ -5,6 +5,7 @@ import type { Plan, Prisma, SubscriptionStatus } from '@prisma/client'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
+import { notifyAdminPaymentFailed } from '@/lib/billing/notify'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -44,7 +45,7 @@ function resolvePriceIds(subscription: Stripe.Subscription): string[] {
   return subscription.items.data.map((item) => item.price.id).filter(Boolean)
 }
 
-async function processSubscription(
+export async function processSubscription(
   tx: Prisma.TransactionClient,
   subscription: Stripe.Subscription
 ): Promise<void> {
@@ -78,42 +79,30 @@ async function processSubscription(
   })
 }
 
-async function handleInvoicePaymentFailed(
-  tx: Prisma.TransactionClient,
-  invoice: Stripe.Invoice
-): Promise<void> {
-  if (!invoice.subscription) return
-
-  const subscriptionId =
-    typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
-
-  const user = await tx.user.findFirst({
-    where: { stripeSubscriptionId: subscriptionId },
-  })
-  if (!user) return
-
-  await tx.user.update({
-    where: { id: user.id },
-    data: { subscriptionStatus: 'PAST_DUE' as SubscriptionStatus },
-  })
+function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  if (!invoice.subscription) return null
+  return typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription.id
 }
 
-/** Recovers entitlement immediately on a successful retry, rather than waiting for the next subscription.updated event. */
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-  if (!invoice.subscription) return
+async function syncSubscriptionFromInvoice(
+  tx: Prisma.TransactionClient,
+  invoice: Stripe.Invoice
+): Promise<{ userId: string; email: string | null; subscriptionId: string } | null> {
+  const subscriptionId = invoiceSubscriptionId(invoice)
+  if (!subscriptionId) return null
 
-  const subscriptionId =
-    typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription.id
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
+  await processSubscription(tx, subscription)
 
-  const user = await prisma.user.findFirst({
-    where: { stripeSubscriptionId: subscriptionId },
-  })
-  if (!user || user.subscriptionStatus !== 'PAST_DUE') return
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { subscriptionStatus: 'ACTIVE' as SubscriptionStatus },
-  })
+  const user = await resolveSubscriptionUser(tx, subscription)
+  if (!user) return null
+  return {
+    userId: user.id,
+    email: user.email,
+    subscriptionId,
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -153,6 +142,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, replay: true })
     }
 
+    let paymentFailedNotify: {
+      userId: string
+      email: string | null
+      subscriptionId: string
+    } | null = null
+
     await prisma.$transaction(async (tx) => {
       const alreadyProcessed = await tx.processedStripeEvent.findUnique({
         where: { id: event.id },
@@ -166,13 +161,15 @@ export async function POST(req: NextRequest) {
           await processSubscription(tx, event.data.object)
           break
 
-        case 'invoice.payment_failed':
-          await handleInvoicePaymentFailed(tx, event.data.object)
+        case 'invoice.payment_failed': {
+          paymentFailedNotify = await syncSubscriptionFromInvoice(tx, event.data.object)
           break
+        }
 
-        case 'invoice.payment_succeeded':
-          await handleInvoicePaymentSucceeded(event.data.object)
+        case 'invoice.payment_succeeded': {
+          await syncSubscriptionFromInvoice(tx, event.data.object)
           break
+        }
 
         case 'checkout.session.expired': {
           const session = event.data.object
@@ -196,18 +193,18 @@ export async function POST(req: NextRequest) {
         case 'checkout.session.completed': {
           const session = event.data.object
           if (session.metadata?.type === 'credit_pack') {
-            const existing = await tx.creditPurchase.findUnique({
+            const existingPurchase = await tx.creditPurchase.findUnique({
               where: { stripeSessionId: session.id },
             })
-            if (existing && existing.status === 'PAID') {
+            if (existingPurchase && existingPurchase.status === 'PAID') {
               break
             }
-            if (existing) {
+            if (existingPurchase) {
               await tx.creditPurchase.update({
-                where: { id: existing.id },
+                where: { id: existingPurchase.id },
                 data: {
                   status: 'PAID',
-                  creditsRemaining: existing.creditsPurchased,
+                  creditsRemaining: existingPurchase.creditsPurchased,
                   paidAt: new Date(),
                   stripePaymentIntentId: session.payment_intent as string,
                 },
@@ -238,6 +235,10 @@ export async function POST(req: NextRequest) {
         },
       })
     })
+
+    if (paymentFailedNotify) {
+      await notifyAdminPaymentFailed(paymentFailedNotify)
+    }
 
     return NextResponse.json({ received: true })
   } catch (error) {

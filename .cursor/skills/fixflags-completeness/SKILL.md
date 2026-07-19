@@ -26,13 +26,22 @@ npm run build
 npm run worker:build
 ```
 
-Local full gate (requires Docker + `.env.local`):
+**Deploy packaging gate** (when `Dockerfile`, `package.json`, `package-lock.json`, or `.npmrc` change):
+
+```bash
+rm -rf node_modules && npm ci --include=dev
+docker build -t fixflags:local .
+```
+
+Railway uses `railway.toml` `builder = "DOCKERFILE"` (not Nixpacks). If `.npmrc` exists, Dockerfile must `COPY` it before `npm ci`. Production Chromium: apt package + `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+
+Local full gate (requires Docker Compose + `.env.local`):
 
 ```bash
 docker compose up -d && npm run setup && npm run verify
 ```
 
-CI runs a **subset** of verify (no `db:validate`/`db:check`/`db:drift`). Document this split; do not claim CI runs full verify.
+CI runs a **subset** of verify (no `db:validate`/`db:check`/`db:drift`, no `docker build`). Document this split; do not claim CI runs full verify.
 
 ## Phase 2 — Stale term grep
 
@@ -47,10 +56,12 @@ Search canonical docs and skills for:
 | `CI is not on GitHub` | CI exists; claim must match `ci.yml` |
 | `second pass` | Banned marketing phrase |
 | `34 models`, `39 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
-| `133`, `133 check`, `133/129 check` | Hardcoded check ID counts — use `ALL_CHECK_IDS.length` |
+| `133`, `133 check`, `133/129 check`, `129 check` | Hardcoded check ID counts — use `ALL_CHECK_IDS.length` / AGENTS.md |
+| `13 tools`, `v2.3.0`, `multi-stage build` | Stale counts/deploy claims — AGENTS.md + Dockerfile truth |
 | `Example feedback` (homepage) | Use `ProductEvidenceSection` / `productEvidence` |
 | `Analytics (NOT IMPLEMENTED` | Client funnel events are shipped in `lib/analytics/events.ts` |
 | `puppeteer` on audit path | Playwright only (`page-session`, `screenshot`) |
+| `Chromium/Puppeteer` in `nixpacks.toml` as deploy path | Unused; Railway uses Dockerfile |
 | `RubricsPanel` as live surface | Dead; use `RubricBar` + `ReportExplorer` |
 | `ReportMiniNav`, `CompletenessHeader` | Removed; use `ReportStickyToolbar`, inline report sections |
 | `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
