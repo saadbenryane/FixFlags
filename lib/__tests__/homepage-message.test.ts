@@ -293,7 +293,7 @@ describe('homepage message guardrails', () => {
 
   it('product evidence replaces invented testimonials', () => {
     assert.match(LANDING_PAGE.productEvidence.headline, /review actually catches/i)
-    assert.match(LANDING_PAGE.productEvidence.subhead, /open beta/i)
+    assert.match(LANDING_PAGE.productEvidence.subhead, /real Flags from the product/i)
     assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
     assert.match(LANDING_PAGE.testimonials.disclaimer, /not attributed/i)
     assert.equal(LANDING_PAGE.testimonials.quotes.length, 0)
@@ -301,14 +301,14 @@ describe('homepage message guardrails', () => {
 
   it('sample report section exposes an explore-all CTA', () => {
     assert.match(LANDING_PAGE.sampleReport.cta, /explore all/i)
-    assert.match(LANDING_PAGE.sampleReport.ctaWithCount(7), /Explore all 7 findings/)
+    assert.match(LANDING_PAGE.sampleReport.ctaWithCount(7), /Explore all 7 Flags/)
   })
 
   it('landing page exposes three-rubric check story', () => {
     assert.match(LANDING_PAGE.checkDimensions.headline, /website loses momentum/i)
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /one loop/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /No noise/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /fix prompt/i)
     assert.match(LANDING_PAGE.logoCloud.label, /tools you already use/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Cursor',

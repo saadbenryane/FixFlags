@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       Boolean(user?.stripeSubscriptionId) &&
       Boolean(user?.stripeCustomerId) &&
       user?.plan !== 'FREE' &&
-      !hasRevokedSubscriptionStatus(user.subscriptionStatus)
+      !hasRevokedSubscriptionStatus(user?.subscriptionStatus ?? '')
 
     if (hasActiveSubscription && user?.stripeCustomerId) {
       const portalSession = await getStripe().billingPortal.sessions.create({

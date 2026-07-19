@@ -68,7 +68,7 @@ export default async function BillingPage() {
 
   const displayPlanName =
     user.subscriptionStatus === 'PAST_DUE' && user.plan !== 'FREE'
-      ? `${planDef.name} (payment past due — features paused)`
+      ? `${planDef.name} (payment past due: features paused)`
       : `${planDef.name} plan`
 
   return (
@@ -79,7 +79,7 @@ export default async function BillingPage() {
       <PageHeader title="Billing" description="Manage your plan and subscription" />
 
       {user.subscriptionStatus === 'PAST_DUE' && (
-        <Callout variant="warning" title="Payment past due — features paused">
+        <Callout variant="warning" title="Payment past due: features paused">
           <p>
             Update your card to restore paid features (compare, MCP, share). We&rsquo;ll retry
             automatically, but you can fix it now. Re-checks on owned reports stay free.
