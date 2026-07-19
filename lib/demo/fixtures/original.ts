@@ -30,7 +30,7 @@ export const originalFixture: DemoFixture = {
       images: [],
     },
   },
-  announcement: 'CloudNap 2.0 just dropped. Now with AI-powered dream analysis and optimized nap routes.',
+  announcement: 'PlantDad 2.0 just dropped. Now with AI-powered soil analysis and personalized watering schedules.',
   navLinks: [
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
@@ -38,33 +38,33 @@ export const originalFixture: DemoFixture = {
     { label: 'Docs', href: '#docs' },
     { label: 'About', href: '#about' },
   ],
-  headline: 'Your team deserves better naps than a couch in the break room',
+  headline: 'Your desk deserves a plant that does not give up on you',
   subhead:
-    'CloudNap uses AI to schedule the perfect nap window based on your calendar, energy levels, and meeting load. Sleep smarter, ship faster.',
-  primaryCta: { label: 'Start napping', href: '/demo/signup' },
+    'PlantDad uses AI to monitor your plants, schedule watering, and send passive-aggressive reminders when you forget. Grow more, kill less.',
+  primaryCta: { label: 'Adopt a plant', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
-  heroImageAlt: 'CloudNap dashboard showing optimized nap schedule',
+  heroImageAlt: 'PlantDad dashboard showing plant health and watering schedule',
   featuresSectionTitle: '',
   features: [
     {
-      title: 'Smart nap routing',
-      description: 'Lorem ipsum dolor sit amet, our AI finds the optimal nap window between meetings.',
+      title: 'Smart soil sensors',
+      description: 'Lorem ipsum dolor sit amet, our AI tracks moisture, light, and nutrient levels in real time.',
     },
     {
-      title: 'One-click hibernate',
-      description: 'Auto-respond to Slack and start a power nap with a single click.',
+      title: 'One-click watering',
+      description: 'Auto-water your plants with a single click. Never kill a succulent again.',
     },
     {
-      title: 'Dream analytics',
-      description: 'Track sleep quality, dream intensity, and REM cycles out of the box.',
+      title: 'Plant analytics',
+      description: 'Track growth rates, health scores, and survival streaks out of the box.',
     },
   ],
   footerLinks: [
     { label: 'Partner', href: 'https://example.com' },
     { label: 'Privacy', href: '#privacy' },
     { label: 'Terms', href: '#terms' },
-    { label: 'Contact', href: 'mailto:hello@cloudnap-demo.app' },
+    { label: 'Contact', href: 'mailto:hello@plantdad-demo.app' },
   ],
   layout: {
     compactMobileNav: false,
@@ -82,22 +82,22 @@ export const originalFixture: DemoFixture = {
     smallInputFont: true,
   },
   socialProof: {
-    statLine: 'Trusted by 10,000+ well-rested professionals',
+    statLine: 'Trusted by 10,000+ plant parents who stopped killing their greenery',
     testimonials: [
       {
-        quote: 'CloudNap helped us ship our product after our team finally got some real sleep.',
-        author: 'John D.',
-        role: 'CEO, Company Name',
+        quote: 'PlantDad helped us keep our office plants alive through three consecutive founders.',
+        author: 'Jane D.',
+        role: 'Office Manager, Startup Co.',
       },
     ],
   },
   form: {
-    heading: 'Start napping today',
+    heading: 'Adopt your first plant today',
     fields: [
       { name: 'name', type: 'text', label: 'Full name' },
       { name: 'email', type: 'email', label: 'Email address' },
       { name: 'plan', type: 'select', label: 'Plan', options: ['Starter', 'Pro', 'Enterprise'] },
     ],
-    submitLabel: 'Start napping',
+    submitLabel: 'Adopt a plant',
   },
 }

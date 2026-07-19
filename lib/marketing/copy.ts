@@ -226,7 +226,7 @@ export const PROOF_SECTION = {
   nextStep: OUTPUT_LABELS.nextStep,
   cta: 'Check My Site',
   sample: {
-    name: 'CloudNap',
+    name: 'PlantDad',
     domain: 'fixflags.com/demo',
     finding: 'Hero headline repeats the product category instead of the outcome',
     areasFlagged: 6,
@@ -490,7 +490,7 @@ export const LANDING_PAGE = {
         ] as const,
         proofExample: {
           finding: 'Hero value is unclear',
-          evidence: '"Build something amazing with AI"',
+          evidence: '"Your team deserves better naps"',
         },
       },
       {
@@ -1211,7 +1211,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real FixFlags report of our CloudNap demo landing page: evidence-backed Flags with fix prompts.',
+      'See a real FixFlags report of our PlantDad demo landing page: evidence-backed Flags with fix prompts.',
   },
   examples: {
     title: 'Example Reports',

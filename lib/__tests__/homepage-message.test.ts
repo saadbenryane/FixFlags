@@ -314,8 +314,8 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('samples SEO references CloudNap demo, not homepage dogfood', () => {
-    assert.match(SEO.samples.description, /CloudNap demo/i)
+  it('samples SEO references PlantDad demo, not homepage dogfood', () => {
+    assert.match(SEO.samples.description, /PlantDad demo/i)
     assert.ok(!/our own homepage/i.test(SEO.samples.description))
   })
 })

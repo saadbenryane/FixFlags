@@ -25,7 +25,7 @@ export function TerminalShell({
   return (
     <div
       className={cn(
-        'overflow-hidden border border-terminal-border bg-terminal shadow-card',
+        'overflow-hidden ring-1 ring-terminal-border bg-terminal shadow-card',
         nested ? 'rounded-nested-lg' : 'rounded-card',
         className
       )}

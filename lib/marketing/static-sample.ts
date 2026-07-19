@@ -18,16 +18,12 @@ const STATIC_FLAGS: RankableFlag[] = [
     impactTag: 'CONVERSION',
     problem: 'Hero headline repeats the product category instead of the outcome',
     evidence:
-      'Desktop 1280x900: headline reads "Build something amazing with our innovative AI platform". Describes the tool category, not the visitor outcome.',
+      'Desktop 1280x900: headline reads "Your desk deserves a plant that does not give up on you". Describes the tool category, not the visitor outcome.',
     whyItMatters:
       'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
     fix: 'Lead with the outcome: who it is for and what they get after signing up.',
     agentPrompt:
-      'Update the H1 to lead with outcome: "Ship a landing page your customers understand in 5 seconds." Keep under 12 words at 1280px viewport.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
+      'Update the H1 to lead with outcome: "Keep your office plants alive with zero effort." Keep under 12 words at 1280px viewport.',
     verificationRule: 'New headline fits single line at 1280px viewport width.',
     pageUrl: null,
   },
@@ -45,10 +41,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within the first 700px of page height.',
     agentPrompt:
       'Add media query for max-width: 375px. Set hero image to 40vh max-height. Stack headline, subhead, and CTA vertically so CTA appears within first 700px.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Chrome DevTools at 375x812: CTA button visible without scrolling.',
     pageUrl: null,
   },
@@ -66,10 +58,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Collapse announcement banner on mobile. Reduce nav padding. Use hamburger menu if nav links > 3.',
     agentPrompt:
       'At 375px breakpoint, hide secondary nav links behind hamburger toggle. Reduce announcement banner to 32px.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Nav (incl announcement) is max 56px total at 375px viewport.',
     pageUrl: null,
   },
@@ -87,10 +75,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Add og:image meta tag pointing to a 1200x630 brand card.',
     agentPrompt:
       'Add openGraph metadata with images: [{ url: \'/og-image.png\', width: 1200, height: 630 }]. Generate a 1200x630 brand card with logo + page title.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Twitter Card Validator shows image + title + description.',
     pageUrl: null,
   },
@@ -107,10 +91,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Add meta description (120-158 chars) with value proposition.',
     agentPrompt:
       'In metadata export, add `description` with your value proposition. Keep under 160 characters.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Page source shows meta description tag with 120-158 chars.',
     pageUrl: null,
   },
@@ -127,10 +107,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Defer or async-load non-critical third-party scripts.',
     agentPrompt:
       'Find script tags loading analytics and font providers. Add `async` or `defer` to non-critical scripts.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Run Lighthouse. Main-thread blocking time should be under 30ms.',
     pageUrl: null,
   },
@@ -148,10 +124,6 @@ const STATIC_FLAGS: RankableFlag[] = [
     fix: 'Add a favicon.ico or PNG favicon link in the document head.',
     agentPrompt:
       'Add `<link rel="icon" href="/favicon.ico" sizes="any" />` to the site metadata or layout head.',
-    cursorPrompt: null,
-    claudePrompt: null,
-    lovablePrompt: null,
-    boltPrompt: null,
     verificationRule: 'Browser tab shows brand icon after hard refresh.',
     pageUrl: null,
   },
@@ -169,7 +141,7 @@ const STATIC_RUBRIC_ROWS: ReportRubricRow[] = (
       id: 'rubric-message',
       name: 'MESSAGE' as const,
       summary:
-        'CTA visible above fold on desktop. Value proposition clear but could target developers more directly.',
+        'CTA visible above fold on desktop. Value proposition clear but could target plant parents more directly.',
     },
     {
       id: 'rubric-experience',
@@ -214,8 +186,8 @@ export function getStaticSampleAudit(): LiveSampleAudit {
   return {
     id: 'static-sample',
     url: SAMPLE_URL,
-    pageJob: 'Landing page',
-    pageType: 'Landing page',
+    pageJob: 'Demo fixture',
+    pageType: 'Demo fixture',
     score: overall,
     verdict:
       'Solid foundation with gaps in mobile hero layout, vague messaging, and social preview metadata.',

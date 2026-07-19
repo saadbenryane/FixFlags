@@ -350,23 +350,25 @@ export function ReportExplorer({
         {criticalCount > 0 && (
           <>
             <span className="mx-1 h-4 w-px bg-border/40" aria-hidden />
-            <FilterPill
-              size="sm"
-              active={severityFilter === 'ALL'}
-              onClick={() => setSeverityFilter('ALL')}
-            >
-              {REPORT_COPY.explorer.allSeverities}
-            </FilterPill>
-            <FilterPill
-              size="sm"
-              icon={AlertTriangle}
-              active={severityFilter === 'CRITICAL'}
-              onClick={() =>
-                setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
-              }
-            >
-              Critical ({criticalCount})
-            </FilterPill>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FilterPill
+                size="sm"
+                active={severityFilter === 'ALL'}
+                onClick={() => setSeverityFilter('ALL')}
+              >
+                {REPORT_COPY.explorer.allSeverities}
+              </FilterPill>
+              <FilterPill
+                size="sm"
+                icon={AlertTriangle}
+                active={severityFilter === 'CRITICAL'}
+                onClick={() =>
+                  setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
+                }
+              >
+                Critical ({criticalCount})
+              </FilterPill>
+            </div>
           </>
         )}
       </div>

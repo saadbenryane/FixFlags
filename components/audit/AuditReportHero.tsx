@@ -84,7 +84,7 @@ export function AuditReportHero({
               alt={`Screenshot of ${hostname}`}
               width={80}
               height={56}
-              className="w-20 rounded-[var(--radius-inner)] border border-border/40 object-cover"
+              className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
               style={{ aspectRatio: '1280 / 900' }}
             />
           </div>

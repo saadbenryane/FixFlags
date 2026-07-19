@@ -1,7 +1,7 @@
 /** Fictional product used for hosted demo landing fixtures. */
 export const DEMO_BRAND = {
-  name: 'CloudNap',
-  tagline: 'AI-powered nap scheduling for remote workers',
-  domainLabel: 'cloudnap-demo.app',
-  displayLabel: 'CloudNap demo',
+  name: 'PlantDad',
+  tagline: 'Smart plant care for people who kill every plant they touch',
+  domainLabel: 'plantdad-demo.app',
+  displayLabel: 'PlantDad demo',
 } as const
