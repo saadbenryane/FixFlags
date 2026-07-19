@@ -288,6 +288,30 @@ describe('persistTriageResults', () => {
     const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as { data: unknown[] }
     expect(flagData.data).toHaveLength(103)
   })
+
+  it('preserves JOURNEY flags when clearing triage results', async () => {
+    const { prisma } = await import('@/lib/db')
+    await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())
+
+    expect(prisma.flag.deleteMany).toHaveBeenCalledWith({
+      where: { auditId: 'audit-1', source: { in: ['DETERMINISTIC', 'AI'] } },
+    })
+  })
+
+  it('applies journey severity penalties to rubric scores', async () => {
+    mockTx.flag.findMany.mockResolvedValue([
+      { rubric: 'EXPERIENCE', severity: 'CRITICAL' },
+      { rubric: 'EXPERIENCE', severity: 'IMPORTANT' },
+    ])
+
+    await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())
+
+    const experienceCreate = mockTx.reportRubric.create.mock.calls
+      .map((c) => (c as unknown[])[0] as { data: { name: string; score: number | null } })
+      .find((c) => c.data.name === 'EXPERIENCE')
+    // base EXPERIENCE score 80 minus CRITICAL(8) + IMPORTANT(4) = 68
+    expect(experienceCreate?.data.score).toBe(68)
+  })
 })
 
 // ── mergePrescriptionResults ────────────────────────────────────

@@ -1,3 +1,4 @@
+import { prisma } from '@/lib/db'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { persistTriageResults } from '@/lib/audit/persist'
 import {
@@ -46,7 +47,7 @@ async function persistEvidenceAnchors(
   auditUrl: string,
   pageRuns: PageRun[]
 ): Promise<void> {
-  const allFlags = pageRuns.flatMap((page) =>
+  const pageFlags = pageRuns.flatMap((page) =>
     page.flags.map((flag) => ({
       checkId: flag.checkId,
       problem: flag.problem,
@@ -55,6 +56,29 @@ async function persistEvidenceAnchors(
       rubric: flag.rubric,
     }))
   )
+  const journeyFlags = await prisma.flag.findMany({
+    where: { auditId, source: 'JOURNEY', checkId: { not: null } },
+    select: {
+      checkId: true,
+      problem: true,
+      evidence: true,
+      severity: true,
+      rubric: true,
+    },
+  })
+  const seen = new Set(pageFlags.map((f) => f.checkId))
+  const allFlags = [
+    ...pageFlags,
+    ...journeyFlags
+      .filter((f): f is typeof f & { checkId: string } => Boolean(f.checkId) && !seen.has(f.checkId!))
+      .map((f) => ({
+        checkId: f.checkId,
+        problem: f.problem,
+        evidence: f.evidence,
+        severity: f.severity,
+        rubric: f.rubric,
+      })),
+  ]
   await tryResolveEvidenceAnchorsForAudit(auditId, auditUrl, allFlags)
   const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
   if (primaryFlow) {

@@ -68,7 +68,7 @@ export async function tryCaptureVisualEvidenceForAudit(
     const d = getVisualDescriptor(f.checkId)
     if (d.type === 'none') return false
     const sev = f.severity.toUpperCase()
-    return sev === 'CRITICAL' || sev === 'HIGH' || sev === 'BLOCKING'
+    return sev === 'CRITICAL' || sev === 'IMPORTANT'
   })
   if (candidates.length === 0) return
 

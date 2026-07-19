@@ -54,6 +54,40 @@ describe('explorer-model', () => {
     assert.equal(model.flags[0]?.copyFixPrompt, model.flags[0]?.fixPrompt)
   })
 
+  it('maps flagVisualEvidence gif/overlay onto visualUrl', () => {
+    const model = buildLiveExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 72,
+      verdict: 'Needs work.',
+      flags: [
+        {
+          id: 'f1',
+          checkId: 'cta-below-fold-mobile',
+          rubric: 'EXPERIENCE',
+          severity: 'CRITICAL',
+          problem: 'CTA below fold',
+          evidence: 'Button at 900px.',
+          whyItMatters: 'Mobile users miss CTA.',
+          fix: 'Move CTA up.',
+        },
+      ],
+      rubricRows: [
+        { name: 'MESSAGE', score: 70, grade: 'C' },
+        { name: 'EXPERIENCE', score: 60, grade: 'D' },
+        { name: 'REACH', score: 80, grade: 'B' },
+      ],
+      flagVisualEvidence: {
+        'cta-below-fold-mobile': {
+          gifUrl: 'https://cdn.example.com/cta.gif',
+          overlayUrl: 'https://cdn.example.com/cta.png',
+        },
+      },
+    })
+
+    assert.equal(model.flags[0]?.visualUrl, 'https://cdn.example.com/cta.gif')
+  })
+
   it('builds partial explorer model when flags exist', () => {
     const model = buildPartialExplorerModel({
       url: 'https://example.com',

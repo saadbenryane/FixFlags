@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 import type Anthropic from '@anthropic-ai/sdk'
 import { rubricNameSchema } from './judge-schema'
+import { toJsonSchema, toOpenApiNullableSchema } from './zod-json-schema'
 
 /**
  * Phase-2 "prescription" schema. Generates only the extractable payload keyed
@@ -62,13 +62,9 @@ export const prescriptionOutputSchema = z.object({
 
 export type PrescriptionOutput = z.infer<typeof prescriptionOutputSchema>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const generatedSchema = zodToJsonSchema(prescriptionOutputSchema as any, {
-  target: 'openApi3',
-  $refStrategy: 'none',
-})
-
-export const QUALITY_PRESCRIPTION_SCHEMA = generatedSchema
+export const QUALITY_PRESCRIPTION_SCHEMA = toOpenApiNullableSchema(
+  toJsonSchema(prescriptionOutputSchema)
+) as Record<string, unknown>
 
 export const QUALITY_PRESCRIPTION_TOOL: Anthropic.Tool = {
   name: 'quality_prescription',

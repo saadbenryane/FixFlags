@@ -1,7 +1,11 @@
-import { z, type ZodTypeAny } from 'zod'
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import { z } from 'zod'
 import type Anthropic from '@anthropic-ai/sdk'
 import { rubricNameSchema } from './judge-schema'
+import {
+  stripFormatKeyword,
+  toJsonSchema,
+  toOpenApiNullableSchema,
+} from './zod-json-schema'
 
 /**
  * Phase-1 "triage" schema. Deliberately small: it produces the teaser a cold
@@ -124,17 +128,13 @@ export const triageOutputSchema = z
 
 export type TriageOutput = z.infer<typeof triageOutputSchema>
 
-function buildJsonSchema(schema: ZodTypeAny): Record<string, unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return zodToJsonSchema(schema as any, {
-    target: 'openApi3',
-    $refStrategy: 'none',
-  }) as Record<string, unknown>
-}
+const baseJsonSchema = toJsonSchema(triageOutputSchema)
 
-const generatedSchema = buildJsonSchema(triageOutputSchema)
-
-export const QUALITY_TRIAGE_SCHEMA = generatedSchema
+/** Anthropic tool schema: OpenAPI-style `nullable: true` for null unions. */
+export const QUALITY_TRIAGE_SCHEMA = toOpenApiNullableSchema(baseJsonSchema) as Record<
+  string,
+  unknown
+>
 
 export const QUALITY_TRIAGE_TOOL: Anthropic.Tool = {
   name: 'quality_triage',
@@ -142,36 +142,13 @@ export const QUALITY_TRIAGE_TOOL: Anthropic.Tool = {
   input_schema: QUALITY_TRIAGE_SCHEMA as Anthropic.Tool.InputSchema,
 }
 
-/** Recursively strips JSON Schema `format` keywords (e.g. "uri", "email"). OpenAI's
- * strict function-calling mode rejects the whole schema (400) if any node uses a
- * `format` it doesn't support - the actual format constraint is still enforced by
- * `triageOutputSchema.parse()` (Zod's `.url()`) once the response comes back. */
-function stripFormatKeyword(node: unknown): unknown {
-  if (Array.isArray(node)) return node.map(stripFormatKeyword)
-  if (node && typeof node === 'object') {
-    return Object.fromEntries(
-      Object.entries(node as Record<string, unknown>)
-        .filter(([key]) => key !== 'format')
-        .map(([key, value]) => [key, stripFormatKeyword(value)])
-    )
-  }
-  return node
-}
-
 /**
- * OpenAI's strict function-calling mode requires standard JSON Schema (nullable
- * fields as `type: [T, "null"]`, not the OpenAPI 3 `nullable: true` extension the
- * Anthropic-facing schema above uses) plus `additionalProperties: false` on every
- * object, which the `.strict()` calls on `triageOutputSchema` above provide - and
- * no unsupported `format` keywords (see `stripFormatKeyword` above).
+ * OpenAI's strict function-calling mode requires standard JSON Schema (null as
+ * `anyOf` / type unions, not OpenAPI `nullable: true`) plus
+ * `additionalProperties: false` on every object — and no unsupported `format`
+ * keywords. Zod parse still enforces `.url()` after the model responds.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const openaiSchemaWithFormat = zodToJsonSchema(triageOutputSchema as any, {
-  $refStrategy: 'none',
-}) as Record<string, unknown>
-delete openaiSchemaWithFormat.$schema
-
-export const QUALITY_TRIAGE_SCHEMA_OPENAI = stripFormatKeyword(openaiSchemaWithFormat) as Record<
+export const QUALITY_TRIAGE_SCHEMA_OPENAI = stripFormatKeyword(baseJsonSchema) as Record<
   string,
   unknown
 >

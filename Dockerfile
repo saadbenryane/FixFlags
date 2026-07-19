@@ -1,10 +1,10 @@
 # FixFlags web + worker image.
-# Debian bookworm has a real `chromium` package at /usr/bin/chromium, so we skip
-# Puppeteer's flaky browser download and point it at the system binary instead.
+# Debian bookworm has Chromium at /usr/bin/chromium. Playwright launches that
+# system binary (see lib/audit/screenshot.ts) instead of downloading browsers.
 FROM node:20-bookworm-slim
 
-ENV PUPPETEER_SKIP_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium \
     NODE_ENV=production
 
 # Chromium (pulls in all the X/font/audio libs it needs) + prisma's openssl.

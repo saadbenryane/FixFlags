@@ -128,12 +128,31 @@ export function aiImpactToEnum(tag: string | null | undefined): ImpactTag | null
   return valid.includes(tag as ImpactTag) ? (tag as ImpactTag) : null
 }
 
-/** Remove partial results before a retry or fresh persist. */
+/**
+ * Clear triage-owned results before a fresh persist.
+ * Preserves JOURNEY flags written earlier in the pipeline (see runJourneyReviewsForAudit).
+ */
 export async function clearAuditResults(auditId: string): Promise<void> {
   await prisma.$transaction([
-    prisma.flag.deleteMany({ where: { auditId } }),
+    prisma.flag.deleteMany({
+      where: { auditId, source: { in: ['DETERMINISTIC', 'AI'] } },
+    }),
     prisma.reportRubric.deleteMany({ where: { auditId } }),
   ])
+}
+
+/** Soft score impact so journey findings affect rubric grades without double-counting checks. */
+function journeySeverityPenalty(severity: string): number {
+  switch (severity) {
+    case 'CRITICAL':
+      return 8
+    case 'IMPORTANT':
+      return 4
+    case 'POLISH':
+      return 1
+    default:
+      return 0
+  }
 }
 
 /** Persist deterministic flags and partial rubric scores during the pipeline run. */
@@ -285,17 +304,32 @@ export async function persistTriageResults(
     const resolvedScores: Partial<Record<RubricName, number | null>> = {}
     const resolvedGrades: Partial<Record<RubricName, RubricGrade | null>> = {}
 
+    const journeyFlags = await tx.flag.findMany({
+      where: { auditId, source: 'JOURNEY' },
+      select: { rubric: true, severity: true },
+    })
+    const journeyPenaltyByRubric: Partial<Record<RubricName, number>> = {}
+    for (const flag of journeyFlags) {
+      const rubricName = flag.rubric as RubricName
+      journeyPenaltyByRubric[rubricName] =
+        (journeyPenaltyByRubric[rubricName] ?? 0) + journeySeverityPenalty(flag.severity)
+    }
+
     const rubricRecords = await Promise.all(
       triageOutput.rubrics.map((rubricData) => {
         const rubricName = rubricData.name as RubricName
         const deterministicScore = rubricScores[rubricName]
 
-        const finalScore =
+        let finalScore =
           deterministicScore !== null && deterministicScore !== undefined
             ? clampScore(deterministicScore)
             : rubricData.score !== null
               ? clampScore(rubricData.score)
               : null
+        if (finalScore !== null) {
+          const penalty = journeyPenaltyByRubric[rubricName] ?? 0
+          if (penalty > 0) finalScore = clampScore(finalScore - penalty)
+        }
         const finalGrade =
           finalScore !== null ? gradeFromScore(finalScore) : rubricData.grade
 

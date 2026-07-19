@@ -31,7 +31,6 @@ const BROWSER_LAUNCH_ARGS = [
 export function getChromePath(): string | undefined {
   const candidates = [
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
     '/usr/bin/chromium',
@@ -45,12 +44,12 @@ export function getChromePath(): string | undefined {
 
 async function launchBrowser(): Promise<Browser> {
   const executablePath = getChromePath()
-  // Production images typically ship system Chromium; fail loudly if missing
+  // Production images ship system Chromium; fail loudly if missing
   // instead of Playwright's cryptic browser-download error.
   if (!executablePath && process.env.NODE_ENV === 'production') {
     throw new BrowserLaunchError(
       'No Chromium executable found. Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to a valid binary ' +
-        `(looked at: ${process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium (unset)'}).`
+        `(looked at: ${process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium (unset)'}).`
     )
   }
   try {

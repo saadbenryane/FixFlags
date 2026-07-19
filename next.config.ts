@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
     '@prisma/client',
     'prisma',
     'better-auth',
+    '@better-auth/passkey',
+    '@better-auth/core',
     'bullmq',
     'ioredis',
     '@anthropic-ai/sdk',

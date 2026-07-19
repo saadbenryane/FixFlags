@@ -1,9 +1,16 @@
 # Journey Review: AI-Powered User Journey Simulation for FixFlags
 
-**Status:** Architecture proposal  
+**Status:** MVP shipped (template journeys + DB + report timeline). LLM planner/evaluator and separate queue job are not built.  
 **Author:** Agent session  
 **Date:** 2026-07-19  
-**Decision required:** Yes (before implementation)
+**Decision required:** No for MVP. Yes before LLM planner / Agency journey selection.
+
+**MVP reality (2026-07-19):**
+- Playwright template walks (first-visit, pricing, signup, contact) for Pro+ (`journeyReviewIncluded`)
+- Persists `JourneyReview` / steps / findings; creates `Flag` rows with `source: JOURNEY`
+- Triage clear preserves JOURNEY flags; journey severity soft-penalizes rubric scores
+- Report shows `JourneyReviewTimeline`; findings appear in the flags explorer
+- Not built: LLM JourneyPlanner/Evaluator, separate BullMQ job, mobile-journey, vision fallback
 
 ---
 
@@ -54,7 +61,7 @@ Optional async: ai-review (prescription: fix prompts, evidence, whyItMatters)
 
 | Area | Why it's strong |
 |------|-----------------|
-| Deterministic checks | Fast, cheap, reproducible, explainable. 129 check IDs covering real issues. |
+| Deterministic checks | Fast, cheap, reproducible, explainable. Check IDs live in `lib/audit/check-ids.ts` (see AGENTS.md Project facts). |
 | Two-phase AI | Triage is cheap and runs for everyone. Prescription is gated and detailed. |
 | Flow scan | Already does basic CTA-click testing. 20 flow-specific check IDs. |
 | Evidence model | Every flag has a screenshot, check ID, and severity. Audit trail is solid. |
@@ -344,7 +351,7 @@ Optional async: ai-review (prescription: fix prompts, evidence, whyItMatters)
 | MCP ecosystem | 40+ tools via Playwright MCP | Limited |
 | TypeScript | First-class | First-class |
 
-The existing Puppeteer usage for screenshots can be migrated incrementally. Journey Review requires Playwright from day one.
+Playwright is the sole audit browser engine. Journey Review uses the same Playwright session helpers as capture and flow scan.
 
 ---
 
@@ -1019,7 +1026,7 @@ New dashboard panels:
 
 **Status (2026-07-19):** Complete for the audit pipeline. Capture, flow scan, and evidence anchors use Playwright. Puppeteer dependency removed. Remaining work is Journey Review (Phase 1+), not browser migration.
 
-**Why this first:** Journey Review requires Playwright. The existing Puppeteer code works, but it blocks every future improvement. This is the single most important infrastructure change.
+**Why this first (historical):** Journey Review required Playwright. Migration is complete; Puppeteer is gone from the audit path.
 
 | Task | Effort | Risk |
 |------|--------|------|

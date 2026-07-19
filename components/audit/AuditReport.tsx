@@ -177,6 +177,7 @@ export function AuditReport({
           rubricRows: audit.rubricRows,
           evidenceAnchors: audit.evidenceAnchors,
           previewMeta: audit.previewMeta,
+          flagVisualEvidence: audit.flagVisualEvidence,
         })
       : null
 

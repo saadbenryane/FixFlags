@@ -294,6 +294,7 @@ export default async function ReportPage({ params }: Props) {
       previewMeta: audit.previewMeta,
       flowData: audit.flowData,
       evidenceAnchors: audit.evidenceAnchors,
+      flagVisualEvidence: audit.flagVisualEvidence,
     }
 
     const journeyPages = (audit.pages ?? []).map((p) => ({

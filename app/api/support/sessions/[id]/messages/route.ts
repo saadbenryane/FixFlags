@@ -49,7 +49,7 @@ export async function POST(
     const body = await req.json().catch(() => ({}))
     const parsed = postSchema.safeParse(body)
     if (!parsed.success) {
-      return apiError(parsed.error.errors[0]?.message ?? 'Invalid message', 400)
+      return apiError(parsed.error.issues[0]?.message ?? 'Invalid message', 400)
     }
 
     const limit = await recordRateLimit({
