@@ -135,18 +135,24 @@
 - Stripe webhook signature verified.
 - See `SECURITY.md` for full details.
 
+## Git workflow (pre-prod)
+
+**Always work directly on `main`.** FixFlags is pre-revenue / pre-prod: no customers, no production blast radius that justifies feature branches for routine agent work.
+
+1. `git checkout main && git pull origin main` before starting.
+2. Commit and push to `main`. Do not create `agent/*`, `cursor/*`, or worktree branches unless the user explicitly asks.
+3. Prefer small, reviewable commits on `main` over long-lived side branches.
+4. If a remote branch already exists from earlier work, merge it into `main` promptly rather than continuing on it.
+
 ## Parallel-agent rules
 
 1. **Read `.agents/BOARD.md` before any substantial write task.**
-2. **Claim tasks** by adding a board entry before starting. One agent owns a write scope at a time.
+2. **Claim tasks** by adding a board entry before starting. One agent owns a write scope at a time. Board `Branch/worktree` should be `main`.
 3. **Read-only research** (grep, search, read) may run in parallel without claiming.
-4. **Use isolated branches and worktrees** for concurrent write-heavy tasks:
-   - Branch: `agent/<task-id>-<short-description>`
-   - Worktree: `../qewos-<task-id>/`
-5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work.**
+4. **Do not use isolated branches or worktrees** for concurrent write-heavy tasks while pre-prod. Coordinate via BOARD.md ownership instead. (Revisit branching only if multiple agents must write the same files simultaneously and board claiming is insufficient.)
+5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work on `main`.** Prefer additive commits; do not force-push `main`.
 6. **Stop and document** ambiguous ownership or conflicting state.
 7. **Create a handoff** (`.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
-8. **Solo operation on `main`** (the primary workflow) is fine for single-agent sessions. The parallel rules above are for multi-agent scenarios.
 
 ## Verification and definition of done
 
