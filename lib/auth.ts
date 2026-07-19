@@ -1,5 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api'
+import { twoFactor } from 'better-auth/plugins'
+import { passkey } from '@better-auth/passkey'
 import { prisma } from './db'
 import { getEnv } from './env'
 import { resend } from '@/lib/email/client'
@@ -8,6 +11,8 @@ import { recordSignupConversion } from '@/lib/analytics/signup-conversion'
 import { BRAND } from '@/lib/marketing/copy'
 import {
   getAuthBaseUrl,
+  getPasskeyOrigin,
+  getPasskeyRpID,
   isGoogleOAuthConfigured,
   isGithubOAuthConfigured,
 } from '@/lib/auth/env'
@@ -15,6 +20,7 @@ import {
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export const auth = betterAuth({
+  appName: BRAND.name,
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
   }),
@@ -117,4 +123,37 @@ export const auth = betterAuth({
       },
     },
   },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      // Passkey is the second factor. Refuse to enable 2FA until at least one
+      // passkey is registered so users cannot lock themselves out of email sign-in.
+      if (ctx.path !== '/two-factor/enable') return
+      const session = await getSessionFromCtx(ctx)
+      const userId = session?.user?.id
+      if (!userId) return
+      const passkeyCount = await prisma.passkey.count({ where: { userId } })
+      if (passkeyCount < 1) {
+        throw new APIError('BAD_REQUEST', {
+          message: 'Add a passkey before enabling two-factor authentication',
+        })
+      }
+    }),
+  },
+  plugins: [
+    passkey({
+      rpID: getPasskeyRpID(),
+      rpName: BRAND.name,
+      origin: getPasskeyOrigin(),
+    }),
+    twoFactor({
+      issuer: BRAND.name,
+      // Passkey is the primary second factor; backup codes cover recovery.
+      skipVerificationOnEnable: true,
+      // Disable authenticator-app TOTP so the second factor is passkey-only.
+      totpOptions: {
+        disable: true,
+      },
+      allowPasswordless: true,
+    }),
+  ],
 })

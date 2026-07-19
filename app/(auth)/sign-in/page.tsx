@@ -1,10 +1,10 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
-import { Mail, Loader2, ArrowRight } from 'lucide-react'
+import { Mail, Loader2, ArrowRight, Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -21,21 +21,42 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignInForm() {
-  const { oauthCallbackURL, oauthNewUserCallbackURL, postLoginHref, signUpHref } = useAuthRedirect()
+  const {
+    next,
+    plan,
+    from,
+    oauthCallbackURL,
+    oauthNewUserCallbackURL,
+    postLoginHref,
+    signUpHref,
+  } = useAuthRedirect()
   const router = useRouter()
   useRedirectIfAuthenticated()
   const oauth = useOAuthProviders()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
+
+  function twoFactorHref() {
+    const params = new URLSearchParams()
+    if (next) params.set('next', next)
+    if (plan) params.set('plan', plan)
+    if (from) params.set('from', from)
+    const qs = params.toString()
+    return qs ? `/two-factor?${qs}` : '/two-factor'
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
+    setLoading('email')
     try {
-      const { error } = await authClient.signIn.email({ email, password })
+      const { data, error } = await authClient.signIn.email({ email, password })
       if (error) {
         toast.error(error.message || 'Sign in failed')
+        return
+      }
+      if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
+        window.location.href = twoFactorHref()
         return
       }
       trackEvent('signed_in', { method: 'email' })
@@ -45,7 +66,36 @@ function SignInForm() {
     } catch {
       toast.error('Something went wrong')
     } finally {
-      setLoading(false)
+      setLoading(null)
+    }
+  }
+
+  useEffect(() => {
+    const canAutofill =
+      typeof PublicKeyCredential !== 'undefined' &&
+      typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
+    if (!canAutofill) return
+    void PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
+      if (!available) return
+      void authClient.signIn.passkey({ autoFill: true })
+    })
+  }, [])
+
+  async function handlePasskeySignIn() {
+    setLoading('passkey')
+    try {
+      const { error } = await authClient.signIn.passkey({ autoFill: false })
+      if (error) {
+        toast.error(error.message || 'Passkey sign in failed')
+        return
+      }
+      trackEvent('signed_in', { method: 'passkey' })
+      // Same post-login claim path as email/OAuth.
+      router.push(postLoginHref)
+    } catch {
+      toast.error('Passkey sign in was cancelled or failed')
+    } finally {
+      setLoading(null)
     }
   }
 
@@ -71,12 +121,26 @@ function SignInForm() {
           newUserCallbackURL={oauthNewUserCallbackURL}
           google={oauth.google}
           github={oauth.github}
-          disabled={loading}
+          disabled={loading !== null}
         />
       )}
       {oauth.anyEnabled && (
         <Muted className="text-center text-xs">{AUTH.signIn.oauthNote}</Muted>
       )}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={loading !== null}
+        onClick={() => void handlePasskeySignIn()}
+      >
+        {loading === 'passkey' ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Fingerprint className="mr-2 h-4 w-4" />
+        )}
+        {AUTH.signIn.passkeyCta}
+      </Button>
       <FormContainer onSubmit={handleSubmit} className="space-y-5">
         <IconInput
           type="email"
@@ -85,6 +149,7 @@ function SignInForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          autoComplete="username webauthn"
           required
         />
         <PasswordInput
@@ -92,6 +157,7 @@ function SignInForm() {
           value={password}
           onChange={setPassword}
           showRequirements
+          autoComplete="current-password webauthn"
         />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <Link
@@ -109,8 +175,8 @@ function SignInForm() {
             </Link>
           </span>
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full" disabled={loading !== null}>
+          {loading === 'email' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {AUTH.signIn.cta}
         </Button>
         <p className="text-center">

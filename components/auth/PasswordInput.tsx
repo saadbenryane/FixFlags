@@ -14,6 +14,7 @@ interface PasswordInputProps {
   minLength?: number
   showRequirements?: boolean
   error?: string
+  autoComplete?: string
 }
 
 export function PasswordInput({
@@ -24,6 +25,7 @@ export function PasswordInput({
   minLength = 8,
   showRequirements = false,
   error,
+  autoComplete = 'current-password',
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false)
   const hasMinLength = value.length >= minLength
@@ -40,6 +42,7 @@ export function PasswordInput({
           required={required}
           minLength={minLength}
           error={error}
+          autoComplete={autoComplete}
           className="pr-11"
         />
         <Button
