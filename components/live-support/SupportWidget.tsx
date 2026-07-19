@@ -16,7 +16,8 @@ function SupportWidgetInner() {
   const pathAuditId = extractAuditIdFromPath(pathname)
   const { panelOpen, setPanelOpen, sessionId, setSessionId, auditId } = useSupportContext()
   const resolvedAuditId = auditId ?? pathAuditId
-  const { data } = useSupportSession(true)
+  // One fetch when closed (unread badge); poll only while the panel is open.
+  const { data } = useSupportSession(true, panelOpen)
 
   useEffect(() => {
     if (data?.session?.id && !sessionId) {

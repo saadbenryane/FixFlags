@@ -33,26 +33,27 @@ function LoopPanorama() {
   )
 }
 
+const MOBILE_LOOP_POSITIONS = ['0% 45%', '33% 45%', '67% 45%', '100% 45%'] as const
+
 function MobileLoopScene({ index }: { index: number }) {
+  const objectPosition = MOBILE_LOOP_POSITIONS[index] ?? '50% 45%'
   return (
     <div className="relative aspect-[4/3] overflow-hidden rounded-nested-md bg-muted/35 shadow-glass">
       <Image
         src="/marketing/visuals/loop-light.webp"
         alt=""
-        width={2172}
-        height={724}
-        sizes="400vw"
-        className="absolute top-1/2 h-auto w-[400%] max-w-none -translate-y-1/2 dark:hidden"
-        style={{ left: `${index * -100}%` }}
+        fill
+        sizes="100vw"
+        className="object-cover dark:hidden"
+        style={{ objectPosition }}
       />
       <Image
         src="/marketing/visuals/loop-dark.webp"
         alt=""
-        width={2172}
-        height={724}
-        sizes="400vw"
-        className="absolute top-1/2 hidden h-auto w-[400%] max-w-none -translate-y-1/2 dark:block"
-        style={{ left: `${index * -100}%` }}
+        fill
+        sizes="100vw"
+        className="hidden object-cover dark:block"
+        style={{ objectPosition }}
       />
     </div>
   )

@@ -1,29 +1,39 @@
 'use client'
 
-import { SampleReportExplorer } from '@/components/marketing/sample/SampleReportExplorer'
-import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
-import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
-import { cn } from '@/lib/utils'
+import dynamic from 'next/dynamic'
+import type { ReportExplorerModel } from '@/lib/report/explorer-model'
+import { cn } from '@/lib/cn'
+
+const SampleReportExplorer = dynamic(
+  () =>
+    import('@/components/marketing/sample/SampleReportExplorer').then(
+      (m) => m.SampleReportExplorer
+    ),
+  {
+    ssr: true,
+    loading: () => (
+      <div
+        aria-hidden
+        className="aspect-[16/10] w-full animate-pulse rounded-card bg-muted/40 shadow-card"
+      />
+    ),
+  }
+)
 
 interface HeroProductPreviewProps {
   className?: string
-  /** Optional live audit; falls back to static sample for a consistent hero demo */
-  audit?: LiveSampleAudit
+  /** Prebuilt on the server so audit/scoring libs stay out of the marketing client graph. */
+  model: ReportExplorerModel
 }
 
-export function HeroProductPreview({ className, audit }: HeroProductPreviewProps) {
-  const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit(), {
-    flagshipOnly: true,
-  })
-
+export function HeroProductPreview({ className, model }: HeroProductPreviewProps) {
   return (
     <div className={cn('relative mx-auto w-full max-w-5xl', className)}>
       <div
         aria-hidden
         className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--foreground)/0.04),transparent_68%)]"
       />
-      <SampleReportExplorer report={report} variant="hero" />
+      <SampleReportExplorer model={model} variant="hero" />
     </div>
   )
 }

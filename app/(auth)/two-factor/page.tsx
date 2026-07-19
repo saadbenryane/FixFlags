@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Fingerprint, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +15,8 @@ import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { trackEvent } from '@/lib/analytics/events'
 
 function TwoFactorForm() {
-  const { navigateAfterAuth, signInHref } = useAuthRedirect()
+  const { postLoginHref, signInHref } = useAuthRedirect()
+  const router = useRouter()
   const [loading, setLoading] = useState<'passkey' | 'backup' | null>(null)
   const [backupCode, setBackupCode] = useState('')
   const [trustDevice, setTrustDevice] = useState(true)
@@ -28,7 +30,9 @@ function TwoFactorForm() {
         return
       }
       trackEvent('signed_in', { method: 'passkey_2fa' })
-      await navigateAfterAuth()
+      // Through /post-login so anonymous audits get claimed before the
+      // next/checkout navigation (same path email/OAuth takes).
+      router.push(postLoginHref)
     } catch {
       toast.error('Passkey verification was cancelled or failed')
     } finally {
@@ -49,7 +53,8 @@ function TwoFactorForm() {
         return
       }
       trackEvent('signed_in', { method: 'backup_code' })
-      await navigateAfterAuth()
+      // Same post-login claim path as email/OAuth.
+      router.push(postLoginHref)
     } catch {
       toast.error('Could not verify backup code')
     } finally {

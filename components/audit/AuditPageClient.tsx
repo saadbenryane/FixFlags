@@ -78,16 +78,23 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         if (!best) return s
         return order[s as keyof typeof order] < order[best as keyof typeof order] ? s : best
       }, undefined)
+      const score =
+        typeof statusPayload?.score === 'number'
+          ? statusPayload.score
+          : typeof audit?.score === 'number'
+            ? audit.score
+            : undefined
       trackEvent('audit_completed', {
         audit_id: id,
-        score: typeof audit?.score === 'number' ? audit.score : undefined,
+        score,
         duration_ms: durationMs,
         finding_count: flags.length || undefined,
         highest_severity: highestSeverity,
       })
+      // Server-rendered AuditReport replaces the progressive shell. No client full-fetch.
       router.refresh()
     }
-  }, [isComplete, router, id, audit?.score, audit?.durationMs, audit?.flags])
+  }, [isComplete, router, id, statusPayload?.score, audit?.score, audit?.durationMs, audit?.flags])
 
   const inProgress = !isComplete && !isFailed
 

@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
   },
   typedRoutes: true,
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react', 'sonner', 'swr'],
   },
 }
 

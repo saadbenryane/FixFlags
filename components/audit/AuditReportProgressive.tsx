@@ -1,13 +1,17 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Callout } from '@/components/ui/callout'
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SectionTitle } from '@/components/ui/typography'
 import { ReportHeroHeader } from '@/components/audit/ReportHeroHeader'
-import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
+
+const LiveReportExplorer = dynamic(() =>
+  import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
+)
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
