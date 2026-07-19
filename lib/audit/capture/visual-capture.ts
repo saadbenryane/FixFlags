@@ -244,7 +244,7 @@ function enrichOverlayContext(
   switch (checkId) {
     case 'perf-score-critical':
     case 'perf-score-poor':
-      ctx.value = metrics?.perfScore ?? null
+      ctx.value = metrics?.perfScore ?? undefined
       ctx.label = 'PageSpeed Score'
       break
     case 'cta-below-fold-mobile':

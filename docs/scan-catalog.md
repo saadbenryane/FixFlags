@@ -6,7 +6,7 @@ Single source of truth for every scan FixFlags runs or plans to run, organized b
 
 **Rubrics** (from `lib/audit/constants.ts`): `MESSAGE`, `EXPERIENCE`, `REACH`.
 
-**Methods:** `deterministic` (code rules), `AI` (judge on screenshots + evidence), `agent` (Puppeteer navigation).
+**Methods:** `deterministic` (code rules), `AI` (judge on screenshots + evidence), `agent` (Playwright navigation).
 
 See [scan-roadmap.md](./scan-roadmap.md) for phased build order.
 
@@ -58,7 +58,7 @@ Does the page work, feel good, and work on mobile? Layout, speed, accessibility,
 | **Mobile UX quality scan** | deterministic | `mobile-input-zoom`, `mobile-cta-thumb-zone`, `mobile-cta-weak-label`, `mobile-stuck-loading`, `mobile-load-delay-content` |
 | **AI experience review** | AI | CTA above fold, layout, mobile usability, keyboard/contrast, CWV, broken interactions |
 | **Launch gate: console errors** | deterministic | No critical console errors |
-| **Critical path scan** (Pro) | agent + deterministic | Up to 6 same-origin URLs: primary + pricing + CTA destination + features + trust + resources |
+| **Critical path scan** | agent + deterministic | Up to 6 same-origin URLs: primary + pricing + CTA destination + features + trust + resources (default for all plans) |
 
 ### Roadmap
 
@@ -106,7 +106,7 @@ Not rubrics themselves — audit modes that run all three.
 | Mode | Status | Description |
 |------|--------|-------------|
 | **Single URL audit** | Live | One page, all rubrics |
-| **Critical path audit** | Live (Pro) | Up to 6 conversion-path URLs (`CRITICAL_PATH` mode) |
+| **Critical path audit** | Live (all plans) | Up to 6 conversion-path URLs (`CRITICAL_PATH` mode, default) |
 | **Re-check** | Live | Re-runs checks, diffs flags, marks FIXED / REGRESSED |
 | **CI deploy gate** | Roadmap | Block deploy if launch gates fail |
 | **Weekly pulse** | Roadmap | Scheduled re-check, alert on regressions |

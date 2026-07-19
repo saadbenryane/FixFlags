@@ -13,12 +13,12 @@
 
 | Fact | Value | Source / regenerate command |
 |------|-------|-----------------------------|
-| Prisma models | **42** | `prisma/schema.prisma` (`grep -c '^model '`) |
+| Prisma models | **45** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
-| Check capabilities | 45 (43 live, 1 partial, 1 planned) | `npm run audit:capabilities` |
-| Check IDs | **129** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
-| MCP tools | **13** | `lib/mcp/tools.ts` `server.tool()` |
-| Pipeline version | **2.3.0** | `lib/audit/pipeline-config.ts` |
+| Check capabilities | 46 (45 live, 1 partial, 0 planned) | `npm run audit:capabilities` |
+| Check IDs | **150** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| MCP tools | **14** | `lib/mcp/tools.ts` `server.tool()` |
+| Pipeline version | **2.4.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
@@ -85,7 +85,10 @@
 - **Marketing copy** lives in `lib/marketing/copy.ts` only — never hardcoded in components.
 - **Banned marketing phrases:** "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds", unlock, 10x, game-changing, world-class, comprehensive, robust, leverage, holistic.
 - **No em dashes** anywhere in copy. Use periods, commas, or colons.
-- **Homepage section order:** Hero (with editor logo cloud) → Sample review (the single live report explorer) → Three dimensions → Fix loop → Example feedback → Final CTA. Exactly one report explorer, in the Sample review section (`SampleReportSection` → `HeroProductPreview`); do not add a second. Hero copy changes only when explicitly requested.
+- **Homepage section order:** Hero (`LandingHeroSection` + editor logo cloud) → Sample review (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`) → Three dimensions (`CheckDimensionsSection`) → Fix loop (`HowItWorksLoopSection`) → Product evidence (`ProductEvidenceSection`, not invented testimonials) → Final CTA. Exactly one report explorer. Hero copy changes only when explicitly requested.
+- **Social proof:** Use `LANDING_PAGE.productEvidence` (real product output). Do not invent member counts or quote cards; `LANDING_PAGE.testimonials.quotes` stays empty until authentic quotes exist.
+- **Browser automation:** Playwright only for audit capture (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`). Do not reintroduce Puppeteer on the audit path.
+- **Visual evidence:** `lib/audit/capture/*` runs after flags in finalize (`tryCaptureVisualEvidenceForAudit`); stores `performanceData.flagVisualEvidence`. Failures must not fail the audit.
 - **Changelog** (`CHANGELOG_ENTRIES` in copy.ts) is user-facing only: plain language, outcomes and benefits, never implementation details or internal terminology.
 - **Social proof** must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts.
 
@@ -100,7 +103,7 @@
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
 - **`/post-login` is the single post-auth landing** for OAuth AND email flows: it claims anonymous audits (`useMe({claim:true})`, sets `includeAi`), then runs checkout/`next` navigation. Never navigate straight to `next` after auth: that skips the claim and leaves reports locked.
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
-- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Flags, optional Journey/Overview/Previews/Flow/Launch, Re-check for non-owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Overview when needed, Journey when multi-page, Flow when flowData exists, Flags, Previews when previewMeta exists, Launch when gates exist, Re-check for owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.

@@ -13,6 +13,8 @@ const { prismaMock } = vi.hoisted(() => {
     audit: { findUnique: vi.fn(), update: vi.fn() },
     screenshot: { deleteMany: vi.fn() },
     auditPage: { deleteMany: vi.fn() },
+    journeyReview: { deleteMany: vi.fn() },
+    flag: { deleteMany: vi.fn() },
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
       if (Array.isArray(arg)) return Promise.all(arg)
@@ -30,7 +32,16 @@ vi.mock('@/lib/audit/pipeline-log', () => ({
   initPipelineLog: vi.fn(),
   logPipelineEvent: vi.fn(),
 }))
-vi.mock('@/lib/audit/critical-path', () => ({ discoverCriticalPathUrls: vi.fn(() => []) }))
+vi.mock('@/lib/audit/critical-path', () => ({
+  discoverCriticalPathUrls: vi.fn(() => []),
+  discoverCriticalPathUrlsEnriched: vi.fn(async () => []),
+}))
+vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
+  runJourneyReviewsForAudit: vi.fn(async () => 0),
+}))
+vi.mock('@/lib/audit/checks/corridor-consistency', () => ({
+  runCorridorConsistencyChecks: vi.fn(() => []),
+}))
 vi.mock('@/lib/audit/finalize', () => ({ persistFailedAuditCost: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
@@ -56,6 +67,7 @@ function makeAudit(overrides: Record<string, unknown> = {}) {
     status: 'QUEUED',
     url: 'https://example.com',
     includeAi: false,
+    journeyReviewIncluded: false,
     monitoringMode: null,
     parentId: null,
     auditMode: 'SINGLE',

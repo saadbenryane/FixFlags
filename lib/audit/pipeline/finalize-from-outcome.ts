@@ -4,6 +4,7 @@ import {
   tryResolveEvidenceAnchorsForAudit,
   mergeFlowCtaEvidenceAnchors,
 } from '@/lib/audit/persist-evidence-anchors'
+import { tryCaptureVisualEvidenceForAudit } from '@/lib/audit/persist-visual-evidence'
 import {
   finalizeTriageAudit,
   finalizeTriageDegraded,
@@ -45,21 +46,35 @@ async function persistEvidenceAnchors(
   auditUrl: string,
   pageRuns: PageRun[]
 ): Promise<void> {
-  await tryResolveEvidenceAnchorsForAudit(
-    auditId,
-    auditUrl,
-    pageRuns.flatMap((page) =>
-      page.flags.map((flag) => ({
-        checkId: flag.checkId,
-        problem: flag.problem,
-        evidence: flag.evidence,
-      }))
-    )
+  const allFlags = pageRuns.flatMap((page) =>
+    page.flags.map((flag) => ({
+      checkId: flag.checkId,
+      problem: flag.problem,
+      evidence: flag.evidence,
+      severity: flag.severity,
+      rubric: flag.rubric,
+    }))
   )
+  await tryResolveEvidenceAnchorsForAudit(auditId, auditUrl, allFlags)
   const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
   if (primaryFlow) {
     await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)
   }
+
+  const primary = pageRuns[0]
+  const metrics = {
+    perfScore: primary?.mobile?.score ?? primary?.desktop?.score ?? null,
+  }
+  await tryCaptureVisualEvidenceForAudit(
+    auditId,
+    auditUrl,
+    allFlags.map((f) => ({
+      checkId: f.checkId,
+      severity: f.severity,
+      rubric: f.rubric,
+    })),
+    metrics
+  )
 }
 
 async function finalizeTriageComplete(

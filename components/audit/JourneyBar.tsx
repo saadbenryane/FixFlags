@@ -85,7 +85,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
   }
 
   return (
-    <div id="report-journey" className={cn('scroll-mt-[var(--header-offset)] space-y-3', className)}>
+    <div className={cn('space-y-3', className)}>
       <div className="flex items-center gap-2">
         <p className="text-xs font-mono uppercase tracking-label text-muted-foreground">
           Conversion flow

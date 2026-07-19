@@ -3,7 +3,7 @@ import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
 /** How a capability is evaluated in the FixFlags pipeline. */
 export type AuditTool =
   | 'html-parse' // Cheerio metadata parse + deterministic checks
-  | 'browser-capture' // Puppeteer screenshots + DOM metrics
+  | 'browser-capture' // Playwright screenshots + DOM metrics
   | 'flow-navigation' // CTA click + navigation trace
   | 'pagespeed' // Google PageSpeed / Lighthouse API
   | 'ai-judge' // Vision LLM rubric pass
@@ -201,17 +201,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
   },
 
   // REACH - measurement & security
-  {
-    id: 'measurement-consent-scan',
-    dimension: 'REACH',
-    category: 'loading',
-    label: 'Privacy consent controls',
-    tool: 'html-parse',
-    status: 'planned',
-    checkIds: [],
-    verify: 'npm run demo:audit:offline',
-    notes: 'Planned: consent-blocking-incomplete check not yet implemented.',
-  },
   {
     id: 'measurement-analytics-scan',
     dimension: 'REACH',
@@ -432,7 +421,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: ['cta-below-fold-mobile'],
     verify: 'npm run dev:all + full audit',
-    notes: 'Uses CaptureMetrics from mobile Puppeteer viewport.',
+    notes: 'Uses CaptureMetrics from mobile Playwright viewport.',
   },
   {
     id: 'experience-auth-checkout',
@@ -516,6 +505,47 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'flow-destination-slow-load',
     ],
     verify: 'npm run demo:audit:flow',
+  },
+  {
+    id: 'experience-journey-review',
+    dimension: 'EXPERIENCE',
+    category: 'flow',
+    label: 'User journey walk (first-visit, pricing, signup, contact)',
+    tool: 'flow-navigation',
+    status: 'live',
+    checkIds: [
+      'journey-first-visit-unclear-value-prop',
+      'journey-first-visit-hidden-cta',
+      'journey-first-visit-dead-end',
+      'journey-first-visit-nav-broken',
+      'journey-first-visit-destination-no-headline',
+      'journey-first-visit-destination-no-next-action',
+      'journey-pricing-evaluation-unclear-value-prop',
+      'journey-pricing-evaluation-hidden-cta',
+      'journey-pricing-evaluation-dead-end',
+      'journey-pricing-evaluation-nav-broken',
+      'journey-pricing-evaluation-destination-no-headline',
+      'journey-pricing-evaluation-destination-no-next-action',
+      'journey-signup-unclear-value-prop',
+      'journey-signup-hidden-cta',
+      'journey-signup-dead-end',
+      'journey-signup-nav-broken',
+      'journey-signup-no-form',
+      'journey-signup-too-many-fields',
+      'journey-contact-not-found',
+    ],
+    verify: 'Pro audit with journeyReviewIncluded',
+    notes: 'Playwright multi-step journeys gated to Pro+. Fill-only signup; submissions blocked.',
+  },
+  {
+    id: 'reach-corridor-og-consistency',
+    dimension: 'REACH',
+    category: 'metadata',
+    label: 'Cross-page Open Graph consistency on conversion corridor',
+    tool: 'html-parse',
+    status: 'live',
+    checkIds: ['corridor-og-title-drift', 'corridor-og-description-drift'],
+    verify: 'npm run test:unit -- lib/audit/__tests__/corridor.test.ts',
   },
   {
     id: 'experience-multi-step-flow',

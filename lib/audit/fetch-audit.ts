@@ -22,6 +22,7 @@ import { parsePipelineLog } from '@/lib/audit/pipeline-log'
 import { parsePreviewMeta } from '@/lib/audit/preview-meta'
 import { parseFlowData, type FlowData } from '@/lib/audit/flow-data'
 import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-highlights'
+import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -69,6 +70,22 @@ export const auditFullInclude = {
       flags: {
         select: { severity: true },
       },
+    },
+  },
+  journeyReviews: {
+    orderBy: { createdAt: 'asc' as const },
+    include: {
+      steps: {
+        orderBy: { stepNumber: 'asc' as const },
+        select: {
+          stepNumber: true,
+          actionType: true,
+          url: true,
+          screenshotAfterUrl: true,
+          reasoning: true,
+        },
+      },
+      _count: { select: { findings: true } },
     },
   },
   screenshots: true,
@@ -179,6 +196,7 @@ export async function getGatedAuditForRequest(id: string) {
   })
   const flowData = parseFlowData(audit.flowData)
   const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
+  const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -251,6 +269,7 @@ export async function getGatedAuditForRequest(id: string) {
       previewMeta,
       flowData,
       evidenceAnchors,
+      flagVisualEvidence,
       triageAt: audit.triageAt,
       isLegacyDeterministic,
       rubricRows,

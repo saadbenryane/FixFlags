@@ -36,6 +36,9 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Orchestrator | `lib/audit/runner.ts` |
 | Per-page | `lib/audit/pipeline/run-page.ts` |
 | Outcome routing | `lib/audit/pipeline/outcome.ts`, `finalize-from-outcome.ts` |
+| Evidence anchors | `lib/audit/persist-evidence-anchors.ts` |
+| Visual evidence | `lib/audit/capture/*`, `lib/audit/persist-visual-evidence.ts` (graceful; must not fail audit) |
+| Browser | Playwright (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`) |
 | Triage | `lib/audit/judge-triage.ts`, `pipeline/triage-step.ts` |
 | Prescription | `lib/audit/run-ai-review.ts`, `judge-prescription.ts` |
 | Finalize | `lib/audit/finalize.ts` |

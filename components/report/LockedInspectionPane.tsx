@@ -10,6 +10,9 @@ import { cn } from '@/lib/utils'
 interface LockedInspectionPaneProps {
   flagTitle: string
   flagSeverity: string
+  /** Sign-in URL that returns the user to this report after auth. */
+  signInHref?: string
+  /** Sign-up URL for new accounts (claim/return path). */
   signUpHref?: string
   className?: string
 }
@@ -17,6 +20,7 @@ interface LockedInspectionPaneProps {
 export function LockedInspectionPane({
   flagTitle,
   flagSeverity,
+  signInHref = '/sign-in',
   signUpHref = '/sign-up',
   className,
 }: LockedInspectionPaneProps) {
@@ -50,10 +54,10 @@ export function LockedInspectionPane({
 
       <div className="flex flex-wrap gap-3">
         <Button asChild size="sm">
-          <Link href={signUpHref}>{LOCKED_INSPECTION.primaryCta}</Link>
+          <Link href={signInHref}>{LOCKED_INSPECTION.primaryCta}</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/sign-in">Sign in</Link>
+          <Link href={signUpHref}>{LOCKED_INSPECTION.secondaryCta}</Link>
         </Button>
       </div>
     </div>

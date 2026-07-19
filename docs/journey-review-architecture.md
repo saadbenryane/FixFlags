@@ -40,8 +40,9 @@ A Journey Review system would simulate a first-time visitor interacting with the
 ### 2.1 Pipeline Summary
 
 ```
-QUEUED -> CAPTURING (Puppeteer screenshots + PageSpeed) 
+QUEUED -> CAPTURING (Playwright screenshots + PageSpeed) 
        -> CHECKING (22 deterministic modules, sequential)
+       -> JOURNEY_REVIEW (optional: Playwright multi-step UX walk)
        -> JUDGING (AI triage: verdict, rubric grades, flag titles)
        -> FINALIZING (persist flags, scores, screenshots)
        -> COMPLETED
@@ -95,7 +96,7 @@ Optional async: ai-review (prescription: fix prompts, evidence, whyItMatters)
 
 | Debt | Impact on Journey Review |
 |------|-------------------------|
-| Puppeteer (not Playwright) | Journey Review needs Playwright for accessibility tree, network interception, and trace recording. Puppeteer lacks these. This is the primary blocker. |
+| Journey layer not built | Capture/flow already run on Playwright. Journey Review still needs a11y-tree planner, schema, and pipeline stage. |
 | Single browser instance | Journey Review needs its own browser context isolation (potentially per-journey). Current singleton model is insufficient. |
 | Sequential check execution | Journey Review steps are sequential by nature (navigate -> interact -> evaluate), so this is actually fine. |
 | No network interception beyond privacy guard | Journey Review needs request blocking (purchases, external redirects, analytics) which requires richer interception. |
@@ -1015,6 +1016,8 @@ New dashboard panels:
 ### Phase 0: Foundation (Week 1-2)
 
 **Goal:** Migrate from Puppeteer to Playwright without breaking existing functionality.
+
+**Status (2026-07-19):** Complete for the audit pipeline. Capture, flow scan, and evidence anchors use Playwright. Puppeteer dependency removed. Remaining work is Journey Review (Phase 1+), not browser migration.
 
 **Why this first:** Journey Review requires Playwright. The existing Puppeteer code works, but it blocks every future improvement. This is the single most important infrastructure change.
 

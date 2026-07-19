@@ -25,6 +25,16 @@ function confidenceRank(confidence: number | null | undefined): number {
   return typeof confidence === 'number' ? confidence : 0
 }
 
+function corridorBoost(flag: RankableFlag): number {
+  const checkId = flag.checkId ?? ''
+  if (checkId.startsWith('flow-') || checkId.startsWith('journey-') || checkId.startsWith('scroll-')) {
+    return 0
+  }
+  // Secondary critical-path pages get ::page:N suffixes
+  if (checkId.includes('::page:')) return 1
+  return 2
+}
+
 function compareFlagPrioritySignals(a: RankableFlag, b: RankableFlag): number {
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff
@@ -34,6 +44,9 @@ function compareFlagPrioritySignals(a: RankableFlag, b: RankableFlag): number {
 
   const confidenceDiff = confidenceRank(b.confidence) - confidenceRank(a.confidence)
   if (confidenceDiff !== 0) return confidenceDiff
+
+  const corridorDiff = corridorBoost(a) - corridorBoost(b)
+  if (corridorDiff !== 0) return corridorDiff
 
   return 0
 }

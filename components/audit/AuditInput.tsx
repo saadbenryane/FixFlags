@@ -225,6 +225,14 @@ export function AuditInput({
               autoComplete="url"
               placeholder={HERO.urlPlaceholder}
               value={url}
+              onFocus={() => {
+                if (resolvedPlacement === 'hero' || resolvedPlacement === 'final') {
+                  trackEvent('audit_intent', {
+                    cta_placement: resolvedPlacement,
+                    from: resolvedPlacement,
+                  })
+                }
+              }}
               onChange={(e) => {
                 setUrl(e.target.value)
                 setUrlError('')

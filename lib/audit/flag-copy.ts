@@ -97,8 +97,6 @@ export function isGenericWhyItMatters(text: string | null | undefined): boolean 
 const WHY_IT_MATTERS: Record<string, string> = {
   'measurement-ga-gtm-posthog-missing':
     'Without analytics you are shipping blind - you cannot tell whether a change increased signups or quietly broke them.',
-  'measurement-consent-blocking-incomplete':
-    'Analytics and consent need to work together. Missing privacy controls create trust and compliance risk before users even sign up.',
   'security-mixed-content':
     'Mixed HTTP resources on an HTTPS page can trigger browser warnings or blocked assets, making the launch URL look unsafe.',
   'visual-typography-sprawl':
@@ -333,6 +331,24 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Mobile visitors on slow networks see a blank screen and bounce before your product loads.',
   'slow-3g-cta-delayed':
     'If the CTA takes 8+ seconds on 3G, most mobile visitors never see it.',
+  'corridor-og-title-drift':
+    'Identical share titles across funnel pages make every link preview look the same in Slack and social.',
+  'corridor-og-description-drift':
+    'Reused Open Graph descriptions hide what makes each funnel page unique when shared.',
+  'journey-first-visit-unclear-value-prop':
+    'First-time visitors bounce when the landing page does not state the product outcome in a clear headline.',
+  'journey-first-visit-hidden-cta':
+    'Without an obvious next step, first-visit intent dies on the homepage.',
+  'journey-first-visit-dead-end':
+    'A conversion corridor with no path forward loses visitors who were ready to continue.',
+  'journey-first-visit-destination-no-next-action':
+    'Clicking through to a dead-end destination wastes the click that got the visitor there.',
+  'journey-signup-no-form':
+    'Signup paths without a visible form block the moment a visitor decides to convert.',
+  'journey-signup-too-many-fields':
+    'Long signup forms increase abandonment before the first success moment.',
+  'journey-contact-not-found':
+    'Buyers who cannot find help stall before purchasing.',
 }
 
 export function whyItMattersForCheckId(checkId: string): string {

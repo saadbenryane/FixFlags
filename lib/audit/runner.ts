@@ -6,7 +6,7 @@ import { AUDIT_DEADLINE_MS } from './pipeline-config'
 import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
-import { discoverCriticalPathUrls } from './critical-path'
+import { discoverCriticalPathUrlsEnriched } from './critical-path'
 import { persistFailedAuditCost } from './finalize'
 import { runPage } from './pipeline/run-page'
 import {
@@ -19,6 +19,8 @@ import {
   retryPrimaryTriage,
 } from './pipeline/finalize-from-outcome'
 import type { PipelineContext, PageRun } from './pipeline/types'
+import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
+import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
 
 export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
@@ -40,6 +42,8 @@ export async function runAudit(auditId: string): Promise<void> {
     await prisma.$transaction([
       prisma.screenshot.deleteMany({ where: { auditId } }),
       prisma.auditPage.deleteMany({ where: { auditId } }),
+      prisma.journeyReview.deleteMany({ where: { auditId } }),
+      prisma.flag.deleteMany({ where: { auditId, source: 'JOURNEY' } }),
     ])
 
     await prisma.audit.update({
@@ -49,6 +53,7 @@ export async function runAudit(auditId: string): Promise<void> {
         startedAt,
         completedAt: null,
         finalizedAt: null,
+        journeyReviewAt: null,
         errorMsg: null,
         failureCode: null,
         failureStage: null,
@@ -72,7 +77,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
       const discovered =
         audit.auditMode === 'CRITICAL_PATH'
-          ? discoverCriticalPathUrls(audit.url, primary.metadata)
+          ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata)
           : [{ url: audit.url, category: 'primary' as const }]
 
       for (const [index, page] of discovered.slice(1).entries()) {
@@ -85,6 +90,26 @@ export async function runAudit(auditId: string): Promise<void> {
           })
         )
       }
+
+      if (pageRuns.length > 1) {
+        const corridorFlags = runCorridorConsistencyChecks(
+          pageRuns.map((p, i) => ({
+            url: p.url,
+            role: discovered[i]?.category ?? (i === 0 ? 'primary' : 'other'),
+            ogTitle: p.metadata.ogTitle ?? null,
+            ogDescription: p.metadata.ogDescription ?? null,
+            title: p.metadata.title ?? null,
+          }))
+        )
+        if (corridorFlags.length > 0) {
+          pageRuns[0].flags.push(...corridorFlags)
+        }
+      }
+
+      await runJourneyReviewsForAudit(auditId, audit.url, {
+        included: audit.journeyReviewIncluded,
+        deadline: ctx.deadline,
+      })
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)
       await finalizeFromOutcome({

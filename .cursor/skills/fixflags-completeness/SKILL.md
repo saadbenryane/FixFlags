@@ -47,7 +47,11 @@ Search canonical docs and skills for:
 | `CI is not on GitHub` | CI exists; claim must match `ci.yml` |
 | `second pass` | Banned marketing phrase |
 | `34 models`, `39 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
-| `133`, `133 check`, `133/133` | Hardcoded check ID counts — use `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| `133`, `133 check`, `133/129 check` | Hardcoded check ID counts — use `ALL_CHECK_IDS.length` |
+| `Example feedback` (homepage) | Use `ProductEvidenceSection` / `productEvidence` |
+| `Analytics (NOT IMPLEMENTED` | Client funnel events are shipped in `lib/analytics/events.ts` |
+| `puppeteer` on audit path | Playwright only (`page-session`, `screenshot`) |
+| `RubricsPanel` as live surface | Dead; use `RubricBar` + `ReportExplorer` |
 | `ReportMiniNav`, `CompletenessHeader` | Removed; use `ReportStickyToolbar`, inline report sections |
 | `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
 | `How to Start`, `How to start toggle` | Removed homepage pattern — nav is How it works / Sample / Pricing |
@@ -104,11 +108,23 @@ Marketing and report surfaces must match product contracts:
 
 - **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit" or "Get started").
 - **Homepage nav:** How it works / Sample / Pricing (`lib/site/nav.ts` `MARKETING_LINKS`).
-- **One explorer:** exactly one report explorer on homepage (`SampleReportSection`); no second in hero.
-- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricsPanel` is summary/link-only.
+- **One explorer:** exactly one report explorer on homepage (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer`); no second in hero.
+- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricBar` is compact rubric jump links; do not resurrect `RubricsPanel`.
+- **Share status:** `ShareStatusBanner` mounted on live reports (not hero-text-only).
+- **Visual evidence:** either wired via `tryCaptureVisualEvidenceForAudit` or absent from the tree — no orphan `lib/audit/capture` modules.
+- **Browser stack:** single vendor (Playwright). Grep for `from 'puppeteer'` under `lib/audit` must be empty.
 - **Re-checks:** free and unlimited on owned reports; never gate behind quota.
 - **Billing gate:** new URL checks enforce FREE lifetime limit via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
 - **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
+
+## Phase 7.5 — Funnel / analytics
+
+See [`.cursor/skills/fixflags-analytics/SKILL.md`](../fixflags-analytics/SKILL.md).
+
+```bash
+rg "trackEvent\('" --glob '*.{ts,tsx}' -g '!node_modules'
+# Every FunnelEvent union member must have a call site (or be removed).
+```
 
 Grep skills/docs for stale conversion terms:
 

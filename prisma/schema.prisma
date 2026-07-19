@@ -117,6 +117,15 @@ enum ImpactTag {
 enum FlagSource {
   DETERMINISTIC
   AI
+  JOURNEY
+}
+
+enum JourneyReviewStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  ABANDONED
+  FAILED
 }
 
 enum FlagStatus {
@@ -504,6 +513,8 @@ model Audit {
   includeAi            Boolean              @default(true)
   triageAt             DateTime?
   aiReviewAt           DateTime?
+  journeyReviewIncluded Boolean             @default(false)
+  journeyReviewAt      DateTime?
 
   startedAt       DateTime?
   completedAt     DateTime?
@@ -533,6 +544,7 @@ model Audit {
   screenshots Screenshot[]
   flags       Flag[]
   pages       AuditPage[]
+  journeyReviews JourneyReview[]
   runCost     AuditRunCost?
   shareLinks  ShareLink[]
   feedback    AuditFeedback[]
@@ -555,6 +567,89 @@ model Audit {
   @@index([normalizedDomain])
   @@index([siteId])
   @@map("audits")
+}
+
+model JourneyReview {
+  id              String              @id @default(cuid())
+  auditId         String
+  audit           Audit               @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  journeyType     String
+  startUrl        String
+  status          JourneyReviewStatus @default(QUEUED)
+  completedSteps  Int                 @default(0)
+  maxSteps        Int                 @default(10)
+  goalAchieved    Boolean?
+  blockedReason   String?
+  abandonedReason String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  durationMs      Int?
+  plannerInputTokens    Int     @default(0)
+  plannerOutputTokens   Int     @default(0)
+  plannerModel          String?
+  evaluatorInputTokens  Int     @default(0)
+  evaluatorOutputTokens Int     @default(0)
+  evaluatorModel        String?
+  steps           JourneyStep[]
+  findings        JourneyFinding[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([auditId])
+  @@index([status])
+  @@index([journeyType])
+  @@map("journey_reviews")
+}
+
+model JourneyStep {
+  id                  String        @id @default(cuid())
+  journeyReviewId     String
+  journeyReview       JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
+  stepNumber          Int
+  actionType          String
+  actionDetail        Json
+  url                 String
+  screenshotBeforeUrl String?
+  screenshotAfterUrl  String?
+  accessibilityTree   String        @db.Text
+  consoleErrors       String[]      @default([])
+  networkErrors       String[]      @default([])
+  loadTimeMs          Int?
+  confidence          Float         @default(1.0)
+  reasoning           String?       @db.Text
+  createdAt           DateTime      @default(now())
+
+  @@unique([journeyReviewId, stepNumber])
+  @@index([journeyReviewId])
+  @@map("journey_steps")
+}
+
+model JourneyFinding {
+  id                    String        @id @default(cuid())
+  journeyReviewId       String
+  journeyReview         JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
+  stepNumber            Int
+  url                   String
+  rubric                RubricName
+  severity              Severity
+  impactTag             ImpactTag
+  problem               String        @db.Text
+  evidence              String        @db.Text
+  whyItMatters          String        @db.Text
+  fix                   String?       @db.Text
+  screenshotUrl         String?
+  accessibilityEvidence String?       @db.Text
+  confidence            Float         @default(0.8)
+  reproducibility       String        @default("always")
+  flagId                String?
+  checkId               String?
+  createdAt             DateTime      @default(now())
+
+  @@index([journeyReviewId])
+  @@index([rubric])
+  @@index([severity])
+  @@index([flagId])
+  @@map("journey_findings")
 }
 
 model ShareLink {

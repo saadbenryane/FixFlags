@@ -6,8 +6,8 @@
 
 | Tier | Question | Current readiness |
 |------|----------|-------------------|
-| Truth | Are audits accurate? | 80% |
-| Strength | Does the platform work reliably? | 25% |
+| Truth | Are audits accurate? | ~90% |
+| Strength | Does the platform work reliably? | ~80% |
 | Touch | Does the product feel world-class? | 10% |
 
 Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn within 30d), IMPORTANT (🔶 → affects satisfaction), POLISH (🔵 → nice to have).

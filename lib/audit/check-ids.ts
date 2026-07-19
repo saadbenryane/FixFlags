@@ -153,6 +153,29 @@ export const ALL_CHECK_IDS = [
   // slow-replay.ts
   'slow-3g-blank-screen',
   'slow-3g-cta-delayed',
+  // journey review
+  'journey-first-visit-unclear-value-prop',
+  'journey-first-visit-hidden-cta',
+  'journey-first-visit-dead-end',
+  'journey-first-visit-nav-broken',
+  'journey-first-visit-destination-no-headline',
+  'journey-first-visit-destination-no-next-action',
+  'journey-pricing-evaluation-unclear-value-prop',
+  'journey-pricing-evaluation-hidden-cta',
+  'journey-pricing-evaluation-dead-end',
+  'journey-pricing-evaluation-nav-broken',
+  'journey-pricing-evaluation-destination-no-headline',
+  'journey-pricing-evaluation-destination-no-next-action',
+  'journey-signup-unclear-value-prop',
+  'journey-signup-hidden-cta',
+  'journey-signup-dead-end',
+  'journey-signup-nav-broken',
+  'journey-signup-no-form',
+  'journey-signup-too-many-fields',
+  'journey-contact-not-found',
+  // corridor consistency
+  'corridor-og-title-drift',
+  'corridor-og-description-drift',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

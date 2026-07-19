@@ -14,7 +14,7 @@ import {
 } from '@/lib/audit/viewports'
 
 describe('viewports', () => {
-  it('defines Puppeteer capture dimensions', () => {
+  it('defines Playwright capture dimensions', () => {
     assert.deepEqual(DESKTOP_VIEWPORT, { width: 1280, height: 900 })
     assert.deepEqual(MOBILE_VIEWPORT, {
       width: 375,

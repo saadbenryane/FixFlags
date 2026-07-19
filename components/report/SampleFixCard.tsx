@@ -5,11 +5,11 @@ import { ClipboardCheck, Lightbulb, ScanSearch, Sparkles } from 'lucide-react'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { SeverityBadge } from '@/components/audit/SeverityBadge'
 import { SAMPLE_FIX } from '@/lib/marketing/copy'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 import { rubricLabel } from '@/lib/utils'
-import { cn } from '@/lib/utils'
 
 interface SampleFixCardProps {
   flag: RankableFlag
@@ -55,15 +55,15 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand">
           <Sparkles className="h-3 w-3" aria-hidden />
-          Free fix
+          {SAMPLE_FIX.label}
         </span>
         <p className="text-sm text-muted-foreground">{SAMPLE_FIX.subtext(totalFlags)}</p>
       </div>
 
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden border-0 p-0 shadow-card glass-surface">
         <div className="border-b border-border/30 bg-muted/20 p-4 sm:p-5">
           <div className="mb-2 flex items-center gap-2">
-            <Badge severity={flag.severity} />
+            <SeverityBadge severity={flag.severity} />
             <span className="meta-label text-muted-foreground">{rubricLabel(flag.rubric)}</span>
           </div>
           <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>
@@ -71,19 +71,19 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
 
         <div className="space-y-3 p-4 sm:p-5">
           {flag.evidence && (
-            <SampleFlagCard title="Evidence" icon={ScanSearch}>
+            <SampleFlagCard title={SAMPLE_FIX.evidenceTitle} icon={ScanSearch}>
               <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
             </SampleFlagCard>
           )}
 
           {flag.whyItMatters && (
-            <SampleFlagCard title="Why it matters" icon={Lightbulb}>
+            <SampleFlagCard title={SAMPLE_FIX.whyTitle} icon={Lightbulb}>
               <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
             </SampleFlagCard>
           )}
 
           {flag.verificationRule && (
-            <SampleFlagCard title="How to verify" icon={ClipboardCheck}>
+            <SampleFlagCard title={SAMPLE_FIX.verifyTitle} icon={ClipboardCheck}>
               <p className="text-sm leading-relaxed text-foreground/90 text-pretty">
                 {flag.verificationRule}
               </p>
@@ -93,7 +93,7 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
           <section className="rounded-[var(--radius-inner)] border border-brand/20 bg-brand/5 p-4 sm:p-5">
             <div className="mb-2.5 flex items-center gap-2">
               <Sparkles className="h-4 w-4 shrink-0 text-brand" aria-hidden />
-              <h4 className="text-sm font-medium text-brand">Fix</h4>
+              <h4 className="text-sm font-medium text-brand">{SAMPLE_FIX.fixTitle}</h4>
             </div>
             <FixPromptBlock
               prompt={prompt}
@@ -113,24 +113,10 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
           <Link href={signUpHref}>{SAMPLE_FIX.primaryCta}</Link>
         </Button>
         <Button variant="outline" asChild>
-          <Link href="/sign-in">Sign in</Link>
+          <Link href="/sign-in">{SAMPLE_FIX.signInCta}</Link>
         </Button>
       </div>
     </section>
   )
 }
 
-function Badge({ severity }: { severity: string }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-medium',
-        severity === 'CRITICAL' && 'bg-destructive/10 text-destructive',
-        severity === 'IMPORTANT' && 'bg-brand/10 text-brand',
-        severity !== 'CRITICAL' && severity !== 'IMPORTANT' && 'bg-muted text-muted-foreground'
-      )}
-    >
-      {severity}
-    </span>
-  )
-}

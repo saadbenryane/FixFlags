@@ -94,17 +94,15 @@ Inspects rendered HTML + HTTP response headers. Results stored in
 `backlog.md` is structural reasoning, not measured demand. This is the single
 highest-leverage unlock for Layer 2.
 
-### 1c. Analytics (NOT IMPLEMENTED — blocked on access)
+### 1c. Analytics (client funnel shipped; organic attribution blocked)
 
 **Purpose:** Track the conversion funnel: organic visit → audit → signup → paid.
 
-**Required events (already firing in production via `lib/analytics/events.ts`):**
-- `started_audit` — visitor ran a check
-- `completed_audit` — check finished
-- `signed_up` — visitor created account
-- `completed_checkout` — visitor paid
+**Client funnel events (shipped via `lib/analytics/events.ts` + admin page):**
+- Full launch funnel including `landing_view`, `audit_intent`, `started_audit`, `signup_started` (email + OAuth), `fix_prompt_copied`, `recheck_*`
+- See `.cursor/skills/fixflags-analytics/SKILL.md`
 
-**Missing:** Organic attribution. Currently no way to trace which public page
+**Missing:** Organic attribution rollup (GSC/GA access). Currently no way to trace which public page
 (or search query) led to which audit. See Layer 4 for the attribution design.
 
 ### 1d. Competitive intelligence (NOT IMPLEMENTED)
@@ -451,7 +449,7 @@ The system should automatically:
 ┌──────────────────────────────────────────────────────────────┐
 │                        AUDIT PIPELINE                        │
 │                                                              │
-│  URL → Puppeteer → Screenshots → Checks → AI Review → Flags │
+│  URL → Playwright → Screenshots → Checks → AI Review → Flags │
 │                                                    ↓         │
 │                                           persistAuditToGraph│
 │                                                    ↓         │

@@ -66,7 +66,7 @@
 
 ## Dependency risks
 
-- Puppeteer 25: downloads Chromium, large binary, security surface
+- Playwright: downloads Chromium, large binary, security surface
 - Next.js 15: regular updates, check security advisories
 - better-auth 1.6: relatively new auth library, audit updates
 - BullMQ 5: relies on Redis security

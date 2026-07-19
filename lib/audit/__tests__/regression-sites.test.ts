@@ -78,7 +78,7 @@ describe('regression: clean-page.html', () => {
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
     // consent flag must stay absent: no analytics detected means no consent gap.
-    ['measurement-consent-blocking-incomplete']
+    []
   )
 })
 
@@ -108,7 +108,7 @@ describe('regression: broken-page.html', () => {
     ],
     // template-default-copy must stay absent: this fixture's generic body prose is
     // not a heading template default. consent flag absent: no analytics detected.
-    ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy', 'measurement-consent-blocking-incomplete']
+    ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy']
   )
 })
 
@@ -122,7 +122,7 @@ describe('regression: saadbenryane-com.html', () => {
       { checkId: 'skip-link-missing', severity: 'POLISH' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent', 'measurement-consent-blocking-incomplete']
+    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )
 })
 
@@ -141,7 +141,7 @@ describe('regression: html5up-paradigm-shift.html', () => {
     ],
     // measurement-consent-blocking-incomplete removed as a duplicate of
     // cookie-consent-absent.
-    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent', 'measurement-consent-blocking-incomplete']
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )
 })
 
@@ -153,7 +153,7 @@ describe('regression: nextjs-org.html', () => {
       { checkId: 'canonical-missing', severity: 'POLISH' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation', 'images-empty-alt', 'measurement-consent-blocking-incomplete']
+    ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation', 'images-empty-alt']
   )
 })
 
@@ -167,6 +167,6 @@ describe('regression: vercel-com.html', () => {
     ],
     // links-no-text must stay absent: vercel.com's icon links are labeled via
     // aria-label / child svg title, which the accessible-name parser now honors.
-    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text', 'measurement-consent-blocking-incomplete']
+    ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text']
   )
 })

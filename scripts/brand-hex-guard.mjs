@@ -21,7 +21,9 @@ const ALLOWED = new Set([
 // files are instruction text, not UI: they legitimately quote example hex values
 // (e.g. teaching the model to cite "the button is gray (#999)" as evidence), so
 // a raw hex there is content, never a styling violation.
-const ALLOWED_PREFIXES = ['app/demo/', 'lib/prompts/']
+const ALLOWED_PREFIXES = ['app/demo/', 'lib/prompts/', 'lib/audit/capture/']
+// lib/audit/capture/* composites evidence PNGs/GIFs for flags (not product UI).
+// Hex there is for Sharp/SVG overlays on screenshots, not Tailwind tokens.
 
 const SCAN_DIRS = ['app', 'components', 'lib']
 const SKIP = new Set(['node_modules', '.next', 'dist'])

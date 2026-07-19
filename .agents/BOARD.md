@@ -4,8 +4,9 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| merge-origin-main | in_progress | auto | main | Merge origin/main into local main; resolve conflicts; push | local Playwright commits × remote app-polish/passkey/cwv | — | 2026-07-19 |
-| ship-completeness | in_progress | auto | main | Playwright unify, visual capture, product gaps, skills/docs | lib/audit/*, report/marketing UI, analytics, AGENTS/skills | — | 2026-07-19 |
+| merge-origin-main | done | auto | main | Merged origin/main into local main; resolved BOARD conflict; pushed 966f7b4 | local Playwright commits × remote app-polish/passkey/cwv | — | 2026-07-19 |
+| ultimate-audit-product | done | auto | main | Ultimate audit Phases 0–5: Playwright, narrative report, journey MVP, loop closure, corridor, demand-triggered docs | lib/audit/*, components/audit/*, prisma, MCP, docs | — | 2026-07-19 |
+| ship-completeness | done | auto | main | Playwright unify, visual capture, product gaps, skills/docs | lib/audit/*, report/marketing UI, analytics, AGENTS/skills | — | 2026-07-19 |
 | merge-all-to-main | done | auto | main | Merged unmerged branches into main; always-work-on-main rule | AGENTS.md, .agents/*, DECISIONS.md, .cursor/rules/agents.mdc | — | 2026-07-19 |
 | launch-funnel-p0 | done | auto | main | Launch-ready homepage + funnel P0/P1; P2 handoff | copy, nav, sample, analytics, product evidence, severity, pricing FAQ, flag dismiss | — | 2026-07-19 |
 | app-polish-review | done | claude | main | Reviewed+closed first-value-journey and ship-ready-core-loop; browser-verified full core loop; fixed email-claim dead end, URL-error 500s, missing ImpactTag migration (likely prod triage killer) | auth pages, useAuthRedirect, lib/audit/url, lib/api/errors, prisma migration, AuditInput, ExportMenu | — | 2026-07-18 |

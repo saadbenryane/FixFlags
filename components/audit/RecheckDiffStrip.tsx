@@ -44,8 +44,15 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
             id="recheck-results-heading"
             className="text-lg font-semibold tracking-tight text-foreground"
           >
-            {RECHECK_DIFF_COPY.title}
+            {fixed.length > 0
+              ? RECHECK_DIFF_COPY.celebrationTitle(fixed.length)
+              : RECHECK_DIFF_COPY.title}
           </h2>
+          {fixed.length > 0 ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {RECHECK_DIFF_COPY.celebrationBody}
+            </p>
+          ) : null}
         </div>
         {compareHref ? (
           <Button asChild variant="outline" size="sm" className="rounded-full">
@@ -88,6 +95,26 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
           hint={FLAG_STATUS_LABELS.REGRESSED.description}
         />
       </div>
+
+      {fixed.length > 0 && unchanged.length > 0 ? (
+        <Card className="space-y-2 p-4">
+          <p className="text-xs font-medium uppercase tracking-label text-muted-foreground">
+            {RECHECK_DIFF_COPY.nextFixHint}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[var(--radius-inner)] bg-success/5 p-3">
+              <p className="text-xs text-success">Cleared</p>
+              <p className="mt-1 text-sm font-medium line-through text-muted-foreground">
+                {fixed[0].problem}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius-inner)] bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Still open</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{unchanged[0].problem}</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       {fixed.length > 0 ? (
         <Callout

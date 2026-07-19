@@ -69,11 +69,12 @@ flowchart TD
 
 | Deliverable | Rubric | Notes |
 |-------------|--------|-------|
-| Secret leak scan | Reach | API keys in source/bundles |
-| Expanded critical path | Experience / Reach | Cross-page OG consistency |
-| Real device mobile | Experience | iPhone Safari + Android Chrome via BrowserStack/LambdaTest |
+| Secret leak scan | Reach | API keys in source/bundles — **demand-triggered** (Agency ICP pain) |
+| Expanded critical path | Experience / Reach | Sitemap + BFS corridor discovery + cross-page OG consistency (`corridor-og-*`) — **Shipped** |
+| Journey Review (Pro+) | Experience | Playwright multi-step first-visit / pricing / signup / contact walks — **Shipped MVP** |
+| Real device mobile | Experience | iPhone Safari + Android Chrome via BrowserStack/LambdaTest — **demand-triggered** (mobile accuracy complaints) |
 
-**Exit criteria:** Real device screenshots in report; 2 device profiles minimum.
+**Exit criteria (partial):** Corridor OG flags + Journey Review MVP live. Real-device screenshots deferred until accuracy demand.
 
 ---
 
@@ -82,9 +83,13 @@ flowchart TD
 | Deliverable | Notes |
 |-------------|-------|
 | ~~Repo-connected codebase scanning~~ | **Shipped, not roadmap.** GitHub OAuth connect, repo allow-listing, on-demand scan, and a dedicated report at `/report/repo/[id]` are live on Agency plan (`/settings/integrations`). Findings-only today (secrets, dependency hygiene, dangerous patterns) — see `docs/offering.md`. |
-| CI deploy gate | GitHub Action / webhook; fail on launch gate regression |
-| Weekly pulse | Scheduled re-check; email on REGRESSED flags |
+| CI deploy gate | GitHub Action / webhook; fail on launch gate regression — **trigger:** 10+ Agency subscribers |
+| Weekly pulse | Scheduled re-check digest email on REGRESSED flags — **trigger:** habit retention data (not a paid re-check substitute) |
 | Auto-fix PRs on repo scans | Open a PR with fixes applied, not just findings — natural next step once repo scanning has usage data |
+| Consent-blocking measurement | `measurement-consent-scan` capability — **trigger:** after measurement false-positive review |
+| Staging / password URLs | **trigger:** feature-request volume |
+| Vision fallback for journeys | Canvas / no-ARIA pages — **trigger:** journey accuracy plateau |
+| Graph `/issues/[checkId]` | **trigger:** `MIN_SAMPLE_SIZE` (20) met in production |
 
 **Exit criteria:** One CI integration doc; pulse cron job in worker.
 

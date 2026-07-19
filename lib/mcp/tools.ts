@@ -24,13 +24,18 @@ import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimat
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
-import { classifyArbitraryReportFlagDiff } from '@/lib/audit/diff-flags'
+import { classifyArbitraryReportFlagDiff, getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import {
   sanitizeFlagForRead,
   sanitizeRubricForRead,
 } from '@/lib/audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
 import { buildRepoFindingPayload } from '@/lib/mcp/repo-finding-payload'
+import {
+  buildPlanModePrompt,
+  rankFlagsByPriority,
+  resolveFixPrompt,
+} from '@/lib/audit/priority-flags'
 
 async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
@@ -386,9 +391,75 @@ export function registerAllTools(
       const { auditId } = outcome.result
 
       let status = 'QUEUED'
+      let nextFixes: Array<{
+        checkId: string | null
+        problem: string
+        severity: string
+        rubric: string
+        fixPrompt: string | null
+      }> = []
+      let diffSummary: { fixed: number; remaining: number; newIssues: number; regressed: number } | null =
+        null
+
       if (waitForCompletion) {
         const result = await pollAuditUntilDone({ auditId, signal: abortSignal })
         status = result.status
+        if (status === 'COMPLETED') {
+          const child = await prisma.audit.findUnique({
+            where: { id: auditId },
+            include: {
+              flags: {
+                where: { status: { in: ['OPEN', 'REGRESSED'] } },
+                orderBy: { position: 'asc' },
+              },
+              parent: {
+                include: { flags: true },
+              },
+            },
+          })
+          if (child) {
+            const ranked = rankFlagsByPriority(
+              child.flags.map((f) => ({
+                id: f.id,
+                checkId: f.checkId,
+                rubric: f.rubric,
+                severity: f.severity,
+                impactTag: f.impactTag,
+                problem: f.problem,
+                evidence: f.evidence,
+                whyItMatters: f.whyItMatters,
+                fix: f.fix,
+                agentPrompt: f.agentPrompt,
+                cursorPrompt: f.cursorPrompt,
+                claudePrompt: f.claudePrompt,
+                windsurfPrompt: f.windsurfPrompt,
+                lovablePrompt: f.lovablePrompt,
+                boltPrompt: f.boltPrompt,
+                verificationRule: f.verificationRule,
+                pageUrl: f.pageUrl,
+                confidence: f.confidence,
+              })),
+              [],
+              3
+            )
+            nextFixes = ranked.map(({ flag }) => ({
+              checkId: flag.checkId ?? null,
+              problem: flag.problem,
+              severity: flag.severity,
+              rubric: flag.rubric,
+              fixPrompt: resolveFixPrompt(flag),
+            }))
+            if (child.parentId) {
+              const diff = await getFlagDiffSummary(child.parentId, child.id)
+              diffSummary = {
+                fixed: diff.fixed.length,
+                remaining: diff.unchanged.length,
+                newIssues: diff.newIssues.length,
+                regressed: diff.regressed.length,
+              }
+            }
+          }
+        }
       }
 
       return {
@@ -409,6 +480,60 @@ export function registerAllTools(
                   : workerEstimate.waitingJobs > 0
                     ? 'backlog'
                     : undefined,
+              nextFixes,
+              diffSummary,
+            }),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
+    'ff_plan_mode_prompt',
+    'Get a single plan-mode fix prompt for an audit (paste into Cursor/Claude plan mode)',
+    { reportId: z.string() },
+    async ({ reportId }) => {
+      await assertMcpAccess(user)
+      const audit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        include: { flags: { orderBy: { position: 'asc' } } },
+      })
+      if (!audit) throw new Error('Report not found')
+      await assertAuditAccess(audit, user.id)
+      if (audit.status !== 'COMPLETED') {
+        throw new Error(`Report is ${audit.status}, not COMPLETED`)
+      }
+      const flags = audit.flags.map((f) => ({
+        id: f.id,
+        checkId: f.checkId,
+        rubric: f.rubric,
+        severity: f.severity,
+        impactTag: f.impactTag,
+        problem: f.problem,
+        evidence: f.evidence,
+        whyItMatters: f.whyItMatters,
+        fix: f.fix,
+        agentPrompt: f.agentPrompt,
+        cursorPrompt: f.cursorPrompt,
+        claudePrompt: f.claudePrompt,
+        windsurfPrompt: f.windsurfPrompt,
+        lovablePrompt: f.lovablePrompt,
+        boltPrompt: f.boltPrompt,
+        verificationRule: f.verificationRule,
+        pageUrl: f.pageUrl,
+        confidence: f.confidence,
+      }))
+      const prompt = buildPlanModePrompt(flags, { url: audit.url })
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              reportId,
+              url: audit.url,
+              prompt,
+              flagCount: flags.length,
             }),
           },
         ],

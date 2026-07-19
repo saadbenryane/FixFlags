@@ -51,6 +51,8 @@ export interface ExplorerFlag {
   evidenceDevices: ('desktop' | 'mobile')[]
   hasFixPrompt: boolean
   pageUrl: string | null
+  /** Animated GIF or overlay/side-by-side image URL for this flag. */
+  visualUrl?: string | null
 }
 
 export interface ReportExplorerModel {
@@ -71,10 +73,16 @@ function sortFlags(flags: RankableFlag[]): RankableFlag[] {
   return [...flags].sort(compareFlagsByPriority)
 }
 
-function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
+function mapLiveFlag(
+  flag: RankableFlag,
+  index: number,
+  visualByCheckId?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
+): ExplorerFlag {
   const fixPrompt = buildExpertFixPrompt(flag)
   const copyFixPrompt = fixPrompt
   const sourceFix = resolveFixPrompt(flag)
+  const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
+  const visualUrl = visual?.gifUrl || visual?.overlayUrl || null
   return {
     id: flag.id,
     checkId: flag.checkId ?? null,
@@ -103,6 +111,7 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
     evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],
     hasFixPrompt: Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
+    visualUrl,
   }
 }
 
@@ -116,6 +125,7 @@ export function buildLiveExplorerModel(input: {
   rubricRows: Array<{ name: string; score: number | null; grade?: string | null }>
   evidenceAnchors?: EvidenceAnchorMap
   previewMeta?: PreviewMeta | null
+  flagVisualEvidence?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
 }): ReportExplorerModel {
   const sorted = sortFlags(input.flags)
   const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
@@ -133,7 +143,7 @@ export function buildLiveExplorerModel(input: {
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
-    flags: sorted.map((flag, index) => mapLiveFlag(flag, index)),
+    flags: sorted.map((flag, index) => mapLiveFlag(flag, index, input.flagVisualEvidence)),
     allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
     previewMeta: input.previewMeta ?? null,
   }
@@ -202,6 +212,7 @@ function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
     evidenceDevices: flag.evidenceDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),
     pageUrl: flag.pageUrl ?? null,
+    visualUrl: null,
   }
 }
 

@@ -133,6 +133,14 @@ export function FlagDetailPanel({
 
       {flag.evidence && (
         <FlagCard title="Evidence" icon={ScanSearch}>
+          {flag.visualUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={flag.visualUrl}
+              alt=""
+              className="mb-3 w-full rounded-[var(--radius-inner)] border border-border/40"
+            />
+          ) : null}
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
           {flag.pageUrl ? (
             <a

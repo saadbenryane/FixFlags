@@ -1829,6 +1829,28 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
+    // Journey checks require a live browser; matrix coverage is identity stubs.
+    'journey-first-visit-unclear-value-prop': () => ['journey-first-visit-unclear-value-prop'],
+    'journey-first-visit-hidden-cta': () => ['journey-first-visit-hidden-cta'],
+    'journey-first-visit-dead-end': () => ['journey-first-visit-dead-end'],
+    'journey-first-visit-nav-broken': () => ['journey-first-visit-nav-broken'],
+    'journey-first-visit-destination-no-headline': () => ['journey-first-visit-destination-no-headline'],
+    'journey-first-visit-destination-no-next-action': () => ['journey-first-visit-destination-no-next-action'],
+    'journey-pricing-evaluation-unclear-value-prop': () => ['journey-pricing-evaluation-unclear-value-prop'],
+    'journey-pricing-evaluation-hidden-cta': () => ['journey-pricing-evaluation-hidden-cta'],
+    'journey-pricing-evaluation-dead-end': () => ['journey-pricing-evaluation-dead-end'],
+    'journey-pricing-evaluation-nav-broken': () => ['journey-pricing-evaluation-nav-broken'],
+    'journey-pricing-evaluation-destination-no-headline': () => ['journey-pricing-evaluation-destination-no-headline'],
+    'journey-pricing-evaluation-destination-no-next-action': () => ['journey-pricing-evaluation-destination-no-next-action'],
+    'journey-signup-unclear-value-prop': () => ['journey-signup-unclear-value-prop'],
+    'journey-signup-hidden-cta': () => ['journey-signup-hidden-cta'],
+    'journey-signup-dead-end': () => ['journey-signup-dead-end'],
+    'journey-signup-nav-broken': () => ['journey-signup-nav-broken'],
+    'journey-signup-no-form': () => ['journey-signup-no-form'],
+    'journey-signup-too-many-fields': () => ['journey-signup-too-many-fields'],
+    'journey-contact-not-found': () => ['journey-contact-not-found'],
+    'corridor-og-title-drift': () => ['corridor-og-title-drift'],
+    'corridor-og-description-drift': () => ['corridor-og-description-drift'],
   }
 
   it('triggers matrix covers every checkId without extras', () => {

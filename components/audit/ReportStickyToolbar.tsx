@@ -7,10 +7,12 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
-const BASE_SECTIONS = [
-  { id: 'report-overview', label: 'Overview' },
-  { id: 'report-flags', label: 'Flags' },
-] as const
+const OVERVIEW_SECTION = { id: 'report-overview', label: 'Overview' } as const
+const JOURNEY_SECTION = { id: 'report-journey', label: 'Journey' } as const
+const FLOW_SECTION = { id: 'report-flow', label: 'Flow' } as const
+const FLAGS_SECTION = { id: 'report-flags', label: 'Flags' } as const
+const PREVIEWS_SECTION = { id: 'report-previews', label: 'Previews' } as const
+const LAUNCH_SECTION = { id: 'report-launch-gates', label: 'Launch' } as const
 const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
 const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
 
@@ -19,6 +21,10 @@ type NavSection = { id: string; label: string }
 interface Props {
   className?: string
   showOverview?: boolean
+  showJourney?: boolean
+  showFlow?: boolean
+  showPreviews?: boolean
+  showLaunch?: boolean
   showRecheckSection?: boolean
   /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
   hasRecheckDiff?: boolean
@@ -30,6 +36,10 @@ interface Props {
 export function ReportStickyToolbar({
   className,
   showOverview,
+  showJourney = false,
+  showFlow = false,
+  showPreviews = false,
+  showLaunch = false,
   showRecheckSection = true,
   hasRecheckDiff = false,
   siteUrl,
@@ -39,21 +49,28 @@ export function ReportStickyToolbar({
   const navShellRef = useRef<HTMLDivElement>(null)
   const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
-    const items: NavSection[] = [...BASE_SECTIONS]
-    if (!showOverview) {
-      items.shift()
-    }
+    const items: NavSection[] = []
+    if (showOverview) items.push(OVERVIEW_SECTION)
+    if (showJourney) items.push(JOURNEY_SECTION)
+    if (showFlow) items.push(FLOW_SECTION)
+    items.push(FLAGS_SECTION)
+    if (showPreviews) items.push(PREVIEWS_SECTION)
+    if (showLaunch) items.push(LAUNCH_SECTION)
     if (showRecheckSection) {
       items.push(hasRecheckDiff ? RECHECK_RESULTS_SECTION : RECHECK_SECTION)
     }
     return items
   }, [
     showOverview,
+    showJourney,
+    showFlow,
+    showPreviews,
+    showLaunch,
     showRecheckSection,
     hasRecheckDiff,
   ])
 
-  const [active, setActive] = useState<string>(sections[0]?.id ?? BASE_SECTIONS[0].id)
+  const [active, setActive] = useState<string>(sections[0]?.id ?? FLAGS_SECTION.id)
 
   useEffect(() => {
     let frame = 0

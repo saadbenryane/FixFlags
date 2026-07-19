@@ -16,6 +16,10 @@ export const AUDIT_PROGRESS = {
 export const AUDIT_PROGRESS_SUBSTEP = {
   /** Capture + PageSpeed finished, checks about to start. */
   CAPTURE_DONE: 32,
-  /** Deterministic checks finished, AI judge about to start. */
-  CHECKS_DONE: 58,
+  /** Deterministic checks finished on pages, journey about to start (or skip). */
+  CHECKS_DONE: 45,
+  /** Journey Review started (Pro+). */
+  JOURNEY_START: 48,
+  /** Journey Review finished; AI judge about to start. */
+  JOURNEY_DONE: 65,
 } as const

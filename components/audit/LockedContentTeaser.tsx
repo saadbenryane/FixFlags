@@ -3,17 +3,20 @@
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LOCKED_CONTENT_TEASER } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface LockedContentTeaserProps {
   label?: string
   signUpHref?: string
+  signInHref?: string
   className?: string
 }
 
 export function LockedContentTeaser({
-  label = 'Sign up to view',
+  label = LOCKED_CONTENT_TEASER.defaultLabel,
   signUpHref = '/sign-up',
+  signInHref = '/sign-in',
   className,
 }: LockedContentTeaserProps) {
   return (
@@ -29,10 +32,10 @@ export function LockedContentTeaser({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Button asChild size="sm">
-          <Link href={signUpHref}>Create free account</Link>
+          <Link href={signUpHref}>{LOCKED_CONTENT_TEASER.primaryCta}</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/sign-in">Sign in</Link>
+          <Link href={signInHref}>{LOCKED_CONTENT_TEASER.secondaryCta}</Link>
         </Button>
       </div>
     </div>

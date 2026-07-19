@@ -267,7 +267,7 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">landing_view</code> &mdash; Homepage viewed</p>
           <p><code className="text-foreground font-mono text-xs">started_audit</code> &mdash; User submitted a URL (scan_submitted)</p>
           <p><code className="text-foreground font-mono text-xs">scan_validation_failed</code> &mdash; Client URL validation failed</p>
-          <p><code className="text-foreground font-mono text-xs">signup_started</code> &mdash; Sign-up form focused</p>
+          <p><code className="text-foreground font-mono text-xs">signup_started</code>: Email focus or OAuth click on sign-up</p>
           <p><code className="text-foreground font-mono text-xs">signed_up</code> &mdash; Account created</p>
           <p><code className="text-foreground font-mono text-xs">signed_in</code> &mdash; User signed in</p>
           <p><code className="text-foreground font-mono text-xs">viewed_pricing</code> &mdash; Pricing page viewed</p>
@@ -278,7 +278,8 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code> &mdash; Free tier limit hit</p>
           <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code> &mdash; Fix prompt copied to clipboard</p>
           <p><code className="text-foreground font-mono text-xs">recheck_started</code> &mdash; Owner started a re-check</p>
-          <p><code className="text-foreground font-mono text-xs">recheck_completed</code> &mdash; Re-check compare viewed</p>
+          <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Re-check result viewed (compare page or report diff strip)</p>
+          <p><code className="text-foreground font-mono text-xs">audit_intent</code>: Landing URL field focused (hero/final CTA)</p>
           <p><code className="text-foreground font-mono text-xs">viewed_report</code> &mdash; Completed report viewed</p>
           <p><code className="text-foreground font-mono text-xs">viewed_sample</code> &mdash; Sample report section viewed</p>
           <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code> &mdash; Sample CTA clicked</p>

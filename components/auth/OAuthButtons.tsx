@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
   callbackURL: string
@@ -27,6 +28,7 @@ export function OAuthButtons({ callbackURL, newUserCallbackURL, google, github, 
   }
 
   async function handleOAuth(provider: 'google' | 'github') {
+    trackEvent('signup_started', { method: provider })
     setLoading(provider)
     try {
       const { error } = await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL })

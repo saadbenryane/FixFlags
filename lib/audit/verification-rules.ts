@@ -186,8 +186,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
 export const MEASUREMENT_VERIFICATION_RULES = {
   'measurement-ga-gtm-posthog-missing':
     'Check Google Analytics 4, Google Tag Manager, or PostHog presence. Install one of them for conversion tracking and business intelligence.',
-  'measurement-consent-blocking-incomplete':
-    'Ensure consent banners properly block or delay analytics scripts based on user preferences. Set data retention limits and implement user-friendly consent management.',
 }
 
 /**
@@ -291,6 +289,35 @@ export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
     'Test on 3G. Confirm meaningful content renders within 2 seconds. Server-render hero content.',
 }
 
+const JOURNEY_VERIFY =
+  'Re-run the journey in an incognito window on desktop and mobile. Confirm the goal page loads with a clear next action and no dead ends.'
+
+export const JOURNEY_VERIFICATION_RULES: Record<string, string> = {
+  'journey-first-visit-unclear-value-prop': JOURNEY_VERIFY,
+  'journey-first-visit-hidden-cta': JOURNEY_VERIFY,
+  'journey-first-visit-dead-end': JOURNEY_VERIFY,
+  'journey-first-visit-nav-broken': JOURNEY_VERIFY,
+  'journey-first-visit-destination-no-headline': JOURNEY_VERIFY,
+  'journey-first-visit-destination-no-next-action': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-unclear-value-prop': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-hidden-cta': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-dead-end': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-nav-broken': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-destination-no-headline': JOURNEY_VERIFY,
+  'journey-pricing-evaluation-destination-no-next-action': JOURNEY_VERIFY,
+  'journey-signup-unclear-value-prop': JOURNEY_VERIFY,
+  'journey-signup-hidden-cta': JOURNEY_VERIFY,
+  'journey-signup-dead-end': JOURNEY_VERIFY,
+  'journey-signup-nav-broken': JOURNEY_VERIFY,
+  'journey-signup-no-form': JOURNEY_VERIFY,
+  'journey-signup-too-many-fields': JOURNEY_VERIFY,
+  'journey-contact-not-found': JOURNEY_VERIFY,
+  'corridor-og-title-drift':
+    'Align og:title with the page H1/title. Share the URL in a private Slack/iMessage preview and confirm the title matches.',
+  'corridor-og-description-drift':
+    'Align og:description with the page value prop. Share the URL in a private preview and confirm the description matches.',
+}
+
 export const ALL_VERIFICATION_RULES: Record<string, string> = {
   ...CHECK_ID_TO_RULE,
   ...MEASUREMENT_VERIFICATION_RULES,
@@ -301,6 +328,7 @@ export const ALL_VERIFICATION_RULES: Record<string, string> = {
   ...TRUST_PSYCHOLOGY_VERIFICATION_RULES,
   ...VISUAL_HIERARCHY_VERIFICATION_RULES,
   ...MOBILE_UX_VERIFICATION_RULES,
+  ...JOURNEY_VERIFICATION_RULES,
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

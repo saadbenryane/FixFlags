@@ -1,13 +1,10 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 
 const LiveReportExplorer = dynamic(
@@ -43,14 +40,20 @@ import {
   RecheckDiffStrip,
   type RecheckDiffSummary,
 } from '@/components/audit/RecheckDiffStrip'
+import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { SampleFixCard } from '@/components/report/SampleFixCard'
 import { rubricLabel, severityLabel } from '@/lib/utils'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
-import type { JourneyPage } from '@/components/audit/JourneyBar'
+import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
+import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
+import { PreviewCards } from '@/components/audit/PreviewCards'
+import {
+  JourneyReviewTimeline,
+  type JourneyReviewSummary,
+} from '@/components/audit/JourneyReviewTimeline'
 
 interface RubricRow {
   id: string
@@ -91,6 +94,7 @@ interface AuditReportProps {
     previewMeta?: PreviewMeta | null
     flowData?: FlowData | null
     evidenceAnchors?: EvidenceAnchorMap
+    flagVisualEvidence?: import('@/lib/audit/persist-visual-evidence').FlagVisualEvidenceMap
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -111,6 +115,7 @@ interface AuditReportProps {
   actions?: ReactNode
   toolbarActions?: ReactNode
   pages?: JourneyPage[]
+  journeyReviews?: JourneyReviewSummary[]
   recheckDiff?: RecheckDiffSummary | null
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
@@ -137,12 +142,11 @@ export function AuditReport({
   actions,
   toolbarActions,
   pages = [],
+  journeyReviews = [],
   recheckDiff = null,
   compareHref = null,
   sampleFixFlag = null,
 }: AuditReportProps) {
-  const router = useRouter()
-  const [scanning, setScanning] = useState(false)
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
@@ -151,6 +155,10 @@ export function AuditReport({
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
+  const showJourney = !isSample && pages.length > 1
+  const showJourneyReview = !isSample && journeyReviews.length > 0
+  const showFlow = !isSample && Boolean(audit.flowData)
+  const showPreviews = !isSample && Boolean(audit.previewMeta)
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -178,38 +186,7 @@ export function AuditReport({
       triageDegraded ||
       prescriptionFailed ||
       audit.reportCompleteness !== 'FULL' ||
-      hasLaunchGates ||
-      Boolean(audit.previewMeta) ||
-      Boolean(audit.flowData) ||
       !isViewerOwner)
-
-  const showScanDeeper = pages.length > 1 && !isSample
-
-  async function handleScanDeeper() {
-    if (!audit.url || scanning) return
-    setScanning(true)
-    try {
-      const res = await fetch('/api/checks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: audit.url,
-          parentId: auditId,
-          mode: 'critical_path',
-        }),
-      })
-      if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
-        return
-      }
-      const data = await res.json()
-      router.push(`/report/${data.reportId}`)
-    } catch {
-      toast.error('Could not start the deeper scan. Try again.')
-    } finally {
-      setScanning(false)
-    }
-  }
 
   return (
     <Container
@@ -229,6 +206,10 @@ export function AuditReport({
       />
 
       {!isSample && (
+        <ShareStatusBanner shareStatus={audit.shareStatus} rubrics={audit.rubrics} />
+      )}
+
+      {!isSample && (
         <RubricBar rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
       )}
 
@@ -236,6 +217,10 @@ export function AuditReport({
         <>
           <ReportStickyToolbar
             showOverview={showOverview}
+            showJourney={showJourney || showJourneyReview}
+            showFlow={showFlow}
+            showPreviews={showPreviews}
+            showLaunch={hasLaunchGates}
             showRecheckSection={isLoggedIn && isViewerOwner}
             hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
@@ -250,7 +235,16 @@ export function AuditReport({
           ) : null}
 
           {recheckDiff ? (
-            <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
+            <>
+              {auditId && audit.parentId ? (
+                <RecheckCompletedTracker
+                  auditId={auditId}
+                  parentAuditId={audit.parentId}
+                  outcome="report_diff"
+                />
+              ) : null}
+              <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
+            </>
           ) : null}
         </>
       )}
@@ -323,6 +317,12 @@ export function AuditReport({
                   <p className="mb-3 text-sm font-medium leading-snug text-pretty">
                     {flag.problem}
                   </p>
+                  {flag.evidence?.trim() ? (
+                    <p className="mb-3 text-xs leading-snug text-muted-foreground text-pretty">
+                      {flag.evidence.trim().slice(0, 180)}
+                      {flag.evidence.trim().length > 180 ? '…' : ''}
+                    </p>
+                  ) : null}
                   <FixPromptBlock
                     prompt={prompt}
                     toolPrompts={toolPrompts}
@@ -338,6 +338,22 @@ export function AuditReport({
           </div>
         </section>
       )}
+
+      {(showJourney || showJourneyReview) ? (
+        <div id="report-journey" className="scroll-mt-[var(--header-offset)] space-y-4">
+          {showJourney ? (
+            <JourneyBar
+              pages={pages}
+              totalFlags={audit.flags.length}
+              auditId={auditId}
+              primaryUrl={audit.url}
+            />
+          ) : null}
+          {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
+        </div>
+      ) : null}
+
+      {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
 
       {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
@@ -362,6 +378,12 @@ export function AuditReport({
           </Callout>
         </section>
       )}
+
+      {showPreviews && audit.previewMeta ? <PreviewCards preview={audit.previewMeta} /> : null}
+
+      {hasLaunchGates && audit.launchReadiness?.checklist ? (
+        <LaunchGates checklist={audit.launchReadiness.checklist} />
+      ) : null}
 
       {!isSample && fixPromptLocked && sampleFixFlag && (
         <section id="report-sample-fix" className="scroll-mt-[var(--header-offset)]">
@@ -426,35 +448,6 @@ export function AuditReport({
             <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
               {REPORT_COPY.partialReport.body}
             </Callout>
-          )}
-
-          {hasLaunchGates && audit.launchReadiness?.checklist && (
-            <LaunchGates checklist={audit.launchReadiness.checklist} />
-          )}
-
-          {showScanDeeper && (
-            <Card className="flex items-center justify-between gap-4 p-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">Scan deeper</p>
-                <p className="text-xs text-muted-foreground">
-                  Click through your conversion flow to find more issues.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 rounded-full"
-                onClick={handleScanDeeper}
-                disabled={scanning}
-              >
-                {scanning ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Scan deeper
-              </Button>
-            </Card>
           )}
         </div>
       )}

@@ -3,21 +3,23 @@
 import { useEffect } from 'react'
 import { trackEvent } from '@/lib/analytics/events'
 
-/** Fires once when the before/after compare page mounts after a re-check. */
+/** Fires once when a re-check result is viewed (compare page or report with diff). */
 export function RecheckCompletedTracker({
   auditId,
   parentAuditId,
+  outcome = 'compared',
 }: {
   auditId: string
   parentAuditId: string
+  outcome?: string
 }) {
   useEffect(() => {
     trackEvent('recheck_completed', {
       audit_id: auditId,
       parent_audit_id: parentAuditId,
-      outcome: 'compared',
+      outcome,
     })
-  }, [auditId, parentAuditId])
+  }, [auditId, parentAuditId, outcome])
 
   return null
 }

@@ -1,6 +1,7 @@
 import type { Browser, ConsoleMessage, Page } from 'playwright'
 import { assertPublicAuditUrl } from '../url'
 import type { CaptureProfile } from './capture-profile'
+import { applyJourneyRouteGuards, blockFormSubmits } from './journey-safety'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -25,6 +26,8 @@ export interface CreateAuditPageOptions {
   allowLocalhost?: boolean
   /** Set false when the caller needs the first post-DOMContentLoaded paint. */
   settle?: boolean
+  /** Extra journey guards: block payments, downloads, and mutating form posts. */
+  journeySafe?: boolean
 }
 
 export async function settleAuditPage(page: Page): Promise<void> {
@@ -62,11 +65,19 @@ export async function createAuditPage(
       return
     }
     if (options.allowLocalhost && isLocalhostAuditUrl(requestUrl)) {
+      if (options.journeySafe) {
+        await applyJourneyRouteGuards(route, () => route.continue())
+        return
+      }
       await route.continue()
       return
     }
     try {
       await assertPublicAuditUrl(requestUrl)
+      if (options.journeySafe) {
+        await applyJourneyRouteGuards(route, () => route.continue())
+        return
+      }
       await route.continue()
     } catch {
       await route.abort('blockedbyclient')
@@ -121,6 +132,10 @@ export async function createAuditPage(
 
   if (options.settle !== false) {
     await settleAuditPage(page)
+  }
+
+  if (options.journeySafe) {
+    await blockFormSubmits(page)
   }
 
   return { page, consoleErrors, responseHeaders }

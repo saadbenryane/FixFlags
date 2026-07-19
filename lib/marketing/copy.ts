@@ -304,6 +304,9 @@ export const FLAG_STATUS_LABELS = {
 
 export const RECHECK_DIFF_COPY = {
   title: 'Prove your fixes with a re-check',
+  celebrationTitle: (n: number) => (n === 1 ? '1 flag cleared' : `${n} flags cleared`),
+  celebrationBody: 'Your re-check confirms the fixes. Keep going on what is still open.',
+  nextFixHint: 'Next up',
   cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
@@ -1177,7 +1180,19 @@ export const LOCKED_INSPECTION = {
   secondaryCta: 'Create free account',
 } as const
 
+export const LOCKED_CONTENT_TEASER = {
+  defaultLabel: 'Sign up to view',
+  primaryCta: 'Create free account',
+  secondaryCta: 'Sign in',
+} as const
+
 export const SAMPLE_FIX = {
+  label: 'Free fix',
+  evidenceTitle: 'Evidence',
+  whyTitle: 'Why it matters',
+  verifyTitle: 'How to verify',
+  fixTitle: 'Fix',
+  signInCta: 'Sign in',
   subtext: (n: number) => `This is 1 of ${n} fixes. Sign in to inspect and fix all of them.`,
   primaryCta: 'Unlock all fixes',
 } as const

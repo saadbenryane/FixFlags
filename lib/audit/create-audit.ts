@@ -8,7 +8,7 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
-import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
+import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
@@ -78,6 +78,16 @@ async function assertParentAuditAllowed(
   }
 }
 
+async function resolveJourneyReviewIncluded(userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, plan: true, role: true, subscriptionStatus: true },
+  })
+  if (!user) return false
+  return canAccessPaidFeatures(user)
+}
+
 export async function createAndEnqueueAudit(
   options: CreateAuditOptions
 ): Promise<CreateAuditResult> {
@@ -89,6 +99,7 @@ export async function createAndEnqueueAudit(
   }
 
   const includeAi = await resolveIncludeAiForNewAudit(options.userId ?? null)
+  const journeyReviewIncluded = await resolveJourneyReviewIncluded(options.userId ?? null)
 
   const data = {
     url,
@@ -100,6 +111,7 @@ export async function createAndEnqueueAudit(
     status: 'QUEUED' as const,
     progress: 5,
     includeAi,
+    journeyReviewIncluded,
     ...(attribution
       ? {
           normalizedDomain: attribution.normalizedDomain,

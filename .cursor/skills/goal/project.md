@@ -12,7 +12,7 @@ Organizes what we test by dimension (MESSAGE / EXPERIENCE / REACH), category (co
 | Tool | What it does |
 |------|----------------|
 | `html-parse` | Cheerio metadata + deterministic checks (fast) |
-| `browser-capture` | Puppeteer screenshots + DOM metrics |
+| `browser-capture` | Playwright screenshots + DOM metrics |
 | `flow-navigation` | CTA click + navigation trace |
 | `pagespeed` | Google PageSpeed / Lighthouse API |
 | `ai-judge` | Vision LLM rubric pass |
@@ -26,7 +26,7 @@ Status per capability: `live` | `partial` | `planned`.
 |-------|---------|-------|
 | Copy / metadata / SEO | `npm run demo:audit:offline` | Fastest, no dev server |
 | Rendered HTML | `npm run demo:audit` | Needs `npm run dev` |
-| CTA flow | `npm run demo:audit:flow` | Puppeteer click path |
+| CTA flow | `npm run demo:audit:flow` | Playwright click path |
 | Unit regression | `npm run test:unit` | All checks + fixtures |
 | Capability map | `npm run audit:capabilities` | 0 unmapped checkIds |
 

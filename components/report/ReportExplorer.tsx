@@ -192,6 +192,7 @@ function FlagDetailPane({
         <LockedInspectionPane
           flagTitle={flag.title}
           flagSeverity={flag.severity}
+          signInHref={signUpHref?.replace(/^\/sign-up/, '/sign-in') ?? '/sign-in'}
           signUpHref={signUpHref}
         />
       ) : (

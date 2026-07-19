@@ -307,6 +307,32 @@ export default async function ReportPage({ params }: Props) {
       importantCount: p.flags.filter((f) => f.severity === 'IMPORTANT').length,
     }))
 
+    const journeyReviews = (
+      (audit as { journeyReviews?: Array<{
+        id: string
+        journeyType: string
+        status: string
+        goalAchieved: boolean | null
+        completedSteps: number
+        steps: Array<{
+          stepNumber: number
+          actionType: string
+          url: string
+          screenshotAfterUrl: string | null
+          reasoning: string | null
+        }>
+        _count: { findings: number }
+      }> }).journeyReviews ?? []
+    ).map((r) => ({
+      id: r.id,
+      journeyType: r.journeyType,
+      status: r.status,
+      goalAchieved: r.goalAchieved,
+      completedSteps: r.completedSteps,
+      findingsCount: r._count.findings,
+      steps: r.steps,
+    }))
+
     const screenshots = parseScreenshots(audit.screenshots)
     const captureStatus = parseCaptureStatus(audit)
     const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
@@ -335,6 +361,7 @@ export default async function ReportPage({ params }: Props) {
           prescriptionFailed={prescriptionFailed}
           failureCode={audit.failureCode ?? null}
           pages={journeyPages}
+          journeyReviews={journeyReviews}
           recheckDiff={recheckDiff}
           sampleFixFlag={sampleFixFlag as typeof flags[number] | null}
           compareHref={

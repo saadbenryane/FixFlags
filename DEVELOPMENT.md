@@ -116,7 +116,7 @@ Use the sandbox databases defined in `.claude/launch.json`:
 - Health check: `curl http://localhost:3000/api/health` (DB, `storageConfigured`, `aiConfigured`)
 - AI readiness: `GET /api/health/ai`
 - Worker diagnostics: `GET /api/health/worker` (heartbeat age, queue depth)
-- Browser diagnostics: `GET /api/health/browser` (Puppeteer + R2)
+- Browser diagnostics: `GET /api/health/browser` (Playwright + R2)
 - Audit pipeline: see `docs/audit-pipeline.md`
 - Prisma Studio: `npm run db:studio`
 - Worker logs: pino JSON, pipe through `pino-pretty` in dev

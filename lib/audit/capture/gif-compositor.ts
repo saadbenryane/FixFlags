@@ -2,8 +2,27 @@
  * GIF compositor. Composes frame sequences into animated GIFs using omggif.
  */
 import sharp from 'sharp'
-import { GifWriter } from 'omggif'
 import { logger } from '@/lib/logger'
+
+// omggif ships CJS; types export GifWriter but ESM interop is inconsistent under tsc.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { GifWriter } = require('omggif') as {
+  GifWriter: new (
+    buf: number[],
+    width: number,
+    height: number,
+    gopts?: { loop?: number }
+  ) => {
+    addFrame: (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      indexed: number[],
+      opts?: { palette?: number[]; delay?: number }
+    ) => number
+  }
+}
 
 export interface GifComposeOptions {
   delayMs?: number
@@ -68,7 +87,7 @@ export async function composeGif(
   const writer = new GifWriter(out, gifW, gifH, { loop: loops })
 
   for (const frame of processed) {
-    writer.addFrame(0, 0, frame.width, frame.height, frame.indexed, {
+    writer.addFrame(0, 0, frame.width, frame.height, Array.from(frame.indexed), {
       palette: frame.palette,
       delay: frame.delay,
     })

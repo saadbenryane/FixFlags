@@ -29,7 +29,15 @@ Read before changing product logic or writing copy that promises a feature.
 | Sample provenance | `lib/marketing/live-sample.ts` (`SampleSource`: live \| curated \| fixture) |
 | Billing gate | `lib/billing/credits.ts` (`wouldBlockNewCheckWithCredits`) |
 | Report explorer | `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
-| Rubric summaries | `components/audit/RubricsPanel.tsx` (summary/link-only) |
+| Sample explorer | `components/marketing/sample/SampleReportExplorer.tsx`, `HeroProductPreview.tsx` |
+| Live explorer adapter | `components/audit/LiveReportExplorer.tsx` |
+| Rubric bar | `components/audit/RubricBar.tsx` (compact jump links; not a second flag browser) |
+| Top Priorities | `components/audit/AuditReport.tsx` `#report-priorities`, `lib/audit/priority-flags.ts` |
+| Share status | `components/audit/ShareStatusBanner.tsx`, `lib/audit/share-status.ts` |
+| Funnel events | `lib/analytics/events.ts`, `.cursor/skills/fixflags-analytics/SKILL.md` |
+| Admin funnel | `app/admin/analytics/page.tsx` |
+| Visual evidence | `lib/audit/capture/*`, `lib/audit/persist-visual-evidence.ts` |
+| Browser capture | Playwright via `lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts` |
 | Rubric order | `lib/audit/constants.ts` (`RUBRIC_ORDER`) |
 | MCP poll helper | `lib/audit/poll-audit.ts` |
 | Production env | `lib/env.ts`, `instrumentation.ts` |
@@ -69,11 +77,12 @@ Copy must say: monthly limits apply to **new URL checks**; re-checks on owned re
 
 | Surface | Owns | Does not own |
 |---------|------|--------------|
-| `ReportExplorer` | Flag list, filters, detail panel, fix prompts, screenshot evidence | Rubric score summaries |
-| `RubricsPanel` | Three-rubric summary cards, links into explorer | Flag browsing or duplicate flag lists |
+| `ReportExplorer` | Flag list, filters, detail panel, fix prompts, screenshot + visual evidence | Page chrome |
+| `RubricBar` | Compact rubric score pills linking to `#report-flags` | Flag browsing |
+| `ShareStatusBanner` | Share readiness + per-rubric status badges | Flag lists |
 | `ReportStickyToolbar` | Section nav (Flags, Journey, Overview, Re-check) | Fix prompt editing |
 
-Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`).
+Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`).
 
 ## Sample provenance
 

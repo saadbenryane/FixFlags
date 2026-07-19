@@ -20,6 +20,7 @@
 
 - **Monetization blockers — CLOSED.** All five items have automated coverage in CI via `npm run test:unit`. See [QUALITY.md § Monetization blockers](./QUALITY.md#monetization-blockers).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation. See [scan-roadmap.md](./docs/scan-roadmap.md).
+- **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report (Journey/Flow/Previews), Journey Review MVP (Pro+), corridor discovery + OG consistency, MCP plan-mode + re-check next-fixes. Remaining depth is demand-triggered (see Later / [scan-roadmap.md](./docs/scan-roadmap.md) Phase 3–4).
 
 ## Readiness (reconciled)
 
@@ -44,13 +45,14 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 ## Later
 
 - **CI/CD integration** — GitHub Actions, Vercel deploy hooks. Runs audit on deploy preview.
-  *Trigger:* Agency plan users requesting it.
+  *Trigger:* Agency plan users requesting it / 10+ Agency subscribers.
 - **Team workspaces** — seat management, shared projects, audit history.
   *Trigger:* 10+ Agency subscribers.
 - **Staging site support** — password-protected or localhost URL testing.
   *Trigger:* Feature request volume justifies complexity.
 - **White-label reports** — branded PDF exports, custom domains.
   *Trigger:* Agency demand.
+- **Secret-leak scan / real-device mobile / weekly pulse / journey vision fallback / graph issue pages** — see [docs/scan-roadmap.md](./docs/scan-roadmap.md) demand triggers. Do not ship without the listed signal.
 
 ## Not planned
 

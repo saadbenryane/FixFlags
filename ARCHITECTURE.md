@@ -94,7 +94,7 @@ Each page in an audit progresses through these stages independently.
 | `lib/audit/checks/registry.ts` | Check descriptor registry |
 | `lib/audit/judge-triage.ts` | Phase 1: AI triage |
 | `lib/audit/judge-prescription.ts` | Phase 2: AI prescription |
-| `lib/audit/screenshot.ts` | Puppeteer screenshot capture |
+| `lib/audit/screenshot.ts` | Playwright screenshot capture |
 | `lib/audit/flow/` | CTA flow testing |
 | `lib/audit/persist.ts` | Results persistence |
 | `lib/audit/scoring.ts` | Rubric scoring |
@@ -178,19 +178,32 @@ Internal-only system for organic growth. Never queried directly by public pages.
 - **Dedicated worker:** `INLINE_WORKER=false`, deploy separate worker service
 - **Container:** Docker (Debian bookworm-slim), multi-stage build
 - **Platform:** Railway (fly.io-compatible)
-- **Health:** `/api/health` (DB+Redis), `/api/health/worker` (heartbeat), `/api/health/browser` (Puppeteer+R2)
+- **Health:** `/api/health` (DB+Redis), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2)
 
 ## Key Data Flows
 
 ### Audit flow
 1. User submits URL → API route creates Audit record (QUEUED)
-2. Queue picks up job → runs capture (Puppeteer screenshot + HTML)
+2. Queue picks up job → runs capture (Playwright screenshot + HTML)
 3. Runs deterministic checks (22 modules)
 4. Runs AI triage (cheap model, 2500 chars page text)
-5. Persists flags + scores + screenshots
+5. Persists flags + scores + screenshots; resolves evidence anchors; optionally captures visual evidence (GIF/overlay) into `performanceData.flagVisualEvidence`
 6. If user is signed up and `includeAi` → enqueues `ai-review` job for prescription (5000 chars page text)
 7. Audit marked COMPLETED → user sees report (fix prompts when `aiReviewAt` set)
 8. Re-check: same URL → new capture → diff against previous flags
+
+### Report UI ownership
+
+| Layer | Components |
+|-------|------------|
+| Page shell | `components/audit/AuditReport.tsx`, hero, toolbar, `RubricBar`, Top Priorities, `ShareStatusBanner` |
+| Live explorer | `LiveReportExplorer` → `ReportExplorer` |
+| Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |
+| Flag detail | `FlagDetailPanel`, `LockedInspectionPane`, visual evidence via `flag.visualUrl` |
+
+### Capture stack
+
+Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-session.ts`. Visual evidence: `lib/audit/capture/*` (GIF/overlay/side-by-side), persisted by `persist-visual-evidence.ts`. Funnel analytics: `lib/analytics/events.ts`.
 
 ### SaaS flow
 1. Anonymous user: triage + deterministic flags → upsell at sign up for fix prompts
@@ -201,7 +214,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 ## Technical invariants
 
 - No Prisma/Node imports on edge runtime (proxy.ts)
-- `serverExternalPackages`: puppeteer, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.
+- `serverExternalPackages`: playwright, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.
 - R2 is required for production screenshots. Missing R2 → service boots, scans fail with clear message.
 - Missing AI keys → triage/prescription disabled; scans complete with deterministic checks (`/api/health` reports `aiConfigured: false`)
 - No `next build`-time OAuth gating (resolved at runtime via `/api/auth/providers`)

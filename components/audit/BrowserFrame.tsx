@@ -20,7 +20,7 @@ interface Props {
   state?: BrowserFrameState
   className?: string
   label?: string
-  /** desktop = 1280×900, mobile = 375×812 (matches Puppeteer capture) */
+  /** desktop = 1280×900, mobile = 375×812 (matches Playwright capture) */
   device?: Device
   /** Rendered inside the image viewport (0–1 coords relative to capture) */
   viewportOverlay?: ReactNode
