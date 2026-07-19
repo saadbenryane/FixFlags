@@ -18,7 +18,6 @@ export default async function HomePage() {
       <LandingHeroSection />
       <SampleReportSection
         audit={sample.audit}
-        illustrative={sample.source === 'fixture'}
       />
       <CheckDimensionsSection />
       <HowItWorksLoopSection sampleHref="/samples" />

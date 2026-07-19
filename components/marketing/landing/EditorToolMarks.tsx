@@ -11,16 +11,11 @@ const LOGO_MARKS: Record<ToolLogoName, ReactNode> = Object.fromEntries(
 
 interface EditorToolMarksProps {
   className?: string
-  showDisclaimer?: boolean
   compact?: boolean
 }
 
-export function EditorToolMarks({
-  className,
-  showDisclaimer = true,
-  compact = false,
-}: EditorToolMarksProps) {
-  const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
+export function EditorToolMarks({ className, compact = false }: EditorToolMarksProps) {
+  const { label, logos } = LANDING_PAGE.logoCloud
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -44,11 +39,6 @@ export function EditorToolMarks({
           </li>
         ))}
       </ul>
-      {showDisclaimer ? (
-        <p className="mx-auto max-w-xl text-center text-xs text-muted-foreground/60">
-          {disclaimer}
-        </p>
-      ) : null}
     </div>
   )
 }

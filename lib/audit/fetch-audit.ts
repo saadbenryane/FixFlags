@@ -199,6 +199,7 @@ export async function getGatedAuditForRequest(id: string) {
     score: r.score,
     status: r.status,
     summary: r.summary,
+    rubricPrompt: r.rubricPrompt,
     flags: r.flags.map((f) => ({
       id: f.id,
       checkId: f.checkId,
@@ -212,6 +213,7 @@ export async function getGatedAuditForRequest(id: string) {
       agentPrompt: f.agentPrompt,
       cursorPrompt: f.cursorPrompt,
       claudePrompt: f.claudePrompt,
+      windsurfPrompt: f.windsurfPrompt,
       lovablePrompt: f.lovablePrompt,
       boltPrompt: f.boltPrompt,
       verificationRule: f.verificationRule,

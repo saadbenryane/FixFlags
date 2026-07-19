@@ -104,6 +104,9 @@
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.
 - **impactTag** is set on all deterministic checks.
+- **Report component architecture:** `components/audit/` owns page-level layout (hero, toolbar, rubrics, actions). `components/report/` owns flag interaction (explorer, detail panel, fix loop, scoring). Shared primitives live in `components/ui/` (FilterPill, ScoreDot, ThumbsFeedback).
+- **Shared report utilities:** `lib/audit/share-status.ts` (shareStatusMessage), `lib/audit/duration.ts` (durationFromTimestamps). Use these instead of duplicating the logic.
+- **FilterPill icons:** `FilterPill` accepts an optional `icon` prop (LucideIcon). Rubric filters use `rubricIcon()` from `lib/utils.ts` (MessageSquare/Zap/Globe2). Severity filter uses `AlertTriangle`. Page filter uses `Globe`.
 
 ### AI calls & cost
 - **Providers:** OpenAI (`gpt-4o-mini`) primary, Anthropic fallback. Chain is `JUDGE_PROVIDER_CHAIN` (default `openai,anthropic`). Models resolve in `lib/audit/judge-config.ts`; override with `ANTHROPIC_JUDGE_MODEL` / `TRIAGE_MODEL` / `OPENAI_JUDGE_MODEL`.

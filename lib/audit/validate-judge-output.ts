@@ -1,9 +1,8 @@
 /**
- * @deprecated Legacy single-pass judge validation. The pipeline now uses
- * two-phase triage + prescription. This file is kept for backward compat
- * with tests and MCP tools that still reference JudgeOutput.
+ * Judge output normalization and validation.
  *
- * Shared utilities have moved to judge-utils.ts.
+ * Re-exports JudgeContractError and buildAiFlagMatchKey from judge-utils.ts
+ * for backward compatibility with existing import sites.
  */
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import type { JudgeOutput } from '@/lib/audit/judge-schema'

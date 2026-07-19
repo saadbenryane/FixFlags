@@ -5,7 +5,7 @@ import { TestimonialsCarousel } from '@/components/marketing/landing/Testimonial
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 export function TestimonialsSection() {
-  const { headline, subhead, disclaimer, quotes } = LANDING_PAGE.testimonials
+  const { headline, subhead, quotes } = LANDING_PAGE.testimonials
 
   return (
     <Section
@@ -17,9 +17,6 @@ export function TestimonialsSection() {
         <div className="mx-auto max-w-3xl space-y-3 text-center">
           <LandingSectionHeader headline={headline} />
           <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{subhead}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground text-pretty">
-            {disclaimer}
-          </p>
         </div>
 
         <TestimonialsCarousel quotes={quotes} />

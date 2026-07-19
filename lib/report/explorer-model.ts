@@ -9,6 +9,7 @@ import {
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import type { PromptToolKey } from '@/components/audit/PromptToolSelector'
 import {
   buildAllEvidenceHighlights,
   type EvidenceHighlight,
@@ -45,6 +46,7 @@ export interface ExplorerFlag {
   evidence: string
   fixPrompt: string
   copyFixPrompt: string
+  toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>>
   verificationRule: string | null
   evidenceDevices: ('desktop' | 'mobile')[]
   hasFixPrompt: boolean
@@ -89,6 +91,14 @@ function mapLiveFlag(flag: RankableFlag, index: number): ExplorerFlag {
       : '',
     fixPrompt,
     copyFixPrompt,
+    toolPrompts: {
+      universal: flag.agentPrompt,
+      cursor: flag.cursorPrompt,
+      claude: flag.claudePrompt,
+      windsurf: flag.windsurfPrompt,
+      lovable: flag.lovablePrompt,
+      bolt: flag.boltPrompt,
+    },
     verificationRule: flag.verificationRule ?? null,
     evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],
     hasFixPrompt: Boolean(sourceFix),
@@ -187,6 +197,7 @@ function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
     evidence: flag.evidence,
     fixPrompt: flag.fixPrompt,
     copyFixPrompt: flag.fixPrompt,
+    toolPrompts: {},
     verificationRule: flag.verificationRule,
     evidenceDevices: flag.evidenceDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),

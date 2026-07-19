@@ -53,7 +53,7 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
         ) : (
           <div className="flex aspect-[1.91/1] w-full items-center justify-center bg-muted text-sm text-muted-foreground">
             {checkId === 'og-image-missing'
-              ? 'No og:image set — blank card when shared'
+              ? 'No og:image set, blank card when shared'
               : 'No image preview'}
           </div>
         )}
@@ -61,14 +61,14 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
           <p className="text-3xs uppercase tracking-wide text-muted-foreground">{hostname}</p>
           <p className="line-clamp-2 text-sm font-semibold leading-snug">
             {checkId === 'og-title-missing' ? (
-              <span className="text-muted-foreground italic">No og:title — falls back to page title</span>
+              <span className="text-muted-foreground italic">No og:title, falls back to page title</span>
             ) : (
               truncatePreview(title, 70) || 'Missing title'
             )}
           </p>
           <p className="line-clamp-2 text-xs text-muted-foreground">
             {checkId === 'og-description-missing' ? (
-              <span className="italic">No og:description — falls back to meta description</span>
+              <span className="italic">No og:description, falls back to meta description</span>
             ) : (
               truncatePreview(description, 120) || 'Missing description'
             )}
@@ -166,6 +166,8 @@ export function FlagDetailPanel({
           ) : (
             <FixPromptBlock
               prompt={flag.fixPrompt}
+              toolPrompts={flag.toolPrompts}
+              showToolSelector
               clamp={false}
               showCursorAction
               variant="compact"

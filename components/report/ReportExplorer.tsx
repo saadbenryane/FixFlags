@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
@@ -22,7 +22,7 @@ import {
   type SeverityFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
-import { cn, rubricLabel } from '@/lib/utils'
+import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
 
 type ExplorerVariant = 'hero' | 'live'
 
@@ -108,12 +108,13 @@ function RubricTabs({
   counts: Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
   total: number
 }) {
-  const tabs: Array<{ id: RubricFilter; label: string; count: number }> = [
+  const tabs: Array<{ id: RubricFilter; label: string; count: number; icon?: LucideIcon }> = [
     { id: 'ALL', label: 'All', count: total },
     ...RUBRIC_ORDER.map((rubric) => ({
       id: rubric as RubricFilter,
       label: rubricLabel(rubric),
       count: counts[rubric],
+      icon: rubricIcon(rubric),
     })).filter((tab) => tab.count > 0),
   ]
 
@@ -123,6 +124,7 @@ function RubricTabs({
         <FilterPill
           key={tab.id}
           size="sm"
+          icon={tab.icon}
           active={rubricFilter === tab.id}
           onClick={() => onRubricChange(tab.id)}
         >
@@ -351,7 +353,7 @@ export function ReportExplorer({
     <div className="space-y-2">
       {hasPages && (
         <div className="flex flex-wrap gap-1.5">
-          <FilterPill size="sm" active={pageFilter === null} onClick={() => setPageFilter(null)}>
+          <FilterPill size="sm" icon={Globe} active={pageFilter === null} onClick={() => setPageFilter(null)}>
             {REPORT_COPY.explorer.allPages} ({model.flags.length})
           </FilterPill>
           {pages.map((page) => {
@@ -382,6 +384,7 @@ export function ReportExplorer({
           </FilterPill>
           <FilterPill
             size="sm"
+            icon={AlertTriangle}
             active={severityFilter === 'CRITICAL'}
             onClick={() =>
               setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')

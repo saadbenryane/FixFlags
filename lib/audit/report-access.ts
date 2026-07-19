@@ -113,7 +113,6 @@ export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[])
   }))
 }
 
-/** @deprecated Use stripAiPrescriptionFromFlags or stripDeterministicFixesFromFlags. */
 export function stripPrescriptionFromFlags<T extends FlagLike>(flags: T[]): T[] {
   return stripDeterministicFixesFromFlags(flags)
 }
@@ -140,11 +139,6 @@ export function stripDeterministicFixesFromRubrics<T extends RubricLike>(rubrics
     boltPrompt: null,
     flags: r.flags ? stripDeterministicFixesFromFlags(r.flags) : r.flags,
   }))
-}
-
-/** @deprecated Use stripAiPrescriptionFromRubrics or stripDeterministicFixesFromRubrics. */
-export function stripPrescriptionFromRubrics<T extends RubricLike>(rubrics: T[]): T[] {
-  return stripDeterministicFixesFromRubrics(rubrics)
 }
 
 /** Legacy deterministic-only audits (no triageAt): hide AI fields entirely. */
@@ -188,17 +182,3 @@ export function stripLegacyDeterministicAudit<T extends {
   }
 }
 
-export function stripPrescriptionFromAudit<T extends {
-  verdict?: string | null
-  pageJob?: string | null
-  pageType?: string | null
-  launchReadiness?: unknown
-  flags: FlagLike[]
-  rubrics?: RubricLike[]
-}>(audit: T): T {
-  return {
-    ...audit,
-    flags: stripDeterministicFixesFromFlags(audit.flags),
-    rubrics: audit.rubrics ? stripDeterministicFixesFromRubrics(audit.rubrics) : audit.rubrics,
-  }
-}

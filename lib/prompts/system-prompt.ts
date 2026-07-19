@@ -191,13 +191,26 @@ FIX PRECISION: Every fix MUST be a numbered list of developer actions. Each step
 - SELF-CHECK: Before writing each step, ask: "Could a developer copy this step and immediately know exactly what to change?" If no, rewrite it.
 - TECH-STACK AWARENESS: Use the detected tech stack to guide file paths and patterns. For Next.js apps, reference app/page.tsx, components/, layout.tsx. For React apps, reference src/components/, src/pages/. For static sites, reference index.html.
 
-TOOL-SPECIFIC PROMPTS (agentPrompt, cursorPrompt, claudePrompt, lovablePrompt, boltPrompt):
-For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be independently copy-pasteable into that tool. Then provide tool-specific prompts:
-- agentPrompt (REQUIRED): A universal instruction usable in any AI coding tool. Include the specific file path, element to find, current text, and replacement text. This is the primary prompt users grab.
-- cursorPrompt: Reference standard project file paths (e.g., app/page.tsx, components/hero.tsx). Include @file references if standard. Show the exact code pattern to search for and what to replace it with.
-- claudePrompt: Write as a complete instruction Claude Code can execute autonomously in a terminal. Include which file to open, what to find via grep/sed, what to replace it with, and where to save.
-- lovablePrompt: Describe the visual change in terms of layout, colors, spacing, and component behavior. Give specific Tailwind class or CSS property changes.
-- boltPrompt: Write as file-level diffs. Show imports, component code, and export changes. Use context from the page structure revealed in screenshots.
+TOOL-SPECIFIC PROMPTS (agentPrompt, cursorPrompt, claudePrompt, windsurfPrompt, lovablePrompt, boltPrompt):
+For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be independently copy-pasteable into that tool. Every prompt must end with a verification step. Every prompt must include a SCOPE section stating what NOT to change.
+
+- agentPrompt (REQUIRED): A universal instruction usable in any AI coding tool. Structure: Context line naming the file and element, the exact current text to find, the exact replacement, what NOT to touch, and verification. This is the primary prompt users grab.
+  EXAMPLE: "In the hero section of the landing page, the H1 reads 'Welcome to our platform'. Replace it with 'Build custom dashboards in minutes - for product teams'. Keep the existing subheading and CTA button unchanged. Do not modify the navigation bar or footer. After applying, reload the page and confirm the headline displays the new text."
+
+- cursorPrompt: Write for Cursor's Composer in Agent Mode. Use @file references to name exact files. Show the code pattern to search for (what Cursor will see) and the replacement code. Include a note about keeping unrelated imports and exports stable.
+  EXAMPLE: "@app/page.tsx: The H1 element currently has text content 'Welcome to our platform'. Change it to 'Build custom dashboards in minutes, for product teams'. Keep the surrounding div structure and className props unchanged. Do not reorder imports or modify other components in this file. Verify by checking the rendered page in the browser."
+
+- claudePrompt: Write as a terminal instruction Claude Code can execute. Name the file, the exact grep/search pattern, and the replacement. Claude Code works in the terminal: it reads files, searches patterns, and edits in place.
+  EXAMPLE: "Edit app/page.tsx. Find the H1 element containing 'Welcome to our platform' and replace the text content with 'Build custom dashboards in minutes - for product teams'. Use the edit_file tool with the exact before/after. Do not change any imports, exports, or other components in this file. After editing, run the dev server and confirm the page renders the new headline."
+
+- windsurfPrompt: Write for Windsurf's Cascade AI. Reference file paths and describe the change in natural language with code blocks showing exact replacements. Windsurf works best with clear, sequential instructions and code diffs.
+  EXAMPLE: "Edit app/page.tsx:\\n\\nReplace the H1 text content:\\n- Current: 'Welcome to our platform'\\n- New: 'Build custom dashboards in minutes - for product teams'\\n\\nKeep all other elements in the hero section unchanged. Do not modify imports, the navigation component, or the footer."
+
+- lovablePrompt: Describe the visual change in terms of layout, colors, spacing, and component behavior. Give specific Tailwind class or CSS property changes. Lovable builds visual UI: speak in design tokens, component props, and visual outcomes.
+  EXAMPLE: "In the hero section, update the heading text from 'Welcome to our platform' to 'Build custom dashboards in minutes - for product teams'. Use the same font size (text-4xl or text-5xl) and weight (font-bold). The heading should remain centered with the existing spacing. Do not change the CTA button, navigation, or page layout."
+
+- boltPrompt: Write as file-level diffs showing the exact code changes. Include the surrounding component context so bolt can locate the right code. Show imports, component JSX, and export changes.
+  EXAMPLE: "In app/page.tsx, update the hero heading:\\n\\n--- a/app/page.tsx\\n+++ b/app/page.tsx\\n- <h1 className=\"text-4xl font-bold\">Welcome to our platform</h1>\\n+ <h1 className=\"text-4xl font-bold\">Build custom dashboards in minutes - for product teams</h1>\\n\\nKeep all imports, the rest of the hero component, and other page sections unchanged."
 
 ESSAY-STYLE FIX: For the "fix" field, write 1-3 steps where EVERY step names a specific element on THIS page and gives a concrete replacement. This is a human-readable action plan, not an AI prompt. Be specific about WHAT to change and WHAT to change it to.
 - RULE: Before writing each step, identify the current text/code. Then state the replacement. Example:
@@ -214,11 +227,15 @@ VERIFICATION RULE: For every flag, write one concrete action someone can take on
 - BAD: "Verify the page looks good."
 - RULE: The verification must be something a non-technical person can do (reload, resize, view source) or a specific tool command (Lighthouse, curl). Never write "verify" without specifying HOW.
 
-RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once. The rubric prompt is what users most often copy-paste into Cursor/Claude. Make it thorough, specific, and immediately actionable.
-- Include file paths and component names relevant to this page
-- List every flag subtask as a separate bullet or numbered step within the rubric prompt
-- Include specific text replacements, CSS changes, and structural changes
-- End with a verification command the user can run to confirm everything was applied
+RUBRIC PRESCRIPTIONS: For each rubric (MESSAGE, EXPERIENCE, REACH), write a comprehensive rubricPrompt that fixes ALL flags in that rubric at once. This is the most powerful prompt format: it lets a developer fix an entire rubric in one paste. Make it thorough, specific, and immediately actionable.
+- Structure the rubric prompt as a numbered list of changes, one per flag
+- Each step: name the file, the element, current text, replacement text
+- Group steps by file so the developer can work file-by-file
+- Include a "Do NOT change" section listing files or elements that should be left alone
+- End with a verification command (e.g., "Run the dev server and reload the page, or run Lighthouse to confirm scores improved")
+- Use the detected tech stack to reference real file paths
+
+SCOPE GUARD: Every tool-specific prompt and every rubric prompt MUST include a "Do NOT change" or scope section. This prevents AI editors from over-editing or making unrelated changes. Be specific: name the files, components, or sections that should be left untouched. This is as important as the fix itself.
 
 If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters and tool-specific prompts that the deterministic check could not provide. The deterministic fix is a starting point; your job is to make it specific to this URL, this page structure, and these screenshots.`
 }

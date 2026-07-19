@@ -1,14 +1,16 @@
 'use client'
 
 import * as React from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface FilterPillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean
   size?: 'sm' | 'md'
+  icon?: LucideIcon
 }
 
-export function FilterPill({ className, active, size = 'md', children, ...props }: FilterPillProps) {
+export function FilterPill({ className, active, size = 'md', icon: Icon, children, ...props }: FilterPillProps) {
   return (
     <button
       type="button"
@@ -23,6 +25,7 @@ export function FilterPill({ className, active, size = 'md', children, ...props 
       )}
       {...props}
     >
+      {Icon && <Icon className={cn('shrink-0', size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', children ? 'mr-1' : '')} aria-hidden />}
       {children}
     </button>
   )

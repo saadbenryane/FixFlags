@@ -227,6 +227,7 @@ export default async function ReportPage({ params }: Props) {
       score: number | null
       status: string | null
       summary: string
+      rubricPrompt: string | null
       flags: Array<{
         id: string
         checkId: string
@@ -240,6 +241,7 @@ export default async function ReportPage({ params }: Props) {
         agentPrompt: string | null
         cursorPrompt: string | null
         claudePrompt: string | null
+        windsurfPrompt: string | null
         lovablePrompt: string | null
         boltPrompt: string | null
         verificationRule: string | null
@@ -261,6 +263,7 @@ export default async function ReportPage({ params }: Props) {
       agentPrompt: f.agentPrompt,
       cursorPrompt: f.cursorPrompt,
       claudePrompt: f.claudePrompt,
+      windsurfPrompt: f.windsurfPrompt,
       lovablePrompt: f.lovablePrompt,
       boltPrompt: f.boltPrompt,
       verificationRule: f.verificationRule,
@@ -349,6 +352,7 @@ export default async function ReportPage({ params }: Props) {
                 name: r.name,
                 grade: r.grade,
                 score: r.score,
+                rubricPrompt: r.rubricPrompt,
                 flags: r.flags.map((f) => ({
                   severity: f.severity,
                   problem: f.problem,

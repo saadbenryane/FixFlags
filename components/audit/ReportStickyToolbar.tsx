@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Container } from '@/components/ui/container'
+import { ScoreDot } from '@/components/ui/score-dot'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
@@ -133,7 +133,6 @@ export function ReportStickyToolbar({
   }
 
   const hostname = siteUrl ? displayHostname(siteUrl) : null
-  const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
 
   return (
     <div
@@ -150,11 +149,7 @@ export function ReportStickyToolbar({
         <div className="order-2 flex w-full min-w-0 items-center gap-3 overflow-x-auto scrollbar-thin max-xl:gap-2 sm:gap-4 xl:order-1 xl:w-auto xl:flex-1 xl:gap-4">
           {hostname && isStuck && (
             <span className="hidden max-w-[140px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground sm:flex">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: scoreColor }}
-                aria-hidden
-              />
+              <ScoreDot score={score ?? null} size="sm" />
               <span className="truncate">{hostname}</span>
             </span>
           )}

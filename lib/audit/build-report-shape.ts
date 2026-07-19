@@ -32,6 +32,7 @@ export function buildReportShapeFromDb(
       agentPrompt: string | null
       cursorPrompt: string | null
       claudePrompt: string | null
+      windsurfPrompt: string | null
       lovablePrompt: string | null
       boltPrompt: string | null
       verificationRule: string | null
@@ -52,6 +53,7 @@ export function buildReportShapeFromDb(
     agentPrompt: string | null
     cursorPrompt: string | null
     claudePrompt: string | null
+    windsurfPrompt: string | null
     lovablePrompt: string | null
     boltPrompt: string | null
     verificationRule: string | null
@@ -73,6 +75,7 @@ export function buildReportShapeFromDb(
     agentPrompt: f.agentPrompt,
     cursorPrompt: f.cursorPrompt,
     claudePrompt: f.claudePrompt,
+    windsurfPrompt: f.windsurfPrompt,
     lovablePrompt: f.lovablePrompt,
     boltPrompt: f.boltPrompt,
     verificationRule: f.verificationRule,

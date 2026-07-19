@@ -32,7 +32,6 @@ import {
   buildPlanModePrompt,
   resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -234,7 +233,12 @@ export function AuditReport({
       {!isSample && explorerModel && hasFixPrompts && showPrescription && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
-            <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
+            <div>
+              <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {REPORT_COPY.sectionTitles.topPrioritiesHint}
+              </p>
+            </div>
             {(() => {
               const total = countFixPrompts(audit.flags)
               if (total === 0) return null
@@ -253,6 +257,14 @@ export function AuditReport({
             {rankFlagsByPriority(audit.flags, audit.rubricRows, 3).map(({ flag, rubricName }) => {
               const prompt = resolveFixPrompt(flag)
               if (!prompt) return null
+              const toolPrompts = {
+                universal: flag.agentPrompt,
+                cursor: flag.cursorPrompt,
+                claude: flag.claudePrompt,
+                windsurf: flag.windsurfPrompt,
+                lovable: flag.lovablePrompt,
+                bolt: flag.boltPrompt,
+              }
               return (
                 <Card key={flag.id} className="p-4 sm:p-5">
                   <div className="mb-3 flex items-center gap-2">
@@ -269,7 +281,15 @@ export function AuditReport({
                   <p className="mb-3 text-sm font-medium leading-snug text-pretty">
                     {flag.problem}
                   </p>
-                  <FixPromptBlock prompt={prompt} rows={2} clamp variant="compact" nested />
+                  <FixPromptBlock
+                    prompt={prompt}
+                    toolPrompts={toolPrompts}
+                    showToolSelector
+                    rows={2}
+                    clamp
+                    variant="compact"
+                    nested
+                  />
                 </Card>
               )
             })}
@@ -329,8 +349,6 @@ export function AuditReport({
 
       {showOverview && (
         <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-4 sm:space-y-5">
-          {!isViewerOwner && <ThirdPartyAuditDisclaimer variant="compact" />}
-
           {aiReviewPending && (
             <Callout variant="info" title={REPORT_COPY.aiPending.title}>
               {REPORT_COPY.aiPending.body}

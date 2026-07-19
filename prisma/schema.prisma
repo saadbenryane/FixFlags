@@ -279,6 +279,7 @@ model RepoScanFinding {
   agentPrompt  String?    @db.Text
   cursorPrompt String?    @db.Text
   claudePrompt String?    @db.Text
+  windsurfPrompt String?  @db.Text
   createdAt    DateTime   @default(now())
   fixPr        RepoFixPr?
 
@@ -690,6 +691,7 @@ model ReportRubric {
   rubricPrompt  String  @db.Text
   cursorPrompt  String? @db.Text
   claudePrompt  String? @db.Text
+  windsurfPrompt String? @db.Text
   lovablePrompt String? @db.Text
   boltPrompt    String? @db.Text
 
@@ -738,6 +740,7 @@ model Flag {
   agentPrompt   String? @db.Text
   cursorPrompt  String? @db.Text
   claudePrompt  String? @db.Text
+  windsurfPrompt String? @db.Text
   lovablePrompt String? @db.Text
   boltPrompt    String? @db.Text
 

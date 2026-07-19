@@ -24,6 +24,7 @@ function flag(
     evidence: '',
     fixPrompt: '',
     copyFixPrompt: '',
+    toolPrompts: {},
     verificationRule: null,
     evidenceDevices: ['desktop'],
     hasFixPrompt: false,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, FileText, Lock } from 'lucide-react'
+import { Check, ChevronDown, FileText, Lock, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { PromptPreviewModal } from '@/components/audit/PromptPreviewModal'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
 import {
   buildPlanModePrompt,
@@ -31,6 +32,7 @@ interface ExportRubric {
   name: string
   grade: string | null
   score: number | null
+  rubricPrompt?: string | null
   flags?: Array<{ severity: string; problem: string; rubric?: string }>
 }
 
@@ -59,6 +61,8 @@ export function ExportMenu({
 }: ExportMenuProps) {
   const router = useRouter()
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [previewPrompt, setPreviewPrompt] = useState<string | null>(null)
+  const [previewTitle, setPreviewTitle] = useState('Fix prompt preview')
 
   async function copyText(
     key: string,
@@ -77,6 +81,11 @@ export function ExportMenu({
     } catch {
       toast.error('Could not copy to clipboard')
     }
+  }
+
+  function openPreview(title: string, text: string) {
+    setPreviewTitle(title)
+    setPreviewPrompt(text)
   }
 
   async function handleCopySummary() {
@@ -112,72 +121,93 @@ export function ExportMenu({
   const totalPrompts = countFixPrompts(flags)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size={size} className="gap-2">
-          {copiedKey ? (
-            <>
-              <Check className="h-4 w-4" /> Copied
-            </>
-          ) : (
-            <>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size={size} className="gap-2">
+            {copiedKey ? (
+              <>
+                <Check className="h-4 w-4" /> Copied
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Copy to clipboard</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
+            {canExportSummary ? (
               <FileText className="h-4 w-4" />
-              Export
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            ) : (
+              <Lock className="h-4 w-4" />
+            )}
+            Report summary
+          </DropdownMenuItem>
+          {showFixPrompts && totalPrompts > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() =>
+                  openPreview('Fix plan for your editor', buildPlanModePrompt(flags, { url }))
+                }
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                Fix plan for your editor
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  openPreview(`All prompts (${totalPrompts})`, collectAllFixPrompts(flags))
+                }
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                All prompts ({totalPrompts})
+              </DropdownMenuItem>
+              {RUBRIC_ORDER.map((rubric) => {
+                const count = countFixPromptsByRubric(flags, rubric)
+                if (count === 0) return null
+                const rubricRow = rubrics.find((r) => r.name === rubric)
+                const rubricHeader = rubricRow?.rubricPrompt
+                  ? `=== ${rubricLabel(rubric)} comprehensive fix ===\n${rubricRow.rubricPrompt}\n\n`
+                  : ''
+                return (
+                  <DropdownMenuItem
+                    key={rubric}
+                    onClick={() =>
+                      copyText(
+                        rubric,
+                        rubricHeader + collectFixPromptsByRubric(flags, rubric),
+                        `Copied ${count} ${rubricLabel(rubric)} prompts`,
+                        'export'
+                      )
+                    }
+                  >
+                    {rubricLabel(rubric)} ({count})
+                  </DropdownMenuItem>
+                )
+              })}
             </>
           )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Copy to clipboard</DropdownMenuLabel>
-        <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
-          {canExportSummary ? (
-            <FileText className="h-4 w-4" />
-          ) : (
-            <Lock className="h-4 w-4" />
-          )}
-          Report summary
-        </DropdownMenuItem>
-        {showFixPrompts && totalPrompts > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() =>
-                copyText('fix-plan', buildPlanModePrompt(flags, { url }), 'Copied fix plan prompt', 'plan')
-              }
-            >
-              Fix plan for your editor
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                copyText('all-prompts', collectAllFixPrompts(flags), `Copied ${totalPrompts} fix prompts`, 'export')
-              }
-            >
-              All prompts ({totalPrompts})
-            </DropdownMenuItem>
-            {RUBRIC_ORDER.map((rubric) => {
-              const count = countFixPromptsByRubric(flags, rubric)
-              if (count === 0) return null
-              return (
-                <DropdownMenuItem
-                  key={rubric}
-                  onClick={() =>
-                    copyText(
-                      rubric,
-                      collectFixPromptsByRubric(flags, rubric),
-                      `Copied ${count} ${rubricLabel(rubric)} prompts`,
-                      'export'
-                    )
-                  }
-                >
-                  {rubricLabel(rubric)} ({count})
-                </DropdownMenuItem>
-              )
-            })}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {previewPrompt && (
+        <PromptPreviewModal
+          open={Boolean(previewPrompt)}
+          onOpenChange={(open) => {
+            if (!open) setPreviewPrompt(null)
+          }}
+          prompt={previewPrompt}
+          title={previewTitle}
+        />
+      )}
+    </>
   )
 }

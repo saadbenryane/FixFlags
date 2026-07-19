@@ -4,11 +4,13 @@ import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
+import { ScoreDot } from '@/components/ui/score-dot'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
-import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { RubricComputed } from '@/lib/audit/rubric'
+import { shareStatusMessage } from '@/lib/audit/share-status'
+import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 type Props = {
@@ -28,24 +30,6 @@ type Props = {
   startedAt?: string | Date | null
   completedAt?: string | Date | null
   actions?: ReactNode
-}
-
-function shareStatusMessage(
-  shareStatus: string,
-  criticalCount: number,
-  totalFlags: number
-): string {
-  if (shareStatus === 'good_to_share') {
-    return 'No critical flags found. Good to share.'
-  }
-  if (criticalCount === 1) {
-    return totalFlags > 1
-      ? `1 critical of ${totalFlags} flags. Fix this before sharing.`
-      : '1 critical. Fix this before sharing.'
-  }
-  return totalFlags > criticalCount
-    ? `${criticalCount} critical of ${totalFlags} flags. Fix critical before sharing.`
-    : `${criticalCount} critical. Fix these before sharing.`
 }
 
 export function AuditReportHero({
@@ -74,26 +58,13 @@ export function AuditReportHero({
   const hostname = displayHostname(url)
 
   const firstScreenshot = screenshots?.[0]
-  const scoreColor = score != null ? scoreToScanColor(score) : 'hsl(var(--muted-foreground))'
-
-  const durationSec =
-    durationMs != null
-      ? Math.round(durationMs / 1000)
-      : startedAt && completedAt
-        ? Math.round(
-            (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000
-          )
-        : null
+  const durationSec = durationFromTimestamps(durationMs, startedAt, completedAt)
 
   if (isMinimal) {
     return (
       <div className="space-y-1">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_3px_currentColor]"
-            style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
-            aria-hidden
-          />
+          <ScoreDot score={score} />
           <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
             {hostname}
           </h1>
@@ -123,11 +94,7 @@ export function AuditReportHero({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_3px_currentColor]"
-                  style={{ color: scoreColor, backgroundColor: scoreColor, opacity: 0.9 }}
-                  aria-label={score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'}
-                />
+                <ScoreDot score={score} aria-label={score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'} />
                 <h1 className="text-lg font-semibold tracking-heading text-foreground">{hostname}</h1>
                 {pageType ? (
                   <Badge variant="secondary" className="text-xs capitalize">

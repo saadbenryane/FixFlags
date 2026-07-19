@@ -468,11 +468,11 @@ export const BLOG_POSTS = [
 export const LANDING_PAGE = {
   logoCloud: {
     label: 'Copy fix prompts into',
-    disclaimer: 'Tool compatibility only. Not an endorsement by these companies.',
+    disclaimer: '',
     logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
   },
   checkDimensions: {
-    label: 'What it checks',
+    label: '',
     headline: 'Every product breaks in three places.',
     exampleFindingLabel: 'Example finding',
     cards: [
@@ -567,7 +567,7 @@ export const LANDING_PAGE = {
   testimonials: {
     headline: 'What builders catch before launch',
     subhead: 'Small misses become obvious once the page gets a proper review.',
-    disclaimer: 'Illustrative scenarios based on common audit outcomes. Not customer testimonials.',
+    disclaimer: '',
     cardLabel: 'Example finding',
     quotes: [
       {
@@ -615,11 +615,11 @@ export const LANDING_PAGE = {
     ] as const,
   },
   sampleReport: {
-    label: 'Sample review',
+    label: '',
     headline: 'A review your AI agent can act on.',
     body: 'Each flag includes evidence, business impact, and the exact fix. No noise. Just what matters.',
     cta: 'View full sample review',
-    illustrativeLabel: 'Illustrative scores',
+    illustrativeLabel: '',
   },
   footer: {
     tagline:
@@ -799,6 +799,7 @@ export const REPORT_COPY = {
   },
   sectionTitles: {
     topPriorities: 'Top priorities',
+    topPrioritiesHint: 'Paste into Cursor, Claude Code, or any editor with plan mode to get a structured fix plan before editing.',
     summaryByRubric: 'Summary by rubric',
   },
   explorer: {
@@ -1215,7 +1216,7 @@ export const SEO = {
   examples: {
     title: 'Example Reports',
     description:
-      'Automated FixFlags checks of recognizable sites like web.dev, Vercel, and Wikipedia. Illustrative, not endorsements.',
+      'Automated FixFlags checks of recognizable sites like web.dev, Vercel, and Wikipedia.',
   },
   mcp: {
     title: 'MCP Integration',

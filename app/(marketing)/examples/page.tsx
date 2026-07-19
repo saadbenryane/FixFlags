@@ -9,7 +9,6 @@ import { ExamplesFilterBar, type ExampleTagId } from '@/components/marketing/Exa
 import { ExampleAuditCard } from '@/components/marketing/ExampleAuditCard'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { LighthouseNote } from '@/components/marketing/LighthouseNote'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -49,7 +48,7 @@ export default async function ExamplesPage({
           />
           <Body className="text-muted-foreground text-pretty">
             Real audit output from recognizable sites. Each card shows top issues and a copy-ready fix
-            prompt. Illustrative only, not endorsements.
+            prompt.
           </Body>
           <LighthouseNote className="text-sm text-muted-foreground" />
         </div>
@@ -66,8 +65,6 @@ export default async function ExamplesPage({
             <p className="text-sm text-muted-foreground">No examples match this filter.</p>
           )}
         </div>
-
-        <ThirdPartyAuditDisclaimer />
 
         <div className="flex flex-wrap gap-3 pt-4">
           <Button variant="outline" asChild>

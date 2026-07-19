@@ -14,6 +14,7 @@ export interface AgentPrompts {
   agentPrompt: string | null
   cursorPrompt: string | null
   claudePrompt: string | null
+  windsurfPrompt: string | null
   lovablePrompt: string | null
   boltPrompt: string | null
 }
@@ -24,6 +25,7 @@ export const AGENT_PROMPT_KEYS: (keyof AgentPrompts)[] = [
   'agentPrompt',
   'cursorPrompt',
   'claudePrompt',
+  'windsurfPrompt',
   'lovablePrompt',
   'boltPrompt',
 ]

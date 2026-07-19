@@ -1,12 +1,19 @@
 'use client'
 
 import { PromptActionRow } from '@/components/audit/PromptActionRow'
+import {
+  PromptToolSelector,
+  resolveToolPrompt,
+  usePreferredTool,
+  type PromptToolKey,
+} from '@/components/audit/PromptToolSelector'
 import { TerminalShell } from '@/components/ui/terminal-shell'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface FixPromptBlockProps {
   prompt: string
+  toolPrompts?: Partial<Record<PromptToolKey, string | null | undefined>>
   label?: string
   finding?: string | null
   className?: string
@@ -14,6 +21,7 @@ interface FixPromptBlockProps {
   clamp?: boolean
   showNextStep?: boolean
   showCursorAction?: boolean
+  showToolSelector?: boolean
   variant?: 'terminal' | 'compact'
   /** Use concentric inner radius when nested inside a rounded-card shell */
   nested?: boolean
@@ -57,6 +65,7 @@ function PromptBody({
 
 export function FixPromptBlock({
   prompt,
+  toolPrompts,
   label = OUTPUT_LABELS.fixPrompt,
   finding,
   className,
@@ -64,11 +73,25 @@ export function FixPromptBlock({
   clamp = true,
   showNextStep = false,
   showCursorAction = false,
+  showToolSelector = false,
   variant = 'terminal',
   nested = false,
 }: FixPromptBlockProps) {
+  const [preferredTool, setPreferredTool] = usePreferredTool()
+  const resolvedPrompt = showToolSelector
+    ? resolveToolPrompt(toolPrompts, preferredTool, prompt)
+    : prompt
+
   const shellRadius =
     nested && variant === 'compact' ? 'rounded-[var(--radius-inner)]' : nested ? 'rounded-nested-lg' : 'rounded-card'
+
+  const toolSelector = showToolSelector && toolPrompts ? (
+    <PromptToolSelector
+      toolPrompts={toolPrompts}
+      selectedTool={preferredTool}
+      onSelect={setPreferredTool}
+    />
+  ) : null
 
   if (variant === 'compact') {
     return (
@@ -76,6 +99,7 @@ export function FixPromptBlock({
         {finding ? (
           <p className="text-xs leading-snug text-muted-foreground text-pretty">{finding}</p>
         ) : null}
+        {toolSelector}
         <div
           className={cn(
             'bg-terminal shadow-card',
@@ -83,12 +107,13 @@ export function FixPromptBlock({
             clamp ? 'overflow-hidden' : 'overflow-visible'
           )}
         >
-          <PromptBody prompt={prompt} label={label} rows={rows} clamp={clamp} />
+          <PromptBody prompt={resolvedPrompt} label={label} rows={rows} clamp={clamp} />
           <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
             <PromptActionRow
-              prompt={prompt}
+              prompt={resolvedPrompt}
               showCursorAction={showCursorAction}
               compact
+              tool={showToolSelector ? preferredTool : undefined}
             />
           </div>
         </div>
@@ -104,19 +129,21 @@ export function FixPromptBlock({
       {finding ? (
         <p className="text-xs leading-snug text-muted-foreground text-pretty">{finding}</p>
       ) : null}
+      {toolSelector}
       <TerminalShell
         label={label}
         nested={nested}
         className={clamp ? undefined : 'overflow-visible'}
         headerRight={
           <PromptActionRow
-            prompt={prompt}
+            prompt={resolvedPrompt}
             showCursorAction={showCursorAction}
             compact
+            tool={showToolSelector ? preferredTool : undefined}
           />
         }
       >
-        <PromptBody prompt={prompt} label={label} rows={rows} clamp={clamp} />
+        <PromptBody prompt={resolvedPrompt} label={label} rows={rows} clamp={clamp} />
       </TerminalShell>
       {showNextStep ? (
         <p className="text-xs text-muted-foreground">{OUTPUT_LABELS.nextStep}</p>

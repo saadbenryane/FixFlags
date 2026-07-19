@@ -266,8 +266,6 @@ describe('homepage message guardrails', () => {
   it('testimonial examples are framed honestly without a duplicate eyebrow', () => {
     assert.ok(!/example feedback/i.test(LANDING_PAGE.testimonials.headline))
     assert.ok(!/second pass/i.test(LANDING_PAGE.testimonials.headline))
-    assert.match(LANDING_PAGE.testimonials.disclaimer, /illustrative scenarios/i)
-    assert.match(LANDING_PAGE.testimonials.disclaimer, /not customer testimonials/i)
     assert.equal(LANDING_PAGE.testimonials.cardLabel, 'Example finding')
     for (const quote of LANDING_PAGE.testimonials.quotes) {
       assert.ok(!/second pass/i.test(quote.quote))
@@ -291,7 +289,6 @@ describe('homepage message guardrails', () => {
       'Claude Code',
       'Windsurf',
     ])
-    assert.ok(LANDING_PAGE.logoCloud.disclaimer.length > 0)
     assert.ok(LANDING_PAGE.testimonials.quotes.length >= 4)
   })
 

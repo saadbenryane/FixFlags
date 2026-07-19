@@ -53,6 +53,7 @@ type EventParams = {
   fix_prompt_copied: {
     kind?: 'flag' | 'plan' | 'export'
     audit_id?: string
+    tool?: string
   }
   recheck_started: { audit_id?: string }
   viewed_sample: { placement: 'homepage' | 'samples' }

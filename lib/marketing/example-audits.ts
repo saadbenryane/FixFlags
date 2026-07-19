@@ -259,7 +259,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         summary:
           'Wikipedia pages rank well due to content authority, but Open Graph and Twitter Card metadata is minimal.',
         rubricPrompt:
-          'Add comprehensive Open Graph tags including og:image with article topic text.',
+          'Add complete Open Graph tags including og:image with article topic text.',
       },
     ],
     flags: [

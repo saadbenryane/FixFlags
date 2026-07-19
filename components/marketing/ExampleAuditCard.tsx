@@ -5,7 +5,6 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
-import { ThirdPartyAuditDisclaimer } from '@/components/marketing/ThirdPartyAuditDisclaimer'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Heading } from '@/components/ui/typography'
@@ -104,8 +103,6 @@ export function ExampleAuditCard({ audit }: Props) {
             </div>
           </div>
         )}
-
-        <ThirdPartyAuditDisclaimer variant="compact" />
 
         <Button
           variant="outline"

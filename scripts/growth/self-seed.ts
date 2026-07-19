@@ -27,10 +27,10 @@ import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
+import { MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 
 const RATE_LIMIT_MS = 5_000
 const IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1_000
-const MIN_SAMPLE_SIZE = 20
 
 const SEED_URLS: string[] = [
   // AI / no-code builders (lovable, bolt, v0 showcases)

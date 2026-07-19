@@ -1,4 +1,4 @@
-export type RepoFindingPromptTool = 'generic' | 'cursor' | 'claude'
+export type RepoFindingPromptTool = 'generic' | 'cursor' | 'claude' | 'windsurf'
 
 export interface RepoFindingFixTaskInput {
   repoFullName: string
@@ -18,6 +18,7 @@ export interface RepoFindingPayloadInput extends RepoFindingFixTaskInput {
   agentPrompt?: string | null
   cursorPrompt?: string | null
   claudePrompt?: string | null
+  windsurfPrompt?: string | null
 }
 
 export interface RepoFindingFixTask {

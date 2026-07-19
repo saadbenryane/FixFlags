@@ -1,4 +1,5 @@
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
+import { durationFromTimestamps } from '@/lib/audit/duration'
 
 interface Props {
   pipelineVersion?: string | null
@@ -19,14 +20,7 @@ export function AuditPipelineProof({
   const captureEvent = events.find((e) => e.event === 'capture_completed')
   const judgeEvent = events.find((e) => e.event === 'judge_completed' || e.event === 'judge_completed_retry')
 
-  const durationSec =
-    durationMs != null
-      ? Math.round(durationMs / 1000)
-      : startedAt && completedAt
-        ? Math.round(
-            (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 1000
-          )
-        : null
+  const durationSec = durationFromTimestamps(durationMs, startedAt, completedAt)
 
   const parts: string[] = []
   if (durationSec != null) parts.push(`Audited in ${durationSec}s`)

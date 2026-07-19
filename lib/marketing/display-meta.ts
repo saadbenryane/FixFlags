@@ -156,6 +156,3 @@ export function sampleStatusLabel(
   if (dateStr) parts.push(dateStr)
   return parts.join(' · ')
 }
-
-export const COMPACT_DISCLAIMER =
-  'Automated audit, illustrative, not an endorsement.' as const

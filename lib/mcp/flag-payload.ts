@@ -1,7 +1,7 @@
 import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
-export type McpPromptTool = 'generic' | 'cursor' | 'claude' | 'lovable' | 'bolt'
+export type McpPromptTool = 'generic' | 'cursor' | 'claude' | 'windsurf' | 'lovable' | 'bolt'
 
 export type McpFlagPayloadInput = RankableFlag & {
   evidence: string
@@ -29,6 +29,7 @@ export function buildMcpFlagPayload(
     generic: expertPrompt,
     cursor: flag.cursorPrompt,
     claude: flag.claudePrompt,
+    windsurf: flag.windsurfPrompt,
     lovable: flag.lovablePrompt,
     bolt: flag.boltPrompt,
   }

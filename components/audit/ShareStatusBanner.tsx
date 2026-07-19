@@ -4,20 +4,11 @@ import { Callout } from '@/components/ui/callout'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { rubricLabel } from '@/lib/utils'
 import type { RubricComputed } from '@/lib/audit/rubric'
+import { shareStatusMessage } from '@/lib/audit/share-status'
 
 interface Props {
   shareStatus: string
   rubrics: RubricComputed[]
-}
-
-function shareStatusMessage(shareStatus: string, criticalCount: number): string {
-  if (shareStatus === 'good_to_share') {
-    return 'No critical Flags found. Good to share.'
-  }
-  if (criticalCount === 1) {
-    return '1 critical. Fix this before sharing.'
-  }
-  return `${criticalCount} critical. Fix these before sharing.`
 }
 
 export function ShareStatusBanner({ shareStatus, rubrics }: Props) {

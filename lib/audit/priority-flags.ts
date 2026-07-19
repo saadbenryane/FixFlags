@@ -84,6 +84,7 @@ export function resolveFixPrompt(flag: RankableFlag): string | null {
     flag.agentPrompt,
     flag.cursorPrompt,
     flag.claudePrompt,
+    flag.windsurfPrompt,
     flag.lovablePrompt,
     flag.boltPrompt,
     flag.fix,

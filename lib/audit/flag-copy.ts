@@ -371,6 +371,12 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
   const fix = resolveFixPrompt(flag) ?? flag.problem
   const verify = resolveVerificationRule(flag)
 
+  const rubricScope = flag.rubric === 'MESSAGE'
+    ? 'Focus on copy, text content, and messaging. Do not restructure layout or change visual styles.'
+    : flag.rubric === 'EXPERIENCE'
+      ? 'Focus on layout, spacing, visual hierarchy, and usability. Do not rewrite marketing copy unless it directly affects usability.'
+      : 'Focus on metadata, SEO signals, and shareability. Do not change visible page content unless it affects social previews.'
+
   const lines = [
     flag.problem.trim(),
     '',
@@ -379,6 +385,8 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
     `Evidence: ${evidence}`,
     '',
     `Fix:\n${fix}`,
+    '',
+    `Scope: ${rubricScope} Keep all unrelated files, components, and sections unchanged.`,
   ]
 
   if (verify) {

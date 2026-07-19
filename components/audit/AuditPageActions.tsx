@@ -29,6 +29,7 @@ interface Props {
     name: string
     grade: string | null
     score: number | null
+    rubricPrompt?: string | null
     flags?: Array<{ severity: string; problem: string }>
   }>
   isPaid: boolean

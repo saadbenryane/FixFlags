@@ -55,6 +55,7 @@ type SanitizableFlag = {
   agentPrompt?: string | null
   cursorPrompt?: string | null
   claudePrompt?: string | null
+  windsurfPrompt?: string | null
   lovablePrompt?: string | null
   boltPrompt?: string | null
   verificationRule?: string | null
@@ -90,6 +91,7 @@ export function sanitizeFlagFields<T extends SanitizableFlag>(flag: T): T {
     agentPrompt: sanitize(flag.agentPrompt),
     cursorPrompt: sanitize(flag.cursorPrompt),
     claudePrompt: sanitize(flag.claudePrompt),
+    windsurfPrompt: sanitize(flag.windsurfPrompt),
     lovablePrompt: sanitize(flag.lovablePrompt),
     boltPrompt: sanitize(flag.boltPrompt),
     verificationRule: flag.verificationRule
@@ -102,6 +104,7 @@ type SanitizableRubric = {
   rubricPrompt?: string
   cursorPrompt?: string | null
   claudePrompt?: string | null
+  windsurfPrompt?: string | null
   lovablePrompt?: string | null
   boltPrompt?: string | null
   summary: string
@@ -117,6 +120,7 @@ function sanitizeRubricPrompts<T extends SanitizableRubric>(rubric: T): T {
     rubricPrompt: sanitizePromptText(rubric.rubricPrompt ?? fallback, fallback),
     cursorPrompt: sanitize(rubric.cursorPrompt),
     claudePrompt: sanitize(rubric.claudePrompt),
+    windsurfPrompt: sanitize(rubric.windsurfPrompt),
     lovablePrompt: sanitize(rubric.lovablePrompt),
     boltPrompt: sanitize(rubric.boltPrompt),
   }

@@ -81,6 +81,7 @@ export const judgeOutputSchema = z.object({
         ),
       cursorPrompt: z.string().optional().describe('Tool-specific prompt with file-path references when inferable from the page'),
       claudePrompt: z.string().optional(),
+      windsurfPrompt: z.string().optional(),
       lovablePrompt: z.string().optional().describe('Tool-specific prompt describing visual and component changes'),
       boltPrompt: z.string().optional(),
     })
@@ -102,6 +103,7 @@ export const judgeOutputSchema = z.object({
         agentPrompt: z.string().optional(),
         cursorPrompt: z.string().optional(),
         claudePrompt: z.string().optional(),
+        windsurfPrompt: z.string().optional(),
         lovablePrompt: z.string().optional(),
         boltPrompt: z.string().optional(),
         verificationRule: z.string().min(1).nullish(),
@@ -122,6 +124,7 @@ export const judgeOutputSchema = z.object({
         agentPrompt: z.string().optional(),
         cursorPrompt: z.string().optional(),
         claudePrompt: z.string().optional(),
+        windsurfPrompt: z.string().optional(),
         lovablePrompt: z.string().optional(),
         boltPrompt: z.string().optional(),
         verificationRule: z

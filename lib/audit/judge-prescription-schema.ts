@@ -25,6 +25,7 @@ export const flagPrescriptionSchema = z.object({
   agentPrompt: z.string().optional(),
   cursorPrompt: z.string().optional(),
   claudePrompt: z.string().optional(),
+  windsurfPrompt: z.string().optional(),
   lovablePrompt: z.string().optional(),
   boltPrompt: z.string().optional(),
   verificationRule: z
@@ -41,6 +42,7 @@ export const rubricPrescriptionSchema = z.object({
     .describe('Holistic prompt fixing ALL flags in this rubric at once'),
   cursorPrompt: z.string().optional(),
   claudePrompt: z.string().optional(),
+  windsurfPrompt: z.string().optional(),
   lovablePrompt: z.string().optional(),
   boltPrompt: z.string().optional(),
 })

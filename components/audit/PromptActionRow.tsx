@@ -19,6 +19,7 @@ interface PromptActionRowProps {
   className?: string
   compact?: boolean
   dark?: boolean
+  tool?: string
 }
 
 export function PromptActionRow({
@@ -28,6 +29,7 @@ export function PromptActionRow({
   className,
   compact = false,
   dark = false,
+  tool,
 }: PromptActionRowProps) {
   const { user } = useMe()
   const [installing, setInstalling] = useState(false)
@@ -78,6 +80,7 @@ export function PromptActionRow({
         prompt={prompt}
         label={copyLabel}
         compact={compact}
+        tool={tool}
         className={cn(
           dark &&
             'border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'

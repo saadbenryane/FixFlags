@@ -31,11 +31,6 @@ export default async function SamplesPage() {
         isDogfood={site.isDogfood}
       />
 
-      {sample.source === 'fixture' ? (
-        <p className="mb-4 text-center section-label">
-          Illustrative scores · curated fixture
-        </p>
-      ) : null}
       <AuditReport
         audit={{
           pageJob: sample.audit.pageJob,
