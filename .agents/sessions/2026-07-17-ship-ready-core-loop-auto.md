@@ -47,15 +47,9 @@ Close post-signup payoff and trust gaps on Flag → Fix → Re-check so the prod
 3. Production deploy still required for fixflags.com
 4. ExportMenu analytics, Meta Pixel CSP deferred earlier
 
-<<<<<<< HEAD
 ## Stop condition
 
 Core journey is coherent: anon sees real triage value → clear account CTA for prompts → claim/AI pending wiring → re-check owner path clear. Remaining items are deploy/measurement polish.
-=======
-1. Live browser walk of anon → signup → unlock still needed on deployed env.
-2. If claim enqueue fails after setting includeAi, UI may show pending until poll timeout (45×2s) without prompts — rare; same class as queue failure before.
-3. Dashboard first-run Projects clutter and ExportMenu analytics deferred.
-4. Do not commit uncommitted graph persist / test-strategy edits from other work.
 
 ## Review close-out (claude, 2026-07-17, branch claude/app-polish-shipping-unj812)
 
@@ -82,4 +76,3 @@ conversion path. Fix: email sign-in/sign-up now route through `/post-login`
 for claim + checkout + next navigation. Verified by the browser walk above.
 
 Marked done on the board.
->>>>>>> origin/claude/app-polish-shipping-unj812

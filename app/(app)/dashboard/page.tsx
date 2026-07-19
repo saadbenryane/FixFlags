@@ -125,11 +125,7 @@ export default async function DashboardPage({
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
       )}
 
-<<<<<<< HEAD
-      {/* Usage + MCP summary row, defer MCP upsell until the user has a check */}
-=======
       {/* Usage + MCP summary row: defer MCP upsell until the user has a check */}
->>>>>>> origin/claude/app-polish-shipping-unj812
       <div className={audits.length > 0 ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
         <UsageMeter
           used={used}
