@@ -65,7 +65,7 @@ export function UsageMeter({ used, limit, pending = 0, plan, purchasedCredits = 
               <span>
                 {' - '}
                 <Link href="/pricing" className="text-brand hover:underline">
-                  upgrade for unlimited
+                  upgrade for 25/mo
                 </Link>
               </span>
             )}

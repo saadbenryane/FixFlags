@@ -1,22 +1,19 @@
 # Business Model
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-19*
 
 FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
 
-See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue, customer, and growth targets.
+See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue, customer, and growth targets. Stripe wiring: [`stripe-setup.md`](./stripe-setup.md).
 
 ## What We Ship
 
-- **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
-- **CTA flow test** (free): automated click-through on the primary CTA with before/after screenshots and flow flags.
-- **Preview cards** (free): live Google snippet and social link preview rendered in the report.
-- **Full report on every check** (free): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, AI-generated flags, and fix prompts on every report.
-- **Fix prompts** (free): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from your page.
+- **Full report on each new URL check** (within plan quota): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, flags, and fix prompts.
 - **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
 - **Before/after compare** (Pro+): side-by-side proof after re-checks.
-- **MCP integration** (Pro+): 13 MCP tools for Cursor and Claude Code (see `AGENTS.md` Project facts). Lovable/Bolt MCP not supported yet.
-- **Share links and proof export** (Agency+): public report links and client-ready summaries.
+- **MCP integration** (Pro+): MCP tools for Cursor and Claude Code (see `AGENTS.md` Project facts).
+- **Share links and proof export** (Agency): public report links and client-ready summaries.
+- **Credit packs** (paid plans): +10 / +25 / +50 new URL checks ($15 / $30 / $50). Overflow only; does not change tier.
 
 ## What We Do Not Ship (Current)
 
@@ -27,24 +24,25 @@ See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue,
 - Team workspaces / seat management.
 - API for batch scanning.
 - White-label reports.
+- Annual billing (monthly only at launch).
 
 These ship when they serve the core loop and users ask for them.
 
 ## Free Tier Strategy
 
 - **Free accounts get 3 new URL checks total.** Every check runs the full pipeline and returns the complete report with fix prompts.
-- **Re-checks are unlimited on reports you own** and never count against the 3-check cap.
-- **Every free report is an upsell impression.** Deterministic results visible. Upgrade when you ship weekly and need MCP, compare, or more new checks.
-- **Cost is negligible at this stage.** LLM cost per audit is ~$0.00025 (gpt-4o-mini). Prioritize distribution over optimization.
+- **At limit, new URL checks are blocked** until upgrade. Re-checks on owned reports stay free.
+- **Every free report is an upsell impression.** Upgrade when you ship weekly and need MCP, compare, or more new checks.
+- **Cost is negligible at this stage.** Prioritize distribution over optimization.
 
 Why: habit over scarcity. More users = more data = stronger moat = more upgrades.
 
 ## Pricing Philosophy
 
 - **Entry price: $29/mo.** Low enough to convert without justification. Raise after 100 paying users if retention supports it.
-- **Flat-rate** over per-scan billing. "Unlimited re-checks" is stronger than "25 audits."
+- **Flat-rate subscription** for the monthly new-check quota. Credit packs are optional overflow for paid plans.
 - **Re-checks never gated.** The core loop (Flag, Fix, Re-check) is the habit.
-- **Annual discount.** Target $19/mo annually on Pro.
+- **Annual discount:** Later (not at launch). Monthly only until retention justifies it.
 - **No founding offers.** $29 is the real price. Founding offers create expectation debt.
 
 ## Pricing Tiers (Current)
@@ -54,8 +52,8 @@ Live tiers, as defined in `lib/billing/plans.ts` (`Plan` enum: `FREE | BUILDER |
 | Tier | Plan enum | Price | New URL checks | Key Hook |
 |------|-----------|-------|----------------|----------|
 | Free | `FREE` | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
-| Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP integration |
-| Agency | `TEAM` | $99/mo | 100/mo | Everything in Pro, public share links, up to 5 projects |
+| Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP |
+| Agency | `TEAM` | $99/mo | 100/mo | Share links, projects, GitHub repo scans |
 
 Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the schema.
 
@@ -68,7 +66,8 @@ Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the sche
 
 ## Revenue Model
 
-- Subscription-only (no per-check or usage billing).
+- Monthly subscriptions (Pro / Agency).
+- Credit packs as paid overflow for subscribers who exceed monthly new-check quota.
 - Future: agency white-label? Data licensing (aggregate flags report)?
 
 ## Moat Strategy

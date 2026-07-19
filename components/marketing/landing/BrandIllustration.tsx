@@ -22,7 +22,15 @@ interface BrandIllustrationProps {
   imageClassName?: string
   priority?: boolean
   sizes?: string
+  /** `soft` thins the canvas veil so the asset can dissolve into the peach mesh. */
+  veil?: 'default' | 'soft'
 }
+
+const VEIL = {
+  default:
+    'absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--background)/0.04),hsl(var(--background)/0.34)_72%,hsl(var(--background)/0.7))]',
+  soft: 'absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--background)/0.02),hsl(var(--background)/0.18)_68%,hsl(var(--background)/0.42))]',
+} as const
 
 export function BrandIllustration({
   variant = 'flag',
@@ -30,6 +38,7 @@ export function BrandIllustration({
   imageClassName,
   priority = false,
   sizes = '280px',
+  veil = 'default',
 }: BrandIllustrationProps) {
   const illustration = ILLUSTRATIONS[variant]
 
@@ -46,7 +55,7 @@ export function BrandIllustration({
         sizes={sizes}
         className={cn('object-cover', illustration.position, imageClassName)}
       />
-      <div className="absolute inset-0 bg-[linear-gradient(145deg,hsl(var(--background)/0.04),hsl(var(--background)/0.34)_72%,hsl(var(--background)/0.7))]" />
+      <div className={VEIL[veil]} />
     </div>
   )
 }

@@ -30,6 +30,8 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
     code === 'AUTH_REQUIRED' ||
     action === 'signup'
 
+  const isPaidAtLimit = code === 'TOKEN_LIMIT' || action === 'buy_credits'
+
   const signUpHref = useMemo(() => authHref('/sign-up', nextPath, from), [nextPath, from])
   const signInHref = useMemo(() => authHref('/sign-in', nextPath, from), [nextPath, from])
 
@@ -40,7 +42,7 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
   return (
     <Callout
       variant={needsSignup ? 'warning' : 'danger'}
-      title={needsSignup ? 'Create a free account to continue' : 'Audit limit reached'}
+      title={needsSignup ? 'Create a free account to continue' : 'New URL check limit reached'}
     >
       <p>{message}</p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -51,6 +53,15 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link href={signInHref}>Sign in</Link>
+            </Button>
+          </>
+        ) : isPaidAtLimit ? (
+          <>
+            <Button asChild size="sm">
+              <Link href="/billing#credit-packs">Buy credits</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/pricing">Upgrade plan</Link>
             </Button>
           </>
         ) : (

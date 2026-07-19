@@ -19,7 +19,6 @@ import {
   REPORT_COPY,
   SEGMENT_PROOF_SECTION,
   SEO,
-  TRUST_STRIP,
 } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 
@@ -77,9 +76,6 @@ const ABOVE_FOLD_COPY = [
   HERO.headlineLine1,
   HERO.headlineLine2,
   HERO.subhead,
-  HERO.trustBadgesSubtitle,
-  ...HERO.trustBadges,
-  ...TRUST_STRIP,
   PROOF_SECTION.headline,
   PROOF_SECTION.subhead,
   HOW_IT_WORKS_PAGE.hero.subhead,
@@ -119,7 +115,7 @@ describe('homepage message guardrails', () => {
 
   it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
     const { OFFER } = await import('@/lib/marketing/copy')
-    assert.equal(HERO.trustBadges.length, 0)
+    assert.ok(!('trustBadges' in HERO))
     assert.match(OFFER.short, /free check/i)
     assert.match(OFFER.short, /what.?s broken/i)
     assert.ok(!/read-only/i.test(OFFER.short))
@@ -129,6 +125,7 @@ describe('homepage message guardrails', () => {
 
   it('secondary sample CTA uses human review language', () => {
     assert.equal(HERO.trySampleCta, 'See a sample review')
+    assert.ok(!('trySampleHint' in HERO))
   })
 
   it('offer is standardized across hero surfaces and final CTA', async () => {
@@ -150,7 +147,6 @@ describe('homepage message guardrails', () => {
       ...LANDING_MARKETING_STRINGS,
       HERO.headline,
       HERO.subhead,
-      HERO.trySampleHint,
       FINAL_CTA.body,
       LANDING_PAGE.logoCloud.disclaimer,
     ]
@@ -297,6 +293,24 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
     assert.match(LANDING_PAGE.testimonials.disclaimer, /not attributed/i)
     assert.equal(LANDING_PAGE.testimonials.quotes.length, 0)
+  })
+
+  it('product evidence cards use lead plus three Flag-shaped findings', () => {
+    const dimensionChecks = new Set<string>(
+      LANDING_PAGE.checkDimensions.cards.flatMap((card) => [...card.checks]),
+    )
+    for (const item of LANDING_PAGE.productEvidence.items) {
+      assert.ok(item.lead.length > 0)
+      assert.equal(item.findings.length, 3)
+      for (const finding of item.findings) {
+        assert.ok(finding.length > 0)
+        assert.ok(!dimensionChecks.has(finding))
+      }
+    }
+    const reach = LANDING_PAGE.productEvidence.items.find((item) => item.id === 'reach')
+    assert.ok(reach)
+    assert.match(reach!.lead, /brand|look like you/i)
+    assert.ok(reach!.findings.some((finding) => /brand/i.test(finding)))
   })
 
   it('sample report section exposes an explore-all CTA', () => {

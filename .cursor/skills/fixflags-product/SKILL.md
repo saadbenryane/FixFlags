@@ -71,7 +71,19 @@ Do not market white-label reports or priority support — not implemented.
 | New URL audit | Yes (unless admin/dev unlimited) |
 | Re-check (owned report) | **No** (`skipUsageCount: true` in `recheck.ts`) |
 
-Copy must say: monthly limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
+Copy must say: monthly/lifetime limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
+
+### Limit actions (single pipeline)
+
+Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `action` + `message`) → `/api/checks` returns those fields → `AuditLimitGate`.
+
+| `action` | When | UI CTA |
+|----------|------|--------|
+| `signup` | Anon / auth required | Create account / Sign in |
+| `upgrade` | Free (or revoked) at cap | `/pricing` |
+| `buy_credits` | Paid at cap, no purchased credits | `/billing#credit-packs` (primary), optional upgrade secondary |
+
+**Never hardcode** `action: 'upgrade'` in the checks route. Pass `err.action` from `AuditLimitError`.
 
 ## Report surface ownership
 
@@ -137,11 +149,28 @@ UI must gate before API 402:
 
 `middleware.ts` sets `x-pathname`. Layouts use `getRequestedPath()` + `signInUrl()` so sign-in returns to `/billing`, `/settings/api-keys`, `/compare/[id]`, `/admin`, etc.
 
-## Stripe
+## Stripe / billing
 
-- Webhooks: `customer.subscription.created/updated/deleted` upgrade/downgrade plan
-- Checkout success: `/dashboard?upgraded=1&plan=BUILDER|TEAM`
-- `DashboardCheckoutToast` reads plan from URL or `/api/me`
+Canonical setup: [`docs/stripe-setup.md`](../../docs/stripe-setup.md). Config helpers: `lib/billing/config.ts`.
+
+**Required env (all or none when any set; `BILLING_REQUIRED=true` on revenue deploys):**
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BUILDER_PRICE_ID`, `STRIPE_TEAM_PRICE_ID`, `STRIPE_CREDIT_PACK_{10,25,50}_ID`. Optional: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (hosted Checkout; no client SDK). `STRIPE_RESTRICTED_KEY` is operator-only, not read by the app.
+
+**Test vs live:** key prefix only (`sk_test_` / `sk_live_`). Create products with the same secret Railway uses. Never mix accounts.
+
+**Checkout:** hosted Stripe Checkout; `automatic_tax` + `billing_address_collection: 'required'`. Existing active sub → portal (409), never a second subscription.
+
+**Webhooks** (`app/api/webhooks/stripe/route.ts`): `customer.subscription.created|updated|deleted`, `invoice.payment_failed|payment_succeeded` (both re-run `processSubscription`), `checkout.session.completed|expired`, `charge.refunded`. Idempotent via `ProcessedStripeEvent`. `payment_failed` emails admin (`lib/billing/notify.ts`).
+
+**Post-checkout:** `DashboardCheckoutToast` polls `/api/me` until plan matches before celebrating. Credit packs: `/billing?credits=1`.
+
+**Quota truth:** Free = 3 lifetime **new URL checks**. At limit = hard block. Re-checks free forever. Credit packs = paid overflow ($15/+10, $30/+25, $50/+50). Monthly only (no annual).
+
+**Anti-patterns:** “unlimited deterministic checks still work”; “upgrade for unlimited”; “subscription-only / no credit packs”; promising share on Pro; wrong-account price IDs.
+
+**Health:** `/api/health.billingConfigured` via `isBillingFullyConfigured()`.
+
+**Tests:** `app/api/webhooks/stripe/__tests__/route.test.ts`, `lib/billing/__tests__/config.test.ts`.
 
 ## MCP
 

@@ -1,6 +1,6 @@
 # Voice & Copy Guidelines
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-19*
 
 ## FixFlags adaptation
 
@@ -11,6 +11,14 @@ This document preserves the operator voice principles from the design system spe
 **What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
 
 **What adapts:** Examples about "founders" and "product clarity advisory" map to builders, launch quality, and fix loops. Prefer *ship, fix, evidence, pattern, outcome* over *unlock, leverage, holistic, transformation*.
+
+**Marketing doctrine (non-negotiable):**
+- **Hero = value only.** One short trust line under the URL field (`OFFER.short`). No privacy, claim, or legal stack on the homepage.
+- **No sample-hint throat-clearing.** The sample CTA is the link alone (`HERO.trySampleCta`). Do not add a subtitle under it.
+- **Paste verbs over readiness adjectives.** Prefer `Copy for Cursor` / `Paste into Lovable` over `ready`, `AI-ready`, `Agent-ready`, `fix prompt ready`.
+- **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ only.
+- **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
+- **Quota truth:** Free = 3 new URL checks lifetime. Never say "unlimited deterministic checks." Re-checks stay unlimited.
 
 **Related files:**
 - Business model & pricing: [`docs/business-model.md`](./business-model.md)

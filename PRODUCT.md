@@ -39,10 +39,9 @@ Steps 4-7 are the differentiator. Re-check is the habit.
 ## What we ship
 
 ### Free (forever)
-- Unlimited deterministic checks (metadata, accessibility, performance, SEO, trust, mobile, content, slop, og:image)
+- 3 new URL checks lifetime (full report: deterministic + AI review, Flags, fix prompts)
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
-- 3 AI reports lifetime (full report with rubric scores, AI flags, and fix prompts)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
 - Re-checks (free and unlimited on owned reports)
 
@@ -50,12 +49,14 @@ Steps 4-7 are the differentiator. Re-check is the habit.
 - 25 new URL checks per month
 - Before/after compare
 - MCP integration (Cursor + Claude Code)
+- Credit packs for overflow new checks
 
 ### Agency ($99/mo) — `TEAM` in schema
 - 100 new URL checks per month
 - Share links and exports
 - 5 projects
 - GitHub repo scanning (findings-only: secrets, dependency hygiene, dangerous patterns — no auto-fix PRs)
+- Credit packs for overflow new checks
 
 ### High Volume (custom)
 - 500+ audits

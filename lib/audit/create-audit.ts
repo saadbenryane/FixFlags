@@ -12,6 +12,7 @@ import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
+import type { UsageLimitAction } from '@/lib/audit/check-limit'
 
 export interface CreateAuditOptions {
   url: string
@@ -32,15 +33,23 @@ export interface CreateAuditResult {
 
 export class AuditLimitError extends Error {
   readonly code: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT'
+  readonly action: UsageLimitAction
 
-  constructor(code: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT') {
-    super(
-      code === 'UPGRADE_REQUIRED'
-        ? 'Audit limit reached. Upgrade to continue.'
-        : 'Audit limit reached. Upgrade your plan to continue.'
-    )
+  constructor(
+    code: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT',
+    options?: { action?: UsageLimitAction; message?: string }
+  ) {
+    const action =
+      options?.action ?? (code === 'UPGRADE_REQUIRED' ? 'upgrade' : 'buy_credits')
+    const message =
+      options?.message ??
+      (code === 'UPGRADE_REQUIRED'
+        ? 'New URL check limit reached. Upgrade to continue.'
+        : 'New URL check limit reached. Buy credits or upgrade your plan to continue.')
+    super(message)
     this.name = 'AuditLimitError'
     this.code = code
+    this.action = action
   }
 }
 
@@ -156,7 +165,14 @@ export async function createAndEnqueueAudit(
                 const gate = await wouldBlockNewCheckWithCredits(gateUser, pending)
                 if (!gate.allowed) {
                   throw new AuditLimitError(
-                    gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED'
+                    gate.code === 'TOKEN_LIMIT' ? 'TOKEN_LIMIT' : 'UPGRADE_REQUIRED',
+                    {
+                      action:
+                        gate.action === 'buy_credits' || gate.action === 'upgrade'
+                          ? gate.action
+                          : undefined,
+                      message: gate.error,
+                    }
                   )
                 }
               }

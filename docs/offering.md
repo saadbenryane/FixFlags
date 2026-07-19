@@ -4,15 +4,15 @@ Finish what your AI started. FixFlags is the QA layer for AI-built products: the
 
 ## What We Ship
 
-- **Deterministic checks** (free forever, unlimited): metadata scanning, accessibility basics, performance data, SEO tags, trust signals, mobile viewport checks, content analysis, slop detection, og:image validation.
-- **CTA flow test** (free): automated click-through on the primary CTA with before/after screenshots and flow flags.
-- **Preview cards** (free): live Google snippet and social link preview rendered in the report.
-- **Full report on every check** (free): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, AI-generated flags, and fix prompts on every report.
-- **Fix prompts** (free): copy-ready instructions tuned for Cursor, Claude Code, Lovable, and Bolt. Each prompt includes specific evidence from your page.
+- **Full report on each new URL check** (within plan quota): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, flags, and fix prompts.
+- **CTA flow test** (on every check): automated click-through on the primary CTA with before/after screenshots and flow flags.
+- **Preview cards** (on every check): live Google snippet and social link preview rendered in the report.
+- **Fix prompts** (with account): prompts tuned for Cursor, Claude Code, Lovable, and Bolt. Each includes specific evidence from your page.
 - **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
 - **Before/after compare** (Pro+): side-by-side proof after re-checks.
-- **MCP integration** (Pro+): 13 MCP tools for Cursor and Claude Code (see `AGENTS.md` Project facts). Lovable/Bolt MCP not supported yet.
+- **MCP integration** (Pro+): MCP tools for Cursor and Claude Code (count in `AGENTS.md` Project facts). Lovable/Bolt paste fix prompts today.
 - **Share links and proof export** (Agency+): public report links and client-ready summaries.
+- **Credit packs** (paid plans): +10 / +25 / +50 new URL checks for overflow without changing tier.
 - **Repository-connected scanning** (Agency+): connect GitHub, allow-list specific repos, and scan the codebase directly for exposed secrets, dependency hygiene, and dangerous patterns — separate from URL audits. Fully shipped and discoverable at `/settings/integrations`: OAuth connect, repo allow-listing, scan trigger, recent-scan history, and a dedicated report view at `/report/repo/[id]`. This is Year 1 product priority #5 ("repository-connected fixes") and was already live when that priority was written — the roadmap/docs just hadn't caught up. It currently reports findings; it does not yet open PRs or auto-apply fixes.
 
 ## What We Do Not Ship (Current)

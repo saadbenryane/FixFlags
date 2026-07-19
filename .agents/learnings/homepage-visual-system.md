@@ -16,10 +16,11 @@ Generated imagery contains no text, scores, logos, or fake product UI. All label
 - Dark companions use graphite, charcoal stone, smoked glass, and controlled orange light.
 - The orange material is a signal and connective thread, not a generic glow.
 - Supplied brand boards and collages are references only. Their embedded typography, copy, and UI are not canonical.
-- The glass flag portrait is brand punctuation for the final CTA, not an explanatory illustration.
+- The glass flag portrait is ambient brand punctuation for the hero wash (lg+, light, soft veil + wide radial mask) and the final CTA accent. It is not an explanatory illustration.
 
 ## Assets
 
+- `public/marketing/brand-glass-flag.webp` (hero atmosphere + final CTA)
 - `public/marketing/visuals/rubrics-light.webp`
 - `public/marketing/visuals/rubrics-dark.webp`
 - `public/marketing/visuals/loop-light.webp`

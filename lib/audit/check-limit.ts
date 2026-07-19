@@ -7,7 +7,7 @@ import {
 } from '@/lib/auth/permissions'
 
 export type UsageLimitCode = 'ANON_LIMIT' | 'AUTH_REQUIRED' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
-export type UsageLimitAction = 'signup' | 'upgrade'
+export type UsageLimitAction = 'signup' | 'upgrade' | 'buy_credits'
 
 export interface UsageLimitResult {
   allowed: boolean
@@ -68,10 +68,10 @@ export function wouldBlockNewCheck(
       allowed: false,
       error:
         code === 'UPGRADE_REQUIRED'
-          ? 'Audit limit reached. Upgrade to continue.'
-          : 'Audit limit reached. Upgrade your plan to continue.',
+          ? 'New URL check limit reached. Upgrade to continue.'
+          : 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
       code,
-      action: 'upgrade',
+      action: code === 'UPGRADE_REQUIRED' ? 'upgrade' : 'buy_credits',
     }
   }
   return { allowed: true }

@@ -130,11 +130,7 @@ export const HERO = {
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
-  trySampleHint: 'Open the demo report.',
   urlPlaceholder: 'your-site.com',
-  trustBadgesSubtitle: 'See what users see',
-  /** Empty on purpose: value lives in OFFER.short under the URL field, not a CYA badge row. */
-  trustBadges: [] as const,
 } as const
 
 export const SEGMENT_PROOF_SECTION = {
@@ -256,8 +252,6 @@ export const PROOF_SECTION = {
   },
 } as const
 
-export const TRUST_STRIP = HERO.trustBadges
-
 export const FLOW_SCAN_STATUS = {
   success: {
     label: 'Passed',
@@ -333,7 +327,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'FREE',
       title: 'Check',
-      body: 'Score, Flags, evidence, and screenshots. Free account for fix prompts. Three AI reports total.',
+      body: 'Score, Flags, evidence, and screenshots. Free account for fix prompts. Three new URL checks total.',
     },
     {
       plan: 'BUILDER',
@@ -610,17 +604,32 @@ export const LANDING_PAGE = {
       {
         id: 'message',
         title: 'Message gaps',
-        body: 'Unclear heroes, vague CTAs, and copy that names the category instead of the outcome.',
+        lead: 'Visitors should know what you do and why it matters in five seconds.',
+        findings: [
+          'Hero that never names the outcome',
+          'CTA that stays vague',
+          'Copy that names the category, not the win',
+        ],
       },
       {
         id: 'experience',
         title: 'Experience friction',
-        body: 'Primary actions below the fold on mobile, cramped tap targets, and layout that hides the next step.',
+        lead: 'On mobile, the next step should be obvious without hunting.',
+        findings: [
+          'Main action buried after a long scroll on phone',
+          'Tap targets too small to hit cleanly',
+          'Layout that hides the next step',
+        ],
       },
       {
         id: 'reach',
         title: 'Reach misses',
-        body: 'Blank link previews, missing metadata, and sharing cards that drop your brand.',
+        lead: 'When someone shares your link, the card should still look like you.',
+        findings: [
+          'Link cards that render blank when shared',
+          'Missing metadata search cannot use',
+          'Sharing cards that drop your brand',
+        ],
       },
     ] as const,
     cta: 'See a sample review',
@@ -717,12 +726,12 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first check?',
-    answer: `No. ${OFFER.line} Free accounts also include 3 AI reports.`,
+    answer: `No. ${OFFER.line} Free accounts also include 3 new URL checks with full reports.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: unlimited deterministic checks, 3 AI reports with fix prompts, and unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new checks per month.',
+      'Free: 3 new URL checks with full reports and fix prompts, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
   },
   {
     question: 'Do I need Cursor or MCP?',
@@ -768,12 +777,12 @@ export const FAQ = [
 export const PRICING_FAQ = [
   {
     question: 'Can I start free and upgrade later?',
-    answer: `Yes. ${OFFER.line} Free accounts include 3 AI reports. Upgrade for more new checks, compare, and MCP.`,
+    answer: `Yes. ${OFFER.line} Free accounts include 3 new URL checks. Upgrade for more new checks, compare, and MCP.`,
   },
   {
     question: 'What counts as a scan?',
     answer:
-      'A new URL check counts toward your plan limit when it runs AI reports. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit.',
+      'A new URL check counts toward your plan limit. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit. Paid plans can buy credit packs for extra new checks.',
   },
   {
     question: 'Is each page a separate scan?',
@@ -807,7 +816,12 @@ export const PRICING_FAQ = [
   {
     question: 'What happens when I hit my check limit?',
     answer:
-      'You\u2019ll see an upgrade prompt. Free accounts get 3 AI reports total (not monthly). Paid plans reset each billing cycle.',
+      'New URL checks pause until you upgrade or (on paid plans) buy a credit pack. Free accounts get 3 new URL checks total (not monthly). Paid plans reset each billing cycle. Re-checks on owned reports stay free.',
+  },
+  {
+    question: 'What are credit packs?',
+    answer:
+      'Paid subscribers can buy +10, +25, or +50 extra new URL checks ($15 / $30 / $50) from Billing. Credits never expire and do not change your plan tier.',
   },
   {
     question: 'Do I need Pro for MCP?',
@@ -1062,9 +1076,9 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: 'Unlimited deterministic checks · 3 AI reports · Upgrade anytime',
+    subtitle: '3 new URL checks · Unlimited re-checks · Upgrade anytime',
     subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
-    fromPricing: 'Create your free account: 3 AI reports included, upgrade anytime',
+    fromPricing: 'Create your free account: 3 new URL checks included, upgrade anytime',
     oauthNote: 'We never post or access your repositories.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -1124,7 +1138,7 @@ export const UPSELLS = {
     headline: 'Fix steps are below',
     body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.',
   },
-  atLimit: 'AI report limit reached. Upgrade to continue',
+  atLimit: 'New URL check limit reached. Upgrade to continue',
 } as const
 
 export const FLAG_FEEDBACK_COPY = {
@@ -1216,8 +1230,8 @@ export const ANON_CLAIM_GUIDE = {
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your 3 AI reports',
-    body: 'Deterministic checks and unlimited re-checks still work. Upgrade to Pro for 25 AI reports per month, before/after compare, and MCP in Cursor or Claude.',
+    headline: 'You\u2019ve used your 3 new URL checks',
+    body: 'Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 25 new URL checks per month, before/after compare, and MCP in Cursor or Claude.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },

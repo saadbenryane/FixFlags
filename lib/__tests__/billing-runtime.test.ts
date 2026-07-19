@@ -85,7 +85,7 @@ describe('wouldBlockNewCheckWithCredits', () => {
     )
     expect(result.allowed).toBe(false)
     expect(result.code).toBe('TOKEN_LIMIT')
-    expect(result.action).toBe('upgrade')
+    expect(result.action).toBe('buy_credits')
   })
 
   it('allows paid user at limit when purchased credits are available', async () => {

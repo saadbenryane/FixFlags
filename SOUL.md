@@ -64,7 +64,7 @@ Priority order: Clear before clever · Calm before loud · Specific before impre
 |---------|------|---------|
 | Homepage | Outcome-focused, direct | "Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use." |
 | Report / Flags | Clinical, evidence-driven | "The primary CTA link scrolls to #features, which does not exist on the page." |
-| Fix prompts | Instructional, copy-ready | "Replace `background-color: #fff` with a high-contrast value (minimum 4.5:1 ratio against the text color)." |
+| Fix prompts | Instructional, pasteable | "Replace `background-color: #fff` with a high-contrast value (minimum 4.5:1 ratio against the text color)." |
 | Error states | Apologetic but calm | "Something went wrong. Your report is still saved — try again." |
 | Upsells | Value-first, not urgent | "Upgrade to compare before and after. See your fix prompts side by side." |
 | Social / SEO | Plain, grounded | "FixFlags is the QA layer for AI-built products." |

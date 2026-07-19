@@ -161,16 +161,17 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ## Billing
 
-| Plan | Stripe product | Price | Audits/mo |
-|------|---------------|-------|-----------|
+| Plan | Env price ID | Price | New URL checks |
+|------|--------------|-------|----------------|
 | Free | — | $0 | 3 lifetime |
-| Pro | `price_pro_monthly` | $29 | 25 |
-| Agency | `price_agency_monthly` | $99 | 100 |
-| Credits | `price_credits_*` | $10-50 | 10-50 one-time |
+| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 25/mo |
+| Agency (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $99/mo | 100/mo |
+| Credits | `STRIPE_CREDIT_PACK_{10,25,50}_ID` | $15 / $30 / $50 | +10 / +25 / +50 one-time |
 
-- Stripe integration: subscriptions + credit packs
+- Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
-- Billing enforcement: `lib/billing/limits.ts`, `lib/billing/credits.ts`
+- Billing enforcement: `lib/billing/limits.ts`, `lib/billing/credits.ts`, `lib/billing/config.ts`
+- Health: `/api/health` includes `billingConfigured`
 
 ## Deployment
 

@@ -4,8 +4,11 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| hero-illustration-blend | in_progress | auto | main | Soft glass-flag wash behind landing hero | LandingHeroSection, BrandIllustration, FinalCta, homepage-visual-system | — | 2026-07-19 |
+| product-evidence-polish | done | auto | main | Product Evidence lead + Flag-shaped findings | copy.ts productEvidence, ProductEvidenceSection, homepage-message tests | — | 2026-07-19 |
+| completeness-cleanup | done | auto | main | Sample hint, buy_credits gate, quota copy truth, skills/docs | AuditInput, credits, AuditLimitGate, plans, copy, skills | — | 2026-07-19 |
 | marketing-copy-cya-cut | done | auto | main | Cut CYA, builder vernacular across marketing + product microcopy | lib/marketing/copy.ts, landing, report UI, FAQ/pricing, tests, voice docs | — | 2026-07-19 |
-| payments-live-ready | in_progress | auto | main | Stripe test catalog + Railway + billing harden + copy/legal + skills | lib/billing, stripe routes, webhooks, copy, env, docs/stripe-setup.md | ship-fully-functional | 2026-07-19 |
+| payments-live-ready | done | auto | main | Stripe test + Railway vars + billing harden + copy/legal/skills; prod billingConfigured=true | lib/billing, stripe routes, webhooks, copy, docs/stripe-setup.md | — | 2026-07-19 |
 | ship-fully-functional | done | auto | main | Unblock Railway, journey flags, visual evidence, skills/docs | deps, persist, report, Docker, AGENTS/skills | — | 2026-07-19 |
 | railway-npm-ci-fix | done | auto | main | Folded into ship-fully-functional (zod4 + auth pins) | package.json, package-lock.json, Dockerfile | — | 2026-07-19 |
 | merge-origin-main | done | auto | main | Merged origin/main into local main; resolved BOARD conflict; pushed 966f7b4 | local Playwright commits × remote app-polish/passkey/cwv | — | 2026-07-19 |

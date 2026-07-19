@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     )
   } catch (err) {
     if (err instanceof AuditLimitError) {
-      return apiError(err.message, 402, { code: err.code, action: 'upgrade' })
+      return apiError(err.message, 402, { code: err.code, action: err.action })
     }
     if (err instanceof ParentAuditError) {
       return apiError(err.message, err.status, {

@@ -334,9 +334,6 @@ export function AuditInput({
           {HERO.trySampleCta}
           <ArrowRight className="ml-1 h-3.5 w-3.5" />
         </Button>
-        {isLanding && (
-          <p className="text-2xs text-muted-foreground/80">{HERO.trySampleHint}</p>
-        )}
       </div>
 
       {limitGate && (

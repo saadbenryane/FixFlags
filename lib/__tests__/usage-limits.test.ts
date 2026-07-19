@@ -176,6 +176,7 @@ describe('wouldBlockNewCheck', () => {
     )
     assert.equal(result.allowed, false)
     assert.equal(result.code, 'TOKEN_LIMIT')
+    assert.equal(result.action, 'buy_credits')
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

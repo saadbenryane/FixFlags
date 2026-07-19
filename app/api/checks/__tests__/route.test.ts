@@ -121,6 +121,24 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(body.action).toBe('upgrade')
   })
 
+  it('returns 402 with buy_credits for paid TOKEN_LIMIT', async () => {
+    getSession.mockResolvedValue({ user: { id: 'user-1' } })
+    createAndEnqueueAudit.mockRejectedValue(
+      new AuditLimitError('TOKEN_LIMIT', {
+        action: 'buy_credits',
+        message: 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
+      })
+    )
+
+    const res = await POST(postReq())
+
+    expect(res.status).toBe(402)
+    const body = await res.json()
+    expect(body.code).toBe('TOKEN_LIMIT')
+    expect(body.action).toBe('buy_credits')
+    expect(body.message).toMatch(/buy credits/i)
+  })
+
   it('returns 403 when parentId belongs to another user', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     const { ParentAuditError } = await import('@/lib/audit/create-audit')

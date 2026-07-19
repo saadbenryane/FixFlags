@@ -69,6 +69,20 @@ Search canonical docs and skills for:
 | `six rubrics`, `Six rubrics` | Three rubrics only: Message, Experience, Reach |
 | `ai-review.*triage` in docs | ai-review is prescription only |
 | `includeAi` skips triage | includeAi gates prescription only |
+| `unlimited deterministic` (at Free limit) | Free = 3 new URL checks; re-checks free; new checks blocked at limit |
+| `upgrade for unlimited` | Pro is 25/mo, not unlimited |
+| `subscription-only` ignoring packs | Credit packs are paid overflow (`lib/billing/credits.ts`) |
+
+## Phase 2.4 — Payments readiness
+
+Before claiming revenue-ready:
+
+- [ ] `docs/stripe-setup.md` price IDs match Railway `STRIPE_*_PRICE_ID`
+- [ ] `/api/health` → `billingConfigured: true`
+- [ ] Webhook tests pass: `app/api/webhooks/stripe/__tests__/route.test.ts`
+- [ ] Terms include cancel/refund/credit-pack language
+- [ ] Grep clean: `unlimited deterministic`, `upgrade for unlimited`
+- [ ] `BILLING_REQUIRED=true` on Railway; secrets only in `.env.local` / Railway
 
 ## Phase 2.5 — Audit pipeline grep
 
@@ -125,7 +139,10 @@ Marketing and report surfaces must match product contracts:
 - **Visual evidence:** either wired via `tryCaptureVisualEvidenceForAudit` or absent from the tree — no orphan `lib/audit/capture` modules.
 - **Browser stack:** single vendor (Playwright). Grep for `from 'puppeteer'` under `lib/audit` must be empty.
 - **Re-checks:** free and unlimited on owned reports; never gate behind quota.
-- **Billing gate:** new URL checks enforce FREE lifetime limit via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
+- **Billing gate:** new URL checks enforce Free lifetime / paid monthly limits via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
+- **Limit CTA match:** `AuditLimitGate` must honor `action` (`signup` | `upgrade` | `buy_credits`). Paid overflow links to `/billing#credit-packs`, not a fake upgrade.
+- **Copy vs plans:** Free features in `copy.ts` / FAQ / email match `PLAN_DEFINITIONS.FREE` (3 new URL checks; never "unlimited deterministic").
+- **No orphan marketing chrome:** no unused trust-badge components; no `trySampleHint` under the sample CTA.
 - **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
 
 ## Phase 7.5 — Funnel / analytics

@@ -91,6 +91,13 @@ From `docs/voice-and-copy.md`:
 - One contextual CTA angle per page; never paste the same block everywhere
 - **Rule of one** per block: one reader, one pain, one outcome, one action
 
+## Hero contract (homepage)
+
+- Trust line: only `OFFER.short` under the URL field. No badge row. No second privacy/claim paragraph.
+- Sample CTA: `HERO.trySampleCta` alone. **No** `trySampleHint` subtitle.
+- Ban on marketing surfaces: `compatibility is not endorsement`, `read-only review`, `claim the report`, `fix prompt ready`, `Agent-ready`, `\bunlock\b`
+- Before shipping copy: diff strings against `PLAN_DEFINITIONS` in `lib/billing/plans.ts` (Free = 3 new URL checks, not unlimited deterministic)
+
 ## ICP research workflow
 
 Before expanding copy to a new segment, run this checklist:
@@ -207,6 +214,17 @@ Unlike [alternative], we [differentiator with evidence].
 **Disqualifier:** …
 **Success metric:** audit starts, signup, upgrade moment
 ```
+
+## Quota language (must match entitlements)
+
+| Say | Do not say |
+|-----|------------|
+| 3 new URL checks (Free lifetime) | Unlimited deterministic checks (implies new checks continue at limit) |
+| Unlimited re-checks on reports you own | Unlimited checks / unlimited audits |
+| Upgrade for 25/mo (Pro) | Upgrade for unlimited |
+| Credit packs for paid overflow | Subscription-only with no packs |
+
+At Free limit, **new URL checks are blocked**. Re-checks stay free. Align `UPGRADE_MOMENTS`, FAQ, and sign-up subtitle with `create-audit` / `wouldBlockNewCheckWithCredits`.
 
 ## Additional resources
 

@@ -9,9 +9,9 @@ const ROWS = [
   },
   {
     feature: 'What you get',
-    free: 'Full report + fix prompts on every check',
+    free: 'Full report + fix prompts on each of your 3 new URL checks',
     pro: 'Before/after compare + MCP in your editor',
-    agency: 'Client-ready share links + proof exports + up to 5 projects',
+    agency: 'Share links, proof exports, 5 projects, GitHub repo scans',
   },
   {
     feature: 'Re-checks',

@@ -73,7 +73,12 @@ export async function refundPurchasedCredit(
 export async function wouldBlockNewCheckWithCredits(
   user: Pick<User, 'id' | 'plan' | 'role' | 'auditsUsed' | 'auditsLimit'>,
   pending: number
-): Promise<{ allowed: boolean; code?: string; action?: string; error?: string }> {
+): Promise<{
+  allowed: boolean
+  code?: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT'
+  action?: 'upgrade' | 'buy_credits'
+  error?: string
+}> {
   const limit = user.auditsLimit
   const planAvailable = limit - user.auditsUsed
   if (planAvailable > pending) return { allowed: true }
@@ -81,12 +86,19 @@ export async function wouldBlockNewCheckWithCredits(
   const purchased = await getPurchasedCreditsRemaining(user.id)
   if (purchased > pending) return { allowed: true }
 
+  if (user.plan === 'FREE') {
+    return {
+      allowed: false,
+      code: 'UPGRADE_REQUIRED',
+      action: 'upgrade',
+      error: 'New URL check limit reached. Upgrade to continue.',
+    }
+  }
+
   return {
     allowed: false,
-    code: user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
-    action: 'upgrade',
-    error: user.plan === 'FREE'
-      ? 'Audit limit reached. Upgrade to continue.'
-      : 'Audit limit reached. Upgrade your plan or buy more credits to continue.',
+    code: 'TOKEN_LIMIT',
+    action: 'buy_credits',
+    error: 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
   }
 }

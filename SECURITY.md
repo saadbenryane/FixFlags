@@ -78,6 +78,13 @@
 - Sanitization: `lib/audit/metadata.ts` `sanitizeText()` strips scripts, event handlers, embedded content.
 - AI prompt templates in `lib/prompts/system-prompt.ts` do not interpolate raw user input into system instructions.
 
+## Billing (production)
+
+- Revenue deploys set `BILLING_REQUIRED=true` and the full Stripe set (secret, webhook secret, five price IDs). Partial config fails boot via `validateStripeBillingEnv`.
+- Test vs live is key prefix only (`sk_test_` / `sk_live_`). Never mix test price IDs with live keys.
+- Webhook events: `customer.subscription.*`, `invoice.payment_failed|payment_succeeded`, `checkout.session.completed|expired`, `charge.refunded`.
+- Operator setup: `docs/stripe-setup.md`. Never commit secrets; use `.env.local` + Railway variables.
+
 ## Approval requirements
 
 | Action | Approval |
@@ -86,7 +93,7 @@
 | env.example changes | Review for secrets exposure |
 | Worker index.ts changes | Full audit cycle test |
 | Middleware/proxy.ts changes | Verify edge compatibility (no Node imports) |
-| Stripe webhook handler | Verify signature verification |
+| Stripe webhook handler | Verify signature verification + plan sync on payment_failed |
 | AI prompt changes | Verify prompt injection safety |
 
 ## Out of scope
