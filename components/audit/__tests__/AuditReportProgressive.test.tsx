@@ -37,7 +37,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByText(getScanningLabel('CAPTURING', 0))).toBeInTheDocument()
   })
 
-  it('streams partial flags into the explorer as they are found', () => {
+  it('streams partial flags into the explorer as they are found', async () => {
     render(
       <AuditReportProgressive
         status="CHECKING"
@@ -48,7 +48,10 @@ describe('AuditReportProgressive', () => {
         ]}
       />
     )
-    expect(screen.getAllByText('Headline promises nothing').length).toBeGreaterThan(0)
+    // LiveReportExplorer is code-split via next/dynamic - wait for the chunk.
+    expect(
+      (await screen.findAllByText('Headline promises nothing')).length
+    ).toBeGreaterThan(0)
   })
 
   it('falls back to a skeleton frame while screenshots are pending', () => {

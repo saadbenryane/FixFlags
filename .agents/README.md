@@ -18,11 +18,9 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 
 1. **Every substantial write task has a unique ID and owner.**
 2. **Only one agent owns a write scope at a time.** Read-only research may run in parallel.
-3. **Claim tasks on BOARD.md before starting.** Check for overlapping ownership.
-4. **Use isolated branches and worktrees** for concurrent write-heavy tasks:
-   - Branch: `agent/<task-id>-<short-description>`
-   - Worktree: `../qewos-<task-id>/`
-5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work.**
+3. **Claim tasks on BOARD.md before starting.** Check for overlapping ownership. Record branch as `main`.
+4. **Always work on `main` (pre-prod).** Do not create feature branches, `agent/*` branches, or git worktrees unless the user explicitly asks. Pull latest `main`, commit, and push to `main`.
+5. **Never alter, reset, clean, stash, delete, switch, overwrite, discard, or force-push another agent's work on `main`.**
 6. **Stop and document** ambiguous ownership or conflicting state.
 7. **Create a handoff** before leaving meaningful work incomplete.
 8. **Archive records** after useful knowledge is promoted into canonical docs, code, tests, or evals.

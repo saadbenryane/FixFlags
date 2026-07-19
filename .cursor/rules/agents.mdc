@@ -8,6 +8,8 @@ alwaysApply: true
 
 Read `/AGENTS.md` first — it is the canonical entry point for all AI agents.
 
-Before any substantial write task, also read `.agents/BOARD.md` to check for overlapping ownership and claim your task.
+**Pre-prod git rule:** Always work directly on `main`. Do not create feature branches or worktrees unless the user explicitly asks. Pull, commit, and push on `main`.
+
+Before any substantial write task, also read `.agents/BOARD.md` to check for overlapping ownership and claim your task (branch field: `main`).
 
 See `.agents/README.md` for multi-agent coordination rules, session/handoff/learning/eval conventions.

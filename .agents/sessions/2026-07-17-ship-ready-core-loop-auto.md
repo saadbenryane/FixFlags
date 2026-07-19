@@ -50,3 +50,29 @@ Close post-signup payoff and trust gaps on Flag → Fix → Re-check so the prod
 ## Stop condition
 
 Core journey is coherent: anon sees real triage value → clear account CTA for prompts → claim/AI pending wiring → re-check owner path clear. Remaining items are deploy/measurement polish.
+
+## Review close-out (claude, 2026-07-17, branch claude/app-polish-shipping-unj812)
+
+Reviewed and verified with the full local stack (native Postgres/Redis; see
+`.agents/learnings/remote-sandbox-fullstack-recipe.md`) and a Puppeteer walk of
+the claim-unlock path over a seeded anonymous COMPLETED audit:
+
+- Anon report: flags visible, fix prompts locked, per-flag locked teaser and
+  claim CTA present. PASS.
+- Claim CTA -> sign-up carries `next=/report/<id>&from=report`. PASS.
+- Post-signup: report unlocks WITHOUT manual reload, full Fix card with Copy
+  prompt + Connect Cursor MCP, "Fix prompts generating" + "Fix prompts on the
+  way" pending states render, Limited screenshots callout renders. PASS.
+- DB: audit claimed (userId set) and `includeAi: true` after signup. PASS.
+- Full suite on the merged tree: typecheck, lint, 1759 tests (incl. the 6 new
+  component-test files this environment can run), guards, production build.
+
+**Gap found and fixed during review:** the claim only fired on `/post-login`
+(OAuth) and the dashboard. EMAIL signups from the report claim CTA navigated
+straight back to the report via `navigateAfterAuth`, so the claim never ran:
+account created, report still locked, claim CTA gone - a dead end on the main
+conversion path. Fix: email sign-in/sign-up now route through `/post-login`
+(`postLoginHref` from `useAuthRedirect`), making it the single post-auth path
+for claim + checkout + next navigation. Verified by the browser walk above.
+
+Marked done on the board.

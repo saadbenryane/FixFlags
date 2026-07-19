@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/cn'
 
 interface GlobalMeshBackdropProps {
   className?: string
@@ -63,7 +63,7 @@ export function GlobalMeshBackdrop({
         className={cn(
           'absolute left-1/2 top-[-18rem] h-[38rem] w-[88rem] -translate-x-1/2 blur-[120px]',
           '[background:radial-gradient(ellipse_72%_48%_at_50%_48%,hsl(var(--brand)/0.14),hsl(28_80%_72%/0.08)_38%,transparent_72%)] opacity-95 dark:opacity-100',
-          'motion-safe:animate-peach-breathe motion-safe:will-change-[opacity,transform]'
+          'motion-safe:animate-peach-breathe'
         )}
       />
 
@@ -72,7 +72,7 @@ export function GlobalMeshBackdrop({
         className={cn(
           'absolute left-[12%] top-[8%] h-[22rem] w-[34rem] blur-[100px]',
           '[background:radial-gradient(ellipse_60%_50%_at_50%_50%,hsl(var(--brand)/0.08),transparent_70%)] opacity-80 dark:opacity-60',
-          'motion-safe:animate-peach-drift-a motion-safe:will-change-transform'
+          'motion-safe:animate-peach-drift-a'
         )}
       />
 
@@ -81,7 +81,7 @@ export function GlobalMeshBackdrop({
         className={cn(
           'absolute bottom-[-11rem] right-[-16rem] h-[28rem] w-[48rem] -rotate-6 blur-[110px]',
           '[background:radial-gradient(ellipse_70%_46%_at_50%_50%,hsl(38_22%_74%/0.2),transparent_70%)] opacity-70 dark:opacity-45',
-          'motion-safe:animate-peach-drift-b motion-safe:will-change-transform'
+          'motion-safe:animate-peach-drift-b'
         )}
       />
     </div>

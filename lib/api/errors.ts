@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
 import { isSupportError } from '@/lib/live-support/errors'
+import { AuditUrlError } from '@/lib/audit/url'
 
 export interface ApiErrorBody {
   code: UsageLimitCode | string
@@ -36,6 +37,10 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
 
   if (isSupportError(err)) {
     return apiError(err.message, err.status, { code: err.code, requestId })
+  }
+
+  if (err instanceof AuditUrlError) {
+    return apiError(err.message, 400, { code: 'INVALID_URL', requestId })
   }
 
   if (err instanceof RateLimitError) {

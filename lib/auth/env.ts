@@ -9,6 +9,20 @@ export function getAuthBaseUrl(): string {
   return process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 }
 
+/** WebAuthn RP ID: hostname only (no port). `localhost` is valid for local dev. */
+export function getPasskeyRpID(): string {
+  try {
+    return new URL(getAuthBaseUrl()).hostname || 'localhost'
+  } catch {
+    return 'localhost'
+  }
+}
+
+/** WebAuthn origin: scheme + host (+ port), no trailing slash. */
+export function getPasskeyOrigin(): string {
+  return getAuthBaseUrl().replace(/\/$/, '')
+}
+
 export function isGoogleOAuthConfigured(): boolean {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
 }

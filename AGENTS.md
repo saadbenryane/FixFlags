@@ -13,7 +13,7 @@
 
 | Fact | Value | Source / regenerate command |
 |------|-------|-----------------------------|
-| Prisma models | **40** | `prisma/schema.prisma` (`grep -c '^model '`) |
+| Prisma models | **42** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
 | Check capabilities | 45 (43 live, 1 partial, 1 planned) | `npm run audit:capabilities` |
 | Check IDs | **129** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
@@ -98,6 +98,7 @@
 - **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
 - **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
+- **`/post-login` is the single post-auth landing** for OAuth AND email flows: it claims anonymous audits (`useMe({claim:true})`, sets `includeAi`), then runs checkout/`next` navigation. Never navigate straight to `next` after auth: that skips the claim and leaves reports locked.
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
 - **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Flags, optional Journey/Overview/Previews/Flow/Launch, Re-check for non-owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
@@ -134,18 +135,24 @@
 - Stripe webhook signature verified.
 - See `SECURITY.md` for full details.
 
+## Git workflow (pre-prod)
+
+**Always work directly on `main`.** FixFlags is pre-revenue / pre-prod: no customers, no production blast radius that justifies feature branches for routine agent work.
+
+1. `git checkout main && git pull origin main` before starting.
+2. Commit and push to `main`. Do not create `agent/*`, `cursor/*`, or worktree branches unless the user explicitly asks.
+3. Prefer small, reviewable commits on `main` over long-lived side branches.
+4. If a remote branch already exists from earlier work, merge it into `main` promptly rather than continuing on it.
+
 ## Parallel-agent rules
 
 1. **Read `.agents/BOARD.md` before any substantial write task.**
-2. **Claim tasks** by adding a board entry before starting. One agent owns a write scope at a time.
+2. **Claim tasks** by adding a board entry before starting. One agent owns a write scope at a time. Board `Branch/worktree` should be `main`.
 3. **Read-only research** (grep, search, read) may run in parallel without claiming.
-4. **Use isolated branches and worktrees** for concurrent write-heavy tasks:
-   - Branch: `agent/<task-id>-<short-description>`
-   - Worktree: `../qewos-<task-id>/`
-5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work.**
+4. **Do not use isolated branches or worktrees** for concurrent write-heavy tasks while pre-prod. Coordinate via BOARD.md ownership instead. (Revisit branching only if multiple agents must write the same files simultaneously and board claiming is insufficient.)
+5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work on `main`.** Prefer additive commits; do not force-push `main`.
 6. **Stop and document** ambiguous ownership or conflicting state.
 7. **Create a handoff** (`.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
-8. **Solo operation on `main`** (the primary workflow) is fine for single-agent sessions. The parallel rules above are for multi-agent scenarios.
 
 ## Verification and definition of done
 

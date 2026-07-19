@@ -10,7 +10,9 @@ import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
-import { cn, impactTagIcon, impactTagLabel } from '@/lib/utils'
+import { cn } from '@/lib/cn'
+import { impactTagIcon } from '@/lib/rubric-icons'
+import { impactTagLabel } from '@/lib/utils'
 
 /** Check IDs where the issue is about social/shareable previews. */
 const SHAREABLE_CHECK_IDS = new Set([

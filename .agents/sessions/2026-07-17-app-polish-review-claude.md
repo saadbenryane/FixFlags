@@ -160,3 +160,47 @@ fails in sandbox) is calm; private reports correctly deny logged-out visitors.
   has no fallback.
 - Confirm in production analytics that `fix_prompt_copied.kind` distribution
   looks sane (flag vs plan vs export).
+
+## Iteration 3 (same session): re-check walk + clear URL errors
+
+- Browser-verified the email sign-in -> /post-login -> dashboard path (the
+  earlier timeout was local Postgres dying, not the auth change; restart per
+  the fullstack recipe learning note).
+- Browser-verified the RE-CHECK step end to end as the claimed owner:
+  action button -> POST /monitoring -> navigation to the new monitoring
+  report; DB row has monitoringMode FULL and skipUsageCount true (both
+  core-loop invariants hold). In-progress UI (ring, N/A rubrics, device
+  skeletons) renders correctly. All three Flag -> Fix -> Re-check steps are
+  now personally browser-verified this session.
+- **Fix shipped:** URL-validation failures inside `createAndEnqueueAudit`
+  (typo'd/unresolvable domain, SSRF block) surfaced as generic 500
+  "Something went wrong" on the hero input and re-check. Added typed
+  `AuditUrlError` in `lib/audit/url.ts`, handled centrally in
+  `handleRouteError` as 400 INVALID_URL; DNS-failure copy is now
+  "We could not find that domain. Check the URL and try again." Verified
+  live via POST /api/checks (400 + message) and the re-check toast.
+
+## Iteration 4 (same session): schema/migration drift = likely prod triage killer
+
+`npm run verify`'s drift gate caught real drift on merged main: `schema.prisma`
+has four ImpactTag variants (CLARITY, AUTHORITY, FRICTION, EMOTION, from
+commit 8d50901 "flag quality iteration") and an `auditMode` default change
+(SINGLE -> CRITICAL_PATH) with **no migration**. All 38 migrations applied
+cleanly and the diff persisted, confirming the miss.
+
+Impact: any migrate-deployed database (prod deploys via `db:deploy`) rejects
+those enum values at persist time. The AI triage/judge schemas ACCEPT the new
+tags (`judge-triage-schema.ts`, `judge-schema.ts`), so a triage response using
+one would fail at flag persist. **Hypothesis:** this explains the degraded
+triage observed on the live prod scan earlier this session (`triageAt` null +
+`failureCode` on a COMPLETED audit). Single datapoint; confirm by checking
+prod `ImpactTag` enum values or triage failure logs after deploying the fix.
+
+Fix: migration `20260718132024_impact_tag_variants_and_critical_path_default`
+(ADD VALUE IF NOT EXISTS x4 so it is safe even on databases already patched
+via `db push`, plus the default change). Applied locally; `db:drift` clean;
+full `npm run verify` green.
+
+Lesson: run `npm run verify` (not just typecheck/lint/test/build) after any
+merge that touches `prisma/schema.prisma`; the drift gate is the only thing
+that catches schema-without-migration.

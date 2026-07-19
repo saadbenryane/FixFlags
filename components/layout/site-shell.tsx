@@ -4,7 +4,7 @@ import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
-import { SupportWidget } from '@/components/live-support/SupportWidget'
+import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
 
 interface SiteShellProps {
@@ -75,7 +75,7 @@ export function SiteShell({
         )}
         {showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}
         {showFooter && resolvedFooter === 'default' && <Footer />}
-        {showSupport && <SupportWidget />}
+        {showSupport && <SupportWidgetLazy />}
       </div>
     </div>
   )

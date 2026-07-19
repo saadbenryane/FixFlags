@@ -22,7 +22,7 @@ The QA layer for AI-built products. Paste a URL, get Flags across Message, Exper
 ## Architecture at a glance
 
 - **Framework:** Next.js 15 App Router + React 19
-- **Database:** PostgreSQL via Prisma 6 (40 models)
+- **Database:** PostgreSQL via Prisma 6 (see AGENTS.md for model count)
 - **Queue:** BullMQ with Redis (inline + standalone worker)
 - **AI:** OpenAI (gpt-4o-mini) primary, Anthropic fallback
 - **Auth:** Better Auth (email + OAuth)

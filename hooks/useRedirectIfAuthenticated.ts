@@ -9,10 +9,11 @@ export function useRedirectIfAuthenticated() {
   const { navigateAfterAuth } = useAuthRedirect()
 
   useEffect(() => {
-    authClient.getSession().then((result) => {
-      if (result.data?.user) {
-        void navigateAfterAuth()
+    void (async () => {
+      const { data } = await authClient.getSession()
+      if (data?.user) {
+        await navigateAfterAuth()
       }
-    })
+    })()
   }, [navigateAfterAuth])
 }

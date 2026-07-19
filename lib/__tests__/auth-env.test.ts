@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it, beforeEach, afterEach } from 'vitest'
 import {
   getAuthBaseUrl,
+  getPasskeyOrigin,
+  getPasskeyRpID,
   isGoogleOAuthConfigured,
   oauthCallbackUrl,
   validateAuthEnv,
@@ -22,6 +24,18 @@ describe('lib/auth/env', () => {
     process.env.BETTER_AUTH_URL = 'https://fixflags.com'
     process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
     assert.equal(getAuthBaseUrl(), 'https://fixflags.com')
+  })
+
+  it('getPasskeyRpID uses hostname only', () => {
+    process.env.BETTER_AUTH_URL = 'https://fixflags.com'
+    assert.equal(getPasskeyRpID(), 'fixflags.com')
+    process.env.BETTER_AUTH_URL = 'http://localhost:3000'
+    assert.equal(getPasskeyRpID(), 'localhost')
+  })
+
+  it('getPasskeyOrigin strips trailing slash', () => {
+    process.env.BETTER_AUTH_URL = 'https://fixflags.com/'
+    assert.equal(getPasskeyOrigin(), 'https://fixflags.com')
   })
 
   it('oauthCallbackUrl builds provider callback path', () => {

@@ -64,6 +64,10 @@ export function useAuthRedirect() {
     () => buildPostLoginQuery(next, plan, from),
     [next, plan, from]
   )
+  // Email flows push here after auth so /post-login is the single post-auth
+  // path: it claims anonymous audits, then runs checkout/next navigation.
+  // Navigating straight to `next` skips the claim and leaves reports locked.
+  const postLoginHref = oauthCallbackURL
   const oauthNewUserCallbackURL = useMemo(
     () => buildPostLoginQuery(next, plan, from, { newUser: true }),
     [next, plan, from]
@@ -120,6 +124,7 @@ export function useAuthRedirect() {
     from,
     oauthCallbackURL,
     oauthNewUserCallbackURL,
+    postLoginHref,
     navigateAfterAuth,
     signInHref,
     signUpHref,
