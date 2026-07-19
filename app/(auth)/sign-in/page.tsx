@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
 import { Mail, Loader2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,8 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignInForm() {
-  const { oauthCallbackURL, oauthNewUserCallbackURL, navigateAfterAuth, signUpHref } = useAuthRedirect()
+  const { oauthCallbackURL, oauthNewUserCallbackURL, postLoginHref, signUpHref } = useAuthRedirect()
+  const router = useRouter()
   useRedirectIfAuthenticated()
   const oauth = useOAuthProviders()
   const [email, setEmail] = useState('')
@@ -37,7 +39,9 @@ function SignInForm() {
         return
       }
       trackEvent('signed_in', { method: 'email' })
-      await navigateAfterAuth()
+      // Through /post-login so anonymous audits get claimed before the
+      // next/checkout navigation (same path OAuth takes).
+      router.push(postLoginHref)
     } catch {
       toast.error('Something went wrong')
     } finally {
