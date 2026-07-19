@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 import {
   FLOW_IDX_ATTR,
   rankScoredCtaCandidate,
@@ -21,54 +21,57 @@ export function flowCtaSelector(flowIdx: number): string {
 }
 
 export async function discoverFlowCtas(page: Page, pageUrl: string): Promise<FlowCtaCandidate[]> {
-  const raw = await page.evaluate((selectors, attr) => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
+  const raw = await page.evaluate(
+    ({ selectors, attr }: { selectors: string; attr: string }) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+      document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
 
-    const elements = Array.from(document.querySelectorAll(selectors))
-    const items: Array<{
-      idx: number
-      tag: string
-      text: string
-      href: string | null
-      opensInNewTab: boolean
-    }> = []
-    let idx = 0
+      const elements = Array.from(document.querySelectorAll(selectors))
+      const items: Array<{
+        idx: number
+        tag: string
+        text: string
+        href: string | null
+        opensInNewTab: boolean
+      }> = []
+      let idx = 0
 
-    for (const el of elements) {
-      if (el.closest('nav, header, [role="navigation"]')) continue
+      for (const el of elements) {
+        if (el.closest('nav, header, [role="navigation"]')) continue
 
-      const rect = el.getBoundingClientRect()
-      const inViewport =
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.top < window.innerHeight &&
-        rect.bottom > 0 &&
-        rect.left < window.innerWidth &&
-        rect.right > 0
-      if (!inViewport) continue
+        const rect = el.getBoundingClientRect()
+        const inViewport =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.top < window.innerHeight &&
+          rect.bottom > 0 &&
+          rect.left < window.innerWidth &&
+          rect.right > 0
+        if (!inViewport) continue
 
-      const tag = el.tagName.toLowerCase()
-      const href =
-        tag === 'a'
-          ? (el as HTMLAnchorElement).getAttribute('href')
-          : el.closest('a')?.getAttribute('href') ?? null
-      const text =
-        (el.textContent ?? '').trim() ||
-        el.getAttribute('aria-label')?.trim() ||
-        el.getAttribute('title')?.trim() ||
-        ''
+        const tag = el.tagName.toLowerCase()
+        const href =
+          tag === 'a'
+            ? (el as HTMLAnchorElement).getAttribute('href')
+            : el.closest('a')?.getAttribute('href') ?? null
+        const text =
+          (el.textContent ?? '').trim() ||
+          el.getAttribute('aria-label')?.trim() ||
+          el.getAttribute('title')?.trim() ||
+          ''
 
-      const anchor = tag === 'a' ? el : el.closest('a')
-      const opensInNewTab = anchor?.getAttribute('target') === '_blank'
+        const anchor = tag === 'a' ? el : el.closest('a')
+        const opensInNewTab = anchor?.getAttribute('target') === '_blank'
 
-      el.setAttribute(attr, String(idx))
-      items.push({ idx, tag, text, href, opensInNewTab })
-      idx++
-    }
+        el.setAttribute(attr, String(idx))
+        items.push({ idx, tag, text, href, opensInNewTab })
+        idx++
+      }
 
-    return items
-  }, CTA_SELECTORS, FLOW_IDX_ATTR)
+      return items
+    },
+    { selectors: CTA_SELECTORS, attr: FLOW_IDX_ATTR }
+  )
 
   return scoreCtaCandidates(pageUrl, raw).map((item) => ({
     flowIdx: item.idx,
@@ -87,47 +90,50 @@ export async function discoverFlowCtasWithFallback(
   const mainOnly = await discoverFlowCtas(page, pageUrl)
   if (mainOnly.length > 0) return mainOnly
 
-  const raw = await page.evaluate((selectors, attr) => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
-    const elements = Array.from(document.querySelectorAll(selectors))
-    const items: Array<{
-      idx: number
-      tag: string
-      text: string
-      href: string | null
-      opensInNewTab: boolean
-    }> = []
-    let idx = 0
-    for (const el of elements) {
-      const rect = el.getBoundingClientRect()
-      const inViewport =
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.top < window.innerHeight &&
-        rect.bottom > 0 &&
-        rect.left < window.innerWidth &&
-        rect.right > 0
-      if (!inViewport) continue
-      const tag = el.tagName.toLowerCase()
-      const href =
-        tag === 'a'
-          ? (el as HTMLAnchorElement).getAttribute('href')
-          : el.closest('a')?.getAttribute('href') ?? null
-      const text =
-        (el.textContent ?? '').trim() ||
-        el.getAttribute('aria-label')?.trim() ||
-        el.getAttribute('title')?.trim() ||
-        ''
-      const anchor = tag === 'a' ? el : el.closest('a')
-      const opensInNewTab = anchor?.getAttribute('target') === '_blank'
+  const raw = await page.evaluate(
+    ({ selectors, attr }: { selectors: string; attr: string }) => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+      document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
+      const elements = Array.from(document.querySelectorAll(selectors))
+      const items: Array<{
+        idx: number
+        tag: string
+        text: string
+        href: string | null
+        opensInNewTab: boolean
+      }> = []
+      let idx = 0
+      for (const el of elements) {
+        const rect = el.getBoundingClientRect()
+        const inViewport =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.top < window.innerHeight &&
+          rect.bottom > 0 &&
+          rect.left < window.innerWidth &&
+          rect.right > 0
+        if (!inViewport) continue
+        const tag = el.tagName.toLowerCase()
+        const href =
+          tag === 'a'
+            ? (el as HTMLAnchorElement).getAttribute('href')
+            : el.closest('a')?.getAttribute('href') ?? null
+        const text =
+          (el.textContent ?? '').trim() ||
+          el.getAttribute('aria-label')?.trim() ||
+          el.getAttribute('title')?.trim() ||
+          ''
+        const anchor = tag === 'a' ? el : el.closest('a')
+        const opensInNewTab = anchor?.getAttribute('target') === '_blank'
 
-      el.setAttribute(attr, String(idx))
-      items.push({ idx, tag, text, href, opensInNewTab })
-      idx++
-    }
-    return items
-  }, CTA_SELECTORS, FLOW_IDX_ATTR)
+        el.setAttribute(attr, String(idx))
+        items.push({ idx, tag, text, href, opensInNewTab })
+        idx++
+      }
+      return items
+    },
+    { selectors: CTA_SELECTORS, attr: FLOW_IDX_ATTR }
+  )
 
   return scoreCtaCandidates(pageUrl, raw).map((item) => ({
     flowIdx: item.idx,

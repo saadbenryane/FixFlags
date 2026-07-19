@@ -1,5 +1,3 @@
-import type { CaptureProfile } from './capture-profile'
-
 export class PageCaptureError extends Error {
   readonly httpStatus: number | null
   readonly contentType: string | null
@@ -55,61 +53,4 @@ export function pageCaptureFailureFromError(
     contentType: null,
     finalUrl: null,
   }
-}
-
-export function isHtmlContentType(contentType: string): boolean {
-  if (!contentType) return false
-  const lower = contentType.toLowerCase()
-  return lower.includes('text/html') || lower.includes('application/xhtml+xml')
-}
-
-export async function pageHasHtmlDocument(page: import('puppeteer').Page): Promise<boolean> {
-  return page.evaluate(() => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    return document.documentElement?.tagName === 'HTML'
-  })
-}
-
-export async function validateNavigationResponse(
-  response: { ok: () => boolean; status: () => number; headers: () => Record<string, string> } | null,
-  finalUrl: string,
-  page: import('puppeteer').Page
-): Promise<void> {
-  const contentType = response?.headers()['content-type']?.toLowerCase() ?? ''
-  const httpStatus = response?.status() ?? null
-  const statusOk =
-    response != null &&
-    (response.ok() || httpStatus === 304 || (httpStatus != null && httpStatus >= 200 && httpStatus < 400))
-
-  const hasHtmlDocument = await pageHasHtmlDocument(page)
-  const contentTypeOk = isHtmlContentType(contentType)
-
-  if (!statusOk || (!contentTypeOk && !hasHtmlDocument)) {
-    throw new PageCaptureError('Destination did not return a successful HTML document', {
-      code:
-        httpStatus === 403
-          ? 'HTTP_FORBIDDEN'
-          : httpStatus === 429
-            ? 'HTTP_RATE_LIMIT'
-            : contentTypeOk || hasHtmlDocument
-              ? 'HTTP_ERROR'
-              : 'NON_HTML_RESPONSE',
-      httpStatus,
-      contentType: contentType || null,
-      finalUrl,
-    })
-  }
-}
-
-export async function applyCaptureProfile(
-  page: import('puppeteer').Page,
-  profile: CaptureProfile
-): Promise<void> {
-  await page.setUserAgent(profile.userAgent)
-  await page.setViewport({
-    width: profile.width,
-    height: profile.height,
-    isMobile: profile.isMobile,
-    deviceScaleFactor: profile.deviceScaleFactor,
-  })
 }

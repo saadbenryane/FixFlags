@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 import type { ProbeOutcome } from './nav-probes'
 
 export interface FormProbeResult {

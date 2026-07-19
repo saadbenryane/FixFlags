@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
     ]
   },
   serverExternalPackages: [
-    'puppeteer',
+    'playwright',
     '@prisma/client',
     'prisma',
     'better-auth',

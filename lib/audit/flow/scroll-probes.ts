@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 
 export interface GhostSectionProbeResult {
   ghostCount: number
@@ -12,7 +12,7 @@ function sleep(ms: number): Promise<void> {
 
 /** Scroll the page and detect sections that remain invisible in the viewport. */
 export async function probeGhostSections(page: Page): Promise<GhostSectionProbeResult> {
-  const viewport = page.viewport()
+  const viewport = page.viewportSize()
   const vh = viewport?.height ?? 800
   const seen = new Map<string, string>()
 

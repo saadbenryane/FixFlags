@@ -6,7 +6,7 @@
  */
 import fs from 'fs/promises'
 import path from 'path'
-import puppeteer from 'puppeteer'
+import { chromium } from 'playwright'
 import { closeBrowser, captureScreenshots } from '../lib/audit/screenshot'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../lib/audit/viewports'
 import { getLocalScreenshotPath } from '../lib/storage/screenshots'
@@ -53,7 +53,7 @@ function isLocalCaptureUrl(raw: string): boolean {
 
 async function captureLocalScreenshots(targetUrl: string) {
   const outputFiles = outputFilesForUrl(targetUrl)
-  const browser = await puppeteer.launch({
+  const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: true,
   })
@@ -65,9 +65,13 @@ async function captureLocalScreenshots(targetUrl: string) {
     isMobile?: boolean,
     deviceScaleFactor?: number
   ) {
-    const page = await browser.newPage()
+    const context = await browser.newContext({
+      viewport: { width, height },
+      isMobile: Boolean(isMobile),
+      deviceScaleFactor: deviceScaleFactor ?? 1,
+    })
+    const page = await context.newPage()
     try {
-      await page.setViewport({ width, height, isMobile, deviceScaleFactor })
       const response = await page.goto(targetUrl, {
         waitUntil: 'domcontentloaded',
         timeout: TIMEOUT_MS,
@@ -76,15 +80,13 @@ async function captureLocalScreenshots(targetUrl: string) {
         throw new Error(`Capture returned HTTP ${response?.status() ?? 'unknown'}`)
       }
       await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
-      const buffer = (await page.screenshot({
-        type: 'webp',
-        quality: 80,
-        fullPage: false,
-      })) as Buffer
+      // Playwright supports png/jpeg; marketing samples keep .webp filenames (same as R2 copy path).
+      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
       await fs.writeFile(outputPath, buffer)
       return true
     } finally {
       await page.close().catch(() => {})
+      await context.close().catch(() => {})
     }
   }
 

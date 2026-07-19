@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 import { MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { probeFormValidation } from './form-probes'
@@ -23,13 +23,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** Reset desktop capture viewport after mobile probes (clears isMobile / deviceScaleFactor). */
+/** Reset desktop capture viewport after mobile probes. */
 export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {
-  await page.setViewport({
+  await page.setViewportSize({
     width: DESKTOP_CAPTURE_PROFILE.width,
     height: DESKTOP_CAPTURE_PROFILE.height,
-    deviceScaleFactor: 1,
-    isMobile: false,
   })
   await page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
@@ -159,11 +157,9 @@ interface MobileMenuProbeResult {
 
 /** On mobile viewport, nav links hidden behind a menu toggle must become reachable after open. */
 export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult> {
-  await page.setViewport({
+  await page.setViewportSize({
     width: MOBILE_VIEWPORT.width,
     height: MOBILE_VIEWPORT.height,
-    deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
-    isMobile: true,
   })
   await page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn

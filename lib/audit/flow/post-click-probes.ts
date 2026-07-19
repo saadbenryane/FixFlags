@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 
 export interface PostClickMetrics {
   timeToFirstContentMs: number

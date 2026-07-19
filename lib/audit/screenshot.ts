@@ -1,4 +1,4 @@
-import puppeteer, { Browser } from 'puppeteer'
+import { chromium, type Browser, type Page } from 'playwright'
 import fs from 'fs'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
@@ -30,9 +30,12 @@ const BROWSER_LAUNCH_ARGS = [
 
 export function getChromePath(): string | undefined {
   const candidates = [
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
     process.env.PUPPETEER_EXECUTABLE_PATH,
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
   ]
   for (const p of candidates) {
     if (p && fs.existsSync(p)) return p
@@ -42,17 +45,16 @@ export function getChromePath(): string | undefined {
 
 async function launchBrowser(): Promise<Browser> {
   const executablePath = getChromePath()
-  // Production images skip Puppeteer's bundled download (PUPPETEER_SKIP_DOWNLOAD),
-  // so if no system binary resolves there's nothing to launch. Fail loudly with
-  // the path we looked for instead of Puppeteer's cryptic "Could not find Chrome".
+  // Production images typically ship system Chromium; fail loudly if missing
+  // instead of Playwright's cryptic browser-download error.
   if (!executablePath && process.env.NODE_ENV === 'production') {
     throw new BrowserLaunchError(
-      'No Chromium executable found. Set PUPPETEER_EXECUTABLE_PATH to a valid binary ' +
-        `(looked at: ${process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium (unset)'}).`
+      'No Chromium executable found. Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to a valid binary ' +
+        `(looked at: ${process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium (unset)'}).`
     )
   }
   try {
-    const launched = await puppeteer.launch({
+    const launched = await chromium.launch({
       args: BROWSER_LAUNCH_ARGS,
       headless: true,
       executablePath,
@@ -71,7 +73,7 @@ async function launchBrowser(): Promise<Browser> {
 }
 
 async function getBrowser(): Promise<Browser> {
-  if (browser && browser.connected) return browser
+  if (browser && browser.isConnected()) return browser
   // Drop any stale/crashed handle before relaunching.
   if (browser) {
     await browser.close().catch(() => {})
@@ -140,7 +142,7 @@ interface PageLoadSnapshot {
 const LOADING_UI_SELECTOR =
   '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
 
-async function readLoadSnapshot(page: import('puppeteer').Page): Promise<PageLoadSnapshot> {
+async function readLoadSnapshot(page: Page): Promise<PageLoadSnapshot> {
   return page.evaluate((loadingSelector) => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
 
@@ -182,9 +184,7 @@ async function readLoadSnapshot(page: import('puppeteer').Page): Promise<PageLoa
   }, LOADING_UI_SELECTOR)
 }
 
-async function readRuntimeHeadMetadata(
-  page: import('puppeteer').Page
-): Promise<RuntimeHeadMetadata> {
+async function readRuntimeHeadMetadata(page: Page): Promise<RuntimeHeadMetadata> {
   return page.evaluate(() => {
     ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
     const content = (selector: string) =>
@@ -212,7 +212,7 @@ async function readRuntimeHeadMetadata(
 }
 
 async function waitForFinishedLoadState(
-  page: import('puppeteer').Page,
+  page: Page,
   device: 'desktop' | 'mobile',
   startedAt: number,
   initialScreenshotUrl: string | null,
@@ -242,8 +242,8 @@ async function waitForFinishedLoadState(
           }
           return true
         },
-        { timeout: 10_000 },
-        LOADING_UI_SELECTOR
+        LOADING_UI_SELECTOR,
+        { timeout: 10_000 }
       )
       .then(() => {
         loadingClearedMs = Date.now() - startedAt
@@ -285,6 +285,13 @@ function pickLoadExperience(
   })[0]
 }
 
+async function closeSessionPage(page: Page | null): Promise<void> {
+  if (!page) return
+  const context = page.context()
+  await page.close().catch(() => {})
+  await context.close().catch(() => {})
+}
+
 async function captureDesktopWithFlow(
   b: Browser,
   targetUrl: string,
@@ -301,7 +308,7 @@ async function captureDesktopWithFlow(
     flowResult: null,
   }
 
-  let page = null
+  let page: Page | null = null
   try {
     const captureStartedAt = Date.now()
     const session = await createAuditPage(b, targetUrl, {
@@ -313,7 +320,7 @@ async function captureDesktopWithFlow(
     result.responseHeaders = session.responseHeaders
 
     const initial = await readLoadSnapshot(page)
-    const initialBuffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
 
     result.loadExperience = await waitForFinishedLoadState(
@@ -327,7 +334,7 @@ async function captureDesktopWithFlow(
     result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
     result.html = await page.content()
 
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
 
@@ -354,9 +361,7 @@ async function captureDesktopWithFlow(
     logger.error('desktop screenshot failed', err)
     throw err
   } finally {
-    if (page) {
-      await page.close().catch(() => {})
-    }
+    await closeSessionPage(page)
   }
 
   return result
@@ -370,7 +375,7 @@ async function captureMobileViewport(
   consoleErrors: Array<{ type: string; text: string }>
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
-  let page = null
+  let page: Page | null = null
 
   try {
     const captureStartedAt = Date.now()
@@ -382,7 +387,7 @@ async function captureMobileViewport(
     page = session.page
 
     const initial = await readLoadSnapshot(page)
-    const initialBuffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.initialUrl = await uploadScreenshot(auditId, 'mobile', initialBuffer, initialPageKey(pageKey))
 
     result.loadExperience = await waitForFinishedLoadState(
@@ -394,7 +399,7 @@ async function captureMobileViewport(
       initial
     )
 
-    const buffer = (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
+    const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
 
@@ -405,9 +410,7 @@ async function captureMobileViewport(
       logger.error('mobile layout metrics failed', err)
     }
   } finally {
-    if (page) {
-      await page.close().catch(() => {})
-    }
+    await closeSessionPage(page)
   }
 
   return result

@@ -2,7 +2,7 @@
  * Visual capture orchestrator. Decides what visual evidence to capture
  * for a given set of flags and composes the final outputs.
  */
-import type { Browser, Page } from 'puppeteer'
+import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { getVisualDescriptor } from './visual-types'

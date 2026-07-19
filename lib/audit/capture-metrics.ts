@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 
 export interface CaptureMetrics {
   mobilePrimaryCtaTopPx: number | null
@@ -378,9 +378,9 @@ export async function measureMotionA11y(page: Page): Promise<{
   }
 
   try {
-    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     const after = await countSignificantMotionInPage(page)
-    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
 
     const stillAnimating = after.count > 0 && after.count >= Math.ceil(before.count * 0.5)
     return {

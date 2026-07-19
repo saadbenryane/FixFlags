@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 
 export interface DestinationUXQuality {

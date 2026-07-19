@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'puppeteer'
+import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { discoverFlowCtasWithFallback, flowCtaSelector, rankCtaCandidate } from './discover-cta'
@@ -299,7 +299,7 @@ async function captureCtaAnchor(page: Page, selector: string): Promise<EvidenceA
     return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
   }, selector)
   if (!rect) return null
-  const viewport = page.viewport()
+  const viewport = page.viewportSize()
   if (!viewport) return null
   return anchorFromViewportRect(rect, viewport.width, viewport.height)
 }
@@ -326,6 +326,10 @@ export async function runFlowScanStandalone(
       finalUrl: pageUrl,
     }
   } finally {
-    if (page) await page.close().catch(() => {})
+    if (page) {
+      const context = page.context()
+      await page.close().catch(() => {})
+      await context.close().catch(() => {})
+    }
   }
 }

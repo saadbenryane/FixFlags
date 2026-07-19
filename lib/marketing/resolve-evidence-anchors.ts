@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
-import puppeteer, { type Browser, type Page } from 'puppeteer'
+import { chromium, type Browser, type Page } from 'playwright'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import {
@@ -79,12 +79,17 @@ async function resolveRect(
   }
 
   return page.evaluate(
-    (
-      sels: string[],
-      min: number,
-      max: number,
+    ({
+      sels,
+      min,
+      max,
+      targetContext,
+    }: {
+      sels: string[]
+      min: number
+      max: number
       targetContext: { checkId: string; problem: string; evidence: string }
-    ) => {
+    }) => {
       ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim()
       const contextText = `${targetContext.problem} ${targetContext.evidence}`
@@ -206,13 +211,15 @@ async function resolveRect(
         scope: 'element' as const,
       }
     },
-    selectors,
-    ANCHOR_CLAMP_MIN,
-    ANCHOR_CLAMP_MAX,
     {
-      checkId,
-      problem: target.problem ?? '',
-      evidence: target.evidence ?? '',
+      sels: selectors,
+      min: ANCHOR_CLAMP_MIN,
+      max: ANCHOR_CLAMP_MAX,
+      targetContext: {
+        checkId,
+        problem: target.problem ?? '',
+        evidence: target.evidence ?? '',
+      },
     }
   )
 }
@@ -223,21 +230,21 @@ async function resolveForDevice(
   device: EvidenceDevice,
   targets: EvidenceAnchorTarget[]
 ): Promise<EvidenceAnchorMap> {
-  const viewport =
+  const context = await browser.newContext(
     device === 'mobile'
       ? {
-          width: MOBILE_VIEWPORT.width,
-          height: MOBILE_VIEWPORT.height,
+          viewport: { width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height },
           isMobile: true,
           deviceScaleFactor: MOBILE_VIEWPORT.deviceScaleFactor,
         }
-      : { width: DESKTOP_VIEWPORT.width, height: DESKTOP_VIEWPORT.height }
-
-  const page = await browser.newPage()
+      : {
+          viewport: { width: DESKTOP_VIEWPORT.width, height: DESKTOP_VIEWPORT.height },
+        }
+  )
+  const page = await context.newPage()
   const result: EvidenceAnchorMap = {}
 
   try {
-    await page.setViewport(viewport)
     const response = await page.goto(url, {
       waitUntil: 'domcontentloaded',
       timeout: TIMEOUT_MS,
@@ -261,6 +268,7 @@ async function resolveForDevice(
     }
   } finally {
     await page.close().catch(() => {})
+    await context.close().catch(() => {})
   }
 
   return result
@@ -306,7 +314,7 @@ export async function resolveEvidenceAnchors(options: {
   const url = new URL(options.url ?? DEFAULT_SAMPLE_AUDIT_URL).toString()
   const targets = normalizeTargets(options.targets ?? options.checkIds ?? [])
 
-  const browser = await puppeteer.launch({
+  const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     headless: true,
   })

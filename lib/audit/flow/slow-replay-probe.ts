@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'puppeteer'
+import type { Browser, Page } from 'playwright'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
@@ -11,8 +11,8 @@ export interface SlowReplayResult {
 
 const SLOW_3G = {
   offline: false,
-  download: 50 * 1024,
-  upload: 20 * 1024,
+  downloadThroughput: 50 * 1024,
+  uploadThroughput: 20 * 1024,
   latency: 400,
 }
 
@@ -55,16 +55,20 @@ export async function runSlowReplay(
   let timeToCtaMs = 30_000
 
   try {
-    page = await browser.newPage()
-    await page.setCacheEnabled(false)
-    await page.setViewport({
-      width: MOBILE_CAPTURE_PROFILE.width,
-      height: MOBILE_CAPTURE_PROFILE.height,
+    const context = await browser.newContext({
+      viewport: {
+        width: MOBILE_CAPTURE_PROFILE.width,
+        height: MOBILE_CAPTURE_PROFILE.height,
+      },
       deviceScaleFactor: MOBILE_CAPTURE_PROFILE.deviceScaleFactor,
       isMobile: true,
+      userAgent: MOBILE_CAPTURE_PROFILE.userAgent,
+      // Fresh context has empty cache (Playwright has no page.setCacheEnabled).
     })
-    await page.setUserAgent(MOBILE_CAPTURE_PROFILE.userAgent)
-    await page.emulateNetworkConditions(SLOW_3G)
+    page = await context.newPage()
+
+    const cdp = await context.newCDPSession(page)
+    await cdp.send('Network.emulateNetworkConditions', SLOW_3G)
 
     const started = Date.now()
     await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
@@ -76,7 +80,7 @@ export async function runSlowReplay(
 
     const captureScreenshot = async (label: string) => {
       try {
-        const buffer = (await page!.screenshot({ type: 'png', fullPage: false })) as Buffer
+        const buffer = Buffer.from(await page!.screenshot({ type: 'png', fullPage: false }))
         const url = await uploadScreenshot(auditId, 'mobile', buffer, label)
         screenshotUrls.push(url)
       } catch (err) {
@@ -110,6 +114,10 @@ export async function runSlowReplay(
     logger.error('Slow replay probe failed', err)
     return { timeToFirstTextMs, timeToCtaMs, screenshotUrls }
   } finally {
-    if (page) await page.close().catch(() => {})
+    if (page) {
+      const context = page.context()
+      await page.close().catch(() => {})
+      await context.close().catch(() => {})
+    }
   }
 }

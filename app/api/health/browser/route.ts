@@ -32,13 +32,15 @@ export async function GET() {
   // Browser: launch (shared pool) + trivial screenshot.
   try {
     const browser = await getAuditBrowser()
-    const page = await browser.newPage()
+    const context = await browser.newContext()
+    const page = await context.newPage()
     try {
       await page.setContent('<!doctype html><html><body>ok</body></html>')
       await page.screenshot({ type: 'png' })
       result.browser.ok = true
     } finally {
       await page.close().catch(() => {})
+      await context.close().catch(() => {})
     }
   } catch (err) {
     result.browser.error = err instanceof Error ? err.message : String(err)

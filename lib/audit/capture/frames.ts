@@ -2,7 +2,7 @@
  * Multi-frame capture engine. Captures a time-series of screenshots during
  * page load for composing into animated GIFs.
  */
-import type { Page } from 'puppeteer'
+import type { Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 
