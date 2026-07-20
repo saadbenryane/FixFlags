@@ -36,6 +36,8 @@ export interface AuditStatusPayload {
   flagCount?: number
   shareStatus?: string
   partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
+  actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
+  productContract?: import('@/lib/audit/product-contract').ProductContract | null
 }
 
 interface UseAuditPollingOptions {

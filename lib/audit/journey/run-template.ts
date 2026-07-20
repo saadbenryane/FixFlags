@@ -72,6 +72,9 @@ export async function runJourneyTemplate(
       screenshotAfterUrl: before1,
       accessibilityTree: a11y1,
       consoleErrors: session.consoleErrors.map((e) => e.text),
+      networkErrors: session.networkFailures
+        .filter((f) => f.sameOrigin)
+        .map((f) => `${f.method} ${f.status} ${f.url}`),
       reasoning: 'Land on start URL and capture accessibility tree',
     })
 
@@ -308,10 +311,37 @@ export async function runJourneyTemplate(
     abandonedReason = err instanceof Error ? err.message : String(err)
     return finish('FAILED')
   } finally {
+    session.disposeNetwork()
     await page.context().close().catch(() => {})
   }
 
   function finish(status: JourneyRunResult['status']): JourneyRunResult {
+    if (session.formProbe && session.formProbe.status >= 400) {
+      const statusCode = session.formProbe.status
+      findings.push(
+        finding({
+          checkId:
+            statusCode === 401 || statusCode === 403
+              ? 'form-submit-api-unauthorized'
+              : statusCode >= 500
+                ? 'form-submit-api-server-error'
+                : 'form-submit-api-unauthorized',
+          stepNumber: steps.length || 1,
+          url: page.url(),
+          rubric: 'EXPERIENCE',
+          severity: 'CRITICAL',
+          impactTag: 'CONVERSION',
+          problem:
+            statusCode === 401 || statusCode === 403
+              ? 'Form submission API returned unauthorized'
+              : 'Form submission API returned an error',
+          evidence: `${session.formProbe.method} ${session.formProbe.status} ${session.formProbe.url}`,
+          whyItMatters:
+            'Users who complete the form cannot finish signup, newsletter, or contact.',
+          fix: '1. Fix auth or server errors on the engagement submit endpoint.\n2. Show a clear error to the user.\n3. Re-check the form after deploying.',
+        })
+      )
+    }
     return {
       journeyType: options.journeyType,
       startUrl: options.startUrl,

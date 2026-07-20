@@ -106,6 +106,7 @@ function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag
     ['mobile-stuck-loading', 'loading-indicator-stuck'],
     ['mobile-load-delay-content', 'loading-state-slow'],
     ['heading-hierarchy-missing', 'hierarchy-no-sections'],
+    ['flow-cta-unclickable', 'overlay-blocks-cta'],
   ]
   const ids = new Set(flags.map((flag) => flag.checkId))
   return flags.filter((flag) => {

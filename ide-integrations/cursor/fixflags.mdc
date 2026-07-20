@@ -1,0 +1,61 @@
+---
+description: "FixFlags QA integration — scan web apps for Message, Experience, and Reach. Paste a URL, get Flags with fix prompts."
+globs:
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.jsx"
+  - "**/*.js"
+  - "**/*.html"
+  - "**/*.css"
+---
+
+# FixFlags — QA for AI-built products
+
+When asked to scan, test, or review a web app, use the FixFlags MCP tools.
+
+## Setup
+
+User needs Pro/Agency API key and MCP configured (`.cursor/mcp.json`) pointing at `https://fixflags.com/api/mcp` with `x-api-key`.
+
+Copy this rule into the project as `.cursor/rules/fixflags.mdc`, or keep it under `ide-integrations/cursor/`.
+
+## Live MCP tools (canonical)
+
+| Tool | Use |
+|------|-----|
+| `ff_check_url` | Start a check. Pass `waitForCompletion: true` when you need results inline. |
+| `ff_get_check_status` | Poll status / progress |
+| `ff_get_report` | Rubric summaries + shareStatus |
+| `ff_get_rubric` | Flags + fix text for one rubric (`MESSAGE` \| `EXPERIENCE` \| `REACH`) |
+| `ff_get_flag` | Full fix prompt for one flag (`tool`: cursor/claude/lovable/bolt/…) |
+| `ff_plan_mode_prompt` | Single plan-mode prompt for Top Priorities |
+| `ff_monitoring` | Re-check same URL (verify fixes) |
+| `ff_compare` | Diff two reports |
+| `ff_list_recent_audits` | Recent audits |
+| `generate-fix-prompt` | Custom fix prompt from a problem description |
+
+There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `ff_get_flag`.
+
+## Core workflow
+
+1. User gives a public URL (not localhost).
+2. Call `ff_check_url` (optionally `waitForCompletion: true`).
+3. Call `ff_get_report` for scores; call `ff_get_rubric` for each rubric for Flags.
+4. Present findings by **Message**, **Experience**, **Reach**.
+5. Offer to apply the fix prompt; then suggest `ff_monitoring` re-check.
+
+## Presenting results
+
+For each Flag:
+- **Severity**: CRITICAL / IMPORTANT / POLISH
+- **Problem** + evidence
+- **Fix**: from `ff_get_flag` or rubric flag `fix` field
+
+## Re-checks
+
+After applying fixes, call `ff_monitoring` (or `ff_check_url` on the same URL). Re-checks are free and unlimited on owned reports.
+
+## Modes
+
+- Default / critical path: up to ~6 related pages when supported by `ff_check_url` mode
+- Single page: `mode: "single"` when the user asks for one URL only

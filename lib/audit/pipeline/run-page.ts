@@ -12,10 +12,11 @@ import {
 } from '../pagespeed'
 import { runAllChecks, computeRubricScores } from '../checks'
 import { runFlowChecks } from '../checks/flow'
+import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import type { FlowScanResult } from '../flow/run-flow-scan'
 import { serializeFlowData } from '../flow/flow-url'
 import { persistDeterministicFlags } from '../persist'
-import { AUDIT_PROGRESS, AUDIT_PROGRESS_SUBSTEP } from '../progress'
+import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '../progress'
 import { logPipelineEvent } from '../pipeline-log'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline, accumulateTriageUsage } from './context'
@@ -25,6 +26,7 @@ import { parseTriageFailure } from './triage-failure'
 import { MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
+import { inferProductContract } from '../product-contract'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -114,6 +116,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots: screenshots.captureStatus,
     captureFailures: screenshots.captureFailures,
     loadExperience: screenshots.loadExperience ?? null,
+    networkFailures: screenshots.networkFailures ?? [],
+    actionTimeline: screenshots.actionTimeline ?? [],
   }
 
   await prisma.$transaction([
@@ -154,14 +158,16 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   ])
 
   if (input.primary) {
+    const productContract = inferProductContract(normalizedUrl, metadataFromHtml)
     await prisma.audit.update({
       where: { id: ctx.auditId },
       data: {
         status: 'CHECKING',
-        progress: AUDIT_PROGRESS.CHECKING,
+        progress: PIPELINE_PROGRESS.CHECKING,
         htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
         performanceData: storedPerformance as never,
         consoleErrors: screenshots.consoleErrors as never,
+        productContract: productContract as never,
         ...(flowResult
           ? {
               flowData: serializeFlowData(flowResult) as never,
@@ -232,6 +238,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     .concat(
       input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
     )
+    .concat(
+      input.primary && input.position === 0
+        ? runNetworkEngagementChecks(screenshots?.networkFailures ?? [])
+        : []
+    )
     .map((flag) => ({
       ...flag,
       checkId:
@@ -252,7 +263,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   if (input.primary) {
     await prisma.audit.update({
       where: { id: ctx.auditId },
-      data: { progress: AUDIT_PROGRESS_SUBSTEP.CHECKS_DONE },
+      data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE },
     })
   }
 
@@ -311,7 +322,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
     await prisma.audit.update({
       where: { id: ctx.auditId },
-      data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING },
+      data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING },
     })
 
     const remainingMs = ctx.deadline - Date.now()

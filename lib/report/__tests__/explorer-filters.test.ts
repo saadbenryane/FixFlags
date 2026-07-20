@@ -29,6 +29,7 @@ function flag(
     evidenceDevices: ['desktop'],
     hasFixPrompt: false,
     pageUrl: null,
+    truthLabel: 'Detected',
     ...partial,
   }
 }

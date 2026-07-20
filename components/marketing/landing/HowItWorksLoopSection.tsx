@@ -33,7 +33,7 @@ function LoopPanorama() {
   )
 }
 
-const MOBILE_LOOP_POSITIONS = ['0% 45%', '33% 45%', '67% 45%', '100% 45%'] as const
+const MOBILE_LOOP_POSITIONS = ['0% 45%', '33% 45%', '67% 45%'] as const
 
 function MobileLoopScene({ index }: { index: number }) {
   const objectPosition = MOBILE_LOOP_POSITIONS[index] ?? '50% 45%'
@@ -108,7 +108,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
             <div className="hidden md:block">
               <LoopPanorama />
 
-              <div className="relative grid grid-cols-4 gap-0 px-3 pb-7 pt-6 lg:px-5 lg:pb-8">
+              <div className="relative grid grid-cols-3 gap-0 px-3 pb-7 pt-6 lg:px-5 lg:pb-8">
                 <div
                   aria-hidden
                   className="absolute left-[14%] right-[14%] top-11 h-px bg-gradient-to-r from-brand/15 via-brand/55 to-brand/15"

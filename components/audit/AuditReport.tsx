@@ -55,6 +55,8 @@ import {
   type JourneyReviewSummary,
 } from '@/components/audit/JourneyReviewTimeline'
 import { isFirstReport, consumeFirstReport } from '@/lib/first-report'
+import { ProductContractCard } from '@/components/audit/ProductContractCard'
+import { ActionTimeline } from '@/components/audit/ActionTimeline'
 
 interface RubricRow {
   id: string
@@ -96,6 +98,8 @@ interface AuditReportProps {
     flowData?: FlowData | null
     evidenceAnchors?: EvidenceAnchorMap
     flagVisualEvidence?: import('@/lib/audit/persist-visual-evidence').FlagVisualEvidenceMap
+    actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
+    productContract?: import('@/lib/audit/product-contract').ProductContract | null
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -282,6 +286,20 @@ export function AuditReport({
         </Card>
       )}
 
+      {!isSample && audit.productContract && (
+        <ProductContractCard contract={audit.productContract} />
+      )}
+
+      {!isSample && (audit.actionTimeline?.length ?? 0) > 0 && (
+        <section
+          id="report-timeline"
+          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
+        >
+          <SectionTitle>How we checked</SectionTitle>
+          <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
+        </section>
+      )}
+
       {!isSample && explorerModel && hasFixPrompts && (showPrescription || anonFirstReportUnlocked) && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
@@ -326,6 +344,16 @@ export function AuditReport({
                     >
                       {severityLabel(flag.severity)}
                     </Badge>
+                    {flag.source === 'JOURNEY' ||
+                    (flag.checkId &&
+                      (flag.checkId.startsWith('overlay-') ||
+                        flag.checkId.startsWith('api-') ||
+                        flag.checkId.startsWith('form-submit-') ||
+                        flag.checkId.startsWith('flow-'))) ? (
+                      <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase">
+                        Reproduced
+                      </Badge>
+                    ) : null}
                     <span className="meta-label text-muted-foreground">
                       {rubricLabel(rubricName)}
                     </span>

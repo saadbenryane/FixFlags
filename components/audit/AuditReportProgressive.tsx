@@ -24,6 +24,8 @@ import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { AUDIT_PROGRESS, formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
+import { ActionTimeline } from '@/components/audit/ActionTimeline'
+import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -38,6 +40,7 @@ interface AuditReportProgressiveProps {
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
   workerIdle?: boolean
+  actionTimeline?: ActionTimelineEvent[]
 }
 
 function buildPartialRubricsComputed(
@@ -77,6 +80,7 @@ export function AuditReportProgressive({
   screenshots = [],
   screenshotCapture,
   workerIdle = false,
+  actionTimeline = [],
 }: AuditReportProgressiveProps) {
   const [tick, setTick] = useState(0)
   const stageIdx = statusToStageIndex(status)
@@ -190,6 +194,14 @@ export function AuditReportProgressive({
           </Callout>
         )}
       </div>
+
+      <section
+        id="report-timeline"
+        className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-4 py-3 shadow-card glass-surface"
+      >
+        <SectionTitle className="text-base">What FixFlags is doing</SectionTitle>
+        <ActionTimeline events={actionTimeline} className="mt-3" />
+      </section>
 
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
         {explorerModel ? (

@@ -176,6 +176,14 @@ export const ALL_CHECK_IDS = [
   // corridor consistency
   'corridor-og-title-drift',
   'corridor-og-description-drift',
+  // network-engagement.ts / overlay.ts
+  'api-engagement-unauthorized',
+  'api-engagement-server-error',
+  'form-submit-api-unauthorized',
+  'form-submit-api-server-error',
+  'overlay-blocks-nav',
+  'overlay-blocks-cta',
+  'overlay-blocks-form',
 ] as const
 
 export type CheckId = (typeof ALL_CHECK_IDS)[number]

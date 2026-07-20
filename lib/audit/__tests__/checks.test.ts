@@ -17,6 +17,8 @@ import { runSecurityBasicsChecks } from '@/lib/audit/checks/security'
 import { runSecurityHeaderChecks } from '@/lib/audit/checks/security-headers'
 import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { runFlowChecks } from '@/lib/audit/checks/flow'
+import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
+import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runMessagingClarityChecks } from '@/lib/audit/checks/messaging-clarity'
 import { runConversionFrictionChecks } from '@/lib/audit/checks/conversion-friction'
@@ -1851,6 +1853,83 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'journey-contact-not-found': () => ['journey-contact-not-found'],
     'corridor-og-title-drift': () => ['corridor-og-title-drift'],
     'corridor-og-description-drift': () => ['corridor-og-description-drift'],
+    'api-engagement-unauthorized': () =>
+      checkIds(
+        runNetworkEngagementChecks([
+          {
+            url: 'https://example.com/api/newsletter',
+            method: 'POST',
+            status: 401,
+            resourceType: 'fetch',
+            sameOrigin: true,
+            engagementPath: true,
+            at: Date.now(),
+          },
+        ])
+      ),
+    'api-engagement-server-error': () =>
+      checkIds(
+        runNetworkEngagementChecks([
+          {
+            url: 'https://example.com/api/signup',
+            method: 'POST',
+            status: 502,
+            resourceType: 'fetch',
+            sameOrigin: true,
+            engagementPath: true,
+            at: Date.now(),
+          },
+        ])
+      ),
+    'form-submit-api-unauthorized': () =>
+      checkIds(
+        runNetworkEngagementChecks([], {
+          url: 'https://example.com/api/subscribe',
+          method: 'POST',
+          status: 401,
+        })
+      ),
+    'form-submit-api-server-error': () =>
+      checkIds(
+        runNetworkEngagementChecks([], {
+          url: 'https://example.com/api/subscribe',
+          method: 'POST',
+          status: 500,
+        })
+      ),
+    'overlay-blocks-nav': () =>
+      checkIds(
+        runOverlayBlockerChecks('nav', {
+          tag: 'div',
+          id: 'modal',
+          className: 'overlay',
+          role: 'dialog',
+          text: 'Support us',
+          zIndex: '100',
+        })
+      ),
+    'overlay-blocks-cta': () =>
+      checkIds(
+        runOverlayBlockerChecks('cta', {
+          tag: 'div',
+          id: 'modal',
+          className: 'overlay',
+          role: 'dialog',
+          text: 'Support us',
+          zIndex: '100',
+        })
+      ),
+    'overlay-blocks-form': () =>
+      checkIds(
+        runOverlayBlockerChecks('form', {
+          tag: 'div',
+          id: 'sticky-ad',
+          className: 'hero-ad',
+          role: null,
+          text: 'Ad',
+          zIndex: '50',
+        })
+      ),
   }
 
   it('triggers matrix covers every checkId without extras', () => {

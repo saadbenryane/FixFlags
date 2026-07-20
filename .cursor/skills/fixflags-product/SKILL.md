@@ -96,6 +96,14 @@ Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `a
 
 Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`).
 
+## Product Contract, truth, and competitive boundary
+
+- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities; biases journey template selection. See `knowledge/product.md`.
+- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Must be visible in FlagDetailPanel and Top Priorities.
+- **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. Full taxonomy (Accept / Intentional / Human review) is later; do not remove incorrect-feedback path.
+- **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + probes + Flags + re-check.
+- **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass).
+
 ## Sample provenance
 
 Marketing samples use `SampleSource`: **`live` | `curated` | `fixture`** (`lib/marketing/live-sample.ts`).

@@ -1,12 +1,15 @@
-# Market & Distribution
+# Market
 
 ## Market Context
 
 - AI coding is mainstream (2025 DORA research: near-universal in developer workflows)
-- Gap exists between adoption of AI coding and adoption of AI testing tools
+- Gap between adoption of AI coding and adoption of AI testing tools
 - FixFlags targets the trust gap in AI-generated output
-- Market is moving fast: Lovable reportedly surpassed $500M ARR (June 2026), Cursor reportedly passed $2B annualized revenue (early 2026)
-- AI-building workflows have reached a large, paying market
+- Market moving fast: Lovable reportedly surpassed $500M ARR (June 2026), Cursor reportedly passed $2B annualized revenue (early 2026)
+- Stack Overflow 2025: 46% of developers actively distrusted AI accuracy, 33% trusted it, ~3% high trust. Experienced developers especially cautious.
+- Sonar research: verification gap. Developers use AI-generated code while many find it expensive or time-consuming to validate thoroughly.
+- Low trust does not automatically produce careful review. The bottleneck is shifting from generation to verification.
+- The scarce resource is not code. It is the ability to make a credible claim that the resulting product works.
 
 ## Category Status
 
@@ -28,7 +31,7 @@ User language is highly consistent:
 
 > Know what will break before real users find it.
 
-The category can become more sophisticated later. Avoid leading with QA, auditing, or release readiness.
+Avoid leading with QA, auditing, or release readiness. The category can become more sophisticated later.
 
 ## Competitive Landscape
 
@@ -52,11 +55,7 @@ The category can become more sophisticated later. Avoid leading with QA, auditin
 
 ### Key insight
 
-**URL-first autonomous testing is becoming a common pattern.** The first moat cannot be "paste a URL."
-
-The moat must be: knowing which failure matters, producing feedback precise enough to resolve it, and learning whether the proposed repair actually worked.
-
-Research on feedback-based automated verification found that precise, constraint-level feedback produced successful iterations while broad metric feedback often caused the coding loop to stall. That directly supports FixFlags' product direction.
+URL-first autonomous testing is becoming a common pattern. The first moat cannot be "paste a URL." See `product.md` for the moat strategy.
 
 ## Customer Segments
 
@@ -80,6 +79,7 @@ Research on feedback-based automated verification found that precise, constraint
 - Higher willingness to pay
 - Expect: authenticated flows, recurring checks, client reporting, integrations, reliability, support
 - Value: revenue, retention, distribution through client work
+- A report sent from agency to client introduces FixFlags organically
 
 ### Later: Product teams
 
@@ -92,11 +92,31 @@ Research on feedback-based automated verification found that precise, constraint
 
 Enterprise QA teams, manual test suites, compliance-driven orgs, anyone who says "we have a process for that."
 
+## Five Execution Risks
+
+### Risk 1: Problem agreement without payment
+
+Users say "AI apps need better checking" but only pay when tied to an urgent moment (launching tomorrow, client review imminent, deployment needs approval). A general audit is useful. A release decision is valuable. FixFlags must become part of a recurring workflow, not a curiosity.
+
+### Risk 2: Interest without action
+
+Reports with scores and flags feel impressive but do not convert if findings are generic, noisy, subjective, or already available through Lighthouse. Quality of top 3 Flags matters more than number of checks. The user must quickly experience: FixFlags found something important I missed, gave my agent a useful repair, and proved the repair worked.
+
+### Risk 3: Low willingness to pay in natural customer base
+
+The primary audience (indie hackers, AI-first builders) may not generate enough revenue alone. Studios and teams carry the revenue load.
+
+### Risk 4: Episodic usage
+
+Strongest current use case: "check before launch." Excellent entry point, weak retention model. Founder may use FixFlags intensely for one week, launch, then disappear for three months. Retention requires expanding into preview deployments, recurring regression checks, critical-journey monitoring, client delivery reviews, release approval, and repository/CI integrations.
+
+### Risk 5: Distribution is unsolved
+
+PageSpeed has Google distribution, SEO visibility, browser credibility, and years of standardization. FixFlags starts with none of these.
+
 ## Fastest Agency Channel: Expert Ecosystem
 
-Lovable already has a partner program and a directory of experts selling projects at meaningful budgets and hourly rates around $100-$130.
-
-This is a much more precise acquisition surface than "agencies in general."
+Lovable has a partner program and directory of experts selling projects at meaningful budgets and hourly rates ($100-$130). This is a much more precise acquisition surface than "agencies in general."
 
 **Initial studio program targets:**
 - Lovable experts
@@ -120,53 +140,11 @@ This is a much more precise acquisition surface than "agencies in general."
 2. The builder's agent tries first
 3. A verified expert becomes the escalation path
 
-Basic builders become leads for expert partners when they encounter issues beyond their ability. This creates meaningful revenue without FixFlags employing a large service team.
-
-## Five Execution Risks
-
-### Risk 1: Problem agreement without payment
-
-Users say "AI apps need better checking" but only pay when tied to an urgent moment:
-- Launching tomorrow
-- Client review imminent
-- Deployment needs approval
-- Checking if latest change broke something
-
-A general audit is useful. A release decision is valuable. FixFlags must become part of a recurring workflow, not a curiosity.
-
-### Risk 2: Interest without action
-
-Reports with scores and flags feel impressive but do not convert if findings are generic, noisy, subjective, or already available through Lighthouse.
-
-Quality of top 3 Flags matters more than number of checks. The user must quickly experience: FixFlags found something important I missed, gave my agent a useful repair, and proved the repair worked.
-
-### Risk 3: Low willingness to pay in natural customer base
-
-See "Primary: AI-first builders" above. The natural customer may not generate enough revenue alone.
-
-### Risk 4: Episodic usage
-
-Strongest current use case: "check before launch." Excellent entry point, weak retention model.
-
-Founder may use FixFlags intensely for one week, launch, then disappear for three months.
-
-**Retention requires expanding into:**
-- Every preview deployment
-- Recurring regression checks
-- Critical-journey monitoring
-- Client delivery reviews
-- Release approval
-- Repository and CI integrations
-
-The wedge gets the customer. Continuous verification keeps them.
-
-### Risk 5: Distribution is unsolved
-
-PageSpeed has Google distribution, SEO visibility, browser credibility, and years of standardization. FixFlags starts with none of these.
+Basic builders become leads for expert partners when they encounter issues beyond their ability.
 
 ## Distribution Strategy
 
-### Compounding channels to build
+### Compounding channels
 
 - Public, shareable reports
 - GitHub and Vercel integrations
@@ -179,7 +157,7 @@ PageSpeed has Google distribution, SEO visibility, browser credibility, and year
 
 ### Content strategy
 
-Distribution should concentrate on where builders already show and discuss their work:
+Concentrate where builders already show and discuss their work:
 - Lovable community
 - Reddit communities (vibe coding, SaaS, indie hacking, no-code)
 - Product Hunt launches
@@ -207,9 +185,7 @@ Do not publish humiliating audits of people's products. Use consented or recreat
 
 Do not let MCP become the priority simply because it sounds frontier. A basic builder gains more value from one reliable "Copy for Lovable" action.
 
-Marketplace listings (Vercel) require mature legal and operational surface: public documentation, support, privacy policy, EULA. Not merely an engineering task.
-
-Before marketplace listings, FixFlags needs:
+Marketplace listings (Vercel) require mature legal and operational surface: public documentation, support, privacy policy, EULA. Before marketplace listings, FixFlags needs:
 - Security architecture documentation
 - Data-retention policy
 - Screenshot and credential handling policy
@@ -235,3 +211,16 @@ Give creators:
 ### Agency program
 
 FixFlags Verified Delivery program based on actual report completion, without implying a guarantee of security or quality.
+
+### Report as distribution
+
+FixFlags outputs naturally move between people: founder to developer, freelancer to client, designer to engineer, pull request to reviewer, agency to buyer.
+
+Every shared report should:
+- Look credible enough to forward
+- Communicate the decision quickly
+- Preserve evidence
+- Show verified improvements
+- Carry restrained FixFlags attribution
+
+The product distributes through its own work product.

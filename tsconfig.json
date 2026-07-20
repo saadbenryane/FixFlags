@@ -37,6 +37,7 @@
   "exclude": [
     ".next",
     "node_modules",
-    "worker"
+    "worker",
+    "fixflags-cli"
   ]
 }

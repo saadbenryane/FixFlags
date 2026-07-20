@@ -11,6 +11,8 @@ import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { parseActionTimeline } from '@/lib/audit/action-timeline'
+import { parseProductContract } from '@/lib/audit/product-contract'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -49,6 +51,7 @@ export async function GET(
         triageAt: true,
         includeAi: true,
         performanceData: true,
+        productContract: true,
         screenshots: {
           select: { device: true, url: true, width: true, height: true },
         },
@@ -115,7 +118,9 @@ export async function GET(
       effectiveStatus === 'JUDGING' ||
       effectiveStatus === 'FINALIZING'
 
-    const { flags: partialFlags, ...rest } = audit
+    const { flags: partialFlags, performanceData, productContract, ...rest } = audit
+    const actionTimeline = parseActionTimeline(performanceData)
+    const contract = parseProductContract(productContract)
 
     return NextResponse.json({
       ...rest,
@@ -127,6 +132,8 @@ export async function GET(
       flagCount,
       shareStatus,
       partialFlags: showPartialFlags ? partialFlags : undefined,
+      actionTimeline,
+      productContract: contract,
     })
   } catch (err) {
     return handleRouteError(err)

@@ -19,6 +19,8 @@ import {
   type PageCaptureFailure,
 } from './browser/page-capture'
 import { BrowserLaunchError, isInfrastructureAuditError } from './pipeline-errors'
+import type { NetworkFailureRecord } from './browser/network-monitor'
+import { createActionTimeline, type ActionTimelineEvent } from './action-timeline'
 
 let browser: Browser | null = null
 
@@ -118,6 +120,8 @@ export interface ScreenshotResult {
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
+  networkFailures?: NetworkFailureRecord[]
+  actionTimeline?: ActionTimelineEvent[]
 }
 
 interface ViewportCapture {
@@ -129,6 +133,7 @@ interface ViewportCapture {
   loadExperience?: PageLoadExperience | null
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
+  networkFailures?: NetworkFailureRecord[]
 }
 
 interface PageLoadSnapshot {
@@ -298,25 +303,40 @@ async function captureDesktopWithFlow(
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
   runFlow: boolean
-): Promise<ViewportCapture & { flowResult: FlowScanResult | null }> {
-  const result: ViewportCapture & { flowResult: FlowScanResult | null } = {
+): Promise<
+  ViewportCapture & {
+    flowResult: FlowScanResult | null
+    actionTimeline: ActionTimelineEvent[]
+  }
+> {
+  const timeline = createActionTimeline()
+  const result: ViewportCapture & {
+    flowResult: FlowScanResult | null
+    actionTimeline: ActionTimelineEvent[]
+  } = {
     base64: null,
     url: null,
     initialUrl: null,
     html: null,
     flowResult: null,
+    actionTimeline: [],
   }
 
   let page: Page | null = null
+  let disposeNetwork: (() => void) | null = null
   try {
     const captureStartedAt = Date.now()
+    timeline.push('navigate', `Open ${targetUrl}`, { url: targetUrl })
     const session = await createAuditPage(b, targetUrl, {
       profile: DESKTOP_CAPTURE_PROFILE,
       consoleErrors,
       settle: false,
     })
     page = session.page
+    disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
+    result.networkFailures = [...session.networkFailures]
+    timeline.push('capture', 'Page loaded', { url: page.url() })
 
     const initial = await readLoadSnapshot(page)
     const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -336,6 +356,10 @@ async function captureDesktopWithFlow(
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
+    timeline.push('capture', 'Desktop screenshot captured', {
+      screenshot: result.url,
+      url: page.url(),
+    })
 
     if (runFlow) {
       try {
@@ -344,7 +368,16 @@ async function captureDesktopWithFlow(
           screenshotUrl: result.url,
           url: page.url(),
         }
+        timeline.push('flow', 'Starting CTA flow scan')
         result.flowResult = await runFlowScan(page, auditId, targetUrl, { landingStep })
+        result.networkFailures = [...session.networkFailures]
+        timeline.push('flow', `Flow scan ${result.flowResult.status}`, {
+          url: result.flowResult.finalUrl,
+          status: result.flowResult.httpStatus,
+        })
+        if (result.flowResult.overlayBlocker) {
+          timeline.push('overlay', 'Overlay blocked primary CTA')
+        }
       } catch (err) {
         logger.error('Flow scan failed', err)
         result.flowResult = {
@@ -354,13 +387,16 @@ async function captureDesktopWithFlow(
             : [],
           finalUrl: page.url(),
         }
+        timeline.push('flow', 'Flow scan skipped after error')
       }
     }
   } catch (err) {
     logger.error('desktop screenshot failed', err)
     throw err
   } finally {
+    disposeNetwork?.()
     await closeSessionPage(page)
+    result.actionTimeline = timeline.snapshot()
   }
 
   return result
@@ -375,6 +411,7 @@ async function captureMobileViewport(
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
+  let disposeNetwork: (() => void) | null = null
 
   try {
     const captureStartedAt = Date.now()
@@ -384,6 +421,7 @@ async function captureMobileViewport(
       settle: false,
     })
     page = session.page
+    disposeNetwork = session.disposeNetwork
 
     const initial = await readLoadSnapshot(page)
     const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -409,6 +447,7 @@ async function captureMobileViewport(
       logger.error('mobile layout metrics failed', err)
     }
   } finally {
+    disposeNetwork?.()
     await closeSessionPage(page)
   }
 
@@ -436,13 +475,13 @@ export async function captureScreenshots(
     captureMobileViewport(b, url, auditId, pageKey, consoleErrors),
   ])
 
-  let desktop: ViewportCapture & { flowResult: FlowScanResult | null }
+  let desktop: ViewportCapture & {
+    flowResult: FlowScanResult | null
+    actionTimeline?: ActionTimelineEvent[]
+  }
   if (desktopSettled.status === 'fulfilled') {
     desktop = desktopSettled.value
   } else {
-    // Browser/storage failures are our infrastructure, not the target site, so
-    // let them abort the audit so they surface with their own failure code
-    // instead of being mis-reported as "this site blocked our visit".
     if (isInfrastructureAuditError(desktopSettled.reason)) throw desktopSettled.reason
     captureFailures.push(pageCaptureFailureFromError('desktop', desktopSettled.reason))
     desktop = { base64: null, url: null, initialUrl: null, html: null, flowResult: null }
@@ -478,6 +517,8 @@ export async function captureScreenshots(
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
+    networkFailures: desktop.networkFailures ?? [],
+    actionTimeline: desktop.actionTimeline ?? [],
   }
 }
 

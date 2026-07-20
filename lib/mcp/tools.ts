@@ -349,7 +349,7 @@ export function registerAllTools(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(buildMcpFlagPayload(safeFlag, tool)),
+            text: JSON.stringify(buildMcpFlagPayload(safeFlag as Parameters<typeof buildMcpFlagPayload>[0], tool)),
           },
         ],
       }

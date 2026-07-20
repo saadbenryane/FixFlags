@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
-import { cn } from '@/lib/cn'
+import { cn } from '@/lib/utils'
 
 const SampleReportExplorer = dynamic(
   () =>

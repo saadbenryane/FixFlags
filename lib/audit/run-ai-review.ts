@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
 import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
-import { AUDIT_PROGRESS } from './progress'
+import { PIPELINE_PROGRESS } from './progress'
 import { JudgeContractError } from './validate-judge-output'
 import { loadAuditScreenshotBase64 } from './load-screenshot-base64'
 import type { PageMetadata } from './metadata'
@@ -75,7 +75,7 @@ export async function runAiReview(auditId: string): Promise<void> {
   const startedAt = Date.now()
   await prisma.audit.update({
     where: { id: auditId },
-    data: { status: 'JUDGING', progress: AUDIT_PROGRESS.JUDGING, includeAi: true },
+    data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING, includeAi: true },
   })
   await logPipelineEvent(auditId, { stage: 'judging', event: 'prescription_started' })
 

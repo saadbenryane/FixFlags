@@ -167,6 +167,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       screenshots,
       screenshotCapture: statusPayload?.screenshotCapture,
       workerIdle,
+      actionTimeline: statusPayload?.actionTimeline ?? [],
     }
   }, [status, progress, statusPayload, initialAudit, workerIdle])
 

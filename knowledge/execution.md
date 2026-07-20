@@ -1,4 +1,4 @@
-# Execution Plan
+# Execution
 
 ## Strategic Wedge
 
@@ -12,39 +12,41 @@ The first job is extremely specific:
 
 The user should receive value without knowing anything about QA, testing frameworks, source files, or CI.
 
-## Vision
-
-> FixFlags turns an AI-built app into a product you can confidently put in front of users.
-
-The mechanism: it understands what the app is meant to do, tries the critical journeys, identifies what could stop users, gives the builder or agent a precise repair contract, and verifies the outcome.
-
 ## Core Product Loop
 
 Paste link -> test the important journey -> show the top three risks -> copy the fix into the builder -> publish -> re-check
 
 One product. Progressive depth.
 
+## Wedge vs Retention
+
+**Acquisition product (wedge):** Check this before you share it. Pre-launch is emotionally strong and easy to understand. But launches are episodic.
+
+**Retention product:** FixFlags checks every meaningful release. The wedge gets the customer. Continuous verification keeps them.
+
+Infrastructure like Vercel Deployment Checks and GitHub Checks shows that quality tools can become automatic conditions inside repeated deployment workflows. This is the path to recurring revenue.
+
 ## Next Priorities (5 Foundations)
 
 ### 1. Product Contract
 
-Infer and confirm who the product serves, its first-value journey, and its essential outcomes. See `product-architecture.md` for the full intent layer design.
+Infer and confirm who the product serves, its first-value journey, and its essential outcomes. See `product.md` for the full intent layer design.
 
 ### 2. Flag Quality Benchmark
 
-Build a human-validated evaluation set before expanding checks or traffic. See `product-architecture.md` for benchmark structure.
+Build a human-validated evaluation set before expanding checks or traffic. See `product.md` for benchmark structure.
 
 ### 3. Progressive User Experience
 
-Plain-language Launch Check for Lovable users, with technical depth revealed for developers. See `product-architecture.md` for the two-product split.
+Plain-language Launch Check for Lovable users, with technical depth revealed for developers. See `product.md` for the two-product split.
 
 ### 4. Repair Outcome Learning
 
-Record copied fixes, dismissals, intentional behavior, code/deployment changes, and re-check results. See `product-architecture.md` for dismissal taxonomy.
+Record copied fixes, dismissals, intentional behavior, code/deployment changes, and re-check results. See `product.md` for dismissal taxonomy.
 
 ### 5. Authenticated-Testing Architecture
 
-Design safe credentials, test personas, action limits, and data handling before promising full app coverage. See `product-architecture.md` for the staged model.
+Design safe credentials, test personas, action limits, and data handling before promising full app coverage. See `product.md` for the staged model.
 
 ## Six-Month Execution Plan
 
@@ -134,25 +136,7 @@ Use focused verification: what changed, which verified journeys may be affected,
 
 ### Month 5: Build distribution partnerships
 
-Direct acquisition alone is unlikely to reach the target fast enough.
-
-**Priority partnerships:**
-
-AI-builder educators:
-- Affiliate and partner plans for Lovable/Bolt/Replit/Cursor creators
-- Persistent revenue share
-- Co-branded report examples
-- Audience audit credits
-- "FixFlags launch checklist" lesson
-- Public case studies using their builds
-
-Agencies and experts:
-- FixFlags Verified Delivery program (actual report completion, not security/quality guarantee)
-
-Platform relationships:
-- Vercel, GitHub, Lovable, Replit marketplace listings
-- AI coding tool integrations through MCP
-- Startup launch platforms
+Direct acquisition alone is unlikely to reach the target fast enough. See `market.md` for partnership details (educators, agency program, platform relationships).
 
 **Month-end targets:**
 - 500 Builders
@@ -173,9 +157,9 @@ The six-month target is less about exactly 730 customers and more about achievin
 
 ## What Must Be True
 
-1. **Product quality:** Top Flags must be remarkably good. The product fails if users see generic SEO warnings, subjective copy criticism, dozens of low-value findings, incorrect root-cause guesses, or fix prompts that merely restate the issue. Every serious Flag must connect: evidence -> user consequence -> expected outcome -> agent task -> verification.
-2. **Fast first value:** First meaningful result within minutes. First screen should not feel like a traditional scan waiting room. Show what FixFlags thinks the product does, the journey currently being tested, meaningful findings as they are confirmed.
-3. **Simple language:** Basic Lovable user should understand everything without knowing DOM, hydration, ARIA, or CI. Technical evidence sits underneath.
+1. **Product quality:** Top Flags must be remarkably good. Every serious Flag must connect: evidence -> user consequence -> expected outcome -> agent task -> verification.
+2. **Fast first value:** First meaningful result within minutes. First screen should not feel like a traditional scan waiting room.
+3. **Simple language:** Basic Lovable user should understand everything without knowing DOM, hydration, ARIA, or CI.
 4. **Strong unit economics:** Deterministic checks before AI. Focused re-checks. Cached evidence. Low-cost models for classification.
 5. **Founder-led distribution:** Six months is too short for SEO to mature. Personally recruit studios, create teardown content, build educator relationships, audit real products publicly, speak in builder communities.
 

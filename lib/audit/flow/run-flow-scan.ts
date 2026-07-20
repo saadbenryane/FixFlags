@@ -12,6 +12,10 @@ import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
 import { measurePostClickLoading, type PostClickMetrics } from './post-click-probes'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 import { runDestinationUXProbes, type DestinationUXQuality } from './destination-ux-probes'
+import {
+  detectOverlayAtPoint,
+  type OverlayBlockerInfo,
+} from '@/lib/audit/browser/overlay-probe'
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
@@ -49,6 +53,8 @@ export interface FlowScanResult {
     isHttps: boolean
   }
   destinationUX?: DestinationUXQuality
+  /** When click failed because another element covered the CTA. */
+  overlayBlocker?: OverlayBlockerInfo | null
 }
 
 export interface RunFlowScanOptions {
@@ -151,10 +157,12 @@ export async function runFlowScan(
 
     const clickTarget = await page.$(selector)
     if (!clickTarget) {
+      const overlayBlocker = await detectOverlayAtPoint(page, selector)
       return {
         status: 'unclickable',
         steps,
         finalUrl: page.url(),
+        overlayBlocker,
         ...ctaMeta,
       }
     }
@@ -186,10 +194,12 @@ export async function runFlowScan(
     }
   } catch (err) {
     logger.error('Flow CTA click failed', err)
+    const overlayBlocker = !clicked ? await detectOverlayAtPoint(page, selector) : null
     return {
       status: clicked ? 'dead_end' : 'unclickable',
       steps,
       finalUrl: page.url(),
+      overlayBlocker,
       ...ctaMeta,
     }
   }

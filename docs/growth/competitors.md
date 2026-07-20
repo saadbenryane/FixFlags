@@ -2,84 +2,60 @@
 
 Who else ranks for FixFlags-relevant queries, their moats, our wedges.
 
-## Competitive landscape
+Canonical market summary: [`knowledge/market.md`](../../knowledge/market.md). Moat strategy: [`knowledge/product.md`](../../knowledge/product.md).
 
-### Direct competitors (AI-built product QA)
+## Direct competitors (AI-built product QA)
 
 | Tool | What they do | Their moat | Our wedge |
 |---|---|---|---|
-| **Unknown** (TBD via SERP research) | We have not yet confirmed a direct "AI-built site QA" competitor exists | — | First-mover in category if none exists |
+| **Scout QA** | AI quality companion for vibe-coded products. Live agent chat, click-through testing, traffic-light ratings, fix prompts, regression tracking, Lovable workflows | Spectacle: watch an agent use your app; scheduling / follow-up chat | Precise Flags + editor-ready repair contracts + free unlimited re-check proof. Do **not** clone their chat agent. |
+| **Signo** | Paste deployed app; agent navigates desktop/mobile; launch-readiness score; Claude Code prompts | URL-first autonomous browse | Same table stakes (paste URL). Win on Flag quality, truth labels, and verified repair loop. |
+| **PageLens** | Adjacent URL-first testing | Broader autonomous-testing footprint | Stay in AI-builder Launch Check wedge; progressive depth for agencies. |
 
-**Key question (unresolved):** Is there a tool that specifically targets
-**"I built this with an AI tool (Lovable/Cursor/Bolt/v0), is it actually
-ready to ship"**? As of this writing we have not done a rigorous SERP pass
-to confirm. This is the single most important research task before committing
-to programmatic-page scale — see `backlog.md`.
+URL-first autonomous testing is crowded. Paste-URL is **not** a moat.
 
-### Adjacent categories (not direct competitors, but occupy nearby search intent)
+## Adjacent categories
 
-| Category | Examples | Why they're adjacent, not direct |
+| Category | Examples | Why adjacent |
 |---|---|---|
-| General website audit / SEO tools | Ahrefs, Semrush, Screaming Frog, Sitebulb | Broad SEO focus, not AI-built-product-specific, not opinionated about "is this ready to ship" |
-| Accessibility checkers | axe, WAVE, Lighthouse, Pa11y | Single-dimension (accessibility only), no fix-prompt output for AI editors |
-| Performance tools | PageSpeed Insights, GTmetrix, WebPageTest | Single-dimension (performance only) |
-| AI code review tools | CodeRabbit, Greptile, CodeReview | Code-level review, not live-site / user-facing QA |
-| Landing page critique communities | r/SaaS feedback threads, Twitter "roast my landing page" | Human-driven, not systematic or repeatable, no structured data |
-| OG/social preview checkers | opengraph.xyz, metatags.io | Single-dimension (social preview only), no fix prompts, no audit pipeline |
-| Linting / code quality | ESLint, Prettier, SonarQube | Code-level, not user-facing QA |
+| General website audit / SEO | Ahrefs, Semrush, Screaming Frog | Broad SEO, not ship-ready for AI-built apps |
+| Accessibility checkers | axe, WAVE, Lighthouse, Pa11y | Single dimension; no AI-editor fix prompts |
+| Performance tools | PageSpeed Insights, GTmetrix | Performance only |
+| AI code review | CodeRabbit, Greptile | Code-level, not live-site QA |
+| Autonomous test platforms | Momentic, Checkly, Mabl, Virtuoso | Compete on test-case generation; we do not |
 
-### Competitive positioning matrix
+## Positioning matrix (honest)
 
-| Dimension | Generic SEO tools | Accessibility tools | FixFlags |
+| Dimension | Scout QA | Generic SEO / a11y | FixFlags |
 |---|---|---|---|
-| AI-built product focus | No | No | Yes |
-| Multi-rubric (Message + Experience + Reach) | No | No | Yes |
-| Screenshot-based evidence | No | No | Yes |
-| Fix prompts for AI editors | No | No | Yes |
-| Monitoring loop | Manual | No | Built-in |
-| MCP integration | No | No | Yes |
-| Builder-specific prompts | No | No | Yes (Cursor, Claude, Lovable, Bolt) |
+| AI-built product focus | Yes | No | Yes |
+| Live agent chat / free-form explore | Yes | No | **No** (structured action timeline instead) |
+| Multi-rubric (Message + Experience + Reach) | Partial | No | Yes |
+| Screenshot / step evidence | Yes | Rare | Yes |
+| Fix prompts for AI editors | Yes | No | Yes (core product) |
+| Flag → Fix → Re-check proof | Partial | Manual | **Yes** (re-checks free/unlimited) |
+| Recurring scheduling | Yes | Manual | **Not shipped** (Roadmap Next) |
+| MCP in Cursor / Claude | Partial | No | Yes |
+| Product Contract (intent layer) | No | No | Shipping (moat) |
 
 ## Our wedge (restated)
 
-FixFlags' moat candidate, if the graph compounds as designed: **real audit
-data across many AI-built sites, aggregated into frequency statistics no
-generic SEO tool has**, plus **tool-specific fix prompts** (cursor/claude/
-lovable/bolt) that generic auditors don't produce. This is unproven until
-Phase 2/3 populate the graph and the public pages go live — track outcome in
-`experiments.md`.
+1. **Which failure matters** — Product Contract + ranked Top Priorities, not a letter grade dump.
+2. **Precise repair contracts** — evidence + expected behavior + verification, rendered as Cursor/Claude/Lovable/Bolt prompts and MCP.
+3. **Verified outcomes** — re-check with parent diff; cleared Flags are the proof.
+4. **Truth labels** — Reproduced / Detected / Observed on every Flag (credibility vs agent spectacle false positives).
 
-## Research plan (Phase 2 — first priority in competitors track)
+Anti-pattern: building a Scout-style conversational QA agent on the audit path. Use action timeline + network/overlay probes + fix loop instead.
 
-1. **SERP research** for target query clusters:
-   - "AI website audit"
-   - "landing page audit tool"
-   - "[builder name] site checker" (lovable, bolt, cursor, v0)
-   - "is my AI-built site ready"
-   - "AI slop detector"
-   - "open graph preview checker"
-   - "website QA tool"
+## Differentiation to emphasize in copy
 
-2. **For each ranking result:** what's their moat (data? brand? backlinks?
-   distribution?) and what's our wedge (we run real audits with evidence;
-   most competitors are generic checklists or single-dimension tools)
+1. **"Not a Lighthouse wrapper"** — Message, Experience, Reach with evidence and fix prompts.
+2. **"Not a chat QA agent"** — Structured findings you can fix in your editor and prove with re-check.
+3. **"Built for AI builders"** — Fix prompts and MCP for Cursor, Claude, Lovable, Bolt.
+4. **"Real evidence, labeled truth"** — Screenshots, network status, journey steps; truth class on every Flag.
+5. **"The loop closes"** — Flag → Fix → Re-check. Re-checks are free and unlimited on owned reports.
 
-3. **Backlink analysis** of top 3 competitors per query cluster — informs
-   `backlog.md` backlink-tooling decision
+## Research hygiene
 
-4. **Community monitoring** (Reddit r/lovable, r/cursor, r/bolt, Hacker News,
-   X) — what are AI builders actually searching for when they want QA?
-
-## Differentiation to emphasize
-
-When we know who we're competing against, we can sharpen these messages:
-
-1. **"Not a Lighthouse wrapper"** — Lighthouse scores performance; we review
-   the whole page (message, experience, reach) with evidence and fix prompts.
-2. **"Not a manual QA service"** — We're automated, instant, and agent-ready.
-3. **"Built for AI builders"** — Fix prompts for Cursor, Claude, Lovable, Bolt.
-   Generic tools don't know what to tell your agent.
-4. **"Real data, not opinions"** — Every finding has screenshot evidence and
-   a severity rating. No "your site looks fine" without data.
-5. **"The monitoring loop"** — Fix, then re-scan to prove it worked. No other
-   tool closes the loop.
+- SERP and community monitoring remain useful for distribution, not for inventing competitors (Scout/Signo/PageLens are confirmed).
+- When comparing demos: script Flag → fix in Cursor → re-check. Do not compete on "watch the agent click around."

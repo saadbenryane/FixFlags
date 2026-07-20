@@ -23,6 +23,8 @@ import { parsePreviewMeta } from '@/lib/audit/preview-meta'
 import { parseFlowData, type FlowData } from '@/lib/audit/flow-data'
 import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-highlights'
 import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
+import { parseActionTimeline } from '@/lib/audit/action-timeline'
+import { parseProductContract } from '@/lib/audit/product-contract'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -197,6 +199,10 @@ export async function getGatedAuditForRequest(id: string) {
   const flowData = parseFlowData(audit.flowData)
   const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
+  const actionTimeline = parseActionTimeline(audit.performanceData)
+  const productContract = parseProductContract(
+    (audit as { productContract?: unknown }).productContract
+  )
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -270,6 +276,8 @@ export async function getGatedAuditForRequest(id: string) {
       flowData,
       evidenceAnchors,
       flagVisualEvidence,
+      actionTimeline,
+      productContract,
       triageAt: audit.triageAt,
       isLegacyDeterministic,
       rubricRows,

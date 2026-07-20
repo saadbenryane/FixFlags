@@ -1,12 +1,10 @@
-# Product Architecture
+# Product
 
 ## Vision
 
 > FixFlags turns an AI-built app into a product you can confidently put in front of users.
 
-The mechanism: it understands what the app is meant to do, tries the critical journeys, identifies what could stop users, gives the builder or agent a precise repair contract, and verifies the outcome.
-
-The missing idea is intent and behavioral contracts.
+The mechanism: it understands what the app is meant to do, tries the critical journeys, identifies what could stop users, gives the builder or agent a precise repair contract, and verifies the outcome. The missing idea is intent and behavioral contracts.
 
 ## The Moat
 
@@ -28,7 +26,7 @@ A score is weak feedback. "Signup is broken" is still weak feedback.
 
 A browser agent cannot know whether a product is working properly without understanding what it is supposed to accomplish.
 
-Before testing deeply, FixFlags should produce a tiny Product Contract:
+Before testing deeply, FixFlags produces a tiny Product Contract:
 
 ```
 This product appears to help:
@@ -119,39 +117,113 @@ or:
 
 > "FixFlags could not complete signup."
 
-This is more concrete and defensible than a score.
+## The Flag as Durable Unit
 
-## Flag Quality
+Reports are containers. Prompts are delivery formats. Scores are summaries. The Flag is the durable unit.
 
-### What strong Flags connect
+**Every Flag connects:**
 
-```
-evidence -> user consequence -> expected outcome -> agent task -> verification
-```
+| Field | Purpose |
+|-------|---------|
+| Intended journey | What the user was trying to do |
+| Observed behavior | What actually happened |
+| Evidence | Screenshots, traces, network events |
+| Consequence | Why it matters to a real user |
+| Truth level | How confident FixFlags is (see truth system) |
+| Expected behavior | What should have happened |
+| Repair contract | Precise specification for the builder agent |
+| Verification procedure | How to confirm the fix works |
+| History | Previous states, dismissals, repairs |
 
-### Dismissal Taxonomy
+A strong Flag survives tool changes because it expresses a product outcome rather than a vendor-specific instruction.
 
-For every Flag, users should be able to choose:
+One Flag renders as: web report, Lovable prompt, Cursor task, Claude Code goal, GitHub issue, MCP response, pull-request check.
 
-| Response | Purpose |
-|----------|---------|
-| Fix this | Standard repair flow |
-| Accept for now | Valid debt tracking |
-| This is intentional | Updates the Product Contract |
-| Incorrect finding | Improves precision |
-| Needs human review | Reveals where automation is weak |
+## Truth System
 
-**Key insight:** False-positive suppression may become a stronger retention advantage than constantly adding more checks.
+Every claim carries a truth class:
 
-The product should learn from dismissals, not only fixes.
+| Class | Meaning | Example |
+|-------|---------|---------|
+| Reproduced | FixFlags directly encountered the failure | "Created test account, submitted valid email, remained on /signup" |
+| Detected | An objective rule failed | "Missing meta description on /pricing" |
+| Observed | A product-quality concern was identified | "CTA button color has 2.1:1 contrast ratio" |
+| Likely cause | An implementation explanation is inferred | "Auth redirect likely missing /onboarding callback" |
+| Repository confirmed | Source location validated against code | "signup.tsx:47 missing navigate() after auth.success" |
+
+This is not secondary metadata. It is central to making the brand credible.
+
+## Dismissal Taxonomy
+
+For every Flag, users choose:
+
+| Response | Purpose | What it updates |
+|----------|---------|----------------|
+| Fix this | Standard repair flow | Nothing (repair begins) |
+| Accept for now | Valid debt tracking | Project debt ledger |
+| This is intentional | Updates the Product Contract | Product Contract intent |
+| Incorrect finding | Improves precision | Flag quality model |
+| Needs human review | Reveals automation limits | Automation confidence model |
+
+False-positive suppression may become a stronger retention advantage than constantly adding more checks. The product learns from dismissals, not only fixes.
+
+## Repair Specification vs Prompt
+
+Tool-specific mega-prompts change as agents evolve. The underlying repair contract stays stable:
+
+| Field | Purpose |
+|-------|---------|
+| Mission | What to accomplish |
+| Context | Why it matters |
+| Reproduction | How to trigger the failure |
+| Evidence | What was observed |
+| Expected behavior | What should happen instead |
+| Constraints | Boundaries for the fix |
+| Acceptance criteria | How to know it is done |
+| Verification | How to confirm the fix works |
+
+The prompt is a rendering layer. One Fix Specification becomes: Lovable paste, Cursor task, Claude Code goal, GitHub issue, MCP response, PR check.
+
+This prevents FixFlags from becoming a prompt-generator whose value disappears as coding agents improve.
+
+## Progressive Disclosure
+
+Basic builders and engineers receive the same truth at different depths.
+
+**Lovable user sees:**
+> The signup button stops working after an invalid email. Paste this instruction into Lovable.
+
+**Engineer sees:**
+- Action trace
+- Request and response
+- Console event
+- State transition
+- Repository scope
+- Regression test
+- Verification procedure
+
+The default report must be understandable by someone who has never opened a repository. Technical depth available without dominating.
+
+## Complete Loop Before Paywall
+
+The distinctive experience is not scan, score. PageSpeed, Lighthouse, accessibility scanners already provide diagnostics.
+
+The distinctive experience is: **Flag, Fix, Re-check, Verified.**
+
+**First-use boundary:**
+- One project
+- One useful audit
+- Complete repair instructions for main Flags
+- One re-check
+- Account required to preserve history or continue
+
+This exposes the differentiated value while limiting anonymous costs.
 
 ## Security Signal Discipline
 
 Security anxiety is strong among Lovable users (Supabase, auth, payments, APIs, generated backend logic).
 
-**Strategic choice:** Do not casually present security as another rubric.
-
-A URL-only product cannot prove that an app is secure.
+Do not casually present security as another rubric. A URL-only product cannot prove that an app is secure.
 
 **It can detect:**
 - Visible secrets
@@ -194,7 +266,7 @@ Public marketing pages are easy. Useful SaaS products require login, email verif
 - Secrets vault
 - Environment-specific policies
 
-The difference between "website audit" and "product verification" largely lives here. This must be treated as a core architecture problem, not a later setting.
+The difference between "website audit" and "product verification" largely lives here. This is a core architecture problem, not a later setting.
 
 ## Change Awareness
 
@@ -221,19 +293,11 @@ Route
 
 URL-only FixFlags infers this weakly. Repository-connected FixFlags builds it more accurately.
 
-**This is the path from:**
-
-> "Run another audit."
-
-**To:**
-
-> "This deployment changed signup and account settings. FixFlags rechecked those journeys and preserved the verified checkout state."
+**This is the path from:** "Run another audit." **To:** "This deployment changed signup and account settings. FixFlags rechecked those journeys and preserved the verified checkout state."
 
 ## Human-Assisted QA
 
 The product does not need to pretend full autonomy from day one.
-
-High-end managed QA services command tens of thousands of dollars annually partly because humans validate findings and maintain the testing system.
 
 **Hybrid model for early Studio customers:**
 1. Automated exploration
@@ -250,8 +314,7 @@ High-end managed QA services command tens of thousands of dollars annually partl
 
 **Offer:**
 
-> FixFlags Launch Review
-> $199-$750 depending on depth
+> FixFlags Launch Review — $199-$750 depending on depth
 
 For agencies, a higher-touch review can finance development and reveal what truly matters before automation is mature.
 

@@ -32,6 +32,8 @@ export const AGENT_PROMPT_KEYS: (keyof AgentPrompts)[] = [
 
 export type FixConfidence = 'HIGH' | 'MEDIUM' | 'LOW'
 
+export type CauseCertainty = 'REPRODUCED' | 'DETECTED' | 'OBSERVED' | 'LIKELY'
+
 /**
  * The complete set of fields a flag can carry through its lifecycle.
  * Not every interface needs every field: use Pick/Omit to narrow.
@@ -56,6 +58,7 @@ export interface FlagData extends AgentPrompts {
   fix: string
   confidence: number
   fixConfidence?: FixConfidence
+  causeCertainty?: CauseCertainty
   source: string
   pageUrl: string | null
   verificationRule: string | null
@@ -126,6 +129,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
     id: string
     confidence?: number | null
     fingerprint?: string | null
+    causeCertainty?: CauseCertainty | null
   }
 
 /**

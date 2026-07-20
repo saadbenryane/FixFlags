@@ -182,7 +182,7 @@ BUSINESS IMPACT (whyItMatters): Every impact must state a concrete real-world co
 - BAD: "This affects your social sharing quality."
 - BETTER: "No og:image means every shared link on LinkedIn, Slack, and iMessage shows a blank preview card. For a product relying on word-of-mouth, this kills the social sharing loop - people skip past blank cards without clicking."
 
-FIX PRECISION: Every fix MUST be a numbered list of developer actions. Each step starts with an action verb. EVERY step MUST include both the current problematic text AND the exact replacement text or code.
+FIX PRECISION: Every fix MUST be a structured 4-section markdown block (Goal / Observed behavior / Expected behavior / How to verify). Each section must be specific to THIS page with named elements, current text/values, and concrete replacements.
 - GOOD: "1. In app/page.tsx, find the H1 element with text 'Our Platform' and replace it with 'Build custom dashboards in minutes - for product teams' \n2. In the same file, update the subheading paragraph from 'We help you build better tools' to 'Connect your data, drag in charts, and share live dashboards with your team. No SQL required.' \n3. Remove the generic placeholder hero image and add a product demo screenshot showing the actual dashboard interface"
 - BAD: "Improve the hero section."
 - BAD: "Make the copy more compelling."
@@ -212,11 +212,21 @@ For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be indepen
 - boltPrompt: Write as file-level diffs showing the exact code changes. Include the surrounding component context so bolt can locate the right code. Show imports, component JSX, and export changes.
   EXAMPLE: "In app/page.tsx, update the hero heading:\\n\\n--- a/app/page.tsx\\n+++ b/app/page.tsx\\n- <h1 className=\"text-4xl font-bold\">Welcome to our platform</h1>\\n+ <h1 className=\"text-4xl font-bold\">Build custom dashboards in minutes - for product teams</h1>\\n\\nKeep all imports, the rest of the hero component, and other page sections unchanged."
 
-ESSAY-STYLE FIX: For the "fix" field, write 1-3 steps where EVERY step names a specific element on THIS page and gives a concrete replacement. This is a human-readable action plan, not an AI prompt. Be specific about WHAT to change and WHAT to change it to.
-- RULE: Before writing each step, identify the current text/code. Then state the replacement. Example:
-  1. "Change the button label from 'Get started' to 'Start free trial - no credit card'"
-  2. "Move the testimonial section from below the fold to just above the primary CTA"
-  3. "Replace the hero background gradient with the actual product screenshot"
+ESSAY-STYLE FIX: For the "fix" field, write a structured 4-section markdown block. Every fix MUST follow this exact structure:
+
+## Goal
+One sentence stating what the fix achieves.
+
+## Observed behavior
+What the page currently does or shows. Name the element, its current text/value, and where it appears.
+
+## Expected behavior
+What the page should do or show after the fix. Be specific: new text, new position, new behavior.
+
+## How to verify
+One concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
+
+RULE: Before writing each section, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
 
 VERIFICATION RULE: For every flag, write one concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
 - GOOD: "Reload the page and check that the headline now reads 'Build internal tools 10x faster - for engineering teams'"

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import type { ImpactTag, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
-import { AUDIT_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
+import { PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft, JourneyType } from './types'
@@ -106,7 +106,7 @@ export async function runJourneyReviewsForAudit(
 
   await prisma.audit.update({
     where: { id: auditId },
-    data: { progress: AUDIT_PROGRESS_SUBSTEP.JOURNEY_START },
+    data: { progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START },
   })
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',
@@ -135,7 +135,7 @@ export async function runJourneyReviewsForAudit(
 
   await prisma.audit.update({
     where: { id: auditId },
-    data: { journeyReviewAt: new Date(), progress: AUDIT_PROGRESS_SUBSTEP.JOURNEY_DONE },
+    data: { journeyReviewAt: new Date(), progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE },
   })
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',

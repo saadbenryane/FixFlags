@@ -39,6 +39,9 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Evidence anchors | `lib/audit/persist-evidence-anchors.ts` |
 | Visual evidence | `lib/audit/capture/*`, `lib/audit/persist-visual-evidence.ts` (graceful; must not fail audit) |
 | Browser | Playwright (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`) |
+| Network / form / overlay | `lib/audit/browser/network-monitor.ts`, `journey-safety.ts`, overlay helpers |
+| Action timeline | `lib/audit/action-timeline.ts`, status route, `AuditReportProgressive` |
+| Product Contract | `lib/audit/product-contract.ts`, Audit `productContract` Json |
 | Triage | `lib/audit/judge-triage.ts`, `pipeline/triage-step.ts` |
 | Prescription | `lib/audit/run-ai-review.ts`, `judge-prescription.ts` |
 | Finalize | `lib/audit/finalize.ts` |
@@ -61,11 +64,20 @@ npm run demo:audit:offline  # deterministic checks only
 - Editing offering.md "fix prompts on every report" without checking `report-access.ts`
 - Conflating `ai-review` job with triage — it is prescription only
 
-## Journey + visual evidence
+## Journey + visual evidence + functional probes
 
 - Journey templates run in `runner.ts` **before** `finalizeFromOutcome`, writing `Flag` rows with `source: JOURNEY`.
 - `clearAuditResults` / `persistTriageResults` must only clear `DETERMINISTIC` + `AI` (preserve JOURNEY).
 - Visual evidence: filter severities `CRITICAL` | `IMPORTANT`; persist to `performanceData.flagVisualEvidence`; wire via report page → `AuditReport` → `buildLiveExplorerModel({ flagVisualEvidence })`.
+- **Network monitor:** `page.on('response')` in page-session / journey / flow collects same-origin xhr/fetch failures into `performanceData.networkFailures`. Cap list size. Ignore ad/tracker hosts unless they block first-party UX.
+- **Form probe:** Payment hosts stay aborted. Same-origin engagement POST may `route.fetch` once, record status, then fulfill/abort. Synthetic email: `fixflags-probe+{auditId}@example.com`. Never probe Stripe/PayPal/etc.
+- **Overlay probe:** On click failure, `elementFromPoint` + covering element metadata → `overlay-blocks-nav|cta|form` Flags (prefer over generic unclickable when overlay identified).
+- **Action timeline:** Append `{t, kind, label, url?, status?}` during capture/flow/journey; stream on status API; render in `AuditReportProgressive` + completed report. Not a chat agent.
+- **Anti-FP:** Do not emit content Flags for strings matching tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
+
+## Competitive boundary
+
+Do **not** add Scout-style conversational "check anything else" chat on the audit path. Depth comes from Product Contract, network/overlay probes, ranked Flags, and re-check proof.
 
 ## Prod triage / deploy checklist
 

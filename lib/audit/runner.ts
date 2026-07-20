@@ -1,7 +1,7 @@
 import { prisma } from '../db'
 import { Prisma } from '@prisma/client'
 import { runWithContext } from '@/lib/logger/context'
-import { AUDIT_PROGRESS } from './progress'
+import { PIPELINE_PROGRESS } from './progress'
 import { AUDIT_DEADLINE_MS } from './pipeline-config'
 import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
@@ -58,7 +58,7 @@ export async function runAudit(auditId: string): Promise<void> {
         failureCode: null,
         failureStage: null,
         failureMetadata: Prisma.JsonNull,
-        progress: AUDIT_PROGRESS.CAPTURING,
+        progress: PIPELINE_PROGRESS.CAPTURING,
       },
     })
 

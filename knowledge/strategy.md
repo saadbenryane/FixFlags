@@ -1,4 +1,4 @@
-# Revenue Model
+# Strategy
 
 ## Pricing (Current)
 
@@ -16,6 +16,8 @@ Display name **Agency** maps to `TEAM` enum. No Studio tier in schema yet.
 - Flat-rate subscription for monthly new-check quota. Credit packs are optional overflow.
 - Re-checks never gated. The core loop (Flag, Fix, Re-check) is the habit.
 - No founding offers. $29 is the real price. Founding offers create expectation debt.
+- Do not force every occasional builder into a recurring subscription they will predictably cancel.
+- Browser runs, model inference, screenshots, storage, and authenticated journeys create variable costs. Pricing must reflect consequence, recurrence, and execution cost.
 
 ## Pricing Should Follow Consequences, Not Identity
 
@@ -33,6 +35,17 @@ Labels like Builder, Studio, Team are packaging. The actual pricing engine shoul
 | Team collaboration | Seats, roles, approval states |
 
 Browser monitoring products combine subscriptions with check-run allowances or overage pricing because execution volume creates real variable costs (e.g., Checkly prices browser-check overages by run volume).
+
+## Tier Pricing (Proposed Evolution)
+
+| Tier | Price | What they buy |
+|------|-------|--------------|
+| One-off Launch Check | $19-$49 | A launch outcome. Fits episodic demand. Sits between Free and Builder. |
+| Builder | $39-$79/mo | Project memory, repeat checks, deep journeys |
+| Studio | $199-$499/mo | Client throughput, risk reduction, branded reports |
+| Team | $500-$2,000+/mo | Release-process integration, authenticated journeys, audit logs |
+
+The biggest missing product may be a one-off paid Launch Check. It fits episodic demand instead of forcing every user into a subscription they will cancel after launch.
 
 ## Target Revenue Model (12-Month)
 
@@ -64,17 +77,6 @@ Agencies and studios carry almost half the target. Reaching it entirely through 
 | Basic builders | Volume, word of mouth, product data, future upgrades | Cultural relevance, funnel |
 | Studios / agencies | Revenue, retention, distribution through client work | MRR, referrals |
 | Teams | Revenue, long-term contracts, workflow integration | ARR stability |
-
-## Tier Pricing (Proposed Evolution)
-
-| Tier | Price | What they buy |
-|------|-------|--------------|
-| One-off Launch Check | $19-$49 | A launch outcome. Fits episodic demand. Sits between Free and Builder. |
-| Builder | $39-$79/mo | Project memory, repeat checks, deep journeys |
-| Studio | $199-$499/mo | Client throughput, risk reduction, branded reports |
-| Team | $500-$2,000+/mo | Release-process integration, authenticated journeys, audit logs |
-
-**The biggest missing product may be a one-off paid Launch Check.** It fits episodic demand instead of forcing every user into a subscription they will cancel after launch.
 
 ## Studio Pricing Rationale
 

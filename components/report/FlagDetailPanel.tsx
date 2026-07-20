@@ -6,11 +6,12 @@ import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { SeverityBadge } from '@/components/audit/SeverityBadge'
+import { Badge } from '@/components/ui/badge'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
-import { cn } from '@/lib/cn'
+import { cn } from '@/lib/utils'
 import { impactTagIcon } from '@/lib/rubric-icons'
 import { impactTagLabel } from '@/lib/utils'
 
@@ -207,6 +208,11 @@ export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
     <div className="flex flex-wrap items-center gap-2">
       <RubricPill rubric={flag.rubric} label={flag.rubricLabel} />
       <SeverityBadge severity={flag.severity} />
+      {flag.truthLabel ? (
+        <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wide">
+          {flag.truthLabel}
+        </Badge>
+      ) : null}
       {impactLabel && (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2.5 py-1 text-2xs text-muted-foreground">
           {ImpactIcon && <ImpactIcon className="h-3 w-3 shrink-0" aria-hidden />}

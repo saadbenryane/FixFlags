@@ -134,6 +134,20 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'A clickable primary CTA should be visible in the desktop viewport.',
   'flow-cta-unclickable':
     'The primary CTA should be clickable without being obscured by overlays.',
+  'overlay-blocks-nav':
+    'With any modal or sticky ad present, primary nav links remain clickable or the overlay offers a clear dismiss control.',
+  'overlay-blocks-cta':
+    'Click the primary CTA; no overlay or sticky unit should intercept the click.',
+  'overlay-blocks-form':
+    'Form checkboxes and inputs remain clickable; sticky ads must not cover the control.',
+  'api-engagement-unauthorized':
+    'Submit newsletter/signup/contact with valid input; the API should not return 401/403 for a public engagement path.',
+  'api-engagement-server-error':
+    'Submit the engagement form; the API should return success or a clear 4xx validation error, not 5xx.',
+  'form-submit-api-unauthorized':
+    'Complete the form and submit; the request should authenticate correctly for public signup/newsletter/contact.',
+  'form-submit-api-server-error':
+    'Submit the form; the server should accept or validate without a 5xx response.',
   'flow-cta-404':
     'Clicking the primary CTA should not navigate to a 4xx or 5xx page.',
   'flow-cta-dead-end':

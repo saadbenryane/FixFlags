@@ -223,6 +223,19 @@ Unlike [alternative], we [differentiator with evidence].
 **Success metric:** audit starts, signup, upgrade moment
 ```
 
+## Competitive wedge (vs Scout / Signo)
+
+Lead with **precise repair + re-check proof**, not "AI QA agent" or live chat spectacle.
+
+| Say | Do not say |
+|-----|------------|
+| Check before you ship. Get Flags your editor can fix. Re-check to prove it. | Watch our AI agent click around your site |
+| Ranked Flags with evidence and truth labels | Letter grade / traffic lights as the product |
+| Paste the fix into Cursor, Claude, Lovable, or Bolt | Comprehensive autonomous QA suite |
+| Re-checks are free and unlimited on reports you own | Set it and forget it monitoring (not shipped) |
+
+Canonical competitor table: `docs/growth/competitors.md` and `knowledge/market.md`. Moat: `knowledge/product.md`.
+
 ## Quota language (must match entitlements)
 
 | Say | Do not say |

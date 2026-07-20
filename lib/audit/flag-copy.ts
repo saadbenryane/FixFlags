@@ -302,7 +302,21 @@ const WHY_IT_MATTERS: Record<string, string> = {
   'flow-no-cta-found':
     'Automated flow scan found no actionable primary CTA in the viewport.',
   'flow-cta-unclickable':
-    'The primary CTA exists but cannot be clicked - overlays or CSS block conversion.',
+    'The primary CTA exists but cannot be clicked. Overlays or CSS block conversion.',
+  'overlay-blocks-nav':
+    'A modal or sticky overlay intercepts clicks to primary navigation, so users cannot reach category pages.',
+  'overlay-blocks-cta':
+    'A modal or sticky overlay sits on top of the primary CTA, so users cannot start the next step.',
+  'overlay-blocks-form':
+    'A sticky ad or overlay covers form controls, so users cannot select options or submit.',
+  'api-engagement-unauthorized':
+    'Newsletter, signup, or contact APIs reject requests as unauthorized, so engagement never completes.',
+  'api-engagement-server-error':
+    'Engagement APIs return server errors, so users who try to convert hit a dead end.',
+  'form-submit-api-unauthorized':
+    'The form collects input but the submit API returns 401/403, blocking signup or newsletter.',
+  'form-submit-api-server-error':
+    'Form submit hits a server error, so completed forms fail with a generic message.',
   'flow-cta-404':
     'The main CTA sends users to an error page - the worst possible first click.',
   'flow-cta-dead-end':

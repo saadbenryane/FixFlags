@@ -32,6 +32,29 @@ import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 
 export { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 
+/**
+ * Derive a visitor-facing truth label from the flag's source and checkId.
+ * - REPRODUCED → "Reproduced" (journey/playwright confirmed the issue)
+ * - DETERMINISTIC + checkId → "Detected" (rule-based check found it)
+ * - AI → "Observed" (AI reviewer saw it in screenshots/text)
+ * - AI + uncertain → "Likely cause" (AI inferred but not 100%)
+ */
+export function deriveTruthLabel(source: string | null | undefined, checkId: string | null): string {
+  if (source === 'JOURNEY') return 'Reproduced'
+  if (
+    checkId &&
+    (checkId.startsWith('overlay-blocks-') ||
+      checkId.startsWith('api-engagement-') ||
+      checkId.startsWith('form-submit-api-') ||
+      checkId.startsWith('flow-'))
+  ) {
+    return 'Reproduced'
+  }
+  if (source === 'DETERMINISTIC' && checkId) return 'Detected'
+  if (source === 'AI') return 'Observed'
+  return 'Observed'
+}
+
 export interface ExplorerFlag {
   id: string
   checkId: string | null
@@ -53,6 +76,8 @@ export interface ExplorerFlag {
   pageUrl: string | null
   /** Animated GIF or overlay/side-by-side image URL for this flag. */
   visualUrl?: string | null
+  /** Derived truth label: Reproduced / Detected / Observed / Likely cause. */
+  truthLabel: string
 }
 
 export interface ReportExplorerModel {
@@ -112,6 +137,7 @@ function mapLiveFlag(
     hasFixPrompt: Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
     visualUrl,
+    truthLabel: deriveTruthLabel(flag.source, flag.checkId ?? null),
   }
 }
 
@@ -213,6 +239,7 @@ function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
     hasFixPrompt: Boolean(flag.fixPrompt),
     pageUrl: flag.pageUrl ?? null,
     visualUrl: null,
+    truthLabel: 'Detected',
   }
 }
 

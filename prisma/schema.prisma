@@ -135,6 +135,19 @@ enum FlagStatus {
   REGRESSED
 }
 
+enum FixConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum CauseCertainty {
+  REPRODUCED
+  DETECTED
+  OBSERVED
+  LIKELY
+}
+
 enum Device {
   DESKTOP
   MOBILE
@@ -530,6 +543,8 @@ model Audit {
   performanceData Json?
   consoleErrors   Json?
   flowData        Json?
+  /** Inferred product intent: purpose, first-value journey, critical outcomes. */
+  productContract Json?
 
   normalizedDomain String?
   source           AuditSource @default(UNKNOWN)
@@ -886,6 +901,9 @@ model Flag {
   position     Int
   status       FlagStatus @default(OPEN)
   resolvedInId String?
+
+  fixConfidence  FixConfidence?
+  causeCertainty CauseCertainty?
 
   feedback  FlagFeedback[]
   createdAt DateTime       @default(now())

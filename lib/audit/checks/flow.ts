@@ -3,6 +3,7 @@ import { isAuthUtilityLink } from '../flow/link-scoring'
 import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { runFlowUXChecks } from './flow-ux'
+import { runOverlayBlockerChecks } from './overlay'
 import { DeterministicFlag } from './index'
 import { registerCheck } from './registry'
 
@@ -192,19 +193,29 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
         source: 'DETERMINISTIC',
       })
       break
-    case 'unclickable':
-      findings.push({
-        checkId: 'flow-cta-unclickable',
-        rubric: 'EXPERIENCE',
-        impactTag: 'CONVERSION',
-        severity: 'CRITICAL',
-        problem: 'Primary CTA could not be clicked',
-        evidence: `${ctaLabel} was detected but the click action failed or the element was not interactable.`,
-        fix: '1. Remove overlays, cookie banners, or disabled states that block the CTA\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL',
-        confidence: 0.95,
-        source: 'DETERMINISTIC',
-      })
+    case 'unclickable': {
+      const overlayFlags = runOverlayBlockerChecks(
+        'cta',
+        result.overlayBlocker,
+        formatCtaEvidence(result)
+      )
+      if (overlayFlags.length > 0) {
+        findings.push(...overlayFlags)
+      } else {
+        findings.push({
+          checkId: 'flow-cta-unclickable',
+          rubric: 'EXPERIENCE',
+          impactTag: 'CONVERSION',
+          severity: 'CRITICAL',
+          problem: 'Primary CTA could not be clicked',
+          evidence: `${ctaLabel} was detected but the click action failed or the element was not interactable.`,
+          fix: '1. Remove overlays, cookie banners, or disabled states that block the CTA\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL',
+          confidence: 0.95,
+          source: 'DETERMINISTIC',
+        })
+      }
       break
+    }
     case 'error_response':
       findings.push({
         checkId: 'flow-cta-404',

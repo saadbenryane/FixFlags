@@ -15,8 +15,8 @@
 |------|-------|-----------------------------|
 | Prisma models | **45** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
-| Check capabilities | 46 (45 live, 1 partial, 0 planned) | `npm run audit:capabilities` |
-| Check IDs | **150** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| Check capabilities | 48 (47 live, 1 partial, 0 planned) | `npm run audit:capabilities` |
+| Check IDs | **157** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **14** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.4.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
@@ -43,7 +43,7 @@
 | `prisma/schema.prisma` | Database schema (see AGENTS.md Project facts for model count) |
 | `scripts/` | CLI scripts (demo audits, backfills, guards) |
 | `worker/` | Standalone audit worker |
-| `knowledge/` | **Company knowledge base** (revenue model, execution plan, market & distribution, product architecture) |
+| `knowledge/` | **Company knowledge base** (foundations, market, product, strategy, execution) |
 | `docs/` | Strategy, positioning, voice, growth docs |
 | `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) |
 | `docs/voice-and-copy.md` | Voice & copy guidelines (276 lines) |
@@ -91,11 +91,20 @@
 - **Homepage section order:** Hero (`LandingHeroSection` + editor logo cloud) → Sample review (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`) → Three dimensions (`CheckDimensionsSection`) → Fix loop (`HowItWorksLoopSection`) → Product evidence (`ProductEvidenceSection`, not invented testimonials) → Final CTA. Exactly one report explorer. Hero copy changes only when explicitly requested.
 - **Social proof:** Use `LANDING_PAGE.productEvidence` (real product output). Do not invent member counts or quote cards; `LANDING_PAGE.testimonials.quotes` stays empty until authentic quotes exist.
 - **Browser automation:** Playwright only for audit capture (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`). Do not reintroduce Puppeteer on the audit path.
+- **No Scout-clone chat on the audit path.** Live proof is a structured **action timeline** (capture/flow/journey steps), not a conversational "check anything else" agent. Follow-ups are re-check + MCP.
+- **Network evidence:** Same-origin XHR/fetch failures persist under `performanceData.networkFailures` and feed deterministic Flags. Journey `networkErrors` must be populated when collected.
+- **Form probe safety:** Journey/flow may probe one same-origin engagement POST (signup/newsletter/contact) via `route.fetch`, record status, then fulfill/abort so the page does not keep a real subscribed state. Payment hosts and downloads stay blocked (`lib/audit/browser/journey-safety.ts`).
+- **Overlay blockers:** When clicks fail because another element covers the target, emit specific overlay Flags (`overlay-blocks-*`) rather than only generic unclickable CTA.
+- **Product Contract:** Inferred product intent (purpose, first-value journey, critical outcomes) persists on the audit and biases journey selection. Report shows it above Top Priorities.
+- **Truth labels:** Flags surface Reproduced / Detected / Observed (`lib/report/explorer-model.ts`). Network, overlay, and journey findings are Reproduced.
+- **Anti-false-positive:** Never flag tooling-path-like strings (`playwright-mcp`, `/tmp/...yml`) as content/template bugs.
 - **Production Chromium:** Docker image installs system Chromium; Playwright uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` with `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Do not rely on Playwright browser download in the image.
 - **Journey flags:** Created before finalize with `source: JOURNEY`. `clearAuditResults` / `persistTriageResults` must preserve them (only clear `DETERMINISTIC` + `AI`).
 - **Visual evidence:** `lib/audit/capture/*` runs after flags in finalize (`tryCaptureVisualEvidenceForAudit`); stores `performanceData.flagVisualEvidence`. Wire through report page → `buildLiveExplorerModel`. Failures must not fail the audit.
+- **Action timeline:** Structured scan events stream via report status API and render in progressive + completed report UI (`performanceData.actionTimeline` or pipeline log extension).
 - **Changelog** (`CHANGELOG_ENTRIES` in copy.ts) is user-facing only: plain language, outcomes and benefits, never implementation details or internal terminology.
 - **Social proof** must match `LANDING_PAGE.testimonials` disclaimer; never invent member counts.
+- **Badge / roast SVG:** Raw hex allowed only inside generated SVG badge/roast artwork (not general UI). Prefer grade token colors.
 
 ### Architecture
 - **Pipeline stages:** QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
@@ -188,7 +197,7 @@ Before claiming completion:
 | `SECURITY.md` | Security invariants, trust boundaries |
 | `DECISIONS.md` | Durable decisions with rationale |
 | `ROADMAP.md` | Now / Next / Later / Not planned |
-| `knowledge/` | **Company knowledge base** (revenue model, execution plan, market & distribution, product architecture) |
+| `knowledge/` | **Company knowledge base** (foundations, market, product, strategy, execution) |
 | `.agents/README.md` | Multi-agent coordination system |
 | `.agents/BOARD.md` | Active task board |
 | `.agents/learnings/` | Validated project learnings |

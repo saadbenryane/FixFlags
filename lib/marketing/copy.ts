@@ -12,16 +12,13 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'The QA layer for AI-built products.',
-  category: 'The QA layer for AI-built products.',
-  oneLiner: 'FixFlags is the QA layer for AI-built products.',
+  category: 'Release readiness for AI-built products.',
+  oneLiner: 'FixFlags is the release readiness layer for AI-built products.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
   tribeBadge: 'Finish what your AI started',
 } as const
-
-/** Named once on the page. Do not repeat in every section */
-export const AI_TOOLS = 'Cursor, Claude, Lovable, and Bolt' as const
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://fixflags.com'
@@ -153,62 +150,18 @@ export const SEVERITY_MEANINGS = {
 } as const
 
 export const HERO = {
-  badge: 'Finish what your AI started.',
-  headline: 'Finish what your AI started.',
-  headlineLine1: 'what your',
-  headlineLine2: 'AI started.',
-  headlineAccent: 'Finish',
+  badge: 'Check before you ship.',
+  headline: 'Your AI says it\u2019s done. Check the product.',
+  headlineLine1: 'says it\u2019s',
+  headlineLine2: 'done. Check the product.',
+  headlineAccent: 'Your AI',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your live URL. See what visitors notice. Copy fixes into Cursor, Claude, Lovable, or Bolt.',
-  primaryCta: 'Review my site',
+    'Paste a URL. Get Flags across what\u2019s broken, who it matters to, and how to share. Copy fixes into Cursor, Claude, Lovable, or Bolt.',
+  primaryCta: 'Check my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
   urlPlaceholder: 'your-site.com',
-} as const
-
-export const SEGMENT_PROOF_SECTION = {
-  label: 'Who it\u2019s for',
-  headline: 'Before you share the link',
-  subhead: 'Same report. Different moment.',
-  tiles: [
-    {
-      id: 'ai-shipper',
-      title: 'About to ship',
-      job: 'Catch what your builder missed before the launch post.',
-      proof: `Flags and fix prompts for ${AI_TOOLS}.`,
-    },
-    {
-      id: 'live-site',
-      title: 'Already live',
-      job: 'See what the public page is still costing you.',
-      proof: 'Prioritized Flags you can fix yourself or hand to whoever ships.',
-    },
-  ],
-} as const
-
-export const PROBLEM_SECTION = {
-  label: 'Why you miss this in reviews',
-  headline: 'Your builder shipped fast. The gaps show up when someone opens the link.',
-  subhead:
-    'Message, layout, and share-preview issues slip past quick reviews until a URL goes public.',
-  pains: [
-    {
-      title: 'Off on mobile',
-      body: 'Main action below the fold. Buttons too small to tap on mobile.',
-      fixPrompt: 'Fix prompt for layout + button sizing',
-    },
-    {
-      title: 'Blank when shared',
-      body: 'Missing social preview image. Empty link cards on Slack and X.',
-      fixPrompt: 'Fix prompt for social preview image',
-    },
-    {
-      title: 'Unclear next step',
-      body: 'Visitors leave without knowing what to do. Weak trust at the pay step.',
-      fixPrompt: 'Fix prompt for main action + trust',
-    },
-  ],
 } as const
 
 export const DIFFERENTIATION = {
@@ -249,41 +202,6 @@ export const DIFFERENTIATION = {
     { feature: 'Checks mobile button placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
-} as const
-
-export const SOCIAL_PROOF = {
-  headline: 'Even strong sites fail these checks',
-  worksWithHeading: 'Works with',
-  toolingLine: 'Cursor · Claude Code · Lovable · Bolt',
-  tools: ['Cursor', 'Claude Code', 'Lovable', 'Bolt'] as const,
-  testimonial: {
-    label: 'Example feedback',
-    quote:
-      'Fixed our social preview image after the first check. Link previews in Slack now show our branding instead of blank cards.',
-    author: 'Founder',
-    company: 'B2B SaaS, 3-person team',
-  },
-} as const
-
-export const CASE_STUDIES_SECTION = {
-  label: 'Re-check results',
-  headline: 'Fixes that clear Flags',
-  subhead: 'Illustrative results after applying fix prompts and running a re-check.',
-} as const
-
-export const PROOF_SECTION = {
-  label: OUTPUT_LABELS.whatYouGet,
-  headline: 'Flags, screenshots, and fix prompts',
-  subhead:
-    'Real output from a public URL. Copy a fix prompt, paste it into your editor, then re-check to prove the fix.',
-  nextStep: OUTPUT_LABELS.nextStep,
-  cta: 'Check My Site',
-  sample: {
-    name: 'PlantDad',
-    domain: 'fixflags.com/demo',
-    finding: 'Hero headline repeats the product category instead of the outcome',
-    areasFlagged: 6,
-  },
 } as const
 
 export const FLOW_SCAN_STATUS = {
@@ -354,27 +272,6 @@ export const FLAG_DISMISS_REASONS = [
 ] as const
 
 export type FlagDismissReasonId = (typeof FLAG_DISMISS_REASONS)[number]['id']
-
-export const PRODUCT_LADDER = {
-  headline: 'Start free. Upgrade when you ship weekly.',
-  steps: [
-    {
-      plan: 'FREE',
-      title: 'Check',
-      body: 'Score, Flags, evidence, fix prompts, and re-checks. First report fully unlocked. Free account for report history and 3 URL checks.',
-    },
-    {
-      plan: 'BUILDER',
-      title: 'Prove',
-      body: 'Before/after comparison, 25 new checks per month, and MCP in your editor.',
-    },
-    {
-      plan: 'TEAM',
-      title: 'Share',
-      body: 'Client-ready share links, proof exports, and projects for agencies and client-driven teams.',
-    },
-  ],
-} as const
 
 export const MCP_SECTION = {
   headline: 'Run checks from your editor',
@@ -498,7 +395,7 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 export const FINAL_CTA = {
   headline: 'Paste your URL.',
   headlineAccent: 'See what to fix.',
-  body: OFFER.line,
+  body: 'Free check. See what\u2019s broken before you share the link. Sign up when you want the fix prompts and re-check.',
 } as const
 
 export const CHANGELOG_ENTRIES = [
@@ -544,8 +441,8 @@ export const LANDING_PAGE = {
     cards: [
       {
         id: 'message',
-        title: 'Message',
-        question: 'Can people understand and care?',
+        title: 'Makes sense',
+        question: 'Can people understand and care in five seconds?',
         icon: 'message',
         tint: 'brand',
         checks: [
@@ -561,7 +458,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'experience',
-        title: 'Experience',
+        title: 'Works',
         question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
@@ -578,7 +475,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'reach',
-        title: 'Reach',
+        title: 'Ready to share',
         question: 'Can people find and share it?',
         icon: 'reach',
         tint: 'info',
@@ -597,32 +494,25 @@ export const LANDING_PAGE = {
   },
   howItWorks: {
     label: 'How it works',
-    headline: 'From scan to ship. In one loop.',
+    headline: 'Three steps. Then re-check.',
     subhead:
-      'Paste a URL. Get Flags. Paste the fix into your editor. Re-check.',
+      'Paste a URL. Get Flags. Copy fixes into your editor. Re-check to prove it landed.',
     sampleLink: 'View full sample review',
     steps: [
       {
         step: 1,
-        title: 'Scan',
-        body: 'We scan your live site in seconds.',
+        title: 'Flag',
+        body: 'We check your page across what it says, how it works, and how it\u2019s found.',
         preview: 'yourproduct.com',
       },
       {
         step: 2,
-        title: 'Flag',
-        body: 'We surface the issues that actually matter.',
-        preview: 'High-impact flags',
-        previewBadge: 'Flags',
+        title: 'Fix',
+        body: 'Copy the fix prompt into Cursor, Claude, Lovable, or Bolt.',
+        preview: 'Paste → ship',
       },
       {
         step: 3,
-        title: 'Fix',
-        body: 'Copy the fix prompt into Cursor, Claude, Lovable, or Bolt.',
-        preview: 'Copy \u2192 paste',
-      },
-      {
-        step: 4,
         title: 'Re-check',
         body: 'Run the same URL to see which Flags cleared.',
         preview: 'Re-check complete',
@@ -1396,9 +1286,9 @@ export function formatQueueWaitHint(seconds: number): string {
 
 export const SEO = {
   home: {
-    title: 'FixFlags - Finish what your AI started',
+    title: 'FixFlags - Check before you ship',
     description:
-      'Paste a URL. FixFlags finds what your AI editor missed: message gaps, UX issues, missing metadata. With fix prompts your agent can run. Free check.',
+      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product: message gaps, UX issues, missing metadata. Fix prompts for Cursor, Claude, Lovable, and Bolt. Free check.',
   },
   pricing: {
     title: 'Pricing',
