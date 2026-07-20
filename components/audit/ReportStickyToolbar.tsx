@@ -7,14 +7,14 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
-const CONTRACT_SECTION = { id: 'report-contract', label: 'Contract' } as const
-const PRIORITIES_SECTION = { id: 'report-priorities', label: 'Priorities' } as const
-const JOURNEY_SECTION = { id: 'report-journey', label: 'Journey' } as const
-const FLOW_SECTION = { id: 'report-flow', label: 'Flow' } as const
-const TIMELINE_SECTION = { id: 'report-timeline', label: 'Timeline' } as const
-const FLAGS_SECTION = { id: 'report-flags', label: 'Flags' } as const
-const PREVIEWS_SECTION = { id: 'report-previews', label: 'Previews' } as const
-const LAUNCH_SECTION = { id: 'report-launch-gates', label: 'Launch' } as const
+const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
+const PRIORITIES_SECTION = { id: 'report-priorities', label: REPORT_COPY.stickyNav.priorities } as const
+const JOURNEY_SECTION = { id: 'report-journey', label: REPORT_COPY.stickyNav.journey } as const
+const FLOW_SECTION = { id: 'report-flow', label: REPORT_COPY.stickyNav.flow } as const
+const TIMELINE_SECTION = { id: 'report-timeline', label: REPORT_COPY.stickyNav.timeline } as const
+const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
+const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
+const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
 const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
 const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
 

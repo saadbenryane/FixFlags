@@ -38,8 +38,7 @@ export function EditorToolMarks({
           <li
             key={name}
             className={cn(
-              'flex items-center gap-2 font-semibold tracking-tight text-foreground/65 [&_svg]:h-5 [&_svg]:w-5',
-              compact ? 'text-sm' : 'text-[15px]'
+              'flex items-center gap-2 font-semibold tracking-tight text-foreground/65 [&_svg]:h-5 [&_svg]:w-5 text-sm'
             )}
           >
             {LOGO_MARKS[name]}

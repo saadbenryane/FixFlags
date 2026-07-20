@@ -23,7 +23,7 @@ import {
   getScanningLabel,
 } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
-import { formatQueueWaitHint } from '@/lib/marketing/copy'
+import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { displayVerdict } from '@/lib/audit/verdict'
@@ -223,7 +223,7 @@ export function AuditReportProgressive({
           id="report-timeline"
           className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
         >
-          <SectionTitle className="text-base">What FixFlags is doing</SectionTitle>
+          <SectionTitle className="text-base">{REPORT_COPY.sectionTitles.timelineProgressive}</SectionTitle>
           <ActionTimeline events={actionTimeline} className="mt-3" />
         </section>
       ) : null}

@@ -1,5 +1,5 @@
 import type { FlowData } from '@/lib/audit/flow-data'
-import { FLOW_SCAN_STATUS } from '@/lib/marketing/copy'
+import { FLOW_SCAN_STATUS, REPORT_COPY } from '@/lib/marketing/copy'
 import { Card } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
 import { ArrowRight } from 'lucide-react'
@@ -31,7 +31,7 @@ export function FlowScanTimeline({ flowData }: Props) {
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <SectionTitle id="flow-scan-heading">CTA flow test</SectionTitle>
+          <SectionTitle id="flow-scan-heading">{REPORT_COPY.sectionTitles.flow}</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             FixFlags clicked your primary CTA and captured each step.
             {flowData.ctaText ? ` Target: "${flowData.ctaText}"` : null}

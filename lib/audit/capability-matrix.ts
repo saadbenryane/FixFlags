@@ -618,18 +618,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s.',
   },
 
-  // EXPERIENCE - design language (mostly AI today)
-  {
-    id: 'experience-visual-polish',
-    dimension: 'EXPERIENCE',
-    category: 'design-language',
-    label: 'Visual polish, hierarchy, spacing feel',
-    tool: 'ai-judge',
-    status: 'partial',
-    checkIds: [],
-    verify: 'lib/audit/__tests__/judge-rubric.test.ts',
-    notes: 'AI judge EXPERIENCE rubric; no deterministic token checks yet.',
-  },
+  // EXPERIENCE - design language
   {
     id: 'experience-design-tokens',
     dimension: 'EXPERIENCE',
@@ -642,7 +631,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     notes: 'DOM style sampling during mobile capture.',
   },
 
-  // AI review layer
+  // AI review layer (includes visual polish / hierarchy / spacing feel via EXPERIENCE rubric)
   {
     id: 'ai-rubric-pass',
     dimension: 'MESSAGE',
@@ -652,6 +641,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: [],
     verify: 'npm run dev:all + audit URL',
+    notes:
+      'Covers visual polish and spacing feel via the EXPERIENCE rubric. Deterministic token checks live under experience-design-tokens / experience-visual-hierarchy.',
   },
 
   // Internal (FixFlags repo only)

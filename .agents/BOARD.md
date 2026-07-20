@@ -4,8 +4,9 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| completeness-final | in_progress | auto | cursor/completeness-final-7b90 | Gates, truth residual, design/copy, dead code, Strength/Touch CRITICAL, skills/docs | copy.ts, checks, report UI, QUALITY/PRODUCT/skills, guards | — | 2026-07-20 |
 | howitworks-visual-spacing | in_progress | auto | main | Framed loop step tiles (subject crops, lean WebP) + marketing spacing | HowItWorksLoopSection, public/marketing/visuals/loop-0* | — | 2026-07-20 |
-| dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | — | 2026-07-20 |
+| dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | Absorbed truth residuals into completeness-final | 2026-07-20 |
 
 ---
 

@@ -1,5 +1,6 @@
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { Card } from '@/components/ui/card'
 import { LabelCaps, SectionTitle } from '@/components/ui/typography'
 
@@ -77,7 +78,7 @@ export function PreviewCards({ preview }: Props) {
       aria-labelledby="preview-cards-heading"
     >
       <div>
-        <SectionTitle id="preview-cards-heading">Share & search previews</SectionTitle>
+        <SectionTitle id="preview-cards-heading">{REPORT_COPY.sectionTitles.previews}</SectionTitle>
         <p className="mt-1 text-sm text-muted-foreground">
           How your page may appear in search results and when shared on Slack or social.
         </p>

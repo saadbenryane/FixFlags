@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ProductContract } from '@/lib/audit/product-contract'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface ProductContractCardProps {
@@ -91,11 +92,11 @@ export function ProductContractCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-            Product contract
+            {REPORT_COPY.sectionTitles.productContract}
             {contract.source === 'user' ? ' · edited' : ' · inferred'}
           </p>
-          <h2 id="product-contract-heading" className="mt-1 font-display text-lg text-foreground">
-            What this product appears to do
+          <h2 id="product-contract-heading" className="mt-1 font-serif text-lg text-foreground">
+            {REPORT_COPY.sectionTitles.productContractHeading}
           </h2>
         </div>
         {canEdit && auditId && !editing ? (

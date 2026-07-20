@@ -190,7 +190,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA uses visitor-facing check language', () => {
-    assert.equal(HERO.primaryCta, 'Check my site')
+    assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
     assert.match(FINAL_CTA.headlineAccent, /fix/i)
     assert.ok(!/flag it/i.test(FINAL_CTA.headlineAccent))

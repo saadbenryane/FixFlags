@@ -71,6 +71,13 @@ export function formatElapsed(seconds: number): string {
   return `${mins}m ${secs}s`
 }
 
+/** Format a millisecond offset as a short elapsed label (timeline events). */
+export function formatElapsedMs(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
 export function truncateUrl(url: string, max = 48): string {
   try {
     const parsed = new URL(url)

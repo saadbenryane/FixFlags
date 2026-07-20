@@ -848,6 +848,29 @@ describe('runAllChecks', () => {
       ['trust-no-direct-contact']
     )
   })
+
+  it('suppresses hierarchy-too-many-fonts when visual-typography-sprawl is present', async () => {
+    restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
+    const { flags } = await runAllChecks(
+      'https://example.com',
+      healthyMeta({
+        h1s: ['Product'],
+        h2s: ['Feature A'],
+        pageText: 'Product page body text for hierarchy checks.',
+      }),
+      healthyDesktopPs(),
+      healthyMobilePs(),
+      [],
+      undefined,
+      healthyCaptureMetrics({
+        uniqueFontFamilies: 6,
+        fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'],
+      })
+    )
+    const ids = checkIds(flags)
+    assert.ok(ids.includes('visual-typography-sprawl'))
+    assert.ok(!ids.includes('hierarchy-too-many-fonts'))
+  })
 })
 
 describe('runSecurityHeaderChecks', () => {
@@ -992,6 +1015,99 @@ describe('computeRubricScores', () => {
       failedModules: ['security-headers'],
     })
     assert.equal(scores.REACH, 75)
+  })
+
+  it('drives MESSAGE toward floor when all flags are CRITICAL', () => {
+    const criticalFlags = Array.from({ length: 8 }, (_, i) => ({
+      checkId: `msg-critical-${i}`,
+      rubric: 'MESSAGE' as const,
+      severity: 'CRITICAL' as const,
+      problem: '',
+      evidence: '',
+      fix: '',
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    }))
+    const scores = computeRubricScores(criticalFlags, null, null, {
+      pageSpeedAvailable: { desktop: false, mobile: false },
+    })
+    // 8 * ln(9) * 10 ≈ 175 → clamped to 0
+    assert.equal(scores.MESSAGE, 0)
+    assert.equal(scores.EXPERIENCE, 75)
+    assert.equal(scores.REACH, 100)
+  })
+
+  it('drives EXPERIENCE toward floor when PageSpeed base is high but all flags are CRITICAL', () => {
+    const criticalFlags = Array.from({ length: 10 }, (_, i) => ({
+      checkId: `exp-critical-${i}`,
+      rubric: 'EXPERIENCE' as const,
+      severity: 'CRITICAL' as const,
+      problem: '',
+      evidence: '',
+      fix: '',
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    }))
+    const scores = computeRubricScores(
+      criticalFlags,
+      healthyDesktopPs({ score: 95 }),
+      healthyMobilePs({ score: 95 })
+    )
+    assert.equal(scores.EXPERIENCE, 0)
+  })
+})
+
+describe('form-missing-validation severity ratio (50% threshold)', () => {
+  it('marks IMPORTANT when missing validation ratio is >= 50%', () => {
+    const flags = runContentChecks(
+      healthyMeta({
+        forms: 1,
+        totalFormInputs: 4,
+        formInputsMissingValidation: 2,
+      })
+    )
+    const flag = flags.find((f) => f.checkId === 'form-missing-validation')
+    assert.ok(flag)
+    assert.equal(flag!.severity, 'IMPORTANT')
+  })
+
+  it('marks IMPORTANT when all inputs are missing validation', () => {
+    const flags = runContentChecks(
+      healthyMeta({
+        forms: 1,
+        totalFormInputs: 3,
+        formInputsMissingValidation: 3,
+      })
+    )
+    const flag = flags.find((f) => f.checkId === 'form-missing-validation')
+    assert.ok(flag)
+    assert.equal(flag!.severity, 'IMPORTANT')
+  })
+
+  it('marks POLISH when missing validation ratio is below 50%', () => {
+    const flags = runContentChecks(
+      healthyMeta({
+        forms: 1,
+        totalFormInputs: 5,
+        formInputsMissingValidation: 2,
+      })
+    )
+    const flag = flags.find((f) => f.checkId === 'form-missing-validation')
+    assert.ok(flag)
+    assert.equal(flag!.severity, 'POLISH')
+  })
+
+  it('treats zero totalFormInputs as full miss (IMPORTANT)', () => {
+    const flags = runContentChecks(
+      healthyMeta({
+        forms: 1,
+        totalFormInputs: 0,
+        formInputsMissingValidation: 1,
+      })
+    )
+    const flag = flags.find((f) => f.checkId === 'form-missing-validation')
+    assert.ok(flag)
+    assert.equal(flag!.severity, 'IMPORTANT')
   })
 })
 

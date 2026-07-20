@@ -31,7 +31,7 @@ function appendAuthParams(
   if (from) params.set('from', from)
 }
 
-function buildPostLoginQuery(
+export function buildPostLoginQuery(
   next: string | null,
   plan: string | null,
   from: string | null,

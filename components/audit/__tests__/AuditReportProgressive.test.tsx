@@ -60,6 +60,25 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('What FixFlags is doing')).not.toBeInTheDocument()
   })
 
+  it('shows the progressive timeline title when events are present', () => {
+    render(
+      <AuditReportProgressive
+        status="CAPTURING"
+        url={URL}
+        actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
+      />
+    )
+    expect(screen.getByText('What FixFlags is doing')).toBeInTheDocument()
+    expect(screen.getByText('Opened page')).toBeInTheDocument()
+  })
+
+  it('keeps completed chrome altitudes (hero hostname + sticky Flags nav, no Overview)', () => {
+    render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />)
+    expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Flags' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Overview' })).not.toBeInTheDocument()
+  })
+
   it('streams partial flags into the explorer as they are found', async () => {
     render(
       <AuditReportProgressive

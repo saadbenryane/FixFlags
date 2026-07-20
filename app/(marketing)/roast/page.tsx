@@ -1,15 +1,15 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { RoastClient } from '@/components/marketing/tools/RoastClient'
+import { ROAST_META } from '@/lib/marketing/copy'
 
 export function generateMetadata() {
   return {
-    title: 'Website Roast - FixFlags',
-    description:
-      'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
+    title: ROAST_META.title,
+    description: ROAST_META.description,
     openGraph: {
-      title: 'Website Roast - FixFlags',
-      description: 'Paste your URL. Get roasted. Fix what matters.',
+      title: ROAST_META.title,
+      description: ROAST_META.ogDescription,
       type: 'website',
     },
   }

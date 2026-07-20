@@ -5,12 +5,7 @@ import type { ComponentProps } from 'react'
 import { Button } from '@/components/ui/button'
 import { trackEvent } from '@/lib/analytics/events'
 
-type ReportSignupFrom =
-  | 'value_strip'
-  | 'claim_guide'
-  | 'sample_fix'
-  | 'limit_gate'
-  | 'explorer'
+type ReportSignupFrom = 'value_strip' | 'sample_fix' | 'limit_gate'
 
 interface ReportSignupCtaProps {
   href: string

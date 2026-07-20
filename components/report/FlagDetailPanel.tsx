@@ -7,6 +7,7 @@ import { MarkdownPromptBox } from '@/components/audit/MarkdownPromptBox'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
+import { LOCKED_CONTENT_TEASER } from '@/lib/marketing/copy'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
@@ -176,7 +177,7 @@ export function FlagDetailPanel({
           </div>
           {aiLocked ? (
             <LockedContentTeaser
-              label="Create a free account to get the fix prompt for this flag"
+              label={LOCKED_CONTENT_TEASER.fixPromptLabel}
               signUpHref={signUpHref}
             />
           ) : aiEnhancementPending && !flag.fixPrompt ? (
