@@ -49,6 +49,9 @@ export default async function AdminAnalyticsPage() {
     auditsWeek,
     auditsMonth,
     totalAudits,
+    anonAuditsMonth,
+    anonCompletedMonth,
+    anonUnlinkedLeads,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -62,6 +65,11 @@ export default async function AdminAnalyticsPage() {
     prisma.audit.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.audit.count({ where: { createdAt: { gte: monthAgo } } }),
     prisma.audit.count(),
+    prisma.audit.count({ where: { userId: null, createdAt: { gte: monthAgo } } }),
+    prisma.audit.count({
+      where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
+    }),
+    prisma.lead.count({ where: { linkedUserId: null } }),
   ])
 
   const [activePaidUsers, churnedThisMonth, completedAuditsMonth, trafficSources] =
@@ -109,6 +117,9 @@ export default async function AdminAnalyticsPage() {
     .map((row) => ({ source: row.utmSource || 'Direct / unknown', count: row._count._all }))
     .slice(0, 8)
 
+  const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
+  const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
+
   const funnelMax = Math.max(totalUsers, usersWithAudits, paidUsers, totalAudits, 1)
 
   const periodStats = [
@@ -143,6 +154,53 @@ export default async function AdminAnalyticsPage() {
           Open GA4 dashboard &rarr;
         </Link>
       </PageHeader>
+
+      <section className="space-y-4">
+        <SectionTitle>Anonymous wedge (last 30 days)</SectionTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-0 shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser starts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatValue>{anonAuditsMonth.toLocaleString()}</StatValue>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser completes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatValue>{anonCompletedMonth.toLocaleString()}</StatValue>
+              <span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground font-medium">Signed-in audit starts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatValue>{loggedInAuditsMonth.toLocaleString()}</StatValue>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground font-medium">Unlinked leads (domains)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatValue>{anonUnlinkedLeads.toLocaleString()}</StatValue>
+              <Link href="/admin/leads" className="text-xs text-brand underline">
+                Open leads &rarr;
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Anon teaser = audits with no user at create time. Claim conversion is tracked in GA4 via{' '}
+          <code className="font-mono text-foreground">report_signup_cta_clicked</code> and{' '}
+          <code className="font-mono text-foreground">audits_claimed</code>.
+        </p>
+      </section>
 
       <section className="space-y-4">
         <SectionTitle>Conversion funnel (all time)</SectionTitle>
@@ -283,6 +341,8 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">viewed_report</code> &mdash; Completed report viewed</p>
           <p><code className="text-foreground font-mono text-xs">viewed_sample</code> &mdash; Sample report section viewed</p>
           <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code> &mdash; Sample CTA clicked</p>
+          <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code> &mdash; Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
+          <p><code className="text-foreground font-mono text-xs">audits_claimed</code> &mdash; Anonymous audits claimed after signup</p>
         </div>
       </section>
     </Container>

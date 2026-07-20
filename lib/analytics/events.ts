@@ -38,6 +38,8 @@ type FunnelEvent =
   | 'viewed_sample'
   | 'clicked_sample_cta'
   | 'audit_intent'
+  | 'report_signup_cta_clicked'
+  | 'audits_claimed'
 
 type EventParams = {
   landing_view: {
@@ -97,6 +99,10 @@ type EventParams = {
   viewed_sample: { placement: 'homepage' | 'samples' }
   clicked_sample_cta: { placement: 'hero' | 'how_it_works' | 'sample_section' }
   audit_intent: { cta_placement: 'hero' | 'final'; from: 'hero' | 'final' }
+  report_signup_cta_clicked: {
+    from: 'value_strip' | 'claim_guide' | 'sample_fix' | 'limit_gate' | 'explorer'
+  }
+  audits_claimed: { claimed_count: number }
 }
 
 function deviceClass(): string | undefined {

@@ -338,22 +338,32 @@ function EvidenceRegionGlow({
   const isCritical = highlight.severity === 'CRITICAL'
   const isPage = highlight.scope === 'page'
 
+  if (isPage) {
+    return (
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 rounded-[5px] transition-opacity duration-300',
+          selected ? 'opacity-100' : 'opacity-0',
+          'bg-brand/5'
+        )}
+        aria-hidden={!selected}
+      />
+    )
+  }
+
   return (
     <div
       className={cn(
         'pointer-events-none absolute rounded-[5px] transition-opacity duration-300',
         selected ? 'opacity-100' : 'opacity-0',
-        isPage && 'ring-inset bg-brand/5',
         isCritical
           ? cn(
               'ring-[3px] ring-destructive',
-              !isPage &&
-                'bg-destructive/10 shadow-[0_0_0_1px_hsl(var(--destructive)/0.38),0_0_0_5px_hsl(var(--destructive)/0.12),0_12px_34px_hsl(var(--destructive)/0.28)]'
+              'bg-destructive/10 shadow-[0_0_0_1px_hsl(var(--destructive)/0.38),0_0_0_5px_hsl(var(--destructive)/0.12),0_12px_34px_hsl(var(--destructive)/0.28)]'
             )
           : cn(
               'ring-[3px] ring-brand',
-              !isPage &&
-                'bg-brand/10 shadow-[0_0_0_1px_hsl(var(--brand)/0.34),0_0_0_5px_hsl(var(--brand)/0.12),0_12px_34px_hsl(var(--peach-glow)/0.32)]'
+              'bg-brand/10 shadow-[0_0_0_1px_hsl(var(--brand)/0.34),0_0_0_5px_hsl(var(--brand)/0.12),0_12px_34px_hsl(var(--peach-glow)/0.32)]'
             )
       )}
       style={{
@@ -455,11 +465,20 @@ function ScreenshotPanel({
 
   const active = highlights.some((h) => h.device === device && h.flagId === selectedFlagId)
 
+  const selectedPageHighlight = highlights.find(
+    (h) => h.device === device && h.flagId === selectedFlagId && h.scope === 'page'
+  )
+  const pageBorderCritical = selectedPageHighlight?.severity === 'CRITICAL'
+  const pageBorderSelected = Boolean(selectedPageHighlight)
+
   return (
     <div
       ref={containerRef}
       className={cn(
         'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
+        pageBorderSelected && 'border-[3px]',
+        pageBorderSelected && pageBorderCritical && 'border-destructive',
+        pageBorderSelected && !pageBorderCritical && 'border-brand',
         size ? 'shrink-0' : 'w-full',
         className
       )}

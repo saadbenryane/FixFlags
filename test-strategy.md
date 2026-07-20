@@ -58,7 +58,7 @@
 | Pipeline state machine | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED — `run-audit.test.ts` |
 | Billing gating enforcement | ✅ DONE | Route tests: `/api/checks`, api-keys, projects assert 402/allow |
 | API route contracts | ⚠️ CRITICAL | Primary paid endpoints tested; remaining API routes still lack handler-level tests |
-| Rate limiting | ⚠️ CRITICAL | Anonymous users get 3 checks. Paid users get their plan limit. Overages are gated. Partial coverage only. |
+| Rate limiting | ⚠️ CRITICAL | Anonymous users get 1 teaser scan (cookie gate + IP soft ceiling). Free accounts get 3 lifetime new URL checks. Paid users get their plan limit. | Partial coverage |
 | Auth / session management | ⚠️ CRITICAL | Login, logout, session expiry, plan entitlements. Auth env config is tested. Runtime behavior is not. |
 | CI pipeline | ⚠️ CRITICAL | GitHub Actions runs typecheck/lint/guards/test/build. Local `npm run verify` is stricter (includes DB checks). |
 | Database migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Not in CI. A bad migration on deploy corrupts production data. |

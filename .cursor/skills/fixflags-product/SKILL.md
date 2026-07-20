@@ -73,6 +73,24 @@ Do not market white-label reports or priority support — not implemented.
 
 Copy must say: monthly/lifetime limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
 
+## Anonymous wedge (acquisition)
+
+| Stage | Gets | Does not get |
+|-------|------|--------------|
+| Anon teaser (exactly 1) | Score, rubrics, Flags, evidence, `SampleFixCard` | Fix prompts, prescription, re-check, 2nd new URL |
+| After signup + claim | Full fixes, prescription enqueue, ownership, re-check | — |
+| Free account | 3 lifetime new URL checks (**claimed teaser counts as 1**) | Unlimited new URLs |
+
+**Enforcement (single path):**
+1. `createAndEnqueueAudit` when `userId == null`: `checkAnonymousAuditAllowed` → `AuditLimitError` `AUTH_REQUIRED` / `signup`; `enforceAnonymousIpSoftCeiling(clientId)` when provided; `trackAnonymousAuditId` after create (cookie stores **one** id).
+2. Report + `/api/v1/score`: strip deterministic/AI prompts for non-owners (`report-access.ts`, `fetch-audit.ts`). Never return `fix` / `agentPrompt` from score API.
+3. `claimAnonymousAudits`: set `userId`, `incrementUsageOnCompleteForAudit` for completed non-recheck audits, enqueue prescription when credits allow.
+4. Auth: **`/post-login` only** → `useMe({ claim: true })` → `ClaimAnonymousAudits` + `router.refresh()`.
+
+**Lead capture:** `upsertLeadFromAudit` on finalize; admin `/admin/leads`. No separate email capture on anon report.
+
+**Do not:** client-side unlock (`lib/first-report.ts` removed); duplicate anon gate in routes (checks/roast/score pass `clientId` only).
+
 ### Limit actions (single pipeline)
 
 Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `action` + `message`) → `/api/checks` returns those fields → `AuditLimitGate`.

@@ -10,6 +10,7 @@ import { SAMPLE_FIX } from '@/lib/marketing/copy'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
 import { rubricLabel } from '@/lib/utils'
+import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 
 interface SampleFixCardProps {
   flag: RankableFlag
@@ -109,9 +110,9 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <Button asChild>
-          <Link href={signUpHref}>{SAMPLE_FIX.primaryCta}</Link>
-        </Button>
+        <ReportSignupCta href={signUpHref} from="sample_fix">
+          {SAMPLE_FIX.primaryCta}
+        </ReportSignupCta>
         <Button variant="outline" asChild>
           <Link href="/sign-in">{SAMPLE_FIX.signInCta}</Link>
         </Button>

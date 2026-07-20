@@ -16,10 +16,10 @@ import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
-import { buildRubricScoreRows, reportScanDetail } from '@/lib/audit/report-pipeline-steps'
+import { buildRubricScoreRows } from '@/lib/audit/report-pipeline-steps'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { getScanningLabel, statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
+import { statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { AUDIT_PROGRESS, formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -219,9 +219,6 @@ export function AuditReportProgressive({
                 rubricScores={rubricScores}
                 progress={displayProgress}
                 fixLoop={{
-                  scanDetail: isLoading
-                    ? getScanningLabel(activeStage, tick)
-                    : reportScanDetail(pageType),
                   flags: fixLoopFlags,
                   flagCount,
                   hasFixPrompts: false,

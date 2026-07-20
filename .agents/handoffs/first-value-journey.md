@@ -3,7 +3,7 @@
 - Date: 2026-07-17
 - Owner: auto
 - Board task: `first-value-journey`
-- Status: implemented locally; live browser walk limited (IDE browser MCP unavailable this session)
+- Status: **superseded by `anon-wedge-completion` (2026-07-20)** — central gate, claim usage, copy truth, analytics
 
 ## Goal
 

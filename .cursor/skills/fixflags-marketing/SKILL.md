@@ -104,7 +104,8 @@ From `docs/voice-and-copy.md`:
 - Trust line: only `OFFER.short` under the URL field. No badge row. No second privacy/claim paragraph.
 - Sample CTA: `HERO.trySampleCta` alone. **No** `trySampleHint` subtitle.
 - Ban on marketing surfaces: `compatibility is not endorsement`, `read-only review`, `claim the report`, `fix prompt ready`, `Agent-ready`, `\bunlock\b`
-- Before shipping copy: diff strings against `PLAN_DEFINITIONS` in `lib/billing/plans.ts` (Free = 3 new URL checks, not unlimited deterministic)
+- Before shipping copy: diff strings against `PLAN_DEFINITIONS` in `lib/billing/plans.ts` (Free = 3 new URL checks on account; **1 anon teaser** without account)
+- **Anon wedge copy:** teaser shows what's broken; account unlocks fix prompts, save, re-check, and 3 URL checks. Never say "first report fully unlocked" for anonymous viewers. Align FAQ/Help with `OFFER.line`.
 
 ## ICP research workflow
 

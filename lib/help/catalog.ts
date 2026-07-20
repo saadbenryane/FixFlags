@@ -44,11 +44,11 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, runs automated checks, and returns Flags with evidence and fix prompts.',
+        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, runs automated checks, and returns Flags with evidence. Fix prompts unlock after you create a free account.',
       },
       {
         type: 'p',
-        text: 'You do not need an account for your first check. Free accounts include 3 new URL checks with full reports. Re-checks on reports you own are unlimited and free.',
+        text: 'Your first teaser scan does not require an account. Free accounts include 3 new URL checks with full reports and fix prompts. Re-checks on reports you own are unlimited and free.',
       },
       {
         type: 'ol',

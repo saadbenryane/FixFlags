@@ -9,7 +9,6 @@ import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportF
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
 import { FilterPill } from '@/components/ui/filter-pill'
-import { reportScanDetail } from '@/lib/audit/report-pipeline-steps'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
@@ -440,9 +439,6 @@ export function ReportExplorer({
         </p>
       ) : (
         <ReportFixLoop
-          scanDetail={
-            loading ? REPORT_COPY.explorer.stillScanning : reportScanDetail(model.pageType)
-          }
           flags={fixLoopFlags}
           selectedFlagId={currentFlag?.id}
           onSelectFlag={goToFlag}

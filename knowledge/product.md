@@ -211,13 +211,12 @@ The distinctive experience is not scan, score. PageSpeed, Lighthouse, accessibil
 The distinctive experience is: **Flag, Fix, Re-check, Verified.**
 
 **First-use boundary:**
-- One project
-- One useful audit
-- Complete repair instructions for main Flags
-- One re-check
-- Account required to preserve history or continue
+- One anonymous teaser scan (scores, Flags, evidence; fix prompts stripped)
+- Signup + claim unlocks fix prompts, prescription, re-check, and history
+- Free account: 3 lifetime new URL checks (claimed teaser counts as 1)
+- Account required for a second new URL or to preserve reports
 
-This exposes the differentiated value while limiting anonymous costs.
+This exposes differentiated value while limiting anonymous cost.
 
 ## Security Signal Discipline
 

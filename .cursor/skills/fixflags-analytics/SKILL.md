@@ -28,12 +28,16 @@ P2 growth work (audience landers, authentic testimonials, monitoring UI) is gate
 | `fix_prompt_copied` | `PromptCopyButton` / `ExportMenu` |
 | `recheck_started` | `AuditPageActions` |
 | `recheck_completed` | Compare page **and** report with `recheckDiff` |
+| `report_signup_cta_clicked` | `ReportSignupCta` (value strip, sample fix, claim guide), `AuditLimitGate` |
+| `audits_claimed` | `ClaimAnonymousAudits` after successful claim |
+
+**Anon funnel stages (GA4):** `started_audit` (`is_logged_in: false`) → `viewed_report` → `report_signup_cta_clicked` → `signed_up` → `audits_claimed` → `fix_prompt_copied` → `recheck_*`.
 
 Before shipping funnel changes: every `FunnelEvent` union member must have a `trackEvent('…')` call site (or be removed from the union).
 
 ## Admin
 
-[`app/admin/analytics/page.tsx`](../../app/admin/analytics/page.tsx) documents the funnel for operators. Keep descriptions in sync with real semantics.
+[`app/admin/analytics/page.tsx`](../../app/admin/analytics/page.tsx) documents the funnel for operators. Includes **Anonymous wedge (last 30 days)** counts and link to `/admin/leads`. Keep descriptions in sync with real semantics.
 
 ## Scan duration claims
 

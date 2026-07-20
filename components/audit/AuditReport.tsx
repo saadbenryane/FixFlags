@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { useEffect, useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
@@ -54,9 +54,9 @@ import {
   JourneyReviewTimeline,
   type JourneyReviewSummary,
 } from '@/components/audit/JourneyReviewTimeline'
-import { isFirstReport, consumeFirstReport } from '@/lib/first-report'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
+import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 
 interface RubricRow {
   id: string
@@ -166,20 +166,8 @@ export function AuditReport({
   const showTimeline = !isSample && (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = !isSample && Boolean(audit.previewMeta)
 
-  const [firstReport, setFirstReport] = useState(false)
-  useEffect(() => {
-    setFirstReport(isFirstReport())
-  }, [])
-
-  useEffect(() => {
-    if (firstReport && !isLoggedIn && audit.flags.length > 0) {
-      consumeFirstReport()
-    }
-  }, [firstReport, isLoggedIn, audit.flags.length])
-
-  const anonFirstReportUnlocked = firstReport && !isLoggedIn
-  const fixPromptsAccessible = showDeterministicFixes || anonFirstReportUnlocked
-  const fixPromptLocked = !fixPromptsAccessible
+  // Server strip is the only entitlement; never unlock via client sessionStorage.
+  const fixPromptLocked = !showDeterministicFixes
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -273,16 +261,16 @@ export function AuditReport({
         </>
       )}
 
-      {!isSample && fixPromptLocked && !firstReport && (
+      {!isSample && fixPromptLocked && (
         <Card className="space-y-3 p-5 text-center sm:p-6">
           <div className="space-y-1">
             <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(audit.flags.length)}</p>
             <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
-            <Button asChild size="sm">
-              <Link href={signUpHref}>{ANON_VALUE_STRIP.primaryCta}</Link>
-            </Button>
+            <ReportSignupCta href={signUpHref} from="value_strip" size="sm">
+              {ANON_VALUE_STRIP.primaryCta}
+            </ReportSignupCta>
             <Button asChild variant="ghost" size="sm">
               <Link href="/sign-in">Sign in</Link>
             </Button>
@@ -300,7 +288,7 @@ export function AuditReport({
         </div>
       ) : null}
 
-      {!isSample && explorerModel && hasFixPrompts && (showPrescription || anonFirstReportUnlocked) && (
+      {!isSample && explorerModel && hasFixPrompts && showPrescription && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -435,7 +423,7 @@ export function AuditReport({
         <LaunchGates checklist={audit.launchReadiness.checklist} />
       ) : null}
 
-      {!isSample && fixPromptLocked && !firstReport && sampleFixFlag && (
+      {!isSample && fixPromptLocked && sampleFixFlag && (
         <section id="report-sample-fix" className="scroll-mt-[var(--header-offset)]">
           <SampleFixCard
             flag={sampleFixFlag}
@@ -445,7 +433,7 @@ export function AuditReport({
         </section>
       )}
 
-      {!isSample && fixPromptLocked && !firstReport && (
+      {!isSample && fixPromptLocked && (
         <Card className="space-y-4 p-6 text-center sm:p-8">
           <div className="space-y-2">
             <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>
@@ -462,9 +450,9 @@ export function AuditReport({
             ))}
           </ol>
           <div className="flex flex-wrap justify-center gap-3">
-            <Button asChild>
-              <Link href={signUpHref}>{ANON_CLAIM_GUIDE.primaryCta}</Link>
-            </Button>
+            <ReportSignupCta href={signUpHref} from="claim_guide">
+              {ANON_CLAIM_GUIDE.primaryCta}
+            </ReportSignupCta>
             <Button variant="outline" asChild>
               <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
             </Button>

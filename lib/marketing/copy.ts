@@ -198,13 +198,13 @@ export const SEVERITY_MEANINGS = {
 
 export const HERO = {
   badge: 'Check before you ship.',
-  headline: 'Your AI says it\u2019s done. Check the product.',
-  headlineLine1: 'says it\u2019s done.',
-  headlineLine2: 'Check the product.',
-  headlineAccent: 'Your AI',
+  headline: 'Finish what your AI started.',
+  headlineLine1: 'what your',
+  headlineLine2: 'AI started.',
+  headlineAccent: 'Finish',
   headlineAccentLegacy: false,
   subhead:
-    'Paste a URL. Get Flags across what\u2019s broken, who it matters to, and how to share. Copy fixes into Cursor, Claude, Lovable, or Bolt.',
+    'Paste your URL. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Check my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
@@ -697,12 +697,12 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first check?',
-    answer: `No. Your first report is fully unlocked: all fix prompts, evidence, and the fix plan. No sign-up required. ${OFFER.short} Free accounts include 3 URL checks with full reports.`,
+    answer: `No. One free teaser scan shows scores, Flags, and evidence without an account. ${OFFER.short} Create a free account for fix prompts, re-check, and 3 new URL checks with full reports.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: first report fully unlocked (all fix prompts visible), then 3 new URL checks with full reports, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
+      'Free: one teaser scan without an account (evidence and Flags, fix prompts after signup), then 3 new URL checks with full reports on a free account, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
   },
   {
     question: 'Do I need Cursor or MCP?',
@@ -1098,7 +1098,7 @@ export const AUTH = {
 export const UPSELLS = {
   anon: {
     headline: 'Save this report and run more checks',
-    body: 'Your first report is fully unlocked. Create a free account to save it to your history, re-check after fixes, and run 3 new URL checks.',
+    body: 'Create a free account for fix prompts, re-check after fixes, and 3 new URL checks. Your teaser scan saves to your history.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -1153,9 +1153,9 @@ export const SHARE_COPY = {
 
 export const ANON_VALUE_STRIP = {
   headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
-  body: 'Sign in to save this report and check more URLs. Your next scan will count toward your free limit.',
-  primaryCta: 'Save & get more checks',
-  secondaryCta: 'Create free account',
+  body: 'Evidence and why it matters are below. Create a free account for fix prompts, re-check, and more URL checks.',
+  primaryCta: 'Create free account',
+  secondaryCta: 'Sign in',
 } as const
 
 export const LOCKED_INSPECTION = {
@@ -1185,13 +1185,13 @@ export const SAMPLE_FIX = {
   verifyTitle: 'How to verify',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `Your first report is fully unlocked. All ${n} fixes visible. Sign up to save reports, re-check, and check more URLs.`,
-  primaryCta: 'Save & see more fixes',
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, re-check, and run more URL checks.`,
+  primaryCta: 'Create free account',
 } as const
 
 export const ANON_CLAIM_GUIDE = {
   headline: 'Save this review and keep checking',
-  body: `Free accounts include 3 new URL checks with full reports and unlimited re-checks. Signing in saves this report to your history.`,
+  body: `Free accounts include 3 new URL checks with full reports and unlimited re-checks. Signing in unlocks fix prompts and saves this report to your history.`,
   primaryCta: 'Save report & get 3 checks',
   steps: [
     'Run more checks on other URLs',

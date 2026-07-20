@@ -34,7 +34,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Pipeline failures mid-audit | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED. Fail at any step. Timeout halfway. Retry after crash. | `run-audit.test.ts` drives `runAudit` across every path |
 | Billing enforcement leaks | ✅ DONE | Free user gets 402 on paid endpoint. Paying user never gets blocked on owned features. | Route tests for api-keys + projects assert 402/allow |
 | API route contracts | ⚠️ CRITICAL | Every route: 200 valid, 400 bad, 401 no auth, 404 not found, 429 rate limited | api-keys + projects tested; other routes pending |
-| Rate limiting | ⚠️ CRITICAL | Anonymous: 3 checks. Paid: plan limit. Overage gating. | Not implemented |
+| Rate limiting | ⚠️ CRITICAL | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 lifetime new URL checks. Paid: plan limit. | Partially implemented |
 | Auth / session integrity | ⚠️ CRITICAL | Login, logout, session expiry, plan entitlements at runtime | Not implemented |
 | CI pipeline | ⚠️ CRITICAL | Solo founder can `npm run verify` before shipping. BLOCKER with second person. | GitHub Actions runs subset; local verify is stricter |
 | Migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Drift detection passes. | Passes |

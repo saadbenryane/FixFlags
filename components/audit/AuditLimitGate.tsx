@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { useEffect, useMemo } from 'react'
 import { helpHrefForLimitAction } from '@/lib/help/contextual'
 import { HelpSupportActions } from '@/components/help/HelpSupportActions'
+import { trackReportSignupCta } from '@/components/audit/ReportSignupCta'
 
 interface Props {
   code?: string
@@ -52,7 +53,9 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
         {needsSignup ? (
           <>
             <Button asChild size="sm">
-              <Link href={signUpHref}>Create free account</Link>
+              <Link href={signUpHref} onClick={() => trackReportSignupCta('limit_gate')}>
+                Create free account
+              </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link href={signInHref}>Sign in</Link>

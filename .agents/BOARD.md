@@ -4,7 +4,8 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| anon-wedge-completion | in_progress | auto | main | 1-anon teaser rule: central gate, claim usage, score leak, copy/skills/analytics | create-audit, usage, claim-anonymous, score API, copy, skills | — | 2026-07-20 |
+| report-fixloop-chrome | in_progress | auto | main | Remove redundant Scanned/Top fix/count chrome from report flag list | components/report/ReportFixLoop.tsx, ReportExplorer.tsx | — | 2026-07-20 |
+| dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | — | 2026-07-20 |
 
 ---
 
@@ -14,6 +15,7 @@
 |---------|-------|-------|-----------|
 | beat-scout-completeness | auto | Wire completed-report Contract/Timeline; editable contract; journey bias; silent failure; overlays; anti-FP; roast polish | 2026-07-20 |
 | why-it-matters-first | auto | Why it matters first in flag detail panels | 2026-07-20 |
+| anon-wedge-completion | auto | 1-anon teaser: central gate, claim usage, score leak, copy/skills/analytics | 2026-07-20 |
 | beat-scout-precision | auto | Network/API Flags, overlay detection, action timeline, Product Contract, roast/CLI/IDE harden, skills/docs | 2026-07-20 |
 | help-center | auto | First-party Help Center + chat escalation + contextual help | 2026-07-20 |
 | hero-illustration-blend | auto | Soft glass-flag wash behind landing hero | 2026-07-19 |

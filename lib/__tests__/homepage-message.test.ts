@@ -82,9 +82,9 @@ const ABOVE_FOLD_COPY = [
 ]
 
 describe('homepage message guardrails', () => {
-  it('hero headline names the check moment after AI builds', () => {
-    assert.match(HERO.headline, /check/i)
-    assert.match(HERO.headlineAccent, /your ai/i)
+  it('hero headline names the finish-the-loop moment after AI builds', () => {
+    assert.match(HERO.badge, /check/i)
+    assert.match(HERO.headlineAccent, /finish/i)
     assert.equal(
       HERO.headline,
       `${HERO.headlineAccent} ${HERO.headlineLine1} ${HERO.headlineLine2}`,
@@ -98,8 +98,8 @@ describe('homepage message guardrails', () => {
   })
 
   it('hero subhead explains input, analysis, and fix output', () => {
-    assert.match(HERO.subhead, /paste a url/i)
-    assert.match(HERO.subhead, /flags/i)
+    assert.match(HERO.subhead, /paste your url/i)
+    assert.match(HERO.subhead, /ai missed|flags/i)
     assert.match(HERO.subhead, /copy fixes/i)
     assert.ok(HERO.subhead.split(/\s+/).length <= 40)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))

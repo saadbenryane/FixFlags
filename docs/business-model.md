@@ -30,7 +30,8 @@ These ship when they serve the core loop and users ask for them.
 
 ## Free Tier Strategy
 
-- **Free accounts get 3 new URL checks total.** Every check runs the full pipeline and returns the complete report with fix prompts.
+- **One anonymous teaser scan** without account (evidence + Flags; fix prompts after signup). Enforced in `createAndEnqueueAudit`.
+- **Free accounts get 3 new URL checks total** (including the claimed teaser). Every signed-in check runs the full pipeline with fix prompts.
 - **At limit, new URL checks are blocked** until upgrade. Re-checks on owned reports stay free.
 - **Every free report is an upsell impression.** Upgrade when you ship weekly and need MCP, compare, or more new checks.
 - **Cost is negligible at this stage.** Prioritize distribution over optimization.
@@ -51,7 +52,7 @@ Live tiers, as defined in `lib/billing/plans.ts` (`Plan` enum: `FREE | BUILDER |
 
 | Tier | Plan enum | Price | New URL checks | Key Hook |
 |------|-----------|-------|----------------|----------|
-| Free | `FREE` | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
+| Free | `FREE` | $0 | 3 lifetime (1 anon teaser + account) | Teaser without account; full report after signup |
 | Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP |
 | Agency | `TEAM` | $99/mo | 100/mo | Share links, projects, GitHub repo scans |
 

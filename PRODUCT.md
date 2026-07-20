@@ -38,8 +38,13 @@ Steps 4-7 are the differentiator. Re-check is the habit.
 
 ## What we ship
 
+### Anonymous teaser (no account)
+- 1 free teaser scan: scores, rubrics, Flags, evidence, one sample fix card
+- Fix prompts and prescription require signup + claim
+- URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
+
 ### Free (forever)
-- 3 new URL checks lifetime (full report: deterministic + AI review, Flags, fix prompts)
+- 3 new URL checks lifetime (claimed teaser counts as 1; full report with fix prompts)
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt

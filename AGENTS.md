@@ -120,6 +120,7 @@
 - **Report UI — section order:** Hero → rubrics → Product Contract (when present) → Top Priorities → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → Re-check. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
 - **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Overview when needed, Contract when productContract exists, Journey when multi-page, Flow when flowData exists, Timeline when actionTimeline exists, Flags, Previews when previewMeta exists, Launch when gates exist, Re-check for owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
+- **Anonymous wedge:** Exactly **1** teaser scan without account (triage: scores, Flags, evidence; fix prompts stripped). Gate lives in `createAndEnqueueAudit` (`checkAnonymousAuditAllowed` + `trackAnonymousAuditId` + optional `clientId` IP soft ceiling). Second new URL → signup. Auth → `/post-login` claim → prescription. Claimed teaser **counts as 1** of Free's 3 lifetime new URL checks. Public APIs (report, `/api/v1/score`) never return unstripped prompts for anon. Lead URLs persist on `Audit` + `Lead` (`/admin/leads`).
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.
 - **impactTag** is set on all deterministic checks.
@@ -171,6 +172,21 @@
 5. **Never alter, reset, clean, stash, delete, switch, overwrite, or discard another agent's work on `main`.** Prefer additive commits; do not force-push `main`.
 6. **Stop and document** ambiguous ownership or conflicting state.
 7. **Create a handoff** (`.agents/handoffs/<task-id>.md`) before leaving meaningful work incomplete.
+
+## Regression-prevention checklist
+
+Before finalizing any change, ask:
+
+- When adding fallback logic: can stale persisted data keep this path active forever?
+- When deriving UI state: is this live state, historical state, or inferred state?
+- When adding store fields or context values: who reads this, how often does it change, and should it live elsewhere?
+- When touching polling or bootstrap: can a lighter payload erase richer existing data?
+- When handling optimistic updates: where is rollback, reconciliation, and duplicate prevention?
+- When changing shared routes or state contracts: what breaks in the audit pipeline, report UI, and billing?
+- When fixing a bug with a heuristic: prefer narrowing the heuristic over widening it.
+- When adding a new check module: does it register in `checks/index.ts`, `check-ids.ts`, and the capability report?
+- When touching prompts: did you keep system/user split intact for cache efficiency?
+- When modifying persist functions: do existing tests still pass, and does the pipeline state machine hold?
 
 ## Verification and definition of done
 
