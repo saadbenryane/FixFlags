@@ -17,9 +17,11 @@ export function LandingHeroSection() {
         />
 
         <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
-          <h1 className="max-w-[20ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
-            <span className="text-brand">{HERO.headlineAccent}</span>{' '}
-            {HERO.headlineLine1}{' '}
+          <h1 className="max-w-[24ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
+            <span className="whitespace-nowrap">
+              <span className="text-brand">{HERO.headlineAccent}</span>{' '}
+              {HERO.headlineLine1}
+            </span>
             <br className="hidden sm:block" />
             {HERO.headlineLine2}
           </h1>

@@ -246,6 +246,7 @@ export default async function ReportPage({ params }: Props) {
         verificationRule: string | null
         pageUrl: string | null
         confidence: number | null
+        source?: string | null
       }>
     }> | undefined ?? []
 
@@ -268,6 +269,7 @@ export default async function ReportPage({ params }: Props) {
       verificationRule: f.verificationRule,
       pageUrl: f.pageUrl,
       confidence: f.confidence,
+      source: f.source,
     }))
 
     const reportAudit = {
@@ -295,6 +297,8 @@ export default async function ReportPage({ params }: Props) {
       flowData: audit.flowData,
       evidenceAnchors: audit.evidenceAnchors,
       flagVisualEvidence: audit.flagVisualEvidence,
+      productContract: audit.productContract,
+      actionTimeline: audit.actionTimeline,
     }
 
     const journeyPages = (audit.pages ?? []).map((p) => ({

@@ -2,7 +2,7 @@
 
 ## Strategic Wedge
 
-Do not launch as: "AI website auditing with 150 checks."
+Do not launch as: "AI website auditing with N checks."
 
 Launch as: **"Before you share the app, run it through FixFlags."**
 
@@ -82,7 +82,7 @@ If fix-copying and re-checking are weak, the product is not ready for growth.
 
 **Builder $49/mo:** Multiple projects, deeper checks, full fix plans, history, recurring re-checks, Lovable/Cursor/Claude Code/Bolt/Replit formats.
 
-Do not sell "150 checks." Sell: "Know what to fix before users find it."
+Do not sell check counts. Sell: "Know what to fix before users find it."
 
 **Month-end targets:**
 - 2,000-3,000 registered users

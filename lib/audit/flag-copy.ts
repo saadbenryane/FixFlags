@@ -317,6 +317,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'The form collects input but the submit API returns 401/403, blocking signup or newsletter.',
   'form-submit-api-server-error':
     'Form submit hits a server error, so completed forms fail with a generic message.',
+  'form-submit-silent-failure':
+    'The submit API and the page disagree on success, so users think nothing happened or trust a fake confirmation.',
   'flow-cta-404':
     'The main CTA sends users to an error page - the worst possible first click.',
   'flow-cta-dead-end':

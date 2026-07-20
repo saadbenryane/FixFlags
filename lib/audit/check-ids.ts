@@ -181,6 +181,7 @@ export const ALL_CHECK_IDS = [
   'api-engagement-server-error',
   'form-submit-api-unauthorized',
   'form-submit-api-server-error',
+  'form-submit-silent-failure',
   'overlay-blocks-nav',
   'overlay-blocks-cta',
   'overlay-blocks-form',

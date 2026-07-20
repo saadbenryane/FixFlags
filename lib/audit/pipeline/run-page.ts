@@ -167,7 +167,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         htmlMetadata: trimMetadataForStorage(metadataFromHtml) as never,
         performanceData: storedPerformance as never,
         consoleErrors: screenshots.consoleErrors as never,
-        productContract: productContract as never,
+        productContract: productContract,
         ...(flowResult
           ? {
               flowData: serializeFlowData(flowResult) as never,

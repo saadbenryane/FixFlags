@@ -70,15 +70,15 @@ export function SampleFixCard({ flag, totalFlags, signUpHref = '/sign-up' }: Sam
         </div>
 
         <div className="space-y-3 p-4 sm:p-5">
-          {flag.evidence && (
-            <SampleFlagCard title={SAMPLE_FIX.evidenceTitle} icon={ScanSearch}>
-              <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
-            </SampleFlagCard>
-          )}
-
           {flag.whyItMatters && (
             <SampleFlagCard title={SAMPLE_FIX.whyTitle} icon={Lightbulb}>
               <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
+            </SampleFlagCard>
+          )}
+
+          {flag.evidence && (
+            <SampleFlagCard title={SAMPLE_FIX.evidenceTitle} icon={ScanSearch}>
+              <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
             </SampleFlagCard>
           )}
 

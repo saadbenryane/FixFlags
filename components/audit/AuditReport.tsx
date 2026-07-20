@@ -44,7 +44,7 @@ import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTrac
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
-import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
+import { buildLiveExplorerModel, deriveTruthLabel } from '@/lib/report/explorer-model'
 import { SampleFixCard } from '@/components/report/SampleFixCard'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
@@ -162,6 +162,8 @@ export function AuditReport({
   const showJourney = !isSample && pages.length > 1
   const showJourneyReview = !isSample && journeyReviews.length > 0
   const showFlow = !isSample && Boolean(audit.flowData)
+  const showContract = !isSample && Boolean(audit.productContract)
+  const showTimeline = !isSample && (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = !isSample && Boolean(audit.previewMeta)
 
   const [firstReport, setFirstReport] = useState(false)
@@ -237,8 +239,10 @@ export function AuditReport({
         <>
           <ReportStickyToolbar
             showOverview={showOverview}
+            showContract={showContract}
             showJourney={showJourney || showJourneyReview}
             showFlow={showFlow}
+            showTimeline={showTimeline}
             showPreviews={showPreviews}
             showLaunch={hasLaunchGates}
             showRecheckSection={isLoggedIn && isViewerOwner}
@@ -286,19 +290,15 @@ export function AuditReport({
         </Card>
       )}
 
-      {!isSample && audit.productContract && (
-        <ProductContractCard contract={audit.productContract} />
-      )}
-
-      {!isSample && (audit.actionTimeline?.length ?? 0) > 0 && (
-        <section
-          id="report-timeline"
-          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
-        >
-          <SectionTitle>How we checked</SectionTitle>
-          <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
-        </section>
-      )}
+      {showContract && audit.productContract ? (
+        <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
+          <ProductContractCard
+            contract={audit.productContract}
+            auditId={auditId}
+            canEdit={isLoggedIn && isViewerOwner}
+          />
+        </div>
+      ) : null}
 
       {!isSample && explorerModel && hasFixPrompts && (showPrescription || anonFirstReportUnlocked) && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
@@ -335,6 +335,7 @@ export function AuditReport({
                 lovable: flag.lovablePrompt,
                 bolt: flag.boltPrompt,
               }
+              const truthLabel = deriveTruthLabel(flag.source, flag.checkId ?? null)
               return (
                 <Card key={flag.id} className="p-4 sm:p-5">
                   <div className="mb-3 flex items-center gap-2">
@@ -344,12 +345,7 @@ export function AuditReport({
                     >
                       {severityLabel(flag.severity)}
                     </Badge>
-                    {flag.source === 'JOURNEY' ||
-                    (flag.checkId &&
-                      (flag.checkId.startsWith('overlay-') ||
-                        flag.checkId.startsWith('api-') ||
-                        flag.checkId.startsWith('form-submit-') ||
-                        flag.checkId.startsWith('flow-'))) ? (
+                    {truthLabel === 'Reproduced' ? (
                       <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase">
                         Reproduced
                       </Badge>
@@ -398,6 +394,16 @@ export function AuditReport({
       ) : null}
 
       {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
+
+      {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
+        <section
+          id="report-timeline"
+          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
+        >
+          <SectionTitle>How we checked</SectionTitle>
+          <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
+        </section>
+      ) : null}
 
       {explorerModel ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)]">

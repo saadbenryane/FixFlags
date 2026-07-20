@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| beat-scout-precision | done | auto | main | Beat Scout: network monitor, form probe, overlay detection, action timeline, Product Contract, harden roast/CLI/IDE, skills/docs | lib/audit/browser/*, lib/audit/checks/*, components/audit/*, roast, fixflags-cli, ide-integrations, knowledge docs, skills | — | 2026-07-20 |
+| beat-scout-completeness | in_progress | auto | main | Wire completed-report Contract/Timeline; editable contract; journey bias; silent failure; overlays; anti-FP; roast polish | app/report, AuditReport, ProductContractCard, journey, roast, skills | beat-scout-precision | 2026-07-20 |
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| why-it-matters-first | auto | Why it matters first in flag detail panels | 2026-07-20 |
 | beat-scout-precision | auto | Network/API Flags, overlay detection, action timeline, Product Contract, roast/CLI/IDE harden, skills/docs | 2026-07-20 |
 | help-center | auto | First-party Help Center + chat escalation + contextual help | 2026-07-20 |
 | hero-illustration-blend | auto | Soft glass-flag wash behind landing hero | 2026-07-19 |

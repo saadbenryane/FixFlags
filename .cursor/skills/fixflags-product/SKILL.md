@@ -98,11 +98,12 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 
 ## Product Contract, truth, and competitive boundary
 
-- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities; biases journey template selection. See `knowledge/product.md`.
-- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Must be visible in FlagDetailPanel and Top Priorities.
+- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product.md`.
+- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel and Top Priorities (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page.
+- **Sticky nav:** Contract + Timeline tabs when those sections exist (`ReportStickyToolbar`).
 - **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. Full taxonomy (Accept / Intentional / Human review) is later; do not remove incorrect-feedback path.
 - **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + probes + Flags + re-check.
-- **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass).
+- **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass). Roast strings live in `lib/marketing/copy.ts`.
 
 ## Sample provenance
 

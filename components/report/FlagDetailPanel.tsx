@@ -128,6 +128,12 @@ export function FlagDetailPanel({
 
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
+      {flag.whyItMatters && (
+        <FlagCard title="Why it matters" icon={Lightbulb}>
+          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
+        </FlagCard>
+      )}
+
       {showShareablePreview && (
         <InlineSocialPreview preview={previewMeta!} checkId={flag.checkId} />
       )}
@@ -154,12 +160,6 @@ export function FlagDetailPanel({
               <span className="truncate max-w-[300px]">{flag.pageUrl}</span>
             </a>
           ) : null}
-        </FlagCard>
-      )}
-
-      {flag.whyItMatters && (
-        <FlagCard title="Why it matters" icon={Lightbulb}>
-          <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.whyItMatters}</p>
         </FlagCard>
       )}
 

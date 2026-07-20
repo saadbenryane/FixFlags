@@ -8,8 +8,10 @@ import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 const OVERVIEW_SECTION = { id: 'report-overview', label: 'Overview' } as const
+const CONTRACT_SECTION = { id: 'report-contract', label: 'Contract' } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: 'Journey' } as const
 const FLOW_SECTION = { id: 'report-flow', label: 'Flow' } as const
+const TIMELINE_SECTION = { id: 'report-timeline', label: 'Timeline' } as const
 const FLAGS_SECTION = { id: 'report-flags', label: 'Flags' } as const
 const PREVIEWS_SECTION = { id: 'report-previews', label: 'Previews' } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: 'Launch' } as const
@@ -21,8 +23,10 @@ type NavSection = { id: string; label: string }
 interface Props {
   className?: string
   showOverview?: boolean
+  showContract?: boolean
   showJourney?: boolean
   showFlow?: boolean
+  showTimeline?: boolean
   showPreviews?: boolean
   showLaunch?: boolean
   showRecheckSection?: boolean
@@ -36,8 +40,10 @@ interface Props {
 export function ReportStickyToolbar({
   className,
   showOverview,
+  showContract = false,
   showJourney = false,
   showFlow = false,
+  showTimeline = false,
   showPreviews = false,
   showLaunch = false,
   showRecheckSection = true,
@@ -51,8 +57,10 @@ export function ReportStickyToolbar({
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = []
     if (showOverview) items.push(OVERVIEW_SECTION)
+    if (showContract) items.push(CONTRACT_SECTION)
     if (showJourney) items.push(JOURNEY_SECTION)
     if (showFlow) items.push(FLOW_SECTION)
+    if (showTimeline) items.push(TIMELINE_SECTION)
     items.push(FLAGS_SECTION)
     if (showPreviews) items.push(PREVIEWS_SECTION)
     if (showLaunch) items.push(LAUNCH_SECTION)
@@ -62,8 +70,10 @@ export function ReportStickyToolbar({
     return items
   }, [
     showOverview,
+    showContract,
     showJourney,
     showFlow,
+    showTimeline,
     showPreviews,
     showLaunch,
     showRecheckSection,

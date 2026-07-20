@@ -16,13 +16,13 @@
 | Prisma models | **45** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
 | Check capabilities | 48 (47 live, 1 partial, 0 planned) | `npm run audit:capabilities` |
-| Check IDs | **157** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
+| Check IDs | **158** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **14** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.4.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (46 total: 45 live, 1 partial) is a named check that may span multiple modules. A *check ID* (150) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (48 total: 47 live, 1 partial) is a named check that may span multiple modules. A *check ID* (158) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
 
 ## Key directories and authoritative files
 
@@ -117,7 +117,8 @@
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
 - **`/post-login` is the single post-auth landing** for OAuth AND email flows: it claims anonymous audits (`useMe({claim:true})`, sets `includeAi`), then runs checkout/`next` navigation. Never navigate straight to `next` after auth: that skips the claim and leaves reports locked.
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
-- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Overview when needed, Journey when multi-page, Flow when flowData exists, Flags, Previews when previewMeta exists, Launch when gates exist, Re-check for owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Report UI — section order:** Hero → rubrics → Product Contract (when present) → Top Priorities → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → Re-check. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
+- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Overview when needed, Contract when productContract exists, Journey when multi-page, Flow when flowData exists, Timeline when actionTimeline exists, Flags, Previews when previewMeta exists, Launch when gates exist, Re-check for owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).
 - **Flag dedup** runs via `suppressOverlappingFlags()` in `lib/audit/checks/index.ts`: hardcoded `if` checks that drop the broader flag when a more specific sibling `checkId` is already present.

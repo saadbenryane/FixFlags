@@ -529,9 +529,10 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'api-engagement-server-error',
       'form-submit-api-unauthorized',
       'form-submit-api-server-error',
+      'form-submit-silent-failure',
     ],
     verify: 'npm run test:unit -- lib/audit/__tests__/beat-scout-precision.test.ts',
-    notes: 'Same-origin network monitor + controlled journey form probe.',
+    notes: 'Same-origin network monitor + controlled journey form probe + silent failure.',
   },
   {
     id: 'experience-journey-review',

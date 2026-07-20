@@ -148,6 +148,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Complete the form and submit; the request should authenticate correctly for public signup/newsletter/contact.',
   'form-submit-api-server-error':
     'Submit the form; the server should accept or validate without a 5xx response.',
+  'form-submit-silent-failure':
+    'After a successful submit, show clear confirmation; never show success when the API failed.',
   'flow-cta-404':
     'Clicking the primary CTA should not navigate to a 4xx or 5xx page.',
   'flow-cta-dead-end':

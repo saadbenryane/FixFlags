@@ -5,8 +5,14 @@ export interface ProductContract {
   firstValueJourney: string
   criticalOutcomes: string[]
   inferredAt: string
-  source: 'heuristic'
+  source: 'heuristic' | 'user'
 }
+
+const MAX_PURPOSE = 280
+const MAX_JOURNEY = 200
+const MAX_OUTCOME = 160
+const MIN_OUTCOMES = 1
+const MAX_OUTCOMES = 5
 
 function firstSentence(text: string, max = 160): string {
   const cleaned = text.replace(/\s+/g, ' ').trim()
@@ -90,11 +96,66 @@ export function parseProductContract(data: unknown): ProductContract | null {
   const c = data as Partial<ProductContract>
   if (typeof c.purpose !== 'string' || typeof c.firstValueJourney !== 'string') return null
   if (!Array.isArray(c.criticalOutcomes)) return null
+  const source = c.source === 'user' ? 'user' : 'heuristic'
   return {
     purpose: c.purpose,
     firstValueJourney: c.firstValueJourney,
-    criticalOutcomes: c.criticalOutcomes.filter((o): o is string => typeof o === 'string').slice(0, 5),
+    criticalOutcomes: c.criticalOutcomes.filter((o): o is string => typeof o === 'string').slice(0, MAX_OUTCOMES),
     inferredAt: typeof c.inferredAt === 'string' ? c.inferredAt : new Date().toISOString(),
-    source: 'heuristic',
+    source,
+  }
+}
+
+export type ProductContractInput = {
+  purpose: string
+  firstValueJourney: string
+  criticalOutcomes: string[]
+}
+
+export function validateProductContractInput(
+  input: unknown
+): { ok: true; value: ProductContractInput } | { ok: false; error: string } {
+  if (!input || typeof input !== 'object') {
+    return { ok: false, error: 'Invalid product contract' }
+  }
+  const raw = input as Partial<ProductContractInput>
+  const purpose = typeof raw.purpose === 'string' ? raw.purpose.trim() : ''
+  const firstValueJourney =
+    typeof raw.firstValueJourney === 'string' ? raw.firstValueJourney.trim() : ''
+  const outcomes = Array.isArray(raw.criticalOutcomes)
+    ? raw.criticalOutcomes
+        .filter((o): o is string => typeof o === 'string')
+        .map((o) => o.trim())
+        .filter(Boolean)
+    : []
+
+  if (!purpose) return { ok: false, error: 'Purpose is required' }
+  if (!firstValueJourney) return { ok: false, error: 'First-value journey is required' }
+  if (purpose.length > MAX_PURPOSE) {
+    return { ok: false, error: `Purpose must be under ${MAX_PURPOSE} characters` }
+  }
+  if (firstValueJourney.length > MAX_JOURNEY) {
+    return { ok: false, error: `First-value journey must be under ${MAX_JOURNEY} characters` }
+  }
+  if (outcomes.length < MIN_OUTCOMES || outcomes.length > MAX_OUTCOMES) {
+    return { ok: false, error: `Provide ${MIN_OUTCOMES}–${MAX_OUTCOMES} critical outcomes` }
+  }
+  if (outcomes.some((o) => o.length > MAX_OUTCOME)) {
+    return { ok: false, error: `Each outcome must be under ${MAX_OUTCOME} characters` }
+  }
+
+  return {
+    ok: true,
+    value: { purpose, firstValueJourney, criticalOutcomes: outcomes },
+  }
+}
+
+export function buildUserProductContract(input: ProductContractInput): ProductContract {
+  return {
+    purpose: input.purpose,
+    firstValueJourney: input.firstValueJourney,
+    criticalOutcomes: input.criticalOutcomes.slice(0, MAX_OUTCOMES),
+    inferredAt: new Date().toISOString(),
+    source: 'user',
   }
 }

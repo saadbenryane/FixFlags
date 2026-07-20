@@ -72,9 +72,10 @@ npm run demo:audit:offline  # deterministic checks only
 - **Network monitor:** `page.on('response')` in page-session / journey / flow collects same-origin xhr/fetch failures into `performanceData.networkFailures`. Cap list size. Ignore ad/tracker hosts unless they block first-party UX.
 - **Form probe:** Payment hosts stay aborted. Same-origin engagement POST may `route.fetch` once, record status, then fulfill/abort. Synthetic email: `fixflags-probe+{auditId}@example.com`. Never probe Stripe/PayPal/etc.
 - **Overlay probe:** On click failure, `elementFromPoint` + covering element metadata → `overlay-blocks-nav|cta|form` Flags (prefer over generic unclickable when overlay identified).
-- **Action timeline:** Append `{t, kind, label, url?, status?}` during capture/flow/journey; stream on status API; render in `AuditReportProgressive` + completed report. Not a chat agent.
-- **Anti-FP:** Do not emit content Flags for strings matching tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
-
+- **Action timeline:** Append `{t, kind, label, url?, status?}` during capture/flow/**and journey**; merge into `performanceData.actionTimeline` after journeys; stream on status API; render in `AuditReportProgressive` + completed `AuditReport`. Completed report page **must** pass `actionTimeline` from `fetch-audit`. Not a chat agent.
+- **Anti-FP:** Shared filter suppresses content Flags whose problem/evidence match tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
+- **Form silent failure:** `form-submit-silent-failure` when probe/submit gets 2xx but no success UI (or UI success with failed upstream).
+- **Report wiring:** `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport` or Contract/Timeline never appear on completed audits.
 ## Competitive boundary
 
 Do **not** add Scout-style conversational "check anything else" chat on the audit path. Depth comes from Product Contract, network/overlay probes, ranked Flags, and re-check proof.

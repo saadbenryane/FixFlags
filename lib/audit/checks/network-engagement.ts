@@ -24,6 +24,11 @@ const NETWORK_CHECK_DESCRIPTORS = [
     severity: 'CRITICAL' as const,
     tags: ['requiresBrowser', 'form-probe'],
   },
+  {
+    id: 'form-submit-silent-failure',
+    severity: 'CRITICAL' as const,
+    tags: ['requiresBrowser', 'form-probe'],
+  },
 ] as const
 
 for (const descriptor of NETWORK_CHECK_DESCRIPTORS) {
@@ -115,4 +120,17 @@ export function runNetworkEngagementChecks(
   }
 
   return flags
+}
+
+/** Build a silent-failure Flag when API and UI disagree on form success. */
+export function buildSilentFormFailureFlag(
+  formProbe: FormProbeResult,
+  reason: string
+): DeterministicFlag {
+  return flagBase(
+    'form-submit-silent-failure',
+    'Form submit succeeds without a clear success state (or shows success after a failed API)',
+    `${formProbe.method} ${formProbe.status} ${formProbe.url} · ${reason}`,
+    '1. After a successful submit, show a thank-you or confirmation state.\n2. Never show success copy when the API failed.\n3. Re-check the form after deploying.'
+  )
 }

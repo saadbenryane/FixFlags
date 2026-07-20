@@ -56,7 +56,7 @@ Use glass tastefully for premium moments (hero cards, sample reports, overlays, 
 
 ## Report design system
 
-The report is the product's main brand asset. Issue card order: severity/score → screenshot evidence → plain-English flag → why it matters → fix prompt → technical detail → re-check status.
+The report is the product's main brand asset. Issue card order: severity/score → plain-English flag → why it matters → screenshot evidence → fix prompt → technical detail → re-check status.
 
 Product language: **Flags** (Critical / UX / SEO / Performance / Accessibility / Trust / Resolved). Use "issues" only when clarity demands it.
 

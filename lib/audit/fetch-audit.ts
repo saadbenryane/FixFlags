@@ -200,9 +200,7 @@ export async function getGatedAuditForRequest(id: string) {
   const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
   const actionTimeline = parseActionTimeline(audit.performanceData)
-  const productContract = parseProductContract(
-    (audit as { productContract?: unknown }).productContract
-  )
+  const productContract = parseProductContract(audit.productContract)
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -244,6 +242,7 @@ export async function getGatedAuditForRequest(id: string) {
       verificationRule: f.verificationRule,
       pageUrl: f.pageUrl,
       confidence: f.confidence,
+      source: f.source,
     })),
   }))
 

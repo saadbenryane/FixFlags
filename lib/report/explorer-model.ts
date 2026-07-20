@@ -45,7 +45,7 @@ export function deriveTruthLabel(source: string | null | undefined, checkId: str
     checkId &&
     (checkId.startsWith('overlay-blocks-') ||
       checkId.startsWith('api-engagement-') ||
-      checkId.startsWith('form-submit-api-') ||
+      checkId.startsWith('form-submit-') ||
       checkId.startsWith('flow-'))
   ) {
     return 'Reproduced'

@@ -152,8 +152,8 @@ export const SEVERITY_MEANINGS = {
 export const HERO = {
   badge: 'Check before you ship.',
   headline: 'Your AI says it\u2019s done. Check the product.',
-  headlineLine1: 'says it\u2019s',
-  headlineLine2: 'done. Check the product.',
+  headlineLine1: 'says it\u2019s done.',
+  headlineLine2: 'Check the product.',
   headlineAccent: 'Your AI',
   headlineAccentLegacy: false,
   subhead:

@@ -24,6 +24,7 @@ import { runMobileUXQualityChecks } from './mobile-ux-quality'
 import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { filterToolingPathFlags } from '../tooling-path-filter'
 
 export type { DeterministicFlag } from '../flag-types'
 
@@ -90,7 +91,10 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     return true
   })
 
-  return { flags: suppressOverlappingFlags(flags), failedModules }
+  return {
+    flags: filterToolingPathFlags(suppressOverlappingFlags(flags)),
+    failedModules,
+  }
 }
 
 export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric'
