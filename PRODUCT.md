@@ -1,12 +1,19 @@
 # Product
 
-*Verified facts, not assumptions.*
+*Verified facts about what FixFlags ships today. Not vision. Not strategy.*
+
+**Canonical sources:**
+- Product vision and strategy: `knowledge/product.md`, `knowledge/strategy.md`
+- Pricing tiers and philosophy: `knowledge/strategy.md` → Pricing (Current)
+- Core loop (philosophy): `knowledge/execution.md` → Core Product Loop
+- Rubrics (philosophy): `knowledge/product.md` → Report Hierarchy
+- North star (aspirational): `knowledge/vision.md`
 
 ## One-liner
 
 FixFlags is the independent Product Intelligence System for AI-built software. Finish what your AI started.
 
-**North star (aspirational):** [knowledge/vision.md](./knowledge/vision.md). This file is **shipped truth only**.
+This file is **shipped truth only**.
 
 ## Users and their context
 

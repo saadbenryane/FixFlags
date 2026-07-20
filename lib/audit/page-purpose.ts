@@ -71,14 +71,10 @@ export function detectPagePurpose(
   const title = meta.title ?? ''
 
   // 1. Placeholder / minimal page: too little content to be a real marketing
-  //    page, and no CTAs to evaluate. example.com lives here.
-  if (
-    wordCount < 60 &&
-    linkCount < 5 &&
-    imageCount < 2 &&
-    navCount <= 1 &&
-    ctaCount === 0
-  ) {
+  //    page. example.com lives here. Note: a lone generic link such as
+  //    "Learn more" still counts as a CTA in metadata, so we do not require
+  //    zero CTAs. The overall thinness of the page is the signal.
+  if (wordCount < 60 && linkCount < 5 && imageCount < 2 && navCount <= 1) {
     return {
       purpose: 'placeholder',
       reasons: [
@@ -115,15 +111,25 @@ export function detectPagePurpose(
     }
   }
 
-  // 4. Open-source project page: a GitHub repo link plus star/cta evidence.
+  // 4. Open-source project page: a GitHub repo link signals the page promotes
+  //    a codebase rather than a commercial conversion funnel. Such pages
+  //    legitimately lack trial/pricing CTAs. To avoid over-suppressing a SaaS
+  //    homepage that merely links to its repo, require the absence of any
+  //    commercial signal (trial, pricing, purchase) in the page text.
   const githubLink = links.some((l) => GITHUB_REPO_RE.test(l.href))
   const githubStarText = GITHUB_STAR_RE.test(pageText)
   const githubInCta = (meta.ctaTexts ?? []).some((c) => /github/i.test(c))
-  if (githubLink && (githubStarText || githubInCta)) {
+  const hasCommercialSignal =
+    // Note: "subscribe" is intentionally excluded. Newsletters are common on
+    // docs/OSS pages and do not indicate a commercial conversion funnel.
+    /(free trial|try free|start free|no credit card|free plan|\bpricing\b|\bbuy\b|\bcart\b|\bcheckout\b|\bpurchase\b|\bbilling\b)/i.test(
+      pageText
+    )
+  if (githubLink && !hasCommercialSignal) {
     return {
       purpose: 'oss',
       reasons: [
-        `oss signal (github link=${githubLink}, star text=${githubStarText}, github cta=${githubInCta})`,
+        `oss signal (github link=${githubLink}, star text=${githubStarText}, github cta=${githubInCta}, commercial=${hasCommercialSignal})`,
       ],
     }
   }

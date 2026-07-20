@@ -830,13 +830,23 @@ describe('runAllChecks', () => {
 
   it('suppresses older contact-info flag when direct-contact trust flag is present', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
+    // Build a full marketing page (enough words/links to not classify as a
+    // placeholder) so the direct-contact trust flag fires and the suppression
+    // of the older contact-info flag is exercised.
+    const marketingBody = 'Get started with our product today. '.repeat(12)
     const { flags } = await runAllChecks(
       'https://example.com',
       healthyMeta({
         hasContactInfo: false,
         ctaTexts: ['Get started'],
-        pageText: 'Get started with our product today.',
-        links: [],
+        pageText: marketingBody,
+        links: [
+          { href: '/features', text: 'Features', rel: null },
+          { href: '/pricing', text: 'Pricing', rel: null },
+          { href: '/blog', text: 'Blog', rel: null },
+          { href: '/about', text: 'About', rel: null },
+          { href: '/docs', text: 'Docs', rel: null },
+        ],
       }),
       healthyDesktopPs(),
       healthyMobilePs(),

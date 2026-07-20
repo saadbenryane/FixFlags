@@ -2,6 +2,11 @@
 
 **Canonical entry point for AI agents.** Read this first. Tool-specific files only redirect here.
 
+**Knowledge architecture:**
+- Master index: `knowledge/README.md`
+- Canonical sources: `CANONICAL-SOURCES.md`
+- Evolution rules: `EVOLUTION-RULES.md`
+
 ## Project
 
 **FixFlags** — The independent Product Intelligence System for AI-built software. Finish what your AI started: paste a URL, get a Finish Plan across Message, Experience, and Reach, with fix prompts for your AI editor. North star: `knowledge/vision.md`. Shipped truth: `PRODUCT.md`.
