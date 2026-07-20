@@ -113,6 +113,8 @@ function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag
   const SUPPRESSIONS: Array<[string, string]> = [
     ['no-contact-info', 'trust-no-direct-contact'],
     ['hierarchy-competing-actions', 'competing-ctas'],
+    // Same uniqueFontFamilies>4 signal: keep design-token check, drop hierarchy duplicate
+    ['hierarchy-too-many-fonts', 'visual-typography-sprawl'],
     ['mobile-input-zoom', 'form-inputs-zoom-mobile'],
     ['mobile-stuck-loading', 'loading-indicator-stuck'],
     ['mobile-load-delay-content', 'loading-state-slow'],

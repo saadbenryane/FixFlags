@@ -4,6 +4,7 @@
 
 ## Recently closed
 
+- **Beat Scout: precision over spectacle — shipped.** Network/API failure Flags, overlay click-blocker detection, structured action timeline, Product Contract, truth labels in model/API data. See board `beat-scout-precision` / `beat-scout-completeness`.
 - **Help Center — shipped.** `/help` hub + articles + MCP guide; live chat escalation; contextual links on failure/limit/billing; payment-failure user email. See `lib/help/`, `DECISIONS.md`.
 - **Monetization blockers — CLOSED.** Automated coverage in CI via `npm run test:unit`. See [QUALITY.md](./QUALITY.md).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation.
@@ -17,20 +18,29 @@
 
 - **Dogfood audit quality** — False positives, dupes, vague findings, weak prioritization; credible top-3 Finish Plan. Board `dogfood-audit-quality`.
 
+- **Distribution harden (built locally)** — Website Roast (`/roast`), badge API, `fixflags-cli`, IDE integrations exist in tree; harden entitlements, docs accuracy, and ship. Do not market as published npm global until CLI is publishable.
+  *See:* `app/(marketing)/roast/`, `fixflags-cli/`, `ide-integrations/`.
+
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
 
-- **Distribution harden** — Website Roast, badge API, `fixflags-cli`, IDE integrations: entitlements + docs accuracy. Do not market CLI as published npm global until publishable.
-
-- **Residual hardening** — API route contracts, auth/session runtime tests, Touch-tier component tests. See [QUALITY.md](./QUALITY.md).
+- **Residual hardening** — not blocking ads, but required before scaling:
+  - Extend API route contract tests beyond the critical path (checks, status, re-check, api-keys, projects)
+  - Broader auth/session runtime coverage
+  - Expand Touch-tier report-state matrix
+  *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).
 
 ## Readiness (reconciled)
 
-| Tier | Readiness | Residual CRITICAL |
-|------|-----------|-------------------|
-| Truth | ~90% | Form validation ratio test; score math edge cases |
-| Strength | ~80% | API route contracts; rate limiting; auth/session runtime; CI parity with local `verify` |
-| Touch | 10% | Report rendering per audit state; empty states |
+Single honest baseline across [QUALITY.md](./QUALITY.md) and [test-strategy.md](./test-strategy.md):
+
+| Tier | Readiness | Residual |
+|------|-----------|----------|
+| Truth | ~95% | Screenshot/flow/PageSpeed fixtures still not frozen into regression suite |
+| Strength | ~85% | Remaining non-critical API routes; queue unit depth |
+| Touch | ~35% | Progressive/failure/empty covered; full density matrix still expanding |
+
+Monetization blockers (regression fixtures, judge contract, persist layer, pipeline state machine, billing gating) are closed.
 
 ## Next
 

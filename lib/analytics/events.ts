@@ -100,7 +100,7 @@ type EventParams = {
   clicked_sample_cta: { placement: 'hero' | 'how_it_works' | 'sample_section' }
   audit_intent: { cta_placement: 'hero' | 'final'; from: 'hero' | 'final' }
   report_signup_cta_clicked: {
-    from: 'value_strip' | 'claim_guide' | 'sample_fix' | 'limit_gate' | 'explorer'
+    from: 'value_strip' | 'sample_fix' | 'limit_gate'
   }
   audits_claimed: { claimed_count: number }
 }

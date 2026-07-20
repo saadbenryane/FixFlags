@@ -18,6 +18,7 @@ const FONT_DISPLAY_ALLOW = [
   /^components\/marketing\//,
   /^components\/pricing\//,
   /^components\/brand\//,
+  /^components\/help\//,
 ]
 
 const PANEL_RE =

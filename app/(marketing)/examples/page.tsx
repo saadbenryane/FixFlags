@@ -9,6 +9,7 @@ import { ExamplesFilterBar, type ExampleTagId } from '@/components/marketing/Exa
 import { ExampleAuditCard } from '@/components/marketing/ExampleAuditCard'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { EXAMPLE_AUDITS } from '@/lib/marketing/example-audits'
+import { EXAMPLES_PAGE } from '@/lib/marketing/copy'
 import { LighthouseNote } from '@/components/marketing/LighthouseNote'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -42,12 +43,12 @@ export default async function ExamplesPage({
       <Container variant="report" className="space-y-10 sm:space-y-12">
         <div className="mx-auto max-w-3xl space-y-4">
           <LandingSectionHeader
-            label="Examples"
-            headline="Example audits from recognizable sites"
+            label={EXAMPLES_PAGE.label}
+            headline={EXAMPLES_PAGE.headline}
             as="h1"
           />
           <Body className="text-muted-foreground text-pretty">
-            Real audit output from recognizable sites. Each card shows top issues and fix prompts.
+            {EXAMPLES_PAGE.body}
           </Body>
           <LighthouseNote className="text-sm text-muted-foreground" />
         </div>

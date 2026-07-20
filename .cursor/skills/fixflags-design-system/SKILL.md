@@ -96,7 +96,17 @@ Report surfaces use `Container variant="report"` so `ReportExplorer` master-deta
 | `lib/design/logo-mark.tsx` | Flag-bar SVG |
 | `components/brand/Logo.tsx` | Logo component |
 
-**Rule:** No raw hex in components. Use Tailwind semantic tokens or `brand-spec.ts`.
+**Rule:** No raw hex in product UI components. Use Tailwind semantic tokens or `brand-spec.ts`.
+Exceptions (guard allowlists): `lib/design/tokens.css`, `brand-spec.ts`, demo CSS, prompt examples, `lib/audit/capture/*` Sharp overlays, and **SVG badge/roast artwork** under `app/api/badge/` + `app/api/tools/roast/`.
+
+## Report chrome copy
+
+Report section titles and sticky nav labels live in `REPORT_COPY.sectionTitles` / `REPORT_COPY.stickyNav` (`lib/marketing/copy.ts`). Do not hardcode "Product contract", "How we checked", sticky tab names, or "Copy Finish Plan (N)" in components. Finish Plan sticky id is `#report-finish-plan`.
+
+## Typography surfaces
+
+- Marketing + pricing + brand + **help editorial** may use `font-display` (`ui:drift-guard` allowlists `components/help/`)
+- Report / product cards use `font-serif` or `SectionTitle` — not `font-display`
 
 ## Pre-ship checklist
 
@@ -111,6 +121,8 @@ Report surfaces use `Container variant="report"` so `ReportExplorer` master-deta
 - [ ] Report pages use `Container variant="report"` (`max-w-6xl`)
 - [ ] Marketing full mesh has no hero grid (see `GlobalMeshBackdrop` `intensity="full"`)
 - [ ] Carousel and screenshot controls ≥ 44px touch targets
+- [ ] `npm run brand:hex-guard` + `npm run ui:drift-guard` pass
+- [ ] Report chrome strings come from `REPORT_COPY`
 
 ## Companion skills
 

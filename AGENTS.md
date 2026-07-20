@@ -20,14 +20,14 @@
 |------|-------|-----------------------------|
 | Prisma models | **45** | `prisma/schema.prisma` (`grep -c '^model '`) |
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
-| Check capabilities | 48 (47 live, 1 partial, 0 planned) | `npm run audit:capabilities` |
+| Check capabilities | 47 (47 live, 0 partial, 0 planned) | `npm run audit:capabilities` |
 | Check IDs | **158** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
 | MCP tools | **16** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.4.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (48 total: 47 live, 1 partial) is a named check that may span multiple modules. A *check ID* (158) is the fine-grained flag identity in `check-ids.ts`. **Product Intelligence** is customer-owned product memory (`Project.productIntelligence`; see `knowledge/product-intelligence.md`). **Integrity Engine** is FixFlags’ general evaluator (`knowledge/integrity-engine.md`). **Finish Plan** is the ≤3 Improve artifact (`knowledge/finish-plan.md`). **Integrity dimensions** (5) are engine framework; **rubrics** (3: Message/Experience/Reach) are the shipped report model. Do not use these numbers or terms interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (47 total: 47 live, 0 partial) is a named check that may span multiple modules. A *check ID* (158) is the fine-grained flag identity in `check-ids.ts`. **Product Intelligence** is customer-owned product memory (`Project.productIntelligence`; see `knowledge/product-intelligence.md`). **Integrity Engine** is FixFlags’ general evaluator (`knowledge/integrity-engine.md`). **Finish Plan** is the ≤3 Improve artifact (`knowledge/finish-plan.md`). **Integrity dimensions** (5) are engine framework; **rubrics** (3: Message/Experience/Reach) are the shipped report model. Do not use these numbers or terms interchangeably.
 
 ## Key directories and authoritative files
 

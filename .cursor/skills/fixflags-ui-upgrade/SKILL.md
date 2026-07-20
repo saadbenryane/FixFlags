@@ -38,6 +38,11 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 
 ## Upgrade checklist (in order)
 
+### Before polish
+- [ ] Run `npm run brand:hex-guard` and `npm run ui:drift-guard` — fix allowlists/violations first
+- [ ] Report section titles / sticky labels already in `REPORT_COPY` (no hardcoded chrome)
+- [ ] No dead claim-guide / orphan `font-display` on report cards
+
 ### Report density (when touching audit/report UI)
 - [ ] Read [fixflags-design-philosophy](../fixflags-design-philosophy/SKILL.md) report density doctrine
 - [ ] Explorer score ring is `sm` (68px); header `gap-3` / `pb-3`

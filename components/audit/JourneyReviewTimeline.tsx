@@ -2,6 +2,7 @@ import { Card } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
 import { ArrowRight } from 'lucide-react'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 export interface JourneyReviewSummary {
@@ -40,7 +41,7 @@ export function JourneyReviewTimeline({ reviews }: Props) {
       aria-labelledby="journey-review-heading"
     >
       <div>
-        <SectionTitle id="journey-review-heading">User journey walk</SectionTitle>
+        <SectionTitle id="journey-review-heading">{REPORT_COPY.sectionTitles.journey}</SectionTitle>
         <p className="mt-1 text-sm text-muted-foreground">
           FixFlags walked key visitor paths and flagged friction along the way.
         </p>

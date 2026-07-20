@@ -59,10 +59,7 @@ prompt context (pageText 500→5000, tech stack, H2 headings).
   side-channel module directly called by `deterministic-audit.ts`. This is
   intentional — it requires browser probe results, not just HTML metadata.
   The `check-ids.ts` comment reference is documentation, not dead code.
-- **The `showFix`, `showOverview`, `showFlow`, `showPreviews` pattern in
-  `ReportMiniNav` is flexible but creates dead-code surface area.** Each
-  boolean creates a condition that can be permanently false. When removing
-  a section, clean up both the section and its nav entry.
+- **The sticky toolbar section flags (`showContract`, `showPriorities`, `showJourney`, …) are intentional.** Prefer explicit section visibility over a catch-all Overview tab. Do not reintroduce `ReportMiniNav` / `showOverview`. When removing a section, clean up both the section and its nav entry.
 
 **What we'd do differently next time:**
 - Before changing any prompt template's slice/truncation, trace the full
@@ -171,7 +168,7 @@ and identified 6 architectural gaps.
 - **The existing codebase is remarkably well-structured for pre-launch.**
   The knowledge graph schema covers the right entities, the persist/query
   boundary is correctly enforced, and the audit pipeline already captures
-  everything needed for rich public pages. The 133 check IDs across 22 modules are a goldmine of data waiting to be aggregated.
+  everything needed for rich public pages. Check IDs across 22 modules (count in AGENTS.md Project facts → `ALL_CHECK_IDS`) are a goldmine of data waiting to be aggregated.
 
 - **Industry/tech detection is the single biggest blocker to benchmark
   pages.** The `htmlMetadata` JSON on `AuditPage` likely already contains

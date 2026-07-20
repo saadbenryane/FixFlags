@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { BLOG_POSTS } from '@/lib/marketing/copy'
+import { BLOG_POSTS, BLOG_INDEX } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('blog', '/blog')
@@ -12,8 +12,8 @@ export default function BlogPage() {
     <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
       <Container className="mx-auto max-w-3xl space-y-12">
         <LandingSectionHeader
-          label="Blog"
-          headline="Notes on shipping without the embarrassing bugs"
+          label={BLOG_INDEX.label}
+          headline={BLOG_INDEX.headline}
           align="left"
         />
 

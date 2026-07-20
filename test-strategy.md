@@ -1,6 +1,6 @@
 # FixFlags Testing Strategy
 
-*Last updated: 2026-07-11*
+*Last updated: 2026-07-20*
 
 > **Ship readiness evidence:** See [`QUALITY.md`](QUALITY.md) for current automated coverage and ratings. This doc tracks residual hardening goals and the original monetization bar.
 
@@ -38,8 +38,8 @@
 | AI judge contract validation | ✅ DONE | `judge-contract.test.ts` + blank-evidence discard |
 | Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. Count: AGENTS.md Project facts (`ALL_CHECK_IDS` in `lib/audit/check-ids.ts`). |
 | Verification rules for every check | ✅ DONE | Every checkId has a human-readable verification rule. |
-| Form validation ratio | ⚠️ CRITICAL | We just added this (50% threshold). No test yet. |
-| Score math | ⚠️ CRITICAL | computeRubricScores is tested. But edge cases (all CRITICAL, module failures) need explicit verification. |
+| Form validation ratio | ✅ DONE | 50% threshold: IMPORTANT vs POLISH asserted in `checks.test.ts` |
+| Score math | ✅ DONE | all-CRITICAL floor + module failure penalties in `checks.test.ts` |
 | Marketing copy guardrails | ✅ DONE | Banned phrases, no speculation, no fake member counts. |
 
 ### Ready for monetization when:
@@ -57,9 +57,9 @@
 | Persist layer (no data corruption) | ✅ DONE | `persistDeterministicFlags` / `persistTriageResults` — `persist-functions.test.ts` |
 | Pipeline state machine | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED — `run-audit.test.ts` |
 | Billing gating enforcement | ✅ DONE | Route tests: `/api/checks`, api-keys, projects assert 402/allow |
-| API route contracts | ⚠️ CRITICAL | Primary paid endpoints tested; remaining API routes still lack handler-level tests |
-| Rate limiting | ⚠️ CRITICAL | Anonymous users get 1 teaser scan (cookie gate + IP soft ceiling). Free accounts get 3 lifetime new URL checks. Paid users get their plan limit. | Partial coverage |
-| Auth / session management | ⚠️ CRITICAL | Login, logout, session expiry, plan entitlements. Auth env config is tested. Runtime behavior is not. |
+| API route contracts | 🔶 IMPORTANT | Critical path covered (checks, status, re-check, api-keys, projects); remaining routes pending |
+| Rate limiting | 🔶 IMPORTANT | Anon 1 teaser + Free 3 lifetime + plan limits. Redis fail-open is intentional. Partial coverage |
+| Auth / session management | 🔶 IMPORTANT | Claim-before-next + entitlements + monitoring tests; full login/logout E2E still open |
 | CI pipeline | ⚠️ CRITICAL | GitHub Actions runs typecheck/lint/guards/test/build. Local `npm run verify` is stricter (includes DB checks). |
 | Database migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Not in CI. A bad migration on deploy corrupts production data. |
 | Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` for detection. Recovery path partially tested. |
@@ -77,9 +77,9 @@
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Report rendering | ⚠️ CRITICAL | Every audit state (QUEUED, CAPTURING, COMPLETED, FAILED) produces correct UI. Flags, scores, screenshots all render. Currently tested by eye in dev. |
-| Empty states | ⚠️ CRITICAL | No scans page, no flags page, no report page for deleted audit. Users see helpful prompts, not error screens. |
-| Loading / progress UI | 🔶 IMPORTANT | Scan progress bar, skeleton screens, polling behavior. We have `audit-progress-copy.test.ts` for text. No component test. |
+| Report rendering | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel covered by component tests |
+| Empty states | 🔶 IMPORTANT | No-flags / checking / EmptyState covered; deleted-audit still manual |
+| Loading / progress UI | 🔶 IMPORTANT | Progressive chrome + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px. Currently no responsive tests. |
 | Screenshot display | 🔶 IMPORTANT | Screenshots load, fail gracefully, fall back to placeholder. |
 | Accessibility basics | 🔵 POLISH | Keyboard nav, screen reader support, color contrast. |
@@ -95,9 +95,9 @@
 ## Summary
 
 ```
-TRUTH           ████████████████████  ~90%  (fixtures + AI judge covered; extend screenshot/flow modules)
-STRENGTH        ████████████████░░░░  ~80%  (persist, pipeline, billing route tests done; auth/rate-limit gaps remain)
-TOUCH           ██░░░░░░░░░░░░░░░░░░  10%  (component tests missing entirely)
+TRUTH           ███████████████████░  ~95%  (form ratio + all-CRITICAL done; extend screenshot/flow fixtures)
+STRENGTH        █████████████████░░░  ~85%  (critical-path routes + claim/redirect; remaining routes pending)
+TOUCH           ███████░░░░░░░░░░░░░  ~35%  (progressive/failure/empty covered; density matrix expanding)
 
 Monetization blockers with automated coverage (see QUALITY.md):
 ┌──────────────────────────────────────────────────────────────┐
@@ -108,7 +108,7 @@ Monetization blockers with automated coverage (see QUALITY.md):
 │ ✅ 5. Billing gating enforcement (/api/checks + paid routes)  │
 └──────────────────────────────────────────────────────────────┘
 
-Remaining hardening (not blocking ads): extend route contract tests, auth/session runtime tests, component tests.
+Remaining hardening (not blocking ads): extend remaining route contracts, broader auth E2E, Touch density automation.
 ```
 
 ## What I need to see before I say "ship"

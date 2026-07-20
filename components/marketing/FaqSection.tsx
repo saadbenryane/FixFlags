@@ -46,7 +46,7 @@ function highlightMatch(text: string, query: string) {
 
 export function FaqSection({
   items,
-  title = 'Frequently asked questions',
+  title = FAQ_SECTION.title,
   sectionLabel = FAQ_SECTION.label,
   defaultOpenFirst = false,
   searchable = false,

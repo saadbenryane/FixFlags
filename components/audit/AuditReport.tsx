@@ -252,13 +252,13 @@ export function AuditReport({
               )}
 
               {prescriptionFailed && (
-                <Callout variant="warning" title="Fix prompts unavailable">
+                <Callout variant="warning" title={REPORT_COPY.prescriptionUnavailable.title}>
                   {AUDIT_ERRORS.partialAiReview}
                 </Callout>
               )}
 
               {triageDegraded && (
-                <Callout variant="warning" title="AI summary unavailable">
+                <Callout variant="warning" title={REPORT_COPY.triageUnavailable.title}>
                   {failureCode === 'AI_PROVIDER_NOT_CONFIGURED'
                     ? AUDIT_ERRORS.triageProviderNotConfigured
                     : (audit.verdict ?? AUDIT_ERRORS.partialReport)}
@@ -299,7 +299,7 @@ export function AuditReport({
               {ANON_VALUE_STRIP.primaryCta}
             </ReportSignupCta>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">Sign in</Link>
+              <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
             </Button>
           </div>
         </Card>
@@ -330,7 +330,7 @@ export function AuditReport({
               return (
                 <PromptCopyButton
                   prompt={buildPlanModePrompt(audit.flags, { url: audit.url })}
-                  label={`Copy Finish Plan (${Math.min(3, total)})`}
+                  label={REPORT_COPY.sectionTitles.copyFixPlan(total)}
                   compact
                   kind="plan"
                   auditId={auditId}
@@ -413,7 +413,7 @@ export function AuditReport({
           id="report-timeline"
           className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
         >
-          <SectionTitle>How we checked</SectionTitle>
+          <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
           <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
         </section>
       ) : null}

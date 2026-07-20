@@ -205,7 +205,7 @@ export const HERO = {
   headlineAccentLegacy: false,
   subhead:
     'Paste your URL. Find what AI missed before your users do, then copy fixes back into your editor.',
-  primaryCta: 'Check my site',
+  primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
   urlPlaceholder: 'your-site.com',
@@ -446,6 +446,17 @@ export const FINAL_CTA = {
 } as const
 
 export const CHANGELOG_ENTRIES = [
+  {
+    date: '2026-07-20',
+    title: 'Report depth and Help Center',
+    items: [
+      'Product Contract and Action Timeline show what we inferred and how we checked',
+      'Journey and CTA flow evidence on Pro reports',
+      'Help Center with guides for checks, billing, MCP, and account',
+      'One free teaser check without an account; sign up to claim fix prompts',
+      'Re-checks stay free and unlimited on reports you own',
+    ],
+  },
   {
     date: '2026-07-02',
     title: 'FixFlags launches in open beta',
@@ -904,6 +915,15 @@ export const REPORT_COPY = {
   aiPending: {
     title: 'Fix prompts generating',
     body: 'Generating fix prompts for every flag. This usually takes under a minute.',
+    stillPendingTitle: 'Fix prompts still generating',
+    stillPendingBody: 'This is taking longer than usual. Refresh the page, or check back in a minute.',
+    refreshCta: 'Refresh',
+  },
+  prescriptionUnavailable: {
+    title: 'Fix prompts unavailable',
+  },
+  triageUnavailable: {
+    title: 'AI summary unavailable',
   },
   partialReport: {
     title: 'Partial report',
@@ -925,7 +945,25 @@ export const REPORT_COPY = {
     topPriorities: 'Finish Plan',
     topPrioritiesHint:
       'The highest-leverage improvements next. Copy into Cursor, Claude Code, or any editor with plan mode.',
-    summaryByRubric: 'Summary by rubric',
+    productContract: 'Product contract',
+    productContractHeading: 'What this product appears to do',
+    journey: 'User journey walk',
+    flow: 'CTA flow test',
+    timelineCompleted: 'How we checked',
+    timelineProgressive: 'What FixFlags is doing',
+    timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
+    previews: 'Share & search previews',
+    copyFixPlan: (n: number) => `Copy Finish Plan (${Math.min(3, n)})`,
+  },
+  stickyNav: {
+    contract: 'Contract',
+    priorities: 'Finish Plan',
+    journey: 'Journey',
+    flow: 'Flow',
+    timeline: 'Timeline',
+    flags: 'Flags',
+    previews: 'Previews',
+    launch: 'Launch',
   },
   explorer: {
     allPages: 'All Pages',
@@ -936,6 +974,24 @@ export const REPORT_COPY = {
     noFlagsNice: 'No flags. Nice work.',
   },
   runYourOwnAudit: 'Run your own audit',
+} as const
+
+export const EXAMPLES_PAGE = {
+  label: 'Examples',
+  headline: 'Example audits from recognizable sites',
+  body: 'Real audit output from recognizable sites. Each card shows top issues and fix prompts.',
+} as const
+
+export const BLOG_INDEX = {
+  label: 'Blog',
+  headline: 'Notes on shipping without the embarrassing bugs',
+} as const
+
+export const ROAST_META = {
+  title: 'Website Roast - FixFlags',
+  description:
+    'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
+  ogDescription: 'Paste your URL. Get roasted. Fix what matters.',
 } as const
 
 export const MCP_DOCS = {
@@ -1232,6 +1288,7 @@ export const LOCKED_INSPECTION = {
 
 export const LOCKED_CONTENT_TEASER = {
   defaultLabel: 'Sign up to view',
+  fixPromptLabel: 'Create a free account to get the fix prompt for this flag',
   primaryCta: 'Create free account',
   secondaryCta: 'Sign in',
 } as const
@@ -1242,17 +1299,6 @@ export const SAMPLE_FIX = {
   signInCta: 'Sign in',
   subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, re-check, and run more URL checks.`,
   primaryCta: 'Create free account',
-} as const
-
-export const ANON_CLAIM_GUIDE = {
-  headline: 'Save this review and keep checking',
-  body: `Free accounts include 3 new URL checks with full reports and unlimited re-checks. Signing in unlocks fix prompts and saves this report to your history.`,
-  primaryCta: 'Save report & get 3 checks',
-  steps: [
-    'Run more checks on other URLs',
-    'Re-check after you ship fixes',
-    'Access reports from your dashboard',
-  ],
 } as const
 
 export const UPGRADE_MOMENTS = {

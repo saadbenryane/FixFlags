@@ -1,0 +1,124 @@
+import { describe, it, vi, expect, beforeEach } from 'vitest'
+import type { NextRequest } from 'next/server'
+
+const prismaMock = vi.hoisted(() => ({
+  audit: { findUnique: vi.fn() },
+  flag: { count: vi.fn() },
+}))
+const resolveSessionUser = vi.hoisted(() => vi.fn())
+const canAccessAudit = vi.hoisted(() => vi.fn())
+const recoverAuditJobOnPoll = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
+vi.mock('@/lib/audit/access', () => ({ canAccessAudit }))
+vi.mock('@/lib/audit/recover-audit-job', () => ({ recoverAuditJobOnPoll }))
+vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
+vi.mock('@/lib/security/rate-limit', () => ({
+  recordRateLimit: vi.fn().mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
+  requestClientId: () => 'test-client',
+}))
+
+import { GET } from '@/app/api/reports/[id]/status/route'
+
+function getReq() {
+  return {} as unknown as NextRequest
+}
+
+const baseAudit = {
+  status: 'CHECKING',
+  progress: 40,
+  score: null,
+  pageType: null,
+  verdict: null,
+  errorMsg: null,
+  failureCode: null,
+  pipelineVersion: '2.4.0',
+  reportCompleteness: 'UNKNOWN',
+  startedAt: new Date(),
+  completedAt: null,
+  updatedAt: new Date(),
+  createdAt: new Date(),
+  url: 'https://example.com',
+  userId: 'u1',
+  isPublic: false,
+  parentId: null,
+  aiReviewAt: null,
+  triageAt: null,
+  includeAi: true,
+  performanceData: {
+    actionTimeline: [{ t: 1000, kind: 'capture', label: 'Opened page' }],
+  },
+  productContract: {
+    purpose: 'Ship cleaner sites',
+    firstValueJourney: 'Paste URL',
+    criticalOutcomes: ['Clear CTA'],
+    source: 'heuristic',
+    inferredAt: new Date().toISOString(),
+  },
+  screenshots: [],
+  rubrics: [],
+  flags: [
+    {
+      id: 'f1',
+      severity: 'IMPORTANT',
+      problem: 'Weak headline',
+      rubric: 'MESSAGE',
+      checkId: 'h1-generic',
+      source: 'DETERMINISTIC',
+    },
+  ],
+}
+
+describe('GET /api/reports/[id]/status', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resolveSessionUser.mockResolvedValue({ user: { id: 'u1' } })
+    canAccessAudit.mockReturnValue(true)
+    prismaMock.flag.count.mockResolvedValue(1)
+    prismaMock.audit.findUnique.mockResolvedValue(baseAudit)
+  })
+
+  it('returns 404 when the report does not exist', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(null)
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'missing' }) })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 403 when the viewer cannot access the report', async () => {
+    canAccessAudit.mockReturnValue(false)
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(403)
+  })
+
+  it('streams actionTimeline, productContract, and partial flags while checking', async () => {
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.status).toBe('CHECKING')
+    expect(body.actionTimeline).toEqual([
+      { t: 1000, kind: 'capture', label: 'Opened page' },
+    ])
+    expect(body.productContract?.purpose).toBe('Ship cleaner sites')
+    expect(body.partialFlags).toEqual([
+      expect.objectContaining({
+        id: 'f1',
+        checkId: 'h1-generic',
+        source: 'DETERMINISTIC',
+      }),
+    ])
+    expect(body.flagCount).toBe(1)
+  })
+
+  it('omits partialFlags once the report is COMPLETED', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      ...baseAudit,
+      status: 'COMPLETED',
+      updatedAt: new Date(),
+    })
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
+    const body = await res.json()
+    expect(body.status).toBe('COMPLETED')
+    expect(body.partialFlags).toBeUndefined()
+  })
+})
