@@ -69,6 +69,12 @@ Search canonical docs and skills for:
 | `REPORT_COPY.explorer.scanned` / `scanning` / `stillScanning` | Removed with FixLoop status chrome |
 | Explorer score `md` or `lg` | Live explorer uses `sm` only |
 | `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
+| `Check my site` as `HERO.primaryCta` | Drift — hero must match voice table (**Review my site**) |
+| `ANON_CLAIM_GUIDE` | Dead copy — anon CTAs are value strip + `SampleFixCard` only |
+| `claim_guide` / `explorer` signup `from` | Removed from analytics union — only `value_strip` \| `sample_fix` \| `limit_gate` |
+| `experience-visual-polish` partial | Folded into `ai-rubric-pass` — capabilities are 47 live / 0 partial |
+| `no auto-fix PRs` / findings-only repo scan | Fix PR create is shipped for Agency — update PRODUCT/offering |
+| `No component tests` / Touch 10% | Stale — progressive/failure/empty tests exist; sync QUALITY/test-strategy |
 | `How to Start`, `How to start toggle` | Removed homepage pattern — nav is How it works / Sample / Pricing |
 | `six rubrics`, `Six rubrics` | Three rubrics only: Message, Experience, Reach |
 | `ai-review.*triage` in docs | ai-review is prescription only |
@@ -114,13 +120,23 @@ In product UI (not pipeline parse fallbacks), grep for:
 - `fetch` without `res.ok` + `parseApiErrorResponse`
 - Pagination `hasMore` hardcoded `true`
 - Hand-rolled `rounded-lg border` panels (use `Card`/`Surface`/`Callout`)
+- `AiReviewPendingRefresh` must surface a soft refresh state after max polls (never hang silently)
+
+## Phase 4.5 — Guards and dead copy
+
+- `brand:hex-guard` allowlists SVG artwork under `app/api/badge/` and `app/api/tools/roast/` (AGENTS invariant)
+- `ui:drift-guard` allowlists `components/help/` for editorial `font-display`; report surfaces use `font-serif` / `SectionTitle`
+- Report section titles + sticky labels live in `REPORT_COPY.sectionTitles` / `REPORT_COPY.stickyNav` — no hardcoded chrome strings
+- Grep clean: `ANON_CLAIM_GUIDE`, `FlagEvidenceScreenshot`, `summaryByRubric`
 
 ## Phase 5 — Doc alignment
 
 - `test-strategy.md` ↔ `QUALITY.md` blocker ratings must agree
-- `ROADMAP.md` Now section reflects QUALITY evidence
+- `ROADMAP.md` Now section reflects QUALITY evidence (Beat Scout is closed)
 - Skills cross-link AGENTS.md; no duplicated volatile counts
 - `lib/audit/page-text-limits.ts` is canonical for 2500/5000 limits
+- Capabilities: run `npm run audit:capabilities` after folding/adding capability rows; update AGENTS.md Project facts
+- `CHANGELOG_ENTRIES` must list user-facing outcomes for shipped work (no internal jargon; banned term `scan`)
 
 ## Phase 6 — Billing test coverage
 
@@ -128,6 +144,7 @@ Core scan endpoint must have route tests:
 
 - `app/api/checks/__tests__/route.test.ts` — 402 paths + 201 success
 - Mirror pattern from `app/api/api-keys/__tests__/route.test.ts`
+- Critical path also: `app/api/reports/[id]/status/__tests__/`, `app/api/reports/[id]/monitoring/__tests__/`
 
 Re-checks are never gated (separate route; document in test comments).
 
@@ -135,7 +152,7 @@ Re-checks are never gated (separate route; document in test comments).
 
 Marketing and report surfaces must match product contracts:
 
-- **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit" or "Get started").
+- **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit", "Get started", or "Check my site").
 - **Homepage nav:** How it works / Sample / Pricing (`lib/site/nav.ts` `MARKETING_LINKS`).
 - **One explorer:** exactly one report explorer on homepage (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer`); no second in hero.
 - **Report ownership:** `ReportExplorer` owns flag browsing; `RubricBar` is compact rubric jump links; do not resurrect `RubricsPanel` / `RubricCard` / `ReportHeroHeader`. Sticky tabs must match DOM (Contract / Priorities / Journey / Flow / Timeline / Flags / …). No Overview tab.
@@ -148,9 +165,10 @@ Marketing and report surfaces must match product contracts:
 - **Billing gate:** new URL checks enforce Free lifetime / paid monthly limits via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
 - **Limit CTA match:** `AuditLimitGate` must honor `action` (`signup` | `upgrade` | `buy_credits`). Paid overflow links to `/billing#credit-packs`, not a fake upgrade.
 - **Copy vs plans:** Free features in `copy.ts` / FAQ / email match `PLAN_DEFINITIONS.FREE` (3 new URL checks; never "unlimited deterministic").
-- **No orphan marketing chrome:** no unused trust-badge components; no `trySampleHint` under the sample CTA.
+- **No orphan marketing chrome:** no unused trust-badge components; no `trySampleHint` under the sample CTA; no `ANON_CLAIM_GUIDE`.
 - **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
 - **Help / support:** every new error, limit, or billing stuck surface links a help article (`lib/help/contextual.ts`) and can open chat. SLA strings single-sourced (`SUPPORT_CHAT` === `SUPPORT_WELCOME_MESSAGE`). `/faq` and `/docs/mcp` stay in sync with Help (canonical MCP = `/help/mcp`). Never market priority support.
+- **Repo Fix PR:** Agency repo findings can open a Fix PR — do not document as findings-only.
 
 ## Phase 7.5 — Funnel / analytics
 
@@ -164,7 +182,7 @@ rg "trackEvent\('" --glob '*.{ts,tsx}' -g '!node_modules'
 Grep skills/docs for stale conversion terms:
 
 ```bash
-rg -i 'ReportMiniNav|CompletenessHeader|ReportHeroHeader|ReportScoreOverview|six rubrics|"Run audit"|How to Start|39 models|133 check|\\b133/133\\b|showOverview|report-overview|explorer\\.scanned|hasFixPrompts=\{' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md
+rg -i 'ReportMiniNav|CompletenessHeader|ReportHeroHeader|ReportScoreOverview|six rubrics|"Run audit"|"Check my site"|ANON_CLAIM_GUIDE|How to Start|39 models|133 check|\\b133/133\\b|showOverview|report-overview|explorer\\.scanned|hasFixPrompts=\{|no auto-fix PRs|experience-visual-polish' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md PRODUCT.md
 rg 'ReportHeroHeader|RubricSummaryGrid' components/audit/AuditReportProgressive.tsx
 rg 'reportCompleteness !== .FULL.' components/audit/
 ```

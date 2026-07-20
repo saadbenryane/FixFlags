@@ -55,6 +55,10 @@ Stripe/Prisma use `FREE`, `BUILDER`, `TEAM` only. UI labels from `PLAN_DEFINITIO
 
 Do not market white-label reports or priority support — not implemented.
 
+Agency **repo Fix PR** is shipped (`lib/repo-scan/create-fix-pr.ts`, finding card UI). Document it as live. White-label share branding is still not implemented.
+
+When shipping user-visible work, add a plain-language entry to `CHANGELOG_ENTRIES` in `lib/marketing/copy.ts` (no internal jargon).
+
 ## Dev workflow
 
 - `npm run dev` — Next.js **and** inline worker (default via `instrumentation.ts`). Audits complete end-to-end in one command.

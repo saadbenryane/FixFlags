@@ -94,7 +94,7 @@ From `docs/voice-and-copy.md`:
 - Operator clarity: short sentences, verb-first CTAs, name tools when relevant
 - Prefer: ship, fix, evidence, report, outcome, proof, check
 - Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes, **second pass**, Fix my live site (see AGENTS.md banned phrases)
-- CTAs are **promises**: `HERO.primaryCta` is **"Review my site"** — verb-first, not "Get started"
+- CTAs are **promises**: `HERO.primaryCta` is **"Review my site"** — verb-first, not "Get started" or "Check my site". Keep `HERO` aligned with `docs/voice-and-copy.md` Action row.
 - Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM) only — never promise unbuilt features
 - One contextual CTA angle per page; never paste the same block everywhere
 - **Rule of one** per block: one reader, one pain, one outcome, one action

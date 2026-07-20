@@ -64,6 +64,10 @@
 | Direct DB mutation | Data corruption | Admin dashboard only |
 | Worker force-kill | Stuck audits | Recovery scheduler handles within 15 min |
 
+## Rate limiting
+
+`lib/security/rate-limit.ts` uses Redis counters. On Redis connection failure it **fails open** (allows the request) so a Redis outage does not take the product offline. This is an intentional availability tradeoff, not a silent bug. Product quota gates (anon teaser, Free lifetime, plan limits) remain enforced in application code independent of Redis.
+
 ## Dependency risks
 
 - Playwright: production Docker uses system Chromium (no browser download in image); local may use Playwright-managed browser

@@ -63,6 +63,15 @@ npm run demo:audit:offline  # deterministic checks only
 - Marking audit FAILED when triage fails but capture succeeded — use `finalizeTriageDegraded`
 - Editing offering.md "fix prompts on every report" without checking `report-access.ts`
 - Conflating `ai-review` job with triage — it is prescription only
+- Emitting both `hierarchy-too-many-fonts` and `visual-typography-sprawl` without a `suppressOverlappingFlags` pair (same `uniqueFontFamilies > 4` signal)
+- Leaving AI-only capability rows as `partial` with empty `checkIds` — fold into `ai-rubric-pass` or add deterministic checks; run `npm run audit:capabilities` and update AGENTS.md
+- Claiming Truth Done without dogfood / form-ratio / score edge tests when QUALITY marks them CRITICAL
+
+## Flag quality before ship
+
+- Form-validation severity uses 50% missing ratio (`IMPORTANT` ≥ 0.5, else `POLISH`) — keep the unit test in `checks.test.ts`
+- All-CRITICAL score fixtures must drive MESSAGE/EXPERIENCE toward floor
+- Prefer narrowing FP heuristics over widening severity
 
 ## Journey + visual evidence + functional probes
 

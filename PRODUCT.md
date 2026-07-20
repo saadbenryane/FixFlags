@@ -10,7 +10,7 @@ FixFlags is the QA layer for AI-built products. Finish what your AI started.
 
 - **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast, skip QA, and discover issues after launch. Want a quick check before sharing a link.
 - **Agencies and studios** — building AI-assisted sites for clients. Need premium QA before handoff. Will pay for shareable reports.
-- **Later:** Product teams using AI coding internally (once team accounts, repo scanning, CI/CD land).
+- **Later:** Product teams using AI coding internally (once team accounts and CI/CD land).
 
 ## Problem
 
@@ -60,7 +60,7 @@ Steps 4-7 are the differentiator. Re-check is the habit.
 - 100 new URL checks per month
 - Share links and exports
 - 5 projects
-- GitHub repo scanning (findings-only: secrets, dependency hygiene, dangerous patterns — no auto-fix PRs)
+- GitHub repo scanning with optional Fix PR creation (Agency): secrets, dependency hygiene, dangerous patterns; open a fix branch/PR from a finding when auto-patchable
 - Credit packs for overflow new checks
 
 ### High Volume (custom)
@@ -92,8 +92,8 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 ## Limitations and technical debt
 
 - Regression suite covers HTML-derivable checks only; screenshot/flow/PageSpeed modules are not yet frozen into fixtures
-- Route contract tests cover the primary paid endpoints (api-keys, projects); remaining API routes still lack handler-level tests
-- No component tests (Touch tier at 10%)
+- Route contract tests cover the critical path (checks create, api-keys, projects, report status poll, re-check); remaining API routes still lack handler-level tests
+- Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No staging/password-protected site support
 - No localhost or private network checks
 - No team workspaces or white-label reports
@@ -127,6 +127,6 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Unresolved questions
 
-- Is findings-only repo scanning enough to close Agency sales?
+- Does Agency Fix PR creation close enough sales, or do buyers still want white-label share branding?
 - Will free users convert to Pro before exhausting their 3 lifetime AI reports?
 - What re-check cadence builds the strongest Flag → Fix → Re-check habit?

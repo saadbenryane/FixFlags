@@ -14,7 +14,7 @@ Finish what your AI started. FixFlags is the QA layer for AI-built products: the
 - **Share links and proof export** (Agency+): public report links and client-ready summaries.
 - **Credit packs** (paid plans): +10 / +25 / +50 new URL checks for overflow without changing tier.
 - **Help Center + live chat:** searchable guides at `/help`, first-party chat on every non-admin page, FAQ at `/faq`, email for legal/high-volume. Not Intercom; not priority SLA by plan.
-- **Repository-connected scanning** (Agency+): connect GitHub, allow-list specific repos, and scan the codebase directly for exposed secrets, dependency hygiene, and dangerous patterns — separate from URL audits. Fully shipped and discoverable at `/settings/integrations`: OAuth connect, repo allow-listing, scan trigger, recent-scan history, and a dedicated report view at `/report/repo/[id]`. This is Year 1 product priority #5 ("repository-connected fixes") and was already live when that priority was written — the roadmap/docs just hadn't caught up. It currently reports findings; it does not yet open PRs or auto-apply fixes.
+- **Repository-connected scanning** (Agency+): connect GitHub, allow-list specific repos, and scan the codebase for exposed secrets, dependency hygiene, and dangerous patterns — separate from URL audits. Shipped at `/settings/integrations` with OAuth, repo allow-listing, scan history, and `/report/repo/[id]`. Findings can open a Fix PR (branch + pull request) when the finding is auto-patchable.
 
 ## What We Do Not Ship (Current)
 

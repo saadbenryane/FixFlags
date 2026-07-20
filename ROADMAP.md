@@ -4,15 +4,13 @@
 
 ## Recently closed
 
+- **Beat Scout: precision over spectacle — shipped.** Network/API failure Flags, overlay click-blocker detection, structured action timeline, Product Contract, truth labels in model/API data. See board `beat-scout-precision` / `beat-scout-completeness`.
 - **Help Center — shipped.** `/help` hub + articles + MCP guide; live chat escalation; contextual links on failure/limit/billing; payment-failure user email. See `lib/help/`, `DECISIONS.md`.
 - **Monetization blockers — CLOSED.** All five items have automated coverage in CI via `npm run test:unit`. See [QUALITY.md § Monetization blockers](./QUALITY.md#monetization-blockers).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation. See [scan-roadmap.md](./docs/scan-roadmap.md).
 - **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report (Journey/Flow/Previews), Journey Review MVP (Pro+), corridor discovery + OG consistency, MCP plan-mode + re-check next-fixes. Remaining depth is demand-triggered (see Later / [scan-roadmap.md](./docs/scan-roadmap.md) Phase 3–4).
 
 ## Now
-
-- **Beat Scout: precision over spectacle** — network/API failure Flags, overlay click-blocker detection, structured action timeline (not chat agent), Product Contract MVP, truth labels first-class. Harden roast/CLI/IDE distribution. See board task `beat-scout-precision`.
-  *Signal:* Fixture with broken form API + modal overlay yields CRITICAL Flags with network evidence + timeline steps; report shows Product Contract.
 
 - **Distribution harden (built locally)** — Website Roast (`/roast`), badge API, `fixflags-cli`, IDE integrations exist in tree; harden entitlements, docs accuracy, and ship. Do not market as published npm global until CLI is publishable.
   *See:* `app/(marketing)/roast/`, `fixflags-cli/`, `ide-integrations/`.
@@ -24,22 +22,22 @@
   *Signal:* >5% free-to-paid conversion.
 
 - **Residual hardening** — not blocking ads, but required before scaling:
-  - Extend API route contract tests beyond primary paid endpoints
-  - Auth/session runtime tests (login, logout, expiry, plan entitlements)
-  - Touch-tier component tests (report states, empty states)
+  - Extend API route contract tests beyond the critical path (checks, status, re-check, api-keys, projects)
+  - Broader auth/session runtime coverage
+  - Expand Touch-tier report-state matrix
   *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).
 
 ## Readiness (reconciled)
 
 Single honest baseline across [QUALITY.md](./QUALITY.md) and [test-strategy.md](./test-strategy.md):
 
-| Tier | Readiness | Residual CRITICAL |
-|------|-----------|-------------------|
-| Truth | ~90% | Form validation ratio test; score math edge cases (all-CRITICAL, module failures) |
-| Strength | ~80% | API route contracts (most routes untested); rate limiting; auth/session runtime; CI parity with local `verify` |
-| Touch | 10% | Report rendering per audit state; empty states (no scans, no flags, deleted audit) |
+| Tier | Readiness | Residual |
+|------|-----------|----------|
+| Truth | ~95% | Screenshot/flow/PageSpeed fixtures still not frozen into regression suite |
+| Strength | ~85% | Remaining non-critical API routes; queue unit depth |
+| Touch | ~35% | Progressive/failure/empty covered; full density matrix still expanding |
 
-Monetization blockers (regression fixtures, judge contract, persist layer, pipeline state machine, billing gating) are closed. Strength ~80% reflects that; QUALITY.md's tier table (25%) lags the closed-blocker evidence.
+Monetization blockers (regression fixtures, judge contract, persist layer, pipeline state machine, billing gating) are closed.
 
 ## Next
 
