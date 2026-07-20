@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading, Muted } from '@/components/ui/typography'
+import { helpHrefForSurface } from '@/lib/help/contextual'
+import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 
 export default function BillingError({
   error,
@@ -13,18 +16,31 @@ export default function BillingError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error(JSON.stringify({ level: 'error', event: 'ui.billing.error', digest: error.digest, message: error.message }))
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'ui.billing.error',
+        digest: error.digest,
+        message: error.message,
+      })
+    )
   }, [error.message, error.digest])
 
   return (
-    <Container variant="narrow" className="flex flex-1 flex-col items-center justify-center py-24 text-center">
+    <Container
+      variant="narrow"
+      className="flex flex-1 flex-col items-center justify-center py-24 text-center"
+    >
       <Heading as="h1">Billing unavailable</Heading>
-      <Muted className="mt-2 max-w-md">Could not load billing information. Try again or return to the dashboard.</Muted>
+      <Muted className="mt-2 max-w-md">
+        Could not load billing information. Try again or return to the dashboard.
+      </Muted>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button onClick={reset}>Try again</Button>
         <Button asChild variant="outline">
-          <a href="/dashboard">Dashboard</a>
+          <Link href="/dashboard">Dashboard</Link>
         </Button>
+        <HelpSupportActions helpHref={helpHrefForSurface('billing_error')} />
       </div>
     </Container>
   )

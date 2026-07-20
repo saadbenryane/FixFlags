@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| help-center | done | auto | main | First-party Help Center + chat escalation + contextual help | lib/help, /help routes, live-support, copy, skills/docs | — | 2026-07-20 |
 | hero-illustration-blend | in_progress | auto | main | Soft glass-flag wash behind landing hero | LandingHeroSection, BrandIllustration, FinalCta, homepage-visual-system | — | 2026-07-19 |
 | product-evidence-polish | done | auto | main | Product Evidence lead + Flag-shaped findings | copy.ts productEvidence, ProductEvidenceSection, homepage-message tests | — | 2026-07-19 |
 | completeness-cleanup | done | auto | main | Sample hint, buy_credits gate, quota copy truth, skills/docs | AuditInput, credits, AuditLimitGate, plans, copy, skills | — | 2026-07-19 |

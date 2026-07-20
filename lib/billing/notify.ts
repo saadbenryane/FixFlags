@@ -1,5 +1,6 @@
 import { resend } from '@/lib/email/client'
 import { BRAND } from '@/lib/marketing/copy'
+import { BILLING_EMAILS } from '@/lib/email/templates'
 import { logger } from '@/lib/logger'
 import { getAppUrl } from '@/lib/get-app-url'
 
@@ -41,6 +42,32 @@ export async function notifyAdminPaymentFailed(input: {
   } catch (error) {
     logger.error('Failed to send payment_failed admin email', {
       userId: input.userId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+}
+
+export async function notifyUserPaymentFailed(input: {
+  email: string
+  name?: string | null
+}): Promise<void> {
+  if (!resend) {
+    logger.warn('RESEND_API_KEY not set; skipping payment_failed user email', {
+      email: input.email,
+    })
+    return
+  }
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.email,
+      subject: BILLING_EMAILS.paymentFailed.subject,
+      html: BILLING_EMAILS.paymentFailed.html(input.name ?? ''),
+    })
+  } catch (error) {
+    logger.error('Failed to send payment_failed user email', {
+      email: input.email,
       error: error instanceof Error ? error.message : String(error),
     })
   }

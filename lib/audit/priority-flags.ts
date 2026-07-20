@@ -1,7 +1,7 @@
 import { gradeRank, severityRank } from '@/lib/utils'
-import type { RankableFlag } from './flag-types'
+import type { FixConfidence, RankableFlag } from './flag-types'
 
-export type { RankableFlag } from './flag-types'
+export type { FixConfidence, RankableFlag } from './flag-types'
 
 const IMPACT_PRIORITY: Record<string, number> = {
   REVENUE: 0,
@@ -168,12 +168,27 @@ function titleCaseRubric(rubric: string): string {
   return rubric.charAt(0).toUpperCase() + rubric.slice(1).toLowerCase()
 }
 
+export function fixConfidenceLabel(confidence: string | null | undefined): string {
+  if (confidence === 'HIGH') return 'HIGH'
+  if (confidence === 'MEDIUM') return 'MEDIUM'
+  if (confidence === 'LOW') return 'LOW'
+  return 'MEDIUM'
+}
+
+export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
+  if (flag.fixConfidence && ['HIGH', 'MEDIUM', 'LOW'].includes(flag.fixConfidence)) {
+    return flag.fixConfidence
+  }
+  if (flag.source === 'DETERMINISTIC') return 'HIGH'
+  if (flag.severity === 'CRITICAL') return 'HIGH'
+  if (flag.severity === 'POLISH') return 'LOW'
+  return 'MEDIUM'
+}
+
 /**
- * One prompt that turns the whole report into a plan-mode task for an AI editor
- * (Cursor, Claude Code). Paste it, put the editor in plan mode, and it produces a
- * prioritized fix plan instead of editing blindly. Every flag with a fix prompt is
-  * included, ranked by priority, with its evidence and fix prompt guidance.
- * Returns an empty string when no flag has a usable fix prompt.
+ * Build a structured goal-loop prompt with 3 phases (Research → Plan → Fix).
+ * Each issue includes a confidence key and evidence. The prompt tells the AI
+ * to fix one issue at a time and verify before moving on.
  */
 export function buildPlanModePrompt(
   flags: RankableFlag[],
@@ -181,10 +196,13 @@ export function buildPlanModePrompt(
 ): string {
   const sorted = [...flags].sort(compareFlagsByPriority)
   const items: string[] = []
+  const byConfidence: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 }
   for (const flag of sorted) {
     const prompt = resolveFixPrompt(flag)
     if (!prompt) continue
-    const tag = `[${flag.severity} · ${titleCaseRubric(flag.rubric)}]`
+    const confidence = resolveFixConfidence(flag)
+    byConfidence[confidence]++
+    const tag = `[${flag.severity} · ${titleCaseRubric(flag.rubric)} · ${confidence}]`
     const lines = [`${items.length + 1}. ${tag} ${flag.problem}`]
     if (flag.evidence?.trim()) lines.push(`   Evidence: ${flag.evidence.trim()}`)
     lines.push(`   Fix: ${prompt.replace(/\n/g, '\n   ')}`)
@@ -196,19 +214,29 @@ export function buildPlanModePrompt(
   const target = site ? ` of ${site}` : ''
   const count = items.length
   const noun = count === 1 ? 'issue' : 'issues'
+  const highCount = byConfidence.HIGH
+  const mediumCount = byConfidence.MEDIUM
+  const lowCount = byConfidence.LOW
 
   const header = [
-    `This is a QA review${target}. It found ${count} ${noun} to fix. Work in plan mode: do not change any files yet.`,
+    `## Mission`,
+    `Fix all ${count} ${noun} for${target}. Architecture stays the same; only fix the specific issues listed below. After each fix, deploy and verify.`,
     '',
-    'First, write a fix plan:',
-    '- Group related issues so they can be fixed together.',
-    '- Order the work by user impact, starting with anything that blocks a visitor.',
-    '- For each group, name the file or component you expect to change and any decision you need from me.',
-    '- Call out anything ambiguous or risky before touching it.',
+    '## Confidence keys',
+    `- HIGH (${highCount}): Deterministic check, one-line change, low regression risk. Safe to apply.`,
+    `- MEDIUM (${mediumCount}): Requires understanding context or spans multiple lines. Review the diff.`,
+    `- LOW (${lowCount}): Significant refactor or copy rewrite. Human review strongly recommended before merging.`,
     '',
-    'Then stop and wait for my go-ahead before editing. After the fixes are in, I will re-check the same URL to confirm each issue is cleared.',
+    '## Phase 1: Research (read-only)',
+    'For each issue, open the relevant file(s) and confirm the problem exists. Name each file you inspect. Do not change any files yet.',
     '',
-    `Issues to plan around:`,
+    '## Phase 2: Plan',
+    'Group related issues by file or component. Order the work by user impact, starting with anything that blocks a visitor. Note any dependencies between fixes. Call out anything ambiguous or risky. Then wait for my go-ahead before editing.',
+    '',
+    '## Phase 3: Fix (one issue at a time)',
+    'Fix HIGH-confidence issues first. After each fix: deploy and verify the issue is resolved. If a fix does not clear on re-check, backtrack to the previous state and try an alternative approach. Flag any fix that requires more than 2 attempts for human review.',
+    '',
+    `Issues (ordered by priority):`,
   ].join('\n')
 
   return `${header}\n\n${items.join('\n\n')}`

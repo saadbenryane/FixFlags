@@ -23,6 +23,7 @@ import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
+import { helpHrefForSurface } from '@/lib/help/contextual'
 import { Suspense } from 'react'
 import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
 
@@ -84,11 +85,12 @@ export default async function BillingPage() {
             Update your card to restore paid features (compare, MCP, share). We&rsquo;ll retry
             automatically, but you can fix it now. Re-checks on owned reports stay free.
           </p>
-          {user.stripeCustomerId && (
-            <div className="pt-1">
-              <ManageSubscriptionButton />
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {user.stripeCustomerId && <ManageSubscriptionButton />}
+            <Button asChild variant="outline" size="sm">
+              <Link href={helpHrefForSurface('billing_past_due')}>View help article</Link>
+            </Button>
+          </div>
         </Callout>
       )}
 

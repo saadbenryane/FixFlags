@@ -15,6 +15,7 @@ import {
   useAdminSupportSessions,
 } from '@/components/live-support/useSupportPolling'
 import type { SupportMessageDto, SupportSessionListItem } from '@/lib/live-support/types'
+import { extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 
 function SessionRow({
   session,
@@ -225,9 +226,23 @@ export function AdminInbox() {
             {selected.pageUrl && (
               <div>
                 <p className="text-xs text-muted-foreground">Page</p>
-                <p className="truncate text-xs">{selected.pageUrl}</p>
+                <TextLink href={selected.pageUrl} className="break-all text-xs">
+                  {selected.pageUrl}
+                </TextLink>
               </div>
             )}
+            {(() => {
+              const auditId = extractAuditIdFromPageUrl(selected.pageUrl)
+              if (!auditId) return null
+              return (
+                <div>
+                  <p className="text-xs text-muted-foreground">Report</p>
+                  <TextLink href={`/report/${auditId}`} className="text-xs">
+                    Open report
+                  </TextLink>
+                </div>
+              )
+            })()}
             {selected.lead && (
               <div>
                 <p className="text-xs text-muted-foreground">Lead</p>

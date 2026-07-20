@@ -35,7 +35,7 @@ export interface SupportSessionListItem extends SupportSessionDto {
   } | null
 }
 
-/** Reserved for future AI layer - pass-through in v1. */
+/** Intentionally unused until help-retrieval AI replies exist. Pass-through in v1. */
 export async function onBeforeAgentReply(body: string): Promise<string> {
   return body
 }

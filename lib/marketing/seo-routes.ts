@@ -15,6 +15,8 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/help', seoKey: 'help', priority: 0.8, changeFrequency: 'weekly' },
+  { path: '/help/mcp', seoKey: 'mcp', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/examples', seoKey: 'examples', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/changelog', seoKey: 'changelog', priority: 0.5, changeFrequency: 'weekly' },
   { path: '/blog', seoKey: 'blog', priority: 0.6, changeFrequency: 'weekly' },
@@ -43,11 +45,14 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/samples', label: 'Sample report', note: 'Full example output' },
       { path: '/pricing', label: 'Pricing', note: 'Free vs Pro plans' },
       { path: '/docs/mcp', label: 'MCP docs', note: 'Cursor / Claude Code integration' },
+      { path: '/help', label: 'Help Center', note: 'Guides, billing, MCP, contact' },
+      { path: '/help/mcp', label: 'MCP guide', note: 'Canonical MCP setup' },
     ],
   },
   {
     title: 'Support',
     links: [
+      { path: '/help', label: 'Help Center', note: 'Searchable guides + chat' },
       { path: '/faq', label: 'FAQ', note: 'Checks, Flags, plans, MCP' },
       { path: '/privacy', label: 'Privacy' },
       { path: '/terms', label: 'Terms' },

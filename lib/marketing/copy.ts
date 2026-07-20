@@ -108,7 +108,41 @@ export const SCORE_HELP = {
     'Score starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
   detail:
     'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
-  faqHref: '/faq',
+  /** Canonical deep link: keep in sync with lib/help scores-and-severity */
+  faqHref: '/help/checks-and-reports/scores-and-severity',
+} as const
+
+/** Help Center chrome. Article bodies live in lib/help/catalog.ts. */
+export const HELP_CENTER = {
+  label: 'Help Center',
+  title: 'How can we help?',
+  subhead: 'Search guides for checks, billing, MCP, and your account. Still stuck? Chat with us.',
+  searchPlaceholder: 'Search help articles…',
+  categoriesHeading: 'Browse by topic',
+  popularHeading: 'Popular articles',
+  noResults: 'No articles match that search. Try another phrase or open chat.',
+  stillStuck: 'Still stuck?',
+  openChatCta: 'Open chat',
+  emailCta: 'Email us',
+  relatedHeading: 'Related articles',
+  backToHelp: 'Back to Help Center',
+  mcpGuideCta: 'Open full MCP guide',
+  askSupportCta: 'Ask support',
+  viewHelpCta: 'View help article',
+} as const
+
+/** Live chat widget + welcome SYSTEM message (must match lib/help/sla.ts). */
+export const SUPPORT_CHAT = {
+  title: 'Chat with FixFlags',
+  subtitle: 'We typically reply within a few hours',
+  emptyState: 'Ask us anything about FixFlags, your audit, or getting started.',
+  startError: 'Could not start chat. Try again in a moment.',
+  welcomeMessage:
+    "You're chatting with the FixFlags team. We typically reply within a few hours.",
+  prefillPrefix: 'I need help with:',
+  ariaOpen: 'Open live chat',
+  ariaClose: 'Close chat',
+  ariaDialog: 'Live chat with FixFlags',
 } as const
 
 /** Strict severity meanings (enum stays CRITICAL | IMPORTANT | POLISH). */
@@ -327,7 +361,7 @@ export const PRODUCT_LADDER = {
     {
       plan: 'FREE',
       title: 'Check',
-      body: 'Score, Flags, evidence, and screenshots. Free account for fix prompts. Three new URL checks total.',
+      body: 'Score, Flags, evidence, fix prompts, and re-checks. First report fully unlocked. Free account for report history and 3 URL checks.',
     },
     {
       plan: 'BUILDER',
@@ -726,12 +760,12 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first check?',
-    answer: `No. ${OFFER.line} Free accounts also include 3 new URL checks with full reports.`,
+    answer: `No. Your first report is fully unlocked: all fix prompts, evidence, and the fix plan. No sign-up required. ${OFFER.short} Free accounts include 3 URL checks with full reports.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: 3 new URL checks with full reports and fix prompts, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
+      'Free: first report fully unlocked (all fix prompts visible), then 3 new URL checks with full reports, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
   },
   {
     question: 'Do I need Cursor or MCP?',
@@ -1125,8 +1159,8 @@ export const AUTH = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Get fix prompts for your editor',
-    body: 'You already see your score, Flags, and evidence. Create a free account for the fix prompts, save this report, and re-check after you ship.',
+    headline: 'Save this report and run more checks',
+    body: 'Your first report is fully unlocked. Create a free account to save it to your history, re-check after fixes, and run 3 new URL checks.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -1181,8 +1215,8 @@ export const SHARE_COPY = {
 
 export const ANON_VALUE_STRIP = {
   headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
-  body: 'Sign in to inspect evidence, screenshots, and fix prompts for every issue.',
-  primaryCta: 'Sign in to inspect',
+  body: 'Sign in to save this report and check more URLs. Your next scan will count toward your free limit.',
+  primaryCta: 'Save & get more checks',
   secondaryCta: 'Create free account',
 } as const
 
@@ -1207,24 +1241,24 @@ export const LOCKED_CONTENT_TEASER = {
 } as const
 
 export const SAMPLE_FIX = {
-  label: 'Free fix',
+  label: 'Example fix',
   evidenceTitle: 'Evidence',
   whyTitle: 'Why it matters',
   verifyTitle: 'How to verify',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `This is 1 of ${n} fixes. Sign in to inspect and fix all of them.`,
-  primaryCta: 'See all fixes',
+  subtext: (n: number) => `Your first report is fully unlocked. All ${n} fixes visible. Sign up to save reports, re-check, and check more URLs.`,
+  primaryCta: 'Save & see more fixes',
 } as const
 
 export const ANON_CLAIM_GUIDE = {
-  headline: 'Save this review and copy the exact fix',
-  body: `${OFFER.line} Signing in also keeps the report in your history.`,
-  primaryCta: 'Sign in to save and copy fixes',
+  headline: 'Save this review and keep checking',
+  body: `Free accounts include 3 new URL checks with full reports and unlimited re-checks. Signing in saves this report to your history.`,
+  primaryCta: 'Save report & get 3 checks',
   steps: [
-    'Copy fix prompts into Cursor, Claude, or Windsurf',
-    'Save the report in your history',
-    'Re-check after you ship to see which flags cleared',
+    'Run more checks on other URLs',
+    'Re-check after you ship fixes',
+    'Access reports from your dashboard',
   ],
 } as const
 
@@ -1395,6 +1429,11 @@ export const SEO = {
     title: 'FAQ',
     description:
       'Answers about FixFlags checks, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+  },
+  help: {
+    title: 'Help Center',
+    description:
+      'Guides for FixFlags checks, reports, billing, MCP setup, and your account. Chat with us when you need a human.',
   },
   changelog: {
     title: 'Changelog',

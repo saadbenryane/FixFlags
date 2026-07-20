@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { trackEvent } from '@/lib/analytics/events'
 import { useEffect, useMemo } from 'react'
+import { helpHrefForLimitAction } from '@/lib/help/contextual'
+import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 
 interface Props {
   code?: string
@@ -34,6 +36,7 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
 
   const signUpHref = useMemo(() => authHref('/sign-up', nextPath, from), [nextPath, from])
   const signInHref = useMemo(() => authHref('/sign-in', nextPath, from), [nextPath, from])
+  const helpHref = helpHrefForLimitAction(action)
 
   useEffect(() => {
     trackEvent('audit_limit_reached', { reason: code ?? action })
@@ -69,6 +72,7 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
             <Link href="/pricing">Upgrade to continue</Link>
           </Button>
         )}
+        <HelpSupportActions helpHref={helpHref} />
         {onDismiss && (
           <Button variant="ghost" size="sm" onClick={onDismiss}>
             Dismiss

@@ -286,8 +286,8 @@ export default function McpSetupWizard() {
 
       <p className="text-center text-xs text-muted-foreground">
         Need help?{' '}
-        <Link href="/docs/mcp" className="underline underline-offset-2 hover:text-foreground">
-          Full MCP docs
+        <Link href="/help/mcp" className="underline underline-offset-2 hover:text-foreground">
+          Full MCP guide
         </Link>
         <span className="mx-1.5">·</span>
         <Link href="/settings/api-keys" className="underline underline-offset-2 hover:text-foreground">

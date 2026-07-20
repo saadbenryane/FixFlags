@@ -12,6 +12,7 @@ import {
   CreditCard,
   Menu,
   ShieldCheck,
+  CircleHelp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
@@ -41,6 +42,7 @@ const SECONDARY_ITEMS: SidebarItem[] = [
   { href: '/settings/api-keys', label: 'API Keys', icon: KeyRound },
   { href: '/settings/integrations', label: 'Integrations', icon: GitBranch },
   { href: '/billing', label: 'Billing', icon: CreditCard },
+  { href: '/help', label: 'Help', icon: CircleHelp },
 ]
 
 const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }

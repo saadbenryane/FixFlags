@@ -18,6 +18,7 @@
 
 ## Recently closed
 
+- **Help Center — shipped.** `/help` hub + articles + MCP guide; live chat escalation; contextual links on failure/limit/billing; payment-failure user email. See `lib/help/`, `DECISIONS.md`.
 - **Monetization blockers — CLOSED.** All five items have automated coverage in CI via `npm run test:unit`. See [QUALITY.md § Monetization blockers](./QUALITY.md#monetization-blockers).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation. See [scan-roadmap.md](./docs/scan-roadmap.md).
 - **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report (Journey/Flow/Previews), Journey Review MVP (Pro+), corridor discovery + OG consistency, MCP plan-mode + re-check next-fixes. Remaining depth is demand-triggered (see Later / [scan-roadmap.md](./docs/scan-roadmap.md) Phase 3–4).
@@ -52,6 +53,10 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
   *Trigger:* Feature request volume justifies complexity.
 - **White-label reports** — branded PDF exports, custom domains.
   *Trigger:* Agency demand.
+- **Help AI agent (Fin-style)** — retrieve from `lib/help` before human handoff.
+  *Trigger:* Chat volume exceeds part-time human capacity.
+- **Public status page** — uptime for scanner/API.
+  *Trigger:* Paying customers ask for it.
 - **Secret-leak scan / real-device mobile / weekly pulse / journey vision fallback / graph issue pages** — see [docs/scan-roadmap.md](./docs/scan-roadmap.md) demand triggers. Do not ship without the listed signal.
 
 ## Not planned

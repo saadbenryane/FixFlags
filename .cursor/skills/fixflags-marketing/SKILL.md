@@ -10,12 +10,20 @@ description: FixFlags go-to-market, ICP segmentation, message research, copy fra
 Read before changing marketing copy, positioning, or GTM.
 
 **Canonical sources (always check first):**
-- Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`)
-- Product behavior (entitlements, billing, dev): `.cursor/skills/fixflags-product/SKILL.md`
+- Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`, `HELP_CENTER`, `SUPPORT_CHAT`)
+- Help articles: `lib/help/catalog.ts` (bodies + categories; not hardcoded in pages)
+- Product behavior (entitlements, billing, support): `.cursor/skills/fixflags-product/SKILL.md`
 - Voice rules: `docs/voice-and-copy.md`
 - Upgrade moment resolver: `lib/billing/upgrade-moments.ts` (strings live in `copy.ts`)
 - Design polish: `.cursor/skills/fixflags-design-system/SKILL.md`
 - Evidence & problem bars: [evidence-pack.md](evidence-pack.md)
+
+## Help Center copy
+
+- Public name: **Help Center** (`/help`). Task-oriented articles, not blog posts.
+- Chat escalation copy must match `SUPPORT_CHAT` / `lib/help/sla.ts` (one reply-window promise).
+- FAQ (`/faq`) stays short Q&A; deep how-tos live in Help. Link FAQ → Help.
+- No “priority support,” “dedicated support,” or Intercom-style hype. Calm, specific, actionable.
 
 ## Two audiences (do not collapse them)
 

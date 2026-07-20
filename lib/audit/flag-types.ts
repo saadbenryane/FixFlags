@@ -30,6 +30,8 @@ export const AGENT_PROMPT_KEYS: (keyof AgentPrompts)[] = [
   'boltPrompt',
 ]
 
+export type FixConfidence = 'HIGH' | 'MEDIUM' | 'LOW'
+
 /**
  * The complete set of fields a flag can carry through its lifecycle.
  * Not every interface needs every field: use Pick/Omit to narrow.
@@ -53,6 +55,7 @@ export interface FlagData extends AgentPrompts {
   whyItMatters: string
   fix: string
   confidence: number
+  fixConfidence?: FixConfidence
   source: string
   pageUrl: string | null
   verificationRule: string | null

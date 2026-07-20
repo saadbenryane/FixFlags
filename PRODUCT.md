@@ -103,6 +103,14 @@ Five concrete checks from report evidence. Fix before shipping:
 4. Privacy policy link is present.
 5. Console has no errors.
 
+## Support
+
+- **Help Center** at `/help` — searchable guides (getting started, checks, billing, MCP, account). Content in `lib/help/`.
+- **Live chat** on all non-admin pages — first-party widget; team replies in `/admin/feedback`. Typical reply within a few hours.
+- **FAQ** at `/faq` — short Q&A; links into Help for deeper guides.
+- **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.
+- Do **not** market priority or dedicated support. High-volume is custom pricing via email only.
+
 ## Constraints
 
 - **Core loop above all.** Every feature must serve Flag → Fix → Re-check.

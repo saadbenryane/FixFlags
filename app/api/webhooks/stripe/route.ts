@@ -5,7 +5,7 @@ import type { Plan, Prisma, SubscriptionStatus } from '@prisma/client'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
-import { notifyAdminPaymentFailed } from '@/lib/billing/notify'
+import { notifyAdminPaymentFailed, notifyUserPaymentFailed } from '@/lib/billing/notify'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -142,11 +142,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, replay: true })
     }
 
-    let paymentFailedNotify: {
+    type PaymentFailedNotify = {
       userId: string
       email: string | null
       subscriptionId: string
-    } | null = null
+    }
+    const paymentFailedBox: { current: PaymentFailedNotify | null } = { current: null }
 
     await prisma.$transaction(async (tx) => {
       const alreadyProcessed = await tx.processedStripeEvent.findUnique({
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
           break
 
         case 'invoice.payment_failed': {
-          paymentFailedNotify = await syncSubscriptionFromInvoice(tx, event.data.object)
+          paymentFailedBox.current = await syncSubscriptionFromInvoice(tx, event.data.object)
           break
         }
 
@@ -236,8 +237,14 @@ export async function POST(req: NextRequest) {
       })
     })
 
-    if (paymentFailedNotify) {
-      await notifyAdminPaymentFailed(paymentFailedNotify)
+    const failedPayment = paymentFailedBox.current
+    if (failedPayment) {
+      await notifyAdminPaymentFailed(failedPayment)
+      if (failedPayment.email) {
+        await notifyUserPaymentFailed({
+          email: failedPayment.email,
+        })
+      }
     }
 
     return NextResponse.json({ received: true })

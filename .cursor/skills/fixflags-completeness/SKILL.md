@@ -144,6 +144,7 @@ Marketing and report surfaces must match product contracts:
 - **Copy vs plans:** Free features in `copy.ts` / FAQ / email match `PLAN_DEFINITIONS.FREE` (3 new URL checks; never "unlimited deterministic").
 - **No orphan marketing chrome:** no unused trust-badge components; no `trySampleHint` under the sample CTA.
 - **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
+- **Help / support:** every new error, limit, or billing stuck surface links a help article (`lib/help/contextual.ts`) and can open chat. SLA strings single-sourced (`SUPPORT_CHAT` === `SUPPORT_WELCOME_MESSAGE`). `/faq` and `/docs/mcp` stay in sync with Help (canonical MCP = `/help/mcp`). Never market priority support.
 
 ## Phase 7.5 — Funnel / analytics
 

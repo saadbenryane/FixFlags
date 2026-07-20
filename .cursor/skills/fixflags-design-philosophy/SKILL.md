@@ -44,7 +44,7 @@ When two options tie, pick the one with **less**.
 | 7 | **Flexibility & efficiency** | Defaults for novices, accelerators for pros. One-click copy fix prompts; keyboard focus order; sensible zero-config. | `FixPromptBlock`, `PromptCopyButton` |
 | 8 | **Aesthetic & minimalist design** | Every element competes for attention — so most shouldn't exist. Prefer whitespace over dividers, one accent over many. | All layouts; the 60-30-10 rule |
 | 9 | **Help users recognize & recover from errors** | Errors in human terms + a remedy. Never a raw stack trace; always "here's what to do next." | `AuditFailurePanel`, partial-report `Callout` |
-| 10 | **Help & documentation** | Searchable, task-oriented, close to the point of need. Contextual hints beat a separate manual. | `/docs`, inline tooltips, report section headers |
+| 10 | **Help & documentation** | Searchable, task-oriented, close to the point of need. Contextual hints beat a separate manual. | `/help`, `lib/help/contextual.ts`, inline tooltips, report section headers |
 
 **Review move:** for any new surface, walk these 10 in order and name which ones it satisfies and which it ignores on purpose.
 

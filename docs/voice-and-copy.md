@@ -19,12 +19,14 @@ This document preserves the operator voice principles from the design system spe
 - **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ only.
 - **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
 - **Quota truth:** Free = 3 new URL checks lifetime. Never say "unlimited deterministic checks." Re-checks stay unlimited.
+- **Help Center tone:** Calm, specific, task-first. Same voice as product errors. Chat SLA is one promise (`SUPPORT_CHAT` / `lib/help/sla.ts`). No “priority support” until it exists. CYA stays on privacy/FAQ, not Help heroes.
 
 **Related files:**
 - Business model & pricing: [`docs/business-model.md`](./business-model.md)
 - Brand & positioning: [`docs/brand-positioning.md`](./brand-positioning.md)
 - Product scope & philosophy: [`docs/offering.md`](./offering.md)
 - UI copy: [`lib/marketing/copy.ts`](../lib/marketing/copy.ts)
+- Help articles: [`lib/help/catalog.ts`](../lib/help/catalog.ts)
 - AI reviewer voice: [`lib/prompts/system-prompt.ts`](../lib/prompts/system-prompt.ts)
 
 ---

@@ -32,6 +32,7 @@
 | `components/` | React components (ui/, audit/, marketing/, layout/, etc.) |
 | `lib/` | Core logic (audit engine, queue, billing, graph, prompts, MCP) |
 | `lib/marketing/copy.ts` | **Single source of truth** for all marketing copy |
+| `lib/help/` | Help Center catalog, search, contextual hrefs, chat SLA |
 | `lib/design/tokens.css` | **Canonical design tokens** (colors, shadows, radii, type scale) |
 | `lib/audit/` | Audit pipeline (runner, checks, scoring, flow, judge, persist) |
 | `docs/audit-pipeline.md` | **Canonical audit pipeline reference** (triage, prescription, recovery) |
@@ -42,6 +43,7 @@
 | `prisma/schema.prisma` | Database schema (see AGENTS.md Project facts for model count) |
 | `scripts/` | CLI scripts (demo audits, backfills, guards) |
 | `worker/` | Standalone audit worker |
+| `knowledge/` | **Company knowledge base** (revenue model, execution plan, market & distribution, product architecture) |
 | `docs/` | Strategy, positioning, voice, growth docs |
 | `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) |
 | `docs/voice-and-copy.md` | Voice & copy guidelines (276 lines) |
@@ -186,6 +188,7 @@ Before claiming completion:
 | `SECURITY.md` | Security invariants, trust boundaries |
 | `DECISIONS.md` | Durable decisions with rationale |
 | `ROADMAP.md` | Now / Next / Later / Not planned |
+| `knowledge/` | **Company knowledge base** (revenue model, execution plan, market & distribution, product architecture) |
 | `.agents/README.md` | Multi-agent coordination system |
 | `.agents/BOARD.md` | Active task board |
 | `.agents/learnings/` | Validated project learnings |

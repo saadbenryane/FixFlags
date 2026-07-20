@@ -7,16 +7,30 @@ import { Textarea } from '@/components/ui/textarea'
 import { MessageBubble } from '@/components/support/MessageBubble'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { useSupportMessages } from '@/components/live-support/useSupportPolling'
+import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 
 export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
-  const { sessionId, setSessionId, auditId: contextAuditId } = useSupportContext()
+  const {
+    sessionId,
+    setSessionId,
+    auditId: contextAuditId,
+    panelOpen,
+    draftPrefill,
+    clearDraftPrefill,
+  } = useSupportContext()
   const resolvedAuditId = auditId ?? contextAuditId
-  const { panelOpen } = useSupportContext()
   const { data, mutate, error: pollError } = useSupportMessages(sessionId, panelOpen)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (draftPrefill) {
+      setDraft(draftPrefill)
+      clearDraftPrefill()
+    }
+  }, [draftPrefill, clearDraftPrefill])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -82,7 +96,7 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
         )}
         {!pollError && messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Ask us anything about FixFlags, your audit, or getting started.
+            {SUPPORT_CHAT.emptyState}
           </p>
         )}
         {messages.map((m) => {

@@ -160,7 +160,7 @@ Canonical setup: [`docs/stripe-setup.md`](../../docs/stripe-setup.md). Config he
 
 **Checkout:** hosted Stripe Checkout; `automatic_tax` + `billing_address_collection: 'required'`. Existing active sub → portal (409), never a second subscription.
 
-**Webhooks** (`app/api/webhooks/stripe/route.ts`): `customer.subscription.created|updated|deleted`, `invoice.payment_failed|payment_succeeded` (both re-run `processSubscription`), `checkout.session.completed|expired`, `charge.refunded`. Idempotent via `ProcessedStripeEvent`. `payment_failed` emails admin (`lib/billing/notify.ts`).
+**Webhooks** (`app/api/webhooks/stripe/route.ts`): `customer.subscription.created|updated|deleted`, `invoice.payment_failed|payment_succeeded` (both re-run `processSubscription`), `checkout.session.completed|expired`, `charge.refunded`. Idempotent via `ProcessedStripeEvent`. `payment_failed` emails admin **and** the user (`lib/billing/notify.ts`).
 
 **Post-checkout:** `DashboardCheckoutToast` polls `/api/me` until plan matches before celebrating. Credit packs: `/billing?credits=1`.
 
@@ -172,11 +172,20 @@ Canonical setup: [`docs/stripe-setup.md`](../../docs/stripe-setup.md). Config he
 
 **Tests:** `app/api/webhooks/stripe/__tests__/route.test.ts`, `lib/billing/__tests__/config.test.ts`.
 
+## Support / Help Center
+
+- **Help Center:** `/help` — catalog in `lib/help/catalog.ts`. Chrome strings: `HELP_CENTER`, `SUPPORT_CHAT` in `copy.ts`. SLA: `lib/help/sla.ts`.
+- **Chat:** `SupportProvider` in `SiteShell`; open via `openSupportChat({ prefill?, auditId? })`. Admin: `/admin/feedback`.
+- **Contextual hrefs:** `lib/help/contextual.ts` — wire every new error/limit/billing surface to an article + ask-support CTA.
+- **MCP docs:** canonical `/help/mcp`; `/docs/mcp` shares content, canonical URL points to `/help/mcp`.
+- **Do not** market priority/dedicated support. High-volume `CONTACT_PLAN` is email only (“Talk to us”).
+- **Do not** ship AI Fin replies until help retrieval exists (`onBeforeAgentReply` stays pass-through).
+
 ## MCP
 
 - HTTP only at `/api/mcp` with `x-api-key` header — **no** `@fixflags/mcp` npm package
 - Tool count lives in AGENTS.md Project facts only (`lib/mcp/tools.ts` `server.tool()`)
-- Docs/config in `MCP_DOCS` in `copy.ts`
+- Docs/config in `MCP_DOCS` in `copy.ts`; full guide UI via `components/help/McpGuideContent.tsx`
 - `pollAuditUntilDone()` for `waitForCompletion`; return final status, not stale `QUEUED`
 - Route aborts on client disconnect
 

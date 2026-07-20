@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { SUPPORT_WELCOME_MESSAGE } from '@/lib/help/sla'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 import { resolveLeadIdForSession } from '@/lib/live-support/resolve-lead-context'
 
@@ -58,7 +59,7 @@ export async function resumeOrCreateSession(input: {
     data: {
       sessionId: session.id,
       role: 'SYSTEM',
-      body: "You're chatting with the FixFlags team. We typically reply within a few hours.",
+      body: SUPPORT_WELCOME_MESSAGE,
     },
   })
 

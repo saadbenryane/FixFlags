@@ -15,7 +15,8 @@ export const FOOTER_COLUMNS = {
     { href: '/changelog', label: 'Changelog' },
   ],
   resources: [
-    { href: '/docs/mcp', label: 'Documentation' },
+    { href: '/help', label: 'Help Center' },
+    { href: '/help/mcp', label: 'MCP guide' },
     { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
     { href: '/samples', label: 'Sample report' },

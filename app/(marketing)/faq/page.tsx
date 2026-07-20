@@ -3,7 +3,8 @@ import { LandingSectionHeader } from '@/components/marketing/landing/LandingSect
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
-import { FAQ, FAQ_PAGE } from '@/lib/marketing/copy'
+import { TextLink } from '@/components/ui/text-link'
+import { FAQ, FAQ_PAGE, HELP_CENTER } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { faqPageSchema } from '@/lib/marketing/structured-data'
 
@@ -24,6 +25,10 @@ export default function FaqPage() {
             <div className="text-center">
               <LandingSectionHeader label="FAQ" headline={FAQ_PAGE.title} as="h1" />
               <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
+              <Body className="mt-2 text-sm text-muted-foreground">
+                Prefer step-by-step guides?{' '}
+                <TextLink href="/help">{HELP_CENTER.label}</TextLink>
+              </Body>
             </div>
 
             <FaqSection

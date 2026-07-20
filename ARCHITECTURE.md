@@ -16,7 +16,7 @@ Next.js 15 application (App Router) with:
 
 ```
 app/                     # Next.js App Router
-  (marketing)/           # Public: homepage, pricing, FAQ, tools, docs, changelog
+  (marketing)/           # Public: homepage, pricing, FAQ, Help Center, tools, docs, changelog
   (auth)/                # Auth pages: sign-in, sign-up, forgot/reset password
   (app)/                 # Authenticated: dashboard, billing, settings
   audit/[id]/            # Live audit report (polling, progressive)
@@ -41,7 +41,8 @@ components/              # React components
   demo/                  # Demo components
   compare/               # Comparison UI
   auth/                  # Auth forms
-  live-support/          # Chat widget
+  live-support/          # First-party chat widget + polling
+  help/                  # Help Center UI (search, categories, articles, MCP guide)
   brand/                 # Brand assets
   analytics/             # Conversion pixels
   system/                # System-level (providers, toasts)
@@ -52,16 +53,17 @@ lib/                     # Core logic
   graph/                 # Knowledge graph (internal)
   billing/               # Subscription limits, Stripe
   marketing/             # Copy, metadata, SEO, structured data
+  help/                  # Help Center catalog, search, contextual hrefs, SLA
   prompts/               # AI system prompts
   design/                # Design tokens, brand spec
   mcp/                   # Model Context Protocol
+  live-support/          # Chat sessions, messages, visitor tokens
   repo-scan/             # Codebase scanning
   storage/               # Screenshots (local/R2)
   auth/                  # Auth helpers (edge-safe)
   report/                # Report explorer model
   demo/                  # Demo fixtures
   email/                 # Email templates (Resend)
-  support/               # Live support
 
 worker/                  # Standalone worker entry point
 prisma/                  # Schema + migrations + seed
@@ -205,6 +207,14 @@ Internal-only system for organic growth. Never queried directly by public pages.
 ### Capture stack
 
 Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-session.ts`. Visual evidence: `lib/audit/capture/*` (GIF/overlay/side-by-side), persisted by `persist-visual-evidence.ts`. Funnel analytics: `lib/analytics/events.ts`.
+
+### Support and Help Center
+
+- **Help Center:** `/help` hub + `/help/[category]/[slug]` articles from `lib/help/catalog.ts`. Canonical MCP guide: `/help/mcp` (legacy `/docs/mcp` shares `McpGuideContent`, canonical URL points to `/help/mcp`).
+- **FAQ:** `/faq` remains a searchable FAQ projection (`FAQ` in copy.ts) with a link into Help.
+- **Live chat:** `SupportProvider` in `SiteShell` + FAB widget. APIs under `/api/support/*`. Admin inbox: `/admin/feedback`. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
+- **Escalation:** Help articles and stuck surfaces (`AuditFailurePanel`, limit gate, billing) call `openSupportChat` or deep-link to articles via `lib/help/contextual.ts`.
+- **Email:** `hello@fixflags.com` for legal/high-volume. Payment failure notifies admin + user (`lib/billing/notify.ts`).
 
 ### SaaS flow
 1. Anonymous user: triage + deterministic flags → upsell at sign up for fix prompts

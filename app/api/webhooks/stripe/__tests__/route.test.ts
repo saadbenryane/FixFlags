@@ -91,6 +91,7 @@ vi.mock('@/lib/billing/credits', () => ({
 
 vi.mock('@/lib/billing/notify', () => ({
   notifyAdminPaymentFailed: mockNotify,
+  notifyUserPaymentFailed: vi.fn(),
 }))
 
 vi.mock('@/lib/logger', () => ({

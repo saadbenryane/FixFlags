@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
+import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
 
 interface SiteShellProps {
@@ -41,7 +42,7 @@ export function SiteShell({
   const resolvedFooter = footer ?? (variant === 'marketing' ? 'default' : 'minimal')
   const resolvedBackdrop = backdrop ?? (variant === 'marketing' ? 'full' : 'minimal')
 
-  return (
+  const shell = (
     <div className="relative min-h-screen flex flex-col">
       {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}
       <div className="relative z-0 flex min-h-screen flex-col">
@@ -79,4 +80,7 @@ export function SiteShell({
       </div>
     </div>
   )
+
+  if (!showSupport) return shell
+  return <SupportProvider>{shell}</SupportProvider>
 }

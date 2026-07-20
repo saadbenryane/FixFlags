@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
@@ -54,6 +54,7 @@ import {
   JourneyReviewTimeline,
   type JourneyReviewSummary,
 } from '@/components/audit/JourneyReviewTimeline'
+import { isFirstReport, consumeFirstReport } from '@/lib/first-report'
 
 interface RubricRow {
   id: string
@@ -150,7 +151,6 @@ export function AuditReport({
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const fixPromptLocked = !showDeterministicFixes
   const aiPrescriptionLocked = !showPrescription
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
@@ -159,6 +159,21 @@ export function AuditReport({
   const showJourneyReview = !isSample && journeyReviews.length > 0
   const showFlow = !isSample && Boolean(audit.flowData)
   const showPreviews = !isSample && Boolean(audit.previewMeta)
+
+  const [firstReport, setFirstReport] = useState(false)
+  useEffect(() => {
+    setFirstReport(isFirstReport())
+  }, [])
+
+  useEffect(() => {
+    if (firstReport && !isLoggedIn && audit.flags.length > 0) {
+      consumeFirstReport()
+    }
+  }, [firstReport, isLoggedIn, audit.flags.length])
+
+  const anonFirstReportUnlocked = firstReport && !isLoggedIn
+  const fixPromptsAccessible = showDeterministicFixes || anonFirstReportUnlocked
+  const fixPromptLocked = !fixPromptsAccessible
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -250,7 +265,7 @@ export function AuditReport({
         </>
       )}
 
-      {!isSample && fixPromptLocked && (
+      {!isSample && fixPromptLocked && !firstReport && (
         <Card className="space-y-3 p-5 text-center sm:p-6">
           <div className="space-y-1">
             <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(audit.flags.length)}</p>
@@ -267,7 +282,7 @@ export function AuditReport({
         </Card>
       )}
 
-      {!isSample && explorerModel && hasFixPrompts && showPrescription && (
+      {!isSample && explorerModel && hasFixPrompts && (showPrescription || anonFirstReportUnlocked) && (
         <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -386,7 +401,7 @@ export function AuditReport({
         <LaunchGates checklist={audit.launchReadiness.checklist} />
       ) : null}
 
-      {!isSample && fixPromptLocked && sampleFixFlag && (
+      {!isSample && fixPromptLocked && !firstReport && sampleFixFlag && (
         <section id="report-sample-fix" className="scroll-mt-[var(--header-offset)]">
           <SampleFixCard
             flag={sampleFixFlag}
@@ -396,7 +411,7 @@ export function AuditReport({
         </section>
       )}
 
-      {!isSample && fixPromptLocked && (
+      {!isSample && fixPromptLocked && !firstReport && (
         <Card className="space-y-4 p-6 text-center sm:p-8">
           <div className="space-y-2">
             <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>

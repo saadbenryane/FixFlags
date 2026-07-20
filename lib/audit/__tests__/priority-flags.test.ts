@@ -118,7 +118,7 @@ describe('priority-flags', () => {
     assert.equal(buildPlanModePrompt([flag({ id: 'a', fix: undefined })], { url: 'https://x.com' }), '')
   })
 
-  it('buildPlanModePrompt wraps ranked fixes in a plan-mode instruction', () => {
+  it('buildPlanModePrompt wraps ranked fixes in plan-mode instructions with confidence keys', () => {
     const result = buildPlanModePrompt(
       [
         flag({ id: 'a', severity: 'POLISH', rubric: 'REACH', problem: 'Low', agentPrompt: 'Fix low', confidence: 0.4 }),
@@ -126,13 +126,16 @@ describe('priority-flags', () => {
       ],
       { url: 'https://acme.com' }
     )
-    // plan-mode framing + target url + issue count
-    assert.match(result, /plan mode/i)
+    // goal-loop structure + target url + issue count
+    assert.match(result, /## Mission/)
     assert.match(result, /https:\/\/acme\.com/)
     assert.match(result, /2 issues/)
+    // confidence keys section
+    assert.match(result, /Confidence keys/)
+    assert.match(result, /HIGH/)
     // CRITICAL is ranked before POLISH, and evidence + fix are included
     assert.ok(result.indexOf('Blocker') < result.indexOf('Low'))
-    assert.match(result, /\[CRITICAL · Message\] Blocker/)
+    assert.match(result, /\[CRITICAL · Message · HIGH\] Blocker/)
     assert.match(result, /Evidence: CTA is dead/)
     assert.match(result, /Fix: Fix blocker/)
     // no em dashes (product voice)
@@ -141,7 +144,7 @@ describe('priority-flags', () => {
 
   it('buildPlanModePrompt omits the target phrase when no url is given', () => {
     const result = buildPlanModePrompt([flag({ id: 'a', problem: 'Thing', agentPrompt: 'Fix thing' })])
-    assert.match(result, /found 1 issue to fix/)
+    assert.match(result, /Fix all 1 issue/)
     assert.equal(result.includes(' of '), false)
   })
 
