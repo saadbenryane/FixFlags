@@ -107,18 +107,25 @@ Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `a
 
 | Surface | Owns | Does not own |
 |---------|------|--------------|
-| `ReportExplorer` | Flag list, filters, detail panel, fix prompts, screenshot + visual evidence | Page chrome |
+| `AuditReportHero` | Hostname, URL, `ScoreDot`, capture callouts | Share status, score ring, sticky nav |
+| `ShareStatusBanner` | Share readiness + per-rubric status badges | Flag lists, hero identity |
 | `RubricBar` | Compact rubric score pills linking to `#report-flags` | Flag browsing |
-| `ShareStatusBanner` | Share readiness + per-rubric status badges | Flag lists |
-| `ReportStickyToolbar` | Section nav (Flags, Journey, Overview, Re-check) | Fix prompt editing |
+| `ReportExplorer` | Working score ring (`sm`), filters, flag list, detail panel, fix prompts, screenshot + visual evidence | Page chrome, share status |
+| `ReportStickyToolbar` | Section nav matching DOM (Contract, Priorities, Journey, Flow, Timeline, Flags, …); stuck hostname + `ScoreDot` | Fix prompt editing, Overview |
 
-Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`).
+Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`, Overview tab).
+
+**Density:** explorer score is always `ScoreRingGauge` `sm` (68px). No dead `lg` size. Filter header uses tight `gap-3` / `pb-3`.
+
+**Progressive parity:** `AuditPageClient` must pass `productContract` and enriched `partialFlags` (`checkId`, `source`) into `AuditReportProgressive`. Hide Action Timeline when empty. Status API selects `checkId` + `source` for truth labels mid-scan.
+
+**`aiEnhancementPending`:** pass `isLoggedIn && aiReviewPending` into the explorer (do not force `false` when prescription is unlocked).
 
 ## Product Contract, truth, and competitive boundary
 
-- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product.md`.
-- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel and Top Priorities (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page.
-- **Sticky nav:** Contract + Timeline tabs when those sections exist (`ReportStickyToolbar`).
+- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities on completed reports **and** on progressive when the status API has returned a contract. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product.md`.
+- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel and Top Priorities (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page and status partial flags.
+- **Sticky nav:** Contract + Priorities + Timeline tabs when those sections exist (`ReportStickyToolbar`). Tabs must match DOM order; no Overview destination.
 - **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. Full taxonomy (Accept / Intentional / Human review) is later; do not remove incorrect-feedback path.
 - **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + probes + Flags + re-check.
 - **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass). Roast strings live in `lib/marketing/copy.ts`.

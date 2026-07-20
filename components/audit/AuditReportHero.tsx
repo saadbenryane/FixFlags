@@ -5,10 +5,8 @@ import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { ScoreDot } from '@/components/ui/score-dot'
-import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
-import { shareStatusMessage } from '@/lib/audit/share-status'
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
@@ -18,7 +16,6 @@ type Props = {
   pageType?: string | null
   verdict?: string | null
   url: string
-  shareStatus: string
   screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
   screenshotPartial?: boolean
@@ -34,7 +31,6 @@ export function AuditReportHero({
   score = null,
   pageType,
   url,
-  shareStatus,
   screenshots,
   screenshotLimited = false,
   screenshotPartial = false,
@@ -45,11 +41,7 @@ export function AuditReportHero({
   actions,
 }: Props) {
   const isMinimal = variant === 'minimal'
-  const shareMessage = shareStatusMessage(shareStatus)
-  const isReady = shareStatus === 'good_to_share'
-
   const hostname = displayHostname(url)
-
   const firstScreenshot = screenshots?.[0]
   const durationSec = durationFromTimestamps(durationMs, startedAt, completedAt)
 
@@ -87,7 +79,12 @@ export function AuditReportHero({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <ScoreDot score={score} aria-label={score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'} />
+                <ScoreDot
+                  score={score}
+                  aria-label={
+                    score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'
+                  }
+                />
                 <h1 className="text-lg font-semibold tracking-heading text-foreground">{hostname}</h1>
                 {pageType ? (
                   <Badge variant="secondary" className="text-xs capitalize">
@@ -102,13 +99,6 @@ export function AuditReportHero({
                 {actions}
               </div>
             )}
-            {score != null && (
-              <ScoreRingGauge score={score} size="sm" className="shrink-0 sm:hidden" />
-            )}
-          </div>
-
-          <div className={isReady ? 'text-sm text-grade-A' : 'text-sm text-grade-C'}>
-            <p className="font-medium text-pretty">{shareMessage}</p>
           </div>
         </div>
       </div>

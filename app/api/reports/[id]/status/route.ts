@@ -60,7 +60,7 @@ export async function GET(
           orderBy: { name: 'asc' },
         },
         flags: {
-          select: { id: true, severity: true, problem: true, rubric: true },
+          select: { id: true, severity: true, problem: true, rubric: true, checkId: true, source: true },
           orderBy: { position: 'asc' },
           take: 20,
         },

@@ -47,6 +47,17 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 - One accent per surface. Do not layer multiple accent colors.
 - Grade colors (A-F) used only in report score contexts, not marketing.
 
+### Report altitude (score ownership)
+
+| Altitude | Surface | Score treatment |
+|----------|---------|-----------------|
+| Identity | `AuditReportHero` | `ScoreDot` only |
+| Rubric summary | `RubricBar` | Per-rubric numbers |
+| Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside filters |
+| Stuck chrome | `ReportStickyToolbar` when stuck | hostname + `ScoreDot` |
+
+Share status appears once (`ShareStatusBanner`). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
+
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
 ## Shapes and radius

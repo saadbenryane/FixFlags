@@ -42,11 +42,11 @@ export function SampleReportSection({ audit, illustrative = false }: SampleRepor
   const flagCount = report.flagCount
 
   return (
-    <Section spacing="marketing" id="sample-review" className="scroll-mt-[var(--header-offset)]">
+    <Section spacing="marketing" id="sample-review" className="scroll-mt-[var(--header-offset)] bg-muted/20">
       <SampleViewTracker placement="homepage" />
       <Container className="space-y-8 sm:space-y-11">
         <RevealOnView>
-          <LandingSectionHeader label={label} headline={headline} showLabel />
+          <LandingSectionHeader label={label} headline={headline} />
           <p className="mx-auto mt-3 max-w-2xl text-balance text-center text-base leading-relaxed text-muted-foreground">
             {body}
           </p>

@@ -1,4 +1,4 @@
-# lib/queue/ — BullMQ Queue
+# lib/queue/ - BullMQ Queue
 
 ## Responsibility
 Async job queue for audit processing. Manages job enqueue, worker processing, heartbeat monitoring, stuck-audit recovery, and Redis connection.

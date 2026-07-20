@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
 import { setActiveAudit } from '@/lib/audit/active-audit'
-import { getScanningLabel } from '@/lib/audit/progress-ui'
 import { formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 
@@ -32,9 +31,32 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })
 
-  it('labels the scan with the current pipeline stage', () => {
+  it('shows capturing progress without a FixLoop stage label', () => {
     render(<AuditReportProgressive status="CAPTURING" url={URL} />)
-    expect(screen.getByText(getScanningLabel('CAPTURING', 0))).toBeInTheDocument()
+    expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText(/Scanning/i)).toBeInTheDocument()
+  })
+
+  it('renders product contract when provided', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        url={URL}
+        productContract={{
+          purpose: 'Help teams ship',
+          firstValueJourney: 'Paste URL, get Flags',
+          criticalOutcomes: ['Clear CTA'],
+          source: 'heuristic',
+          inferredAt: new Date().toISOString(),
+        }}
+      />
+    )
+    expect(screen.getByText(/Help teams ship/i)).toBeInTheDocument()
+  })
+
+  it('hides the action timeline when there are no events', () => {
+    render(<AuditReportProgressive status="CAPTURING" url={URL} actionTimeline={[]} />)
+    expect(screen.queryByText('What FixFlags is doing')).not.toBeInTheDocument()
   })
 
   it('streams partial flags into the explorer as they are found', async () => {

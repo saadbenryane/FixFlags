@@ -33,7 +33,6 @@ export default async function SamplesPage() {
 
       <AuditReport
         audit={{
-          pageJob: sample.audit.pageJob,
           pageType: sample.audit.pageType,
           verdict: sample.audit.verdict,
           score: sample.audit.score,

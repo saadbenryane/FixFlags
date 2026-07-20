@@ -1,8 +1,13 @@
 import { PageMetadata } from '../metadata'
+import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import { DeterministicFlag } from './index'
 
-export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runContentChecks(
+  meta: PageMetadata,
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const productPage = isProductPage(purpose.purpose)
 
   if (meta.h1s.length > 0) {
     const h1 = meta.h1s[0]
@@ -35,7 +40,11 @@ export function runContentChecks(meta: PageMetadata): DeterministicFlag[] {
     }
   }
 
-  if (meta.ctaTexts.length === 0) {
+  // "No CTA" only matters on a real marketing/product page. Placeholder
+  // domains, docs, articles, and OSS project pages legitimately have no
+  // conversion CTA, and flagging them pollutes the report with non-actionable
+  // IMPORTANT findings above real issues.
+  if (productPage && meta.ctaTexts.length === 0) {
     findings.push({
       checkId: 'no-cta-detected',
       rubric: 'MESSAGE',

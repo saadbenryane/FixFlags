@@ -180,6 +180,8 @@ export interface PartialExplorerFlag {
   severity: string
   problem: string
   rubric: string
+  checkId?: string | null
+  source?: string | null
 }
 
 /** Build explorer model from in-progress status payload; null when no flags yet. */
@@ -196,10 +198,11 @@ export function buildPartialExplorerModel(input: {
 
   const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
     id: flag.id,
-    checkId: null,
+    checkId: flag.checkId ?? null,
     rubric: flag.rubric,
     severity: flag.severity,
     problem: flag.problem,
+    source: flag.source ?? 'DETERMINISTIC',
   }))
 
   const rubricRows = RUBRIC_ORDER.map((name) => {

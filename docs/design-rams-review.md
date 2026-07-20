@@ -36,7 +36,7 @@ The gap this review found is not in the principles. It is in principle 8: execut
 
 **For FixFlags:** usefulness is measured at the fix prompt. A flag the user cannot act on is decoration. Rams includes psychological criteria in usefulness: the ~60s audit wait and the report's first screen carry most of the product's perceived value.
 
-**Assessment:** the report page is structured around action (Top Priorities with compact fix prompts, then the explorer). The weakest usefulness surfaces were the least-tested ones: empty, error, and progress states (`ROADMAP.md` had Touch-tier coverage at ~10%). This review added component tests for all of them so they cannot silently regress.
+**Assessment:** the report page is structured around action (Top Priorities with compact fix prompts, then the explorer). Report altitude is deliberate: hero identity (`ScoreDot`), explorer working score (`sm` ring), sticky hostname when stuck — not three competing score dashboards. Share status and status callouts each appear once. The weakest usefulness surfaces were the least-tested ones: empty, error, and progress states (`ROADMAP.md` had Touch-tier coverage at ~10%). This review added component tests for all of them so they cannot silently regress.
 
 ### 3. Good design is aesthetic
 

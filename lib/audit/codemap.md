@@ -1,4 +1,4 @@
-# lib/audit/ — Audit Engine
+# lib/audit/ - Audit Engine
 
 ## Responsibility
 Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, scoring, flag persistence, report data shaping.
@@ -17,40 +17,40 @@ Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, 
 ## Key Subsystems
 
 ### Browser Capture (`browser/`)
-- `page-session.ts` — Playwright page lifecycle (launch, navigate, collect)
-- `screenshot.ts` — Screenshot capture + storage (R2 or local)
-- `journey-safety.ts` — Form probe safety (payment/download blocking)
+- `page-session.ts` - Playwright page lifecycle (launch, navigate, collect)
+- `screenshot.ts` - Screenshot capture + storage (R2 or local)
+- `journey-safety.ts` - Form probe safety (payment/download blocking)
 
 ### Check Modules (`checks/`)
 22 modules, each a `run*Checks()` function. Registered in `checks/index.ts` barrel.
 Key modules: metadata, performance, accessibility, SEO, trust, mobile, content, security, visual-polish, messaging-clarity, conversion-friction.
 
 ### AI Judge (`judge*.ts`, `prompts/`)
-- `judge-triage.ts` — Inline triage (2500 chars pageText, all scans)
-- `judge-prescription.ts` — Async prescription (5000 chars, post-signup, gated by credits)
-- `judge-config.ts` — Model resolution (OpenAI primary, Anthropic fallback)
-- `validate-triage-output.ts` / `validate-judge-output.ts` — Zod schema validation
+- `judge-triage.ts` - Inline triage (2500 chars pageText, all scans)
+- `judge-prescription.ts` - Async prescription (5000 chars, post-signup, gated by credits)
+- `judge-config.ts` - Model resolution (OpenAI primary, Anthropic fallback)
+- `validate-triage-output.ts` / `validate-judge-output.ts` - Zod schema validation
 
 ### Scoring & Flags
-- `scoring.ts` — Rubric score calculation (Message, Experience, Reach)
-- `rubric.ts` — Rubric definitions
-- `check-ids.ts` — 158 fine-grained check IDs
-- `priority-flags.ts` — Flag prioritization for Top Priorities section
-- `deduplicate.ts` — `suppressOverlappingFlags()` (drops broader flag when specific sibling exists)
+- `scoring.ts` - Rubric score calculation (Message, Experience, Reach)
+- `rubric.ts` - Rubric definitions
+- `check-ids.ts` - 158 fine-grained check IDs
+- `priority-flags.ts` - Flag prioritization for Top Priorities section
+- `deduplicate.ts` - `suppressOverlappingFlags()` (drops broader flag when specific sibling exists)
 
 ### Report Data
-- `build-report-shape.ts` — Shapes audit data for report UI
-- `flow-data.ts` — Flow/journey data for report
-- `product-contract.ts` — Inferred product intent
-- `preview-meta.ts` — Screenshot preview metadata
-- `launch-readiness.ts` — Launch gate evaluation
+- `build-report-shape.ts` - Shapes audit data for report UI
+- `flow-data.ts` - Flow/journey data for report
+- `product-contract.ts` - Inferred product intent
+- `preview-meta.ts` - Screenshot preview metadata
+- `launch-readiness.ts` - Launch gate evaluation
 
 ### Pipeline Support
-- `pipeline-config.ts` — Pipeline version + stage definitions
-- `pipeline-errors.ts` — Error classification
-- `pipeline-log.ts` — Structured logging
-- `stuck-audit-recovery.ts` — Recovery for stalled audits
-- `recover-audit-job.ts` — Re-enqueue stuck jobs
+- `pipeline-config.ts` - Pipeline version + stage definitions
+- `pipeline-errors.ts` - Error classification
+- `pipeline-log.ts` - Structured logging
+- `stuck-audit-recovery.ts` - Recovery for stalled audits
+- `recover-audit-job.ts` - Re-enqueue stuck jobs
 
 ## Integration Points
 - **Queue:** Enqueued by `lib/queue/client.ts`, processed by `lib/queue/inline-worker.ts` or `worker/index.ts`

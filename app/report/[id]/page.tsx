@@ -279,7 +279,6 @@ export default async function ReportPage({ params }: Props) {
     }))
 
     const reportAudit = {
-      pageJob: audit.pageJob,
       pageType: audit.pageType,
       verdict: audit.verdict,
       score: audit.score,
@@ -292,7 +291,6 @@ export default async function ReportPage({ params }: Props) {
       shareStatus: audit.shareStatus,
       launchReadiness: audit.launchReadiness,
       reportCompleteness: audit.reportCompleteness,
-      evidenceCoverage: audit.evidenceCoverage,
       pipelineVersion: audit.pipelineVersion,
       pipelineLog: audit.pipelineLog,
       startedAt: audit.startedAt,

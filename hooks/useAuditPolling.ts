@@ -35,7 +35,14 @@ export interface AuditStatusPayload {
   rubrics?: Array<{ name: string; grade: string; score: number | null; status?: string | null }>
   flagCount?: number
   shareStatus?: string
-  partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
+  partialFlags?: Array<{
+    id: string
+    severity: string
+    problem: string
+    rubric: string
+    checkId?: string | null
+    source?: string | null
+  }>
   actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
   productContract?: import('@/lib/audit/product-contract').ProductContract | null
 }

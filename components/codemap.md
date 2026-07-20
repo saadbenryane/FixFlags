@@ -1,4 +1,4 @@
-# components/ — React Components
+# components/ - React Components
 
 ## Responsibility
 React components organized by feature area. Shared primitives in `ui/`, feature-specific components in dedicated directories.
@@ -6,8 +6,8 @@ React components organized by feature area. Shared primitives in `ui/`, feature-
 ## Key Subdirectories
 | Directory | Purpose |
 |-----------|---------|
-| `ui/` | 33+ shadcn/ui primitives (Button, Card, Dialog, etc.) — shared across all features |
-| `audit/` | Report page layout (hero, toolbar, rubrics, actions) — 48 components |
+| `ui/` | 33+ shadcn/ui primitives (Button, Card, Dialog, etc.) - shared across all features |
+| `audit/` | Report page layout (hero, toolbar, rubrics, actions) - 48 components |
 | `report/` | Flag interaction (explorer, detail panel, fix loop, scoring) |
 | `marketing/` | Marketing page components (landing, features, testimonials) |
 | `layout/` | Layout components (header, footer, navigation) |

@@ -144,7 +144,7 @@ Full research methods: [research-workflows.md](research-workflows.md).
 |---------|------------------|---------------------------|
 | **Homepage hero** | Check before you ship | Live site — see what to fix first |
 | **Homepage nav** | How it works / Sample / Pricing | Same three links; Sample anchors to `#sample-review` |
-| **Homepage body** | Sample review (one explorer) → dimensions → fix loop → productEvidence → final CTA | Same order; exactly one report explorer in Sample review; no invented testimonials |
+| **Homepage body** | Sample review (one explorer) → fix loop → everything we check → deeper Flag examples → why AI → editor integrations → final CTA | Same order; exactly one report explorer in Sample review; no invented testimonials |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
@@ -164,9 +164,10 @@ Full research methods: [research-workflows.md](research-workflows.md).
 ## Homepage contract
 
 - **Nav links:** How it works · Sample · Pricing (`MARKETING_LINKS` in `lib/site/nav.ts`)
-- **Section order:** Hero (logo cloud inside) → Sample review → Three dimensions → Fix loop → Product evidence (`ProductEvidenceSection`) → Final CTA
+- **Section order:** Hero → Sample review → Fix loop → Everything we check → Deeper Flag examples → Why AI needs FixFlags → Editor integrations → Final CTA
 - **Funnel events:** see `.cursor/skills/fixflags-analytics/SKILL.md` and `.agents/handoffs/launch-funnel-p2.md` (P2 gated on ~100 scans)
-- **One explorer:** the live sample report lives only in `SampleReportSection`; do not add a second explorer in hero or elsewhere
+- **One explorer:** the live sample report lives only in `SampleReportSection`; do not add a second explorer in hero or elsewhere. Deeper examples are static Flag cards, not a second explorer.
+- **Editor logos:** `EditorIntegrationsSection` / `EditorToolMarks`, not the hero
 - **Sample provenance:** label as live, curated, or fixture (`SampleSource`); eligibility is completeness-based, not score floors
 
 ## Product–copy alignment

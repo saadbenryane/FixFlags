@@ -38,6 +38,13 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 
 ## Upgrade checklist (in order)
 
+### Report density (when touching audit/report UI)
+- [ ] Read [fixflags-design-philosophy](../fixflags-design-philosophy/SKILL.md) report density doctrine
+- [ ] Explorer score ring is `sm` (68px); header `gap-3` / `pb-3`
+- [ ] One share-status surface (`ShareStatusBanner`); hero is identity + `ScoreDot` only
+- [ ] Sticky tabs match DOM; no Overview; Priorities when Top Priorities exist
+- [ ] No FixLoop status row / duplicate count under filters
+
 ### Typography
 - [ ] Marketing heroes: `Heading as="h1"` or `h2`
 - [ ] App/admin: `PageHeader` only

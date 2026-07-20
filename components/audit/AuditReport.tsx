@@ -16,7 +16,7 @@ import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
-import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_CLAIM_GUIDE, ANON_VALUE_STRIP } from '@/lib/marketing/copy'
+import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_VALUE_STRIP } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
@@ -70,7 +70,6 @@ interface RubricRow {
 
 interface AuditReportProps {
   audit: {
-    pageJob: string | null
     pageType: string | null
     verdict: string | null
     score: number | null
@@ -83,7 +82,6 @@ interface AuditReportProps {
     shareStatus: string
     launchReadiness?: LaunchReadinessData | null
     reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
-    evidenceCoverage?: unknown
     pipelineVersion?: string | null
     pipelineLog?: PipelineLogEvent[] | null
     startedAt?: string | Date | null
@@ -155,7 +153,6 @@ export function AuditReport({
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const aiPrescriptionLocked = !showPrescription
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
@@ -190,13 +187,11 @@ export function AuditReport({
         })
       : null
 
-  const showOverview =
+  const showStatusCallouts =
     !isSample &&
-    (aiReviewPending ||
-      triageDegraded ||
-      prescriptionFailed ||
-      audit.reportCompleteness !== 'FULL' ||
-      !isViewerOwner)
+    (aiReviewPending || triageDegraded || prescriptionFailed || audit.reportCompleteness !== 'FULL')
+
+  const showPriorities = !isSample && Boolean(explorerModel) && hasFixPrompts && showPrescription
 
   return (
     <Container
@@ -209,7 +204,6 @@ export function AuditReport({
         pageType={audit.pageType}
         verdict={audit.verdict}
         url={audit.url}
-        shareStatus={audit.shareStatus}
         screenshotLimited={screenshotLimited}
         screenshotPartial={screenshotPartial}
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
@@ -226,8 +220,8 @@ export function AuditReport({
       {!isSample && (
         <>
           <ReportStickyToolbar
-            showOverview={showOverview}
             showContract={showContract}
+            showPriorities={showPriorities}
             showJourney={showJourney || showJourneyReview}
             showFlow={showFlow}
             showTimeline={showTimeline}
@@ -244,6 +238,36 @@ export function AuditReport({
             <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
               {userVerdict}
             </blockquote>
+          ) : null}
+
+          {showStatusCallouts ? (
+            <div className="space-y-3 sm:space-y-4">
+              {aiReviewPending && (
+                <Callout variant="info" title={REPORT_COPY.aiPending.title}>
+                  {REPORT_COPY.aiPending.body}
+                </Callout>
+              )}
+
+              {prescriptionFailed && (
+                <Callout variant="warning" title="Fix prompts unavailable">
+                  {AUDIT_ERRORS.partialAiReview}
+                </Callout>
+              )}
+
+              {triageDegraded && (
+                <Callout variant="warning" title="AI summary unavailable">
+                  {failureCode === 'AI_PROVIDER_NOT_CONFIGURED'
+                    ? AUDIT_ERRORS.triageProviderNotConfigured
+                    : (audit.verdict ?? AUDIT_ERRORS.partialReport)}
+                </Callout>
+              )}
+
+              {audit.reportCompleteness !== 'FULL' && !triageDegraded && (
+                <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
+                  {REPORT_COPY.partialReport.body}
+                </Callout>
+              )}
+            </div>
           ) : null}
 
           {recheckDiff ? (
@@ -399,9 +423,8 @@ export function AuditReport({
             model={explorerModel}
             showFeedback={showFeedback}
             aiLocked={fixPromptLocked}
-            aiEnhancementPending={!aiPrescriptionLocked ? false : isLoggedIn && aiReviewPending}
+            aiEnhancementPending={isLoggedIn && aiReviewPending}
             signUpHref={signUpHref}
-            hasFixPrompts={showDeterministicFixes && hasFixPrompts}
             defaultSeverityFilter={
               audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
             }
@@ -431,63 +454,6 @@ export function AuditReport({
             signUpHref={signUpHref}
           />
         </section>
-      )}
-
-      {!isSample && fixPromptLocked && (
-        <Card className="space-y-4 p-6 text-center sm:p-8">
-          <div className="space-y-2">
-            <CardTitle>{ANON_CLAIM_GUIDE.headline}</CardTitle>
-            <p className="text-sm text-muted-foreground text-pretty">{ANON_CLAIM_GUIDE.body}</p>
-          </div>
-          <ol className="mx-auto max-w-md space-y-2 text-left text-sm text-foreground">
-            {ANON_CLAIM_GUIDE.steps.map((step, index) => (
-              <li key={step} className="flex gap-3">
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {index + 1}.
-                </span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="flex flex-wrap justify-center gap-3">
-            <ReportSignupCta href={signUpHref} from="claim_guide">
-              {ANON_CLAIM_GUIDE.primaryCta}
-            </ReportSignupCta>
-            <Button variant="outline" asChild>
-              <Link href="/pricing">{UPSELLS.anon.secondaryCta}</Link>
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {showOverview && (
-        <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-4 sm:space-y-5">
-          {aiReviewPending && (
-            <Callout variant="info" title={REPORT_COPY.aiPending.title}>
-              {REPORT_COPY.aiPending.body}
-            </Callout>
-          )}
-
-          {prescriptionFailed && (
-            <Callout variant="warning" title="Fix prompts unavailable">
-              {AUDIT_ERRORS.partialAiReview}
-            </Callout>
-          )}
-
-          {triageDegraded && (
-            <Callout variant="warning" title="AI summary unavailable">
-              {failureCode === 'AI_PROVIDER_NOT_CONFIGURED'
-                ? AUDIT_ERRORS.triageProviderNotConfigured
-                : (audit.verdict ?? AUDIT_ERRORS.partialReport)}
-            </Callout>
-          )}
-
-          {audit.reportCompleteness !== 'FULL' && !triageDegraded && (
-            <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
-              {REPORT_COPY.partialReport.body}
-            </Callout>
-          )}
-        </div>
       )}
 
       <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">

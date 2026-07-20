@@ -28,6 +28,7 @@
 
 | Path | What |
 |------|------|
+| `CODEMAP.md` | **Repository atlas** (entry points, directory map, "Where To Change Things") |
 | `app/` | Next.js App Router (marketing, auth, app, audit, admin routes) |
 | `components/` | React components (ui/, audit/, marketing/, layout/, etc.) |
 | `lib/` | Core logic (audit engine, queue, billing, graph, prompts, MCP) |
@@ -72,6 +73,11 @@
 | `npm run worker:build` | Worker TypeScript build |
 | `docker build -t fixflags:local .` | Required before push when `Dockerfile`, `package.json`, `package-lock.json`, or `.npmrc` change (Railway uses Dockerfile) |
 | `npm run verify` | All checks: validate + migrate status + drift + typecheck + lint + guards + test + build |
+| `npm run validate:quick` | Changed-file-aware: lint changed TS + typecheck (fast feedback) |
+| `npm run validate:affected` | Changed-file-aware: typecheck + lint + affected tests + guards |
+| `npm run validate:full` | Full workspace validation (same as `verify` minus DB checks) |
+| `npm run lint:changed` | Lint only changed TypeScript files |
+| `npm run test:scripts` | Tests for repository automation scripts |
 | `npm run demo:audit:offline` | Demo fixture audit (CLI, no server) |
 | `npm run demo:audit:flow` | Flow audit on demo fixture |
 | `npm run db:migrate` | Prisma migrate dev |
@@ -88,8 +94,8 @@
 - **Marketing copy** lives in `lib/marketing/copy.ts` only — never hardcoded in components.
 - **Banned marketing phrases:** "second pass", "flag it" (as punchline), "Ship tonight", "Fix my live site", "Start in 60 seconds", unlock, 10x, game-changing, world-class, comprehensive, robust, leverage, holistic.
 - **No em dashes** anywhere in copy. Use periods, commas, or colons.
-- **Homepage section order:** Hero (`LandingHeroSection` + editor logo cloud) → Sample review (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`) → Three dimensions (`CheckDimensionsSection`) → Fix loop (`HowItWorksLoopSection`) → Product evidence (`ProductEvidenceSection`, not invented testimonials) → Final CTA. Exactly one report explorer. Hero copy changes only when explicitly requested.
-- **Social proof:** Use `LANDING_PAGE.productEvidence` (real product output). Do not invent member counts or quote cards; `LANDING_PAGE.testimonials.quotes` stays empty until authentic quotes exist.
+- **Homepage section order:** Hero (`LandingHeroSection`) → Sample review (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`) → Fix loop (`HowItWorksLoopSection`) → Everything we check (`CheckDimensionsSection`) → Deeper Flag examples (`ReportExamplesSection`) → Why AI needs FixFlags (`WhyAiNeedsFixFlagsSection`) → Editor integrations (`EditorIntegrationsSection`) → Final CTA. Exactly one report explorer. Hero copy changes only when explicitly requested. Editor logos live in integrations, not the hero.
+- **Social proof:** Use real product Flag output (`reportExamples`, sample explorer). Do not invent member counts or quote cards; `LANDING_PAGE.testimonials.quotes` stays empty until authentic quotes exist. `productEvidence` remains in copy for the empty-testimonials invariant but is not rendered on the homepage.
 - **Browser automation:** Playwright only for audit capture (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`). Do not reintroduce Puppeteer on the audit path.
 - **No Scout-clone chat on the audit path.** Live proof is a structured **action timeline** (capture/flow/journey steps), not a conversational "check anything else" agent. Follow-ups are re-check + MCP.
 - **Network evidence:** Same-origin XHR/fetch failures persist under `performanceData.networkFailures` and feed deterministic Flags. Journey `networkErrors` must be populated when collected.
@@ -117,8 +123,10 @@
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
 - **`/post-login` is the single post-auth landing** for OAuth AND email flows: it claims anonymous audits (`useMe({claim:true})`, sets `includeAi`), then runs checkout/`next` navigation. Never navigate straight to `next` after auth: that skips the claim and leaves reports locked.
 - **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has severity badge, rubric label, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
-- **Report UI — section order:** Hero → rubrics → Product Contract (when present) → Top Priorities → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → Re-check. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
-- **Report UI — sticky toolbar:** `ReportStickyToolbar` section nav (Overview when needed, Contract when productContract exists, Journey when multi-page, Flow when flowData exists, Timeline when actionTimeline exists, Flags, Previews when previewMeta exists, Launch when gates exist, Re-check for owners). Fix prompts live in the explorer and Top Priorities, not a separate nav tab. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Report UI — section order:** Hero → ShareStatusBanner → RubricBar → sticky toolbar → verdict → status callouts (AI pending / partial / degraded) → Product Contract → Top Priorities → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → SampleFixCard (anon) → Re-check / footer. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
+- **Report UI — sticky toolbar:** `ReportStickyToolbar` sits under the site header (`top-[var(--header-height)]`). Section nav matches DOM: Contract, Priorities (when Top Priorities exist), Journey, Flow, Timeline, Flags, Previews, Launch, Re-check. No Overview tab — status callouts are not a nav destination. Fix prompts live in the explorer and Top Priorities. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Report score ownership:** Hero = identity + `ScoreDot` only. RubricBar = per-rubric. Explorer = `ScoreRingGauge` `sm` + filters. Sticky-when-stuck = hostname + `ScoreDot`. Share status = `ShareStatusBanner` only (never duplicate in hero).
+- **Anon report CTAs:** value strip + `SampleFixCard` only (no separate claim-guide card).
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
 - **Anonymous wedge:** Exactly **1** teaser scan without account (triage: scores, Flags, evidence; fix prompts stripped). Gate lives in `createAndEnqueueAudit` (`checkAnonymousAuditAllowed` + `trackAnonymousAuditId` + optional `clientId` IP soft ceiling). Second new URL → signup. Auth → `/post-login` claim → prescription. Claimed teaser **counts as 1** of Free's 3 lifetime new URL checks. Public APIs (report, `/api/v1/score`) never return unstripped prompts for anon. Lead URLs persist on `Audit` + `Lead` (`/admin/leads`).
 - **If increasing AI pageText**, change **both**: `lib/audit/page-text-limits.ts` (storage + prompt limits) and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` (prompt slice).

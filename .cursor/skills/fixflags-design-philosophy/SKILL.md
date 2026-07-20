@@ -74,7 +74,13 @@ The report is read in this emotional arc — design to it:
 4. **Act (the end)** — copy-paste fix prompts. The most valuable pixels on the site; make copying frictionless and the result obviously useful.
 5. **Trust** — pipeline proof, partial-data honesty. We never infer what we didn't measure; ungraded > guessed.
 
-**Surface ownership:** `ReportExplorer` owns flag browsing (master-detail, filters, fix prompts). `RubricsPanel` is summary/link-only — it links into the explorer, not a second flag browser.
+**Surface ownership:** `ReportExplorer` owns flag browsing (master-detail, filters, fix prompts). `RubricBar` is summary/link-only — it links into the explorer, not a second flag browser. Hero owns identity (`ScoreDot`), not a second score ring. Share status lives only in `ShareStatusBanner`.
+
+**Density (report Flags header):**
+- Working score ring is always `sm` (68px) beside filters — never `md`/`lg` in the explorer.
+- No "Scanned · page type" status row, no "Top fix · Copy fix prompt" summary, no duplicate flag-count badge under filters (counts live in filter pills).
+- Sticky toolbar offsets under site header (`--header-height`). Sticky tabs must match DOM sections; status callouts are not an Overview tab.
+- Anon conversion: one value strip + `SampleFixCard` — do not stack a third claim-guide card.
 
 Rules:
 - Numbers (scores, grades, counts) are `font-mono tabular-nums` so they don't jitter.
@@ -121,6 +127,7 @@ This philosophy is versioned on purpose.
 
 ### Changelog
 
+- **v1.6 (Jul 2026)** — Report density: explorer score `sm`; sticky under `--header-height`; Overview tab removed (callouts after toolbar); Priorities in sticky; share status / score ownership one surface each; progressive gets `productContract` + truth-capable partial flags.
 - **v1.5 (Jul 2026)** — Report surface cleanup: `ReportExplorer` owns flag browsing; `RubricsPanel` summary-only; removed `ReportMiniNav`/`CompletenessHeader`; homepage nav How it works / Sample / Pricing; primary CTA **Review my site**; re-checks free and unlimited.
 - **v1.4 (Jun 2026)** — Landing language refinement: removed How-to-Start toggle and evidence section; logo cloud below hero; dimension cards restore checklists + example findings; outcome-led final CTA; concentric nested fix prompts via `FixPromptBlock nested`.
 - **v1.3 (Jun 2026)** — Landing conversion restructure: one hero report, grades+loop two-column section, slim dimension cards with proof examples, evidence screenshots, honest social proof strip; cut synthetic before/after impact section.

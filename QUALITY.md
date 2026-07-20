@@ -46,6 +46,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | ⚠️ CRITICAL | Every state (QUEUED, CAPTURING, COMPLETED, FAILED) produces correct UI | Manual testing |
+| Report density + sticky sync | ⚠️ CRITICAL | Explorer score `sm`; sticky under header; tabs match DOM (no Overview; Priorities when present); one share-status surface; anon ≤2 CTAs | Manual smoke checklist below |
 | Empty states | ⚠️ CRITICAL | No scans, no flags, deleted audit — helpful prompts, not errors | Manual testing |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior. Text tested. Component untested. | Partial |
 | Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px | No responsive tests |
@@ -81,6 +82,16 @@ All five now have automated coverage, run in CI via `npm run test:unit`:
 
 Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; extend route contract tests to the remaining API endpoints.
 
+## Report density smoke (manual CRITICAL)
+
+Until automated Touch-tier tests cover report chrome:
+
+1. Completed report: explorer ring is small (~68px); filters sit close under score; no "Scanned · …" / "Top fix · …" row; no Overview sticky tab; Priorities tab when Top Priorities exist.
+2. Sticky toolbar sits under site header; section jump clears both.
+3. Share status appears once (banner, not hero). Hero has `ScoreDot`, not a second ring.
+4. Anon locked report: value strip + SampleFixCard only (no claim-guide card).
+5. Progressive: Product Contract when status returns it; Action Timeline hidden when empty; COMPLETED triggers `router.refresh()` to full `AuditReport`.
+
 ## Completion standard
 
 Completion requires evidence, not confidence. Before claiming work:
@@ -91,3 +102,4 @@ Completion requires evidence, not confidence. Before claiming work:
 - [ ] Verify actual behavior (not just test pass)
 - [ ] Check edge cases, responsive states, loading/empty/error states
 - [ ] Confirm no secrets written, no fake data, no hardcoded answers
+- [ ] Report UI: run density smoke checklist when touching report chrome

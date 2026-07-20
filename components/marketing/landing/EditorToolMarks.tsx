@@ -12,14 +12,22 @@ const LOGO_MARKS: Record<ToolLogoName, ReactNode> = Object.fromEntries(
 interface EditorToolMarksProps {
   className?: string
   compact?: boolean
+  /** When false, hide the logoCloud label (section header already names the tools). */
+  showLabel?: boolean
 }
 
-export function EditorToolMarks({ className, compact = false }: EditorToolMarksProps) {
+export function EditorToolMarks({
+  className,
+  compact = false,
+  showLabel = true,
+}: EditorToolMarksProps) {
   const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
 
   return (
     <div className={cn('space-y-3', className)}>
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      {showLabel ? (
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      ) : null}
       <ul
         className={cn(
           'flex flex-wrap items-center gap-x-6 gap-y-3',

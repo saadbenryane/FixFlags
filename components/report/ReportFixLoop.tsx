@@ -23,7 +23,6 @@ export type ReportFixLoopProps = {
   flagCount?: number
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
-  hasFixPrompts?: boolean
   defaultExpanded?: boolean
   compact?: boolean
   /** Audit still running: empty-state copy prefers scanning language. */

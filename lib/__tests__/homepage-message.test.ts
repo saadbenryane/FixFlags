@@ -247,30 +247,32 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('product evidence replaces invented testimonials', () => {
-    assert.match(LANDING_PAGE.productEvidence.headline, /review actually catches/i)
-    assert.match(LANDING_PAGE.productEvidence.subhead, /real Flags from the product/i)
-    assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
+  it('empty testimonials invariant holds without inventing quotes', () => {
     assert.match(LANDING_PAGE.testimonials.disclaimer, /not attributed/i)
     assert.equal(LANDING_PAGE.testimonials.quotes.length, 0)
+    assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
   })
 
-  it('product evidence cards use lead plus three Flag-shaped findings', () => {
-    const dimensionChecks = new Set<string>(
-      LANDING_PAGE.checkDimensions.cards.flatMap((card) => [...card.checks]),
-    )
-    for (const item of LANDING_PAGE.productEvidence.items) {
-      assert.ok(item.lead.length > 0)
-      assert.equal(item.findings.length, 3)
-      for (const finding of item.findings) {
-        assert.ok(finding.length > 0)
-        assert.ok(!dimensionChecks.has(finding))
-      }
+  it('report examples are Flag-shaped product findings', () => {
+    assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)
+    const topics = LANDING_PAGE.reportExamples.cards.map((c) => c.topic)
+    assert.ok(topics.some((t) => /messaging/i.test(t)))
+    assert.ok(topics.some((t) => /mobile/i.test(t)))
+    assert.ok(topics.some((t) => /accessibility/i.test(t)))
+    assert.ok(topics.some((t) => /seo|sharing/i.test(t)))
+    for (const card of LANDING_PAGE.reportExamples.cards) {
+      assert.ok(card.problem.length > 0)
+      assert.ok(card.evidence.length > 0)
+      assert.ok(['MESSAGE', 'EXPERIENCE', 'REACH'].includes(card.rubric))
+      assert.ok(['CRITICAL', 'IMPORTANT', 'POLISH'].includes(card.severity))
     }
-    const reach = LANDING_PAGE.productEvidence.items.find((item) => item.id === 'reach')
-    assert.ok(reach)
-    assert.match(reach!.lead, /brand|look like you/i)
-    assert.ok(reach!.findings.some((finding) => /brand/i.test(finding)))
+  })
+
+  it('why AI and editor integrations sections exist', () => {
+    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /why AI needs FixFlags/i)
+    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.lead, /AI builds fast/i)
+    assert.ok(LANDING_PAGE.whyAiNeedsFixFlags.checks.length >= 5)
+    assert.match(LANDING_PAGE.editorIntegrations.headline, /paste the fix/i)
   })
 
   it('sample report section exposes an explore-all CTA', () => {
@@ -279,7 +281,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headline, /website loses momentum/i)
+    assert.match(LANDING_PAGE.checkDimensions.headline, /every review covers three areas/i)
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
     assert.match(LANDING_PAGE.sampleReport.body, /fix prompt/i)
@@ -292,7 +294,7 @@ describe('homepage message guardrails', () => {
       'Claude Code',
       'Windsurf',
     ])
-    assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
+    assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)
   })
 
   it('CHANGELOG_ENTRIES are user-facing: no internal terminology, no implementation details', () => {

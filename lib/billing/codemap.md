@@ -1,4 +1,4 @@
-# lib/billing/ — Billing & Subscriptions
+# lib/billing/ - Billing & Subscriptions
 
 ## Responsibility
 Subscription management, credit tracking, audit limits, Stripe integration, cost estimation.

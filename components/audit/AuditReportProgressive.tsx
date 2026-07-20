@@ -19,13 +19,15 @@ import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
 import { buildRubricScoreRows } from '@/lib/audit/report-pipeline-steps'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { statusToStageIndex, getProgressPercent } from '@/lib/audit/progress-ui'
+import { getProgressPercent } from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
-import { AUDIT_PROGRESS, formatQueueWaitHint } from '@/lib/marketing/copy'
+import { formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
+import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import type { ProductContract } from '@/lib/audit/product-contract'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -36,11 +38,19 @@ interface AuditReportProgressiveProps {
   progress?: number
   flagCount?: number
   rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
-  partialFlags?: Array<{ id: string; severity: string; problem: string; rubric: string }>
+  partialFlags?: Array<{
+    id: string
+    severity: string
+    problem: string
+    rubric: string
+    checkId?: string | null
+    source?: string | null
+  }>
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
   workerIdle?: boolean
   actionTimeline?: ActionTimelineEvent[]
+  productContract?: ProductContract | null
 }
 
 function buildPartialRubricsComputed(
@@ -81,10 +91,9 @@ export function AuditReportProgressive({
   screenshotCapture,
   workerIdle = false,
   actionTimeline = [],
+  productContract = null,
 }: AuditReportProgressiveProps) {
   const [tick, setTick] = useState(0)
-  const stageIdx = statusToStageIndex(status)
-  const activeStage = AUDIT_PROGRESS.stages[stageIdx]?.status ?? status
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
 
   // Target progress from real backend state; eased client-side so the ring
@@ -195,19 +204,26 @@ export function AuditReportProgressive({
         )}
       </div>
 
-      <section
-        id="report-timeline"
-        className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-4 py-3 shadow-card glass-surface"
-      >
-        <SectionTitle className="text-base">What FixFlags is doing</SectionTitle>
-        <ActionTimeline events={actionTimeline} className="mt-3" />
-      </section>
+      {productContract ? (
+        <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
+          <ProductContractCard contract={productContract} canEdit={false} />
+        </div>
+      ) : null}
+
+      {actionTimeline.length > 0 ? (
+        <section
+          id="report-timeline"
+          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-4 py-3 shadow-card glass-surface"
+        >
+          <SectionTitle className="text-base">What FixFlags is doing</SectionTitle>
+          <ActionTimeline events={actionTimeline} className="mt-3" />
+        </section>
+      ) : null}
 
       <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
         {explorerModel ? (
           <LiveReportExplorer
             model={explorerModel}
-            hasFixPrompts={false}
             loading={isLoading}
             progress={displayProgress}
           />
@@ -221,10 +237,9 @@ export function AuditReportProgressive({
                 fixLoop={{
                   flags: fixLoopFlags,
                   flagCount,
-                  hasFixPrompts: false,
                   defaultExpanded: true,
                 }}
-                scoreSize="md"
+                scoreSize="sm"
                 showProgress
                 layout="split"
                 loading={isLoading}

@@ -483,7 +483,7 @@ export const LANDING_PAGE = {
   },
   checkDimensions: {
     label: '',
-    headline: 'Every website loses momentum in three places.',
+    headline: 'Every review covers three areas.',
     exampleFindingLabel: 'Example finding',
     cards: [
       {
@@ -567,6 +567,67 @@ export const LANDING_PAGE = {
       },
     ] as const,
   },
+  reportExamples: {
+    headline: 'More of what a review catches.',
+    subhead: 'Real Flags from the product. Same shape you get after you paste a URL.',
+    seeInSample: 'See in sample',
+    seeInSampleHref: '/#sample-review',
+    cards: [
+      {
+        id: 'messaging',
+        topic: 'Messaging',
+        rubric: 'MESSAGE',
+        severity: 'IMPORTANT',
+        problem: 'Hero headline repeats the product category instead of the outcome',
+        evidence:
+          'Headline describes the tool category, not the visitor outcome.',
+      },
+      {
+        id: 'mobile',
+        topic: 'Mobile',
+        rubric: 'EXPERIENCE',
+        severity: 'CRITICAL',
+        problem: 'Primary CTA is hidden below the fold on mobile',
+        evidence:
+          'At 375px, the hero image pushes the main action below the first screen.',
+      },
+      {
+        id: 'accessibility',
+        topic: 'Accessibility',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        problem: 'Navigation menu consumes too much viewport height on mobile',
+        evidence:
+          'Nav bar plus announcement banner take ~280px before content starts.',
+      },
+      {
+        id: 'seo',
+        topic: 'SEO and sharing',
+        rubric: 'REACH',
+        severity: 'IMPORTANT',
+        problem: 'Missing og:image, link previews show blank cards',
+        evidence:
+          'Shared links show blank preview cards on Slack, X, and WhatsApp.',
+      },
+    ] as const,
+  },
+  whyAiNeedsFixFlags: {
+    headline: 'Why AI needs FixFlags.',
+    lead: 'AI builds fast. Users judge in seconds.',
+    body: 'FixFlags checks what the builder never experiences as a first-time visitor.',
+    checks: [
+      'First impressions',
+      'Mobile usability',
+      'Sharing previews',
+      'Accessibility',
+      'Trust',
+      'Conversion friction',
+    ] as const,
+  },
+  editorIntegrations: {
+    headline: 'Paste the fix where you already work.',
+    body: 'Each Flag comes with a prompt you can drop into your editor. Ship the change. Re-check to prove it landed.',
+  },
   productEvidence: {
     headline: 'What a review actually catches',
     subhead:
@@ -606,14 +667,14 @@ export const LANDING_PAGE = {
     cta: 'See a sample review',
     ctaHref: '/#sample-review',
   },
-  /** @deprecated Prefer productEvidence. Kept for AGENTS social-proof disclaimer invariant. */
+  /** @deprecated Prefer reportExamples / sample explorer. Kept for AGENTS social-proof disclaimer invariant. */
   testimonials: {
     headline: 'What a review actually catches',
     subhead: 'Real Flags from the product, not quote cards.',
     disclaimer: 'Illustrative findings only. Not attributed customer testimonials.',
     cardLabel: 'Example finding',
     quotes: [
-      // Empty on purpose: homepage uses productEvidence instead of quote cards.
+      // Empty on purpose: homepage uses real Flag examples, not quote cards.
     ] as ReadonlyArray<{
       id: string
       quote: string
@@ -872,9 +933,6 @@ export const REPORT_COPY = {
     checkingIssues: 'Checking for issues…',
     selectFlag: 'Select a flag to see evidence and the fix prompt.',
     flagsAppear: 'Flags appear here as the scan finishes.',
-    stillScanning: 'Still scanning this page',
-    scanning: 'Scanning',
-    scanned: 'Scanned',
     noFlagsNice: 'No flags. Nice work.',
   },
   runYourOwnAudit: 'Run your own audit',

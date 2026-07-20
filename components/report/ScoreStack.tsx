@@ -24,7 +24,7 @@ export function ScoreStack({
 }: {
   score: number | null
   rubricScores: RubricScoreRow[]
-  scoreSize?: 'sm' | 'md' | 'lg'
+  scoreSize?: 'sm' | 'md'
   compact?: boolean
   loading?: boolean
   progress?: number

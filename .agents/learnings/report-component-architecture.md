@@ -24,4 +24,4 @@
 ## Do not resurrect
 
 - `RubricsPanel` — deleted; use `RubricBar` + `ReportExplorer`
-- `TestimonialsSection` / carousel — replaced by `ProductEvidenceSection`
+- `TestimonialsSection` / carousel — replaced by `ReportExamplesSection` / sample explorer Flag output

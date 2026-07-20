@@ -1,5 +1,4 @@
 import { AuditInput } from '@/components/audit/AuditInput'
-import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { HERO } from '@/lib/marketing/copy'
@@ -29,11 +28,6 @@ export function LandingHeroSection() {
             <AuditInput variant="landing" idSuffix="-hero" ctaPlacement="hero" />
           </div>
         </div>
-
-        <EditorToolMarks
-          compact
-          className="relative z-10 mx-auto mt-11 max-w-4xl items-center text-center sm:mt-14 [&_ul]:justify-center"
-        />
       </Container>
     </Section>
   )

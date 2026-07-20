@@ -188,7 +188,6 @@ function fullCommands() {
 
 export function buildPlan(requestedMode, providedFiles) {
   const files = providedFiles ?? changedFilesFromGit()
-  const changedScopes = new Set(files.flatMap(scopesForFile))
   const fullRequired = files.some(isFullValidationFile)
   const codeFiles = files.filter((f) => !isDocsOnlyFile(f))
 

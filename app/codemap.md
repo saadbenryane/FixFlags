@@ -1,4 +1,4 @@
-# app/ — Next.js App Router Routes
+# app/ - Next.js App Router Routes
 
 ## Responsibility
 Next.js App Router routes: marketing pages, auth, authenticated dashboard, audit/report pages, admin, API routes.

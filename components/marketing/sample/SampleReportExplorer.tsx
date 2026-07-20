@@ -22,7 +22,6 @@ export function SampleReportExplorer({
       variant={variant}
       className={className}
       initialFlagIndex={initialFlagIndex}
-      hasFixPrompts
     />
   )
 }

@@ -36,7 +36,6 @@ interface ReportExplorerProps {
   aiLocked?: boolean
   aiEnhancementPending?: boolean
   signUpHref?: string
-  hasFixPrompts?: boolean
   defaultSeverityFilter?: SeverityFilter
   pages?: JourneyPage[]
   loading?: boolean
@@ -233,7 +232,6 @@ export function ReportExplorer({
   aiLocked = false,
   aiEnhancementPending = false,
   signUpHref,
-  hasFixPrompts = true,
   defaultSeverityFilter = 'ALL',
   pages = [],
   loading = false,
@@ -302,7 +300,17 @@ export function ReportExplorer({
   }, [filteredFlags.length, model.flags])
 
   const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
-  const criticalCount = model.flags.filter((f) => f.severity === 'CRITICAL').length
+  const criticalCount = model.flags.filter((f) => {
+    if (f.severity !== 'CRITICAL') return false
+    if (pageFilter && f.pageUrl !== pageFilter) return false
+    if (effectiveRubricFilter !== 'ALL' && f.rubric !== effectiveRubricFilter) return false
+    return true
+  }).length
+  const pageScopedFlags = filterExplorerFlags(model.flags, {
+    severityFilter,
+    rubricFilter: effectiveRubricFilter,
+    pageFilter: null,
+  })
   const hasPages = pages.length > 1
 
   const showPrevious = useCallback(() => {
@@ -361,10 +369,10 @@ export function ReportExplorer({
   }))
 
   const scoreHeader = (
-    <div className="flex flex-wrap items-center gap-4 border-b border-border/30 pb-4">
+    <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
       <ScoreRingGauge
         score={model.score}
-        size={config.compact ? 'sm' : 'md'}
+        size="sm"
         loading={loading && model.score == null}
         progress={progress}
       />
@@ -404,29 +412,30 @@ export function ReportExplorer({
   )
 
   const secondaryFilters = hasPages && (
-    <div className="space-y-2">
-      {hasPages && (
-        <div className="flex flex-wrap gap-1.5">
-          <FilterPill size="sm" icon={Globe} active={pageFilter === null} onClick={() => setPageFilter(null)}>
-            {REPORT_COPY.explorer.allPages} ({model.flags.length})
+    <div className="flex flex-wrap gap-1.5">
+      <FilterPill
+        size="sm"
+        icon={Globe}
+        active={pageFilter === null}
+        onClick={() => setPageFilter(null)}
+      >
+        {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
+      </FilterPill>
+      {pages.map((page) => {
+        const count = pageScopedFlags.filter((f) => f.pageUrl === page.url).length
+        if (count === 0) return null
+        const label = pageFilterLabel(page.url, page.role)
+        return (
+          <FilterPill
+            size="sm"
+            key={page.url}
+            active={pageFilter === page.url}
+            onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
+          >
+            {label} ({count})
           </FilterPill>
-          {pages.map((page) => {
-            const count = model.flags.filter((f) => f.pageUrl === page.url).length
-            if (count === 0) return null
-            const label = pageFilterLabel(page.url, page.role)
-            return (
-              <FilterPill
-                size="sm"
-                key={page.url}
-                active={pageFilter === page.url}
-                onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
-              >
-                {label} ({count})
-              </FilterPill>
-            )
-          })}
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 
@@ -442,8 +451,6 @@ export function ReportExplorer({
           flags={fixLoopFlags}
           selectedFlagId={currentFlag?.id}
           onSelectFlag={goToFlag}
-          hasFixPrompts={hasFixPrompts}
-          defaultExpanded
           compact={config.compact}
           variant="panel"
           loading={loading}

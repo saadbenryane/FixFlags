@@ -115,6 +115,14 @@ export const VISUAL_DESCRIPTORS: Record<string, VisualDescriptor> = {
   'flow-pricing-nav-broken': { type: 'animated-gif', gifIntervalMs: 300, gifMaxFrames: 4, device: 'desktop' },
   'flow-form-no-validation': { type: 'animated-gif', gifIntervalMs: 500, gifMaxFrames: 4, device: 'desktop' },
   'flow-form-slow-feedback': { type: 'animated-gif', gifIntervalMs: 300, gifMaxFrames: 6, device: 'desktop' },
+  'overlay-blocks-nav': { type: 'static-overlay', overlay: 'highlight', device: 'desktop' },
+  'overlay-blocks-cta': { type: 'static-overlay', overlay: 'highlight', device: 'desktop' },
+  'overlay-blocks-form': { type: 'static-overlay', overlay: 'highlight', device: 'desktop' },
+  'api-engagement-unauthorized': { type: 'static-overlay', overlay: 'console-panel', device: 'desktop' },
+  'api-engagement-server-error': { type: 'static-overlay', overlay: 'console-panel', device: 'desktop' },
+  'form-submit-api-unauthorized': { type: 'static-overlay', overlay: 'console-panel', device: 'desktop' },
+  'form-submit-api-server-error': { type: 'static-overlay', overlay: 'console-panel', device: 'desktop' },
+  'form-submit-silent-failure': { type: 'static-overlay', overlay: 'field-count', device: 'desktop' },
 }
 
 export function getVisualDescriptor(checkId: string): VisualDescriptor {

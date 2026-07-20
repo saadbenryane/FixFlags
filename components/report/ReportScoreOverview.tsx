@@ -43,7 +43,7 @@ export function ReportScoreOverview({
   rubricScores: RubricScoreRow[]
   pipelineSteps?: PipelineStep[]
   fixLoop?: ReportFixLoopProps
-  scoreSize?: 'sm' | 'md' | 'lg'
+  scoreSize?: 'sm' | 'md'
   compact?: boolean
   showProgress?: boolean
   /** stacked: ring + bars, then progress below. split: ring+bars | progress side by side */

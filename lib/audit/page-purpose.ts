@@ -1,0 +1,140 @@
+import type { PageMetadata } from './metadata'
+
+/**
+ * Coarse page-purpose classification used to gate product-conversion checks.
+ *
+ * Deterministic checks that assume the page is a marketing / product landing
+ * page (trial, pricing, sign-up risk reversal, contact-for-conversion) produce
+ * false positives on placeholder domains, documentation, articles, and
+ * open-source project pages. The detector only suppresses those checks when it
+ * has POSITIVE evidence the page is not a product/marketing page; otherwise it
+ * returns `marketing` and the checks run normally.
+ *
+ * The detector never inspects hostnames or specific URLs, so improvements
+ * generalize to unseen sites.
+ */
+export type PagePurpose =
+  | 'placeholder' // minimal/empty page (placeholder domain, parked, "hello world")
+  | 'docs' // documentation / API reference / guide
+  | 'article' // blog post / changelog / news
+  | 'oss' // open-source project page centered on a code repository
+  | 'marketing' // product / marketing landing (default): conversion checks fire
+  | 'unknown'
+
+export interface PagePurposeResult {
+  purpose: PagePurpose
+  reasons: string[]
+}
+
+const DOCS_PATH_RE =
+  /\/(?:docs|documentation|api(?:\/|$|[?_-])|reference|guides?|tutorial|developer)(?:\/|$|\?)/i
+const DOCS_TITLE_RE =
+  /\b(?:docs|documentation|api\s+reference|reference|developer\s+guide|guides?)\b/i
+const ARTICLE_PATH_RE =
+  /\/(?:blog|posts?|articles?|news|changelog|changelogs|updates)(?:\/|$|\?)/i
+const ARTICLE_TYPES = new Set([
+  'Article',
+  'BlogPosting',
+  'NewsArticle',
+  'TechArticle',
+  'Report',
+])
+const GITHUB_REPO_RE = /github\.com\/[\w.-]+\/[\w.-]+/i
+const GITHUB_STAR_RE =
+  /\b(star\s+(?:on\s+|us\s+on\s+)?github|github\s+stars?|star\s+the\s+(?:repo|project)|star\s+repo)\b/i
+
+export function detectPagePurpose(
+  meta: PageMetadata,
+  url: string
+): PagePurposeResult {
+  const pageText = meta.pageText ?? ''
+  const words = pageText.split(/\s+/).filter(Boolean)
+  const wordCount = words.length
+  const links = meta.links ?? []
+  const linkCount = links.length
+  const imageCount = (meta.images ?? []).length
+  const ctaCount = (meta.ctaTexts ?? []).length
+  const navCount = meta.navLandmarkCount ?? 0
+
+  const jsonTypes = new Set(
+    (meta.structuredDataTypes ?? [])
+      .filter((t): t is string => typeof t === 'string')
+      .flatMap((t) => t.split(/\s+/))
+  )
+
+  let path = url
+  try {
+    path = new URL(url).pathname + '?' + (new URL(url).search ? '' : '')
+  } catch {
+    // keep raw url
+  }
+  const title = meta.title ?? ''
+
+  // 1. Placeholder / minimal page: too little content to be a real marketing
+  //    page, and no CTAs to evaluate. example.com lives here.
+  if (
+    wordCount < 60 &&
+    linkCount < 5 &&
+    imageCount < 2 &&
+    navCount <= 1 &&
+    ctaCount === 0
+  ) {
+    return {
+      purpose: 'placeholder',
+      reasons: [
+        `minimal page (words=${wordCount}, links=${linkCount}, images=${imageCount}, nav=${navCount}, ctas=${ctaCount})`,
+      ],
+    }
+  }
+
+  // 2. Documentation / API reference
+  if (
+    DOCS_PATH_RE.test(path) ||
+    DOCS_TITLE_RE.test(title) ||
+    jsonTypes.has('TechArticle')
+  ) {
+    return {
+      purpose: 'docs',
+      reasons: [
+        `docs signal (path=${DOCS_PATH_RE.test(path)}, title=${DOCS_TITLE_RE.test(
+          title
+        )}, jsonld=${jsonTypes.has('TechArticle')})`,
+      ],
+    }
+  }
+
+  // 3. Article / blog post / changelog
+  if (ARTICLE_PATH_RE.test(path) || [...jsonTypes].some((t) => ARTICLE_TYPES.has(t))) {
+    return {
+      purpose: 'article',
+      reasons: [
+        `article signal (path=${ARTICLE_PATH_RE.test(path)}, jsonld=${[...jsonTypes]
+          .filter((t) => ARTICLE_TYPES.has(t))
+          .join('|')})`,
+      ],
+    }
+  }
+
+  // 4. Open-source project page: a GitHub repo link plus star/cta evidence.
+  const githubLink = links.some((l) => GITHUB_REPO_RE.test(l.href))
+  const githubStarText = GITHUB_STAR_RE.test(pageText)
+  const githubInCta = (meta.ctaTexts ?? []).some((c) => /github/i.test(c))
+  if (githubLink && (githubStarText || githubInCta)) {
+    return {
+      purpose: 'oss',
+      reasons: [
+        `oss signal (github link=${githubLink}, star text=${githubStarText}, github cta=${githubInCta})`,
+      ],
+    }
+  }
+
+  return {
+    purpose: 'marketing',
+    reasons: ['default marketing; no strong non-marketing signal'],
+  }
+}
+
+/** True when product-conversion checks should run. */
+export function isProductPage(p: PagePurpose): boolean {
+  return p === 'marketing' || p === 'unknown'
+}

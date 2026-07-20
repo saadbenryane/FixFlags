@@ -3,7 +3,7 @@
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
 import { cn } from '@/lib/utils'
 
-type ScoreRingGaugeSize = 'sm' | 'md' | 'lg'
+type ScoreRingGaugeSize = 'sm' | 'md'
 
 interface ScoreRingGaugeProps {
   score: number | null
@@ -24,7 +24,6 @@ const SIZE_CONFIG: Record<
 > = {
   sm: { box: 68, radius: 28, stroke: 2.5, scoreText: 'text-xl' },
   md: { box: 88, radius: 36, stroke: 3, scoreText: 'text-3xl' },
-  lg: { box: 104, radius: 42, stroke: 3.5, scoreText: 'text-4xl' },
 }
 
 export function ScoreRingGauge({ score, size = 'md', loading = false, progress, className }: ScoreRingGaugeProps) {

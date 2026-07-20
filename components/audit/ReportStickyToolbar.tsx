@@ -7,8 +7,8 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
-const OVERVIEW_SECTION = { id: 'report-overview', label: 'Overview' } as const
 const CONTRACT_SECTION = { id: 'report-contract', label: 'Contract' } as const
+const PRIORITIES_SECTION = { id: 'report-priorities', label: 'Priorities' } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: 'Journey' } as const
 const FLOW_SECTION = { id: 'report-flow', label: 'Flow' } as const
 const TIMELINE_SECTION = { id: 'report-timeline', label: 'Timeline' } as const
@@ -22,8 +22,8 @@ type NavSection = { id: string; label: string }
 
 interface Props {
   className?: string
-  showOverview?: boolean
   showContract?: boolean
+  showPriorities?: boolean
   showJourney?: boolean
   showFlow?: boolean
   showTimeline?: boolean
@@ -37,10 +37,20 @@ interface Props {
   actions?: ReactNode
 }
 
+function readHeaderHeightPx(): number {
+  if (typeof window === 'undefined') return 56
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--header-height').trim()
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) return 56
+  // rem → px when unit is rem
+  if (raw.endsWith('rem')) return parsed * 16
+  return parsed
+}
+
 export function ReportStickyToolbar({
   className,
-  showOverview,
   showContract = false,
+  showPriorities = false,
   showJourney = false,
   showFlow = false,
   showTimeline = false,
@@ -56,8 +66,8 @@ export function ReportStickyToolbar({
   const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = []
-    if (showOverview) items.push(OVERVIEW_SECTION)
     if (showContract) items.push(CONTRACT_SECTION)
+    if (showPriorities) items.push(PRIORITIES_SECTION)
     if (showJourney) items.push(JOURNEY_SECTION)
     if (showFlow) items.push(FLOW_SECTION)
     if (showTimeline) items.push(TIMELINE_SECTION)
@@ -69,8 +79,8 @@ export function ReportStickyToolbar({
     }
     return items
   }, [
-    showOverview,
     showContract,
+    showPriorities,
     showJourney,
     showFlow,
     showTimeline,
@@ -89,7 +99,8 @@ export function ReportStickyToolbar({
       frame = 0
       const el = navShellRef.current
       if (!el) return
-      setIsStuck(el.getBoundingClientRect().top <= 1)
+      const headerPx = readHeaderHeightPx()
+      setIsStuck(el.getBoundingClientRect().top <= headerPx + 1)
     }
 
     const scheduleUpdate = () => {
@@ -146,7 +157,7 @@ export function ReportStickyToolbar({
     <div
       ref={navShellRef}
       className={cn(
-        'sticky top-0 z-navbar w-full border-y border-border/35 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 md:top-0',
+        'sticky top-[var(--header-height)] z-navbar w-full border-y border-border/35 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80',
         isStuck && 'shadow-glass'
       )}
     >

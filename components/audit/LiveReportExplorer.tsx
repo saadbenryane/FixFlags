@@ -10,7 +10,6 @@ interface LiveReportExplorerProps {
   aiLocked?: boolean
   aiEnhancementPending?: boolean
   signUpHref?: string
-  hasFixPrompts?: boolean
   defaultSeverityFilter?: 'ALL' | 'CRITICAL' | 'IMPORTANT' | 'POLISH'
   className?: string
   pages?: JourneyPage[]
@@ -25,7 +24,6 @@ export function LiveReportExplorer({
   aiLocked = false,
   aiEnhancementPending = false,
   signUpHref,
-  hasFixPrompts = true,
   defaultSeverityFilter = 'ALL',
   className,
   pages,
@@ -43,7 +41,6 @@ export function LiveReportExplorer({
       aiLocked={aiLocked}
       aiEnhancementPending={aiEnhancementPending}
       signUpHref={signUpHref}
-      hasFixPrompts={hasFixPrompts}
       defaultSeverityFilter={defaultSeverityFilter}
       className={className}
       pages={pages}

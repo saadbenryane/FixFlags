@@ -4,7 +4,6 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| report-fixloop-chrome | in_progress | auto | main | Remove redundant Scanned/Top fix/count chrome from report flag list | components/report/ReportFixLoop.tsx, ReportExplorer.tsx | — | 2026-07-20 |
 | dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | — | 2026-07-20 |
 
 ---
@@ -13,6 +12,9 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| homepage-conversion-reorder | auto | Homepage conversion reorder: sample-first, deeper Flag examples, why-AI, integrations | 2026-07-20 |
+| report-density-refactor | auto | Report density + chrome IA + progressive parity + skills | 2026-07-20 |
+| report-fixloop-chrome | auto | Remove redundant Scanned/Top fix/count chrome from report flag list | 2026-07-20 |
 | beat-scout-completeness | auto | Wire completed-report Contract/Timeline; editable contract; journey bias; silent failure; overlays; anti-FP; roast polish | 2026-07-20 |
 | why-it-matters-first | auto | Why it matters first in flag detail panels | 2026-07-20 |
 | anon-wedge-completion | auto | 1-anon teaser: central gate, claim usage, score leak, copy/skills/analytics | 2026-07-20 |
