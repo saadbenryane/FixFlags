@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Sparkles } from 'lucide-react'
+import { ChevronDown, Wrench } from 'lucide-react'
+import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { cn } from '@/lib/utils'
 import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
 import { rubricLabel, impactTagLabel } from '@/lib/utils'
@@ -32,22 +33,6 @@ export type ReportFixLoopProps = {
     * `panel` -- always-open full-width list for master-detail layouts.
    */
   variant?: 'accordion' | 'panel'
-}
-
-function SeverityDot({ severity }: { severity: string }) {
-  const isCritical = severity === 'CRITICAL'
-  const isImportant = severity === 'IMPORTANT'
-  return (
-    <span
-      className={cn(
-        'h-2 w-2 shrink-0 rounded-full',
-        isCritical && 'bg-destructive',
-        isImportant && 'bg-brand',
-        !isCritical && !isImportant && 'bg-muted-foreground/40'
-      )}
-      aria-hidden
-    />
-  )
 }
 
 function FlagList({
@@ -81,7 +66,7 @@ function FlagList({
                 selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
               )}
             >
-              <SeverityDot severity={flag.severity} />
+              <SeveritySignal severity={flag.severity} className="h-4 w-4" />
               <span
                 className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
                 title={categoryLabel}
@@ -91,7 +76,7 @@ function FlagList({
               </span>
               <span className="min-w-0 flex-1 truncate">{flag.title}</span>
               {flag.hasFixPrompt !== false && (
-                <Sparkles className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
+                <Wrench className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
               )}
             </button>
           </li>

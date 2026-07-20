@@ -11,7 +11,6 @@ const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -44,9 +43,10 @@ import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTrac
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
-import { buildLiveExplorerModel, deriveTruthLabel } from '@/lib/report/explorer-model'
+import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { SampleFixCard } from '@/components/report/SampleFixCard'
-import { rubricLabel, severityLabel } from '@/lib/utils'
+import { SeveritySignal } from '@/components/report/SeveritySignal'
+import { impactTagLabel, rubricLabel } from '@/lib/utils'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import { PreviewCards } from '@/components/audit/PreviewCards'
@@ -187,9 +187,10 @@ export function AuditReport({
         })
       : null
 
+  const isPartialReport = audit.reportCompleteness === 'PARTIAL'
   const showStatusCallouts =
     !isSample &&
-    (aiReviewPending || triageDegraded || prescriptionFailed || audit.reportCompleteness !== 'FULL')
+    (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
   const showPriorities = !isSample && Boolean(explorerModel) && hasFixPrompts && showPrescription
 
@@ -202,11 +203,13 @@ export function AuditReport({
         variant={isSample ? 'minimal' : 'default'}
         score={audit.score}
         pageType={audit.pageType}
-        verdict={audit.verdict}
         url={audit.url}
+        screenshots={audit.screenshots}
         screenshotLimited={screenshotLimited}
         screenshotPartial={screenshotPartial}
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+        startedAt={audit.startedAt}
+        completedAt={audit.completedAt}
       />
 
       {!isSample && (
@@ -262,7 +265,7 @@ export function AuditReport({
                 </Callout>
               )}
 
-              {audit.reportCompleteness !== 'FULL' && !triageDegraded && (
+              {isPartialReport && !triageDegraded && (
                 <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
                   {REPORT_COPY.partialReport.body}
                 </Callout>
@@ -347,24 +350,17 @@ export function AuditReport({
                 lovable: flag.lovablePrompt,
                 bolt: flag.boltPrompt,
               }
-              const truthLabel = deriveTruthLabel(flag.source, flag.checkId ?? null)
+              const impact = impactTagLabel(flag.impactTag)
               return (
                 <Card key={flag.id} className="p-4 sm:p-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Badge
-                      variant={flag.severity === 'CRITICAL' ? 'destructive' : 'secondary'}
-                      size="sm"
-                    >
-                      {severityLabel(flag.severity)}
-                    </Badge>
-                    {truthLabel === 'Reproduced' ? (
-                      <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase">
-                        Reproduced
-                      </Badge>
-                    ) : null}
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <SeveritySignal severity={flag.severity} />
                     <span className="meta-label text-muted-foreground">
                       {rubricLabel(rubricName)}
                     </span>
+                    {impact ? (
+                      <span className="text-2xs text-muted-foreground">{impact}</span>
+                    ) : null}
                   </div>
                   <p className="mb-3 text-sm font-medium leading-snug text-pretty">
                     {flag.problem}
@@ -425,9 +421,6 @@ export function AuditReport({
             aiLocked={fixPromptLocked}
             aiEnhancementPending={isLoggedIn && aiReviewPending}
             signUpHref={signUpHref}
-            defaultSeverityFilter={
-              audit.flags.some((f) => f.severity === 'CRITICAL') ? 'CRITICAL' : 'ALL'
-            }
             pages={pages}
             auditId={auditId}
           />

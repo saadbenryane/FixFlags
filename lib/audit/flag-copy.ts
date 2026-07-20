@@ -400,7 +400,7 @@ export function formatDisplayEvidence(checkId: string | null | undefined, eviden
 export function buildExpertFixPrompt(flag: RankableFlag): string {
   const why = resolveWhyItMatters(flag)
   const evidence = (flag.evidence ?? flag.problem).trim()
-  const fix = resolveFixPrompt(flag) ?? flag.problem
+  const fix = normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
   const verify = resolveVerificationRule(flag)
 
   const rubricScope = flag.rubric === 'MESSAGE'
@@ -412,18 +412,43 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
   const lines = [
     flag.problem.trim(),
     '',
-    `Why it matters: ${why}`,
+    '## Why',
+    why,
     '',
-    `Evidence: ${evidence}`,
+    '## Evidence',
+    evidence,
     '',
-    `Fix:\n${fix}`,
+    '## Fix',
+    fix,
     '',
-    `Scope: ${rubricScope} Keep all unrelated files, components, and sections unchanged.`,
+    '## Scope',
+    `${rubricScope} Keep all unrelated files, components, and sections unchanged.`,
   ]
 
   if (verify) {
-    lines.push('', `Verify: ${verify}`)
+    lines.push('', '## Verify', verify)
   }
 
   return lines.join('\n')
+}
+
+/** Pull actionable steps out of legacy Goal/Observed/Expected essays. */
+function normalizeFixBody(raw: string): string {
+  const trimmed = raw.trim()
+  const expected = trimmed.match(
+    /## Expected behavior\s*\n+([\s\S]*?)(?=\n## |\s*$)/i
+  )
+  if (expected?.[1]?.trim()) return expected[1].trim()
+
+  if (/^## Goal\b/im.test(trimmed)) {
+    const withoutVerify = trimmed.replace(/\n## How to verify\s*\n[\s\S]*$/i, '').trim()
+    const withoutHeaders = withoutVerify
+      .replace(/^## Goal\s*\n+/im, '')
+      .replace(/\n## Observed behavior\s*\n+/gi, '\n')
+      .replace(/\n## Expected behavior\s*\n+/gi, '\n')
+      .trim()
+    if (withoutHeaders) return withoutHeaders
+  }
+
+  return trimmed
 }

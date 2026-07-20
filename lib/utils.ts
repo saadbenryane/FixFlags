@@ -66,9 +66,9 @@ export function rubricDescription(name: string): string {
 
 export function severityLabel(severity: string): string {
   const map: Record<string, string> = {
-    CRITICAL: 'Critical',
-    IMPORTANT: 'Important',
-    POLISH: 'Polish',
+    CRITICAL: 'Critical Flag',
+    IMPORTANT: 'Important Flag',
+    POLISH: 'Polish Flag',
   }
   return map[severity] ?? severity
 }
@@ -92,6 +92,7 @@ export function rubricStatusColor(status: string): string {
     PASS: 'text-grade-A bg-grade-A/10 border-grade-A/25',
     NEEDS_ATTENTION: 'text-grade-C bg-grade-C/10 border-grade-C/25',
     BLOCKED: 'text-grade-F bg-grade-F/10 border-grade-F/25',
+    SCANNING: 'text-muted-foreground bg-muted/60 border-border/50',
   }
   return map[status] ?? 'text-muted-foreground bg-muted border-border'
 }

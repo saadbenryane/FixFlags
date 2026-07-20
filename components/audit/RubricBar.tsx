@@ -22,19 +22,23 @@ interface RubricRow {
 interface Props {
   rubrics: RubricComputed[]
   rubricRows: RubricRow[]
+  /** Audit still running: pending rubrics show Scanning, not failing. */
+  loading?: boolean
 }
 
-export function RubricBar({ rubrics, rubricRows }: Props) {
+export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
   const scoreByName = new Map(rubricRows.map((row) => [row.name, row.score] as const))
 
   return (
-    <div className="flex items-center gap-3 sm:gap-4">
+    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
       {RUBRIC_ORDER.map((name) => {
         const r = rubrics.find((x) => x.name === name)
         const score = scoreByName.get(name) ?? null
         const Icon = RUBRIC_ICONS[name]
         const label = rubricLabel(name)
         const scoreLabel = score == null ? 'N/A' : String(score)
+        const pending = loading && (r?.flagCount ?? 0) === 0 && score == null
+        const status = pending ? 'SCANNING' : r?.status
 
         return (
           <a
@@ -61,7 +65,14 @@ export function RubricBar({ rubrics, rubricRows }: Props) {
                 {scoreLabel}
               </span>
             )}
-            {r && <RubricStatusBadge status={r.status} size="sm" className="hidden sm:inline-flex" />}
+            {status ? (
+              <RubricStatusBadge
+                status={status}
+                size="sm"
+                label={pending ? 'Scanning' : undefined}
+                className="hidden sm:inline-flex"
+              />
+            ) : null}
           </a>
         )
       })}

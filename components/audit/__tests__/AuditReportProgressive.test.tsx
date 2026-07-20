@@ -31,10 +31,11 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })
 
-  it('shows capturing progress without a FixLoop stage label', () => {
+  it('shows capturing progress with a scanning score ring', () => {
     render(<AuditReportProgressive status="CAPTURING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByLabelText(/Scanning/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
   })
 
   it('renders product contract when provided', () => {

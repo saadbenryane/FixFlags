@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
 import { LockedInspectionPane } from '@/components/report/LockedInspectionPane'
@@ -19,7 +19,6 @@ import {
   pageFilterLabel,
   resolveRubricFilter,
   type RubricFilter,
-  type SeverityFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
@@ -36,7 +35,6 @@ interface ReportExplorerProps {
   aiLocked?: boolean
   aiEnhancementPending?: boolean
   signUpHref?: string
-  defaultSeverityFilter?: SeverityFilter
   pages?: JourneyPage[]
   loading?: boolean
   progress?: number
@@ -232,7 +230,6 @@ export function ReportExplorer({
   aiLocked = false,
   aiEnhancementPending = false,
   signUpHref,
-  defaultSeverityFilter = 'ALL',
   pages = [],
   loading = false,
   progress,
@@ -241,7 +238,6 @@ export function ReportExplorer({
   const config = VARIANT_CONFIG[variant]
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>(defaultSeverityFilter)
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
   const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [flagIndex, setFlagIndex] = useState(() =>
@@ -264,10 +260,9 @@ export function ReportExplorer({
   const rubricCounts = useMemo(
     () =>
       countFlagsByRubric(model.flags, {
-        severityFilter,
         pageFilter,
       }),
-    [model.flags, severityFilter, pageFilter]
+    [model.flags, pageFilter]
   )
 
   const effectiveRubricFilter = resolveRubricFilter(rubricFilter, rubricCounts)
@@ -281,11 +276,10 @@ export function ReportExplorer({
   const filteredFlags = useMemo(
     () =>
       filterExplorerFlags(model.flags, {
-        severityFilter,
         rubricFilter: effectiveRubricFilter,
         pageFilter,
       }),
-    [model.flags, severityFilter, effectiveRubricFilter, pageFilter]
+    [model.flags, effectiveRubricFilter, pageFilter]
   )
 
   const flagCount = filteredFlags.length
@@ -293,21 +287,14 @@ export function ReportExplorer({
 
   useEffect(() => {
     setFlagIndex(0)
-  }, [severityFilter, effectiveRubricFilter, pageFilter])
+  }, [effectiveRubricFilter, pageFilter])
 
   useEffect(() => {
     setFlagIndex((current) => clampFlagIndex(current, filteredFlags.length))
   }, [filteredFlags.length, model.flags])
 
   const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
-  const criticalCount = model.flags.filter((f) => {
-    if (f.severity !== 'CRITICAL') return false
-    if (pageFilter && f.pageUrl !== pageFilter) return false
-    if (effectiveRubricFilter !== 'ALL' && f.rubric !== effectiveRubricFilter) return false
-    return true
-  }).length
   const pageScopedFlags = filterExplorerFlags(model.flags, {
-    severityFilter,
     rubricFilter: effectiveRubricFilter,
     pageFilter: null,
   })
@@ -383,30 +370,6 @@ export function ReportExplorer({
           counts={rubricCounts}
           total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
         />
-        {criticalCount > 0 && (
-          <>
-            <span className="mx-1 h-4 w-px bg-border/40" aria-hidden />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <FilterPill
-                size="sm"
-                active={severityFilter === 'ALL'}
-                onClick={() => setSeverityFilter('ALL')}
-              >
-                {REPORT_COPY.explorer.allSeverities}
-              </FilterPill>
-              <FilterPill
-                size="sm"
-                icon={AlertTriangle}
-                active={severityFilter === 'CRITICAL'}
-                onClick={() =>
-                  setSeverityFilter(severityFilter === 'CRITICAL' ? 'ALL' : 'CRITICAL')
-                }
-              >
-                Critical ({criticalCount})
-              </FilterPill>
-            </div>
-          </>
-        )}
       </div>
     </div>
   )

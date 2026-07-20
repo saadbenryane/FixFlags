@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { getScanningLabel } from '@/lib/audit/progress-ui'
+import { getActivityMessage, getScanningLabel } from '@/lib/audit/progress-ui'
 
 describe('getScanningLabel', () => {
   it('rotates through stage-specific subcategory labels', () => {
@@ -23,5 +23,13 @@ describe('getScanningLabel', () => {
 
   it('falls back to CHECKING labels for an unknown status', () => {
     assert.equal(getScanningLabel('SOMETHING_ELSE', 0), getScanningLabel('CHECKING', 0))
+  })
+})
+
+describe('getActivityMessage', () => {
+  it('returns a non-empty stage activity string', () => {
+    const msg = getActivityMessage('CAPTURING', 0)
+    assert.ok(msg.length > 0)
+    assert.notEqual(getActivityMessage('CAPTURING', 0), getActivityMessage('CAPTURING', 1))
   })
 })

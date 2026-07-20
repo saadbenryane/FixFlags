@@ -133,7 +133,9 @@ function mapLiveFlag(
       bolt: flag.boltPrompt,
     },
     verificationRule: flag.verificationRule ?? null,
-    evidenceDevices: flag.checkId ? devicesForCheck(flag.checkId) : ['desktop', 'mobile'],
+    evidenceDevices: flag.checkId
+      ? devicesForCheck(flag.checkId)
+      : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
     hasFixPrompt: Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
     visualUrl,

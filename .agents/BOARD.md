@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| howitworks-visual-spacing | in_progress | auto | main | Framed loop step tiles (subject crops, lean WebP) + marketing spacing | HowItWorksLoopSection, public/marketing/visuals/loop-0* | — | 2026-07-20 |
 | dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | — | 2026-07-20 |
 
 ---
@@ -12,6 +13,9 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| lean-fix-markdown-panel | auto | Collapse Why/Evidence/Verify into lean Markdown Fix box; SeveritySignal; Wrench icon | 2026-07-20 |
+| loading-report-seam | auto | Progressive→completed chrome parity; absorb streamline-meta; skills/docs | 2026-07-20 |
+| report-streamline-meta | auto | Absorbed into loading-report-seam | 2026-07-20 |
 | homepage-conversion-reorder | auto | Homepage conversion reorder: sample-first, deeper Flag examples, why-AI, integrations | 2026-07-20 |
 | report-density-refactor | auto | Report density + chrome IA + progressive parity + skills | 2026-07-20 |
 | report-fixloop-chrome | auto | Remove redundant Scanned/Top fix/count chrome from report flag list | 2026-07-20 |

@@ -87,39 +87,6 @@ export function buildPipelineSteps({
   ]
 }
 
-/** Fix-loop steps while an audit is still running (Scan → Flag → Fix). */
-export function buildInProgressPipelineSteps(
-  status: string,
-  flagCount = 0
-): PipelineStep[] {
-  const scanDone = ['JUDGING', 'FINALIZING', 'COMPLETED'].includes(status)
-  const flagActive = status === 'JUDGING'
-  const flagDone = ['FINALIZING', 'COMPLETED'].includes(status)
-  const fixActive = status === 'FINALIZING'
-  const fixDone = status === 'COMPLETED'
-
-  return [
-    {
-      id: 'scan',
-      label: 'Scan',
-      detail: scanDetail(null),
-      state: scanDone ? 'done' : 'active',
-    },
-    {
-      id: 'flags',
-      label: 'Flag',
-      detail: String(flagCount),
-      state: flagDone ? 'done' : flagActive ? 'active' : 'pending',
-    },
-    {
-      id: 'prompts',
-      label: 'Fix',
-      detail: 'Fix prompts',
-      state: fixDone ? 'done' : fixActive ? 'active' : 'pending',
-    },
-  ]
-}
-
 export function buildRubricScoreRows(
   rubricRows: { name: string; score: number | null; grade?: string | null }[]
 ): RubricScoreRow[] {

@@ -54,16 +54,11 @@ describe('explorer-filters', () => {
     assert.equal(pageFilterLabel('not-a-url', 'Fallback'), 'Fallback')
   })
 
-  it('countFlagsByRubric respects severity and page filters', () => {
+  it('countFlagsByRubric respects page filters', () => {
     assert.deepEqual(countFlagsByRubric(FLAGS), {
       MESSAGE: 2,
       EXPERIENCE: 1,
       REACH: 1,
-    })
-    assert.deepEqual(countFlagsByRubric(FLAGS, { severityFilter: 'CRITICAL' }), {
-      MESSAGE: 1,
-      EXPERIENCE: 1,
-      REACH: 0,
     })
     assert.deepEqual(countFlagsByRubric(FLAGS, { pageFilter: 'https://ex.com/pricing' }), {
       MESSAGE: 1,
@@ -72,9 +67,8 @@ describe('explorer-filters', () => {
     })
   })
 
-  it('filterExplorerFlags combines severity, rubric, and page', () => {
+  it('filterExplorerFlags combines rubric and page', () => {
     const filtered = filterExplorerFlags(FLAGS, {
-      severityFilter: 'CRITICAL',
       rubricFilter: 'MESSAGE',
       pageFilter: 'https://ex.com/',
     })

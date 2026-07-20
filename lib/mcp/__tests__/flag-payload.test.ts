@@ -28,10 +28,10 @@ describe('buildMcpFlagPayload', () => {
     assert.match(payload.fix, /substantiate/)
     assert.match(payload.verificationRule ?? '', /customer count|testimonial|review badge/i)
     assert.match(payload.prompt, /^No social proof signals/)
-    assert.match(payload.prompt, /Why it matters: Proof near the CTA/)
-    assert.match(payload.prompt, /Evidence: Page has CTAs/)
-    assert.match(payload.prompt, /Fix:\nAdd the strongest proof/)
-    assert.match(payload.prompt, /Verify:/)
+    assert.match(payload.prompt, /## Why\nProof near the CTA/)
+    assert.match(payload.prompt, /## Evidence\nPage has CTAs/)
+    assert.match(payload.prompt, /## Fix\nAdd the strongest proof/)
+    assert.match(payload.prompt, /## Verify/)
     assert.doesNotMatch(payload.prompt, /Join 10,000/i)
   })
 
@@ -54,6 +54,6 @@ describe('buildMcpFlagPayload', () => {
       buildMcpFlagPayload(baseFlag, 'cursor').prompt,
       'Find the mobile CTA and rename it to an outcome-specific action.'
     )
-    assert.match(buildMcpFlagPayload(baseFlag, 'bolt').prompt, /Why it matters:/)
+    assert.match(buildMcpFlagPayload(baseFlag, 'bolt').prompt, /^## Why$/m)
   })
 })

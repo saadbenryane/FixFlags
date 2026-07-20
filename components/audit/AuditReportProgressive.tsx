@@ -6,28 +6,33 @@ import { Callout } from '@/components/ui/callout'
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SectionTitle } from '@/components/ui/typography'
-import { ReportHeroHeader } from '@/components/audit/ReportHeroHeader'
-import { RubricSummaryGrid } from '@/components/audit/RubricSummaryGrid'
-
-const LiveReportExplorer = dynamic(() =>
-  import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
-)
+import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { RubricBar } from '@/components/audit/RubricBar'
+import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
-import { ReportScoreOverview } from '@/components/report/ReportScoreOverview'
+import { ActionTimeline } from '@/components/audit/ActionTimeline'
+import { ProductContractCard } from '@/components/audit/ProductContractCard'
+import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
-import { buildRubricScoreRows } from '@/lib/audit/report-pipeline-steps'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
-import { getProgressPercent } from '@/lib/audit/progress-ui'
+import {
+  getActivityMessage,
+  getProgressPercent,
+  getScanningLabel,
+} from '@/lib/audit/progress-ui'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
-import { ActionTimeline } from '@/components/audit/ActionTimeline'
-import { ProductContractCard } from '@/components/audit/ProductContractCard'
+import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
+
+const LiveReportExplorer = dynamic(() =>
+  import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
+)
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -96,9 +101,6 @@ export function AuditReportProgressive({
   const [tick, setTick] = useState(0)
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
 
-  // Target progress from real backend state; eased client-side so the ring
-  // advances continuously between 2s polls instead of jumping. Never exceeds
-  // the backend value and never moves backward.
   const targetProgress = getProgressPercent(progress, status)
   const [displayProgress, setDisplayProgress] = useState(targetProgress)
 
@@ -130,7 +132,6 @@ export function AuditReportProgressive({
   useEffect(() => {
     setDisplayProgress((prev) => {
       if (targetProgress <= prev) return prev
-      // Ease ~40% of the remaining gap toward target each tick.
       const next = prev + Math.max(1, (targetProgress - prev) * 0.4)
       return Math.min(targetProgress, Math.round(next))
     })
@@ -154,55 +155,62 @@ export function AuditReportProgressive({
     })
   }, [url, pageType, score, verdict, partialFlags, screenshots, rubrics])
 
-  const rubricScores = buildRubricScoreRows(
-    RUBRIC_ORDER.map((name) => {
-      const row = rubrics.find((r) => r.name === name)
-      return { name, score: row?.score ?? null, grade: row?.grade ?? null }
-    })
-  )
-
-  const fixLoopFlags = partialFlags.map((f) => ({
-    id: f.id,
-    title: f.problem,
-    rubric: f.rubric,
-    impactTag: null,
-    severity: f.severity,
-    hasFixPrompt: false,
-  }))
-
-  const hostname = url ? displayHostname(url) : undefined
-
-  const desktopScreenshotUrl = screenshots.find((s) => s.device === 'DESKTOP')?.url ?? null
-  const mobileScreenshotUrl = screenshots.find((s) => s.device === 'MOBILE')?.url ?? null
-  const mobilePending = screenshotCapture?.mobile === 'pending' && !mobileScreenshotUrl
-  const showMobileFrame = mobileScreenshotUrl || mobilePending
-
-  const rubricRowsForGrid = RUBRIC_ORDER.map((name) => {
+  const rubricRowsForBar = RUBRIC_ORDER.map((name) => {
     const row = rubrics.find((r) => r.name === name)
     return { name, score: row?.score ?? null, grade: row?.grade ?? null }
   })
 
+  const hostname = url ? displayHostname(url) : undefined
+  const userVerdict = displayVerdict(verdict ?? null)
+  const scanningLabel = isLoading ? getScanningLabel(status, tick) : null
+  const activityMessage = isLoading ? getActivityMessage(status, tick) : null
+
+  const desktopScreenshotUrl = screenshots.find((s) => s.device === 'DESKTOP')?.url ?? null
+  const mobileScreenshotUrl = screenshots.find((s) => s.device === 'MOBILE')?.url ?? null
+  const mobilePending = screenshotCapture?.mobile === 'pending' && !mobileScreenshotUrl
+  const showMobileFrame = Boolean(mobileScreenshotUrl || mobilePending)
+
+  const showContract = Boolean(productContract)
+  const showTimeline = actionTimeline.length > 0
+
   return (
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
-      <div id="report-overview" className="scroll-mt-[var(--header-offset)] space-y-4">
-        <ReportHeroHeader
-          url={url}
-          pageType={pageType}
-          verdict={verdict}
-        />
+      <AuditReportHero
+        url={url}
+        pageType={pageType}
+        score={score}
+        screenshots={screenshots}
+        scanning={isLoading}
+        scanningLabel={scanningLabel}
+      />
 
-        {(workerIdle || showWorkerWarning) && (
-          <Callout variant="warning" title="Still preparing">
-            {getWorkerQueuedWarning(workerIdle || showWorkerWarning)}
-          </Callout>
-        )}
+      <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
 
-        {showQueueWait && queueWaitSeconds != null && (
-          <Callout variant="info" title="Queued">
-            {formatQueueWaitHint(queueWaitSeconds)}
-          </Callout>
-        )}
-      </div>
+      <ReportStickyToolbar
+        showContract={showContract}
+        showTimeline={showTimeline}
+        showRecheckSection={false}
+        siteUrl={url || undefined}
+        score={score}
+      />
+
+      {userVerdict ? (
+        <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
+          {userVerdict}
+        </blockquote>
+      ) : null}
+
+      {(workerIdle || showWorkerWarning) && (
+        <Callout variant="warning" title="Still preparing">
+          {getWorkerQueuedWarning(workerIdle || showWorkerWarning)}
+        </Callout>
+      )}
+
+      {showQueueWait && queueWaitSeconds != null && (
+        <Callout variant="info" title="Queued">
+          {formatQueueWaitHint(queueWaitSeconds)}
+        </Callout>
+      )}
 
       {productContract ? (
         <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
@@ -210,10 +218,10 @@ export function AuditReportProgressive({
         </div>
       ) : null}
 
-      {actionTimeline.length > 0 ? (
+      {showTimeline ? (
         <section
           id="report-timeline"
-          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-4 py-3 shadow-card glass-surface"
+          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
         >
           <SectionTitle className="text-base">What FixFlags is doing</SectionTitle>
           <ActionTimeline events={actionTimeline} className="mt-3" />
@@ -230,20 +238,28 @@ export function AuditReportProgressive({
         ) : (
           <div className="overflow-hidden rounded-card glass-surface shadow-card">
             <div className="space-y-6 p-4 sm:p-6">
-              <ReportScoreOverview
-                score={score}
-                rubricScores={rubricScores}
-                progress={displayProgress}
-                fixLoop={{
-                  flags: fixLoopFlags,
-                  flagCount,
-                  defaultExpanded: true,
-                }}
-                scoreSize="sm"
-                showProgress
-                layout="split"
-                loading={isLoading}
-              />
+              <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
+                <ScoreRingGauge
+                  score={score}
+                  size="sm"
+                  loading={isLoading && score == null}
+                  progress={displayProgress}
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {activityMessage ?? 'Scanning your site…'}
+                  </p>
+                  {flagCount > 0 ? (
+                    <p className="font-mono text-2xs tabular-nums text-muted-foreground">
+                      {flagCount} flag{flagCount === 1 ? '' : 's'} so far
+                    </p>
+                  ) : (
+                    <p className="text-2xs text-muted-foreground">
+                      Captures and Flags appear here as the review runs
+                    </p>
+                  )}
+                </div>
+              </div>
               <div>
                 <div className="mb-4 space-y-1">
                   <Skeleton className="h-5 w-3/4 max-w-sm" />
@@ -273,11 +289,6 @@ export function AuditReportProgressive({
             </div>
           </div>
         )}
-      </section>
-
-      <section id="report-rubrics" className="scroll-mt-[var(--header-offset)] space-y-3">
-        <SectionTitle>Summary by rubric</SectionTitle>
-        <RubricSummaryGrid rubrics={rubricsComputed} rubricRows={rubricRowsForGrid} loading={isLoading} />
       </section>
     </Container>
   )

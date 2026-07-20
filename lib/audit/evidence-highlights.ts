@@ -29,7 +29,10 @@ export interface EvidenceHighlight {
 }
 
 export function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile' {
-  return flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'
+  const checkId = flag.checkId ?? ''
+  if (/mobile|thumb-zone|touch|375px|viewport-narrow/i.test(checkId)) return 'mobile'
+  if (flag.rubric === 'EXPERIENCE') return 'mobile'
+  return 'desktop'
 }
 
 export function formatFlagEvidence(flag: RankableFlag): string {

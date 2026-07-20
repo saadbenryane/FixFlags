@@ -68,9 +68,10 @@ Report surfaces use `Container variant="report"` so `ReportExplorer` master-deta
 ## Report explorer & screenshots
 
 - **Flag browsing:** `ReportExplorer` only — list, filters, detail panel, fix prompts
-- **Rubric summaries:** `RubricsPanel` / `RubricCard` link into explorer; no duplicate flag lists
+- **Rubric summaries:** `RubricBar` (compact pills) on live/progressive reports; `RubricSummaryGrid` for marketing sample cards only
 - **Screenshot highlights:** `ScreenshotWithHighlights` for evidence overlays; carousel/prev-next controls ≥ `min-h-11 min-w-11` (44px)
-- **Sticky nav:** `ReportStickyToolbar` for section jumps (Flags, Journey, Overview, etc.)
+- **Sticky nav:** `ReportStickyToolbar` for section jumps (Contract, Priorities, Journey, Flow, Timeline, Flags, Previews, Launch, Re-check). No Overview tab.
+- **Progressive:** same hero/RubricBar/sticky altitudes as completed; scanning labels from `lib/audit/progress-ui.ts`
 
 ## Logo
 

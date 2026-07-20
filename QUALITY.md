@@ -90,7 +90,9 @@ Until automated Touch-tier tests cover report chrome:
 2. Sticky toolbar sits under site header; section jump clears both.
 3. Share status appears once (banner, not hero). Hero has `ScoreDot`, not a second ring.
 4. Anon locked report: value strip + SampleFixCard only (no claim-guide card).
-5. Progressive: Product Contract when status returns it; Action Timeline hidden when empty; COMPLETED triggers `router.refresh()` to full `AuditReport`.
+5. Progressive chrome matches completed: `AuditReportHero` + `RubricBar` + sticky + Contract → Timeline → Flags (no bottom rubric grid, no `#report-overview`). Stage label / activity from `progress-ui.ts`. Action Timeline hidden when empty.
+6. COMPLETED: hold progressive frame + `router.refresh()` into full `AuditReport` (no blank; no layout jump of shared chrome).
+7. Partial Callout only when `reportCompleteness === 'PARTIAL'` (not `UNKNOWN`).
 
 ## Completion standard
 

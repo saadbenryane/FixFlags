@@ -11,7 +11,8 @@ const sectionVariants = cva("", {
       /** Report-style marketing pages (samples) - minimal top chrome */
       report: 'pt-2 pb-6 sm:pt-3 sm:pb-8',
       loose: 'py-16 sm:py-20 lg:py-24',
-      marketing: 'py-14 sm:py-20 lg:py-24',
+      /** ~40% tighter than prior py-14/20/24 rhythm */
+      marketing: 'py-8 sm:py-12 lg:py-14',
     },
   },
   defaultVariants: {

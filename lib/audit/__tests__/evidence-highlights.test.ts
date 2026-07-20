@@ -40,9 +40,9 @@ describe('evidence-highlights', () => {
     assert.match(evidence, /Headline reads|H1|category/i)
 
     const fix = formatFlagFixPrompt(flag)
-    assert.match(fix, /Why it matters:/)
-    assert.match(fix, /Fix:/)
-    assert.match(fix, /Verify:/)
+    assert.match(fix, /^## Why$/m)
+    assert.match(fix, /## Fix/)
+    assert.match(fix, /## Verify/)
     assert.doesNotMatch(fix, /look at Hero headline on the screenshot/i)
   })
 

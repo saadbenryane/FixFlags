@@ -269,10 +269,10 @@ describe('homepage message guardrails', () => {
   })
 
   it('why AI and editor integrations sections exist', () => {
-    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /why AI needs FixFlags/i)
+    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /AI ships the build/i)
     assert.match(LANDING_PAGE.whyAiNeedsFixFlags.lead, /AI builds fast/i)
     assert.ok(LANDING_PAGE.whyAiNeedsFixFlags.checks.length >= 5)
-    assert.match(LANDING_PAGE.editorIntegrations.headline, /paste the fix/i)
+    assert.match(LANDING_PAGE.editorIntegrations.headline, /Cursor|Claude|Lovable/i)
   })
 
   it('sample report section exposes an explore-all CTA', () => {
@@ -281,7 +281,11 @@ describe('homepage message guardrails', () => {
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headline, /every review covers three areas/i)
+    assert.match(LANDING_PAGE.checkDimensions.headline, /what your page says/i)
+    assert.deepEqual(
+      LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
+      ['Message', 'Experience', 'Reach']
+    )
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
     assert.match(LANDING_PAGE.sampleReport.body, /fix prompt/i)
@@ -295,6 +299,10 @@ describe('homepage message guardrails', () => {
       'Windsurf',
     ])
     assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)
+    assert.deepEqual(
+      LANDING_PAGE.productEvidence.items.map((i) => i.title),
+      ['Message', 'Experience', 'Reach']
+    )
   })
 
   it('CHANGELOG_ENTRIES are user-facing: no internal terminology, no implementation details', () => {

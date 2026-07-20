@@ -4,17 +4,18 @@ import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ScoreDot } from '@/components/ui/score-dot'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { cn } from '@/lib/utils'
 
 type Props = {
   variant?: 'default' | 'minimal'
   score?: number | null
   pageType?: string | null
-  verdict?: string | null
   url: string
   screenshots?: AuditScreenshot[]
   screenshotLimited?: boolean
@@ -24,6 +25,10 @@ type Props = {
   startedAt?: string | Date | null
   completedAt?: string | Date | null
   actions?: ReactNode
+  /** Pipeline status while the report is still building. */
+  scanning?: boolean
+  /** Live stage label (e.g. from getScanningLabel). Shown beside the Scanning badge. */
+  scanningLabel?: string | null
 }
 
 export function AuditReportHero({
@@ -39,22 +44,36 @@ export function AuditReportHero({
   startedAt,
   completedAt,
   actions,
+  scanning = false,
+  scanningLabel = null,
 }: Props) {
   const isMinimal = variant === 'minimal'
-  const hostname = displayHostname(url)
-  const firstScreenshot = screenshots?.[0]
-  const durationSec = durationFromTimestamps(durationMs, startedAt, completedAt)
+  const hostname = url ? displayHostname(url) : null
+  const firstScreenshot = !scanning ? screenshots?.[0] : screenshots?.[0]
+  const durationSec = scanning
+    ? null
+    : durationFromTimestamps(durationMs, startedAt, completedAt)
+  const badgeLabel = scanning
+    ? scanningLabel
+      ? `Scanning · ${scanningLabel}`
+      : 'Scanning'
+    : pageType
 
   if (isMinimal) {
     return (
       <div className="space-y-1">
         <div className="flex min-w-0 items-center gap-2">
-          <ScoreDot score={score} />
+          <ScoreDot
+            score={score}
+            className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
+          />
           <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
-            {hostname}
+            {hostname ?? '…'}
           </h1>
         </div>
-        <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+        {url ? (
+          <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+        ) : null}
       </div>
     )
   }
@@ -66,7 +85,7 @@ export function AuditReportHero({
           <div className="hidden sm:block shrink-0">
             <Image
               src={firstScreenshot.url}
-              alt={`Screenshot of ${hostname}`}
+              alt={`Screenshot of ${hostname ?? 'site'}`}
               width={80}
               height={56}
               className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
@@ -81,18 +100,36 @@ export function AuditReportHero({
               <div className="flex flex-wrap items-center gap-2">
                 <ScoreDot
                   score={score}
+                  className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
                   aria-label={
-                    score != null ? `Overall score ${score} out of 100` : 'Overall score unavailable'
+                    score != null
+                      ? `Overall score ${score} out of 100`
+                      : scanning
+                        ? 'Score pending'
+                        : 'Overall score unavailable'
                   }
                 />
-                <h1 className="text-lg font-semibold tracking-heading text-foreground">{hostname}</h1>
-                {pageType ? (
-                  <Badge variant="secondary" className="text-xs capitalize">
-                    {pageType}
+                {hostname ? (
+                  <h1 className="text-lg font-semibold tracking-heading text-foreground">
+                    {hostname}
+                  </h1>
+                ) : (
+                  <Skeleton className="h-6 w-40" />
+                )}
+                {badgeLabel ? (
+                  <Badge
+                    variant="secondary"
+                    className={cn('text-xs capitalize', scanning && 'normal-case')}
+                  >
+                    {badgeLabel}
                   </Badge>
                 ) : null}
               </div>
-              <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+              {url ? (
+                <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
+              ) : (
+                <Skeleton className="h-3 w-56" />
+              )}
             </div>
             {actions && (
               <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 lg:justify-end">

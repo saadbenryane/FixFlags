@@ -65,7 +65,7 @@ Search canonical docs and skills for:
 | `RubricsPanel` as live surface | Dead; use `RubricBar` + `ReportExplorer` |
 | `ReportMiniNav`, `CompletenessHeader` | Removed; use `ReportStickyToolbar`, inline report sections |
 | `showOverview` / Overview sticky tab | Removed; status callouts sit under toolbar, not a nav destination |
-| `hasFixPrompts` on `ReportExplorer` / `LiveReportExplorer` | Dead prop — per-flag `hasFixPrompt` drives Sparkles |
+| `hasFixPrompts` on `ReportExplorer` / `LiveReportExplorer` | Dead prop — per-flag `hasFixPrompt` drives Wrench indicator |
 | `REPORT_COPY.explorer.scanned` / `scanning` / `stillScanning` | Removed with FixLoop status chrome |
 | Explorer score `md` or `lg` | Live explorer uses `sm` only |
 | `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
@@ -138,9 +138,9 @@ Marketing and report surfaces must match product contracts:
 - **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit" or "Get started").
 - **Homepage nav:** How it works / Sample / Pricing (`lib/site/nav.ts` `MARKETING_LINKS`).
 - **One explorer:** exactly one report explorer on homepage (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer`); no second in hero.
-- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricBar` is compact rubric jump links; do not resurrect `RubricsPanel`. Sticky tabs must match DOM (Contract / Priorities / Journey / Flow / Timeline / Flags / …). No Overview tab.
+- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricBar` is compact rubric jump links; do not resurrect `RubricsPanel` / `RubricCard` / `ReportHeroHeader`. Sticky tabs must match DOM (Contract / Priorities / Journey / Flow / Timeline / Flags / …). No Overview tab.
 - **Report density:** explorer `ScoreRingGauge` is `sm`; no duplicate share status in hero; anon CTAs = value strip + `SampleFixCard` only.
-- **Progressive:** status poll passes `productContract` + partial flag `checkId`/`source`; hide empty Action Timeline.
+- **Progressive seam:** same chrome as completed (`AuditReportHero` + `RubricBar` + sticky); status poll passes `productContract` + partial flag `checkId`/`source`; hide empty Action Timeline; no progressive `RubricSummaryGrid`; partial Callout only when `reportCompleteness === 'PARTIAL'`.
 - **Share status:** `ShareStatusBanner` mounted on live reports (not hero-text-only).
 - **Visual evidence:** either wired via `tryCaptureVisualEvidenceForAudit` or absent from the tree — no orphan `lib/audit/capture` modules.
 - **Browser stack:** single vendor (Playwright). Grep for `from 'puppeteer'` under `lib/audit` must be empty.
@@ -164,7 +164,9 @@ rg "trackEvent\('" --glob '*.{ts,tsx}' -g '!node_modules'
 Grep skills/docs for stale conversion terms:
 
 ```bash
-rg -i 'ReportMiniNav|CompletenessHeader|six rubrics|"Run audit"|How to Start|39 models|133 check|\\b133/133\\b|showOverview|explorer\\.scanned|hasFixPrompts=\{' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md
+rg -i 'ReportMiniNav|CompletenessHeader|ReportHeroHeader|ReportScoreOverview|six rubrics|"Run audit"|How to Start|39 models|133 check|\\b133/133\\b|showOverview|report-overview|explorer\\.scanned|hasFixPrompts=\{' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md
+rg 'ReportHeroHeader|RubricSummaryGrid' components/audit/AuditReportProgressive.tsx
+rg 'reportCompleteness !== .FULL.' components/audit/
 ```
 
 ## Phase 8 — Sample provenance

@@ -68,7 +68,7 @@ The gap this review found is not in the principles. It is in principle 8: execut
 
 **For FixFlags:** honesty is structural product design, not tone. Re-checks are never gated (the loop is not a ransom). The banned-phrase list in `AGENTS.md` bans the vocabulary of overpromising. The progress UI advances only with real pipeline stages and streams real partial flags; it never fakes progress.
 
-**Assessment:** the strongest principle in the product. Standing rule: upgrade moments (`lib/billing/upgrade-moments.ts`, `ContextualUpgradeCard`) may state what a plan adds, never degrade or threaten what the user already has. Any future countdown, scarcity, or pre-checked-consent pattern fails this review by definition.
+**Assessment:** the strongest principle in the product. Standing rule: upgrade moments (`lib/billing/upgrade-moments.ts`, `ContextualUpgradeCard`) may state what a plan adds, never degrade or threaten what the user already has. Any future countdown, scarcity, or pre-checked-consent pattern fails this review by definition. Progress UI: same chrome as the completed report; stages + partial flags only; never blank the COMPLETED handoff.
 
 ### 7. Good design is long-lasting
 

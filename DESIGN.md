@@ -53,10 +53,14 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 |----------|---------|-----------------|
 | Identity | `AuditReportHero` | `ScoreDot` only |
 | Rubric summary | `RubricBar` | Per-rubric numbers |
-| Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside filters |
+| Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside rubric/page filters (no severity filter) |
 | Stuck chrome | `ReportStickyToolbar` when stuck | hostname + `ScoreDot` |
 
 Share status appears once (`ShareStatusBanner`). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
+
+**Flags chrome:** Meta row is `SeveritySignal` → Rubric → Impact. List is severity-ranked; no severity filter pills. Evidence screenshots match `devicesForCheck` (issue device only).
+
+**Progressive / loading:** The in-progress report uses the same altitudes as completed (`AuditReportHero` with scanning label, `RubricBar` loading, sticky, Contract → Timeline → Flags). Progress advances with real pipeline stages and partial flags; never fake. On COMPLETED, hold the progressive frame until `router.refresh()` swaps in SSR `AuditReport`.
 
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
@@ -137,7 +141,7 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 - Focus: `--focus-ring` (Flag Orange)
 - Disabled: muted opacity, no shadow
 - Error: `--destructive` color
-- Loading: skeleton state (shadcn Skeleton component)
+- Loading: progressive report chrome (same altitudes as completed) + Skeleton for captures; not a separate loading route aesthetic
 - Empty: EmptyState component with clear message + next action
 
 ## Icons

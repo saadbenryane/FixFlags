@@ -41,9 +41,13 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 ### Report density (when touching audit/report UI)
 - [ ] Read [fixflags-design-philosophy](../fixflags-design-philosophy/SKILL.md) report density doctrine
 - [ ] Explorer score ring is `sm` (68px); header `gap-3` / `pb-3`
+- [ ] No severity filter pills; list is severity-ranked; rubric + page filters only
+- [ ] Flag meta: `SeveritySignal` → Rubric → Impact (no truth pills)
+- [ ] Device-specific evidence only (no healthy twin viewport)
 - [ ] One share-status surface (`ShareStatusBanner`); hero is identity + `ScoreDot` only
 - [ ] Sticky tabs match DOM; no Overview; Priorities when Top Priorities exist
 - [ ] No FixLoop status row / duplicate count under filters
+- [ ] **Progressive seam:** same `AuditReportHero` / `RubricBar` / sticky as completed; `getScanningLabel` wired; no `ReportHeroHeader` / progressive `RubricSummaryGrid` / `#report-overview`; COMPLETED holds frame + `router.refresh()`; partial Callout only on `PARTIAL`
 
 ### Typography
 - [ ] Marketing heroes: `Heading as="h1"` or `h2`

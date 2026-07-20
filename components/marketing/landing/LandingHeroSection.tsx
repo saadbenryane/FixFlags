@@ -5,7 +5,7 @@ import { HERO } from '@/lib/marketing/copy'
 
 export function LandingHeroSection() {
   return (
-    <Section spacing="marketing" className="pb-10 sm:pb-14 lg:pb-16">
+    <Section spacing="marketing" className="pb-6 sm:pb-8 lg:pb-10">
       <Container className="relative">
         <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
           <h1 className="max-w-[24ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">

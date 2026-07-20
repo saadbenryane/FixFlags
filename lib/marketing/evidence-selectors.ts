@@ -244,7 +244,14 @@ export function getEvidenceSelectors(checkId: string): EvidenceSelectorEntry | u
 
 export function devicesForCheck(checkId: string): EvidenceDevice[] {
   const entry = EVIDENCE_SELECTORS[checkId]
-  if (!entry) return ['desktop', 'mobile']
-  if (entry.device === 'both') return ['desktop', 'mobile']
-  return [entry.device]
+  if (entry) {
+    if (entry.device === 'both') return ['desktop', 'mobile']
+    return [entry.device]
+  }
+  // Unregistered: infer from check id. Never default to both: that shows a
+  // healthy twin viewport beside the failing one.
+  if (/mobile|thumb-zone|touch|375px|viewport-narrow/i.test(checkId)) {
+    return ['mobile']
+  }
+  return ['desktop']
 }

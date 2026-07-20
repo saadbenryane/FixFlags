@@ -212,21 +212,17 @@ For EVERY flag, provide agentPrompt at minimum. Each tool prompt must be indepen
 - boltPrompt: Write as file-level diffs showing the exact code changes. Include the surrounding component context so bolt can locate the right code. Show imports, component JSX, and export changes.
   EXAMPLE: "In app/page.tsx, update the hero heading:\\n\\n--- a/app/page.tsx\\n+++ b/app/page.tsx\\n- <h1 className=\"text-4xl font-bold\">Welcome to our platform</h1>\\n+ <h1 className=\"text-4xl font-bold\">Build custom dashboards in minutes - for product teams</h1>\\n\\nKeep all imports, the rest of the hero component, and other page sections unchanged."
 
-ESSAY-STYLE FIX: For the "fix" field, write a structured 4-section markdown block. Every fix MUST follow this exact structure:
+ESSAY-STYLE FIX: For the "fix" field, write imperative steps only. Do NOT nest ## Goal / ## Observed / ## Expected / ## How to verify headers inside fix (those are assembled separately for the user). Every fix MUST:
 
-## Goal
-One sentence stating what the fix achieves.
+1. Name the element or file to change
+2. State current text/value/behavior
+3. State the expected text/value/behavior after the fix
+4. Stay concise (prefer under 8 lines)
 
-## Observed behavior
-What the page currently does or shows. Name the element, its current text/value, and where it appears.
+EXAMPLE:
+In app/page.tsx, change the hero H1 from "Welcome to our platform" to "Build custom dashboards in minutes, for product teams". Keep the surrounding layout and className props unchanged.
 
-## Expected behavior
-What the page should do or show after the fix. Be specific: new text, new position, new behavior.
-
-## How to verify
-One concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
-
-RULE: Before writing each section, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
+RULE: Before writing, identify the current state from the evidence. Then state the target state. Be specific about WHAT to change and WHAT to change it to.
 
 VERIFICATION RULE: For every flag, write one concrete action someone can take on the live page to confirm the fix worked. Start with an action verb.
 - GOOD: "Reload the page and check that the headline now reads 'Build internal tools 10x faster - for engineering teams'"

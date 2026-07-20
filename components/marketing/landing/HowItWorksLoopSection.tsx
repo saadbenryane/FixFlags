@@ -5,25 +5,60 @@ import { LandingSectionHeader } from '@/components/marketing/landing/LandingSect
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { HowItWorksSampleLink } from '@/components/marketing/landing/SampleFunnelEvents'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { cn } from '@/lib/utils'
 
 type LoopStep = (typeof LANDING_PAGE.howItWorks.steps)[number]
 
+const LOOP_PANORAMA = {
+  light: '/marketing/visuals/loop-light.webp',
+  dark: '/marketing/visuals/loop-dark.webp',
+  width: 1600,
+  height: 686,
+} as const
+
+/**
+ * Subject-centered square tiles (~12–14KB each) for mobile.
+ * Pre-cropped so each step is framed without sliding a wide panorama.
+ */
+const LOOP_TILES = [
+  {
+    light: '/marketing/visuals/loop-01-light.webp',
+    dark: '/marketing/visuals/loop-01-dark.webp',
+  },
+  {
+    light: '/marketing/visuals/loop-02-light.webp',
+    dark: '/marketing/visuals/loop-02-dark.webp',
+  },
+  {
+    light: '/marketing/visuals/loop-03-light.webp',
+    dark: '/marketing/visuals/loop-03-dark.webp',
+  },
+] as const
+
+const TILE_SIZES = '90vw'
+const PANORAMA_SIZES = '(min-width: 1024px) 1024px, 100vw'
+
 function LoopPanorama() {
   return (
-    <div className="relative aspect-[3/1] overflow-hidden">
+    <div
+      className="relative overflow-hidden"
+      style={{ aspectRatio: `${LOOP_PANORAMA.width} / ${LOOP_PANORAMA.height}` }}
+    >
       <Image
-        src="/marketing/visuals/loop-light.webp"
+        src={LOOP_PANORAMA.light}
         alt=""
         fill
-        sizes="(min-width: 1024px) 1024px, 100vw"
-        className="object-cover dark:hidden"
+        sizes={PANORAMA_SIZES}
+        quality={82}
+        className="object-cover object-center dark:hidden"
       />
       <Image
-        src="/marketing/visuals/loop-dark.webp"
+        src={LOOP_PANORAMA.dark}
         alt=""
         fill
-        sizes="(min-width: 1024px) 1024px, 100vw"
-        className="hidden object-cover dark:block"
+        sizes={PANORAMA_SIZES}
+        quality={82}
+        className="hidden object-cover object-center dark:block"
       />
       <div
         aria-hidden
@@ -33,27 +68,31 @@ function LoopPanorama() {
   )
 }
 
-const MOBILE_LOOP_POSITIONS = ['0% 45%', '33% 45%', '67% 45%'] as const
+function LoopThirdScene({ index, className }: { index: number; className?: string }) {
+  const tile = LOOP_TILES[Math.min(Math.max(index, 0), LOOP_TILES.length - 1)]!
 
-function MobileLoopScene({ index }: { index: number }) {
-  const objectPosition = MOBILE_LOOP_POSITIONS[index] ?? '50% 45%'
   return (
-    <div className="relative aspect-[4/3] overflow-hidden rounded-nested-md bg-muted/35 shadow-glass">
+    <div
+      className={cn(
+        'relative aspect-square overflow-hidden rounded-nested-md bg-muted/35 shadow-glass',
+        className,
+      )}
+    >
       <Image
-        src="/marketing/visuals/loop-light.webp"
+        src={tile.light}
         alt=""
         fill
-        sizes="100vw"
-        className="object-cover dark:hidden"
-        style={{ objectPosition }}
+        sizes={TILE_SIZES}
+        quality={82}
+        className="object-cover object-center dark:hidden"
       />
       <Image
-        src="/marketing/visuals/loop-dark.webp"
+        src={tile.dark}
         alt=""
         fill
-        sizes="100vw"
-        className="hidden object-cover dark:block"
-        style={{ objectPosition }}
+        sizes={TILE_SIZES}
+        quality={82}
+        className="hidden object-cover object-center dark:block"
       />
     </div>
   )
@@ -97,7 +136,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
       id="how-it-works"
       className="relative scroll-mt-[var(--header-offset)] overflow-hidden bg-muted/20"
     >
-      <Container className="relative space-y-8 sm:space-y-11">
+      <Container className="relative space-y-5 sm:space-y-7">
         <div className="mx-auto max-w-3xl space-y-3 text-center">
           <LandingSectionHeader headline={headline} />
           <p className="text-base leading-relaxed text-muted-foreground text-pretty">{subhead}</p>
@@ -108,7 +147,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
             <div className="hidden md:block">
               <LoopPanorama />
 
-              <div className="relative grid grid-cols-3 gap-0 px-3 pb-7 pt-6 lg:px-5 lg:pb-8">
+              <div className="relative grid grid-cols-3 gap-0 px-3 pb-5 pt-4 lg:px-5 lg:pb-6">
                 <div
                   aria-hidden
                   className="absolute left-[14%] right-[14%] top-11 h-px bg-gradient-to-r from-brand/15 via-brand/55 to-brand/15"
@@ -124,7 +163,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
             <div className="grid gap-px bg-border/45 md:hidden">
               {steps.map((step, index) => (
                 <article key={step.title} className="bg-background/85 p-5 sm:p-6">
-                  <MobileLoopScene index={index} />
+                  <LoopThirdScene index={index} />
                   <div className="mt-5">
                     <StepCopy step={step} index={index} />
                   </div>

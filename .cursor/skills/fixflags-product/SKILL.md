@@ -107,15 +107,38 @@ Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `a
 
 | Surface | Owns | Does not own |
 |---------|------|--------------|
-| `AuditReportHero` | Hostname, URL, `ScoreDot`, capture callouts | Share status, score ring, sticky nav |
-| `ShareStatusBanner` | Share readiness + per-rubric status badges | Flag lists, hero identity |
-| `RubricBar` | Compact rubric score pills linking to `#report-flags` | Flag browsing |
+| `AuditReportHero` | Hostname, URL, `ScoreDot`, capture callouts; scanning badge + `getScanningLabel` while in progress | Share status, score ring, sticky nav, verdict blockquote |
+| `ShareStatusBanner` | Share readiness + per-rubric status badges (completed only) | Flag lists, hero identity |
+| `RubricBar` | Compact rubric score pills linking to `#report-flags`; `loading` → Scanning | Flag browsing |
 | `ReportExplorer` | Working score ring (`sm`), filters, flag list, detail panel, fix prompts, screenshot + visual evidence | Page chrome, share status |
 | `ReportStickyToolbar` | Section nav matching DOM (Contract, Priorities, Journey, Flow, Timeline, Flags, …); stuck hostname + `ScoreDot` | Fix prompt editing, Overview |
 
-Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`, Overview tab).
+Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `RubricsPanel`, `ReportHeroHeader`, Overview tab).
 
 **Density:** explorer score is always `ScoreRingGauge` `sm` (68px). No dead `lg` size. Filter header uses tight `gap-3` / `pb-3`.
+
+**Progressive / scan UX (same chrome as completed):**
+
+| File | Role |
+|------|------|
+| `components/audit/AuditInput.tsx` | Submit → `/report/{id}` |
+| `hooks/useAuditPolling.ts` | SWR on `/api/reports/{id}/status` |
+| `app/api/reports/[id]/status/route.ts` | Lightweight payload: status, progress, screenshots, rubrics, `partialFlags` (CHECKING+), `actionTimeline`, `productContract`, `shareStatus` |
+| `components/audit/AuditPageClient.tsx` | Poll → progressive; on COMPLETED **hold frame** + `router.refresh()` (never blank the payoff) |
+| `components/audit/AuditReportProgressive.tsx` | In-progress report using **same altitudes** as `AuditReport` |
+| `lib/audit/progress-ui.ts` | `getProgressPercent`, `getScanningLabel`, `getActivityMessage` (must be wired in UI) |
+
+**Chrome parity rules:**
+- Hero = `AuditReportHero` (`ScoreDot` + scanning badge/label). No parallel `ReportHeroHeader`.
+- Rubrics = `RubricBar` with `loading` (Scanning badges). Do not put `RubricSummaryGrid` on progressive (marketing sample only).
+- Sticky = `ReportStickyToolbar` with only sections that exist (Contract / Timeline / Flags mid-scan). No `#report-overview` destination.
+- Section order matches completed: Hero → RubricBar → sticky → verdict → queue/worker Callouts → Contract → Timeline → Flags.
+- Pre-flags Flags shell: `ScoreRingGauge` sm + activity line + `BrowserFrame` captures. No competing `ReportScoreOverview` / ScoreStack.
+- Timeline title may differ ("What FixFlags is doing" vs "How we checked"); shell padding must match (`px-5 py-4`).
+- Progress honesty: eased ring never exceeds backend `%`; never invent Journey/Flow/Priorities mid-scan.
+- Partial Callout on completed report only when `reportCompleteness === 'PARTIAL'` (not `UNKNOWN`).
+
+**Anti-patterns:** fake progress past backend; blank on COMPLETED; Scout chat; second hero; rubrics after flags on progressive; orphaned stage copy helpers unused in UI.
 
 **Progressive parity:** `AuditPageClient` must pass `productContract` and enriched `partialFlags` (`checkId`, `source`) into `AuditReportProgressive`. Hide Action Timeline when empty. Status API selects `checkId` + `source` for truth labels mid-scan.
 

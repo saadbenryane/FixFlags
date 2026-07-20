@@ -87,6 +87,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Sample size gate (20 distinct sites minimum for programmatic pages)
 - MCP integration (14 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
 - Free tools: meta preview, placeholder copy detector
+- **Live progressive report:** after URL submit, `/report/{id}` uses the same chrome as the completed report (hero, RubricBar, sticky, Contract, Action Timeline, partial Flags) while the pipeline runs; stages and progress are honest (never fake)
 
 ## Limitations and technical debt
 

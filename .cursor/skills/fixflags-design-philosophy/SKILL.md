@@ -35,9 +35,9 @@ When two options tie, pick the one with **less**.
 
 | # | Heuristic | What it means here | Where it lives |
 |---|-----------|--------------------|----------------|
-| 1 | **Visibility of system status** | The user always knows what's happening: scan progress (Scan → Flag → Fix), partial report fill-in, save/share status. | `AuditReportProgressive`, `ReportFixLoop`, `Callout`, `ShareStatusBanner`, `ActiveAuditBanner` |
+| 1 | **Visibility of system status** | The user always knows what's happening: scan progress (Scan → Flag → Fix), partial report fill-in, save/share status. Progressive uses the **same report chrome** as completed (`AuditReportHero` + `RubricBar` + sticky + timeline). | `AuditReportProgressive`, `AuditPageClient` hold-frame, `Callout`, `ShareStatusBanner`, `ActiveAuditBanner` |
 | 2 | **Match system & real world** | Plain language, not jargon. "Flag", "fix prompt", "re-check" — verbs a builder uses. Grades (A–F) are a universal mental model. | `ScoreDisplay`, rubric labels, verdict copy |
-| 3 | **User control & freedom** | Reversible actions, clear exits, no dead ends. Collapsible sections; every error state offers a next step. | `RubricCard` accordion, error panels with CTAs |
+| 3 | **User control & freedom** | Reversible actions, clear exits, no dead ends. Collapsible sections; every error state offers a next step. | Explorer detail, error panels with CTAs |
 | 4 | **Consistency & standards** | One way to do a thing. Same card = same radius, surface, shadow. Use shared primitives, never bespoke one-offs. | `Card`, `Callout`, `Button`, typography components |
 | 5 | **Error prevention** | Validate before damage. Disable/guard destructive actions; confirm spend (plan changes). Re-checks are free — never gate behind quota. | `LaunchGates`, `AuditLimitGate`, checkout flows |
 | 6 | **Recognition over recall** | Show, don't make them remember. Persistent `ReportStickyToolbar`, inline definitions, visible legends. | `ReportStickyToolbar`, `ScoringLegend` |
@@ -78,9 +78,18 @@ The report is read in this emotional arc — design to it:
 
 **Density (report Flags header):**
 - Working score ring is always `sm` (68px) beside filters — never `md`/`lg` in the explorer.
+- No severity filter pills. Flags stay severity-ranked in the list (`compareFlagsByPriority`); filters are rubric + page only.
+- Flag meta row: `SeveritySignal` (outline circle + alert) → Rubric → Impact. No Detected/Observed/Reproduced pills in chrome (truth stays on the model for MCP/API).
+- Evidence screenshots show only the device(s) where the issue applies (`devicesForCheck`). Never a healthy desktop twin beside a mobile-only finding.
+- Fix prompts copy via `buildExpertFixPrompt`: Why / Evidence / Fix / Scope / Verify.
 - No "Scanned · page type" status row, no "Top fix · Copy fix prompt" summary, no duplicate flag-count badge under filters (counts live in filter pills).
 - Sticky toolbar offsets under site header (`--header-height`). Sticky tabs must match DOM sections; status callouts are not an Overview tab.
 - Anon conversion: one value strip + `SampleFixCard` — do not stack a third claim-guide card.
+
+**Scan wait = product (Peak-End + Doherty):**
+- From URL submit through COMPLETED, progressive must share completed altitudes so `router.refresh()` only fills content.
+- Wire `getScanningLabel` / `getActivityMessage`; progress never exceeds backend `%`.
+- Never blank the score reveal on COMPLETED (hold progressive frame until SSR swap).
 
 Rules:
 - Numbers (scores, grades, counts) are `font-mono tabular-nums` so they don't jitter.
@@ -127,6 +136,9 @@ This philosophy is versioned on purpose.
 
 ### Changelog
 
+- **v1.8 (Jul 2026)** — Report streamline: no severity filters (sort-only); meta = SeveritySignal → Rubric → Impact; device-matched evidence only; expert fix prompts Why/Evidence/Fix/Scope/Verify.
+- **v1.9 (Jul 2026)** — Flag detail Fix-only: `MarkdownPromptBox` (Markdown label + top-right copy); no Why/Evidence/Verify cards; `SeveritySignal` single circle + "Critical Flag" tooltip; sidebar `Wrench`.
+- **v1.7 (Jul 2026)** — Loading→report seam: progressive uses same hero/RubricBar/sticky as completed; scanning labels wired; hold-frame on COMPLETED; no parallel ReportHeroHeader / ReportScoreOverview.
 - **v1.6 (Jul 2026)** — Report density: explorer score `sm`; sticky under `--header-height`; Overview tab removed (callouts after toolbar); Priorities in sticky; share status / score ownership one surface each; progressive gets `productContract` + truth-capable partial flags.
 - **v1.5 (Jul 2026)** — Report surface cleanup: `ReportExplorer` owns flag browsing; `RubricsPanel` summary-only; removed `ReportMiniNav`/`CompletenessHeader`; homepage nav How it works / Sample / Pricing; primary CTA **Review my site**; re-checks free and unlimited.
 - **v1.4 (Jun 2026)** — Landing language refinement: removed How-to-Start toggle and evidence section; logo cloud below hero; dimension cards restore checklists + example findings; outcome-led final CTA; concentric nested fix prompts via `FixPromptBlock nested`.

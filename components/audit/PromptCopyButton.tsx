@@ -11,6 +11,8 @@ interface Props {
   label?: string
   className?: string
   compact?: boolean
+  /** Ghost icon-only button (ChatGPT/Claude code-block style). */
+  iconOnly?: boolean
   kind?: 'flag' | 'plan' | 'export'
   auditId?: string
   tool?: string
@@ -21,6 +23,7 @@ export function PromptCopyButton({
   label = 'Copy prompt',
   className,
   compact,
+  iconOnly = false,
   kind = 'flag',
   auditId,
   tool,
@@ -33,6 +36,21 @@ export function PromptCopyButton({
     setCopied(true)
     toast.success('Prompt copied')
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (iconOnly) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={handleCopy}
+        aria-label={copied ? 'Copied' : label}
+        className={cn('h-7 w-7 text-muted-foreground hover:text-foreground', className)}
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </Button>
+    )
   }
 
   return (

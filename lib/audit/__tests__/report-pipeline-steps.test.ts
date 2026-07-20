@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
-  buildInProgressPipelineSteps,
   buildPipelineSteps,
   buildRubricScoreRows,
   reportScanDetail,
@@ -52,29 +51,6 @@ describe('buildPipelineSteps', () => {
     const detail = fallback.find((s) => s.id === 'scan')?.detail
     assert.equal(detail, 'Full review')
     assert.doesNotMatch(detail ?? '', /checks?/i)
-  })
-})
-
-describe('buildInProgressPipelineSteps', () => {
-  it('keeps Scan active while capturing and checking', () => {
-    for (const status of ['QUEUED', 'CAPTURING', 'CHECKING'] as const) {
-      const steps = buildInProgressPipelineSteps(status, 0)
-      assert.equal(steps.find((s) => s.id === 'scan')?.state, 'active')
-      assert.equal(steps.find((s) => s.id === 'flags')?.state, 'pending')
-    }
-  })
-
-  it('activates Flag during AI review', () => {
-    const steps = buildInProgressPipelineSteps('JUDGING', 4)
-    assert.equal(steps.find((s) => s.id === 'scan')?.state, 'done')
-    assert.equal(steps.find((s) => s.id === 'flags')?.state, 'active')
-    assert.equal(steps.find((s) => s.id === 'flags')?.detail, '4')
-  })
-
-  it('activates Fix while packaging', () => {
-    const steps = buildInProgressPipelineSteps('FINALIZING', 6)
-    assert.equal(steps.find((s) => s.id === 'flags')?.state, 'done')
-    assert.equal(steps.find((s) => s.id === 'prompts')?.state, 'active')
   })
 })
 

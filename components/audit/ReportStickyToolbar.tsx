@@ -120,6 +120,8 @@ export function ReportStickyToolbar({
   }, [])
 
   useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+
     const observers: IntersectionObserver[] = []
 
     for (const section of sections) {

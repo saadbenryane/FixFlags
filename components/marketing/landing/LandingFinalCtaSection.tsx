@@ -19,7 +19,7 @@ const AuditInput = dynamic(
 
 export function LandingFinalCtaSection() {
   return (
-    <Section spacing="marketing" className="pb-11 sm:pb-14">
+    <Section spacing="marketing" className="pb-7 sm:pb-8">
       <Container>
         <div className="relative overflow-hidden rounded-card p-8 glass-surface-strong shadow-card sm:p-12 lg:p-16">
           <div

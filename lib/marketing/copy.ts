@@ -483,12 +483,12 @@ export const LANDING_PAGE = {
   },
   checkDimensions: {
     label: '',
-    headline: 'Every review covers three areas.',
+    headline: 'What your page says, how it works, and whether it can be found.',
     exampleFindingLabel: 'Example finding',
     cards: [
       {
         id: 'message',
-        title: 'Makes sense',
+        title: 'Message',
         question: 'Can people understand and care in five seconds?',
         icon: 'message',
         tint: 'brand',
@@ -505,7 +505,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'experience',
-        title: 'Works',
+        title: 'Experience',
         question: 'Can people use it without friction?',
         icon: 'experience',
         tint: 'success',
@@ -522,7 +522,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'reach',
-        title: 'Ready to share',
+        title: 'Reach',
         question: 'Can people find and share it?',
         icon: 'reach',
         tint: 'info',
@@ -568,8 +568,8 @@ export const LANDING_PAGE = {
     ] as const,
   },
   reportExamples: {
-    headline: 'More of what a review catches.',
-    subhead: 'Real Flags from the product. Same shape you get after you paste a URL.',
+    headline: 'Flags you can act on.',
+    subhead: 'Real findings from the product. Same shape you get after you paste a URL.',
     seeInSample: 'See in sample',
     seeInSampleHref: '/#sample-review',
     cards: [
@@ -612,7 +612,7 @@ export const LANDING_PAGE = {
     ] as const,
   },
   whyAiNeedsFixFlags: {
-    headline: 'Why AI needs FixFlags.',
+    headline: 'AI ships the build. FixFlags checks the first visit.',
     lead: 'AI builds fast. Users judge in seconds.',
     body: 'FixFlags checks what the builder never experiences as a first-time visitor.',
     checks: [
@@ -625,8 +625,8 @@ export const LANDING_PAGE = {
     ] as const,
   },
   editorIntegrations: {
-    headline: 'Paste the fix where you already work.',
-    body: 'Each Flag comes with a prompt you can drop into your editor. Ship the change. Re-check to prove it landed.',
+    headline: 'Cursor, Claude, Lovable, Bolt, and more.',
+    body: 'Each Flag includes a prompt shaped for the editor you already use.',
   },
   productEvidence: {
     headline: 'What a review actually catches',
@@ -635,7 +635,7 @@ export const LANDING_PAGE = {
     items: [
       {
         id: 'message',
-        title: 'Message gaps',
+        title: 'Message',
         lead: 'Visitors should know what you do and why it matters in five seconds.',
         findings: [
           'Hero that never names the outcome',
@@ -645,7 +645,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'experience',
-        title: 'Experience friction',
+        title: 'Experience',
         lead: 'On mobile, the next step should be obvious without hunting.',
         findings: [
           'Main action buried after a long scroll on phone',
@@ -655,7 +655,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'reach',
-        title: 'Reach misses',
+        title: 'Reach',
         lead: 'When someone shares your link, the card should still look like you.',
         findings: [
           'Link cards that render blank when shared',
@@ -685,7 +685,7 @@ export const LANDING_PAGE = {
   sampleReport: {
     label: '',
     headline: 'A review you can paste into your editor.',
-    body: 'Each Flag has evidence, impact, and a fix prompt. Copy it. Paste it. Re-check.',
+    body: 'Each Flag has evidence, impact, and a fix prompt.',
     cta: 'Explore all Flags',
     ctaWithCount: (n: number) => `Explore all ${n} Flags`,
     illustrativeLabel: '',
@@ -927,7 +927,6 @@ export const REPORT_COPY = {
     summaryByRubric: 'Summary by rubric',
   },
   explorer: {
-    allSeverities: 'All severities',
     allPages: 'All Pages',
     noMatchFilter: 'No flags match this filter.',
     checkingIssues: 'Checking for issues…',
@@ -1238,9 +1237,6 @@ export const LOCKED_CONTENT_TEASER = {
 
 export const SAMPLE_FIX = {
   label: 'Example fix',
-  evidenceTitle: 'Evidence',
-  whyTitle: 'Why it matters',
-  verifyTitle: 'How to verify',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
   subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, re-check, and run more URL checks.`,

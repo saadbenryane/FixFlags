@@ -109,7 +109,8 @@ export function PromptPreviewModal({
 }
 
 function promptToMarkdown(prompt: string): string {
+  // Expert prompts are already Markdown (`## Why`, etc.). Light-touch legacy labels only.
   return prompt
-    .replace(/^(Fix|Why it matters|Evidence|Verify|Scope):\s*/gm, '**$1:** ')
+    .replace(/^(Fix|Why it matters|Why|Evidence|Verify|Scope):\s*/gm, '**$1:** ')
     .replace(/^(\d+\.\s)/gm, '$1')
 }

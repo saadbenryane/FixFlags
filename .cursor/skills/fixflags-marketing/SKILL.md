@@ -164,7 +164,9 @@ Full research methods: [research-workflows.md](research-workflows.md).
 ## Homepage contract
 
 - **Nav links:** How it works · Sample · Pricing (`MARKETING_LINKS` in `lib/site/nav.ts`)
-- **Section order:** Hero → Sample review → Fix loop → Everything we check → Deeper Flag examples → Why AI needs FixFlags → Editor integrations → Final CTA
+- **Section order:** Hero → Sample review → Fix loop → Everything we check → Deeper Flag examples → Why AI → Editor integrations → Final CTA
+- **Rubric titles:** Message / Experience / Reach only. Never "Message gaps", "Experience friction", "Reach misses", "Makes sense", "Works", or "Ready to share".
+- **Section headlines:** One job each. No inventory "three areas/places" framing. Keep paste → fix → re-check vivid in How it works + Final CTA; do not restate the same loop in Sample + Integrations bodies.
 - **Funnel events:** see `.cursor/skills/fixflags-analytics/SKILL.md` and `.agents/handoffs/launch-funnel-p2.md` (P2 gated on ~100 scans)
 - **One explorer:** the live sample report lives only in `SampleReportSection`; do not add a second explorer in hero or elsewhere. Deeper examples are static Flag cards, not a second explorer.
 - **Editor logos:** `EditorIntegrationsSection` / `EditorToolMarks`, not the hero

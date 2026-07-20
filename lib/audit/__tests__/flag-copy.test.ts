@@ -83,12 +83,41 @@ describe('flag-copy', () => {
     }
     const prompt = buildExpertFixPrompt(flag)
     assert.match(prompt, /^Robots meta tag is blocking indexing/)
-    assert.match(prompt, /Why it matters:/)
-    assert.match(prompt, /Evidence: meta name="robots"/)
-    assert.match(prompt, /Fix:\nRemove noindex/)
-    assert.match(prompt, /Verify:/)
+    assert.match(prompt, /^## Why$/m)
+    assert.match(prompt, /## Evidence\nmeta name="robots"/)
+    assert.match(prompt, /## Fix\nRemove noindex/)
+    assert.match(prompt, /## Verify/)
     assert.doesNotMatch(prompt, /look at|screenshot|whole page/i)
     assert.ok(isCodeOrHeadCheck('robots-blocks-indexing'))
+  })
+
+  it('normalizes legacy Goal/Observed/Expected essays into Fix body', () => {
+    const flag = {
+      id: '1',
+      checkId: 'h1-generic',
+      rubric: 'MESSAGE',
+      severity: 'IMPORTANT',
+      problem: 'Generic headline',
+      evidence: 'H1: "Build with AI"',
+      fix: [
+        '## Goal',
+        'Make the headline outcome-led.',
+        '',
+        '## Observed behavior',
+        'H1 says "Build with AI".',
+        '',
+        '## Expected behavior',
+        'Rewrite the H1 to name the audience and outcome.',
+        '',
+        '## How to verify',
+        'Reload and read the hero H1.',
+      ].join('\n'),
+      verificationRule: 'Reload and read the hero H1.',
+    }
+    const prompt = buildExpertFixPrompt(flag)
+    assert.match(prompt, /## Fix\nRewrite the H1 to name the audience and outcome\./)
+    assert.doesNotMatch(prompt, /## Goal/)
+    assert.doesNotMatch(prompt, /## Observed/)
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once prescribed', () => {
@@ -108,7 +137,7 @@ describe('flag-copy', () => {
     }
 
     assert.equal(resolveFixPrompt(flag), 'Rewrite the H1 in app/page.tsx to name the audience and the outcome.')
-    assert.match(buildExpertFixPrompt(flag), /Fix:\nRewrite the H1 in app\/page\.tsx/)
+    assert.match(buildExpertFixPrompt(flag), /## Fix\nRewrite the H1 in app\/page\.tsx/)
   })
 
   it('falls back to the plain fix text when no AI prompt has been prescribed yet', () => {
@@ -123,7 +152,7 @@ describe('flag-copy', () => {
     }
 
     assert.equal(resolveFixPrompt(flag), '1. Rewrite the H1 around the user outcome')
-    assert.match(buildExpertFixPrompt(flag), /Fix:\n1\. Rewrite the H1/)
+    assert.match(buildExpertFixPrompt(flag), /## Fix\n1\. Rewrite the H1/)
   })
 
   it('falls back when fix text is blank', () => {
