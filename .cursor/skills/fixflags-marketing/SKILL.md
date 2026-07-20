@@ -10,6 +10,7 @@ description: FixFlags go-to-market, ICP segmentation, message research, copy fra
 Read before changing marketing copy, positioning, or GTM.
 
 **Canonical sources (always check first):**
+- Vision / category (strategy): `knowledge/vision.md`, `.cursor/skills/fixflags-product-intelligence/SKILL.md`
 - Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`, `HELP_CENTER`, `SUPPORT_CHAT`)
 - Help articles: `lib/help/catalog.ts` (bodies + categories; not hardcoded in pages)
 - Product behavior (entitlements, billing, support): `.cursor/skills/fixflags-product/SKILL.md`
@@ -17,6 +18,8 @@ Read before changing marketing copy, positioning, or GTM.
 - Upgrade moment resolver: `lib/billing/upgrade-moments.ts` (strings live in `copy.ts`)
 - Design polish: `.cursor/skills/fixflags-design-system/SKILL.md`
 - Evidence & problem bars: [evidence-pack.md](evidence-pack.md)
+
+**Do not overclaim:** Local OSS runtime, five UI rubrics, enterprise isolation, or “we train on your product” are not shipped. Acquisition language stays Launch Check / finish the app; strategic category is Product Intelligence.
 
 ## Help Center copy
 

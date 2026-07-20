@@ -101,7 +101,7 @@ Exceptions (guard allowlists): `lib/design/tokens.css`, `brand-spec.ts`, demo CS
 
 ## Report chrome copy
 
-Report section titles and sticky nav labels live in `REPORT_COPY.sectionTitles` / `REPORT_COPY.stickyNav` (`lib/marketing/copy.ts`). Do not hardcode "Product contract", "How we checked", sticky tab names, or "Copy fix plan (N)" in components.
+Report section titles and sticky nav labels live in `REPORT_COPY.sectionTitles` / `REPORT_COPY.stickyNav` (`lib/marketing/copy.ts`). Do not hardcode "Product contract", "How we checked", sticky tab names, or "Copy Finish Plan (N)" in components. Finish Plan sticky id is `#report-finish-plan`.
 
 ## Typography surfaces
 

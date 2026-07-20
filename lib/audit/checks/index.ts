@@ -25,6 +25,7 @@ import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { filterToolingPathFlags } from '../tooling-path-filter'
+import { detectPagePurpose } from '../page-purpose'
 
 export type { DeterministicFlag } from '../flag-types'
 
@@ -46,6 +47,12 @@ export async function runAllChecks(
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
 
+  // Detect the page's high-level purpose once. Conversion-friction, content,
+  // and trust-psychology checks gate on this so they do not fire on docs,
+  // articles, placeholder domains, or open-source project pages where the
+  // "missing trial / contact / authority signal" is not actionable.
+  const purpose = detectPagePurpose(metadata, url)
+
 const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
     { name: 'metadata',        run: () => runMetadataChecks(metadata) },
     { name: 'og-image',        run: () => runOgImageUrlCheck(url, metadata) },
@@ -54,7 +61,7 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'seo',             run: () => runSeoChecks(url, metadata) },
     { name: 'trust',           run: () => runTrustChecks(url, metadata, consoleErrors) },
     { name: 'mobile',          run: () => runMobileChecks(mobile) },
-    { name: 'content',         run: () => runContentChecks(metadata) },
+    { name: 'content',         run: () => runContentChecks(metadata, purpose) },
     { name: 'slop',            run: () => runSlopChecks(metadata) },
     { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
     { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
@@ -65,8 +72,8 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
     { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
     { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
-    { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata) },
-    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata) },
+    { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata, purpose) },
+    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata, purpose) },
     { name: 'visual-hierarchy', run: () => runVisualHierarchyChecks(metadata, captureMetrics ?? null) },
     { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null) },
   ]

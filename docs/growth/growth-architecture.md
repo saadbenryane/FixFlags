@@ -6,7 +6,7 @@ Status: **Growth system active. GSC/GA4 data pulling. Knowledge graph seeding in
 
 This document is the living design for FixFlags' organic growth system. It
 covers the knowledge graph, the public knowledge layer derived from it, and
-the automation that keeps both growing. See `roadmap.md` for what's actually
+the automation that keeps both growing. See `growth-roadmap.md` for what's actually
 built vs. planned at any given time — this file describes the target
 architecture, not a snapshot of progress.
 
@@ -246,7 +246,7 @@ audits; new audits get them automatically via the finalize hook.
 `scripts/growth/issue-frequencies.ts` recomputes `Issue.occurrenceCount`,
 `Issue.siteCount`, `Issue.frameworkCount`, and `Issue.examples` from the raw
 `IssueOccurrence` log. Runs nightly (once wired into the self-hosted
-scheduler in `lib/queue/`, see `roadmap.md` Phase 2). Idempotent — safe to
+scheduler in `lib/queue/`, see `growth-roadmap.md` Phase 2). Idempotent — safe to
 run any number of times.
 
 ### Backfill

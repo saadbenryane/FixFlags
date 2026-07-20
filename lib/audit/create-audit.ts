@@ -18,6 +18,7 @@ import {
   enforceAnonymousIpSoftCeiling,
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
+import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 
 export interface CreateAuditOptions {
   url: string
@@ -139,9 +140,25 @@ export async function createAndEnqueueAudit(
   const includeAi = await resolveIncludeAiForNewAudit(userId)
   const journeyReviewIncluded = await resolveJourneyReviewIncluded(userId)
 
+  let projectId: string | null = null
+  if (userId) {
+    if (options.parentId) {
+      const parent = await prisma.audit.findUnique({
+        where: { id: options.parentId },
+        select: { projectId: true },
+      })
+      projectId = parent?.projectId ?? null
+    }
+    if (!projectId) {
+      const project = await ensureProductProject(userId, url)
+      projectId = project.id
+    }
+  }
+
   const data = {
     url,
     userId,
+    projectId,
     parentId: options.parentId ?? null,
     skipUsageCount: options.skipUsageCount ?? false,
     auditMode: options.auditMode ?? ('CRITICAL_PATH' as const),

@@ -1,5 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
+import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import { DeterministicFlag } from './index'
 
 const AUTHORITY_MARKERS = [
@@ -57,8 +58,12 @@ function isInternalNavigationHref(href: string, pageHostname: string | null): bo
   }
 }
 
-export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runTrustPsychologyChecks(
+  meta: PageMetadata,
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const productPage = isProductPage(purpose.purpose)
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const htmlText = bodyText.toLowerCase()
   const ctaTexts = meta.ctaTexts ?? []
@@ -81,7 +86,11 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
   // Only flag a total absence of trust signals. If the page shows testimonials or
   // a customer/partner logo wall, it has authority proof (just not press badges),
   // so flagging "no authority signals" there is a false positive.
-  if (!hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
+  // "No authority signals" only matters on a product/marketing page. OSS
+  // pages have authority via stars/maintainers (not captured here); docs and
+  // placeholder pages do not need press badges. Suppress to avoid top-3
+  // false positives.
+  if (productPage && !hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-no-authority-signals',
       rubric: 'MESSAGE',
@@ -129,7 +138,10 @@ export function runTrustPsychologyChecks(meta: PageMetadata): DeterministicFlag[
   const hasContactLink = links.some((l) => /\b(contact|support|help|get in touch|talk to us|reach out|chat with us|let.s talk)\b/i.test(l.href + ' ' + l.text))
   const hasPhone = /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/.test(bodyText)
 
-  if (!hasContactLink && !hasPhone && emailCount === 0) {
+  // "No direct contact" is gated to product/marketing pages. Documentation,
+  // articles, placeholder, and OSS pages do not need a sales/support contact
+  // path, and flagging them here would dominate the top-3 on every docs page.
+  if (productPage && !hasContactLink && !hasPhone && emailCount === 0) {
     findings.push({
       checkId: 'trust-no-direct-contact',
       rubric: 'REACH',

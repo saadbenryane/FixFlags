@@ -13,7 +13,9 @@
 
 ## Category Status
 
-The category is still forming. Users clearly feel the problem but the language is not "QA" or "auditing."
+**Strategic category:** Product Intelligence for AI-built software. See [vision.md](./vision.md).
+
+**Acquisition language** stays literal. Users do not say "Product Intelligence."
 
 User language is highly consistent:
 - "I'm afraid I launch and it breaks."
@@ -25,13 +27,13 @@ User language is highly consistent:
 
 **Entry point must remain extremely literal:**
 
-> Check the app before you launch it.
+> Check the app before you launch it. Finish what your AI started.
 
 **Strongest emotional promise:**
 
 > Know what will break before real users find it.
 
-Avoid leading with QA, auditing, or release readiness. The category can become more sophisticated later.
+Avoid leading acquisition with QA, auditing, or release readiness. Depth and category language come after the wedge works.
 
 ## Competitive Landscape
 

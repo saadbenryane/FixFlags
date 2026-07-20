@@ -8,6 +8,8 @@ import {
   buildUserProductContract,
   validateProductContractInput,
 } from '@/lib/audit/product-contract'
+import { productIntelligenceFromContract } from '@/lib/audit/product-intelligence'
+import { ensureProductProject, saveProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 interface RouteContext {
@@ -28,7 +30,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, status: true },
+      select: { userId: true, status: true, url: true, projectId: true },
     })
     if (!audit) return apiError('Report not found', 404)
     if (!canManageAudit(audit, session?.user)) {
@@ -48,15 +50,31 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     const productContract = buildUserProductContract(validated.value)
+    const pi = productIntelligenceFromContract(productContract)
+
+    let projectId = audit.projectId
+    if (!projectId && audit.userId) {
+      const project = await ensureProductProject(audit.userId, audit.url)
+      projectId = project.id
+    }
+
     const updated = await prisma.audit.update({
       where: { id },
-      data: { productContract: productContract as object },
-      select: { id: true, productContract: true },
+      data: {
+        productContract: productContract as object,
+        ...(projectId ? { projectId } : {}),
+      },
+      select: { id: true, productContract: true, projectId: true },
     })
+
+    if (projectId) {
+      await saveProjectIntelligence(projectId, pi)
+    }
 
     return NextResponse.json({
       id: updated.id,
       productContract,
+      projectId: updated.projectId,
     })
   } catch (err) {
     return handleRouteError(err, 'Could not update product contract')

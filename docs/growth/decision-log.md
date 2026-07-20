@@ -89,7 +89,7 @@ SEO impact, but a fully wired graph that starts filling automatically from
 the moment the migration is deployed. Phase 2 begins from real data instead
 of assumptions.
 
-**Review date:** At Phase 1 exit (see `roadmap.md`) — confirm the graph has
+**Review date:** At Phase 1 exit (see `growth-roadmap.md`) — confirm the graph has
 meaningful data before deciding what Phase 2's first shipped page actually
 is.
 
@@ -114,7 +114,7 @@ prioritization of the backlog.
 ## [2026-07-09] Production graph state audit — plan revised
 
 **Problem:** Before continuing Phase 1 → Phase 2, verified actual production
-state instead of trusting `roadmap.md`'s status table. Found three
+state instead of trusting `growth-roadmap.md`'s status table. Found three
 discrepancies between documented status and reality:
 
 1. The Phase 1 migration (`20260709211906_init`) existed only in the local

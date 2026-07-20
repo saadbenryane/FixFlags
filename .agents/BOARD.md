@@ -14,6 +14,7 @@
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
 | completeness-final | auto | Gates, truth residual, design/copy, dead code, Strength/Touch CRITICAL, skills/docs | 2026-07-20 |
+| product-intelligence-vision | auto | Vision canon + Phase 1 PI/Finish Plan/Remember + skills | 2026-07-20 |
 | lean-fix-markdown-panel | auto | Collapse Why/Evidence/Verify into lean Markdown Fix box; SeveritySignal; Wrench icon | 2026-07-20 |
 | loading-report-seam | auto | Progressive→completed chrome parity; absorb streamline-meta; skills/docs | 2026-07-20 |
 | report-streamline-meta | auto | Absorbed into loading-report-seam | 2026-07-20 |

@@ -82,6 +82,11 @@ Search canonical docs and skills for:
 | `unlimited deterministic` (at Free limit) | Free = 3 new URL checks; re-checks free; new checks blocked at limit |
 | `upgrade for unlimited` | Pro is 25/mo, not unlimited |
 | `subscription-only` ignoring packs | Credit packs are paid overflow (`lib/billing/credits.ts`) |
+| `QA layer` as sole one-liner without Product Intelligence | Prefer vision-aligned one-liner in PRODUCT.md; acquisition can still say Launch Check |
+| `` `Max` `` plan / Max tier | Live display is **Agency** (`TEAM`); see `lib/billing/plans.ts` |
+| `Top Priorities` as primary section name in new UI copy | Prefer **Finish Plan** (`#report-finish-plan`) |
+| Full feature lists in `docs/offering.md` / `docs/business-model.md` | Stubs only; canon is PRODUCT.md + knowledge/strategy.md |
+| `docs/growth/architecture.md` / `docs/growth/roadmap.md` | Renamed to `growth-architecture.md` / `growth-roadmap.md` |
 
 ## Phase 2.4 — Payments readiness
 

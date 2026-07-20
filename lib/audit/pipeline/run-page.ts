@@ -27,6 +27,12 @@ import { MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { inferProductContract } from '../product-contract'
+import {
+  mergeHeuristicIntoProjectPi,
+  productIntelligenceFromContract,
+  resolveContractForCapture,
+} from '../product-intelligence'
+import { loadProjectIntelligence, saveProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -158,7 +164,16 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   ])
 
   if (input.primary) {
-    const productContract = inferProductContract(normalizedUrl, metadataFromHtml)
+    const inferred = inferProductContract(normalizedUrl, metadataFromHtml)
+    const auditRow = await prisma.audit.findUnique({
+      where: { id: ctx.auditId },
+      select: { projectId: true, userId: true },
+    })
+    const projectPi = auditRow?.projectId
+      ? await loadProjectIntelligence(auditRow.projectId)
+      : null
+    const productContract = resolveContractForCapture(inferred, projectPi)
+
     await prisma.audit.update({
       where: { id: ctx.auditId },
       data: {
@@ -175,6 +190,19 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           : {}),
       },
     })
+
+    // Seed / refresh Project PI when heuristic (never overwrite user-owned PI fields)
+    if (auditRow?.projectId && productContract.source !== 'user') {
+      const nextPi = mergeHeuristicIntoProjectPi(projectPi, inferred)
+      if (!projectPi || projectPi.source !== 'user') {
+        await saveProjectIntelligence(auditRow.projectId, nextPi)
+      }
+    } else if (auditRow?.projectId && productContract.source === 'user' && !projectPi) {
+      await saveProjectIntelligence(
+        auditRow.projectId,
+        productIntelligenceFromContract(productContract)
+      )
+    }
   }
 
   const metadata = metadataFromHtml

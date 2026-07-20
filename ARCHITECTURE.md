@@ -1,6 +1,18 @@
 # Architecture
 
-*Current system, documented as implemented. Not aspirational.*
+*Current system, documented as implemented. Target Product Intelligence layers are marked **Target** and must not be confused with shipped code.*
+
+**Vision / layers:** [knowledge/vision.md](./knowledge/vision.md). **Integrity Engine:** [knowledge/integrity-engine.md](./knowledge/integrity-engine.md).
+
+## Target system layers (not fully shipped)
+
+| Layer | Intent | Today |
+|-------|--------|-------|
+| **Local runtime** | Repo inspect, portable PI, CLI, hooks, local verify | Thin `fixflags-cli` (remote MCP client); IDE skill docs |
+| **Product Intelligence Protocol** | Vendor-neutral read/contribute for humans/agents | MCP tools (`lib/mcp/`); not yet a neutral published protocol |
+| **FixFlags Intelligence Network** | Cloud compounding intelligence, dashboards, team | Main Next.js app + audit worker + growth graph |
+
+Customer **Product Intelligence** (Project-scoped) is separate from the growth `graph_*` knowledge graph. See [knowledge/product-intelligence.md](./knowledge/product-intelligence.md).
 
 ## System overview
 

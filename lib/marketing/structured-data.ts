@@ -66,3 +66,55 @@ export function faqPageSchema(
     })),
   }
 }
+
+export function issuePageSchema(input: {
+  checkId: string
+  title: string
+  description: string
+  rubric: string
+  siteCount: number
+  occurrenceCount: number
+  path: string
+}) {
+  const url = `${SITE_URL}${input.path}`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Article',
+        '@id': `${url}#article`,
+        headline: input.title,
+        description: input.description,
+        url,
+        about: {
+          '@type': 'Thing',
+          name: input.checkId,
+          description: input.rubric,
+        },
+        isPartOf: { '@id': WEBSITE_ID },
+        publisher: { '@id': ORG_ID },
+      },
+      {
+        '@type': 'Dataset',
+        '@id': `${url}#dataset`,
+        name: `${input.title} frequency data`,
+        description: `Observed across ${input.siteCount} audited sites (${input.occurrenceCount} occurrences).`,
+        url,
+        creator: { '@id': ORG_ID },
+        measurementTechnique: 'FixFlags automated product audit',
+        variableMeasured: [
+          {
+            '@type': 'PropertyValue',
+            name: 'siteCount',
+            value: input.siteCount,
+          },
+          {
+            '@type': 'PropertyValue',
+            name: 'occurrenceCount',
+            value: input.occurrenceCount,
+          },
+        ],
+      },
+    ],
+  }
+}

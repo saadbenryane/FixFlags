@@ -9,6 +9,8 @@ description: FixFlags audit pipeline — triage, prescription, scan failures, re
 
 **Canonical doc:** [`docs/audit-pipeline.md`](../../docs/audit-pipeline.md)
 
+**Product framing:** The audit pipeline is the Integrity Engine’s primary **browser observer + verifier**. Customer Product Intelligence is separate (`knowledge/product-intelligence.md`, `knowledge/integrity-engine.md`). Do not treat the scanner as the entire product.
+
 ## Decision tree
 
 ```
@@ -41,7 +43,7 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Browser | Playwright (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`) |
 | Network / form / overlay | `lib/audit/browser/network-monitor.ts`, `journey-safety.ts`, overlay helpers |
 | Action timeline | `lib/audit/action-timeline.ts`, status route, `AuditReportProgressive` |
-| Product Contract | `lib/audit/product-contract.ts`, Audit `productContract` Json |
+| Product Contract / PI | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts`, Project `productIntelligence`, Audit `productContract` |
 | Triage | `lib/audit/judge-triage.ts`, `pipeline/triage-step.ts` |
 | Prescription | `lib/audit/run-ai-review.ts`, `judge-prescription.ts` |
 | Finalize | `lib/audit/finalize.ts` |

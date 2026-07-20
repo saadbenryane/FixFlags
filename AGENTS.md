@@ -4,7 +4,7 @@
 
 ## Project
 
-**FixFlags** — The QA layer for AI-built products. Finish what your AI started: paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
+**FixFlags** — The independent Product Intelligence System for AI-built software. Finish what your AI started: paste a URL, get a Finish Plan across Message, Experience, and Reach, with fix prompts for your AI editor. North star: `knowledge/vision.md`. Shipped truth: `PRODUCT.md`.
 
 - **Stage:** Pre-revenue / testing. Prioritizing distribution over depth.
 - **Domain:** fixflags.com | **Pricing:** Free (3 lifetime), Pro $29/mo (25/mo), Agency $99/mo (100/mo)
@@ -17,12 +17,12 @@
 | Check modules (barrel) | **22** (unique) | `lib/audit/checks/index.ts` `checkers[]` |
 | Check capabilities | 47 (47 live, 0 partial, 0 planned) | `npm run audit:capabilities` |
 | Check IDs | **158** | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
-| MCP tools | **14** | `lib/mcp/tools.ts` `server.tool()` |
+| MCP tools | **16** | `lib/mcp/tools.ts` `server.tool()` |
 | Pipeline version | **2.4.0** | `lib/audit/pipeline-config.ts` |
 | AI models | triage `claude-haiku-4-5` / `gpt-4o-mini`, judge `claude-sonnet-5` / `gpt-4o-mini` | `lib/audit/judge-config.ts` (keep in sync with `MODEL_RATES` in `lib/billing/costs.ts`) |
 | Test count | measured per run | `npm run test:unit` (do not hardcode) |
 
-> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (47 total: 47 live, 0 partial) is a named check that may span multiple modules. A *check ID* (158) is the fine-grained flag identity in `check-ids.ts`. Do not use these numbers interchangeably.
+> **Glossary:** A *module* (22) is a `run*Checks()` function in `checks/index.ts`. A *capability* (47 total: 47 live, 0 partial) is a named check that may span multiple modules. A *check ID* (158) is the fine-grained flag identity in `check-ids.ts`. **Product Intelligence** is customer-owned product memory (`Project.productIntelligence`; see `knowledge/product-intelligence.md`). **Integrity Engine** is FixFlags’ general evaluator (`knowledge/integrity-engine.md`). **Finish Plan** is the ≤3 Improve artifact (`knowledge/finish-plan.md`). **Integrity dimensions** (5) are engine framework; **rubrics** (3: Message/Experience/Reach) are the shipped report model. Do not use these numbers or terms interchangeably.
 
 ## Key directories and authoritative files
 
@@ -78,6 +78,7 @@
 | `npm run validate:full` | Full workspace validation (same as `verify` minus DB checks) |
 | `npm run lint:changed` | Lint only changed TypeScript files |
 | `npm run test:scripts` | Tests for repository automation scripts |
+| `npm run agent:eval` | Agent evaluation harness (tests audit pipeline, prompts, scoring) |
 | `npm run demo:audit:offline` | Demo fixture audit (CLI, no server) |
 | `npm run demo:audit:flow` | Flow audit on demo fixture |
 | `npm run db:migrate` | Prisma migrate dev |
@@ -119,14 +120,14 @@
 - **Triage success criterion:** `triageAt` set on COMPLETED audits. Degraded triage (`triageAt` null + `failureCode`) still COMPLETED with deterministic flags.
 - **Tech stack** for prescription comes from `auditPage.performanceData.detectedTech`, not `htmlMetadata`.
 - **Knowledge graph** (`graph_*` tables) is internal-only. Public pages read through `lib/graph/queries.ts` only.
-- **No programmatic page ships below `MIN_SAMPLE_SIZE` (20 distinct sites).**
+- **No programmatic page ships below `MIN_SAMPLE_SIZE`.** Canonical value lives in `lib/graph/queries.ts` (target: 20 distinct sites; temporarily may be lower while seeding growth pages — document any temporary value in that file).
 - **Default deployment:** Single service with inline worker + self-hosted scheduler (no external cron).
 - **`/post-login` is the single post-auth landing** for OAuth AND email flows: it claims anonymous audits (`useMe({claim:true})`, sets `includeAi`), then runs checkout/`next` navigation. Never navigate straight to `next` after auth: that skips the claim and leaves reports locked.
-- **Report UI — Top Priorities section:** renders between verdict and flags explorer. Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)`. Each card has `SeveritySignal`, rubric label, optional impact, problem text, `FixPromptBlock variant="compact"`. The header "Copy fix plan (N)" button uses `buildPlanModePrompt(flags, {url})` — one plan-mode prompt that tells the editor to plan before editing (paste into Cursor/Claude plan mode). `collectAllFixPrompts()` (raw `=== Fix N: Problem ===` dump) and per-rubric prompts remain available in `ExportMenu`.
+- **Report UI — Finish Plan section:** renders between verdict and flags explorer (formerly Top Priorities). Uses `rankFlagsByPriority(audit.flags, audit.rubricRows, 3)` with Product Contract / PI bias. Each card has `SeveritySignal`, rubric label, optional impact, problem text, `FixPromptBlock variant="compact"`. The header "Copy Finish Plan (N)" button uses `buildPlanModePrompt(flags, {url})`. `collectAllFixPrompts()` and per-rubric prompts remain in `ExportMenu`. See `knowledge/finish-plan.md`.
 - **Report UI — Flags explorer:** Rubric + page filters only. No severity filter. Flags are pre-sorted by severity via `compareFlagsByPriority`. Flag meta: `SeveritySignal` → Rubric → Impact. Detail shows Fix via `MarkdownPromptBox` (rendered Markdown; copy is raw `buildExpertFixPrompt` with `## Why` / `## Evidence` / `## Fix` / `## Scope` / `## Verify`). No separate Why/Evidence/Verify cards. Evidence devices follow `devicesForCheck` (issue device only).
-- **Report UI — section order:** Hero → ShareStatusBanner → RubricBar → sticky toolbar → verdict → status callouts (AI pending / partial / degraded) → RecheckDiffStrip (when present) → Product Contract → Top Priorities → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → SampleFixCard (anon) → Re-check / footer. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
+- **Report UI — section order:** Hero → ShareStatusBanner → RubricBar → sticky toolbar → verdict → status callouts (AI pending / partial / degraded) → RecheckDiffStrip (when present) → Product Contract → Finish Plan → Journey → Flow → Action Timeline (when present) → Flags → Previews → Launch → SampleFixCard (anon) → Re-check / footer. `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport`.
 - **Report UI — progressive chrome:** `AuditReportProgressive` uses the **same altitudes** as completed (`AuditReportHero`, `RubricBar`, `ReportStickyToolbar`, Contract → Timeline → Flags). Wire `getScanningLabel` / `getActivityMessage`. On COMPLETED, hold the progressive frame and `router.refresh()` into SSR `AuditReport`. Do not invent Journey/Flow mid-scan. Partial Callout only when `reportCompleteness === 'PARTIAL'`.
-- **Report UI — sticky toolbar:** `ReportStickyToolbar` sits under the site header (`top-[var(--header-height)]`). Section nav matches DOM: Contract, Priorities (when Top Priorities exist), Journey, Flow, Timeline, Flags, Previews, Launch, Re-check. No Overview tab — status callouts are not a nav destination. Fix prompts live in the explorer and Top Priorities. Below `xl`, actions and tabs stack on separate rows with denser tab height.
+- **Report UI — sticky toolbar:** `ReportStickyToolbar` sits under the site header (`top-[var(--header-height)]`). Section nav matches DOM: Contract, Finish Plan (when present), Journey, Flow, Timeline, Flags, Previews, Launch, Re-check. No Overview tab — status callouts are not a nav destination. Fix prompts live in the explorer and Finish Plan. Below `xl`, actions and tabs stack on separate rows with denser tab height.
 - **Report score ownership:** Hero = identity + `ScoreDot` only. RubricBar = per-rubric. Explorer = `ScoreRingGauge` `sm` + filters. Sticky-when-stuck = hostname + `ScoreDot`. Share status = `ShareStatusBanner` only (never duplicate in hero).
 - **Anon report CTAs:** value strip + `SampleFixCard` only (no separate claim-guide card).
 - **Re-check:** Manual re-check always enqueues `monitoringMode: 'FULL'` (fresh capture). Finalize diffs child flags vs parent via `diffFlagsAgainstParent`. No SUMMARY_ONLY / copy-parent / skipCapture path in application code (`SUMMARY_ONLY` remains a legacy Prisma enum value only).
@@ -215,16 +216,21 @@ Before claiming completion:
 
 | File | Contents |
 |------|----------|
-| `PRODUCT.md` | Users, workflows, capabilities, priorities |
+| `knowledge/vision.md` | **Product vision** (canonical narrative) |
+| `knowledge/product-intelligence.md` | Customer Product Intelligence model |
+| `knowledge/integrity-engine.md` | Integrity Engine + dimension↔rubric map |
+| `knowledge/finish-plan.md` | Finish Plan artifact |
+| `knowledge/privacy.md` / `open-source.md` | Privacy + OSS strategy |
+| `PRODUCT.md` | Shipped users, workflows, capabilities |
 | `SOUL.md` | Identity, personality, voice, product principles |
 | `DESIGN.md` | Visual and interaction standards |
-| `ARCHITECTURE.md` | System architecture, data flows, modules |
+| `ARCHITECTURE.md` | System architecture + target layers |
 | `DEVELOPMENT.md` | Setup, commands, debugging, deployment |
 | `QUALITY.md` | Verification matrix, risks, required checks |
 | `SECURITY.md` | Security invariants, trust boundaries |
 | `DECISIONS.md` | Durable decisions with rationale |
 | `ROADMAP.md` | Now / Next / Later / Not planned |
-| `knowledge/` | **Company knowledge base** (foundations, market, product, strategy, execution) |
+| `knowledge/` | Company knowledge index (`knowledge/README.md`) |
 | `.agents/README.md` | Multi-agent coordination system |
 | `.agents/BOARD.md` | Active task board |
 | `.agents/learnings/` | Validated project learnings |

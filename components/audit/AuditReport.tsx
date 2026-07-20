@@ -316,7 +316,7 @@ export function AuditReport({
       ) : null}
 
       {!isSample && explorerModel && hasFixPrompts && showPrescription && (
-        <section id="report-priorities" className="scroll-mt-[var(--header-offset)] space-y-3">
+        <section id="report-finish-plan" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
             <div>
               <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
@@ -339,7 +339,12 @@ export function AuditReport({
             })()}
           </div>
           <div className="grid gap-3">
-            {rankFlagsByPriority(audit.flags, audit.rubricRows, 3).map(({ flag, rubricName }) => {
+            {rankFlagsByPriority(
+              audit.flags,
+              audit.rubricRows,
+              3,
+              audit.productContract ?? null
+            ).map(({ flag, rubricName }) => {
               const prompt = resolveFixPrompt(flag)
               if (!prompt) return null
               const toolPrompts = {

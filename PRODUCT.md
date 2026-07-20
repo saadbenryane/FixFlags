@@ -4,13 +4,15 @@
 
 ## One-liner
 
-FixFlags is the QA layer for AI-built products. Finish what your AI started.
+FixFlags is the independent Product Intelligence System for AI-built software. Finish what your AI started.
+
+**North star (aspirational):** [knowledge/vision.md](./knowledge/vision.md). This file is **shipped truth only**.
 
 ## Users and their context
 
-- **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast, skip QA, and discover issues after launch. Want a quick check before sharing a link.
-- **Agencies and studios** — building AI-assisted sites for clients. Need premium QA before handoff. Will pay for shareable reports.
-- **Later:** Product teams using AI coding internally (once team accounts and CI/CD land).
+- **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast and discover issues after launch. Want a quick check before sharing a link.
+- **Agencies and studios** — building AI-assisted sites for clients. Need shareable reports and repo scanning.
+- **Later:** Product teams using AI coding internally (once team accounts, continuous verification, and CI/CD land).
 
 ## Problem
 
@@ -20,21 +22,23 @@ Existing tools (Lighthouse, PageSpeed) find technical problems but do not tell y
 
 ## Promise
 
-Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use.
+Paste your site. We reconstruct a basic Product understanding (Product Contract), review the live experience, produce a Finish Plan with fix prompts your builder can use, and re-check after you ship.
 
 ## Core loop
 
-Flag → Fix → Re-check.
+**Wedge expression:** Flag → Fix → Re-check.
+
+**Vision loop:** Understand → Improve → Verify → Remember ([knowledge/vision.md](./knowledge/vision.md)).
 
 1. User pastes a URL.
-2. Deterministic checks + AI review run on the page.
-3. User gets Flags with evidence, impact, and fix prompts.
+2. Deterministic checks + AI review run on the page; Product Contract is inferred.
+3. User gets a Finish Plan (top priorities), Flags with evidence, and fix prompts.
 4. User pastes fix prompts into their AI editor.
 5. User ships fixes.
 6. User re-checks the same URL (free, unlimited).
-7. User sees before/after comparison and cleared Flags.
+7. User sees before/after comparison, cleared Flags, and verified learnings on the Product (when Project PI is present).
 
-Steps 4-7 are the differentiator. Re-check is the habit.
+Steps 4–7 are the differentiator. Re-check is the habit.
 
 ## What we ship
 
@@ -82,10 +86,12 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - 22 deterministic check modules live; capabilities in AGENTS.md Project facts (regenerate via `npm run audit:capabilities`).
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
-- Knowledge graph Phase 1 in production
+- Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
 - Technology detection engine + /madewith/[hostname] pages
-- Sample size gate (20 distinct sites minimum for programmatic pages)
-- MCP integration (14 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
+- Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
+- MCP integration (16 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
+- Product Contract + Project-scoped Product Intelligence persistence
+- Finish Plan (≤3 prioritized improvements) with contract-aware ranking
 - Free tools: meta preview, placeholder copy detector
 - **Live progressive report:** after URL submit, `/report/{id}` uses the same chrome as the completed report (hero, RubricBar, sticky, Contract, Action Timeline, partial Flags) while the pipeline runs; stages and progress are honest (never fake)
 

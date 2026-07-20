@@ -942,8 +942,9 @@ export const REPORT_COPY = {
     body: 'PageSpeed data was unavailable for this run. Experience flags that need it may be thinner.',
   },
   sectionTitles: {
-    topPriorities: 'Top priorities',
-    topPrioritiesHint: 'Paste into Cursor, Claude Code, or any editor with plan mode to get a structured fix plan before editing.',
+    topPriorities: 'Finish Plan',
+    topPrioritiesHint:
+      'The highest-leverage improvements next. Copy into Cursor, Claude Code, or any editor with plan mode.',
     productContract: 'Product contract',
     productContractHeading: 'What this product appears to do',
     journey: 'User journey walk',
@@ -952,11 +953,11 @@ export const REPORT_COPY = {
     timelineProgressive: 'What FixFlags is doing',
     timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
     previews: 'Share & search previews',
-    copyFixPlan: (n: number) => `Copy fix plan (${n})`,
+    copyFixPlan: (n: number) => `Copy Finish Plan (${Math.min(3, n)})`,
   },
   stickyNav: {
     contract: 'Contract',
-    priorities: 'Priorities',
+    priorities: 'Finish Plan',
     journey: 'Journey',
     flow: 'Flow',
     timeline: 'Timeline',

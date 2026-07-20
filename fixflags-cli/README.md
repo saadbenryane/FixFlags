@@ -1,6 +1,6 @@
 # FixFlags CLI
 
-QA for AI-built products. Scan any web app across Message, Experience, and Reach.
+Product Intelligence for AI-built products. Scan any web app across Message, Experience, and Reach. Thin client over the FixFlags MCP API.
 
 ## Status
 
@@ -26,7 +26,7 @@ fixflags auth --api-key <your-key>
 
 Set `FIXFLAGS_API_URL` to target a non-prod API (default `https://fixflags.com`).
 
-## Usage
+## Usage (shipped)
 
 ```bash
 # Scan a URL (waits for results)
@@ -44,6 +44,17 @@ fixflags scan https://your-app.com --json
 # Check scan status
 fixflags status <reportId>
 ```
+
+## Planned commands (Phase 2+, cloud-backed first)
+
+After Product Intelligence thesis signals (see `knowledge/execution.md`):
+
+- `fixflags understand` — Product context / Contract
+- `fixflags finish` — current Finish Plan
+- `fixflags verify` — re-check / monitoring
+- `fixflags sync` / `status` — PI sync and status
+
+Do not implement these until Phase 1 retention signals land.
 
 ## What it checks
 

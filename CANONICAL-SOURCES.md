@@ -1,0 +1,282 @@
+# Canonical Sources Index
+
+This is the master index of every concept in the project and its one canonical source.
+
+**Rule:** Every piece of knowledge lives in exactly one document. When you need information, go to the canonical source. When you update information, update the canonical source.
+
+See `knowledge/README.md` for the full architecture and evolution rules.
+
+---
+
+## Identity (Layer 1)
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Why FixFlags exists | `knowledge/foundations.md` → The Thesis |
+| 25 foundational principles | `knowledge/foundations.md` → 25 Foundational Principles |
+| Research validation | `knowledge/foundations.md` → Research Validation |
+| Brand identity | `SOUL.md` → Why FixFlags deserves to exist |
+| Emotional experience | `SOUL.md` → Emotional experience |
+| Personality and character | `SOUL.md` → Personality and character |
+| Product principles | `SOUL.md` → Product principles |
+| Brand promise | `SOUL.md` → Brand promise |
+| Voice and tone (summary) | `SOUL.md` → Voice and tone |
+| Voice and tone (full guidelines) | `docs/voice-and-copy.md` |
+| Writing vocabulary | `docs/voice-and-copy.md` → Vocabulary |
+| Sentence rules | `docs/voice-and-copy.md` → Sentence rules |
+| Copy review checklist | `docs/voice-and-copy.md` → Copy review checklist |
+| Banned phrases | `docs/voice-and-copy.md` → Vocabulary (Avoid) |
+| Anti-slop scoring | `docs/voice-and-copy.md` → Anti-slop scoring |
+| Naming preferences | `SOUL.md` → Naming preferences |
+| Tensions and trade-offs | `SOUL.md` → Tensions and trade-offs |
+
+---
+
+## Strategy (Layer 2)
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Market context | `knowledge/market.md` → Market Context |
+| Category status | `knowledge/market.md` → Category Status |
+| Competitive landscape (direct) | `knowledge/market.md` → Competitive Landscape |
+| Competitive landscape (indirect) | `knowledge/market.md` → Indirect competitors |
+| Customer segments | `knowledge/market.md` → Customer Segments |
+| Five execution risks | `knowledge/market.md` → Five Execution Risks |
+| Distribution strategy | `knowledge/market.md` → Distribution Strategy |
+| Agency channel | `knowledge/market.md` → Fastest Agency Channel |
+| Product vision | `knowledge/product.md` → Vision |
+| Product moat | `knowledge/product.md` → The Moat |
+| Product Contract (intent layer) | `knowledge/product.md` → Product Contract |
+| Two product surfaces (Launch Check vs Release Verification) | `knowledge/product.md` → Two Product Surfaces |
+| Report hierarchy | `knowledge/product.md` → Report Hierarchy |
+| Flag as durable unit | `knowledge/product.md` → The Flag as Durable Unit |
+| Truth system | `knowledge/product.md` → Truth System |
+| Dismissal taxonomy | `knowledge/product.md` → Dismissal Taxonomy |
+| Repair specification vs prompt | `knowledge/product.md` → Repair Specification vs Prompt |
+| Progressive disclosure | `knowledge/product.md` → Progressive Disclosure |
+| Security signal discipline | `knowledge/product.md` → Security Signal Discipline |
+| Authenticated testing architecture | `knowledge/product.md` → Authenticated Testing Architecture |
+| Change awareness | `knowledge/product.md` → Change Awareness |
+| Benchmark | `knowledge/product.md` → Benchmark |
+| Pricing philosophy | `knowledge/strategy.md` → Pricing Philosophy |
+| Pricing tiers (current) | `knowledge/strategy.md` → Pricing (Current) |
+| Pricing should follow consequences | `knowledge/strategy.md` → Pricing Should Follow Consequences |
+| Tier pricing (proposed evolution) | `knowledge/strategy.md` → Tier Pricing (Proposed Evolution) |
+| Target revenue model | `knowledge/strategy.md` → Target Revenue Model |
+| Segment roles | `knowledge/strategy.md` → Segment Roles |
+| Studio pricing rationale | `knowledge/strategy.md` → Studio Pricing Rationale |
+| Team pricing notes | `knowledge/strategy.md` → Team Pricing Notes |
+| Unit economics constraints | `knowledge/strategy.md` → Unit Economics Constraints |
+| Open math gap | `knowledge/strategy.md` → Open Math Gap |
+| Strategic wedge | `knowledge/execution.md` → Strategic Wedge |
+| Core product loop | `knowledge/execution.md` → Core Product Loop |
+| Wedge vs retention | `knowledge/execution.md` → Wedge vs Retention |
+| Next priorities (5 foundations) | `knowledge/execution.md` → Next Priorities |
+| Six-month execution plan | `knowledge/execution.md` → Six-Month Execution Plan |
+| What must be true | `knowledge/execution.md` → What Must Be True |
+| What not to build (next 6 months) | `knowledge/execution.md` → What Not to Build |
+| Weekly operating dashboard | `knowledge/execution.md` → Weekly Operating Dashboard |
+| Probability assessment | `knowledge/execution.md` → Probability Assessment |
+| Repository-level roadmap (Now/Next/Later/Not planned) | `ROADMAP.md` |
+| Recently closed items | `ROADMAP.md` → Recently closed |
+| Completion signals | `ROADMAP.md` → Completion signals |
+| Readiness assessment | `ROADMAP.md` → Readiness (reconciled) |
+| Durable decisions | `DECISIONS.md` |
+
+---
+
+## Implementation (Layer 3)
+
+### Product
+
+| Concept | Canonical Source |
+|---------|------------------|
+| One-liner | `PRODUCT.md` → One-liner |
+| Users and their context | `PRODUCT.md` → Users and their context |
+| Problem | `PRODUCT.md` → Problem |
+| Promise | `PRODUCT.md` → Promise |
+| Core loop (implementation) | `PRODUCT.md` → Core loop |
+| What we ship (anonymous teaser) | `PRODUCT.md` → Anonymous teaser |
+| What we ship (free tier) | `PRODUCT.md` → Free |
+| What we ship (pro tier) | `PRODUCT.md` → Pro |
+| What we ship (agency tier) | `PRODUCT.md` → Agency |
+| What we ship (high volume) | `PRODUCT.md` → High Volume |
+| Rubrics (Message/Experience/Reach) | `PRODUCT.md` → Rubrics |
+| Current capabilities (verified) | `PRODUCT.md` → Current capabilities |
+| Limitations and technical debt | `PRODUCT.md` → Limitations and technical debt |
+| Launch gates | `PRODUCT.md` → Launch gates |
+| Support | `PRODUCT.md` → Support |
+| Constraints | `PRODUCT.md` → Constraints |
+| Unresolved questions | `PRODUCT.md` → Unresolved questions |
+
+### Architecture
+
+| Concept | Canonical Source |
+|---------|------------------|
+| System overview | `ARCHITECTURE.md` → System overview |
+| Directory structure | `ARCHITECTURE.md` → Directory structure |
+| Audit pipeline (stages) | `docs/audit-pipeline.md` → Stage diagram |
+| Audit modes (single/critical path) | `docs/audit-pipeline.md` → Audit modes |
+| Report completeness (full/partial) | `docs/audit-pipeline.md` → Report completeness |
+| Re-check implementation | `docs/audit-pipeline.md` → Re-check |
+| AI phases (triage/prescription) | `docs/audit-pipeline.md` → AI phases |
+| includeAi vs triageAt vs aiReviewAt | `docs/audit-pipeline.md` → includeAi vs triageAt vs aiReviewAt |
+| Degradation matrix | `docs/audit-pipeline.md` → Degradation matrix |
+| Failure codes | `docs/audit-pipeline.md` → Failure codes |
+| Recovery (poll-time + scheduler) | `docs/audit-pipeline.md` → Recovery |
+| Environment variables | `docs/audit-pipeline.md` → Environment variables |
+| Health endpoints | `docs/audit-pipeline.md` → Health endpoints |
+| Debugging runbook | `docs/audit-pipeline.md` → Debugging runbook |
+| Pipeline canonical files | `docs/audit-pipeline.md` → Canonical files |
+| Page text limits | `docs/audit-pipeline.md` → Page text limits |
+| Queue system | `ARCHITECTURE.md` → Queue system |
+| Knowledge graph | `ARCHITECTURE.md` → Knowledge graph |
+| Auth and authorization | `ARCHITECTURE.md` → Auth and authorization |
+| Billing | `ARCHITECTURE.md` → Billing |
+| Deployment | `ARCHITECTURE.md` → Deployment |
+| Key data flows | `ARCHITECTURE.md` → Key Data Flows |
+| Technical invariants | `ARCHITECTURE.md` → Technical invariants |
+| Database snapshot | `ARCHITECTURE.md` → Database snapshot |
+
+### Design
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Design principles | `DESIGN.md` → Design principles |
+| Authoritative sources | `DESIGN.md` → Authoritative sources |
+| Typography | `DESIGN.md` → Typography |
+| Color system (60/30/10) | `DESIGN.md` → Color system |
+| Report altitude (score ownership) | `DESIGN.md` → Report altitude |
+| Shapes and radius | `DESIGN.md` → Shapes and radius |
+| Depth | `DESIGN.md` → Depth |
+| Motion | `DESIGN.md` → Motion |
+| Spacing | `DESIGN.md` → Spacing |
+| Components (button, card, input) | `DESIGN.md` → Components |
+| Responsive behavior | `DESIGN.md` → Responsive behavior |
+| States (rest, hover, focus, active, disabled) | `DESIGN.md` → States |
+| Icons | `DESIGN.md` → Icons |
+| Accessibility | `DESIGN.md` → Accessibility |
+| What to avoid | `DESIGN.md` → What to avoid |
+
+### Development
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Prerequisites | `DEVELOPMENT.md` → Prerequisites |
+| Quick start | `DEVELOPMENT.md` → Quick start |
+| Environment variables | `DEVELOPMENT.md` → Environment variables |
+| Development commands | `DEVELOPMENT.md` → Development |
+| Database commands | `DEVELOPMENT.md` → Database |
+| Quality commands | `DEVELOPMENT.md` → Quality |
+| Demo/testing commands | `DEVELOPMENT.md` → Demo / testing |
+| Build commands | `DEVELOPMENT.md` → Build |
+| Backfill/ops commands | `DEVELOPMENT.md` → Backfill / ops |
+| Auth commands | `DEVELOPMENT.md` → Auth |
+| Sandbox worktrees | `DEVELOPMENT.md` → Sandbox worktrees |
+| Debugging | `DEVELOPMENT.md` → Debugging |
+| Common failures | `DEVELOPMENT.md` → Common failures |
+| Railway AI keys | `DEVELOPMENT.md` → Railway AI keys |
+| Local admin | `DEVELOPMENT.md` → Local admin |
+| Production deployment | `DEVELOPMENT.md` → Production deployment |
+| Screenshot regeneration | `DEVELOPMENT.md` → Screenshot regeneration |
+
+### Security
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Assets | `SECURITY.md` → Assets |
+| Trust boundaries | `SECURITY.md` → Trust boundaries |
+| Authentication invariants | `SECURITY.md` → Authentication invariants |
+| Secrets management | `SECURITY.md` → Secrets management |
+| Production access | `SECURITY.md` → Production access |
+| Dangerous operations | `SECURITY.md` → Dangerous operations |
+| Dependency risks | `SECURITY.md` → Dependency risks |
+| Prompt injection risks | `SECURITY.md` → Prompt injection risks |
+| Billing (production) | `SECURITY.md` → Billing |
+| Approval requirements | `SECURITY.md` → Approval requirements |
+| Out of scope | `SECURITY.md` → Out of scope |
+
+### Quality
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Three tiers (truth/strength/touch) | `QUALITY.md` → The three tiers |
+| Verification matrix (truth) | `QUALITY.md` → Truth — Accuracy |
+| Verification matrix (strength) | `QUALITY.md` → Strength — Reliability |
+| Verification matrix (touch) | `QUALITY.md` → Touch — Experience |
+| Automated guards | `QUALITY.md` → Automated guards |
+| Monetization blockers | `QUALITY.md` → Monetization blockers |
+| Report density smoke | `QUALITY.md` → Report density smoke |
+| Completion standard | `QUALITY.md` → Completion standard |
+
+### Code Navigation
+
+| Concept | Canonical Source |
+|---------|------------------|
+| System entry points | `CODEMAP.md` → System Entry Points |
+| Repository directory map | `CODEMAP.md` → Repository Directory Map |
+| Where to change things | `CODEMAP.md` → Where To Change Things |
+| Cross-system flows | `CODEMAP.md` → Cross-System Flows |
+| Integration notes | `CODEMAP.md` → Integration Notes |
+
+### Agent Operating System
+
+| Concept | Canonical Source |
+|---------|------------------|
+| Project facts (check counts, model counts, etc.) | `AGENTS.md` → Project facts |
+| Key directories and authoritative files | `AGENTS.md` → Key directories and authoritative files |
+| Verified commands | `AGENTS.md` → Verified commands |
+| Product invariants | `AGENTS.md` → Critical invariants → Product |
+| Architecture invariants | `AGENTS.md` → Critical invariants → Architecture |
+| AI calls & cost invariants | `AGENTS.md` → Critical invariants → AI calls & cost |
+| Design invariants | `AGENTS.md` → Critical invariants → Design |
+| Voice invariants | `AGENTS.md` → Critical invariants → Voice |
+| Security invariants | `AGENTS.md` → Critical invariants → Security |
+| Git workflow | `AGENTS.md` → Git workflow |
+| Parallel-agent rules | `AGENTS.md` → Parallel-agent rules |
+| Regression-prevention checklist | `AGENTS.md` → Regression-prevention checklist |
+| Verification and definition of done | `AGENTS.md` → Verification and definition of done |
+
+---
+
+## How to Use This Index
+
+1. **Find the concept** in the table above
+2. **Go to the canonical source** (file path and section)
+3. **Read the information** there
+4. **If you need to update**, update the canonical source, not a copy
+
+---
+
+## When Information Is Missing
+
+If you cannot find a concept in this index:
+
+1. **Search the codebase** for the information
+2. **Determine which layer it belongs to** (identity, strategy, or implementation)
+3. **Add it to the appropriate canonical source**
+4. **Update this index** with the new entry
+
+---
+
+## When Information Is Duplicated
+
+If you find the same information in multiple places:
+
+1. **Identify the canonical source** using this index
+2. **Keep the canonical source** as the authoritative version
+3. **Replace duplicates** with a reference to the canonical source
+4. **Update this index** if the canonical source is unclear
+
+---
+
+## Maintenance
+
+This index is maintained as part of the knowledge architecture. When you:
+
+- **Create a new canonical source**, add it to this index
+- **Move information between documents**, update this index
+- **Discover duplication**, resolve it and update this index
+- **Find a missing concept**, add it to the appropriate canonical source and this index
+
+See `knowledge/README.md` for the full evolution rules.

@@ -1,5 +1,4 @@
----
-description: "FixFlags QA integration — scan web apps for Message, Experience, and Reach. Paste a URL, get Flags with fix prompts."
+description: "FixFlags Product Intelligence — scan AI-built products for Message, Experience, and Reach. Finish Plan + fix prompts."
 globs:
   - "**/*.tsx"
   - "**/*.ts"
@@ -9,9 +8,9 @@ globs:
   - "**/*.css"
 ---
 
-# FixFlags — QA for AI-built products
+# FixFlags — Product Intelligence for AI-built products
 
-When asked to scan, test, or review a web app, use the FixFlags MCP tools.
+When asked to scan, test, finish, or review a web app, use the FixFlags MCP tools.
 
 ## Setup
 
@@ -28,7 +27,9 @@ Copy this rule into the project as `.cursor/rules/fixflags.mdc`, or keep it unde
 | `ff_get_report` | Rubric summaries + shareStatus |
 | `ff_get_rubric` | Flags + fix text for one rubric (`MESSAGE` \| `EXPERIENCE` \| `REACH`) |
 | `ff_get_flag` | Full fix prompt for one flag (`tool`: cursor/claude/lovable/bolt/…) |
-| `ff_plan_mode_prompt` | Single plan-mode prompt for Top Priorities |
+| `ff_get_product_context` | Product Contract / Product Intelligence for the report |
+| `ff_get_current_finish_plan` | Top Finish Plan items + plan-mode prompt |
+| `ff_plan_mode_prompt` | Single plan-mode prompt for the Finish Plan |
 | `ff_monitoring` | Re-check same URL (verify fixes) |
 | `ff_compare` | Diff two reports |
 | `ff_list_recent_audits` | Recent audits |
@@ -40,9 +41,10 @@ There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `f
 
 1. User gives a public URL (not localhost).
 2. Call `ff_check_url` (optionally `waitForCompletion: true`).
-3. Call `ff_get_report` for scores; call `ff_get_rubric` for each rubric for Flags.
-4. Present findings by **Message**, **Experience**, **Reach**.
-5. Offer to apply the fix prompt; then suggest `ff_monitoring` re-check.
+3. Call `ff_get_product_context` then `ff_get_current_finish_plan`.
+4. Call `ff_get_report` for scores; call `ff_get_rubric` for each rubric for Flags.
+5. Present findings by **Message**, **Experience**, **Reach**.
+6. Offer to apply the Finish Plan / fix prompt; then suggest `ff_monitoring` re-check.
 
 ## Presenting results
 
@@ -53,7 +55,7 @@ For each Flag:
 
 ## Re-checks
 
-After applying fixes, call `ff_monitoring` (or `ff_check_url` on the same URL). Re-checks are free and unlimited on owned reports.
+After applying fixes, call `ff_monitoring` (or `ff_check_url` on the same URL). Re-checks are free and unlimited on owned reports. Verified clears update Product Intelligence.
 
 ## Modes
 
