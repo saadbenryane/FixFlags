@@ -12,7 +12,12 @@ import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
-import type { UsageLimitAction } from '@/lib/audit/check-limit'
+import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/check-limit'
+import {
+  checkAnonymousAuditAllowed,
+  enforceAnonymousIpSoftCeiling,
+  trackAnonymousAuditId,
+} from '@/lib/audit/usage'
 
 export interface CreateAuditOptions {
   url: string
@@ -24,6 +29,8 @@ export interface CreateAuditOptions {
   monitoringMode?: 'FULL'
   delayMs?: number
   attribution?: AuditAttribution
+  /** Client IP / fingerprint for anon soft IP ceiling. Required for anonymous creates in prod. */
+  clientId?: string
 }
 
 export interface CreateAuditResult {
@@ -32,23 +39,30 @@ export interface CreateAuditResult {
 }
 
 export class AuditLimitError extends Error {
-  readonly code: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT'
+  readonly code: UsageLimitCode
   readonly action: UsageLimitAction
 
   constructor(
-    code: 'UPGRADE_REQUIRED' | 'TOKEN_LIMIT',
+    code: UsageLimitCode,
     options?: { action?: UsageLimitAction; message?: string }
   ) {
     const action =
-      options?.action ?? (code === 'UPGRADE_REQUIRED' ? 'upgrade' : 'buy_credits')
+      options?.action ??
+      (code === 'AUTH_REQUIRED' || code === 'ANON_LIMIT'
+        ? 'signup'
+        : code === 'UPGRADE_REQUIRED'
+          ? 'upgrade'
+          : 'buy_credits')
     const message =
       options?.message ??
-      (code === 'UPGRADE_REQUIRED'
-        ? 'New URL check limit reached. Upgrade to continue.'
-        : 'New URL check limit reached. Buy credits or upgrade your plan to continue.')
+      (code === 'AUTH_REQUIRED' || code === 'ANON_LIMIT'
+        ? 'You’ve used your free scan. Create a free account for fix prompts and more checks.'
+        : code === 'UPGRADE_REQUIRED'
+          ? 'New URL check limit reached. Upgrade to continue.'
+          : 'New URL check limit reached. Buy credits or upgrade your plan to continue.')
     super(message)
     this.name = 'AuditLimitError'
-    this.code = code
+    this.code = code === 'ANON_LIMIT' ? 'AUTH_REQUIRED' : code
     this.action = action
   }
 }
@@ -102,17 +116,32 @@ export async function createAndEnqueueAudit(
 ): Promise<CreateAuditResult> {
   const url = (await assertPublicAuditUrl(options.url)).toString()
   const attribution = options.attribution
+  const userId = options.userId ?? null
 
   if (options.parentId) {
-    await assertParentAuditAllowed(options.parentId, options.userId)
+    await assertParentAuditAllowed(options.parentId, userId)
   }
 
-  const includeAi = await resolveIncludeAiForNewAudit(options.userId ?? null)
-  const journeyReviewIncluded = await resolveJourneyReviewIncluded(options.userId ?? null)
+  // Anonymous teaser gate lives here so every create path (checks, roast, score) shares it.
+  if (!userId) {
+    const anonCheck = await checkAnonymousAuditAllowed()
+    if (!anonCheck.allowed) {
+      throw new AuditLimitError(anonCheck.code ?? 'AUTH_REQUIRED', {
+        action: anonCheck.action ?? 'signup',
+        message: anonCheck.error,
+      })
+    }
+    if (options.clientId) {
+      await enforceAnonymousIpSoftCeiling(options.clientId)
+    }
+  }
+
+  const includeAi = await resolveIncludeAiForNewAudit(userId)
+  const journeyReviewIncluded = await resolveJourneyReviewIncluded(userId)
 
   const data = {
     url,
-    userId: options.userId ?? null,
+    userId,
     parentId: options.parentId ?? null,
     skipUsageCount: options.skipUsageCount ?? false,
     auditMode: options.auditMode ?? ('CRITICAL_PATH' as const),
@@ -136,13 +165,13 @@ export async function createAndEnqueueAudit(
   }
 
   let audit: { id: string }
-  if (options.userId && !options.skipUsageCount) {
+  if (userId && !options.skipUsageCount) {
     let conflicts = 0
     while (true) {
       try {
         audit = await prisma.$transaction(
           async (tx) => {
-            const user = await tx.user.findUnique({ where: { id: options.userId! } })
+            const user = await tx.user.findUnique({ where: { id: userId } })
             if (!user) throw new Error('User not found')
 
             if (!hasUnlimitedScans(user) && !isAdminUser(user)) {
@@ -197,6 +226,10 @@ export async function createAndEnqueueAudit(
     }
   } else {
     audit = await prisma.audit.create({ data, select: { id: true } })
+  }
+
+  if (!userId) {
+    await trackAnonymousAuditId(audit.id)
   }
 
   try {

@@ -1,9 +1,8 @@
 import { describe, it, vi, expect, beforeEach } from 'vitest'
 import type { NextRequest } from 'next/server'
+import { AuditLimitError } from '@/lib/audit/create-audit'
 
 const createAndEnqueueAudit = vi.hoisted(() => vi.fn())
-const checkAnonymousAuditAllowed = vi.hoisted(() => vi.fn())
-const trackAnonymousAuditId = vi.hoisted(() => vi.fn())
 const normalizeAuditUrl = vi.hoisted(() => vi.fn())
 const enforceRateLimit = vi.hoisted(() => vi.fn())
 const recordRateLimit = vi.hoisted(() => vi.fn())
@@ -12,11 +11,10 @@ const prismaMock = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-vi.mock('@/lib/audit/create-audit', () => ({ createAndEnqueueAudit }))
-vi.mock('@/lib/audit/usage', () => ({
-  checkAnonymousAuditAllowed,
-  trackAnonymousAuditId,
-}))
+vi.mock('@/lib/audit/create-audit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/audit/create-audit')>()
+  return { ...actual, createAndEnqueueAudit }
+})
 vi.mock('@/lib/audit/url', () => ({ normalizeAuditUrl }))
 vi.mock('@/lib/security/rate-limit', () => ({
   enforceRateLimit,
@@ -51,15 +49,7 @@ const mockRubric = (overrides: Record<string, unknown> = {}) => ({
       severity: 'CRITICAL',
       problem: 'No meta description',
       evidence: '<meta> tag missing',
-      fix: 'Add a meta description tag',
-      agentPrompt: 'Fix: add a meta description',
-      cursorPrompt: null,
-      claudePrompt: null,
-      windsurfPrompt: null,
-      lovablePrompt: null,
-      boltPrompt: null,
       whyItMatters: 'Search engines display this in results',
-      verificationRule: null,
       pageUrl: null,
     },
   ],
@@ -87,10 +77,8 @@ describe('GET /api/v1/score', () => {
     vi.clearAllMocks()
     enforceRateLimit.mockResolvedValue(undefined)
     recordRateLimit.mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 })
-    checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
     normalizeAuditUrl.mockReturnValue({ ok: true, url: 'https://example.com' })
     createAndEnqueueAudit.mockResolvedValue({ auditId: 'audit-1' })
-    trackAnonymousAuditId.mockResolvedValue(undefined)
   })
 
   it('returns 400 for missing URL', async () => {
@@ -104,15 +92,17 @@ describe('GET /api/v1/score', () => {
   })
 
   it('returns 403 when anonymous quota is exhausted', async () => {
-    checkAnonymousAuditAllowed.mockResolvedValue({
-      allowed: false,
-      code: 'UPGRADE_REQUIRED',
-      action: 'sign_in',
-    })
+    createAndEnqueueAudit.mockRejectedValue(
+      new AuditLimitError('AUTH_REQUIRED', {
+        action: 'signup',
+        message: 'You’ve used your free scan.',
+      })
+    )
     const r = await GET(req())
     expect(r.status).toBe(403)
     const body = await r.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
+    expect(body.code).toBe('AUTH_REQUIRED')
+    expect(body.action).toBe('signup')
   })
 
   it('returns 422 for failed audit', async () => {
@@ -126,7 +116,7 @@ describe('GET /api/v1/score', () => {
     expect(body.failureCode).toBe('CAPTURE_FAILED')
   })
 
-  it('returns completed score JSON for successful audit', async () => {
+  it('returns completed score JSON without fix prompts', async () => {
     prismaMock.audit.findUnique.mockResolvedValue(completedAudit())
     const r = await GET(req())
     expect(r.status).toBe(200)
@@ -139,7 +129,12 @@ describe('GET /api/v1/score', () => {
     expect(body.rubrics[0].name).toBe('message')
     expect(body.topFlags).toHaveLength(1)
     expect(body.topFlags[0].severity).toBe('CRITICAL')
+    expect(body.topFlags[0].fixPrompt).toBeUndefined()
+    expect(body.topFlags[0].problem).toBe('No meta description')
     expect(body.shareStatus).toBe('fix_before_sharing')
+    expect(createAndEnqueueAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: null, clientId: '127.0.0.1' })
+    )
   })
 
   it('returns good_to_share when no critical flags', async () => {
@@ -155,15 +150,7 @@ describe('GET /api/v1/score', () => {
                 severity: 'IMPORTANT',
                 problem: 'Slow LCP',
                 evidence: 'LCP 4.2s',
-                fix: 'Optimize images',
-                agentPrompt: null,
-                cursorPrompt: null,
-                claudePrompt: null,
-                windsurfPrompt: null,
-                lovablePrompt: null,
-                boltPrompt: null,
                 whyItMatters: null,
-                verificationRule: null,
                 pageUrl: null,
               },
             ],

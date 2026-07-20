@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
-import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/usage'
+import { AuditLimitError, createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { enforceRateLimit, recordRateLimit } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
@@ -41,22 +40,13 @@ export async function GET(req: NextRequest) {
     }
     const normalizedUrl = urlResult.url
 
-    const usageCheck = await checkAnonymousAuditAllowed()
-    if (!usageCheck.allowed) {
-      return NextResponse.json(
-        { error: 'Free tier limit reached', code: usageCheck.code, action: usageCheck.action },
-        { status: 403 }
-      )
-    }
-
     const { auditId } = await createAndEnqueueAudit({
       url: normalizedUrl,
       userId: null,
       auditMode: 'SINGLE',
       monitoringMode: 'FULL',
+      clientId: ip,
     })
-
-    await trackAnonymousAuditId(auditId)
 
     const startedAt = Date.now()
     let lastStatus: string | null = null
@@ -90,15 +80,7 @@ export async function GET(req: NextRequest) {
                   severity: true,
                   problem: true,
                   evidence: true,
-                  fix: true,
-                  agentPrompt: true,
-                  cursorPrompt: true,
-                  claudePrompt: true,
-                  windsurfPrompt: true,
-                  lovablePrompt: true,
-                  boltPrompt: true,
                   whyItMatters: true,
-                  verificationRule: true,
                   pageUrl: true,
                 },
               },
@@ -141,6 +123,7 @@ export async function GET(req: NextRequest) {
         const hasCritical = allFlags.some((f) => f.severity === 'CRITICAL')
         const shareStatus = hasCritical ? 'fix_before_sharing' : 'good_to_share'
 
+        // Anon score API: never return fix prompts (same gate as report UI).
         const topFlags = [...allFlags]
           .sort((a, b) => {
             const sev: Record<string, number> = { CRITICAL: 0, IMPORTANT: 1, POLISH: 2 }
@@ -152,7 +135,6 @@ export async function GET(req: NextRequest) {
             rubric: f.rubric,
             problem: f.problem,
             evidence: f.evidence?.slice(0, 300) ?? null,
-            fixPrompt: f.agentPrompt ?? f.cursorPrompt ?? f.fix ?? null,
             whyItMatters: f.whyItMatters ?? null,
           }))
 
@@ -184,6 +166,12 @@ export async function GET(req: NextRequest) {
       { status: 504 }
     )
   } catch (error) {
+    if (error instanceof AuditLimitError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code, action: error.action },
+        { status: 403 }
+      )
+    }
     return handleRouteError(error)
   }
 }

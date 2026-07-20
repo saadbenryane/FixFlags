@@ -1,10 +1,12 @@
 import type { Page } from 'playwright'
+import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/browser/overlay-probe'
 import type { ProbeOutcome } from './nav-probes'
 
 export interface FormProbeResult {
   formValidation: ProbeOutcome
   formLabel?: string
   feedbackMs?: number | null
+  formOverlay?: OverlayBlockerInfo | null
 }
 
 function sleep(ms: number): Promise<void> {
@@ -157,6 +159,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
     }
     return { formValidation: 'broken', formLabel: formMeta.label }
   } catch {
-    return { formValidation: 'broken', formLabel: formMeta.label }
+    const overlay = await detectOverlayAtPoint(page, submitSelector)
+    return { formValidation: 'broken', formLabel: formMeta.label, formOverlay: overlay }
   }
 }

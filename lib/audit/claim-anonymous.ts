@@ -1,19 +1,13 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
-import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
+import {
+  ANON_AUDIT_IDS_COOKIE,
+  incrementUsageOnCompleteForAudit,
+  readAnonAuditIds,
+} from '@/lib/audit/usage'
 import { remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
 import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
-
-function readAnonAuditIds(raw: string | undefined): string[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
-  } catch {
-    return []
-  }
-}
 
 export async function claimAnonymousAudits(userId: string): Promise<number> {
   const cookieStore = await cookies()
@@ -25,7 +19,13 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
       id: { in: ids },
       userId: null,
     },
-    select: { id: true, status: true, aiReviewAt: true },
+    select: {
+      id: true,
+      status: true,
+      aiReviewAt: true,
+      skipUsageCount: true,
+      usageCountedAt: true,
+    },
   })
 
   if (audits.length === 0) {
@@ -37,6 +37,15 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     where: { id: { in: audits.map((a) => a.id) } },
     data: { userId },
   })
+
+  // Claimed teasers count toward Free lifetime quota (idempotent via usageCountedAt).
+  for (const audit of audits) {
+    if (audit.skipUsageCount || audit.usageCountedAt) continue
+    if (audit.status === 'COMPLETED') {
+      await incrementUsageOnCompleteForAudit(audit.id, userId)
+    }
+    // In-flight audits: finalize will count when COMPLETED with userId set.
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

@@ -8,7 +8,6 @@ import {
   ParentAuditError,
   createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
-import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/usage'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
@@ -45,16 +44,6 @@ export async function POST(req: NextRequest) {
     const clientId = requestClientId(req.headers)
 
     const criticalPath = parsed.data.mode !== 'single'
-
-    if (!session?.user) {
-      const anonCheck = await checkAnonymousAuditAllowed()
-      if (!anonCheck.allowed) {
-        return apiError(anonCheck.error!, 402, {
-          code: anonCheck.code,
-          action: anonCheck.action,
-        })
-      }
-    }
 
     // Hard abuse ceilings, on separate counters from the soft delay limits below.
     // Normal bursts stay delay-queued; only egregious flooding from a single
@@ -124,11 +113,8 @@ export async function POST(req: NextRequest) {
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
       attribution,
+      clientId: session?.user ? undefined : clientId,
     })
-
-    if (!session?.user) {
-      await trackAnonymousAuditId(auditId)
-    }
 
     return NextResponse.json(
       {
@@ -151,7 +137,6 @@ export async function POST(req: NextRequest) {
     if (err instanceof ParentAuditError) {
       return apiError(err.message, err.status, {
         code: err.status === 401 ? 'AUTH_REQUIRED' : 'PARENT_AUDIT_INVALID',
-        action: err.status === 401 ? 'signup' : undefined,
       })
     }
     return handleRouteError(err)

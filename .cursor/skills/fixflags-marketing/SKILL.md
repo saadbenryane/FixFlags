@@ -234,7 +234,7 @@ Lead with **precise repair + re-check proof**, not "AI QA agent" or live chat sp
 | Paste the fix into Cursor, Claude, Lovable, or Bolt | Comprehensive autonomous QA suite |
 | Re-checks are free and unlimited on reports you own | Set it and forget it monitoring (not shipped) |
 
-**Roast tool:** All roast taglines, verdicts, and page UI strings live in `lib/marketing/copy.ts` (`ROAST` or similar). Never hardcode in `RoastClient` or the roast API route.
+**Roast tool:** All roast taglines, verdicts, and page UI strings live in `lib/marketing/copy.ts` (`ROAST_COPY`). Never hardcode in `RoastClient` or the roast API route. Full report link uses `reportUrl` / `auditId`, never the scanned URL.
 
 Canonical competitor table: `docs/growth/competitors.md` and `knowledge/market.md`. Moat: `knowledge/product.md`.
 

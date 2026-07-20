@@ -149,6 +149,18 @@ export function FlagDetailPanel({
             />
           ) : null}
           <p className="text-sm leading-relaxed text-foreground/90 text-pretty">{flag.evidence}</p>
+          {(() => {
+            const stepMatch = flag.evidence.match(/[Rr]eproduced at step (\d+)/)
+            if (!stepMatch) return null
+            return (
+              <a
+                href="#report-timeline"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs text-brand hover:underline"
+              >
+                View timeline step {stepMatch[1]}
+              </a>
+            )
+          })()}
           {flag.pageUrl ? (
             <a
               href={flag.pageUrl}

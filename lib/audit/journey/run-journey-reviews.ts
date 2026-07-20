@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/db'
-import type { ImpactTag, RubricName, Severity } from '@prisma/client'
+import type { ImpactTag, Prisma, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
 import { PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
+import { parseActionTimeline, type ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
+import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft, JourneyType } from './types'
 
@@ -29,7 +32,6 @@ export function orderJourneysFromContract(contract: ProductContract | null): Jou
   if (/sign.?up|register|trial|onboard|account/.test(text)) preferred.push('signup')
   if (/contact|support|help|demo/.test(text)) preferred.push('contact-support')
 
-  // Always keep first-visit early when contract is generic or specific.
   const ordered: JourneyType[] = ['first-visit']
   for (const t of preferred) {
     if (!ordered.includes(t)) ordered.push(t)
@@ -40,10 +42,66 @@ export function orderJourneysFromContract(contract: ProductContract | null): Jou
   return ordered
 }
 
+async function mergeActionTimeline(
+  auditId: string,
+  events: ActionTimelineEvent[] | undefined
+): Promise<void> {
+  if (!events?.length) return
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { performanceData: true },
+  })
+  const existing = parseActionTimeline(audit?.performanceData)
+  const merged = [...existing, ...events].slice(0, 80)
+  const base =
+    audit?.performanceData &&
+    typeof audit.performanceData === 'object' &&
+    !Array.isArray(audit.performanceData)
+      ? (audit.performanceData as Record<string, unknown>)
+      : {}
+  await prisma.audit.update({
+    where: { id: auditId },
+    data: {
+      performanceData: { ...base, actionTimeline: merged } as unknown as Prisma.InputJsonValue,
+    },
+  })
+}
+
+function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
+  if (/reproduced at step/i.test(f.evidence)) return f
+  return {
+    ...f,
+    evidence: `Reproduced at step ${f.stepNumber}. ${f.evidence}`,
+  }
+}
+
 export async function persistJourneyResult(
   auditId: string,
   result: Awaited<ReturnType<typeof runJourneyTemplate>>
 ): Promise<JourneyFindingDraft[]> {
+  const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence))
+  const findingsToPersist = [...filteredFindings]
+
+  const networkFlags = runNetworkEngagementChecks([], result.formProbe)
+  for (const nf of networkFlags) {
+    if (findingsToPersist.some((f) => f.checkId === nf.checkId)) continue
+    findingsToPersist.push(
+      withStepEvidence({
+        checkId: nf.checkId,
+        stepNumber: result.steps.length || 1,
+        url: result.startUrl,
+        rubric: 'EXPERIENCE',
+        severity: nf.severity as JourneyFindingDraft['severity'],
+        impactTag: (nf.impactTag ?? 'CONVERSION') as JourneyFindingDraft['impactTag'],
+        problem: nf.problem,
+        evidence: nf.evidence,
+        whyItMatters: 'Engagement paths that fail at the API layer lose conversions.',
+        fix: nf.fix,
+        confidence: nf.confidence,
+      })
+    )
+  }
+
   const review = await prisma.journeyReview.create({
     data: {
       auditId,
@@ -74,7 +132,7 @@ export async function persistJourneyResult(
         })),
       },
       findings: {
-        create: result.findings.map((f) => ({
+        create: findingsToPersist.map((f) => ({
           stepNumber: f.stepNumber,
           url: f.url,
           rubric: f.rubric as RubricName,
@@ -93,7 +151,7 @@ export async function persistJourneyResult(
     },
   })
 
-  for (const f of result.findings) {
+  for (const f of findingsToPersist) {
     const created = await prisma.flag.create({
       data: {
         auditId,
@@ -118,7 +176,9 @@ export async function persistJourneyResult(
     })
   }
 
-  return result.findings
+  await mergeActionTimeline(auditId, result.actionTimeline as ActionTimelineEvent[] | undefined)
+
+  return findingsToPersist
 }
 
 export async function runJourneyReviewsForAudit(

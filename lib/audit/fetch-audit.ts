@@ -242,7 +242,7 @@ export async function getGatedAuditForRequest(id: string) {
       verificationRule: f.verificationRule,
       pageUrl: f.pageUrl,
       confidence: f.confidence,
-      source: f.source,
+      source: f.source ?? undefined,
     })),
   }))
 

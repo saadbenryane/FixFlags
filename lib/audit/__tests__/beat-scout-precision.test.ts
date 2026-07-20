@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
+import {
+  buildSilentFormFailureFlag,
+  runNetworkEngagementChecks,
+} from '@/lib/audit/checks/network-engagement'
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
-import { inferProductContract, parseProductContract } from '@/lib/audit/product-contract'
+import {
+  buildUserProductContract,
+  inferProductContract,
+  parseProductContract,
+  validateProductContractInput,
+} from '@/lib/audit/product-contract'
 import { createActionTimeline, parseActionTimeline } from '@/lib/audit/action-timeline'
 import { isEngagementPath } from '@/lib/audit/browser/network-monitor'
 import { isBlockedPaymentUrl, probeEmailForAudit } from '@/lib/audit/browser/journey-safety'
 import { deriveTruthLabel } from '@/lib/report/explorer-model'
+import {
+  filterToolingPathFlags,
+  looksLikeToolingPathNoise,
+} from '@/lib/audit/tooling-path-filter'
+import { orderJourneysFromContract } from '@/lib/audit/journey/run-journey-reviews'
 
 describe('network engagement checks', () => {
   it('flags same-origin engagement 401', () => {
@@ -30,6 +43,15 @@ describe('network engagement checks', () => {
       status: 500,
     })
     expect(flags.some((f) => f.checkId === 'form-submit-api-server-error')).toBe(true)
+  })
+
+  it('builds silent form failure flag', () => {
+    const flag = buildSilentFormFailureFlag(
+      { url: 'https://example.com/api/subscribe', method: 'POST', status: 200 },
+      'API returned success but no thank-you copy'
+    )
+    expect(flag.checkId).toBe('form-submit-silent-failure')
+    expect(flag.severity).toBe('CRITICAL')
   })
 
   it('ignores third-party noise when not same-origin', () => {
@@ -90,6 +112,60 @@ describe('product contract', () => {
     })
     expect(parsed?.purpose).toBe('Help founders ship')
   })
+
+  it('validates and builds user contract', () => {
+    const ok = validateProductContractInput({
+      purpose: 'Help teams ship',
+      firstValueJourney: 'Open pricing and start trial',
+      criticalOutcomes: ['Pricing loads', 'Signup works'],
+    })
+    expect(ok.ok).toBe(true)
+    if (!ok.ok) return
+    const built = buildUserProductContract(ok.value)
+    expect(built.source).toBe('user')
+    expect(built.criticalOutcomes).toHaveLength(2)
+  })
+})
+
+describe('journey ordering from contract', () => {
+  it('prefers pricing and signup after first-visit', () => {
+    const ordered = orderJourneysFromContract({
+      purpose: 'Help buyers compare plans',
+      firstValueJourney: 'Open pricing, then signup',
+      criticalOutcomes: ['Checkout starts'],
+      inferredAt: '2026-07-20T00:00:00.000Z',
+      source: 'heuristic',
+    })
+    expect(ordered[0]).toBe('first-visit')
+    expect(ordered.indexOf('pricing-evaluation')).toBeLessThan(ordered.indexOf('contact-support'))
+    expect(ordered.indexOf('signup')).toBeLessThan(ordered.indexOf('contact-support'))
+  })
+})
+
+describe('tooling-path anti-FP', () => {
+  it('detects Scout-style tooling paths', () => {
+    expect(
+      looksLikeToolingPathNoise(
+        'Broken $ placeholder in /tmp/playwright-mcp-session.yml dump'
+      )
+    ).toBe(true)
+    expect(looksLikeToolingPathNoise('Missing og:image on homepage')).toBe(false)
+  })
+
+  it('filters tooling-path Flags', () => {
+    const flags = filterToolingPathFlags([
+      {
+        problem: 'Unreplaced template token',
+        evidence: 'Found ${price} near playwright-mcp session path',
+      },
+      {
+        problem: 'Missing CTA',
+        evidence: 'No primary button above the fold',
+      },
+    ])
+    expect(flags).toHaveLength(1)
+    expect(flags[0].problem).toBe('Missing CTA')
+  })
 })
 
 describe('action timeline', () => {
@@ -125,6 +201,7 @@ describe('truth labels', () => {
   it('marks overlay and network as Reproduced', () => {
     expect(deriveTruthLabel('DETERMINISTIC', 'overlay-blocks-cta')).toBe('Reproduced')
     expect(deriveTruthLabel('DETERMINISTIC', 'api-engagement-unauthorized')).toBe('Reproduced')
+    expect(deriveTruthLabel('DETERMINISTIC', 'form-submit-silent-failure')).toBe('Reproduced')
     expect(deriveTruthLabel('DETERMINISTIC', 'title-missing')).toBe('Detected')
     expect(deriveTruthLabel('JOURNEY', 'journey-signup-no-form')).toBe('Reproduced')
   })

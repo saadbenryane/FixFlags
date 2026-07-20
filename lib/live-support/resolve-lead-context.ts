@@ -1,18 +1,8 @@
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
-import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
+import { ANON_AUDIT_IDS_COOKIE, readAnonAuditIds } from '@/lib/audit/usage'
 import { extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
-
-function readAnonAuditIds(raw: string | undefined): string[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
-  } catch {
-    return []
-  }
-}
 
 async function leadIdForDomain(domain: string | null): Promise<string | null> {
   if (!domain) return null
@@ -38,7 +28,7 @@ async function domainFromAnonCookie(): Promise<string | null> {
   if (ids.length === 0) return null
 
   const audit = await prisma.audit.findFirst({
-    where: { id: { in: ids.slice(-10) } },
+    where: { id: { in: ids } },
     orderBy: { createdAt: 'desc' },
     select: { url: true, normalizedDomain: true },
   })

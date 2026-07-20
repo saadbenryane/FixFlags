@@ -88,17 +88,26 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   if (probes.pricingNav === 'broken') {
     const label = probes.pricingNavLabel ? `"${probes.pricingNavLabel}"` : 'Pricing'
     const href = probes.pricingNavHref ? ` (href="${probes.pricingNavHref}")` : ''
-    findings.push({
-      checkId: 'flow-pricing-nav-broken',
-      rubric: 'EXPERIENCE',
-      impactTag: 'CONVERSION',
-      severity: 'IMPORTANT',
-      problem: 'Pricing nav link does not reach a pricing section or page',
-      evidence: `Clicking ${label}${href} in the header nav did not scroll to a valid section or open a pricing page.`,
-      fix: '1. Add an id="pricing" section on the page or link the nav item to your real /pricing route\n2. Confirm the nav item points to the real pricing destination\n3. Test the header Pricing click on desktop and mobile',
-      confidence: 0.9,
-      source: 'DETERMINISTIC',
-    })
+    const overlayFlags = runOverlayBlockerChecks(
+      'nav',
+      probes.pricingNavOverlay,
+      `Pricing nav ${label}${href}`
+    )
+    if (overlayFlags.length > 0) {
+      findings.push(...overlayFlags)
+    } else {
+      findings.push({
+        checkId: 'flow-pricing-nav-broken',
+        rubric: 'EXPERIENCE',
+        impactTag: 'CONVERSION',
+        severity: 'IMPORTANT',
+        problem: 'Pricing nav link does not reach a pricing section or page',
+        evidence: `Clicking ${label}${href} in the header nav did not scroll to a valid section or open a pricing page.`,
+        fix: '1. Add an id="pricing" section on the page or link the nav item to your real /pricing route\n2. Confirm the nav item points to the real pricing destination\n3. Test the header Pricing click on desktop and mobile',
+        confidence: 0.9,
+        source: 'DETERMINISTIC',
+      })
+    }
   }
 
   if (probes.mobileMenu === 'broken') {
@@ -118,17 +127,22 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
 
   if (probes.formValidation === 'broken') {
     const label = probes.formLabel ? `"${probes.formLabel}"` : 'conversion form'
-    findings.push({
-      checkId: 'flow-form-no-validation',
-      rubric: 'EXPERIENCE',
-      impactTag: 'CONVERSION',
-      severity: 'IMPORTANT',
-      problem: 'Empty form submit shows no validation feedback',
-      evidence: `Submitting ${label} with empty fields did not trigger HTML5 validation or visible error messages.`,
-      fix: '1. Add required attributes to mandatory form fields\n2. Show visible error messages on empty submit\n3. Use aria-invalid and role="alert" so screen readers announce errors',
-      confidence: 0.85,
-      source: 'DETERMINISTIC',
-    })
+    const overlayFlags = runOverlayBlockerChecks('form', probes.formOverlay, label)
+    if (overlayFlags.length > 0) {
+      findings.push(...overlayFlags)
+    } else {
+      findings.push({
+        checkId: 'flow-form-no-validation',
+        rubric: 'EXPERIENCE',
+        impactTag: 'CONVERSION',
+        severity: 'IMPORTANT',
+        problem: 'Empty form submit shows no validation feedback',
+        evidence: `Submitting ${label} with empty fields did not trigger HTML5 validation or visible error messages.`,
+        fix: '1. Add required attributes to mandatory form fields\n2. Show visible error messages on empty submit\n3. Use aria-invalid and role="alert" so screen readers announce errors',
+        confidence: 0.85,
+        source: 'DETERMINISTIC',
+      })
+    }
   }
 
   if (

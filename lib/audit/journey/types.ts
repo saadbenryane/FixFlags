@@ -56,6 +56,15 @@ export interface JourneyRunResult {
   steps: JourneyStepDraft[]
   findings: JourneyFindingDraft[]
   durationMs: number
+  formProbe?: { url: string; method: string; status: number } | null
+  actionTimeline?: Array<{
+    t: number
+    kind: string
+    label: string
+    url?: string
+    status?: number | string
+    screenshot?: string | null
+  }>
 }
 
 export const JOURNEY_MAX_STEPS = 10

@@ -89,6 +89,53 @@ export const TOOLS = {
   },
 } as const
 
+export const ROAST_COPY = {
+  title: 'Website Roast',
+  subhead: 'Paste your URL. Get roasted. Fix what matters.',
+  placeholder: 'https://your-site.com',
+  cta: 'Roast it',
+  ctaLoading: 'Roasting...',
+  overallLabel: 'Overall Quality',
+  topIssuesHeading: 'Top issues',
+  shareBadge: 'Share your quality badge',
+  downloadSvg: 'Download SVG',
+  copyMarkdown: 'Copy markdown',
+  fullReport: 'Full report',
+  wantFixes: 'Want fix prompts for every issue?',
+  runFullAudit: 'Run full FixFlags audit',
+  taglines: {
+    A: 'Ship it. This is ready for humans.',
+    B: 'Solid foundation. A few tweaks and you are golden.',
+    C: 'Not bad, but your users will notice.',
+    D: 'Your site has feelings. Mostly pain.',
+    F: 'We roasted your site so your users do not have to.',
+    default: 'Every site has room to grow.',
+  },
+  rubricVerdicts: {
+    MESSAGE: {
+      A: 'Clear, focused, conversion-ready.',
+      B: 'Good messaging. Minor clarity gaps.',
+      C: 'Visitors understand what you do. Eventually.',
+      D: 'Your headline is working against you.',
+      F: 'Visitors have no idea what this is about.',
+    },
+    EXPERIENCE: {
+      A: 'Fast, accessible, and broken nothing.',
+      B: 'Works well. A few rough edges.',
+      C: 'It loads. That is about the nicest thing we can say.',
+      D: 'Your users are leaving. We can see why.',
+      F: 'This is a usability incident.',
+    },
+    REACH: {
+      A: 'Google will find you. So will everyone else.',
+      B: 'SEO is solid. A few meta gaps.',
+      C: 'You exist on the internet. Technically.',
+      D: 'Your SEO is actively hiding you.',
+      F: 'You are invisible to search engines.',
+    },
+  },
+} as const
+
 /** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
 export const OFFER = {
   line: 'Free check. See what\u2019s broken. Sign up when you want the fix prompts and re-check.',
@@ -841,6 +888,7 @@ export const MCP_DOCS = {
     'Generate an API key in Settings → API Keys (Pro plan)',
     'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
     'Run ff_check_url: use the curl test below to verify your key',
+    'Optional: build the local CLI from fixflags-cli/ (`npm run build` then `node bin/fixflags.js`)',
   ],
   builderRequired: 'Requires Pro plan',
   expectationsTitle: 'What to expect',

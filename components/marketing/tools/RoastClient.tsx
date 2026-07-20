@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ROAST_COPY } from '@/lib/marketing/copy'
 
 interface RubricResult {
   name: string
@@ -14,6 +15,8 @@ interface RubricResult {
 
 interface RoastData {
   url: string
+  auditId?: string
+  reportUrl?: string
   overallGrade: string
   overallScore: number
   tagline: string
@@ -86,12 +89,12 @@ export function RoastClient() {
   function downloadBadge() {
     if (!result) return
     const blob = new Blob([result.badgeSvg], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
+    const objectUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
+    a.href = objectUrl
     a.download = `fixflags-badge-${result.overallGrade}.svg`
     a.click()
-    URL.revokeObjectURL(url)
+    URL.revokeObjectURL(objectUrl)
   }
 
   function copyBadgeMarkdown() {
@@ -101,117 +104,101 @@ export function RoastClient() {
     navigator.clipboard.writeText(markdown)
   }
 
+  const reportHref =
+    result?.reportUrl || (result?.auditId ? `/report/${result.auditId}` : null)
+
   return (
     <div className="space-y-8">
       <div className="space-y-3 text-center">
-        <h1 className="font-serif text-3xl font-medium tracking-display sm:text-4xl">
-          Website Roast
+        <h1 className="font-display text-3xl font-medium tracking-display sm:text-4xl">
+          {ROAST_COPY.title}
         </h1>
-        <p className="text-muted-foreground">
-          Paste your URL. Get roasted. Fix what matters.
-        </p>
+        <p className="text-muted-foreground">{ROAST_COPY.subhead}</p>
       </div>
 
       <div className="flex gap-2">
         <Input
           type="url"
-          placeholder="https://your-site.com"
+          placeholder={ROAST_COPY.placeholder}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleRoast()}
           className="flex-1"
           disabled={loading}
         />
-        <Button
-          onClick={handleRoast}
-          disabled={loading || !url.trim()}
-          variant="default"
-        >
-          {loading ? 'Roasting...' : 'Roast it'}
+        <Button onClick={handleRoast} disabled={loading || !url.trim()} variant="default">
+          {loading ? ROAST_COPY.ctaLoading : ROAST_COPY.cta}
         </Button>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-400">
+        <div className="rounded-card border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-destructive">
           {error}
         </div>
       )}
 
       {result && (
         <div className="space-y-6">
-          {/* Overall Grade */}
-          <div className={cn(
-            'rounded-2xl border p-8 text-center',
-            GRADE_BG[result.overallGrade]
-          )}>
-            <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Overall Quality
+          <div
+            className={cn('rounded-card border p-8 text-center', GRADE_BG[result.overallGrade])}
+          >
+            <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+              {ROAST_COPY.overallLabel}
             </p>
-            <p className={cn(
-              'mt-2 font-serif text-7xl font-bold',
-              GRADE_COLORS[result.overallGrade]
-            )}>
+            <p
+              className={cn(
+                'mt-2 font-display text-7xl font-bold',
+                GRADE_COLORS[result.overallGrade]
+              )}
+            >
               {result.overallGrade}
             </p>
-            <p className="mt-1 text-2xl font-semibold text-foreground">
+            <p className="mt-1 font-display text-2xl font-semibold text-foreground">
               {result.overallScore}/100
             </p>
-            <p className="mt-3 text-muted-foreground">
-              {result.tagline}
-            </p>
+            <p className="mt-3 text-muted-foreground">{result.tagline}</p>
           </div>
 
-          {/* Rubric Breakdown */}
           <div className="grid gap-4 sm:grid-cols-3">
             {result.rubrics.map((rubric) => (
               <div
                 key={rubric.name}
-                className={cn(
-                  'rounded-xl border p-4',
-                  GRADE_BG[rubric.grade]
-                )}
+                className={cn('rounded-card border p-4', GRADE_BG[rubric.grade])}
               >
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {rubric.name}
-                  </span>
-                  <span className={cn('text-2xl font-bold', GRADE_COLORS[rubric.grade])}>
+                  <span className="text-sm font-medium text-muted-foreground">{rubric.name}</span>
+                  <span className={cn('font-display text-2xl font-bold', GRADE_COLORS[rubric.grade])}>
                     {rubric.grade}
                   </span>
                 </div>
-                <p className="mt-1 text-3xl font-semibold text-foreground">
+                <p className="mt-1 font-display text-3xl font-semibold text-foreground">
                   {rubric.score}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {rubric.verdict}
-                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{rubric.verdict}</p>
               </div>
             ))}
           </div>
 
-          {/* Top Issues */}
           {result.topIssues.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-serif text-lg font-medium">
-                Top issues
-              </h3>
+              <h3 className="font-display text-lg font-medium">{ROAST_COPY.topIssuesHeading}</h3>
               <div className="space-y-2">
                 {result.topIssues.map((issue, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 rounded-lg border border-border/50 p-3"
+                    className="flex items-start gap-3 rounded-card border border-border/50 p-3"
                   >
-                    <span className={cn(
-                      'shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium',
-                      SEVERITY_STYLE[issue.severity] || SEVERITY_STYLE.POLISH
-                    )}>
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs font-medium',
+                        SEVERITY_STYLE[issue.severity] || SEVERITY_STYLE.POLISH
+                      )}
+                    >
                       {issue.severity}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-foreground">{issue.problem}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {issue.rubric}
-                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{issue.rubric}</p>
                     </div>
                   </div>
                 ))}
@@ -219,90 +206,41 @@ export function RoastClient() {
             </div>
           )}
 
-          {/* Badge + Actions */}
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-border/50 p-6">
-            <p className="text-sm font-medium text-muted-foreground">
-              Share your quality badge
-            </p>
+          <div className="flex flex-col items-center gap-4 rounded-card border border-border/50 p-6">
+            <p className="text-sm font-medium text-muted-foreground">{ROAST_COPY.shareBadge}</p>
             <div
-              className="overflow-hidden rounded-lg"
+              className="overflow-hidden rounded-card"
               dangerouslySetInnerHTML={{ __html: result.badgeSvg }}
             />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Button variant="outline" size="sm" onClick={downloadBadge}>
-                Download SVG
+                {ROAST_COPY.downloadSvg}
               </Button>
               <Button variant="outline" size="sm" onClick={copyBadgeMarkdown}>
-                Copy markdown
+                {ROAST_COPY.copyMarkdown}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(`/report/${result.url}`, '_blank')}
-              >
-                Full report
-              </Button>
+              {reportHref ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(reportHref, '_blank')}
+                >
+                  {ROAST_COPY.fullReport}
+                </Button>
+              ) : null}
             </div>
           </div>
 
-          {/* CTA */}
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Want fix prompts for every issue?
-            </p>
+            <p className="text-sm text-muted-foreground">{ROAST_COPY.wantFixes}</p>
             <Button
               variant="default"
               className="mt-2"
               onClick={() => window.location.assign('/#audit')}
             >
-              Run full FixFlags audit
+              {ROAST_COPY.runFullAudit}
             </Button>
           </div>
-        </div>
-      )}
-
-      {!result && !loading && (
-        <div className="space-y-6 pt-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                grade: 'A',
-                label: 'Ready to ship',
-                desc: 'Clear message, fast load, solid SEO.',
-              },
-              {
-                grade: 'C',
-                label: 'Needs work',
-                desc: 'Some things work. Some things hurt.',
-              },
-              {
-                grade: 'F',
-                label: 'Please fix this',
-                desc: 'Your users deserve better.',
-              },
-            ].map((example) => (
-              <div
-                key={example.grade}
-                className={cn(
-                  'rounded-xl border p-4 text-center',
-                  GRADE_BG[example.grade]
-                )}
-              >
-                <p className={cn('text-4xl font-bold', GRADE_COLORS[example.grade])}>
-                  {example.grade}
-                </p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {example.label}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {example.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Grades are based on FixFlags checks across Message, Experience, and Reach.
-          </p>
         </div>
       )}
     </div>

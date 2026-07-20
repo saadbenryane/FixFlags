@@ -1,6 +1,7 @@
 import type { Page } from 'playwright'
 import { MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/browser/overlay-probe'
 import { probeFormValidation } from './form-probes'
 import { probeGhostSections } from './scroll-probes'
 
@@ -10,10 +11,12 @@ export interface MultiStepProbeResult {
   pricingNav: ProbeOutcome
   pricingNavLabel?: string
   pricingNavHref?: string
+  pricingNavOverlay?: OverlayBlockerInfo | null
   mobileMenu: ProbeOutcome
   formValidation: ProbeOutcome
   formLabel?: string
   formFeedbackMs?: number | null
+  formOverlay?: OverlayBlockerInfo | null
   ghostSections?: number
   ghostSampleSelector?: string
   ghostSampleText?: string
@@ -40,6 +43,7 @@ interface PricingProbeResult {
   pricingNav: ProbeOutcome
   pricingNavLabel?: string
   pricingNavHref?: string
+  pricingNavOverlay?: OverlayBlockerInfo | null
 }
 
 /** Click the header Pricing/Plans nav link and verify it reaches a real section or page. */
@@ -98,10 +102,12 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
         pricingNavHref: link.href,
       }
     } catch {
+      const overlay = await detectOverlayAtPoint(page, selector)
       return {
         pricingNav: 'broken' as const,
         pricingNavLabel: link.text,
         pricingNavHref: link.href,
+        pricingNavOverlay: overlay,
       }
     }
   }
@@ -122,10 +128,12 @@ export async function probePricingNav(page: Page): Promise<PricingProbeResult> {
       pricingNavHref: link.href,
     }
   } catch {
+    const overlay = await detectOverlayAtPoint(page, selector)
     return {
       pricingNav: 'broken' as const,
       pricingNavLabel: link.text,
       pricingNavHref: link.href,
+      pricingNavOverlay: overlay,
     }
   }
 }
@@ -272,10 +280,12 @@ export async function runMultiStepProbes(page: Page, landingUrl: string): Promis
     pricingNav: pricing.pricingNav,
     pricingNavLabel: pricing.pricingNavLabel,
     pricingNavHref: pricing.pricingNavHref,
+    pricingNavOverlay: pricing.pricingNavOverlay,
     mobileMenu: mobile.mobileMenu,
     formValidation: formResult.formValidation,
     formLabel: formResult.formLabel,
     formFeedbackMs: formResult.feedbackMs,
+    formOverlay: formResult.formOverlay,
     ghostSections: ghost.ghostCount,
     ghostSampleSelector: ghost.sampleSelector ?? undefined,
     ghostSampleText: ghost.sampleText ?? undefined,

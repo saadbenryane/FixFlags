@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| beat-scout-completeness | in_progress | auto | main | Wire completed-report Contract/Timeline; editable contract; journey bias; silent failure; overlays; anti-FP; roast polish | app/report, AuditReport, ProductContractCard, journey, roast, skills | beat-scout-precision | 2026-07-20 |
+| anon-wedge-completion | in_progress | auto | main | 1-anon teaser rule: central gate, claim usage, score leak, copy/skills/analytics | create-audit, usage, claim-anonymous, score API, copy, skills | — | 2026-07-20 |
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| beat-scout-completeness | auto | Wire completed-report Contract/Timeline; editable contract; journey bias; silent failure; overlays; anti-FP; roast polish | 2026-07-20 |
 | why-it-matters-first | auto | Why it matters first in flag detail panels | 2026-07-20 |
 | beat-scout-precision | auto | Network/API Flags, overlay detection, action timeline, Product Contract, roast/CLI/IDE harden, skills/docs | 2026-07-20 |
 | help-center | auto | First-party Help Center + chat escalation + contextual help | 2026-07-20 |

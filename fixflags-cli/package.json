@@ -6,8 +6,14 @@
   "bin": {
     "fixflags": "./bin/fixflags.js"
   },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepack": "npm run build",
     "dev": "tsx src/index.ts"
   },
   "keywords": [

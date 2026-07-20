@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 /**
  * Route-level billing gating on POST /api/checks (core scan endpoint).
  * Re-checks use a separate route and are never gated on quota.
+ * Anon teaser gate lives inside createAndEnqueueAudit.
  */
 
 const prismaMock = vi.hoisted(() => ({
@@ -11,8 +12,6 @@ const prismaMock = vi.hoisted(() => ({
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const createAndEnqueueAudit = vi.hoisted(() => vi.fn())
-const checkAnonymousAuditAllowed = vi.hoisted(() => vi.fn())
-const trackAnonymousAuditId = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
@@ -24,10 +23,6 @@ vi.mock('@/lib/audit/create-audit', async (importOriginal) => {
     createAndEnqueueAudit,
   }
 })
-vi.mock('@/lib/audit/usage', () => ({
-  checkAnonymousAuditAllowed,
-  trackAnonymousAuditId,
-}))
 vi.mock('@/lib/security/rate-limit', () => ({
   enforceRateLimit: vi.fn(),
   recordRateLimit: vi.fn().mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
@@ -71,25 +66,23 @@ describe('POST /api/checks - billing gating enforcement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getSession.mockResolvedValue(null)
-    checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
     createAndEnqueueAudit.mockResolvedValue({ auditId: 'audit-1', status: 'QUEUED' })
-    trackAnonymousAuditId.mockResolvedValue(undefined)
   })
 
-  it('returns 402 UPGRADE_REQUIRED for anonymous user over limit', async () => {
-    checkAnonymousAuditAllowed.mockResolvedValue({
-      allowed: false,
-      error: 'Sign in to run more checks',
-      code: 'UPGRADE_REQUIRED',
-      action: 'sign_in',
-    })
+  it('returns 402 AUTH_REQUIRED when createAndEnqueueAudit rejects anon teaser', async () => {
+    createAndEnqueueAudit.mockRejectedValue(
+      new AuditLimitError('AUTH_REQUIRED', {
+        action: 'signup',
+        message: 'You’ve used your free scan. Create a free account for fix prompts and more checks.',
+      })
+    )
 
     const res = await POST(postReq())
 
     expect(res.status).toBe(402)
     const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(createAndEnqueueAudit).not.toHaveBeenCalled()
+    expect(body.code).toBe('AUTH_REQUIRED')
+    expect(body.action).toBe('signup')
   })
 
   it('returns 201 for unauthenticated critical_path mode (now free for all)', async () => {
@@ -97,6 +90,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
 
     expect(res.status).toBe(201)
     expect(createAndEnqueueAudit).toHaveBeenCalled()
+    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBe('test-client')
   })
 
   it('returns 201 for FREE user on critical_path mode (now free for all)', async () => {
@@ -107,6 +101,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
 
     expect(res.status).toBe(201)
     expect(createAndEnqueueAudit).toHaveBeenCalled()
+    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBeUndefined()
   })
 
   it('returns 402 when createAndEnqueueAudit throws AuditLimitError', async () => {
@@ -174,7 +169,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
     const body = await res.json()
     expect(body.reportId).toBe('audit-1')
     expect(createAndEnqueueAudit).toHaveBeenCalledTimes(1)
-    expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
+    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBe('test-client')
   })
 
   it('returns 201 for authenticated BUILDER user on critical_path', async () => {

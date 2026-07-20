@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const productContract = buildUserProductContract(validated.value)
     const updated = await prisma.audit.update({
       where: { id },
-      data: { productContract },
+      data: { productContract: productContract as object },
       select: { id: true, productContract: true },
     })
 

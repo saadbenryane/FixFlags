@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
 import type { UsageLimitResult } from '@/lib/audit/check-limit'
 import { consumePurchasedCredit } from '@/lib/billing/credits'
+import { enforceRateLimit } from '@/lib/security/rate-limit'
 
 export {
   isAtCheckLimit,
@@ -16,7 +17,11 @@ export {
 
 export const ANON_AUDIT_IDS_COOKIE = 'ff_anon_report_ids'
 
-function readAnonAuditIds(raw: string | undefined): string[] {
+/** Soft ceiling: clearing cookies must not unlock unlimited free triage. */
+export const ANON_IP_SOFT_LIMIT = 5
+export const ANON_IP_SOFT_WINDOW_SECONDS = 60 * 60 * 24
+
+export function readAnonAuditIds(raw: string | undefined): string[] {
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw) as unknown
@@ -57,20 +62,24 @@ export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   return { allowed: true }
 }
 
+/**
+ * Soft IP ceiling for anonymous creates. Cookie is the product gate; this limits
+ * cookie-clearing abuse. Throws RateLimitError when exceeded.
+ */
+export async function enforceAnonymousIpSoftCeiling(clientId: string): Promise<void> {
+  if (isDevUnlimitedScans()) return
+  await enforceRateLimit({
+    scope: 'anon-teaser-ip',
+    identifier: clientId,
+    limit: ANON_IP_SOFT_LIMIT,
+    windowSeconds: ANON_IP_SOFT_WINDOW_SECONDS,
+  })
+}
+
+/** Track the single anon teaser audit id (product gate is binary). */
 export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   const cookieStore = await cookies()
-  const existing = cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value
-  let ids: string[] = []
-  try {
-    ids = existing ? (JSON.parse(existing) as string[]) : []
-  } catch {
-    ids = []
-  }
-  if (!ids.includes(auditId)) {
-    ids.push(auditId)
-  }
-  const trimmed = ids.slice(-10)
-  cookieStore.set(ANON_AUDIT_IDS_COOKIE, JSON.stringify(trimmed), {
+  cookieStore.set(ANON_AUDIT_IDS_COOKIE, JSON.stringify([auditId]), {
     httpOnly: true,
     maxAge: 60 * 60 * 24 * 30,
     sameSite: 'lax',

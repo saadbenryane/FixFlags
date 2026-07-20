@@ -6,11 +6,11 @@ import {
   AuditLimitError,
   createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
-import { checkAnonymousAuditAllowed, trackAnonymousAuditId } from '@/lib/audit/usage'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { ROAST_COPY } from '@/lib/marketing/copy'
 
 interface RoastResult {
   url: string
@@ -60,48 +60,17 @@ function gradeFromScore(score: number): string {
 }
 
 function taglineFromGrade(grade: string): string {
-  switch (grade) {
-    case 'A':
-      return 'Ship it. This is ready for humans.'
-    case 'B':
-      return 'Solid foundation. A few tweaks and you are golden.'
-    case 'C':
-      return 'Not bad, but your users will notice.'
-    case 'D':
-      return 'Your site has feelings. Mostly pain.'
-    case 'F':
-      return 'We roasted your site so your users do not have to.'
-    default:
-      return 'Every site has room to grow.'
+  const key = grade as keyof typeof ROAST_COPY.taglines
+  if (key in ROAST_COPY.taglines && key !== 'default') {
+    return ROAST_COPY.taglines[key]
   }
+  return ROAST_COPY.taglines.default
 }
 
 function rubricVerdict(name: string, score: number): string {
-  const grade = gradeFromScore(score)
-  const verdicts: Record<string, Record<string, string>> = {
-    MESSAGE: {
-      A: 'Clear, focused, conversion-ready.',
-      B: 'Good messaging. Minor clarity gaps.',
-      C: 'Visitors understand what you do. Eventually.',
-      D: 'Your headline is working against you.',
-      F: 'Visitors have no idea what this is about.',
-    },
-    EXPERIENCE: {
-      A: 'Fast, accessible, and broken nothing.',
-      B: 'Works well. A few rough edges.',
-      C: 'It loads. That is about the nicest thing we can say.',
-      D: 'Your users are leaving. We can see why.',
-      F: 'This is a usability incident.',
-    },
-    REACH: {
-      A: 'Google will find you. So will everyone else.',
-      B: 'SEO is solid. A few meta gaps.',
-      C: 'You exist on the internet. Technically.',
-      D: 'Your SEO is actively hiding you.',
-      F: 'You are invisible to search engines.',
-    },
-  }
-  return verdicts[name]?.[grade] || 'Checked.'
+  const grade = gradeFromScore(score) as 'A' | 'B' | 'C' | 'D' | 'F'
+  const byRubric = ROAST_COPY.rubricVerdicts[name as keyof typeof ROAST_COPY.rubricVerdicts]
+  return byRubric?.[grade] || 'Checked.'
 }
 
 function generateBadgeSvg(grade: string, score: number, url: string): string {
@@ -151,16 +120,6 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const clientId = requestClientId(req.headers)
 
-    if (!session?.user) {
-      const anonCheck = await checkAnonymousAuditAllowed()
-      if (!anonCheck.allowed) {
-        return apiError(anonCheck.error!, 402, {
-          code: anonCheck.code,
-          action: anonCheck.action,
-        })
-      }
-    }
-
     await enforceRateLimit({
       scope: session?.user ? 'audit-user-hard' : 'audit-client-hard',
       identifier: session?.user?.id ?? clientId,
@@ -182,11 +141,8 @@ export async function POST(req: NextRequest) {
       auditMode: 'SINGLE',
       monitoringMode: 'FULL',
       attribution,
+      clientId: session?.user ? undefined : clientId,
     })
-
-    if (!session?.user) {
-      await trackAnonymousAuditId(auditId)
-    }
 
     const startedAt = Date.now()
     let status = 'QUEUED'

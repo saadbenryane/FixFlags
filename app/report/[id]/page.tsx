@@ -219,7 +219,7 @@ export default async function ReportPage({ params }: Props) {
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
 
   if (audit.status === 'COMPLETED') {
-    const rubricRows = audit.rubricRows as Array<{
+    const rubricRows = (audit.rubricRows as Array<{
       id: string
       name: string
       grade: string
@@ -248,7 +248,13 @@ export default async function ReportPage({ params }: Props) {
         confidence: number | null
         source?: string | null
       }>
-    }> | undefined ?? []
+    }> | undefined ?? []).map((row) => ({
+      ...row,
+      flags: row.flags.map((f) => ({
+        ...f,
+        source: f.source ?? undefined,
+      })),
+    }))
 
     const flags = audit.flags.map((f) => ({
       id: f.id,
@@ -269,7 +275,7 @@ export default async function ReportPage({ params }: Props) {
       verificationRule: f.verificationRule,
       pageUrl: f.pageUrl,
       confidence: f.confidence,
-      source: f.source,
+      source: f.source ?? undefined,
     }))
 
     const reportAudit = {

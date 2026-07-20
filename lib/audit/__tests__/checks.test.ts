@@ -1897,6 +1897,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
           status: 500,
         })
       ),
+    'form-submit-silent-failure': () => checkIds([{ checkId: 'form-submit-silent-failure' }]),
     'overlay-blocks-nav': () =>
       checkIds(
         runOverlayBlockerChecks('nav', {
