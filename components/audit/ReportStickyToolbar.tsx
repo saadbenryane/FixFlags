@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 const CONTRACT_SECTION = { id: 'report-contract', label: 'Contract' } as const
-const PRIORITIES_SECTION = { id: 'report-priorities', label: 'Priorities' } as const
+const PRIORITIES_SECTION = { id: 'report-finish-plan', label: 'Finish Plan' } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: 'Journey' } as const
 const FLOW_SECTION = { id: 'report-flow', label: 'Flow' } as const
 const TIMELINE_SECTION = { id: 'report-timeline', label: 'Timeline' } as const

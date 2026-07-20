@@ -104,7 +104,7 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
 ## Parked (revisit when unblocked)
 
 - Programmatic pSEO scale-out (industry x builder matrices) — explicitly
-  deferred per `roadmap.md` Phase 4+; premature before smaller families
+  deferred per `growth-roadmap.md` Phase 4+; premature before smaller families
   prove out.
 
 ## How to re-rank

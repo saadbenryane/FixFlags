@@ -6,7 +6,7 @@
 
 AI coding tools ship astonishingly fast. They also ship surfaces that look right at a glance and break in ways a user will feel in the first 30 seconds. FixFlags is the calm, sharp reviewer who catches what speed skipped.
 
-The product exists because building with AI is not a shortcut around quality. It is a shift in who checks quality. The AI built it. FixFlags finishes it.
+The product exists because building with AI is not a shortcut around quality. It is a shift in who protects product judgment. Builders generate software. FixFlags preserves and improves the Product.
 
 ## The change it creates
 
@@ -36,17 +36,18 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 ## Product principles
 
-1. **Flag, Fix, Re-check** — every feature serves this loop or it does not ship.
+1. **Understand → Improve → Verify → Remember** — the Product Intelligence loop. Wedge UX: Flag → Fix → Re-check. Every feature serves this or it does not ship. See [knowledge/vision.md](./knowledge/vision.md).
 2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
-3. **Fix prompts are the product** — the unique value is not "what is wrong" but "here is exactly what to paste into your editor."
-4. **Re-check is the habit** — never gate it. A user who re-checks is a user who sees value.
-5. **Distribution before depth** — more users matter more than more checks. Build what serves the core loop; cut what doesn't.
-6. **Calm before loud** — the product earns trust through accuracy, not marketing volume.
-7. **Human before technical** — flags describe user impact, not HTML violations.
+3. **Finish Plan before backlog** — few highest-leverage improvements beat a long inventory.
+4. **Fix prompts are the delivery** — actionable paste-ready repairs for the builder's agent.
+5. **Re-check is the habit** — never gate it. Verification precedes confidence.
+6. **Distribution before premature depth** — more users matter more than more checks; expand with demand.
+7. **Calm before loud** — trust through accuracy, not marketing volume.
+8. **Human before technical** — flags describe user impact, not HTML violations.
 
 ## Brand promise
 
-FixFlags helps you ship quality. Not perfect, not enterprise-grade — just better than what ships without a QA layer. The promise is: paste your URL, see what a sharp reviewer would notice, get the fix text, and move on.
+FixFlags helps you finish AI-built products. Not perfect, not enterprise-grade — better than shipping without independent judgment. Paste your URL, see what a sharp reviewer would notice, get the Finish Plan and fix text, re-check, and keep Product Intelligence current.
 
 ## Voice and tone
 

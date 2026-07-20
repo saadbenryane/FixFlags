@@ -1,5 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
+import { type PagePurposeResult, isProductPage } from '../page-purpose'
 import { DeterministicFlag } from './index'
 
 const FREE_TRIAL_MARKERS = /(free trial|try free|start free|no credit card|no cc|free plan|get started free|14.day trial|7.day trial|30.day trial)/i
@@ -31,8 +32,12 @@ function hasLogoWall(images: Array<{ alt: string | null }>): boolean {
   return brandLike >= 4
 }
 
-export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runConversionFrictionChecks(
+  meta: PageMetadata,
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  const productPage = isProductPage(purpose.purpose)
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const ctaTexts = meta.ctaTexts ?? []
   const links = meta.links ?? []
@@ -47,7 +52,12 @@ export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFl
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
   const hasPricingLinks = links.some((l) => PRICING_MARKERS.test(l.href) || PRICING_MARKERS.test(l.text))
 
-  if (!hasFreeTrial && !hasDemo && !hasPricing && !hasPricingLinks && !hasBooking) {
+  // Only flag a missing conversion path when the page is actually a
+  // marketing/product page. Docs, articles, placeholder domains, and OSS
+  // project pages legitimately have no trial/demo/pricing CTA, and flagging
+  // them produces a top-3 false positive on pages that are not trying to
+  // convert (e.g. nextjs.org, example.com).
+  if (!hasFreeTrial && !hasDemo && !hasPricing && !hasPricingLinks && !hasBooking && productPage) {
     findings.push({
       checkId: 'friction-no-commitment-path',
       rubric: 'EXPERIENCE',
@@ -94,7 +104,7 @@ export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFl
   }
 
   const hasRiskReversal = hasGuarantee || bodyText.includes('cancel anytime') || FREE_TRIAL_MARKERS.test(bodyText)
-  if (ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
+  if (productPage && ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
     findings.push({
       checkId: 'friction-no-risk-reversal',
       rubric: 'MESSAGE',
@@ -108,7 +118,7 @@ export function runConversionFrictionChecks(meta: PageMetadata): DeterministicFl
     })
   }
 
-  if (!hasSocialProof && ctaTexts.length > 0) {
+  if (productPage && !hasSocialProof && ctaTexts.length > 0) {
     findings.push({
       checkId: 'friction-no-social-proof',
       rubric: 'MESSAGE',

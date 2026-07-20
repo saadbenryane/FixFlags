@@ -922,8 +922,9 @@ export const REPORT_COPY = {
     body: 'PageSpeed data was unavailable for this run. Experience flags that need it may be thinner.',
   },
   sectionTitles: {
-    topPriorities: 'Top priorities',
-    topPrioritiesHint: 'Paste into Cursor, Claude Code, or any editor with plan mode to get a structured fix plan before editing.',
+    topPriorities: 'Finish Plan',
+    topPrioritiesHint:
+      'The highest-leverage improvements next. Copy into Cursor, Claude Code, or any editor with plan mode.',
     summaryByRubric: 'Summary by rubric',
   },
   explorer: {

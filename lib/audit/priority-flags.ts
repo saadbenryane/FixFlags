@@ -1,5 +1,6 @@
 import { gradeRank, severityRank } from '@/lib/utils'
 import type { FixConfidence, RankableFlag } from './flag-types'
+import type { ProductContract } from './product-contract'
 
 export type { FixConfidence, RankableFlag } from './flag-types'
 
@@ -35,7 +36,35 @@ function corridorBoost(flag: RankableFlag): number {
   return 2
 }
 
-function compareFlagPrioritySignals(a: RankableFlag, b: RankableFlag): number {
+/** Lower is better. Boost Flags whose text aligns with Product Contract / PI. */
+function contractAlignmentBoost(
+  flag: RankableFlag,
+  contract: ProductContract | null | undefined
+): number {
+  if (!contract) return 1
+  const hay = `${flag.problem} ${flag.whyItMatters ?? ''} ${flag.checkId ?? ''}`.toLowerCase()
+  const needles = [
+    contract.purpose,
+    contract.firstValueJourney,
+    ...contract.criticalOutcomes,
+  ]
+    .join(' ')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4)
+
+  const hits = needles.filter((w) => hay.includes(w)).length
+  if (hits >= 1) return 0
+  // Journey/flow already boosted via corridor; keep slight preference for conversion/trust
+  if (flag.impactTag === 'CONVERSION' || flag.impactTag === 'REVENUE') return 0
+  return 1
+}
+
+function compareFlagPrioritySignals(
+  a: RankableFlag,
+  b: RankableFlag,
+  contract?: ProductContract | null
+): number {
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff
 
@@ -48,11 +77,19 @@ function compareFlagPrioritySignals(a: RankableFlag, b: RankableFlag): number {
   const corridorDiff = corridorBoost(a) - corridorBoost(b)
   if (corridorDiff !== 0) return corridorDiff
 
+  const contractDiff =
+    contractAlignmentBoost(a, contract) - contractAlignmentBoost(b, contract)
+  if (contractDiff !== 0) return contractDiff
+
   return 0
 }
 
-export function compareFlagsByPriority(a: RankableFlag, b: RankableFlag): number {
-  const signalDiff = compareFlagPrioritySignals(a, b)
+export function compareFlagsByPriority(
+  a: RankableFlag,
+  b: RankableFlag,
+  contract?: ProductContract | null
+): number {
+  const signalDiff = compareFlagPrioritySignals(a, b, contract)
   if (signalDiff !== 0) return signalDiff
 
   return a.problem.localeCompare(b.problem)
@@ -249,7 +286,8 @@ export function countFixPrompts(flags: RankableFlag[]): number {
 export function rankFlagsByPriority(
   flags: RankableFlag[],
   rubricRows: Array<{ name: string; grade: string | null }> = [],
-  limit = 3
+  limit = 3,
+  contract?: ProductContract | null
 ): Array<{ flag: RankableFlag; rubricName: string; rubricGrade: string | null }> {
   const gradeByRubric = new Map(rubricRows.map((row) => [row.name, row.grade]))
   const ranked = flags.map((flag) => ({
@@ -259,7 +297,7 @@ export function rankFlagsByPriority(
   }))
 
   ranked.sort((a, b) => {
-    const priorityDiff = compareFlagPrioritySignals(a.flag, b.flag)
+    const priorityDiff = compareFlagPrioritySignals(a.flag, b.flag, contract)
     if (priorityDiff !== 0) return priorityDiff
 
     const gradeDiff = gradeRank(a.rubricGrade ?? '') - gradeRank(b.rubricGrade ?? '')

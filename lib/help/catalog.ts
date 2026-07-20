@@ -55,7 +55,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         items: [
           'Paste your live URL (or a public preview URL).',
           'Wait for the scan to finish. You will see progress as it captures and checks.',
-          'Open the report. Start with Top Priorities, then browse Flags by rubric.',
+          'Open the report. Start with the Finish Plan, then browse Flags by rubric.',
         ],
       },
     ],
@@ -75,14 +75,14 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Each Flag includes evidence from your page and a fix prompt you can paste into Cursor, Claude Code, Lovable, or Bolt. Top Priorities surfaces the highest-impact Flags first.',
+        text: 'Each Flag includes evidence from your page and a fix prompt you can paste into Cursor, Claude Code, Lovable, or Bolt. The Finish Plan surfaces the highest-impact Flags first.',
       },
       {
         type: 'ul',
         items: [
           'Use the sticky toolbar to jump between Overview, Flags, and Re-check.',
           'Filter by rubric or severity when the list is long.',
-          'Copy one Flag or use Copy fix plan for a plan-mode prompt.',
+          'Copy one Flag or use Copy Finish Plan for a plan-mode prompt.',
         ],
       },
     ],

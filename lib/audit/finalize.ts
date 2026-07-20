@@ -127,6 +127,10 @@ export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<v
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage finalize', err)
   })
+
+  await persistAuditGraphSnapshot(input.auditId).catch((err) => {
+    logger.error('Knowledge-graph persist failed after triage finalize', err)
+  })
 }
 
 interface TriageDegradedFinalizeInput {
@@ -225,6 +229,10 @@ export async function finalizeTriageDegraded(
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage degraded finalize', err)
+  })
+
+  await persistAuditGraphSnapshot(input.auditId).catch((err) => {
+    logger.error('Knowledge-graph persist failed after triage degraded finalize', err)
   })
 }
 
@@ -459,7 +467,11 @@ export async function finalizeDeterministicOnly(
   })
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
-    logger.error('Lead upsert failed after audit finalize', err)
+    logger.error('Lead upsert failed after deterministic finalize', err)
+  })
+
+  await persistAuditGraphSnapshot(input.auditId).catch((err) => {
+    logger.error('Knowledge-graph persist failed after deterministic finalize', err)
   })
 }
 

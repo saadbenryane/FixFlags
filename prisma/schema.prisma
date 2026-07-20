@@ -476,16 +476,19 @@ model ApiKey {
 }
 
 model Project {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  url       String
-  audits    Audit[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  url                  String
+  /** Persistent Product Intelligence JSON — see knowledge/product-intelligence.md */
+  productIntelligence  Json?
+  audits               Audit[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, url])
   @@map("projects")
 }
 

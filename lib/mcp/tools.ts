@@ -491,7 +491,7 @@ export function registerAllTools(
 
   server.tool(
     'ff_plan_mode_prompt',
-    'Get a single plan-mode fix prompt for an audit (paste into Cursor/Claude plan mode)',
+    'Get a single plan-mode Finish Plan prompt for an audit (paste into Cursor/Claude plan mode)',
     { reportId: z.string() },
     async ({ reportId }) => {
       await assertMcpAccess(user)
@@ -534,6 +534,118 @@ export function registerAllTools(
               url: audit.url,
               prompt,
               flagCount: flags.length,
+            }),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
+    'ff_get_product_context',
+    'Get Product Intelligence / Product Contract for a report (what the product is, journeys, outcomes)',
+    { reportId: z.string() },
+    async ({ reportId }) => {
+      await assertMcpAccess(user)
+      const audit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        select: {
+          id: true,
+          url: true,
+          status: true,
+          userId: true,
+          isPublic: true,
+          productContract: true,
+          projectId: true,
+          project: { select: { productIntelligence: true, url: true, name: true } },
+        },
+      })
+      if (!audit) throw new Error('Report not found')
+      await assertAuditAccess(audit, user.id)
+      const { parseProductContract } = await import('../audit/product-contract')
+      const { parseProductIntelligence } = await import('../audit/product-intelligence')
+      const contract = parseProductContract(audit.productContract)
+      const intelligence = parseProductIntelligence(audit.project?.productIntelligence)
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              reportId: audit.id,
+              url: audit.url,
+              projectUrl: audit.project?.url ?? null,
+              productContract: contract,
+              productIntelligence: intelligence,
+            }),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
+    'ff_get_current_finish_plan',
+    'Get the current Finish Plan (top prioritized improvements) for a completed report',
+    { reportId: z.string(), limit: z.number().int().min(1).max(10).optional() },
+    async ({ reportId, limit }) => {
+      await assertMcpAccess(user)
+      const audit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        include: {
+          flags: { orderBy: { position: 'asc' } },
+          rubrics: { select: { name: true, grade: true } },
+        },
+      })
+      if (!audit) throw new Error('Report not found')
+      await assertAuditAccess(audit, user.id)
+      if (audit.status !== 'COMPLETED') {
+        throw new Error(`Report is ${audit.status}, not COMPLETED`)
+      }
+      const { parseProductContract } = await import('../audit/product-contract')
+      const contract = parseProductContract(audit.productContract)
+      const flags = audit.flags.map((f) => ({
+        id: f.id,
+        checkId: f.checkId,
+        rubric: f.rubric,
+        severity: f.severity,
+        impactTag: f.impactTag,
+        problem: f.problem,
+        evidence: f.evidence,
+        whyItMatters: f.whyItMatters,
+        fix: f.fix,
+        agentPrompt: f.agentPrompt,
+        cursorPrompt: f.cursorPrompt,
+        claudePrompt: f.claudePrompt,
+        windsurfPrompt: f.windsurfPrompt,
+        lovablePrompt: f.lovablePrompt,
+        boltPrompt: f.boltPrompt,
+        verificationRule: f.verificationRule,
+        pageUrl: f.pageUrl,
+        confidence: f.confidence,
+        source: f.source,
+      }))
+      const top = rankFlagsByPriority(flags, audit.rubrics, limit ?? 3, contract)
+      const planPrompt = buildPlanModePrompt(
+        top.map((t) => t.flag),
+        { url: audit.url }
+      )
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              reportId,
+              url: audit.url,
+              items: top.map(({ flag, rubricName }) => ({
+                flagId: flag.id,
+                checkId: flag.checkId,
+                problem: flag.problem,
+                rubric: rubricName,
+                severity: flag.severity,
+                impactTag: flag.impactTag,
+                fixPrompt: resolveFixPrompt(flag),
+              })),
+              planPrompt,
             }),
           },
         ],

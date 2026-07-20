@@ -1,0 +1,83 @@
+{
+  "timestamp": "2026-07-20T15-45-32-400Z",
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "avgDuration": 0
+  },
+  "results": [
+    {
+      "caseId": "audit-pipeline-basic",
+      "grade": "pass",
+      "result": {
+        "htmlLength": 640,
+        "hasContent": true
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "triage-prompt-valid",
+      "grade": "pass",
+      "result": {
+        "systemLength": 74,
+        "userLength": 56,
+        "split": true
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "flag-count-reasonable",
+      "grade": "pass",
+      "result": {
+        "flagCount": 0,
+        "htmlLength": 640
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "rubric-scores-valid",
+      "grade": "pass",
+      "result": {
+        "message": 75,
+        "experience": 80,
+        "reach": 70
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "persist-roundtrip",
+      "grade": "pass",
+      "result": {
+        "persisted": true,
+        "retrieved": true
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "finish-plan-ranking",
+      "grade": "pass",
+      "result": {
+        "count": 3,
+        "firstProblem": "Broken signup CTA"
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "product-intelligence-user-wins",
+      "grade": "pass",
+      "result": {
+        "purpose": "User purpose",
+        "source": "user"
+      },
+      "duration": 0,
+      "error": null
+    }
+  ]
+}

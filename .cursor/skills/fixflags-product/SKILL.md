@@ -13,6 +13,7 @@ Read before changing product logic or writing copy that promises a feature.
 
 | Area | Files |
 |------|-------|
+| Vision / PI (north star) | `knowledge/vision.md`, `.cursor/skills/fixflags-product-intelligence/SKILL.md` |
 | Project facts | `AGENTS.md` (counts, pipeline version, glossary) |
 | Page text limits | `lib/audit/page-text-limits.ts` |
 | Scan catalog + roadmap | `docs/scan-catalog.md`, `docs/scan-roadmap.md` |
@@ -32,7 +33,7 @@ Read before changing product logic or writing copy that promises a feature.
 | Sample explorer | `components/marketing/sample/SampleReportExplorer.tsx`, `HeroProductPreview.tsx` |
 | Live explorer adapter | `components/audit/LiveReportExplorer.tsx` |
 | Rubric bar | `components/audit/RubricBar.tsx` (compact jump links; not a second flag browser) |
-| Top Priorities | `components/audit/AuditReport.tsx` `#report-priorities`, `lib/audit/priority-flags.ts` |
+| Top Priorities / Finish Plan | `components/audit/AuditReport.tsx` `#report-finish-plan`, `lib/audit/priority-flags.ts` |
 | Share status | `components/audit/ShareStatusBanner.tsx`, `lib/audit/share-status.ts` |
 | Funnel events | `lib/analytics/events.ts`, `.cursor/skills/fixflags-analytics/SKILL.md` |
 | Admin funnel | `app/admin/analytics/page.tsx` |
@@ -144,14 +145,16 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 
 **`aiEnhancementPending`:** pass `isLoggedIn && aiReviewPending` into the explorer (do not force `false` when prescription is unlocked).
 
-## Product Contract, truth, and competitive boundary
+## Product Contract, Finish Plan, truth, and competitive boundary
 
-- **Product Contract** (`lib/audit/product-contract.ts`, Audit `productContract` Json): inferred purpose, first-value journey, critical outcomes. Shown above Top Priorities on completed reports **and** on progressive when the status API has returned a contract. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product.md`.
-- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel and Top Priorities (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page and status partial flags.
-- **Sticky nav:** Contract + Priorities + Timeline tabs when those sections exist (`ReportStickyToolbar`). Tabs must match DOM order; no Overview destination.
-- **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. Full taxonomy (Accept / Intentional / Human review) is later; do not remove incorrect-feedback path.
-- **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + probes + Flags + re-check.
+- **Product Contract / PI** (`lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts`): inferred purpose, first-value journey, critical outcomes. Project-scoped `productIntelligence` persists across audits; Audit stores a snapshot. Shown above Finish Plan on completed reports **and** on progressive when the status API has returned a contract. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`; updates project + audit). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product-intelligence.md`.
+- **Finish Plan** (≤3): `rankFlagsByPriority` with Contract/PI bias; UI `#report-finish-plan`; copy via `buildPlanModePrompt`. See `knowledge/finish-plan.md`.
+- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page and status partial flags.
+- **Sticky nav:** Contract + Finish Plan + Timeline tabs when those sections exist (`ReportStickyToolbar`). Tabs must match DOM order; no Overview destination.
+- **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. "This is intentional" updates PI `intentionalNotes`. Full taxonomy later; do not remove incorrect-feedback path.
+- **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + Finish Plan + probes + Flags + re-check + Remember.
 - **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass). Roast strings live in `lib/marketing/copy.ts`.
+- **Rubrics:** Message / Experience / Reach only. Five integrity dimensions are Integrity Engine framework — see `fixflags-product-intelligence` skill.
 
 ## Sample provenance
 

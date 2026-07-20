@@ -145,23 +145,23 @@ export interface SelfSeedResult {
 
 async function runIssueRollup(): Promise<{ issues: number; examples: number }> {
   const rows = await prisma.$queryRaw<
-    Array<{ id: string; occurrence_count: bigint; site_count: bigint; framework_count: bigint }>
+    Array<{ checkId: string; occurrence_count: bigint; site_count: bigint; framework_count: bigint }>
   >`
     SELECT
-      i.id AS id,
+      i."checkId" AS "checkId",
       COUNT(io.id)::bigint                                   AS occurrence_count,
       COUNT(DISTINCT io."siteId")::bigint                     AS site_count,
       COUNT(DISTINCT st."technologyId")::bigint               AS framework_count
     FROM "graph_issue" i
     LEFT JOIN "graph_issue_occurrence" io ON io."issueId" = i.id
     LEFT JOIN "graph_site_technology"  st ON st."siteId"   = io."siteId"
-    GROUP BY i.id
+    GROUP BY i."checkId"
   `
 
   let issues = 0
   for (const row of rows) {
-    await prisma.issue.update({
-      where: { id: row.id },
+    await prisma.issue.updateMany({
+      where: { checkId: row.checkId },
       data: {
         occurrenceCount: Number(row.occurrence_count),
         siteCount: Number(row.site_count),
@@ -171,9 +171,9 @@ async function runIssueRollup(): Promise<{ issues: number; examples: number }> {
     issues += 1
   }
 
-  const issueIds = await prisma.issue.findMany({ select: { id: true } })
+  const checkIds = await prisma.issue.groupBy({ by: ['checkId'] })
   let examples = 0
-  for (const { id } of issueIds) {
+  for (const { checkId } of checkIds) {
     const ex = await prisma.$queryRaw<
       Array<{ hostname: string; pageRole: string; severity: string }>
     >`
@@ -181,15 +181,16 @@ async function runIssueRollup(): Promise<{ issues: number; examples: number }> {
              COALESCE(p.role, 'other') AS "pageRole",
              f.severity AS severity
       FROM "graph_issue_occurrence" io
+      JOIN "graph_issue" i ON i.id = io."issueId"
       JOIN "graph_site" s ON s.id = io."siteId"
       JOIN "flags" f ON f.id = io."flagId"
       LEFT JOIN "graph_page" p ON p."siteId" = s.id AND p.url = f."pageUrl"
-      WHERE io."issueId" = ${id}
+      WHERE i."checkId" = ${checkId}
       ORDER BY io."observedAt" DESC
       LIMIT 3
     `
-    await prisma.issue.update({
-      where: { id },
+    await prisma.issue.updateMany({
+      where: { checkId },
       data: {
         examples: ex.map((e) => ({
           hostname: e.hostname.replace(/^www\./, ''),

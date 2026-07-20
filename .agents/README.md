@@ -30,6 +30,18 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 
 Canonical skills live in `.cursor/skills/`. Prefer those over any mirrored copies under `.opencode/skills/` (deprecated mirrors; may lag).
 
+| Skill | Use for |
+|-------|---------|
+| `fixflags-product-intelligence` | Vision, PI, Integrity Engine, Finish Plan, privacy/OSS |
+| `fixflags-product` | Entitlements, billing, report UX, shipped loop |
+| `fixflags-audit-pipeline` | Triage, prescription, recovery, browser observer |
+| `fixflags-marketing` | Copy, GTM, positioning |
+| `fixflags-completeness` | Doc drift, verify green |
+| `fixflags-analytics` | Funnel events |
+| `fixflags-design-*` / `fixflags-ui-upgrade` | Design system and polish |
+
+Vision alignment: agents doing product strategy must read `knowledge/vision.md` and must not invent parallel narratives in skills.
+
 ## Session conventions
 
 Create session records only for:

@@ -28,7 +28,13 @@ export async function POST(
 
     const flag = await prisma.flag.findUnique({
       where: { id: flagId },
-      select: { id: true, auditId: true, audit: { select: { userId: true } } },
+      select: {
+        id: true,
+        auditId: true,
+        problem: true,
+        checkId: true,
+        audit: { select: { userId: true, projectId: true, url: true } },
+      },
     })
     if (!flag) return apiError('Flag not found', 404, { code: 'NOT_FOUND' })
 
@@ -72,6 +78,49 @@ export async function POST(
         where: { id: flagId },
         data: { status: 'IGNORED' },
       })
+
+      // Intentional → Product Intelligence note
+      if (parsed.data.reason === 'intentional' && flag.audit.userId) {
+        const { ensureProductProject, saveProjectIntelligence, loadProjectIntelligence } =
+          await import('@/lib/audit/ensure-product-project')
+        const {
+          appendIntentionalNote,
+          productIntelligenceFromContract,
+        } = await import('@/lib/audit/product-intelligence')
+        const { parseProductContract } = await import('@/lib/audit/product-contract')
+
+        let projectId = flag.audit.projectId
+        if (!projectId) {
+          const project = await ensureProductProject(flag.audit.userId, flag.audit.url)
+          projectId = project.id
+          await prisma.audit.update({
+            where: { id: flag.auditId },
+            data: { projectId },
+          })
+        }
+
+        let pi = await loadProjectIntelligence(projectId)
+        if (!pi) {
+          const audit = await prisma.audit.findUnique({
+            where: { id: flag.auditId },
+            select: { productContract: true },
+          })
+          const contract = parseProductContract(audit?.productContract)
+          pi = contract
+            ? productIntelligenceFromContract(contract)
+            : {
+                purpose: 'Help visitors get value from this product',
+                firstValueJourney: 'Complete the primary journey',
+                criticalOutcomes: ['Primary outcomes work'],
+                source: 'merged' as const,
+                updatedAt: new Date().toISOString(),
+              }
+        }
+          const note = parsed.data.comment?.trim()
+            ? `${flag.problem} - ${parsed.data.comment.trim()}`
+            : flag.problem
+        await saveProjectIntelligence(projectId, appendIntentionalNote(pi, note))
+      }
     }
 
     return NextResponse.json(feedback)

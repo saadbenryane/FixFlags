@@ -23,7 +23,7 @@ Success is measured by recurring revenue, customer value, and product adoption r
 
 ## Customer Targets
 
-> **Tier names below match the live product** (`lib/billing/plans.ts`): `Free` ($0, not a paying tier), `Pro` ($29/mo), `Max` ($99/mo). There is no "Builder" or "Studio" tier in the schema — this section previously referenced names that don't exist in the product and has been corrected.
+> **Tier names below match the live product** (`lib/billing/plans.ts`): `Free` ($0, not a paying tier), `Pro` ($29/mo), `Agency` ($99/mo). There is no "Builder" or "Studio" tier in the schema — this section previously referenced names that don't exist in the product and has been corrected.
 
 End of Year 1:
 
@@ -32,13 +32,13 @@ End of Year 1:
 Suggested customer mix (funnel-shaped, Pro as the primary paid tier):
 
 - ~500 Pro
-- ~80–100 Max
+- ~80–100 Agency
 
 Monthly churn target:
 
 - Less than 5%
 
-> **Open math gap — flagging, not resolving:** at current pricing, 500 Pro + 100 Max = **~$24,400 MRR**, roughly half the $50,000–60,000 Exit MRR target in the North Star above. Closing this gap requires one of: (a) a materially larger paying-customer count (~1,250–1,500 at today's Pro/Max blend to reach $50k), (b) a price increase on Pro/Max, or (c) a new higher-priced tier (e.g. an agency/team tier above Max). This is a pricing/GTM decision for the founder, not something this doc resolves on its own — the 600-customer and $50–60k MRR targets as currently stated are not simultaneously achievable under today's $29/$99 pricing.
+> **Open math gap — flagging, not resolving:** at current pricing, 500 Pro + 100 Agency = **~$24,400 MRR**, roughly half the $50,000–60,000 Exit MRR target in the North Star above. Closing this gap requires one of: (a) a materially larger paying-customer count (~1,250–1,500 at today's Pro/Agency blend to reach $50k), (b) a price increase on Pro/Agency, or (c) a new higher-priced tier (e.g. a higher-priced Team tier above Agency). This is a pricing/GTM decision for the founder, not something this doc resolves on its own — the 600-customer and $50–60k MRR targets as currently stated are not simultaneously achievable under today's $29/$99 pricing.
 
 ## Growth Funnel Targets
 

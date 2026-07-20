@@ -1,92 +1,67 @@
 # Foundations
 
-First-principles reasoning behind FixFlags. Read this before any product, code, or strategy decision.
+First-principles for FixFlags. Full narrative: [vision.md](./vision.md). Read vision before making product, architecture, or strategy decisions.
 
-## The Thesis
+## Thesis
 
-AI reduces the cost of creating software. As creation becomes cheaper, more products are produced by people who cannot fully inspect everything they generated. That increases the supply of plausible-looking software and the cost of determining which products are genuinely ready.
+AI reduces the cost of creating software. That increases the supply of plausible-looking products and the cost of knowing which are ready. FixFlags captures value by becoming the independent Product Intelligence System that understands the Product, improves it via a Finish Plan, verifies reality, and remembers what was proven.
 
-FixFlags captures that value by becoming the independent system that:
+**The company optimizes for:** judgment over volume, evidence over assertion, verified outcomes over completed tasks, and recurring Product Intelligence over isolated audits.
 
-1. Understands what the product is trying to accomplish.
-2. Tests its essential journeys in the live environment.
-3. Identifies the failures that carry real consequences.
-4. Expresses each failure as an evidence-backed behavioral contract.
-5. Gives the builder's chosen agent a precise repair objective.
-6. Repeats the journey and verifies the outcome.
-7. Remembers what has been proven across future releases.
-
-**The company optimizes for:** judgment over volume, evidence over assertion, verified outcomes over completed tasks, and recurring product memory over isolated audits.
-
-## Core Brand Idea
+## Core brand idea
 
 > Looks done is not the same as ready.
 
-FixFlags should never attack AI building itself. It should challenge unsupported confidence. The central promise is:
+Challenge unsupported confidence. Do not attack AI building itself.
 
-> Confidence earned through independent checking.
+**Wedge promise (acquisition):** Confidence earned through independent checking.
 
-The scarce resource is not code. It is the ability to make a credible claim that the resulting product works.
+**Long-term promise:** Continuously finish and protect the Product without losing its identity.
 
 ## Independence
 
-The same agent that generated a feature has incomplete incentives and context for judging its own work. The system needs independent evidence.
+| Role | Responsibility |
+|------|----------------|
+| Builder | Defines intent |
+| Coding agent | Implements |
+| FixFlags | Evaluates live result and maintains Product Intelligence |
+| User | Decides what is acceptable |
 
-**Division of responsibility:**
-- The builder defines intent
-- The coding agent implements
-- FixFlags evaluates the live result
-- The user decides what is acceptable
+Independence is brand, architecture, and business model.
 
-This independence is part of the brand, architecture, and business model.
+## Principles (canonical short list)
 
-## 25 Foundational Principles
+1. **The Product is the core object** — repos, URLs, and code are signals.
+2. **Understand before judge** — Product Contract / Product Intelligence precedes deep evaluation.
+3. **Evidence before recommendation** — every Flag carries truth class and proof.
+4. **Prioritize over inventory** — the Finish Plan beats a long backlog.
+5. **Verify before confidence** — re-check is part of the product, never gated.
+6. **Remember for the Product** — learnings belong to customer Product Intelligence, not one chat.
+7. **Customer owns Product Intelligence** — FixFlags owns the Integrity Engine. See [privacy.md](./privacy.md).
+8. **Progressive depth** — same truth; basic UX simple, advanced UX deep.
+9. **Precision over check count** — false blockers destroy trust.
+10. **Security is bounded** — never claim "your app is secure" from URL-only signals.
+11. **Wedge before platform** — Launch Check acquires; continuous verification retains.
+12. **Distribution before premature depth** — ship the loop; expand dimensions with demand.
 
-1. **Confidence through independent checking.** Sell confidence, not more generation.
-2. **False confidence is the strongest pain.** "Looks done is not the same as ready."
-3. **Release decision, not audit report.** Hierarchy: verdict, journey status, Flags, scores.
-4. **Verify rendered outcomes, not generated code.** A successful build is not evidence.
-5. **Independence is essential.** Builder, agent, reviewer, user are separate roles.
-6. **Product intent precedes judgment.** Know what the product is supposed to do first.
-7. **Generate and remember critical journeys.** Users cannot write test plans. FixFlags should.
-8. **The Flag is the durable unit.** Reports, prompts, scores are formats. The Flag is the value.
-9. **Precision over check count.** Three important problems beat fifty technically correct details.
-10. **False blockers destroy trust.** Severity = consequence. Certainty = evidence. Always separate.
-11. **Explicit truth system.** Every claim carries a truth class (Reproduced, Detected, Observed, Likely cause, Repository confirmed).
-12. **Repair specification over prompt.** The contract is stable. The prompt is a rendering layer.
-13. **Progressive depth.** Same truth at different depths. Default understandable without a repository.
-14. **Complete loop before paywall.** Flag, Fix, Re-check, Verified. Not scan, score.
-15. **Pre-launch is the wedge, not the business.** Acquisition product vs retention product.
-16. **Change awareness over full rescan.** Test what changed, not everything again.
-17. **Authenticated testing divides checker from verifier.** Core architecture problem, not a later setting.
-18. **Security is carefully bounded.** Never provide a generalized "secure" verdict.
-19. **Human calibration is an early advantage.** Selective human review builds proprietary judgment.
-20. **Moat from outcomes, not detections.** The outcome graph is harder to reproduce than checklists.
-21. **Dismissals are intelligence.** Each response type updates a different part of product memory.
-22. **Agencies are a calibration and distribution channel.** Reports sent to clients introduce FixFlags.
-23. **Reports distribute themselves.** Every shared report should be credible enough to forward.
-24. **Pricing reflects consequence and recurrence.** Hybrid packaging, not one-size subscriptions.
-25. **Private benchmark over public score.** Protect the company from confusing demos with quality.
+Longer historical research notes (confirmed / refined / rejected) remain below for agents doing market work.
 
-## Research Validation
+## Research validation
 
 ### Confirmed
 
 - Trust and verification are genuine market problems
 - AI builders fear failures that only appear when outsiders use the product
 - Pre-launch is a strong emotional entry point
-- Independent re-checking is meaningfully different from code generation
-- Deployment infrastructure can support recurring verification
-- Human oversight remains necessary in ambiguous testing contexts
+- Independent re-checking differs from code generation
+- Basic builders and developers need progressive depth, not separate products
 
 ### Refined
 
-- "QA for AI-built products" is too broad
-- "PageSpeed Insights for AI apps" is useful as an analogy but weak as a moat
-- Report should lead with release decision and journey evidence rather than a score
+- "QA for AI-built products" is too narrow as the long-term category; use Product Intelligence for strategy, keep Launch Check language for acquisition
+- Report should lead with Finish Plan and journey evidence, not a score
 - Product intent must be captured before deep judgment
-- Security cannot be presented as a simple readiness dimension
-- Basic builders and developers need progressive depth rather than separate products
+- Security cannot be a simple readiness dimension
 
 ### Rejected
 
@@ -94,5 +69,5 @@ This independence is part of the brand, architecture, and business model.
 - A mega-prompt is the core product
 - A URL audit can reliably identify source files
 - The same AI system should implement and certify the result
-- Pre-launch checks alone can create strong subscription retention
+- Pre-launch checks alone create strong subscription retention
 - Every finding should be expressed with equal confidence

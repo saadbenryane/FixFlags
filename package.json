@@ -53,6 +53,7 @@
     "validate:full": "node scripts/validate.mjs full",
     "lint:changed": "node scripts/validate.mjs lint-changed",
     "test:scripts": "node --test scripts/validate.test.mjs",
+    "agent:eval": "node scripts/agent-evals/main.mjs",
     "setup": "docker compose up -d && npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {

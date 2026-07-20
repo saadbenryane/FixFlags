@@ -11,18 +11,20 @@
  * page 404s - that's the quality gate that prevents thin programmatic pages
  * from leaking into Google's index.
  *
- * See docs/growth/architecture.md for the gates and thresholds.
+ * See docs/growth/growth-architecture.md for the gates and thresholds.
  */
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 /**
- * The minimum number of distinct audited sites we need to be comfortable
- * publishing a programmatic page about a given issue or benchmark scope.
- * 20 is a defensible starting point - high enough to be representative, low
- * enough that we won't starve new axes. Revisit in 90 days with real data.
+ * Minimum distinct audited sites before publishing a programmatic growth page.
+ *
+ * Target long-term: 20 (AGENTS.md / knowledge). Currently **3** while the
+ * growth graph seeds (issues spread thinly across check IDs). Revisit when
+ * siteCount distribution supports restoring 20 without empty public pages.
+ * Do not lower further. Customer Product Intelligence does not use this gate.
  */
-export const MIN_SAMPLE_SIZE = 20
+export const MIN_SAMPLE_SIZE = 3
 
 /**
  * Public read model for an issue page.
@@ -45,20 +47,22 @@ export interface IssuePageData {
 /**
  * Read a single issue by checkId. Returns null if the issue hasn't crossed
  * the minimum sample-size threshold - callers should 404.
+ *
+ * Aggregates are stored per-checkId (rollup writes the same counters onto
+ * every fingerprint row for that check). We pick the freshest row for copy.
  */
 export async function getIssuePage(checkId: string): Promise<IssuePageData | null> {
   const issue = await prisma.issue.findFirst({
     where: { checkId },
+    orderBy: [{ siteCount: 'desc' }, { lastSeenAt: 'desc' }],
   })
   if (!issue) return null
   if (issue.siteCount < MIN_SAMPLE_SIZE) return null
 
-  // Top frameworks: count distinct sites per technology via IssueOccurrence
-  // joined to SiteTechnology. The DISTINCT is what makes this meaningful.
   const topFrameworks = await prisma.$queryRaw<
     Array<{ name: string; site_count: bigint }>
   >`
-    SELECT t.name AS name, COUNT(DISTINCT io.site_id)::bigint AS site_count
+    SELECT t.name AS name, COUNT(DISTINCT io."siteId")::bigint AS site_count
     FROM "graph_issue_occurrence" io
     JOIN "graph_issue" i ON i.id = io."issueId"
     JOIN "graph_site_technology" st ON st."siteId" = io."siteId"
@@ -69,20 +73,20 @@ export async function getIssuePage(checkId: string): Promise<IssuePageData | nul
     LIMIT 5
   `
 
-  // Anonymized examples - never expose user-identifying data.
   const exampleRows = await prisma.$queryRaw<
     Array<{ hostname: string; pageRole: string; severity: string }>
   >`
-    SELECT s.hostname AS hostname,
+    SELECT DISTINCT ON (s.hostname)
+           s.hostname AS hostname,
            COALESCE(p.role, 'other') AS "pageRole",
            f.severity AS severity
     FROM "graph_issue_occurrence" io
     JOIN "graph_issue" i ON i.id = io."issueId"
     JOIN "graph_site" s ON s.id = io."siteId"
     JOIN "flags" f ON f.id = io."flagId"
-    LEFT JOIN "graph_page" p ON p.site_id = s.id AND p.url = f."pageUrl"
+    LEFT JOIN "graph_page" p ON p."siteId" = s.id AND p.url = f."pageUrl"
     WHERE i."checkId" = ${checkId}
-    ORDER BY io."observedAt" DESC
+    ORDER BY s.hostname, io."observedAt" DESC
     LIMIT 3
   `
 
@@ -103,6 +107,27 @@ export async function getIssuePage(checkId: string): Promise<IssuePageData | nul
       severity: r.severity,
     })),
   }
+}
+
+/**
+ * Check IDs that have crossed MIN_SAMPLE_SIZE and may appear in the sitemap.
+ * One row per checkId (denormalized counters are identical across fingerprints).
+ */
+export async function getIndexableIssueCheckIds(): Promise<
+  Array<{ checkId: string; siteCount: number; lastSeenAt: Date }>
+> {
+  const rows = await prisma.$queryRaw<
+    Array<{ checkId: string; siteCount: number; lastSeenAt: Date }>
+  >`
+    SELECT DISTINCT ON (i."checkId")
+           i."checkId" AS "checkId",
+           i."siteCount" AS "siteCount",
+           i."lastSeenAt" AS "lastSeenAt"
+    FROM "graph_issue" i
+    WHERE i."siteCount" >= ${MIN_SAMPLE_SIZE}
+    ORDER BY i."checkId", i."siteCount" DESC, i."lastSeenAt" DESC
+  `
+  return rows
 }
 
 /**

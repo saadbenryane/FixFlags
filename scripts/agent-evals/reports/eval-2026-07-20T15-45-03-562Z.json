@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-07-20T15-45-03-562Z",
+  "summary": {
+    "total": 7,
+    "passed": 4,
+    "failed": 3,
+    "avgDuration": 5.285714285714286
+  },
+  "results": [
+    {
+      "caseId": "audit-pipeline-basic",
+      "grade": "pass",
+      "result": {
+        "htmlLength": 640,
+        "hasContent": true
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "triage-prompt-valid",
+      "grade": "fail",
+      "result": null,
+      "duration": 33,
+      "error": "Cannot find package '@/lib' imported from /Users/saadbenryane/Code/qewos/lib/prompts/system-prompt.ts"
+    },
+    {
+      "caseId": "flag-count-reasonable",
+      "grade": "pass",
+      "result": {
+        "flagCount": 0,
+        "htmlLength": 640
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "rubric-scores-valid",
+      "grade": "pass",
+      "result": {
+        "message": 75,
+        "experience": 80,
+        "reach": 70
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "persist-roundtrip",
+      "grade": "pass",
+      "result": {
+        "persisted": true,
+        "retrieved": true
+      },
+      "duration": 0,
+      "error": null
+    },
+    {
+      "caseId": "finish-plan-ranking",
+      "grade": "fail",
+      "result": null,
+      "duration": 2,
+      "error": "Cannot find package '@/lib' imported from /Users/saadbenryane/Code/qewos/lib/audit/priority-flags.ts"
+    },
+    {
+      "caseId": "product-intelligence-user-wins",
+      "grade": "fail",
+      "result": null,
+      "duration": 2,
+      "error": "Cannot find module '/Users/saadbenryane/Code/qewos/lib/audit/product-contract' imported from /Users/saadbenryane/Code/qewos/lib/audit/product-intelligence.ts"
+    }
+  ]
+}

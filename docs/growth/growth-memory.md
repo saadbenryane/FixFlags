@@ -158,7 +158,7 @@ rather than trusting the roadmap's status table.
 
 **Reasoning:** The mission brief frames this as an engineering system that
 should be measured against real data, not documentation. Trusting
-`roadmap.md`'s "✅ Done" markers without checking production would have
+`growth-roadmap.md`'s "✅ Done" markers without checking production would have
 meant continuing to build Phase 2 logic against a graph that had zero rows
 in the real database — a wasted cycle. Verifying against Railway directly
 before touching any code caught a gap the documentation didn't show.
@@ -227,7 +227,7 @@ gaps, and redesign the architecture to be more complete and measurable.
 - Read and analyzed every file in `docs/growth/`, `lib/graph/`,
   `lib/marketing/`, `lib/audit/finalize.ts`, `scripts/`, `app/` routes,
   `prisma/schema.prisma`, and `package.json`.
-- Redesigned `architecture.md` with a four-layer model:
+- Redesigned `growth-architecture.md` with a four-layer model:
   - Layer 1: Data Collection (audit pipeline, GSC, analytics, backlinks, SERP)
   - Layer 2: Intelligence (rollups, opportunity scoring, competitive analysis)
   - Layer 3: Public Surfaces (issue pages, benchmarks, tools, reports, compare)
@@ -239,11 +239,11 @@ gaps, and redesign the architecture to be more complete and measurable.
   4. No internal linking engine (no topical authority clusters)
   5. No content freshness system (public pages go stale)
   6. No competitive intelligence (no SERP monitoring, no backlink tracking)
-- Updated `roadmap.md` with specific deliverables and dependencies per phase
+- Updated `growth-roadmap.md` with specific deliverables and dependencies per phase
 - Updated `backlog.md` with P0-P4 priority tiers and dependency chains
 - Updated `metrics.md` with a four-layer measurement framework and funnel
   metrics
-- Updated `architecture.md` with data flow diagram, structured data
+- Updated `growth-architecture.md` with data flow diagram, structured data
   expansion plan, internal linking engine design, and dynamic sitemap design
 - Identified 5 things that can ship immediately with no blockers:
   1. Industry/tech detection in snapshot.ts

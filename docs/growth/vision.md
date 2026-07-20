@@ -63,7 +63,7 @@ It **does** mean:
 - We will not chase index-count vanity metrics. A shrinking, higher-quality
   index beats a bloated one.
 - We will not treat this as a marketing sprint. It's a permanent system with
-  its own architecture, backlog, and review cadence — see `roadmap.md`.
+  its own architecture, backlog, and review cadence — see `growth-roadmap.md`.
 
 ## Success, ultimately
 
