@@ -8,11 +8,9 @@ import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
-  buildPlanModePrompt,
-  rankFlagsByPriority,
-  resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import { buildFinishPlan } from '@/lib/audit/finish-plan'
 
 export interface TaskRubricSummary {
   name: string
@@ -158,15 +156,21 @@ async function loadCompletedOutcome(reportId: string): Promise<{
 
   const contract = parseProductContract(audit.productContract)
   const flags = audit.flags.map(toRankableFlag)
-  const ranked = rankFlagsByPriority(flags, audit.rubrics, 3, contract)
-  const items = ranked.map(({ flag, rubricName }) => ({
-    flagId: flag.id,
-    checkId: flag.checkId ?? null,
-    problem: flag.problem,
-    rubric: rubricName,
-    severity: flag.severity,
-    impactTag: flag.impactTag ?? null,
-    fixPrompt: resolveFixPrompt(flag),
+  const plan = buildFinishPlan({
+    flags,
+    rubricRows: audit.rubrics,
+    url: audit.url,
+    contract,
+    promptAccess: 'all',
+  })
+  const items = plan.items.map((item) => ({
+    flagId: item.id,
+    checkId: item.checkId ?? null,
+    problem: item.problem,
+    rubric: item.rubricName,
+    severity: item.severity,
+    impactTag: item.impactTag ?? null,
+    fixPrompt: item.prompt,
   }))
 
   return {
@@ -177,7 +181,7 @@ async function loadCompletedOutcome(reportId: string): Promise<{
       reportId,
       url: audit.url,
       items,
-      planPrompt: buildPlanModePrompt(flags, { url: audit.url, limit: 3, contract }),
+      planPrompt: plan.copyPrompt ?? '',
     },
   }
 }

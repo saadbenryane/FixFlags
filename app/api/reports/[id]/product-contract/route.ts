@@ -11,8 +11,7 @@ import {
 import { mergeContractIntoProductIntelligence } from '@/lib/audit/product-intelligence'
 import {
   ensureProductProject,
-  saveProjectIntelligence,
-  loadProjectIntelligence,
+  mutateProjectIntelligence,
 } from '@/lib/audit/ensure-product-project'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
@@ -56,15 +55,10 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const productContract = buildUserProductContract(validated.value)
 
     let projectId = audit.projectId
-    let mergeBase = projectId ? await loadProjectIntelligence(projectId) : null
-
     if (!projectId && audit.userId) {
       const project = await ensureProductProject(audit.userId, audit.url)
       projectId = project.id
-      mergeBase = project.productIntelligence
     }
-
-    const pi = mergeContractIntoProductIntelligence(mergeBase, productContract)
 
     const updated = await prisma.audit.update({
       where: { id },
@@ -76,7 +70,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     })
 
     if (projectId) {
-      await saveProjectIntelligence(projectId, pi)
+      await mutateProjectIntelligence(projectId, (current) =>
+        mergeContractIntoProductIntelligence(current, productContract)
+      )
     }
 
     return NextResponse.json({

@@ -1,18 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { Callout } from '@/components/ui/callout'
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SectionTitle } from '@/components/ui/typography'
+import { Card } from '@/components/ui/card'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { RubricBar } from '@/components/audit/RubricBar'
-import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
-import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -22,17 +20,12 @@ import {
   getProgressPercent,
   getScanningLabel,
 } from '@/lib/audit/progress-ui'
-import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
-
-const LiveReportExplorer = dynamic(() =>
-  import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
-)
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -89,7 +82,6 @@ export function AuditReportProgressive({
   verdict = null,
   score = null,
   progress = 0,
-  flagCount = 0,
   rubrics = [],
   partialFlags = [],
   screenshots = [],
@@ -142,19 +134,6 @@ export function AuditReportProgressive({
     [rubrics, partialFlags]
   )
 
-  const explorerModel = useMemo(() => {
-    if (!url || partialFlags.length === 0) return null
-    return buildPartialExplorerModel({
-      url,
-      pageType,
-      score,
-      verdict,
-      flags: partialFlags,
-      screenshots,
-      rubrics,
-    })
-  }, [url, pageType, score, verdict, partialFlags, screenshots, rubrics])
-
   const rubricRowsForBar = RUBRIC_ORDER.map((name) => {
     const row = rubrics.find((r) => r.name === name)
     return { name, score: row?.score ?? null, grade: row?.grade ?? null }
@@ -186,14 +165,6 @@ export function AuditReportProgressive({
 
       <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
 
-      <ReportStickyToolbar
-        showContract={showContract}
-        showTimeline={showTimeline}
-        showRecheckSection={false}
-        siteUrl={url || undefined}
-        score={score}
-      />
-
       {userVerdict ? (
         <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
           {userVerdict}
@@ -212,84 +183,74 @@ export function AuditReportProgressive({
         </Callout>
       )}
 
-      {productContract ? (
-        <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
-          <ProductContractCard contract={productContract} canEdit={false} />
-        </div>
-      ) : null}
-
-      {showTimeline ? (
-        <section
-          id="report-timeline"
-          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
-        >
-          <SectionTitle className="text-base">{REPORT_COPY.sectionTitles.timelineProgressive}</SectionTitle>
-          <ActionTimeline events={actionTimeline} className="mt-3" />
-        </section>
-      ) : null}
-
-      <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-        {explorerModel ? (
-          <LiveReportExplorer
-            model={explorerModel}
-            loading={isLoading}
-            progress={displayProgress}
-          />
-        ) : (
-          <div className="overflow-hidden rounded-card glass-surface shadow-card">
-            <div className="space-y-6 p-4 sm:p-6">
-              <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
-                <ScoreRingGauge
-                  score={score}
-                  size="sm"
-                  loading={isLoading && score == null}
-                  progress={displayProgress}
-                />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {activityMessage ?? 'Scanning your site…'}
-                  </p>
-                  {flagCount > 0 ? (
-                    <p className="font-mono text-2xs tabular-nums text-muted-foreground">
-                      {flagCount} flag{flagCount === 1 ? '' : 's'} so far
-                    </p>
-                  ) : (
-                    <p className="text-2xs text-muted-foreground">
-                      Captures and Flags appear here as the review runs
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="mb-4 space-y-1">
-                  <Skeleton className="h-5 w-3/4 max-w-sm" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-                <div className="flex flex-row items-start gap-4 sm:gap-6">
-                  <div className="min-w-0 flex-1">
-                    <BrowserFrame
-                      device="desktop"
-                      url={hostname}
-                      imageUrl={desktopScreenshotUrl}
-                      state={desktopScreenshotUrl ? 'loaded' : 'loading'}
-                    />
-                  </div>
-                  {showMobileFrame && (
-                    <div className="hidden w-[200px] max-w-full shrink-0 lg:block">
-                      <BrowserFrame
-                        device="mobile"
-                        url={hostname}
-                        imageUrl={mobileScreenshotUrl}
-                        state={mobileScreenshotUrl ? 'loaded' : 'loading'}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+      <section id="report-finish-plan" className="space-y-4" aria-live="polite" aria-busy={isLoading}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="section-label mb-2">{REPORT_COPY.focused.eyebrow}</p>
+            <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
           </div>
-        )}
+          <p className="font-mono text-xs tabular-nums text-muted-foreground">
+            {displayProgress}% · {activityMessage ?? 'Preparing your Finish Plan…'}
+          </p>
+        </div>
+        <div className="grid gap-3">
+          {[0, 1, 2].map((index) => {
+            const flag = partialFlags[index]
+            return (
+              <Card key={flag?.id ?? index} className="flex min-h-28 gap-4 p-5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-xs font-bold text-background">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1 space-y-2">
+                  {flag ? (
+                    <>
+                      <p className="meta-label text-muted-foreground">{flag.rubric}</p>
+                      <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>
+                    </>
+                  ) : (
+                    <>
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-5 w-4/5" />
+                      <Skeleton className="h-4 w-3/5" />
+                    </>
+                  )}
+                </div>
+              </Card>
+            )
+          })}
+        </div>
       </section>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_13rem]">
+        <BrowserFrame
+          device="desktop"
+          url={hostname}
+          imageUrl={desktopScreenshotUrl}
+          state={desktopScreenshotUrl ? 'loaded' : 'loading'}
+        />
+        {showMobileFrame ? (
+          <div className="hidden lg:block">
+            <BrowserFrame
+              device="mobile"
+              url={hostname}
+              imageUrl={mobileScreenshotUrl}
+              state={mobileScreenshotUrl ? 'loaded' : 'loading'}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {(showContract || showTimeline) ? (
+        <details className="rounded-card bg-card/40 p-5 shadow-card glass-surface">
+          <summary className="min-h-11 cursor-pointer font-medium">
+            {REPORT_COPY.sectionTitles.timelineProgressive}
+          </summary>
+          <div className="mt-4 space-y-4">
+            {productContract ? <ProductContractCard contract={productContract} canEdit={false} /> : null}
+            {showTimeline ? <ActionTimeline events={actionTimeline} /> : null}
+          </div>
+        </details>
+      ) : null}
     </Container>
   )
 }

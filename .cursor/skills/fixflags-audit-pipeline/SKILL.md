@@ -8,6 +8,7 @@ description: FixFlags audit pipeline — triage, prescription, scan failures, re
 **Read [`AGENTS.md`](../../AGENTS.md) first.** Volatile counts live there only.
 
 **Canonical doc:** [`docs/audit-pipeline.md`](../../docs/audit-pipeline.md)
+**Report hierarchy:** [`knowledge/report-contract.md`](../../knowledge/report-contract.md). Do not duplicate its order here.
 
 **Product framing:** The audit pipeline is the Integrity Engine’s primary **browser observer + verifier**. Customer Product Intelligence is separate (`knowledge/product-intelligence.md`, `knowledge/integrity-engine.md`). Do not treat the scanner as the entire product.
 
@@ -86,7 +87,7 @@ npm run demo:audit:offline  # deterministic checks only
 - **Action timeline:** Append `{t, kind, label, url?, status?}` during capture/flow/**and journey**; merge into `performanceData.actionTimeline` after journeys; stream on status API; render in `AuditReportProgressive` + completed `AuditReport`. Completed report page **must** pass `actionTimeline` from `fetch-audit`. Not a chat agent.
 - **Anti-FP:** Shared filter suppresses content Flags whose problem/evidence match tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
 - **Form silent failure:** `form-submit-silent-failure` when probe/submit gets 2xx but no success UI (or UI success with failed upstream).
-- **Report wiring:** `app/report/[id]/page.tsx` must pass `productContract`, `actionTimeline`, and flag `source` into `AuditReport` or Contract/Timeline never appear on completed audits.
+- **Report wiring:** the server assembler passes focused summary/Finish Plan/access data separately from detailed Contract/timeline/explorer data. Preserve flag `source` for evidence truth.
 ## Competitive boundary
 
 Do **not** add Scout-style conversational "check anything else" chat on the audit path. Depth comes from Product Contract, network/overlay probes, ranked Flags, and re-check proof.

@@ -38,6 +38,8 @@ next-env.d.ts
 
 # playwright / build artifacts
 /output/
+/test-results/
+/playwright-report/
 
 # generated agent evaluation reports
 /scripts/agent-evals/reports/*.json

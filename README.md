@@ -30,7 +30,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
 
-**Phase 1 report sections:** Share & search preview cards, CTA flow timeline (`flowData` on Audit), slop and flow flags. Apply migration `20260616120000_audit_flow_data` via `npm run db:migrate` if upgrading an existing database.
+**Report surfaces:** `/report/{id}` is the focused three-item Finish Plan. `/report/{id}/details` contains Product context, journey and flow evidence, the full Flag explorer, previews, gates, and advanced actions. See `knowledge/report-contract.md`.
 
 **Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
 
@@ -41,15 +41,15 @@ Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wai
 SAMPLE_CAPTURE_URL=http://localhost:3000/demo npx tsx scripts/capture-sample-screenshots.ts
 ```
 
-Refresh the full marketing sample (live audit on `fixflags.com/demo`, public flag, WebPs, and evidence pin anchors). Requires Postgres and API keys in `.env.local`:
+Regenerate the versioned curated marketing snapshot from a completed `fixflags.com/demo` check. This is an explicit maintainer operation; homepage rendering never queries production audit rows:
 
 ```bash
 DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/refresh-marketing-sample.ts
 ```
 
-Set `SAMPLE_INCLUDE_AI=false` to skip the AI judge step (deterministic checks only) if the judge step fails.
+Review the generated snapshot and its visual regression before replacing the checked-in version. Do not silently fall back during marketing rendering.
 
-**Local admin:** `saadbenryane@gmail.com` / `password123` (unlimited scans, `/admin` dashboard with run costs).
+**Local admin:** Set `SEED_ADMIN_EMAIL` and a unique `SEED_ADMIN_PASSWORD` in `.env.local`, then run `npm run db:seed`.
 
 **Development note:** When `NODE_ENV=development`, scan limits are disabled so you can iterate without hitting billing caps.
 
@@ -144,7 +144,7 @@ Both services need:
 - **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, price IDs (see `.env.example`)
 - **Cron**: `CRON_SECRET`
 - **Email**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
-- **Marketing sample**: `SAMPLE_AUDIT_URL` (server DB lookup + refresh script), `NEXT_PUBLIC_SAMPLE_AUDIT_URL` ("Try sample" button — keep both in sync)
+- **Marketing sample regeneration only**: `SAMPLE_AUDIT_URL` for the explicit refresh script. Runtime marketing pages use the checked-in curated snapshot.
 
 Optional: `ADMIN_NOTIFICATION_EMAIL` for live chat admin notifications.
 

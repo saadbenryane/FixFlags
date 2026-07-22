@@ -45,7 +45,7 @@ export async function GET(
         },
       },
     })
-    if (!audit) return apiError('Audit not found', 404)
+    if (!audit) return apiError('Report not found', 404)
 
     const log = {
       auditId: audit.id,

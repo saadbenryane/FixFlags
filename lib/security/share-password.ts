@@ -1,25 +1,64 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto'
+const VERSION = 1
+const N = 16_384
+const R = 8
+const P = 1
+const KEY_LENGTH = 32
+const MAX_MEMORY = 64 * 1024 * 1024
 
-const PREFIX = 'scrypt'
-const KEYLEN = 32
-
-/** Hash a share-link password for storage. Never store plaintext. */
-export function hashSharePassword(password: string): string {
-  const salt = randomBytes(16).toString('hex')
-  const hash = scryptSync(password, salt, KEYLEN).toString('hex')
-  return `${PREFIX}$${salt}$${hash}`
+function deriveKey(
+  password: string,
+  salt: Buffer,
+  length: number,
+  options: { N: number; r: number; p: number; maxmem: number }
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    nodeScrypt(password, salt, length, options, (error, derived) => {
+      if (error) reject(error)
+      else resolve(derived)
+    })
+  })
 }
 
-/** Verify a candidate against the only supported stored format. */
-export function verifySharePassword(
+/** Versioned asynchronous scrypt hash. Parameters travel with the stored hash. */
+export async function hashSharePassword(password: string): Promise<string> {
+  const salt = randomBytes(16)
+  const derived = await deriveKey(password, salt, KEY_LENGTH, {
+    N,
+    r: R,
+    p: P,
+    maxmem: MAX_MEMORY,
+  })
+  return `scrypt$v=${VERSION}$N=${N},r=${R},p=${P}$${salt.toString('base64url')}$${derived.toString('base64url')}`
+}
+
+export async function verifySharePassword(
   stored: string | null | undefined,
   candidate: string
-): boolean {
-  if (!stored?.startsWith(`${PREFIX}$`)) return false
-  const [, salt, hash] = stored.split('$')
-  if (!salt || !hash) return false
-  const candidateHash = scryptSync(candidate, salt, KEYLEN)
-  const expected = Buffer.from(hash, 'hex')
-  if (expected.length !== candidateHash.length) return false
-  return timingSafeEqual(expected, candidateHash)
+): Promise<boolean> {
+  if (!stored) return false
+  const [algorithm, versionRaw, paramsRaw, saltRaw, hashRaw, extra] = stored.split('$')
+  if (algorithm !== 'scrypt' || versionRaw !== `v=${VERSION}` || !paramsRaw || !saltRaw || !hashRaw || extra) {
+    return false
+  }
+  const params = Object.fromEntries(
+    paramsRaw.split(',').map((part) => part.split('='))
+  ) as Record<string, string>
+  const parsedN = Number(params.N)
+  const parsedR = Number(params.r)
+  const parsedP = Number(params.p)
+  if (parsedN !== N || parsedR !== R || parsedP !== P) return false
+
+  try {
+    const expected = Buffer.from(hashRaw, 'base64url')
+    const derived = await deriveKey(candidate, Buffer.from(saltRaw, 'base64url'), expected.length, {
+      N: parsedN,
+      r: parsedR,
+      p: parsedP,
+      maxmem: MAX_MEMORY,
+    })
+    return expected.length === derived.length && timingSafeEqual(expected, derived)
+  } catch {
+    return false
+  }
 }

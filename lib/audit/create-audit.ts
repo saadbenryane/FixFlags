@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { AuditStatus, Prisma } from '@prisma/client'
+import type { RecheckTrigger } from '@prisma/client'
 import {
   getEffectiveScanLimit,
   hasUnlimitedScans,
@@ -24,6 +25,7 @@ export interface CreateAuditOptions {
   url: string
   userId?: string | null
   parentId?: string
+  recheckTrigger?: RecheckTrigger
   skipUsageCount?: boolean
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   /** Always FULL. Legacy SUMMARY_ONLY enum value remains in Prisma but is never written. */
@@ -160,9 +162,12 @@ export async function createAndEnqueueAudit(
     userId,
     projectId,
     parentId: options.parentId ?? null,
+    recheckTrigger: options.parentId ? (options.recheckTrigger ?? 'MANUAL') : null,
+    watchNotificationStatus:
+      options.recheckTrigger === 'WATCH' ? ('PENDING' as const) : ('NOT_APPLICABLE' as const),
     skipUsageCount: options.skipUsageCount ?? false,
     auditMode: options.auditMode ?? ('CRITICAL_PATH' as const),
-    monitoringMode: options.monitoringMode ?? ('FULL' as const),
+    ...(options.parentId ? { monitoringMode: options.monitoringMode ?? ('FULL' as const) } : {}),
     status: 'QUEUED' as const,
     progress: 5,
     includeAi,

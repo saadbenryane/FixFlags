@@ -44,18 +44,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, runs automated checks, and returns Flags with evidence. Fix prompts unlock after you create a free account.',
+        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a three-item Finish Plan with evidence.',
       },
       {
         type: 'p',
-        text: 'Your first teaser scan does not require an account. Free accounts include 3 new URL checks with full reports and fix prompts. Re-checks on reports you own are unlimited and free.',
+        text: 'Your first teaser does not require an account. It shows all three problem and evidence summaries plus one complete fix. A free account saves the report, reveals the remaining fixes, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
       },
       {
         type: 'ol',
         items: [
           'Paste your live URL (or a public preview URL).',
           'Wait for the scan to finish. You will see progress as it captures and checks.',
-          'Open the report. Start with the Finish Plan, then browse Flags by rubric.',
+          'Open the Finish Plan. Use View full review when you need every Flag and evidence surface.',
         ],
       },
     ],
@@ -75,13 +75,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Each Flag includes evidence from your page and a fix prompt you can paste into Cursor, Claude Code, Lovable, or Bolt. The Finish Plan surfaces the highest-impact Flags first.',
+        text: 'The Finish Plan contains at most three fixes, each with evidence and an editor-ready prompt. Use View full review for Product context, journeys, the complete Flag explorer, previews, and launch gates.',
       },
       {
         type: 'ul',
         items: [
-          'Use the sticky toolbar to jump between Overview, Flags, and Re-check.',
-          'Filter by rubric or severity when the list is long.',
+          'Start on the Finish Plan and copy one fix into your editor.',
+          'Open the full review to browse Flags by rubric or page.',
           'Copy one Flag or use Copy Finish Plan for a plan-mode prompt.',
         ],
       },
@@ -432,7 +432,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Agency plans can create public share links for client handoff. Separate public pages for sites on FixFlags are for discovery; they are not your private audit.',
+        text: 'Agency plans can create revocable client share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
       },
     ],
     related: ['free-vs-pro', 'sign-in-and-security'],

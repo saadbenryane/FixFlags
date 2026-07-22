@@ -104,7 +104,7 @@ export default async function DashboardPage({
 
   return (
     <Container variant="report" className="py-6 space-y-6">
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="h-10 w-full animate-pulse rounded-card bg-muted/40" aria-label="Loading account status" />}>
         <DashboardCheckoutToast />
       </Suspense>
       <ClaimAnonymousAudits />
@@ -120,6 +120,26 @@ export default async function DashboardPage({
           {isEffectivelyFree && !isUnlimited && <UpgradeButton context="free_default" />}
         </div>
       </div>
+
+      {/* Main action first: the dashboard starts with the product loop. */}
+      <Surface variant="nested" className="sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <SectionTitle>Review a URL</SectionTitle>
+          {completedAudits.length > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {completedAudits.length} check{completedAudits.length !== 1 ? 's' : ''}
+              {totalCritical > 0 && (
+                <span className="ml-2 text-destructive">{totalCritical} critical Flag{totalCritical !== 1 ? 's' : ''}</span>
+              )}
+            </span>
+          )}
+        </div>
+        <AuditInput
+          initialUrl={initialAuditUrl}
+          autoStart={Boolean(initialAuditUrl)}
+          idSuffix="-dashboard"
+        />
+      </Surface>
 
       {atAuditLimit && (
         <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
@@ -137,26 +157,6 @@ export default async function DashboardPage({
           <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
         ) : null}
       </div>
-
-      {/* Audit input - main action */}
-      <Surface variant="nested" className="sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <SectionTitle>Audit a URL</SectionTitle>
-          {completedAudits.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {completedAudits.length} audit{completedAudits.length !== 1 ? 's' : ''}
-              {totalCritical > 0 && (
-                <span className="ml-2 text-destructive">{totalCritical} critical flag{totalCritical !== 1 ? 's' : ''}</span>
-              )}
-            </span>
-          )}
-        </div>
-        <AuditInput
-          initialUrl={initialAuditUrl}
-          autoStart={Boolean(initialAuditUrl)}
-          idSuffix="-dashboard"
-        />
-      </Surface>
 
       {audits.length === 0 ? (
         <FirstAuditPrompt />

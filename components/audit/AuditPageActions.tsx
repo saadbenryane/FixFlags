@@ -9,10 +9,7 @@ import { toast } from 'sonner'
 import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
 import { ShareDrawer } from '@/components/audit/ShareDrawer'
 import { ExportMenu } from '@/components/audit/ExportMenu'
-import { ProjectAssignSelect } from '@/components/audit/ProjectAssignSelect'
-import { projectLimitForPlan } from '@/lib/billing/plans'
 import { trackEvent } from '@/lib/analytics/events'
-import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
@@ -38,8 +35,6 @@ interface Props {
   isAnonymous: boolean
   isPublic: boolean
   compareAuditId?: string | null
-  plan?: Plan
-  projectId?: string | null
   canExportSummary?: boolean
   canSharePublicly?: boolean
   showFixPrompts?: boolean
@@ -60,8 +55,6 @@ export function AuditPageActions({
   isAnonymous,
   isPublic: initialIsPublic,
   compareAuditId,
-  plan = 'FREE',
-  projectId,
   canExportSummary = false,
   canSharePublicly = false,
   showFixPrompts = false,
@@ -97,14 +90,6 @@ export function AuditPageActions({
 
   return (
     <>
-      {projectLimitForPlan(plan) > 0 && (
-        <ProjectAssignSelect
-          auditId={auditId}
-          initialProjectId={projectId}
-          enabled={isLoggedIn}
-          compact={toolbar}
-        />
-      )}
       {compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>

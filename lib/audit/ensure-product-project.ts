@@ -1,69 +1,43 @@
-import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import {
+  canonicalProductHost,
   canonicalProductUrl,
   parseProductIntelligence,
   productNameFromUrl,
   type ProductIntelligence,
 } from '@/lib/audit/product-intelligence'
 
+const MAX_PI_MUTATION_ATTEMPTS = 5
+
 /**
- * Find or create a Project that anchors Product Intelligence for this user + host.
- * Auto-created anchors set `isAnchor` and do not consume Agency project UI slots.
+ * Resolve the one internal Product owned by this user and exact hostname.
+ * Agency Projects promote this same row instead of creating a parallel record.
  */
 export async function ensureProductProject(
   userId: string,
   auditUrl: string
 ): Promise<{ id: string; productIntelligence: ProductIntelligence | null }> {
-  const canonical = canonicalProductUrl(auditUrl)
-  const existing = await prisma.project.findFirst({
-    where: {
+  const canonicalHost = canonicalProductHost(auditUrl)
+  if (!canonicalHost) throw new Error('A valid Product hostname is required')
+  const canonicalUrl = canonicalProductUrl(auditUrl)
+
+  const project = await prisma.project.upsert({
+    where: { userId_canonicalHost: { userId, canonicalHost } },
+    create: {
       userId,
-      OR: [{ url: canonical }, { url: { startsWith: canonical } }],
+      name: productNameFromUrl(auditUrl),
+      url: canonicalUrl,
+      canonicalHost,
+      isManaged: false,
     },
-    orderBy: { updatedAt: 'desc' },
-    select: { id: true, productIntelligence: true, url: true },
+    update: { url: canonicalUrl },
+    select: { id: true, productIntelligence: true },
   })
 
-  if (existing) {
-    if (existing.url !== canonical) {
-      await prisma.project.update({
-        where: { id: existing.id },
-        data: { url: canonical },
-      })
-    }
-    return {
-      id: existing.id,
-      productIntelligence: parseProductIntelligence(existing.productIntelligence),
-    }
-  }
-
-  let created: { id: string; productIntelligence: unknown }
-  try {
-    created = await prisma.project.create({
-      data: {
-        userId,
-        name: productNameFromUrl(auditUrl),
-        url: canonical,
-        isAnchor: true,
-      },
-      select: { id: true, productIntelligence: true },
-    })
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
-      throw error
-    }
-    const concurrent = await prisma.project.findFirst({
-      where: { userId, url: canonical, isAnchor: true },
-      select: { id: true, productIntelligence: true },
-    })
-    if (!concurrent) throw error
-    created = concurrent
-  }
-
   return {
-    id: created.id,
-    productIntelligence: parseProductIntelligence(created.productIntelligence),
+    id: project.id,
+    productIntelligence: parseProductIntelligence(project.productIntelligence),
   }
 }
 
@@ -77,12 +51,41 @@ export async function loadProjectIntelligence(
   return parseProductIntelligence(project?.productIntelligence)
 }
 
-export async function saveProjectIntelligence(
+/**
+ * The only Product Intelligence write path. Serializable read + compare-and-swap
+ * prevents Contract edits, feedback, claims, and re-check learning from erasing
+ * one another. Mutations are retried against the newest revision.
+ */
+export async function mutateProjectIntelligence(
   projectId: string,
-  pi: ProductIntelligence
-): Promise<void> {
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { productIntelligence: pi as object },
-  })
+  mutation: (current: ProductIntelligence | null) => ProductIntelligence
+): Promise<ProductIntelligence> {
+  for (let attempt = 0; attempt < MAX_PI_MUTATION_ATTEMPTS; attempt += 1) {
+    const outcome = await prisma.$transaction(
+      async (tx) => {
+        const project = await tx.project.findUnique({
+          where: { id: projectId },
+          select: { productIntelligence: true, productIntelligenceRevision: true },
+        })
+        if (!project) throw new Error('Product not found')
+
+        const next = mutation(parseProductIntelligence(project.productIntelligence))
+        const updated = await tx.project.updateMany({
+          where: {
+            id: projectId,
+            productIntelligenceRevision: project.productIntelligenceRevision,
+          },
+          data: {
+            productIntelligence: next as unknown as Prisma.InputJsonObject,
+            productIntelligenceRevision: { increment: 1 },
+          },
+        })
+        return updated.count === 1 ? next : null
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    )
+    if (outcome) return outcome
+  }
+
+  throw new Error('Product Intelligence changed concurrently; retry the update')
 }

@@ -24,11 +24,7 @@ import {
 } from '@/lib/audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
 import { buildRepoFindingPayload } from '@/lib/mcp/repo-finding-payload'
-import {
-  buildPlanModePrompt,
-  rankFlagsByPriority,
-  resolveFixPrompt,
-} from '@/lib/audit/priority-flags'
+import { buildFinishPlan } from '@/lib/audit/finish-plan'
 
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
   if (flag.checkId) return `check:${flag.checkId}`
@@ -42,7 +38,6 @@ export function registerAllTools(
   user: User,
   options?: { signal?: AbortSignal }
 ) {
-  const abortSignal = options?.signal
   registerTaskTools(server, user, options)
 
   server.tool(
@@ -271,14 +266,12 @@ export function registerAllTools(
         pageUrl: f.pageUrl,
         confidence: f.confidence,
       }))
-      const prompt = buildPlanModePrompt(flags, {
+      const plan = buildFinishPlan({
+        flags,
         url: audit.url,
-        limit: 3,
         contract,
+        promptAccess: 'all',
       })
-      const planCount = rankFlagsByPriority(flags, [], 3, contract).filter((r) =>
-        Boolean(r.flag.agentPrompt || r.flag.cursorPrompt || r.flag.fix)
-      ).length
       return {
         content: [
           {
@@ -286,8 +279,8 @@ export function registerAllTools(
             text: JSON.stringify({
               reportId,
               url: audit.url,
-              prompt,
-              flagCount: planCount,
+              prompt: plan.copyPrompt ?? '',
+              flagCount: plan.visiblePromptCount,
             }),
           },
         ],
@@ -340,8 +333,8 @@ export function registerAllTools(
   server.tool(
     'ff_get_current_finish_plan',
     'Get the current Finish Plan (top prioritized improvements) for a completed report',
-    { reportId: z.string(), limit: z.number().int().min(1).max(10).optional() },
-    async ({ reportId, limit }) => {
+    { reportId: z.string(), limit: z.number().int().min(1).max(3).optional() },
+    async ({ reportId }) => {
       await assertMcpAccess(user)
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
@@ -378,11 +371,12 @@ export function registerAllTools(
         confidence: f.confidence,
         source: f.source,
       }))
-      const top = rankFlagsByPriority(flags, audit.rubrics, limit ?? 3, contract)
-      const planPrompt = buildPlanModePrompt(flags, {
+      const plan = buildFinishPlan({
+        flags,
+        rubricRows: audit.rubrics,
         url: audit.url,
-        limit: limit ?? 3,
         contract,
+        promptAccess: 'all',
       })
       return {
         content: [
@@ -391,16 +385,16 @@ export function registerAllTools(
             text: JSON.stringify({
               reportId,
               url: audit.url,
-              items: top.map(({ flag, rubricName }) => ({
-                flagId: flag.id,
-                checkId: flag.checkId,
-                problem: flag.problem,
-                rubric: rubricName,
-                severity: flag.severity,
-                impactTag: flag.impactTag,
-                fixPrompt: resolveFixPrompt(flag),
+              items: plan.items.map((item) => ({
+                flagId: item.id,
+                checkId: item.checkId,
+                problem: item.problem,
+                rubric: item.rubricName,
+                severity: item.severity,
+                impactTag: item.impactTag,
+                fixPrompt: item.prompt,
               })),
-              planPrompt,
+              planPrompt: plan.copyPrompt ?? '',
             }),
           },
         ],

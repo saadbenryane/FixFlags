@@ -1842,7 +1842,7 @@ of waiting further, created a fully separate, additive sandbox:
   `prisma db push` (schema diff, NOT migration replay — never touches
   `prisma/migrations/*` or the real `qualityos` DB).
 - Seeded via existing `prisma/seed.ts` → admin login
-  `saadbenryane@gmail.com` / `password123`.
+  fixed development credentials (since removed in favor of seed environment values).
 - Added a `dev-sandbox` config to `.claude/launch.json` (port 3001,
   `DATABASE_URL` inline-overridden to the sandbox DB) so the main `dev` server
   on port 3000 (whatever anyone else is using it for) is never touched.

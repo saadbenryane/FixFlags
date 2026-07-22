@@ -3,7 +3,6 @@ import { BRAND } from '@/lib/marketing/copy'
 export const MARKETING_LINKS = [
   { href: '/how-it-works', label: 'How it works' },
   { href: '/#sample-review', label: 'Sample report' },
-  { href: '/roast', label: 'Roast' },
   { href: '/pricing', label: 'Pricing' },
 ] as const
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
 import { AuditReport } from '@/components/audit/AuditReport'
+import { FocusedAuditReport } from '@/components/audit/FocusedAuditReport'
 import { AuditPageActions } from '@/components/audit/AuditPageActions'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
@@ -20,6 +21,7 @@ import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { assembleReportViewModel } from '@/lib/report/report-view-model'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -126,9 +128,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ReportPage({ params }: Props) {
+export async function ReportRoute({
+  params,
+  mode = 'focused',
+  accessMode = 'report',
+  shareToken,
+}: Props & {
+  mode?: 'focused' | 'details'
+  accessMode?: 'report' | 'share'
+  shareToken?: string
+}) {
   const { id } = await params
-  const result = await getGatedAuditForRequest(id)
+  const result = await getGatedAuditForRequest(id, { tokenShare: accessMode === 'share' })
 
   if (result.kind === 'not_found') {
     notFound()
@@ -142,8 +153,8 @@ export default async function ReportPage({ params }: Props) {
     )
   }
 
-  const { audit, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed, sampleFixFlag } = result
-  const isOwner = Boolean(session?.user?.id && audit.userId === session.user.id)
+  const { audit, accessContext, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed, sampleFixFlag } = result
+  const isOwner = accessContext === 'owner'
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
     userId: audit.userId,
@@ -349,11 +360,65 @@ export default async function ReportPage({ params }: Props) {
     const captureStatus = parseCaptureStatus(audit)
     const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
 
+    const toolbarActions = (
+      <AuditPageActions
+        auditId={id}
+        url={audit.url}
+        score={audit.score}
+        verdict={audit.verdict}
+        topIssue={topIssue}
+        flags={flags}
+        rubrics={rubricRows.map((r) => ({
+          name: r.name,
+          grade: r.grade,
+          score: r.score,
+          rubricPrompt: r.rubricPrompt,
+          flags: r.flags.map((f) => ({
+            severity: f.severity,
+            problem: f.problem,
+            rubric: f.rubric,
+          })),
+        }))}
+        isPaid={viewerIsPaid}
+        isLoggedIn={isLoggedIn}
+        isOwner={isOwner}
+        isAnonymous={isAnonymous}
+        isPublic={audit.isPublic}
+        compareAuditId={
+          canAccessCompareView
+            ? audit.parentId
+              ? id
+              : latestMonitoring?.id ?? null
+            : null
+        }
+        canExportSummary={entitlements?.canExportSummary ?? false}
+        canSharePublicly={entitlements?.canSharePublicly ?? false}
+        showFixPrompts={showDeterministicFixes}
+        toolbar
+      />
+    )
+
+    const focusedModel = assembleReportViewModel({
+      auditId: id,
+      audit: reportAudit,
+      isLoggedIn,
+      isOwner,
+      isAnonymous,
+      showPrompts: showDeterministicFixes,
+      demonstratedFlag: sampleFixFlag as typeof flags[number] | null,
+      recheckDiff,
+      compareHref: canAccessCompareView && audit.parentId ? `/compare/${id}` : null,
+      detailsHref: shareToken ? `/share/${shareToken}/details` : undefined,
+    })
+
     return (
       <AuditShell
         session={session}
         showAdmin={user && session ? isAdminUser({ id: session.user.id, role: user.role }) : false}
       >
+        {mode === 'focused' ? (
+          <FocusedAuditReport model={focusedModel} />
+        ) : (
         <AuditReport
           audit={reportAudit}
           auditId={id}
@@ -387,46 +452,17 @@ export default async function ReportPage({ params }: Props) {
           compareHref={
             canAccessCompareView && audit.parentId ? `/compare/${id}` : null
           }
-          toolbarActions={
-            <AuditPageActions
-              auditId={id}
-              url={audit.url}
-              score={audit.score}
-              verdict={audit.verdict}
-              topIssue={topIssue}
-              flags={flags}
-              rubrics={rubricRows.map((r) => ({
-                name: r.name,
-                grade: r.grade,
-                score: r.score,
-                rubricPrompt: r.rubricPrompt,
-                flags: r.flags.map((f) => ({
-                  severity: f.severity,
-                  problem: f.problem,
-                  rubric: f.rubric,
-                })),
-              }))}
-              isPaid={viewerIsPaid}
-              isLoggedIn={isLoggedIn}
-              isOwner={isOwner}
-              isAnonymous={isAnonymous}
-              isPublic={audit.isPublic}
-              compareAuditId={
-                canAccessCompareView
-                  ? audit.parentId
-                    ? id
-                    : latestMonitoring?.id ?? null
-                  : null
-              }
-              plan={user?.plan ?? 'FREE'}
-              projectId={audit.projectId}
-              canExportSummary={entitlements?.canExportSummary ?? false}
-              canSharePublicly={entitlements?.canSharePublicly ?? false}
-              showFixPrompts={showDeterministicFixes}
-              toolbar
-            />
+          toolbarActions={toolbarActions}
+          backToPlanHref={
+            mode === 'details'
+              ? shareToken
+                ? `/share/${shareToken}`
+                : `/report/${id}`
+              : undefined
           }
+          showFinishPlan={mode !== 'details'}
         />
+        )}
         <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
         <AiReviewPendingRefresh auditId={id} enabled={aiReviewPending} />
       </AuditShell>
@@ -442,3 +478,5 @@ export default async function ReportPage({ params }: Props) {
     />
   )
 }
+
+export default ReportRoute

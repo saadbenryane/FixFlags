@@ -1,7 +1,7 @@
 import { SITE_URL, BRAND } from '@/lib/marketing/copy'
 
 export const MCP_TOOL_DEFINITIONS = [
-  { name: 'ff_check_and_plan', desc: 'Start a FixFlags check on any URL. Returns reportId.' },
+  { name: 'ff_check_and_plan', desc: 'Check a URL and return the report plus its three-item Finish Plan.' },
   { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
   { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
   {
@@ -9,7 +9,10 @@ export const MCP_TOOL_DEFINITIONS = [
     desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach)',
   },
   { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-  { name: 'ff_recheck_and_compare', desc: 'Run a new check on the same URL to verify fixes.' },
+  { name: 'ff_plan_mode_prompt', desc: 'Get one plan-mode prompt for the current Finish Plan.' },
+  { name: 'ff_get_product_context', desc: 'Get Product Contract and Product Intelligence context.' },
+  { name: 'ff_get_current_finish_plan', desc: 'Get the current prioritized Finish Plan.' },
+  { name: 'ff_recheck_and_compare', desc: 'Run a fresh re-check and return its diff plus next Finish Plan.' },
   {
     name: 'ff_compare',
     desc: 'Compare two reports: see what improved, stayed the same, or regressed.',

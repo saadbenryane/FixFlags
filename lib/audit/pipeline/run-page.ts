@@ -32,7 +32,7 @@ import {
   productIntelligenceFromContract,
   resolveContractForCapture,
 } from '../product-intelligence'
-import { loadProjectIntelligence, saveProjectIntelligence } from '../ensure-product-project'
+import { loadProjectIntelligence, mutateProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
 
 interface RunPageInput {
@@ -193,14 +193,15 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
     // Seed / refresh Project PI when heuristic (never overwrite user-owned PI fields)
     if (auditRow?.projectId && productContract.source !== 'user') {
-      const nextPi = mergeHeuristicIntoProjectPi(projectPi, inferred)
       if (!projectPi || projectPi.source !== 'user') {
-        await saveProjectIntelligence(auditRow.projectId, nextPi)
+        await mutateProjectIntelligence(auditRow.projectId, (current) =>
+          mergeHeuristicIntoProjectPi(current, inferred)
+        )
       }
     } else if (auditRow?.projectId && productContract.source === 'user' && !projectPi) {
-      await saveProjectIntelligence(
+      await mutateProjectIntelligence(
         auditRow.projectId,
-        productIntelligenceFromContract(productContract)
+        (current) => current ?? productIntelligenceFromContract(productContract)
       )
     }
   }

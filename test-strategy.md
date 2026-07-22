@@ -88,7 +88,7 @@
 
 ### Ready for monetization when:
 
-> A paying customer can: paste a URL → see a progress bar → get a report with flags and a score → share it → come back to see their history. Every step renders correctly and handles errors gracefully. No blank screens, no stuck spinners, no confusing copy.
+> A customer can: paste a URL → watch an honest three-card plan form → copy a fix → re-check it → see the diff. An Agency customer can share a private, password-protected focused report and revoke it without making the report public. Every step has loading, failure, retry, and responsive coverage.
 
 ---
 

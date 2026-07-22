@@ -6,8 +6,9 @@ import type { FlagStatus, Severity } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
 import {
   appendVerifiedLearning,
-  parseProductIntelligence,
+  productIntelligenceFromContract,
 } from '@/lib/audit/product-intelligence'
+import { mutateProjectIntelligence } from '@/lib/audit/ensure-product-project'
 
 export type { FlagDiffSummaryItem } from './flag-types'
 
@@ -97,26 +98,15 @@ export async function diffFlagsAgainstParent(
 
   // Remember: append verified learnings to Project Product Intelligence
   if (newlyFixed.length > 0 && monitoringAudit?.projectId) {
-    const project = await prisma.project.findUnique({
-      where: { id: monitoringAudit.projectId },
-      select: { productIntelligence: true },
+    const parentAudit = await prisma.audit.findUnique({
+      where: { id: parentAuditId },
+      select: { productContract: true },
     })
-    let pi = parseProductIntelligence(project?.productIntelligence)
-    if (!pi) {
-      const parentAudit = await prisma.audit.findUnique({
-        where: { id: parentAuditId },
-        select: { productContract: true },
-      })
-      const { parseProductContract } = await import('@/lib/audit/product-contract')
-      const { productIntelligenceFromContract } = await import(
-        '@/lib/audit/product-intelligence'
-      )
-      const contract = parseProductContract(parentAudit?.productContract)
-      if (contract) {
-        pi = productIntelligenceFromContract(contract)
-      }
-    }
-    if (pi) {
+    const { parseProductContract } = await import('@/lib/audit/product-contract')
+    const contract = parseProductContract(parentAudit?.productContract)
+    if (contract) {
+      await mutateProjectIntelligence(monitoringAudit.projectId, (current) => {
+        let pi = current ?? productIntelligenceFromContract(contract)
       for (const fixed of newlyFixed.slice(0, 10)) {
         pi = appendVerifiedLearning(pi, {
           checkId: fixed.checkId ?? undefined,
@@ -125,9 +115,7 @@ export async function diffFlagsAgainstParent(
           at: new Date().toISOString(),
         })
       }
-      await prisma.project.update({
-        where: { id: monitoringAudit.projectId },
-        data: { productIntelligence: pi as object },
+        return pi
       })
     }
   }

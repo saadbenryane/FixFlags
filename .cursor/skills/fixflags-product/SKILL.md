@@ -14,6 +14,7 @@ Read before changing product logic or writing copy that promises a feature.
 | Area | Files |
 |------|-------|
 | Vision / PI (north star) | `knowledge/vision.md`, `.cursor/skills/fixflags-product-intelligence/SKILL.md` |
+| Report hierarchy | `knowledge/report-contract.md` (do not duplicate its route or section order here) |
 | Project facts | `AGENTS.md` (counts, pipeline version, glossary) |
 | Page text limits | `lib/audit/page-text-limits.ts` |
 | Scan catalog + roadmap | `docs/scan-catalog.md`, `docs/scan-roadmap.md` |
@@ -28,13 +29,15 @@ Read before changing product logic or writing copy that promises a feature.
 | Triage / prescription | `lib/audit/runner.ts`, `pipeline/finalize-from-outcome.ts`, `run-ai-review.ts` |
 | Task outcomes | `lib/audit/task-contracts.ts` (`checkAndPlan`, `recheckAndCompare`) |
 | Re-check | `lib/audit/monitoring.ts` |
-| Sample provenance | `lib/marketing/live-sample.ts` (`SampleSource`: live \| curated \| fixture) |
+| Sample provenance | `lib/marketing/live-sample.ts` (deterministic curated snapshot for marketing rendering) |
 | Billing gate | `lib/billing/credits.ts` (`wouldBlockNewCheckWithCredits`) |
 | Report explorer | `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
-| Sample explorer | `components/marketing/sample/SampleReportExplorer.tsx`, `HeroProductPreview.tsx` |
+| Sample Finish Plan | `components/marketing/landing/HeroProductPreview.tsx`, `/samples`, `/samples/details` |
 | Live explorer adapter | `components/audit/LiveReportExplorer.tsx` |
 | Rubric bar | `components/audit/RubricBar.tsx` (compact jump links; not a second flag browser) |
-| Finish Plan | `components/audit/AuditReport.tsx` `#report-finish-plan`, `lib/audit/priority-flags.ts` |
+| Finish Plan | `lib/audit/finish-plan.ts`, `lib/report/report-view-model.ts`, `FocusedAuditReport.tsx` |
+| Full review | `components/audit/AuditReport.tsx`, `/report/[id]/details` |
+| Share grants | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` |
 | Share status | `components/audit/ShareStatusBanner.tsx`, `lib/audit/share-status.ts` |
 | Funnel events | `lib/analytics/events.ts`, `.cursor/skills/fixflags-analytics/SKILL.md` |
 | Admin funnel | `app/admin/analytics/page.tsx` |
@@ -87,7 +90,7 @@ Copy must say: monthly/lifetime limits apply to **new URL checks**; re-checks on
 
 | Stage | Gets | Does not get |
 |-------|------|--------------|
-| Anon teaser (exactly 1) | Score, rubrics, Flags, evidence, `SampleFixCard` | Fix prompts, prescription, re-check, 2nd new URL |
+| Anon teaser (exactly 1) | Score, rubrics, three problem/evidence summaries, exactly one complete demonstrated fix | Remaining prompts, ownership, re-check, 2nd new URL |
 | After signup + claim | Full fixes, prescription enqueue, ownership, re-check | — |
 | Free account | 3 lifetime new URL checks (**claimed teaser counts as 1**) | Unlimited new URLs |
 
@@ -113,13 +116,15 @@ Gate: `wouldBlockNewCheckWithCredits` → `AuditLimitError` (carries `code` + `a
 
 **Never hardcode** `action: 'upgrade'` in the checks route. Pass `err.action` from `AuditLimitError`.
 
-## Report surface ownership
+## Report surfaces
+
+Read and follow [`knowledge/report-contract.md`](../../knowledge/report-contract.md). It is the only route and section-order contract. Keep this skill limited to component ownership and product boundaries.
 
 | Surface | Owns | Does not own |
 |---------|------|--------------|
 | `AuditReportHero` | Hostname, URL, `ScoreDot`, capture callouts; scanning badge + `getScanningLabel` while in progress | Share status, score ring, sticky nav, verdict blockquote |
 | `ShareStatusBanner` | Share readiness + per-rubric status badges (completed only) | Flag lists, hero identity |
-| `RubricBar` | Compact rubric score pills linking to `#report-flags`; `loading` → Scanning | Flag browsing |
+| `RubricBar` | Compact rubric score proof; `loading` → Scanning | Flag browsing |
 | `ReportExplorer` | Working score ring (`sm`), filters, flag list, detail panel, fix prompts, screenshot + visual evidence | Page chrome, share status |
 | `ReportStickyToolbar` | Section nav matching DOM (Contract, Priorities, Journey, Flow, Timeline, Flags, …); stuck hostname + `ScoreDot` | Fix prompt editing, Overview |
 
@@ -127,7 +132,7 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 
 **Density:** explorer score is always `ScoreRingGauge` `sm` (68px). No dead `lg` size. Filter header uses tight `gap-3` / `pb-3`.
 
-**Progressive / scan UX (same chrome as completed):**
+**Progressive / scan UX:**
 
 | File | Role |
 |------|------|
@@ -135,18 +140,10 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 | `hooks/useAuditPolling.ts` | SWR on `/api/reports/{id}/status` |
 | `app/api/reports/[id]/status/route.ts` | Lightweight payload: status, progress, screenshots, rubrics, `partialFlags` (CHECKING+), `actionTimeline`, `productContract`, `shareStatus` |
 | `components/audit/AuditPageClient.tsx` | Poll → progressive; on COMPLETED **hold frame** + `router.refresh()` (never blank the payoff) |
-| `components/audit/AuditReportProgressive.tsx` | In-progress report using **same altitudes** as `AuditReport` |
+| `components/audit/AuditReportProgressive.tsx` | In-progress three-card Finish Plan with captures and collapsible checking detail |
 | `lib/audit/progress-ui.ts` | `getProgressPercent`, `getScanningLabel`, `getActivityMessage` (must be wired in UI) |
 
-**Chrome parity rules:**
-- Hero = `AuditReportHero` (`ScoreDot` + scanning badge/label). No parallel `ReportHeroHeader`.
-- Rubrics = `RubricBar` with `loading` (Scanning badges). Do not put `RubricSummaryGrid` on progressive (marketing sample only).
-- Sticky = `ReportStickyToolbar` with only sections that exist (Contract / Timeline / Flags mid-scan). No `#report-overview` destination.
-- Section order matches completed: Hero → RubricBar → sticky → verdict → queue/worker Callouts → Contract → Timeline → Flags.
-- Pre-flags Flags shell: `ScoreRingGauge` sm + activity line + `BrowserFrame` captures. No competing `ReportScoreOverview` / ScoreStack.
-- Timeline title may differ ("What FixFlags is doing" vs "How we checked"); shell padding must match (`px-5 py-4`).
-- Progress honesty: eased ring never exceeds backend `%`; never invent Journey/Flow/Priorities mid-scan.
-- Partial Callout on completed report only when `reportCompleteness === 'PARTIAL'` (not `UNKNOWN`).
+**Progressive rules:** build toward three Finish Plan cards, show captures and early findings, keep Contract/timeline inside “How FixFlags is checking,” never exceed backend progress, and hold the frame through the completed refresh. Follow the canonical report contract for all ordering.
 
 **Anti-patterns:** fake progress past backend; blank on COMPLETED; Scout chat; second hero; rubrics after flags on progressive; orphaned stage copy helpers unused in UI.
 
@@ -156,8 +153,8 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 
 ## Product Contract, Finish Plan, truth, and competitive boundary
 
-- **Product Contract / PI** (`lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts`): inferred purpose, first-value journey, critical outcomes. Project-scoped `productIntelligence` persists across audits; Audit stores a snapshot. Shown above Finish Plan on completed reports **and** on progressive when the status API has returned a contract. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`; updates project + audit). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product-intelligence.md`.
-- **Finish Plan** (≤3): `rankFlagsByPriority` with Contract/PI bias; UI `#report-finish-plan`; `buildPlanModePrompt` defaults to limit 3 + contract. Explorer sort must pass contract. Separate Export “All prompts” uses `limit: null`.
+- **Product Contract / PI** (`lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts`): inferred purpose, first-value journey, critical outcomes. Project-scoped `productIntelligence` persists across audits; Audit stores a snapshot. Owners edit it in the detailed review. Claim retries until Product attachment succeeds.
+- **Finish Plan** (≤3): `buildFinishPlan()` owns Contract-aware ranking and access redaction for every surface. Separate Export “All prompts” remains explicitly outside the Finish Plan contract.
 - **Remember:** `ProductMemoryStrip` shows `verifiedLearnings` / notes / risks. Claim must `ensureProductProject`. Contract edit uses `mergeContractIntoProductIntelligence`.
 - **Product watch:** Pro/Agency Project `watchInterval`; `lib/audit/project-watch.ts`; regression email only. Free keeps manual re-check.
 - **Competitive boundary:** Scout/Signo = direct. CodeRabbit = adjacent code gate (do not partner for GTM; do not sell as PR review).
@@ -168,11 +165,7 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 
 ## Sample provenance
 
-Marketing samples use `SampleSource`: **`live` | `curated` | `fixture`** (`lib/marketing/live-sample.ts`).
-
-- **live** — fresh production audit meeting eligibility
-- **curated** — hand-picked completed audit (still real data)
-- **fixture** — offline/demo only (`static-sample.ts`, demo routes)
+Marketing pages use a versioned curated snapshot from the completed PlantDad demo audit. They never query production audit rows or silently change proof at render time. Fixture routes remain for offline audit testing.
 
 Eligibility (`isEligibleMarketingSample`): `reportCompleteness === FULL`, at least one flag, rubrics present, desktop screenshot. **Not** score floors. Tests: `lib/marketing/__tests__/sample-provenance.test.ts`.
 

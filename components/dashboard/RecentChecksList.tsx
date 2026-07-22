@@ -156,6 +156,7 @@ export function RecentChecksList({
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <span className="font-medium">Original check</span>
                       <span>{new Date(audit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       {criticalFlags > 0 && (
                         <span className="inline-flex items-center gap-1 text-destructive">
@@ -199,7 +200,7 @@ export function RecentChecksList({
                       {audit.monitoringAudits.length > 0 && canCompare && (
                         <Badge variant="outline" size="sm" className="gap-1 text-muted-foreground">
                           <ArrowLeftRight className="h-3 w-3" />
-                          Trend
+                          {audit.monitoringAudits.length} re-check{audit.monitoringAudits.length === 1 ? '' : 's'}
                         </Badge>
                       )}
                     </div>

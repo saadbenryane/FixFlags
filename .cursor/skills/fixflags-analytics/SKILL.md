@@ -26,7 +26,7 @@ P2 growth work (audience landers, authentic testimonials, monitoring UI) is gate
 | `signed_up` / `signed_in` | Auth pages / `post-login` |
 | `audit_completed` / `viewed_report` / `first_finding_viewed` | Report clients |
 | `fix_prompt_copied` | `PromptCopyButton` / `ExportMenu` |
-| `recheck_started` | `AuditPageActions` |
+| `recheck_started` | `ReportRecheckButton` / detailed `AuditPageActions` |
 | `recheck_completed` | Compare page **and** report with `recheckDiff` |
 | `report_signup_cta_clicked` | `ReportSignupCta` (`from`: `value_strip` \| `sample_fix` \| `limit_gate`), `AuditLimitGate` |
 | `audits_claimed` | `ClaimAnonymousAudits` after successful claim |
@@ -34,6 +34,8 @@ P2 growth work (audience landers, authentic testimonials, monitoring UI) is gate
 | `remember_shown` | `ProductMemoryStrip` when verified learnings render |
 
 **Anon funnel stages (GA4):** `started_audit` (`is_logged_in: false`) → `viewed_report` → `report_signup_cta_clicked` → `signed_up` → `audits_claimed` → `fix_prompt_copied` → `recheck_*`.
+
+Measure focused and detailed report visits separately when adding a route-view event. The north-star remains copied fix followed by re-check, not time spent in the explorer. Report order is canonical in `knowledge/report-contract.md`.
 
 Before shipping funnel changes: every `FunnelEvent` union member must have a `trackEvent('…')` call site (or be removed from the union).
 

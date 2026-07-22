@@ -447,6 +447,17 @@ export const FINAL_CTA = {
 
 export const CHANGELOG_ENTRIES = [
   {
+    date: '2026-07-22',
+    title: 'A faster Finish Plan and safer sharing',
+    items: [
+      'Every report now opens with the three fixes that matter most',
+      'The full evidence review stays available on a separate details page',
+      'The sample shows the same focused plan without a loading gap',
+      'Password-protected share links stay private and can be revoked without exposing the report',
+      'Sign-in waits until your anonymous report is safely attached to your account',
+    ],
+  },
+  {
     date: '2026-07-20',
     title: 'Report depth and Help Center',
     items: [
@@ -891,6 +902,23 @@ export const PRICING = {
 export const PLANS = getMarketingPlans()
 
 export const REPORT_COPY = {
+  focused: {
+    eyebrow: 'Your next three fixes',
+    evidence: 'Evidence',
+    fix: 'Editor-ready fix',
+    promptLocked: 'Create a free account to copy the remaining fixes and prove them with a re-check.',
+    signUpCta: 'Get all three fixes',
+    detailsCta: (count: number) => `View full review (${count} Flags)`,
+    backToPlan: 'Back to Finish Plan',
+    rubricProof: 'Why this plan is credible',
+    readinessBody: 'The Finish Plan below is ordered by launch impact.',
+  },
+  sampleFocused: {
+    eyebrow: 'Sample Finish Plan',
+    title: 'See the three fixes FixFlags would ship first',
+    body: 'A versioned, reviewed snapshot from a completed PlantDad demo audit.',
+    detailsCta: 'View the full sample review',
+  },
   recheck: {
     label: 'Re-check',
     error: 'Could not start the re-check. Try again.',
@@ -1034,7 +1062,7 @@ export const MCP_DOCS = {
   lovableBoltNote:
     'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
   tools: [
-    { name: 'ff_check_and_plan', desc: 'Start a check on any URL. Returns reportId.' },
+    { name: 'ff_check_and_plan', desc: 'Check a URL and return the report plus its three-item Finish Plan.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
     { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
     {
@@ -1042,7 +1070,7 @@ export const MCP_DOCS = {
       desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
     },
     { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-    { name: 'ff_recheck_and_compare', desc: 'Re-check the same URL to see which Flags cleared.' },
+    { name: 'ff_recheck_and_compare', desc: 'Run a fresh re-check and return the verification diff plus next Finish Plan.' },
     {
       name: 'ff_compare',
       desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
@@ -1252,11 +1280,22 @@ export const FIRST_AUDIT_PROMPT = {
   footerSuffix: 'to know what you will get.',
 } as const
 
-export const PROJECT_ASSIGN_COPY = {
-  assigned: 'Assigned to project',
-  removed: 'Removed from project',
-  updateFailed: 'Could not update the project. Try again.',
-  loadFailed: 'Could not load projects. Try refreshing the page.',
+export const PRODUCT_WATCH_COPY = {
+  description: 'FixFlags re-checks this product on a schedule and emails you only when something regresses.',
+  weekly: 'Weekly',
+  daily: 'Daily',
+  off: 'Off',
+  proLink: 'Pro adds weekly watch',
+  unavailable: 'Product Watch is unavailable until scheduling and email delivery are configured.',
+  updateFailed: 'Could not update Product Watch.',
+  loadFailed: 'Could not load Product Watch status.',
+  successWeekly: 'Weekly Product Watch enabled.',
+  successDaily: 'Daily Product Watch enabled.',
+  successOff: 'Product Watch turned off.',
+  nextRun: 'Next check',
+  lastRun: 'Last successful check',
+  lastAttempt: 'Last attempt',
+  never: 'Not yet',
 } as const
 
 export const SHARE_COPY = {

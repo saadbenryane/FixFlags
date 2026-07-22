@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
+import { randomBytes } from 'node:crypto'
+import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
@@ -9,8 +10,15 @@ import { canSharePublicly } from '@/lib/auth/entitlements'
 import { hashSharePassword } from '@/lib/security/share-password'
 
 function generateToken(): string {
-  return randomUUID().replace(/-/g, '').slice(0, 16)
+  return randomBytes(32).toString('base64url')
 }
+
+const createShareLinkSchema = z.object({
+  label: z.string().trim().min(1).max(100).nullable().optional(),
+  password: z.string().min(10).max(200).nullable().optional(),
+  expiresAt: z.coerce.date().refine((date) => date.getTime() > Date.now(), 'Expiry must be in the future').nullable().optional(),
+  maxViews: z.number().int().min(1).max(1_000_000).nullable().optional(),
+})
 
 export async function GET(
   _req: NextRequest,
@@ -26,9 +34,9 @@ export async function GET(
       where: { id },
       select: { id: true, userId: true },
     })
-    if (!audit) return apiError('Audit not found', 404)
+    if (!audit) return apiError('Report not found', 404)
     if (!canManageAudit(audit, session?.user)) {
-      return apiError('Sign in to manage share links for this audit', 401)
+      return apiError('Sign in to manage share links for this report', 401)
     }
 
     const links = await prisma.shareLink.findMany({
@@ -67,9 +75,9 @@ export async function POST(
       where: { id },
       select: { id: true, userId: true, status: true, isPublic: true },
     })
-    if (!audit) return apiError('Audit not found', 404)
+    if (!audit) return apiError('Report not found', 404)
     if (!canManageAudit(audit, session?.user)) {
-      return apiError('Sign in to create share links for this audit', 401)
+      return apiError('Sign in to create share links for this report', 401)
     }
     if (audit.status !== 'COMPLETED') {
       return apiError('Only completed audits can be shared', 400)
@@ -81,27 +89,29 @@ export async function POST(
           select: { id: true, plan: true, role: true, subscriptionStatus: true },
         })
       : null
-    if (user && !canSharePublicly(user)) {
+    if (!user || !canSharePublicly(user)) {
       return apiError('Share links require the Agency plan.', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'upgrade',
       })
     }
 
-    const body = await req.json().catch(() => ({}))
-    const { label, expiresAt, maxViews, password } = body
+    const parsed = createShareLinkSchema.safeParse(await req.json().catch(() => ({})))
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message ?? 'Invalid share link settings', 400, {
+        code: 'INVALID_SHARE_LINK',
+      })
+    }
+    const { label, expiresAt, maxViews, password } = parsed.data
 
     const link = await prisma.shareLink.create({
       data: {
         auditId: id,
         token: generateToken(),
-        label: typeof label === 'string' ? label.slice(0, 100) : null,
-        password:
-          typeof password === 'string' && password.length > 0
-            ? hashSharePassword(password)
-            : null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        maxViews: typeof maxViews === 'number' ? maxViews : null,
+        label: label ?? null,
+        passwordHash: password ? await hashSharePassword(password) : null,
+        expiresAt: expiresAt ?? null,
+        maxViews: maxViews ?? null,
       },
       select: {
         id: true,

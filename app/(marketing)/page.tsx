@@ -4,7 +4,6 @@ import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorks
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
 import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
-import { ReportExamplesSection } from '@/components/marketing/landing/ReportExamplesSection'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
 import { WhyAiNeedsFixFlagsSection } from '@/components/marketing/landing/WhyAiNeedsFixFlagsSection'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
@@ -23,7 +22,6 @@ export default async function HomePage() {
       <SampleReportSection audit={sample.audit} />
       <HowItWorksLoopSection sampleHref="/samples" />
       <CheckDimensionsSection />
-      <ReportExamplesSection />
       <WhyAiNeedsFixFlagsSection />
       <EditorIntegrationsSection />
       <LandingFinalCtaSection />

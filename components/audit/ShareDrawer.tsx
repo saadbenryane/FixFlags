@@ -27,6 +27,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { SITE_URL, SHARE_COPY } from '@/lib/marketing/copy'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
+import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
   Sheet,
   SheetTrigger,
@@ -132,7 +133,7 @@ export function ShareDrawer({
         return
       }
 
-      if (!res.ok) throw new Error('Failed to create link')
+      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
 
       const link = await res.json()
       setLinks((prev) => [link, ...prev])
@@ -146,8 +147,8 @@ export function ShareDrawer({
         setIsPublic(true)
         onPublicChange?.(true)
       }
-    } catch {
-      toast.error('Could not create share link')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create share link')
     } finally {
       setCreating(false)
     }
@@ -158,16 +159,21 @@ export function ShareDrawer({
       const res = await fetch(`/api/reports/${auditId}/share-links?shareId=${linkId}`, {
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
       setLinks((prev) => prev.map((l) => (l.id === linkId ? { ...l, revoked: true } : l)))
       toast.success('Link revoked')
-    } catch {
-      toast.error('Could not revoke link')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not revoke link')
     }
   }
 
   async function copyToClipboard(text: string, linkId?: string) {
-    await navigator.clipboard.writeText(text)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      toast.error('Could not copy the link')
+      return
+    }
     if (linkId) {
       setCopiedId(linkId)
       setTimeout(() => setCopiedId(null), 2000)
@@ -194,13 +200,13 @@ export function ShareDrawer({
         })
         return
       }
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
       const data = await res.json()
       setIsPublic(data.isPublic)
       onPublicChange?.(data.isPublic)
       toast.success('Report is now public')
-    } catch {
-      toast.error('Could not make report public')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not make report public')
     } finally {
       setLoading(false)
     }

@@ -22,11 +22,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       NODE_OPTIONS: --max-old-space-size=4096
       DATABASE_URL: postgresql://fixflags:fixflags@127.0.0.1:5432/fixflags_test
       BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      REDIS_URL: redis://127.0.0.1:6379
+      E2E_FULL: true
 
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +59,8 @@ jobs:
       - run: npm run brand:hex-guard
 
       - run: npm run ui:drift-guard
+
+      - run: npm run product:contract-guard
 
       - run: npm run seo:guard
 

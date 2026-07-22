@@ -67,11 +67,14 @@ Report surfaces use `Container variant="report"` so `ReportExplorer` master-deta
 
 ## Report explorer & screenshots
 
-- **Flag browsing:** `ReportExplorer` only — list, filters, detail panel, fix prompts
+Read `knowledge/report-contract.md`; do not duplicate report ordering here.
+
+- **Focused report:** `FocusedAuditReport` owns three numbered fix cards, evidence, copy, rubric proof, details link, and re-check
+- **Flag browsing:** `ReportExplorer` belongs to the detailed review only
 - **Rubric summaries:** `RubricBar` (compact pills) on live/progressive reports; `RubricSummaryGrid` for marketing sample cards only
 - **Screenshot highlights:** `ScreenshotWithHighlights` for evidence overlays; carousel/prev-next controls ≥ `min-h-11 min-w-11` (44px)
-- **Sticky nav:** `ReportStickyToolbar` for section jumps (Contract, Priorities, Journey, Flow, Timeline, Flags, Previews, Launch, Re-check). No Overview tab.
-- **Progressive:** same hero/RubricBar/sticky altitudes as completed; scanning labels from `lib/audit/progress-ui.ts`
+- **Sticky nav:** detailed review only; destinations exactly match its rendered DOM. No Overview tab.
+- **Progressive:** three Finish Plan cards, captures, early findings, and collapsible checking details; scanning labels from `lib/audit/progress-ui.ts`
 
 ## Logo
 

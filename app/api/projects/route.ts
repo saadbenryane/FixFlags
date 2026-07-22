@@ -6,6 +6,8 @@ import { headers } from 'next/headers'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { canonicalProductHost, canonicalProductUrl } from '@/lib/audit/product-intelligence'
+import { Prisma } from '@prisma/client'
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
@@ -21,7 +23,7 @@ export async function GET() {
     await recordRateLimit({ scope: 'api-projects', identifier: clientId, limit: 30, windowSeconds: 60 })
 
   const projects = await prisma.project.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, isManaged: true },
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: { select: { audits: true } },
@@ -59,33 +61,56 @@ export async function POST(req: NextRequest) {
       })
   }
 
-  const count = await prisma.project.count({
-    where: { userId: user.id, isAnchor: false },
-  })
-  if (count >= limit) {
-      return apiError(`Project limit reached (${limit})`, 402, {
-        code: 'PROJECT_LIMIT',
-        action: 'upgrade',
-      })
-  }
-
   const body = await req.json().catch(() => ({}))
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
       return apiError('Enter a project name and valid public URL', 400, { code: 'INVALID_PROJECT' })
   }
 
-  const project = await prisma.project.create({
-    data: {
-      userId: user.id,
-      name: parsed.data.name.trim(),
-      url: parsed.data.url.trim(),
-      isAnchor: false,
-    },
-  })
+  const canonicalHost = canonicalProductHost(parsed.data.url)
+  const canonicalUrl = canonicalProductUrl(parsed.data.url)
+  const project = await prisma.$transaction(async (tx) => {
+    const existing = await tx.project.findUnique({
+      where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
+    })
+    if (!existing?.isManaged) {
+      const count = await tx.project.count({
+        where: { userId: user.id, isManaged: true },
+      })
+      if (count >= limit) throw new ProjectLimitReached(limit)
+    }
+
+    return tx.project.upsert({
+      where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
+      create: {
+        userId: user.id,
+        name: parsed.data.name.trim(),
+        url: canonicalUrl,
+        canonicalHost,
+        isManaged: true,
+      },
+      update: {
+        name: parsed.data.name.trim(),
+        url: canonicalUrl,
+        isManaged: true,
+      },
+    })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
     return NextResponse.json(project, { status: 201 })
   } catch (error) {
+    if (error instanceof ProjectLimitReached) {
+      return apiError(`Project limit reached (${error.limit})`, 402, {
+        code: 'PROJECT_LIMIT',
+        action: 'upgrade',
+      })
+    }
     return handleRouteError(error, 'Could not create project')
+  }
+}
+
+class ProjectLimitReached extends Error {
+  constructor(readonly limit: number) {
+    super('Project limit reached')
   }
 }

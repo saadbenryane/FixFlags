@@ -209,9 +209,14 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ### Report UI ownership
 
+Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contract.md).
+
 | Layer | Components |
 |-------|------------|
-| Page shell | `components/audit/AuditReport.tsx`, hero, toolbar, `RubricBar`, Finish Plan, `ShareStatusBanner` |
+| Focused page shell | `components/audit/FocusedAuditReport.tsx`, `ReportViewModel`, shared hero/rubric/prompt primitives |
+| Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, Contract/Memory, evidence timelines, explorer, previews, gates |
+| Finish Plan contract | `lib/audit/finish-plan.ts`, used by report, export, task outcomes, MCP, CLI response, sample |
+| Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |
 | Flag detail | `FlagDetailPanel`, `LockedInspectionPane`, visual evidence via `flag.visualUrl` |

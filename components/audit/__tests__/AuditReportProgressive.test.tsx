@@ -31,10 +31,10 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })
 
-  it('shows capturing progress with a scanning score ring', () => {
+  it('shows capturing progress with an honest pending score', () => {
     render(<AuditReportProgressive status="CAPTURING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText(/Scanning/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Score pending/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
   })
 
@@ -72,14 +72,14 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByText('Opened page')).toBeInTheDocument()
   })
 
-  it('keeps completed chrome altitudes (hero hostname + sticky Flags nav, no Overview)', () => {
+  it('keeps the completed frame focused on the Finish Plan', () => {
     render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Flags' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Overview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Finish Plan' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Flags' })).not.toBeInTheDocument()
   })
 
-  it('streams partial flags into the explorer as they are found', async () => {
+  it('streams partial flags into the Finish Plan as they are found', async () => {
     render(
       <AuditReportProgressive
         status="CHECKING"
@@ -90,7 +90,6 @@ describe('AuditReportProgressive', () => {
         ]}
       />
     )
-    // LiveReportExplorer is code-split via next/dynamic - wait for the chunk.
     expect(
       (await screen.findAllByText('Headline promises nothing')).length
     ).toBeGreaterThan(0)

@@ -67,6 +67,25 @@ for (const dir of SCAN_DIRS) {
   }
 }
 
+const reportShell = readFileSync(join(ROOT, 'components/audit/AuditReport.tsx'), 'utf8')
+const reportExplorerCount = (reportShell.match(/<LiveReportExplorer\b/g) ?? []).length
+if (reportExplorerCount !== 1) {
+  violations.push(
+    `components/audit/AuditReport.tsx: expected exactly one LiveReportExplorer, found ${reportExplorerCount}`
+  )
+}
+
+for (const removed of ['RubricsPanel', 'ReportMiniNav', 'CompletenessHeader']) {
+  if (reportShell.includes(removed)) {
+    violations.push(`components/audit/AuditReport.tsx: removed report chrome ${removed} returned`)
+  }
+}
+
+const stickyToolbar = readFileSync(join(ROOT, 'components/audit/ReportStickyToolbar.tsx'), 'utf8')
+if (/['"]Overview['"]/.test(stickyToolbar)) {
+  violations.push('components/audit/ReportStickyToolbar.tsx: Overview is not a report destination')
+}
+
 if (violations.length) {
   console.error('UI drift guard failed:\n')
   for (const v of violations) console.error(`  ${v}`)

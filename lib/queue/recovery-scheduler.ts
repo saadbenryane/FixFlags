@@ -1,7 +1,7 @@
 import { tryAcquireLock } from './lock'
 import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
-import { processDueProjectWatches } from '@/lib/audit/project-watch'
+import { processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
 import { runIssueRollup } from '@/scripts/growth/issue-frequencies'
 import { runGscPull } from '@/scripts/growth/pull-gsc'
 import { runGaPull } from '@/scripts/growth/pull-ga'
@@ -38,7 +38,9 @@ async function projectWatchTick(): Promise<void> {
   if (!(await tryAcquireLock('project-watches', WATCH_LOCK_TTL_MS))) return
   try {
     const result = await processDueProjectWatches()
+    const notificationRetries = await retryPendingWatchNotifications()
     if (result.processed > 0) logger.info('Project watch sweep', result)
+    if (notificationRetries > 0) logger.info('Project watch notification retries', { notificationRetries })
   } catch (err) {
     logger.error('Project watch sweep failed', err instanceof Error ? err : new Error(String(err)))
   }

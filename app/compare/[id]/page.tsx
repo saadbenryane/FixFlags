@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
@@ -18,8 +18,9 @@ import { Muted, SectionTitle } from '@/components/ui/typography'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
-import { canAccessAudit } from '@/lib/audit/access'
+import { canAccessAudit, resolveAuditAccess } from '@/lib/audit/access'
 import { canAccessCompare, canSharePublicly } from '@/lib/auth/entitlements'
+import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { RubricDiff } from '@/components/compare/RubricDiff'
@@ -34,7 +35,7 @@ interface Props {
 
 export default async function ComparePage({ params, searchParams }: Props) {
   const { id } = await params
-  const { share: shareToken } = await searchParams
+  await searchParams
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
 
   const monitoringAudit = await prisma.audit.findUnique({
@@ -63,35 +64,12 @@ export default async function ComparePage({ params, searchParams }: Props) {
   let showAdmin = false
   let isShareView = false
 
-  if (shareToken) {
-    const link = await prisma.shareLink.findUnique({
-      where: { token: shareToken },
-      select: {
-        id: true,
-        revoked: true,
-        expiresAt: true,
-        maxViews: true,
-        viewCount: true,
-        password: true,
-        auditId: true,
-      },
-    })
-    const valid =
-      link &&
-      !link.revoked &&
-      !link.password &&
-      (!link.expiresAt || link.expiresAt >= new Date()) &&
-      (!link.maxViews || link.viewCount < link.maxViews) &&
-      (link.auditId === monitoringAudit.id || link.auditId === monitoringAudit.parentId)
-
-    if (valid) {
-      isShareView = true
-      await prisma.shareLink.update({
-        where: { id: link!.id },
-        data: { viewCount: { increment: 1 }, lastViewedAt: new Date() },
-      })
-    }
-  }
+  const grantValue = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+  const childAccess = await resolveAuditAccess(monitoringAudit, session?.user, grantValue)
+  const parentAccess = childAccess === 'denied'
+    ? await resolveAuditAccess(monitoringAudit.parent, session?.user, grantValue)
+    : childAccess
+  isShareView = childAccess === 'share_grant' || parentAccess === 'share_grant'
 
   if (!isShareView) {
     if (!session?.user) {

@@ -67,6 +67,11 @@ export async function checkAndPlan(
 
   if (!outcome.reportId) throw new Error('FixFlags did not return a report ID')
   if (outcome.status === 'FAILED') throw new Error(`Check ${outcome.reportId} failed`)
+  if (options.wait && outcome.status !== 'COMPLETED') {
+    throw new Error(
+      `Check ${outcome.reportId} is still ${outcome.status ?? 'running'} after the server wait window. Open ${outcome.reportUrl ?? `${options.apiBase}/report/${outcome.reportId}`}.`
+    )
+  }
   return {
     reportId: outcome.reportId,
     reportUrl:
@@ -95,6 +100,11 @@ export async function recheckAndDiff(
 
   if (!outcome.reportId) throw new Error('FixFlags did not return a re-check report ID')
   if (outcome.status === 'FAILED') throw new Error(`Re-check ${outcome.reportId} failed`)
+  if (options.wait && outcome.status !== 'COMPLETED') {
+    throw new Error(
+      `Re-check ${outcome.reportId} is still ${outcome.status ?? 'running'} after the server wait window.`
+    )
+  }
   return {
     parentReportId,
     reportId: outcome.reportId,

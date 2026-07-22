@@ -13,6 +13,7 @@ export function LandingHeroSection() {
               <span className="text-brand">{HERO.headlineAccent}</span>{' '}
               {HERO.headlineLine1}
             </span>
+            <span aria-hidden> </span>
             <br className="hidden sm:block" />
             <span className="text-brand">{HERO.headlineLine2}</span>
           </h1>

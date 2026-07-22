@@ -481,22 +481,48 @@ model Project {
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
   url                  String
+  /** Lowercase hostname without www. Exact Product identity within an account. */
+  canonicalHost        String
   /** Persistent Product Intelligence JSON — see knowledge/product-intelligence.md */
   productIntelligence  Json?
-  /** Auto-created PI anchor (does not consume Agency project slots). */
-  isAnchor             Boolean   @default(false)
-  /** Recurring verify: weekly | daily | null when off */
-  watchInterval        String?
+  /** Optimistic concurrency revision for all Product Intelligence mutations. */
+  productIntelligenceRevision Int @default(0)
+  /** Agency-promoted Project. Internal Products remain available without consuming quota. */
+  isManaged            Boolean   @default(false)
+  watchInterval        ProjectWatchInterval?
   watchNextRunAt       DateTime?
+  watchLeaseUntil      DateTime?
+  watchLastAttemptAt   DateTime?
   watchLastRunAt       DateTime?
+  watchConsecutiveFailures Int   @default(0)
+  watchLastError       String?
   audits               Audit[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   @@index([userId])
-  @@index([userId, url])
+  @@unique([userId, canonicalHost])
   @@index([watchNextRunAt])
+  @@index([watchLeaseUntil])
   @@map("projects")
+}
+
+enum ProjectWatchInterval {
+  WEEKLY
+  DAILY
+}
+
+enum RecheckTrigger {
+  MANUAL
+  WATCH
+}
+
+enum WatchNotificationStatus {
+  NOT_APPLICABLE
+  PENDING
+  SENDING
+  SENT
+  FAILED
 }
 
 enum MonitoringMode {
@@ -525,6 +551,7 @@ model Audit {
   parentId         String?
   parent           Audit?  @relation("Monitoring", fields: [parentId], references: [id])
   monitoringAudits Audit[] @relation("Monitoring")
+  recheckTrigger   RecheckTrigger?
 
   isPublic             Boolean              @default(false)
   skipUsageCount       Boolean              @default(false)
@@ -538,8 +565,11 @@ model Audit {
   aiReviewAt           DateTime?
   journeyReviewIncluded Boolean             @default(false)
   journeyReviewAt      DateTime?
-  /** Idempotency claim for Product Watch regression email. */
-  watchNotifiedAt      DateTime?
+  watchRegressionCount       Int?
+  watchNotificationStatus    WatchNotificationStatus @default(NOT_APPLICABLE)
+  watchNotificationAttempts  Int                     @default(0)
+  watchNotificationLastError String?
+  watchNotifiedAt             DateTime?
 
   startedAt       DateTime?
   completedAt     DateTime?
@@ -683,9 +713,10 @@ model ShareLink {
   id           String    @id @default(cuid())
   auditId      String
   audit        Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  token        String    @unique @default(cuid())
+  token        String    @unique
   label        String?
-  password     String?
+  passwordHash String?
+  version      Int       @default(1)
   expiresAt    DateTime?
   maxViews     Int?
   viewCount    Int       @default(0)

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canAccessAudit } from '@/lib/audit/access'
+import { resolveAuditAccess } from '@/lib/audit/access'
+import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { readScreenshot } from '@/lib/storage/screenshots'
 
@@ -20,14 +22,19 @@ export async function GET(
     const session = await resolveSessionUser()
     const audit = await prisma.audit.findUnique({
       where: { id: auditId },
-      select: { userId: true, isPublic: true },
+      select: { id: true, userId: true, isPublic: true },
     })
 
     if (!audit) {
       return apiError('Audit not found', 404)
     }
 
-    if (!canAccessAudit(audit, session?.user)) {
+    const access = await resolveAuditAccess(
+      audit,
+      session?.user,
+      (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+    )
+    if (access === 'denied') {
       return apiError('You do not have access to this audit', 403)
     }
 

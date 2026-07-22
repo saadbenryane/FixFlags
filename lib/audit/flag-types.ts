@@ -124,12 +124,23 @@ export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
  */
 export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'problem'> &
   Partial<
-    Omit<FlagData, 'id' | 'rubric' | 'severity' | 'problem' | 'confidence' | 'fingerprint'>
+    Omit<
+      FlagData,
+      | 'id'
+      | 'rubric'
+      | 'severity'
+      | 'problem'
+      | 'confidence'
+      | 'fingerprint'
+      | 'causeCertainty'
+      | 'fixConfidence'
+    >
   > & {
     id: string
     confidence?: number | null
     fingerprint?: string | null
     causeCertainty?: CauseCertainty | null
+    fixConfidence?: FixConfidence | null
   }
 
 /**

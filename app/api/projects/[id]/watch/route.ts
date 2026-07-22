@@ -4,7 +4,11 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
-import { isWatchInterval, setProjectWatch } from '@/lib/audit/project-watch'
+import {
+  fromStoredWatchInterval,
+  productWatchReadiness,
+  setProjectWatch,
+} from '@/lib/audit/project-watch'
 import { canAccessProductWatch } from '@/lib/auth/entitlements'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
@@ -30,6 +34,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
         watchInterval: true,
         watchNextRunAt: true,
         watchLastRunAt: true,
+        watchLastAttemptAt: true,
+        watchConsecutiveFailures: true,
+        watchLastError: true,
       },
     })
     if (!project) return apiError('Project not found', 404)
@@ -37,9 +44,13 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({
       projectId: project.id,
       url: project.url,
-      watchInterval: isWatchInterval(project.watchInterval) ? project.watchInterval : null,
+      watchInterval: fromStoredWatchInterval(project.watchInterval),
       watchNextRunAt: project.watchNextRunAt,
       watchLastRunAt: project.watchLastRunAt,
+      watchLastAttemptAt: project.watchLastAttemptAt,
+      watchConsecutiveFailures: project.watchConsecutiveFailures,
+      watchLastError: project.watchLastError,
+      readiness: productWatchReadiness(),
     })
   } catch (err) {
     return handleRouteError(err, 'Could not load product watch')
@@ -90,7 +101,11 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       userId: user.id,
       interval: body.data.interval,
     })
-    if (!result.ok) return apiError(result.error, 400)
+    if (!result.ok) {
+      return apiError(result.error, result.code === 'WATCH_UNAVAILABLE' ? 503 : 400, {
+        code: result.code ?? 'WATCH_UPDATE_FAILED',
+      })
+    }
 
     const project = await prisma.project.findUnique({
       where: { id },
@@ -98,13 +113,20 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         watchInterval: true,
         watchNextRunAt: true,
         watchLastRunAt: true,
+        watchLastAttemptAt: true,
+        watchConsecutiveFailures: true,
+        watchLastError: true,
       },
     })
 
     return NextResponse.json({
-      watchInterval: project?.watchInterval ?? null,
+      watchInterval: fromStoredWatchInterval(project?.watchInterval ?? null),
       watchNextRunAt: project?.watchNextRunAt ?? null,
       watchLastRunAt: project?.watchLastRunAt ?? null,
+      watchLastAttemptAt: project?.watchLastAttemptAt ?? null,
+      watchConsecutiveFailures: project?.watchConsecutiveFailures ?? 0,
+      watchLastError: project?.watchLastError ?? null,
+      readiness: productWatchReadiness(),
     })
   } catch (err) {
     return handleRouteError(err, 'Could not update product watch')

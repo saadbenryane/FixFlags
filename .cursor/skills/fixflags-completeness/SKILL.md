@@ -56,10 +56,22 @@ CI runs a **subset** of verify (no `db:validate`/`db:check`/`db:drift`, no `dock
 
 ## Phase 1.6 — Canonical task and route contracts
 
+- Read `knowledge/report-contract.md`; it is the only report-order source.
+
 - Check-to-plan and re-check-to-diff outcomes live in `lib/audit/task-contracts.ts`.
 - MCP/CLI happy paths use `ff_check_and_plan` and `ff_recheck_and_compare` exactly once per task.
 - HTTP creation is `/api/checks`; report reads and mutations are `/api/reports/[id]/*`.
 - Grep must be clean for `/api/audits`, `app/audit`, `ff_check_url`, and `ff_monitoring` outside historical migrations.
+- Run `npm run product:contract-guard` for stale routes, forbidden homepage duplication, sample provenance, prompt leaks, and focused deep imports.
+
+## Phase 1.7 — Completion release integrity
+
+- Database: all migrations applied; no build-time missing-column logs.
+- Focused bundle: `FocusedAuditReport` has no explorer, journey, flow, timeline, preview, launch-gate, MCP, or share-control imports.
+- Sample: marketing render is deterministic and versioned; no Prisma query or silent fallback.
+- Claim: Product anchor/Contract/usage/prescription workflow is retryable; cookie survives failures; no swallowed attachment or queue error.
+- Share: opening a token never updates `Audit.isPublic`; password grants are signed, HttpOnly, scoped, and metadata-safe; admission increments once atomically.
+- E2E: anonymous core loop and Agency password-share/revoke loop run against seeded Postgres and queue services.
 
 ## Phase 2 — Stale term grep
 
@@ -139,7 +151,7 @@ Before claiming revenue-ready:
 | Prisma models | `grep -c '^model ' prisma/schema.prisma` |
 | Check modules | `lib/audit/checks/index.ts` `checkers[]` |
 | Check IDs | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
-| MCP tools | `lib/mcp/tools.ts` `server.tool()` |
+| MCP tools | `lib/mcp/*.ts` `server.tool()` |
 | Page text limits | `lib/audit/page-text-limits.ts` |
 | Pipeline version | `lib/audit/pipeline-config.ts` |
 
@@ -220,13 +232,13 @@ rg 'reportCompleteness !== .FULL.' components/audit/
 
 ## Phase 8 — Sample provenance
 
-Marketing sample audits use provenance `live | curated | fixture` (`SampleSource` in `lib/marketing/live-sample.ts`). Eligibility is completeness + flags + rubrics + desktop screenshot — **not** score floors.
+Marketing pages use the versioned curated sample snapshot. Production audit rows never choose homepage content at render time. Eligibility helpers remain for validating newly generated candidate snapshots.
 
 Checks:
 
 - `lib/marketing/__tests__/sample-provenance.test.ts` passes
 - `isEligibleMarketingSample()` rejects near-empty audits regardless of score
-- Homepage/sample pages label provenance honestly (live preferred; fixture offline/demo only)
+- Homepage/sample pages identify the curated demo snapshot honestly; fixture routes remain offline/demo only
 - Display scores derive from production helpers (`resolveDisplayScores`, `calculateOverallScore`)
 
 ## Definition of done

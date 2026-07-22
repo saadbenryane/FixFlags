@@ -98,6 +98,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 | Security | What are the security invariants? | `SECURITY.md` |
 | Quality | How do we verify correctness? | `QUALITY.md` |
 | Audit Pipeline | How does the scan pipeline work? | `docs/audit-pipeline.md` |
+| Report Contract | Which information belongs on the focused, detailed, progressive, sample, and share surfaces? | `knowledge/report-contract.md` |
 | Code Map | Where do I find things in the codebase? | `CODEMAP.md` |
 | Agent Operating System | How do AI agents work on this project? | `AGENTS.md` |
 
@@ -161,6 +162,7 @@ When you need information about a topic, go to the canonical source:
 | Trust boundaries | `SECURITY.md` |
 | Verification matrix | `QUALITY.md` |
 | Audit pipeline | `docs/audit-pipeline.md` |
+| Report hierarchy | `knowledge/report-contract.md` |
 | Pipeline stages | `docs/audit-pipeline.md` |
 | AI phases (triage/prescription) | `docs/audit-pipeline.md` |
 | Degradation and recovery | `docs/audit-pipeline.md` |

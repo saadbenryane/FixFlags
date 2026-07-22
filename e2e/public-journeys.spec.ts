@@ -36,3 +36,19 @@ test('auth and pricing entry points render without client errors', async ({ page
   await expect(page.getByText('$99')).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('anonymous check reaches a completed report and enforces the one-teaser boundary', async ({ page }) => {
+  test.skip(process.env.E2E_FULL !== 'true', 'Set E2E_FULL=true for the queue-backed journey')
+  test.setTimeout(240_000)
+
+  await page.goto('/')
+  await page.getByLabel('Website URL').first().fill('https://example.com')
+  await page.getByRole('button', { name: 'Review my site' }).first().click()
+  await page.waitForURL(/\/report\//, { timeout: 30_000 })
+  await expect(page.locator('#report-flags')).toBeVisible({ timeout: 180_000 })
+
+  await page.goto('/')
+  await page.getByLabel('Website URL').first().fill('https://www.iana.org')
+  await page.getByRole('button', { name: 'Review my site' }).first().click()
+  await expect(page.getByText(/Create (a free )?account/i).first()).toBeVisible()
+})

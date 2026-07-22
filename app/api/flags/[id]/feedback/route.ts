@@ -84,7 +84,7 @@ export async function POST(
         (parsed.data.reason === 'intentional' || parsed.data.reason === 'low_priority') &&
         flag.audit.userId
       ) {
-        const { ensureProductProject, saveProjectIntelligence, loadProjectIntelligence } =
+        const { ensureProductProject, mutateProjectIntelligence } =
           await import('@/lib/audit/ensure-product-project')
         const {
           appendIntentionalNote,
@@ -104,31 +104,29 @@ export async function POST(
           })
         }
 
-        let pi = await loadProjectIntelligence(projectId)
-        if (!pi) {
-          const audit = await prisma.audit.findUnique({
-            where: { id: flag.auditId },
-            select: { productContract: true },
-          })
-          const contract = parseProductContract(audit?.productContract)
-          pi = contract
-            ? mergeContractIntoProductIntelligence(null, contract)
-            : productIntelligenceFromContract({
-                purpose: 'Help visitors get value from this product',
-                firstValueJourney: 'Complete the primary journey',
-                criticalOutcomes: ['Primary outcomes work'],
-                inferredAt: new Date().toISOString(),
-                source: 'heuristic',
-              })
-        }
+        const audit = await prisma.audit.findUnique({
+          where: { id: flag.auditId },
+          select: { productContract: true },
+        })
+        const contract = parseProductContract(audit?.productContract)
+        const fallback = contract
+          ? mergeContractIntoProductIntelligence(null, contract)
+          : productIntelligenceFromContract({
+              purpose: 'Help visitors get value from this product',
+              firstValueJourney: 'Complete the primary journey',
+              criticalOutcomes: ['Primary outcomes work'],
+              inferredAt: new Date().toISOString(),
+              source: 'heuristic',
+            })
         const note = parsed.data.comment?.trim()
           ? `${flag.problem} - ${parsed.data.comment.trim()}`
           : flag.problem
-        const nextPi =
-          parsed.data.reason === 'low_priority'
+        await mutateProjectIntelligence(projectId, (current) => {
+          const pi = current ?? fallback
+          return parsed.data.reason === 'low_priority'
             ? appendKnownRisk(pi, note)
             : appendIntentionalNote(pi, note)
-        await saveProjectIntelligence(projectId, nextPi)
+        })
       }
     }
 

@@ -39,7 +39,7 @@ Paste your site. We reconstruct a basic Product understanding (Product Contract)
 
 1. User pastes a URL.
 2. Deterministic checks + AI review run on the page; Product Contract is inferred.
-3. User gets a Finish Plan (top priorities), Flags with evidence, and fix prompts.
+3. User lands on a focused Finish Plan with at most three evidence-backed fixes. The full technical review is a separate details surface.
 4. User pastes fix prompts into their AI editor.
 5. User ships fixes.
 6. User re-checks the same URL (free, unlimited).
@@ -50,8 +50,8 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 ## What we ship
 
 ### Anonymous teaser (no account)
-- 1 free teaser scan: scores, rubrics, Flags, evidence, one sample fix card
-- Fix prompts and prescription require signup + claim
+- 1 free teaser scan: scores, rubrics, three prioritized problem/evidence summaries, and exactly one complete demonstrated fix
+- Remaining fix prompts, ownership, and re-check require signup + a successful claim
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 
 ### Free (forever)
@@ -98,11 +98,13 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration (16 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
 - Project-scoped Product Intelligence persistence
-- Finish Plan (≤3 prioritized improvements) with contract-aware ranking; plan prompt defaults to ≤3
+- Focused `/report/[id]` Finish Plan and separate `/report/[id]/details` technical review, governed by `knowledge/report-contract.md`
+- Finish Plan (≤3 prioritized improvements) with contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
-- **Live progressive report:** after URL submit, `/report/{id}` uses the same chrome as the completed report (hero, RubricBar, sticky, Contract, Action Timeline, partial Flags) while the pipeline runs; stages and progress are honest (never fake)
+- **Live progressive report:** after URL submit, `/report/{id}` honestly builds toward three Finish Plan cards; captures and early findings appear first, while Contract and timeline evidence stay behind “How FixFlags is checking”
+- **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 
 ## Limitations and technical debt
 

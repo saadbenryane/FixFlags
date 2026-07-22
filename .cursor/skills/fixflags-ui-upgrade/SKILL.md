@@ -44,15 +44,19 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 - [ ] No dead claim-guide / orphan `font-display` on report cards
 
 ### Report density (when touching audit/report UI)
+- [ ] Read `knowledge/report-contract.md`; never copy its route or section order into this skill
+- [ ] Focused route has at most three numbered fixes and no explorer/journey/timeline/preview bundles
+- [ ] Detailed route contains the explorer and secondary actions, with Back to Finish Plan
+- [ ] Anonymous focused report has exactly one complete fix and one signup moment
 - [ ] Read [fixflags-design-philosophy](../fixflags-design-philosophy/SKILL.md) report density doctrine
 - [ ] Explorer score ring is `sm` (68px); header `gap-3` / `pb-3`
 - [ ] No severity filter pills; list is severity-ranked; rubric + page filters only
 - [ ] Flag meta: `SeveritySignal` → Rubric → Impact (no truth pills)
 - [ ] Device-specific evidence only (no healthy twin viewport)
 - [ ] One share-status surface (`ShareStatusBanner`); hero is identity + `ScoreDot` only
-- [ ] Sticky tabs match DOM; no Overview; Finish Plan when plan items exist
+- [ ] Detailed sticky tabs match DOM; no Overview
 - [ ] No FixLoop status row / duplicate count under filters
-- [ ] **Progressive seam:** same `AuditReportHero` / `RubricBar` / sticky as completed; `getScanningLabel` wired; no `ReportHeroHeader` / progressive `RubricSummaryGrid` / `#report-overview`; COMPLETED holds frame + `router.refresh()`; partial Callout only on `PARTIAL`
+- [ ] **Progressive seam:** three-card Finish Plan skeleton, captures, honest status, collapsible checking details; COMPLETED holds frame + `router.refresh()`
 
 ### Typography
 - [ ] Marketing heroes: `Heading as="h1"` or `h2`

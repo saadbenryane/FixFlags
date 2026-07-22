@@ -1,9 +1,14 @@
 import { describe, it, vi, expect, beforeEach } from 'vitest'
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
   audit: {
     findMany: vi.fn(),
-    updateMany: vi.fn(),
+    update: vi.fn(),
+  },
+  project: {
+    findUnique: vi.fn(),
+    upsert: vi.fn(),
     update: vi.fn(),
   },
   user: { findUnique: vi.fn() },
@@ -31,13 +36,13 @@ vi.mock('@/lib/audit/usage', async (importOriginal) => {
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({ remainingAiReportCredits }))
 vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/auth/permissions', () => ({ hasUnlimitedScans }))
-
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
 
 describe('claimAnonymousAudits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prismaMock.$transaction.mockImplementation(async (operation) => operation(prismaMock))
     cookieStore.get.mockReturnValue({ value: 'teaser-1' })
     prismaMock.audit.findMany.mockResolvedValue([
       {
@@ -46,10 +51,16 @@ describe('claimAnonymousAudits', () => {
         aiReviewAt: null,
         skipUsageCount: false,
         usageCountedAt: null,
+        url: 'https://example.com',
+        projectId: null,
+        productContract: null,
       },
     ])
-    prismaMock.audit.updateMany.mockResolvedValue({ count: 1 })
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.project.upsert.mockResolvedValue({
+      id: 'project-1',
+      productIntelligence: null,
+    })
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u1',
       role: 'user',
@@ -71,9 +82,9 @@ describe('claimAnonymousAudits', () => {
   it('assigns ownership, counts usage, and enqueues prescription before includeAi', async () => {
     const claimed = await claimAnonymousAudits('u1')
     expect(claimed).toBe(1)
-    expect(prismaMock.audit.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['teaser-1'] } },
-      data: { userId: 'u1' },
+    expect(prismaMock.audit.update).toHaveBeenCalledWith({
+      where: { id: 'teaser-1' },
+      data: { userId: 'u1', projectId: 'project-1' },
     })
     expect(incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('teaser-1', 'u1')
     expect(enqueueAiReview).toHaveBeenCalledWith('teaser-1')
@@ -82,15 +93,18 @@ describe('claimAnonymousAudits', () => {
       data: { includeAi: true },
     })
     const enqueueOrder = enqueueAiReview.mock.invocationCallOrder[0]
-    const includeAiOrder = prismaMock.audit.update.mock.invocationCallOrder[0]
+    const includeAiOrder = prismaMock.audit.update.mock.invocationCallOrder.at(-1)!
     expect(enqueueOrder).toBeLessThan(includeAiOrder)
     expect(cookieStore.delete).toHaveBeenCalledWith(ANON_AUDIT_IDS_COOKIE)
   })
 
-  it('does not set includeAi when enqueue fails', async () => {
+  it('keeps the claim retryable when enqueue fails', async () => {
     enqueueAiReview.mockRejectedValue(new Error('queue down'))
-    const claimed = await claimAnonymousAudits('u1')
-    expect(claimed).toBe(1)
-    expect(prismaMock.audit.update).not.toHaveBeenCalled()
+    await expect(claimAnonymousAudits('u1')).rejects.toThrow('queue down')
+    expect(cookieStore.delete).not.toHaveBeenCalled()
+    expect(prismaMock.audit.update).not.toHaveBeenCalledWith({
+      where: { id: 'teaser-1' },
+      data: { includeAi: true },
+    })
   })
 })

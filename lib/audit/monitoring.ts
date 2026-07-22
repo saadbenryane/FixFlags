@@ -1,4 +1,4 @@
-import { AuditStatus, User } from '@prisma/client'
+import { AuditStatus, RecheckTrigger, User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { buildAttribution } from '@/lib/leads/attribution'
@@ -10,6 +10,7 @@ export interface MonitoringResult {
 
 export interface StartMonitoringOptions {
   delayMs?: number
+  trigger?: RecheckTrigger
 }
 
 export function validateMonitoringParent(
@@ -55,6 +56,7 @@ export async function startMonitoringAudit(
     parentId,
     skipUsageCount: true,
     monitoringMode: 'FULL',
+    recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,
     attribution: buildAttribution({
       url: parent!.url,

@@ -136,6 +136,8 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## States
 
+Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The focused route is a calm decision surface with three numbered fixes. The details route is the dense inspection workspace. Do not merge their densities.
+
 Every interactive element must define: rest, hover, focus, active, disabled.
 
 - Focus: `--focus-ring` (Flag Orange)

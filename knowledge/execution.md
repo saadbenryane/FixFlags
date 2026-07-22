@@ -22,14 +22,12 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 
 ## Now (ordered)
 
-1. **Finish Plan ≤3 everywhere** — plan prompt, MCP, export Finish Plan path (not all-flags dump).
-2. **Contract merge-not-wipe** — edits preserve verifiedLearnings / notes / risks.
-3. **Remember visible** — ProductMemoryStrip on report when Project PI has learnings.
-4. **Claim → Project** — anon claim attaches `ensureProductProject`.
-5. **Dogfood precision** — suppress twin FPs; credible top-3.
-6. **Agency handoff honesty** — share path, hashed passwords, project quota vs anchors, Fix PR docs.
-7. **Project product watch** — Prisma schedule + recovery tick + regression email (Pro/Agency).
-8. **Agent CLI core loop** — `check` returns Finish Plan ≤3; `recheck` returns verification diff + next plan.
+1. **Focused loop** — `/report/[id]` is three fixes, proof, copy, full-review link, and re-check.
+2. **Depth without bloat** — `/report/[id]/details` keeps Contract, Memory, journeys, timeline, explorer, previews, gates, watch, and secondary actions.
+3. **Honest acquisition** — deterministic curated sample; anonymous gets all three summaries and exactly one complete fix.
+4. **Claim integrity** — Product anchor, Contract merge, usage, prescription enqueue, retry, then return to the report.
+5. **Share integrity** — direct token routes, signed password grant, atomic view admission, revocation/expiry/entitlement checks, private metadata.
+6. **Release proof** — database, static gates, unit, CLI pack, E2E, build/worker/Docker, local core loop, Agency share loop, production smoke.
 
 ## Next (after thesis signals)
 

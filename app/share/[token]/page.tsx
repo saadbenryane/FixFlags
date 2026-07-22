@@ -1,118 +1,89 @@
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { ShareLinkPageClient } from '@/components/audit/ShareLinkPageClient'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { SHARE_GRANT_COOKIE, verifyShareGrant } from '@/lib/security/share-grant'
+import { ReportRoute } from '@/app/report/[id]/page'
+import { canSharePublicly } from '@/lib/auth/entitlements'
 
-interface Props {
-  params: Promise<{ token: string }>
-}
+interface Props { params: Promise<{ token: string }> }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params
-
-  const link = await prisma.shareLink.findUnique({
+async function loadLink(token: string) {
+  return prisma.shareLink.findUnique({
     where: { token },
     select: {
       id: true,
+      auditId: true,
       revoked: true,
       expiresAt: true,
       maxViews: true,
       viewCount: true,
-      password: true,
+      passwordHash: true,
+      version: true,
       audit: {
         select: {
           url: true,
           score: true,
           verdict: true,
-          flags: {
-            select: { severity: true, problem: true },
-            orderBy: { position: 'asc' },
-            take: 3,
-          },
+          status: true,
+          user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } },
         },
       },
     },
   })
+}
 
-  if (!link || link.revoked) {
-    return { title: 'Link not found' }
+function isUnavailable(link: Awaited<ReturnType<typeof loadLink>>): boolean {
+  return !link || link.revoked || link.audit.status !== 'COMPLETED' ||
+    !link.audit.user || !canSharePublicly(link.audit.user) ||
+    Boolean(link.expiresAt && link.expiresAt < new Date())
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { token } = await params
+  const link = await loadLink(token)
+  if (isUnavailable(link)) return { title: 'Shared report unavailable', robots: { index: false, follow: false } }
+  if (link!.passwordHash) {
+    return {
+      title: `Protected report · ${BRAND.name}`,
+      description: 'A password-protected FixFlags report.',
+      robots: { index: false, follow: false },
+    }
   }
-
-  if (link.expiresAt && link.expiresAt < new Date()) {
-    return { title: 'Link expired' }
-  }
-
-  if (link.maxViews && link.viewCount >= link.maxViews) {
-    return { title: 'Link expired' }
-  }
-
-  const hostname = link.audit.url ? displayHostname(link.audit.url) : 'FixFlags report'
-
-  const score = link.audit.score
-  const topIssue = link.audit.flags.find(f => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT')?.problem
-  const title = score != null ? `${hostname} - ${score}/100` : `${hostname} review`
-  const description = topIssue ?? link.audit.verdict?.slice(0, 140) ?? 'Automated QA report from FixFlags'
-
+  const hostname = displayHostname(link!.audit.url)
+  const title = `${hostname} review · ${BRAND.name}`
   return {
     title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: 'website',
-      url: `${SITE_URL}/share/${token}`,
-      siteName: BRAND.name,
-      images: [{ url: `/share/${token}/opengraph-image`, width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [`${SITE_URL}/share/${token}/opengraph-image`],
-    },
+    description: 'A shared FixFlags Finish Plan.',
+    robots: { index: false, follow: false },
+    openGraph: { title, description: 'A shared FixFlags Finish Plan.', url: `${SITE_URL}/share/${token}`, siteName: BRAND.name },
   }
 }
 
 export default async function ShareLinkPage({ params }: Props) {
   const { token } = await params
+  const link = await loadLink(token)
+  if (isUnavailable(link)) notFound()
 
-  const link = await prisma.shareLink.findUnique({
-    where: { token },
-    select: {
-      id: true,
-      revoked: true,
-      expiresAt: true,
-      maxViews: true,
-      viewCount: true,
-      password: true,
-      auditId: true,
-      audit: {
-        select: { id: true, isPublic: true },
-      },
-    },
-  })
-
-  if (!link || link.revoked) notFound()
-  if (link.expiresAt && link.expiresAt < new Date()) notFound()
-  if (link.maxViews && link.viewCount >= link.maxViews) notFound()
-
-  if (!link.audit.isPublic) {
-    await prisma.audit.update({
-      where: { id: link.auditId },
-      data: { isPublic: true },
-    })
+  const cookieStore = await cookies()
+  const grant = verifyShareGrant(cookieStore.get(SHARE_GRANT_COOKIE)?.value)
+  if (
+    !grant ||
+    grant.linkId !== link!.id ||
+    grant.auditId !== link!.auditId ||
+    grant.linkVersion !== link!.version
+  ) {
+    return <ShareLinkPageClient token={token} requiresPassword={Boolean(link!.passwordHash)} />
   }
 
-  await prisma.shareLink.update({
-    where: { id: link.id },
-    data: { viewCount: { increment: 1 }, lastViewedAt: new Date() },
-  })
-
-  if (!link.password) {
-    redirect(`/report/${link.auditId}`)
-  }
-
-  return <ShareLinkPageClient token={token} auditId={link.auditId} />
+  return (
+    <ReportRoute
+      params={Promise.resolve({ id: link!.auditId })}
+      accessMode="share"
+      shareToken={token}
+    />
+  )
 }

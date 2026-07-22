@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canAccessAudit } from '@/lib/audit/access'
+import { resolveAuditAccess } from '@/lib/audit/access'
+import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
@@ -30,6 +31,7 @@ export async function GET(
     const audit = await prisma.audit.findUnique({
       where: { id },
       select: {
+        id: true,
         status: true,
         progress: true,
         score: true,
@@ -71,7 +73,12 @@ export async function GET(
       return apiError('Report not found', 404)
     }
 
-    if (!canAccessAudit(audit, session?.user)) {
+    const access = await resolveAuditAccess(
+      audit,
+      session?.user,
+      (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+    )
+    if (access === 'denied') {
       return apiError('You do not have access to this report', 403)
     }
 

@@ -130,6 +130,8 @@ interface AuditReportProps {
   recheckDiff?: RecheckDiffSummary | null
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
+  backToPlanHref?: string
+  showFinishPlan?: boolean
 }
 
 export function AuditReport({
@@ -161,6 +163,8 @@ export function AuditReport({
   recheckDiff = null,
   compareHref = null,
   sampleFixFlag = null,
+  backToPlanHref,
+  showFinishPlan = true,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
@@ -206,13 +210,18 @@ export function AuditReport({
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
   const showPriorities =
-    !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
+    showFinishPlan && !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
 
   return (
     <Container
       variant="report"
       className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
     >
+      {backToPlanHref ? (
+        <Button asChild variant="ghost" className="min-h-11 w-fit">
+          <Link href={backToPlanHref}>{REPORT_COPY.focused.backToPlan}</Link>
+        </Button>
+      ) : null}
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
         score={audit.score}
@@ -321,7 +330,7 @@ export function AuditReport({
         />
       ) : null}
 
-      {!isSample && explorerModel && (hasFixPrompts || fixPromptLocked) && (
+      {showFinishPlan && !isSample && explorerModel && (hasFixPrompts || fixPromptLocked) && (
         <section id="report-finish-plan" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
             <div>

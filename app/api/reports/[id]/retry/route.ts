@@ -21,9 +21,9 @@ export async function POST(
       where: { id },
       select: { userId: true, isPublic: true, status: true },
     })
-    if (!audit) return apiError('Audit not found', 404)
+    if (!audit) return apiError('Report not found', 404)
     if (!canAccessAudit(audit, session?.user)) {
-      return apiError('You do not have access to this audit', 403)
+      return apiError('You do not have access to this report', 403)
     }
     if (audit.status !== 'FAILED') {
       return apiError('Only failed audits can be retried', 400)

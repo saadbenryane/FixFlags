@@ -45,7 +45,7 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
             key={name}
             href="#report-flags"
             className={cn(
-              'group flex items-center gap-2 rounded-full border border-border/40 bg-card px-3 py-1.5',
+              'group flex min-h-11 items-center gap-2 rounded-full border border-border/40 bg-card px-3 py-1.5',
               'transition-colors hover:border-border/70 hover:bg-accent/50'
             )}
           >

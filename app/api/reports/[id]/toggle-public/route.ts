@@ -22,10 +22,10 @@ export async function PATCH(
       where: { id },
       select: { userId: true, isPublic: true, status: true },
     })
-    if (!audit) return apiError('Audit not found', 404)
+    if (!audit) return apiError('Report not found', 404)
 
     if (!canManageAudit(audit, session?.user)) {
-      return apiError('Sign in to manage sharing for this audit', 401)
+      return apiError('Sign in to manage sharing for this report', 401)
     }
 
     if (audit.status !== 'COMPLETED') {

@@ -9,6 +9,7 @@ Start with `npm run agent`. Use `npm run agent -- context <area>` for focused fi
 FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Finish Plan across Message, Experience, and Reach, with fix prompts for their AI editor.
 
 - Core loop: **Flag → Fix → Re-check**.
+- Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
 - Re-checks are free and unlimited; plans meter new URL checks.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
 - Shipped truth: [PRODUCT.md](PRODUCT.md). North star: [knowledge/vision.md](knowledge/vision.md).
@@ -20,6 +21,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 |------|------------|---------------|
 | Repository orientation | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md) | `npm run agent -- context orientation` |
 | Report or application UI | [DESIGN.md](DESIGN.md), `components/audit/`, `components/report/` | `npm run agent -- context ui` |
+| Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |

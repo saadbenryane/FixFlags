@@ -21,6 +21,7 @@ import {
   countFixPrompts,
   countFixPromptsByRubric,
 } from '@/lib/audit/priority-flags'
+import { buildFinishPlan } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
@@ -155,7 +156,12 @@ export function ExportMenu({
                 onClick={() =>
                   openPreview(
                     'Finish Plan for your editor',
-                    buildPlanModePrompt(flags, { url, limit: 3 })
+                    buildFinishPlan({
+                      flags,
+                      rubricRows: rubrics,
+                      url,
+                      promptAccess: 'all',
+                    }).copyPrompt ?? ''
                   )
                 }
                 className="gap-2"

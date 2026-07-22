@@ -36,7 +36,7 @@ Import the FixFlags power from this repo:
 
 ## How it works
 
-All three integrations use the FixFlags MCP server (14 tools). The rules/skill/power tell your AI editor how to call `ff_check_and_plan`, `ff_get_report_flags`, and other FixFlags tools.
+All three integrations use the FixFlags MCP server (16 tools). The rules/skill/power use `ff_check_and_plan` and `ff_recheck_and_compare` for complete tasks, with granular tools for drill-down.
 
 ## Requirements
 

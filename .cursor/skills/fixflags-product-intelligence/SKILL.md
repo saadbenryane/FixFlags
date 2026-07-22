@@ -18,6 +18,7 @@ description: FixFlags Product Intelligence System — vision, Product Intelligen
 | Customer PI model | `knowledge/product-intelligence.md` |
 | Integrity Engine + 5 dimensions | `knowledge/integrity-engine.md` |
 | Finish Plan artifact | `knowledge/finish-plan.md` |
+| Report hierarchy | `knowledge/report-contract.md` |
 | Privacy | `knowledge/privacy.md` |
 | Open source | `knowledge/open-source.md` |
 | Build order | `knowledge/execution.md` + `ROADMAP.md` |
@@ -39,8 +40,8 @@ description: FixFlags Product Intelligence System — vision, Product Intelligen
 |---------|------|
 | Contract / PI types | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
 | Project PI column | Prisma `Project.productIntelligence` (+ `isAnchor`, watch fields) |
-| Finish Plan ranking | `lib/audit/priority-flags.ts` (`rankFlagsByPriority`, `buildPlanModePrompt` default limit 3) |
-| Report Finish Plan UI | `components/audit/AuditReport.tsx` `#report-finish-plan` |
+| Finish Plan service | `lib/audit/finish-plan.ts` (`buildFinishPlan`) |
+| Focused report / details | `FocusedAuditReport.tsx`; `AuditReport.tsx` on `/details` |
 | Remember UI | `components/audit/ProductMemoryStrip.tsx` |
 | Task contracts | `lib/audit/task-contracts.ts` (check → plan, re-check → diff + next plan) |
 | MCP | `ff_check_and_plan`, `ff_recheck_and_compare`, plus context/plan drill-down tools |
@@ -62,3 +63,4 @@ Anchor creation is concurrency-safe through the partial unique database index. W
 8. **Contract PATCH merges** into existing PI. Never `productIntelligenceFromContract` alone when Project PI exists.
 9. **Finish Plan copy/export/MCP plan prompt ≤3** by default. “All prompts” is a separate labeled export.
 10. **Remember must be visible** when learnings exist (`ProductMemoryStrip`). Do not claim Remember in PRODUCT.md without UI.
+11. **Report order lives only in `knowledge/report-contract.md`.** Link to it; do not restate it in skills.

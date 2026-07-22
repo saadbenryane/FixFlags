@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | in_progress | codex | main | Canonical task contracts, route cutover, product hardening, CLI beta, E2E/CI, docs and skills | app, components, lib, prisma, fixflags-cli, tests, docs, skills | Preserve and integrate launch-check-completeness + agent-native-cli baseline | 2026-07-22 |
+| current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
 
 ---
 

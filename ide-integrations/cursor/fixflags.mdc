@@ -22,7 +22,7 @@ Copy this rule into the project as `.cursor/rules/fixflags.mdc`, or keep it unde
 
 | Tool | Use |
 |------|-----|
-| `ff_check_and_plan` | Start a check. Pass `waitForCompletion: true` when you need results inline. |
+| `ff_check_and_plan` | Check a URL and return report + Finish Plan. Pass `waitForCompletion: true` for the completed outcome. |
 | `ff_get_check_status` | Poll status / progress |
 | `ff_get_report` | Rubric summaries + shareStatus |
 | `ff_get_rubric` | Flags + fix text for one rubric (`MESSAGE` \| `EXPERIENCE` \| `REACH`) |
@@ -40,11 +40,10 @@ There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `f
 ## Core workflow
 
 1. User gives a public URL (not localhost).
-2. Call `ff_check_and_plan` (optionally `waitForCompletion: true`).
-3. Call `ff_get_product_context` then `ff_get_current_finish_plan`.
-4. Call `ff_get_report` for scores; call `ff_get_rubric` for each rubric for Flags.
-5. Present findings by **Message**, **Experience**, **Reach**.
-6. Offer to apply the Finish Plan / fix prompt; then suggest `ff_recheck_and_compare` re-check.
+2. Call `ff_check_and_plan` with `waitForCompletion: true`.
+3. Present its report and Finish Plan by **Message**, **Experience**, **Reach**.
+4. Use context, rubric, or flag tools only when the user needs deeper evidence.
+5. Apply the Finish Plan, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
 
 ## Presenting results
 

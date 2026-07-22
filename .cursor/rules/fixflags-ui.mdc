@@ -28,6 +28,10 @@ Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/3
 
 Report pages: `Container variant="report"` (`max-w-6xl`). Marketing: `default` (`max-w-5xl`). Marketing full mesh (`GlobalMeshBackdrop intensity="full"`) has no hero grid.
 
+## Report hierarchy
+
+Read `knowledge/report-contract.md`. `/report/[id]` is the focused three-item Finish Plan. `/report/[id]/details` is the full inspection workspace. Anonymous viewers get three problem/evidence summaries and exactly one complete fix. Keep advanced controls off the first-use surface. Progressive UI builds toward three plan cards. Verify 375, 768, and 1280px plus keyboard, zoom/reflow, loading, partial, error, and reduced-motion states.
+
 ## Radius
 
 Concentric: inner = outer − padding. Cards/panels: `rounded-card` (~27px from `--radius-card`). Controls: `rounded-full` (pill).

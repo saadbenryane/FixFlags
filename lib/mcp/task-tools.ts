@@ -12,7 +12,7 @@ function taskResult(outcome: object, queue: {
   delayMs: number
   estimatedWaitSeconds: number
   queuePosition: number
-  scheduledStartAt: Date | null
+  scheduledStartAt: string | null
   rateLimitRetryAfter: number
   waitingJobs: number
 }) {

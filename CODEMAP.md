@@ -28,7 +28,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `app/(marketing)/` | Public pages: homepage, pricing, FAQ, help, tools, docs, changelog, roast | — |
 | `app/(auth)/` | Sign-in, sign-up, forgot/reset password | — |
 | `app/(app)/` | Authenticated dashboard, billing, settings | — |
-| `app/report/[id]/` | Progressive and completed report | — |
+| `app/report/[id]/` | Focused Finish Plan; `details/` owns the full technical review | `knowledge/report-contract.md` |
+| `app/share/[token]/` | Scoped focused/details share rendering | `lib/security/share-grant.ts` |
 | `app/admin/` | Admin dashboard | — |
 | `app/api/` | All API routes (audits, auth, MCP, Stripe, cron, health) | — |
 | `components/` | React components organized by feature area | [components/codemap.md](components/codemap.md) |
@@ -64,7 +65,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Billing/subscription logic** → `lib/billing/` (read `lib/billing/codemap.md`)
 - **Marketing copy** → `lib/marketing/copy.ts` ONLY (never hardcode in components)
 - **Design tokens** → `lib/design/tokens.css` (semantic tokens, never raw hex)
-- **Report UI layout** → `components/audit/` (hero, toolbar, rubrics, actions)
+- **Focused report UI** → `components/audit/FocusedAuditReport.tsx`, `lib/report/report-view-model.ts`
+- **Detailed report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`
 - **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
 - **API routes** → `app/api/` (audits, auth, MCP, Stripe, cron, health)

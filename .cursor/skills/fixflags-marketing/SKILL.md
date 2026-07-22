@@ -11,6 +11,7 @@ Read before changing marketing copy, positioning, or GTM.
 
 **Canonical sources (always check first):**
 - Vision / category (strategy): `knowledge/vision.md`, `.cursor/skills/fixflags-product-intelligence/SKILL.md`
+- Focused report and sample hierarchy: `knowledge/report-contract.md`
 - Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`, `HELP_CENTER`, `SUPPORT_CHAT`)
 - Help articles: `lib/help/catalog.ts` (bodies + categories; not hardcoded in pages)
 - Product behavior (entitlements, billing, support): `.cursor/skills/fixflags-product/SKILL.md`
@@ -147,7 +148,7 @@ Full research methods: [research-workflows.md](research-workflows.md).
 |---------|------------------|---------------------------|
 | **Homepage hero** | Check before you ship | Live site — see what to fix first |
 | **Homepage nav** | How it works / Sample / Pricing | Same three links; Sample anchors to `#sample-review` |
-| **Homepage body** | Sample review (one explorer) → fix loop → everything we check → deeper Flag examples → why AI → editor integrations → final CTA | Same order; exactly one report explorer in Sample review; no invented testimonials |
+| **Homepage body** | Three-item Finish Plan preview → fix loop → Message/Experience/Reach → why AI → editor integrations → final CTA | One proof preview; no repeated Flag examples or invented testimonials |
 | **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
 | **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
 | **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
@@ -167,13 +168,13 @@ Full research methods: [research-workflows.md](research-workflows.md).
 ## Homepage contract
 
 - **Nav links:** How it works · Sample · Pricing (`MARKETING_LINKS` in `lib/site/nav.ts`)
-- **Section order:** Hero → Sample review → Fix loop → Everything we check → Deeper Flag examples → Why AI → Editor integrations → Final CTA
+- **Section order:** Hero → three-item sample Finish Plan → Fix loop → Message/Experience/Reach → Why AI → Editor integrations → Final CTA
 - **Rubric titles:** Message / Experience / Reach only. Never "Message gaps", "Experience friction", "Reach misses", "Makes sense", "Works", or "Ready to share".
 - **Section headlines:** One job each. No inventory "three areas/places" framing. Keep paste → fix → re-check vivid in How it works + Final CTA; do not restate the same loop in Sample + Integrations bodies.
 - **Funnel events:** see `.cursor/skills/fixflags-analytics/SKILL.md` and `.agents/handoffs/launch-funnel-p2.md` (P2 gated on ~100 scans)
-- **One explorer:** the live sample report lives only in `SampleReportSection`; do not add a second explorer in hero or elsewhere. Deeper examples are static Flag cards, not a second explorer.
+- **One proof surface:** `SampleReportSection` renders three ranked problems, selected evidence, and one complete fix. Do not add a second explorer or deeper Flag-example section.
 - **Editor logos:** `EditorIntegrationsSection` / `EditorToolMarks`, not the hero
-- **Sample provenance:** label as live, curated, or fixture (`SampleSource`); eligibility is completeness-based, not score floors
+- **Sample provenance:** marketing uses the versioned curated snapshot; `/samples/details` shows the full snapshot. Do not query production audits while rendering marketing pages.
 
 ## Product–copy alignment
 

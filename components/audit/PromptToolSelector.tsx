@@ -90,7 +90,7 @@ export function PromptToolSelector({
             storePreference(opt.key)
           }}
           className={cn(
-            'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-2xs font-medium transition-colors',
+            'inline-flex min-h-11 items-center gap-1 rounded-full px-3 py-1 text-2xs font-medium transition-colors',
             'border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
             selectedTool === opt.key
               ? 'border-brand bg-brand/10 text-brand'

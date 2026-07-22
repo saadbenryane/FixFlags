@@ -69,6 +69,25 @@ test('checkAndPlan returns the authoritative queued outcome without coordinating
   )
 })
 
+test('checkAndPlan does not report a timed-out wait as a completed plan', async () => {
+  const mock = caller({
+    ff_check_and_plan: {
+      reportId: 'report-running',
+      reportUrl: 'https://fixflags.com/report/report-running',
+      status: 'CHECKING',
+    },
+  })
+
+  await assert.rejects(
+    checkAndPlan(mock.call, 'https://example.com', {
+      wait: true,
+      single: false,
+      apiBase: 'https://fixflags.com',
+    }),
+    /still CHECKING after the server wait window/
+  )
+})
+
 test('recheckAndDiff uses the combined monitoring response without extra calls', async () => {
   const mock = caller({
     ff_recheck_and_compare: {

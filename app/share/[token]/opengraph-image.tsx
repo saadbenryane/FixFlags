@@ -19,6 +19,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
       expiresAt: true,
       maxViews: true,
       viewCount: true,
+      passwordHash: true,
       audit: {
         select: {
           url: true,
@@ -46,6 +47,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
   const valid =
     link &&
     !link.revoked &&
+    !link.passwordHash &&
     link.audit.status === 'COMPLETED' &&
     (!link.expiresAt || link.expiresAt >= new Date()) &&
     (!link.maxViews || link.viewCount < link.maxViews)

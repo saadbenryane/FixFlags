@@ -160,7 +160,7 @@ function resolveSampleAnchors(audit: LiveSampleAudit): EvidenceAnchorMap {
   const live = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   if (live && Object.keys(live).length > 0) return live
   // Static pin map is only valid for the curated fixture screenshots.
-  if (audit.id === 'static-sample') return STATIC_ANCHORS
+  if (audit.id === 'curated-sample-v1') return STATIC_ANCHORS
   return {}
 }
 

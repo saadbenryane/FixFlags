@@ -46,13 +46,13 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Report density + sticky sync | ⚠️ CRITICAL | Explorer score `sm`; sticky under header; tabs match DOM (no Overview; Priorities when present); one share-status surface; anon ≤2 CTAs | Manual smoke checklist below + progressive sticky assertions |
+| Focused versus detailed report contract | ⚠️ CRITICAL | Focused route has ≤3 fixes and no deep explorer bundles; details nav matches DOM; anonymous has exactly one complete fix | `finish-plan.test.ts`, product contract guard, browser matrix |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit still manual |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px | No responsive tests |
 | Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | Partial |
-| Accessibility basics | 🔵 POLISH | Keyboard nav, screen reader support, color contrast | Lint rules only |
-| Page load performance | 🔵 POLISH | Report page <2s | Not measured |
+| Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Lint + browser matrix |
+| Page load performance | 🔶 IMPORTANT | Focused report materially smaller than details and loads without deep explorer modules | Production build route output |
 | Coverage thresholds | 🔵 POLISH | Vitest coverage config | Not configured |
 
 ## Automated guards
@@ -64,6 +64,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Unit tests | `npm run test:unit` | Lib-level correctness | Yes |
 | Brand hex | `npm run brand:hex-guard` | Brand color compliance | Yes |
 | UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
+| Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
 | SEO | `npm run seo:guard` | SEO compliance | Yes |
 | Migration | `npm run db:check` | Migration status | Verify script |
 | Drift | `npm run db:drift` | Schema drift | Verify script |
@@ -82,17 +83,17 @@ All five now have automated coverage, run in CI via `npm run test:unit`:
 
 Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; extend route contract tests to the remaining API endpoints.
 
-## Report density smoke (manual CRITICAL)
+## Report contract smoke (manual CRITICAL)
 
 Until automated Touch-tier tests cover report chrome:
 
-1. Completed report: explorer ring is small (~68px); filters sit close under score; no "Scanned · …" / "Top fix · …" row; no Overview sticky tab; Finish Plan tab when plan items exist.
-2. Sticky toolbar sits under site header; section jump clears both.
-3. Share status appears once (banner, not hero). Hero has `ScoreDot`, not a second ring.
-4. Anon locked report: value strip + SampleFixCard only (no claim-guide card).
-5. Progressive chrome matches completed: `AuditReportHero` + `RubricBar` + sticky + Contract → Timeline → Flags (no bottom rubric grid, no `#report-overview`). Stage label / activity from `progress-ui.ts`. Action Timeline hidden when empty.
-6. COMPLETED: hold progressive frame + `router.refresh()` into full `AuditReport` (no blank; no layout jump of shared chrome).
-7. Partial Callout only when `reportCompleteness === 'PARTIAL'` (not `UNKNOWN`).
+1. `/report/[id]`: identity → optional diff → three-item Finish Plan → rubric proof → full review → owner re-check.
+2. Anonymous report has all three summaries, one prompt, and one signup moment after that prompt.
+3. `/report/[id]/details`: Back to Finish Plan, Contract/Memory, Journey/Flow/Timeline, full Flags, previews, gates, watch/actions. Tabs match DOM.
+4. Progressive route shows captures, early findings, and three Finish Plan cards; Contract/timeline are collapsible. COMPLETED holds the frame until refresh.
+5. `/samples` and loading shell never render an empty main area. Homepage and sample do not query production audit rows.
+6. Password share metadata is generic; authorize once, refresh without another view increment, open details, then revoke.
+7. Verify 375, 768, and 1280px, keyboard focus, 200% zoom, reduced motion, partial/failure/deleted states.
 
 ## Completion standard
 

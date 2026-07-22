@@ -13,7 +13,10 @@
 
 ## Now
 
-- **Launch Check Completeness** — Finish Plan ≤3, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `launch-check-completeness`.
+- **Product Hunt completion release** — focused three-fix report, separate full review, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`.
+  *Signal:* anonymous URL → progressive → one demonstrated fix → successful claim → copy → free re-check → diff; Agency password share → details → revoke.
+
+- **Launch Check Completeness** — Finish Plan ≤3, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy Finish Plan has ≤3; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.

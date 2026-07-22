@@ -184,7 +184,7 @@ export function getStaticSampleAudit(): LiveSampleAudit {
     }) ?? 70
 
   return {
-    id: 'static-sample',
+    id: 'curated-sample-v1',
     url: SAMPLE_URL,
     pageJob: 'Demo fixture',
     pageType: 'Demo fixture',

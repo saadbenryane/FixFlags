@@ -45,7 +45,7 @@ function FlagList({
   onSelectFlag?: (id: string) => void
 }) {
   return (
-    <ul className="space-y-1" role="listbox" aria-label="Report flags">
+    <ul className="space-y-1" aria-label="Report Flags">
       {flags.map((flag) => {
         const selected = selectedFlagId === flag.id
         const RubricIcon = rubricIcon(flag.rubric)
@@ -54,14 +54,15 @@ function FlagList({
           .filter(Boolean)
           .join(' · ')
         return (
-          <li key={flag.id} role="option" aria-selected={selected}>
+          <li key={flag.id}>
             <button
               type="button"
               onClick={() => onSelectFlag?.(flag.id)}
               title={flag.title}
               aria-label={`${categoryLabel}: ${flag.title}`}
+              aria-current={selected ? 'true' : undefined}
               className={cn(
-                'flex w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition',
+                'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
                 selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
               )}
@@ -124,7 +125,7 @@ export function ReportFixLoop({
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
-          className="flex w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
+          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
           aria-expanded={expanded}
         >
           <span className="meta-label text-muted-foreground">Flags</span>

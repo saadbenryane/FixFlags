@@ -28,15 +28,20 @@ export interface VerifiedLearning {
 const MAX_LEARNINGS = 40
 const MAX_INTENTIONAL = 20
 
-/** Canonical product URL key: scheme + host without www. */
-export function canonicalProductUrl(url: string): string {
+/** Exact Product identity: lowercase hostname without www. */
+export function canonicalProductHost(url: string): string {
   try {
     const u = new URL(url)
-    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
-    return `${u.protocol}//${host}`
+    return u.hostname.replace(/^www\./i, '').toLowerCase()
   } catch {
-    return url.trim().toLowerCase()
+    return url.trim().replace(/^www\./i, '').toLowerCase()
   }
+}
+
+/** Stable display/capture URL for a Product. Identity lives in canonicalProductHost. */
+export function canonicalProductUrl(url: string): string {
+  const host = canonicalProductHost(url)
+  return host ? `https://${host}` : url.trim()
 }
 
 export function productNameFromUrl(url: string): string {
@@ -195,6 +200,13 @@ export function appendVerifiedLearning(
   learning: VerifiedLearning
 ): ProductIntelligence {
   const prev = pi.verifiedLearnings ?? []
+  const duplicate = prev.some(
+    (item) =>
+      item.auditId === learning.auditId &&
+      item.checkId === learning.checkId &&
+      item.summary.trim().toLowerCase() === learning.summary.trim().toLowerCase()
+  )
+  if (duplicate) return pi
   const next = [learning, ...prev].slice(0, MAX_LEARNINGS)
   return {
     ...pi,

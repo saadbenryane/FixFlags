@@ -1,7 +1,8 @@
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { canAccessAudit } from '@/lib/audit/access'
+import { resolveAuditAccess } from '@/lib/audit/access'
+import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import {
   canViewPrescriptionContentForAudit,
   canViewDeterministicFixesForAudit,
@@ -26,6 +27,7 @@ import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
+import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -128,7 +130,10 @@ export async function resolveIsPaidForAudit(
   return tier === 'paid'
 }
 
-export async function getGatedAuditForRequest(id: string) {
+export async function getGatedAuditForRequest(
+  id: string,
+  _options?: { tokenShare?: boolean }
+) {
   const session = await resolveSessionUser()
   const audit = await fetchAuditRow(id)
 
@@ -136,27 +141,34 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'not_found' as const }
   }
 
-  if (!canAccessAudit(audit, session?.user)) {
+  const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+  const accessContext = await resolveAuditAccess(audit, session?.user, shareGrant)
+  if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }
 
   const isPaid = await resolveIsPaidForAudit(audit)
-  const showPrescription = await canViewPrescriptionContentForAudit(
+  const sharedFullAccess = accessContext === 'share_grant' || accessContext === 'agency_public'
+  const showPrescription = sharedFullAccess
+    ? Boolean(audit.aiReviewAt)
+    : await canViewPrescriptionContentForAudit(
     {
       userId: audit.userId,
       aiReviewAt: audit.aiReviewAt,
       isPublic: audit.isPublic,
     },
     session?.user
-  )
-  const showDeterministicFixes = await canViewDeterministicFixesForAudit(
+      )
+  const showDeterministicFixes = sharedFullAccess
+    ? true
+    : await canViewDeterministicFixesForAudit(
     {
       userId: audit.userId,
       aiReviewAt: audit.aiReviewAt,
       isPublic: audit.isPublic,
     },
     session?.user
-  )
+      )
   const hasTriage = Boolean(audit.triageAt)
   const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt && !audit.failureCode
   const triageDegraded =
@@ -213,9 +225,10 @@ export async function getGatedAuditForRequest(id: string) {
   const verifiedLearnings = productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
   const intentionalNotes = productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
   const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
-  const watchInterval =
-    audit.project?.watchInterval === 'weekly' || audit.project?.watchInterval === 'daily'
-      ? audit.project.watchInterval
+  const watchInterval = audit.project?.watchInterval === 'WEEKLY'
+    ? 'weekly'
+    : audit.project?.watchInterval === 'DAILY'
+      ? 'daily'
       : null
 
   const rubricSources = sanitizedRubrics.map((r) => ({
@@ -271,11 +284,16 @@ export async function getGatedAuditForRequest(id: string) {
 
   const sampleFixFlag =
     !showDeterministicFixes && !isLegacyDeterministic
-      ? findHighestSeverityFlagWithFix(audit.flags)
+      ? findHighestSeverityFlagWithFix(
+          rankFlagsByPriority(audit.flags, audit.rubrics, 3, productContract).map(
+            ({ flag }) => flag
+          )
+        )
       : null
 
   return {
     kind: 'ok' as const,
+    accessContext,
     audit: {
       ...stripped,
       verdict: hasTriage || showPrescription ? stripped.verdict : null,
