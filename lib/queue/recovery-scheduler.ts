@@ -1,6 +1,7 @@
 import { tryAcquireLock } from './lock'
 import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
+import { processDueProjectWatches } from '@/lib/audit/project-watch'
 import { runIssueRollup } from '@/scripts/growth/issue-frequencies'
 import { runGscPull } from '@/scripts/growth/pull-gsc'
 import { runGaPull } from '@/scripts/growth/pull-ga'
@@ -8,6 +9,9 @@ import { logger } from '@/lib/logger'
 
 const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
 const RECOVERY_LOCK_TTL_MS = 110_000 // < interval so it re-acquires next tick
+
+const WATCH_INTERVAL_MS = 5 * 60_000 // every 5 min
+const WATCH_LOCK_TTL_MS = 4 * 60_000
 
 const NURTURE_INTERVAL_MS = 6 * 60 * 60 * 1000 // check every 6h
 const NURTURE_LOCK_TTL_MS = 23 * 60 * 60 * 1000 // ...but only actually run ~once/day
@@ -27,6 +31,16 @@ async function recoveryTick(): Promise<void> {
     if (result.requeued || result.failed) logger.info('Recovery sweep', result)
   } catch (err) {
     logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
+async function projectWatchTick(): Promise<void> {
+  if (!(await tryAcquireLock('project-watches', WATCH_LOCK_TTL_MS))) return
+  try {
+    const result = await processDueProjectWatches()
+    if (result.processed > 0) logger.info('Project watch sweep', result)
+  } catch (err) {
+    logger.error('Project watch sweep failed', err instanceof Error ? err : new Error(String(err)))
   }
 }
 
@@ -77,6 +91,11 @@ export function startRecoveryScheduler(): void {
   initialRecovery.unref?.()
   const recoveryTimer = setInterval(() => void recoveryTick(), RECOVERY_INTERVAL_MS)
   recoveryTimer.unref?.()
+
+  const initialWatch = setTimeout(() => void projectWatchTick(), 45_000)
+  initialWatch.unref?.()
+  const watchTimer = setInterval(() => void projectWatchTick(), WATCH_INTERVAL_MS)
+  watchTimer.unref?.()
 
   const initialNurture = setTimeout(() => void nurtureTick(), 60_000)
   initialNurture.unref?.()

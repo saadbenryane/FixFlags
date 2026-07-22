@@ -82,7 +82,8 @@ flowchart TD
 
 | Deliverable | Notes |
 |-------------|-------|
-| ~~Repo-connected codebase scanning~~ | **Shipped, not roadmap.** GitHub OAuth connect, repo allow-listing, on-demand scan, and a dedicated report at `/report/repo/[id]` are live on Agency plan (`/settings/integrations`). Findings-only today (secrets, dependency hygiene, dangerous patterns) — see `docs/offering.md`. |
+| ~~Repo-connected codebase scanning~~ | **Shipped.** GitHub OAuth, repo allow-listing, on-demand scan, `/report/repo/[id]` on Agency. |
+| ~~Draft Fix PRs~~ | **Shipped.** Draft PR with fix prompt; mechanical auto-patch only for exposed secrets in `.env*` files. |
 | CI deploy gate | GitHub Action / webhook; fail on launch gate regression — **trigger:** 10+ Agency subscribers |
 | Weekly pulse | Scheduled re-check digest email on REGRESSED flags — **trigger:** habit retention data (not a paid re-check substitute) |
 | Auto-fix PRs on repo scans | Open a PR with fixes applied, not just findings — natural next step once repo scanning has usage data |

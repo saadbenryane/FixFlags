@@ -29,7 +29,6 @@ function authHref(base: '/sign-up' | '/sign-in', nextPath?: string, from?: strin
 
 export function AuditLimitGate({ code, action, message, nextPath, from, onDismiss }: Props) {
   const needsSignup =
-    code === 'ANON_LIMIT' ||
     code === 'AUTH_REQUIRED' ||
     action === 'signup'
 

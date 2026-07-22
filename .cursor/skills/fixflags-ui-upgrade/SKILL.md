@@ -50,7 +50,7 @@ description: Orchestrator for FixFlags UI upgrades — typography, polish, anti-
 - [ ] Flag meta: `SeveritySignal` → Rubric → Impact (no truth pills)
 - [ ] Device-specific evidence only (no healthy twin viewport)
 - [ ] One share-status surface (`ShareStatusBanner`); hero is identity + `ScoreDot` only
-- [ ] Sticky tabs match DOM; no Overview; Priorities when Top Priorities exist
+- [ ] Sticky tabs match DOM; no Overview; Finish Plan when plan items exist
 - [ ] No FixLoop status row / duplicate count under filters
 - [ ] **Progressive seam:** same `AuditReportHero` / `RubricBar` / sticky as completed; `getScanningLabel` wired; no `ReportHeroHeader` / progressive `RubricSummaryGrid` / `#report-overview`; COMPLETED holds frame + `router.refresh()`; partial Callout only on `PARTIAL`
 

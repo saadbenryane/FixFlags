@@ -6,8 +6,8 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import {
   AuditLimitError,
   ParentAuditError,
-  createAndEnqueueAudit,
 } from '@/lib/audit/create-audit'
+import { checkAndPlan } from '@/lib/audit/task-contracts'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
@@ -106,20 +106,21 @@ export async function POST(req: NextRequest) {
       fbclid: parsed.data.fbclid,
     })
 
-    const { auditId, status } = await createAndEnqueueAudit({
+    const outcome = await checkAndPlan({
       url,
       userId: session?.user?.id ?? null,
       parentId: parsed.data.parentId,
+      clientId: session?.user ? undefined : clientId,
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
       attribution,
-      clientId: session?.user ? undefined : clientId,
     })
 
     return NextResponse.json(
       {
-        reportId: auditId,
-        status,
+        reportId: outcome.reportId,
+        reportUrl: outcome.reportUrl,
+        status: outcome.status,
         isLoggedIn: Boolean(session?.user),
         estimatedWaitSeconds,
         queuePosition,

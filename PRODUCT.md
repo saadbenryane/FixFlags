@@ -43,7 +43,7 @@ Paste your site. We reconstruct a basic Product understanding (Product Contract)
 4. User pastes fix prompts into their AI editor.
 5. User ships fixes.
 6. User re-checks the same URL (free, unlimited).
-7. User sees before/after comparison, cleared Flags, and verified learnings on the Product (when Project PI is present).
+7. User sees before/after comparison and cleared Flags. Verified learnings persist on Project Product Intelligence when a Project is linked (surfaced on the report when present).
 
 Steps 4–7 are the differentiator. Re-check is the habit.
 
@@ -71,7 +71,7 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 - 100 new URL checks per month
 - Share links and exports
 - 5 projects
-- GitHub repo scanning with optional Fix PR creation (Agency): secrets, dependency hygiene, dangerous patterns; open a fix branch/PR from a finding when auto-patchable
+- GitHub repo scanning with optional Fix PR creation (Agency): secrets, dependency hygiene, dangerous patterns. Draft PR carries the fix prompt for your agent; mechanical auto-patch applies only to exposed secrets in `.env*` files when policy allows.
 - Credit packs for overflow new checks
 
 ### High Volume (custom)
@@ -97,8 +97,10 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Technology detection engine + /madewith/[hostname] pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration (16 tools; see `lib/mcp/tools.ts` / AGENTS.md Project facts)
-- Product Contract + Project-scoped Product Intelligence persistence
-- Finish Plan (≤3 prioritized improvements) with contract-aware ranking
+- Project-scoped Product Intelligence persistence
+- Finish Plan (≤3 prioritized improvements) with contract-aware ranking; plan prompt defaults to ≤3
+- Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
+- Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
 - **Live progressive report:** after URL submit, `/report/{id}` uses the same chrome as the completed report (hero, RubricBar, sticky, Contract, Action Timeline, partial Flags) while the pipeline runs; stages and progress are honest (never fake)
 

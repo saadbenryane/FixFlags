@@ -28,6 +28,7 @@ import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
+import type { ProductContract } from '@/lib/audit/product-contract'
 import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
 
 export { priorityLabelForIndex } from '@/lib/report/explorer-filters'
@@ -94,8 +95,11 @@ export interface ReportExplorerModel {
   previewMeta: PreviewMeta | null
 }
 
-function sortFlags(flags: RankableFlag[]): RankableFlag[] {
-  return [...flags].sort(compareFlagsByPriority)
+function sortFlags(
+  flags: RankableFlag[],
+  contract?: ProductContract | null
+): RankableFlag[] {
+  return [...flags].sort((a, b) => compareFlagsByPriority(a, b, contract))
 }
 
 function mapLiveFlag(
@@ -154,8 +158,9 @@ export function buildLiveExplorerModel(input: {
   evidenceAnchors?: EvidenceAnchorMap
   previewMeta?: PreviewMeta | null
   flagVisualEvidence?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
+  productContract?: ProductContract | null
 }): ReportExplorerModel {
-  const sorted = sortFlags(input.flags)
+  const sorted = sortFlags(input.flags, input.productContract)
   const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
   const mobileScreenshot = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
   const desktop = desktopScreenshot ? normalizeInternalScreenshotUrl(desktopScreenshot) : null

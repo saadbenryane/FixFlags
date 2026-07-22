@@ -599,7 +599,7 @@ free-form IDs.
 
 Concrete failure mode: if a user calls `ff_compare(oldReportId, newReportId)` on any
 two reports that aren't a true parent → monitoring-child pair (the overwhelmingly
-common case — e.g. two independent `ff_check_url` runs of the same site before/after
+common case — e.g. two independent `ff_check_and_plan` runs of the same site before/after
 a manual fix), a flag that happens to carry a stale `'FIXED'` status from some
 *unrelated* earlier monitoring cycle gets misclassified as **`'regressed'`** even
 though nothing regressed between the two reports actually being compared. This is a
@@ -2411,7 +2411,7 @@ prompt generation only. This needs a deliberate design pass with the user
   `rubricPrescriptions` — fix text + tool-specific prompts (cursor/claude/
   lovable/bolt).
 - **Fix delivery today:** (1) copy-paste fix/prompt text in the report UI,
-  (2) MCP tools (`lib/mcp/tools.ts`) — `ff_check_url`, `ff_get_report`,
+  (2) MCP tools (`lib/mcp/tools.ts`) — `ff_check_and_plan`, `ff_get_report`,
   `ff_get_rubric`, `ff_get_flag`, `ff_recheck`, `ff_compare`,
   `ff_list_recent_audits`, `generate-fix-prompt`. All read-only + prompt
   generation — **no tool writes code or opens a PR**.

@@ -237,13 +237,18 @@ Lead with **precise repair + re-check proof**, not "AI QA agent" or live chat sp
 | Say | Do not say |
 |-----|------------|
 | Check before you ship. Get Flags your editor can fix. Re-check to prove it. | Watch our AI agent click around your site |
-| Ranked Flags with evidence and truth labels | Letter grade / traffic lights as the product |
-| Paste the fix into Cursor, Claude, Lovable, or Bolt | Comprehensive autonomous QA suite |
-| Re-checks are free and unlimited on reports you own | Set it and forget it monitoring (not shipped) |
+| Ranked Finish Plan (≤3) with evidence | Letter grade / traffic lights as the product |
+| Paste the fix into Cursor, Claude, Lovable, or Bolt | Comprehensive autonomous QA suite / coding-loop code review |
+| Re-checks are free; Pro/Agency can watch weekly | Set it and forget it monitoring without entitlement |
+| Code review asks if the change is safe to merge; FixFlags asks if the product is ready for a human | We replace CodeRabbit |
+
+**CodeRabbit / Greptile:** Adjacent. Complementary layers. Not a partnership GTM bet.
 
 **Roast tool:** All roast taglines, verdicts, and page UI strings live in `lib/marketing/copy.ts` (`ROAST_COPY`). Never hardcode in `RoastClient` or the roast API route. Full report link uses `reportUrl` / `auditId`, never the scanned URL.
 
 Canonical competitor table: `docs/growth/competitors.md` and `knowledge/market.md`. Moat: `knowledge/product.md`.
+
+**Agency handoff:** Share links + projects + draft Fix PRs (secrets auto-patch only). Acquisition stays URL → Finish Plan.
 
 ## Quota language (must match entitlements)
 

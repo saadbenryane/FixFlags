@@ -131,6 +131,14 @@ export async function diffFlagsAgainstParent(
       })
     }
   }
+
+  // Product watch: email only when this project is watched and regressions appear.
+  try {
+    const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
+    await notifyWatchRegression(parentAuditId, monitoringAuditId)
+  } catch {
+    // Non-fatal
+  }
 }
 
 export type FlagDiffSummaryBucket = 'fixed' | 'unchanged' | 'regressed'

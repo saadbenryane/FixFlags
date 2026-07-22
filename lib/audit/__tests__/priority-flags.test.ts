@@ -148,6 +148,33 @@ describe('priority-flags', () => {
     assert.equal(result.includes(' of '), false)
   })
 
+  it('buildPlanModePrompt defaults to Finish Plan limit of 3', () => {
+    const flags = [
+      flag({ id: '1', severity: 'CRITICAL', problem: 'A', agentPrompt: 'Fix A' }),
+      flag({ id: '2', severity: 'IMPORTANT', problem: 'B', agentPrompt: 'Fix B' }),
+      flag({ id: '3', severity: 'POLISH', problem: 'C', agentPrompt: 'Fix C' }),
+      flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
+    ]
+    const result = buildPlanModePrompt(flags, { url: 'https://x.com' })
+    assert.match(result, /3 issues/)
+    assert.match(result, /Fix A/)
+    assert.match(result, /Fix B/)
+    assert.match(result, /Fix C/)
+    assert.equal(result.includes('Fix D'), false)
+  })
+
+  it('buildPlanModePrompt limit null includes all prompts', () => {
+    const flags = [
+      flag({ id: '1', severity: 'CRITICAL', problem: 'A', agentPrompt: 'Fix A' }),
+      flag({ id: '2', severity: 'IMPORTANT', problem: 'B', agentPrompt: 'Fix B' }),
+      flag({ id: '3', severity: 'POLISH', problem: 'C', agentPrompt: 'Fix C' }),
+      flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
+    ]
+    const result = buildPlanModePrompt(flags, { limit: null })
+    assert.match(result, /4 issues/)
+    assert.match(result, /Fix D/)
+  })
+
   it('collectFixPromptsByRubric scopes prompts to one rubric', () => {
     const result = collectFixPromptsByRubric(
       [

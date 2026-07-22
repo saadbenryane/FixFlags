@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { Heading, Lead, Muted } from '@/components/ui/typography'
 import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { humanizeCheckId } from '@/lib/marketing/issue-page'
 import { prisma } from '@/lib/db'
 
 export const metadata = buildPageMetadata('issues', '/issues')

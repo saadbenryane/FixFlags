@@ -1,112 +1,100 @@
-import { loadFixture } from './fixture.mjs'
+import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { buildPlan } from '../validate.mjs'
+
+function command(executable, args, validate = () => true) {
+  return () => {
+    const result = spawnSync(executable, args, {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: process.env,
+      maxBuffer: 50 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    const stdout = result.stdout || ''
+    const stderr = result.stderr || ''
+    return {
+      status: result.status,
+      stdoutBytes: Buffer.byteLength(stdout),
+      stderrBytes: Buffer.byteLength(stderr),
+      valid: result.status === 0 && validate(stdout, stderr),
+      failure: result.status === 0 ? null : `${stdout}\n${stderr}`.trim().split('\n').slice(-20).join('\n'),
+    }
+  }
+}
+
+function commandCase(id, description, executable, args, validate) {
+  return {
+    id,
+    description,
+    run: command(executable, args, validate),
+    grade: (result) => result.valid ? 'pass' : 'fail',
+  }
+}
 
 export const cases = [
+  commandCase(
+    'repository-orientation',
+    'The live home view returns bounded structured repository state.',
+    'node',
+    ['scripts/project-agent.mjs', '--json'],
+    (stdout) => {
+      const payload = JSON.parse(stdout)
+      return payload.project === 'qewos' && payload.state.changedFiles.total >= 0 && payload.recommendations.total > 0
+    }
+  ),
   {
-    id: 'audit-pipeline-basic',
-    description: 'Audit pipeline processes a fixture and produces flags',
-    fixture: 'demo',
+    id: 'docs-only-routing',
+    description: 'Documentation-only work avoids irrelevant code verification.',
     async run() {
-      const html = loadFixture('demo')
-      return { htmlLength: html.length, hasContent: html.length > 0 }
+      const plan = buildPlan('affected', ['docs/example.md', 'knowledge/product.md'])
+      return { valid: plan.commands.length === 0, commandCount: plan.commands.length, reason: plan.reason }
     },
-    grade(result) {
-      return result.htmlLength > 0 && result.hasContent ? 'pass' : 'fail'
-    },
+    grade: (result) => result.valid ? 'pass' : 'fail',
   },
+  commandCase(
+    'report-ui',
+    'Real report UI tests preserve progressive and failure states.',
+    'npx',
+    ['vitest', 'run', 'components/audit/__tests__/AuditFailurePanel.test.tsx', 'components/audit/__tests__/AuditReportProgressive.test.tsx']
+  ),
+  commandCase(
+    'audit-pipeline',
+    'Real audit ranking and pipeline state tests pass.',
+    'npx',
+    ['vitest', 'run', 'lib/audit/__tests__/priority-flags.test.ts', 'lib/audit/__tests__/pipeline-state-machine.test.ts']
+  ),
+  commandCase(
+    'prompt-contract',
+    'Real prompt and judge configuration contracts pass.',
+    'npx',
+    ['vitest', 'run', 'lib/audit/__tests__/judge-contract.test.ts', 'lib/audit/__tests__/judge-config.test.ts']
+  ),
+  commandCase(
+    'billing-gates',
+    'Real billing plan and limit tests pass.',
+    'npx',
+    ['vitest', 'run', 'lib/billing/__tests__/plans.test.ts', 'lib/billing/__tests__/limits.test.ts']
+  ),
+  commandCase(
+    'public-cli',
+    'The built FixFlags CLI passes its HTTP contract and workflow tests.',
+    'npm',
+    ['--prefix', 'fixflags-cli', 'test']
+  ),
+  commandCase(
+    'failure-recovery',
+    'The agent façade handles invalid input, dry-run routing, and bounded output.',
+    'node',
+    ['--test', 'scripts/project-agent.test.mjs']
+  ),
   {
-    id: 'triage-prompt-valid',
-    description: 'Triage prompt contract: system and user blocks must stay separable',
-    fixture: 'demo',
+    id: 'instruction-budget',
+    description: 'Always-loaded root instructions stay below the pilot budget.',
     async run() {
-      // Harness stays Node-native (no TS path aliases). Real prompt builders are covered by unit tests.
-      const system = 'You are FixFlags triage. Score Message, Experience, Reach. Evidence first.'
-      const user = ['URL: https://example.com', 'Page text: Example page content'].join('\n')
-      return { systemLength: system.length, userLength: user.length, split: !system.includes('example.com') }
+      const bytes = Buffer.byteLength(readFileSync('AGENTS.md', 'utf8'))
+      return { valid: bytes < 12_000, bytes }
     },
-    grade(result) {
-      return result.systemLength > 40 && result.userLength > 20 && result.split ? 'pass' : 'fail'
-    },
-  },
-  {
-    id: 'flag-count-reasonable',
-    description: 'Check modules produce reasonable flag count for demo fixture',
-    fixture: 'demo',
-    async run() {
-      const html = loadFixture('demo')
-      return { flagCount: 0, htmlLength: html.length }
-    },
-    grade(result) {
-      return result.htmlLength > 0 ? 'pass' : 'fail'
-    },
-  },
-  {
-    id: 'rubric-scores-valid',
-    description: 'Rubric scores are within valid range (0-100)',
-    fixture: 'demo',
-    async run() {
-      return { message: 75, experience: 80, reach: 70 }
-    },
-    grade(result) {
-      const valid = (score) => score >= 0 && score <= 100
-      return valid(result.message) && valid(result.experience) && valid(result.reach) ? 'pass' : 'fail'
-    },
-  },
-  {
-    id: 'persist-roundtrip',
-    description: 'Audit data can be persisted and retrieved',
-    fixture: 'demo',
-    async run() {
-      return { persisted: true, retrieved: true }
-    },
-    grade(result) {
-      return result.persisted && result.retrieved ? 'pass' : 'fail'
-    },
-  },
-  {
-    id: 'finish-plan-ranking',
-    description: 'Finish Plan ranking prefers CRITICAL over POLISH (severity order)',
-    fixture: 'demo',
-    async run() {
-      const severityRank = { CRITICAL: 0, IMPORTANT: 1, POLISH: 2 }
-      const flags = [
-        { problem: 'Polish spacing', severity: 'POLISH' },
-        { problem: 'Broken signup CTA', severity: 'CRITICAL' },
-        { problem: 'Weak meta', severity: 'IMPORTANT' },
-      ]
-      const sorted = [...flags].sort(
-        (a, b) => severityRank[a.severity] - severityRank[b.severity]
-      )
-      return {
-        count: sorted.slice(0, 3).length,
-        firstProblem: sorted[0]?.problem ?? '',
-      }
-    },
-    grade(result) {
-      return result.count === 3 && result.firstProblem === 'Broken signup CTA' ? 'pass' : 'fail'
-    },
-  },
-  {
-    id: 'product-intelligence-user-wins',
-    description: 'User Product Intelligence overrides heuristic contract (pure logic)',
-    fixture: 'demo',
-    async run() {
-      function resolve(inferred, projectPi) {
-        if (!projectPi) return inferred
-        if (projectPi.source === 'user') {
-          return {
-            purpose: projectPi.purpose,
-            source: 'user',
-          }
-        }
-        return inferred
-      }
-      const inferred = { purpose: 'Heuristic purpose', source: 'heuristic' }
-      const pi = { purpose: 'User purpose', source: 'user' }
-      const resolved = resolve(inferred, pi)
-      return { purpose: resolved.purpose, source: resolved.source }
-    },
-    grade(result) {
-      return result.purpose === 'User purpose' && result.source === 'user' ? 'pass' : 'fail'
-    },
+    grade: (result) => result.valid ? 'pass' : 'fail',
   },
 ]

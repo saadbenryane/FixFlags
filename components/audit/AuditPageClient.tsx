@@ -175,7 +175,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   async function handleRetrySameAudit() {
     setRetryLoading(true)
     try {
-      const res = await fetch(`/api/audits/${id}/retry`, { method: 'POST' })
+      const res = await fetch(`/api/reports/${id}/retry`, { method: 'POST' })
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
         toast.error(parsed.message)

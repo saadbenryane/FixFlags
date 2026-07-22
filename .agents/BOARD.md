@@ -4,8 +4,8 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| howitworks-visual-spacing | in_progress | auto | main | Framed loop step tiles (subject crops, lean WebP) + marketing spacing | HowItWorksLoopSection, public/marketing/visuals/loop-0* | — | 2026-07-20 |
-| dogfood-audit-quality | in_progress | auto | main | Dogfood deep audits on fixflags.com + saadbenryane.com; fix false positives, dupes, vague findings, weak prioritization; credible top-3 | lib/audit checks + priority-flags + scoring, scripts harness | Truth residuals absorbed into completeness-final | 2026-07-20 |
+| axi-project-agent-pilot | in_progress | codex | main | Independent AXI-style project context, affected verification, real evals, bounded output, harness measurement | `scripts/project-agent*`, `scripts/agent-evals/**`, `package.json`, `AGENTS.md` | Do not overlap dirty FixFlags CLI or current product completion files | 2026-07-22 |
+| current-product-completion | in_progress | codex | main | Canonical task contracts, route cutover, product hardening, CLI beta, E2E/CI, docs and skills | app, components, lib, prisma, fixflags-cli, tests, docs, skills | Preserve and integrate launch-check-completeness + agent-native-cli baseline | 2026-07-22 |
 
 ---
 
@@ -13,6 +13,10 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| agent-native-cli | codex | Task-shaped check → Finish Plan and re-check → verification diff CLI workflows | 2026-07-22 |
+| launch-check-completeness | auto | PI/Finish Plan/Remember, dogfood, Agency share, Project watch, skills/docs | 2026-07-22 |
+| dogfood-audit-quality | auto | Absorbed into launch-check-completeness | 2026-07-22 |
+| howitworks-visual-spacing | auto | Absorbed / superseded by launch-check-completeness focus | 2026-07-22 |
 | merge-origin-main-sync | auto | Merged origin/main into local main; auto-resolved overlaps; pushed | 2026-07-21 |
 | completeness-final | auto | Gates, truth residual, design/copy, dead code, Strength/Touch CRITICAL, skills/docs | 2026-07-20 |
 | product-intelligence-vision | auto | Vision canon + Phase 1 PI/Finish Plan/Remember + skills | 2026-07-20 |

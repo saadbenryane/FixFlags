@@ -6,8 +6,8 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 
-/** AUTH_REQUIRED = anon teaser used (signup). ANON_LIMIT kept as alias for legacy callers. */
-export type UsageLimitCode = 'AUTH_REQUIRED' | 'ANON_LIMIT' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
+/** AUTH_REQUIRED means the anonymous teaser has already been used. */
+export type UsageLimitCode = 'AUTH_REQUIRED' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
 export type UsageLimitAction = 'signup' | 'upgrade' | 'buy_credits'
 
 export interface UsageLimitResult {

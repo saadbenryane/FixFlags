@@ -2,9 +2,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { prisma } from '../db'
 import { User } from '@prisma/client'
-import { createAndEnqueueAudit } from '../audit/create-audit'
-import { startMonitoringAudit } from '../audit/monitoring'
-import { pollAuditUntilDone } from '../audit/poll-audit'
 import { RUBRIC_ORDER, type RubricName } from '../audit/constants'
 import {
   computeRubricsFromRows,
@@ -14,17 +11,13 @@ import { canUseApiKeys } from '../auth/permissions'
 import {
   canAccessCompare,
   canScanRepositories,
-  canSharePublicly,
 } from '../auth/entitlements'
-import { canAccessAudit } from '../audit/access'
+import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
 import { createAndEnqueueRepoScan, RepoScanRequestError } from '@/lib/repo-scan/create-repo-scan'
 import { hashApiKey } from '@/lib/security/api-keys'
-import { recordRateLimit } from '@/lib/security/rate-limit'
-import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
-import { buildAttribution } from '@/lib/leads/attribution'
-import { assertPublicAuditUrl } from '@/lib/audit/url'
+import { registerTaskTools } from '@/lib/mcp/task-tools'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
-import { classifyArbitraryReportFlagDiff, getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { classifyArbitraryReportFlagDiff } from '@/lib/audit/diff-flags'
 import {
   sanitizeFlagForRead,
   sanitizeRubricForRead,
@@ -37,44 +30,12 @@ import {
   resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
 
-async function assertMcpAccess(user: User): Promise<User> {
-  const fresh = await prisma.user.findUnique({ where: { id: user.id } })
-  if (!fresh || !canUseApiKeys(fresh)) {
-    throw new Error('Upgrade to Pro to use MCP API access')
-  }
-  return fresh
-}
-
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
   if (flag.checkId) return `check:${flag.checkId}`
   return buildAiFlagMatchKey(flag.problem, flag.rubric)
 }
 
-export async function assertAuditAccess(
-  audit: { userId: string | null; isPublic: boolean },
-  userId: string,
-  message = 'Unauthorized'
-): Promise<void> {
-  if (!canAccessAudit(audit, { id: userId })) {
-    throw new Error(message)
-  }
-  // canAccessAudit only checks the audit's own isPublic bit, which can go stale:
-  // if the owner's plan/subscription later lapses, canSharePublicly(owner) turns
-  // false but nothing un-publishes already-public audits. Re-check the owner's
-  // LIVE entitlement here so a downgraded owner's fix-prompt content doesn't stay
-  // exposed to non-owners via MCP indefinitely - matches the live re-check the
-  // web report UI already does for the same content (canViewAiViaAgencyPublicShare
-  // in lib/audit/report-access.ts).
-  const isOwner = audit.userId === userId
-  if (isOwner || !audit.userId) return
-  const owner = await prisma.user.findUnique({
-    where: { id: audit.userId },
-    select: { id: true, role: true, plan: true, subscriptionStatus: true },
-  })
-  if (!owner || !canSharePublicly(owner)) {
-    throw new Error(message)
-  }
-}
+export { assertAuditAccess } from '@/lib/mcp/access'
 
 export function registerAllTools(
   server: McpServer,
@@ -82,90 +43,7 @@ export function registerAllTools(
   options?: { signal?: AbortSignal }
 ) {
   const abortSignal = options?.signal
-
-  server.tool(
-    'ff_check_url',
-    'Start a FixFlags check for a URL. Returns reportId to poll for results.',
-    {
-      url: z.string().url(),
-      waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
-      mode: z
-        .enum(['single', 'critical_path'])
-        .optional()
-        .describe('critical_path checks up to 6 same-origin URLs (default)'),
-    },
-    async ({ url, waitForCompletion, mode }) => {
-      const freshUser = await assertMcpAccess(user)
-      const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
-
-      const [userLimit, hostLimit, workerEstimate] = await Promise.all([
-        recordRateLimit({
-          scope: 'mcp-user',
-          identifier: freshUser.id,
-          limit: 60,
-          windowSeconds: 3600,
-        }),
-        recordRateLimit({
-          scope: 'audit-host',
-          identifier: new URL(normalizedUrl).hostname,
-          limit: 20,
-          windowSeconds: 3600,
-        }),
-        getWorkerQueueEstimate(),
-      ])
-
-      const rateLimitRetryAfter = Math.max(
-        userLimit.exceeded ? userLimit.retryAfterSeconds : 0,
-        hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
-      )
-      const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
-        computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
-
-      const criticalPath = mode !== 'single'
-
-      const { auditId } = await createAndEnqueueAudit({
-        url: normalizedUrl,
-        userId: freshUser.id,
-        auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
-        delayMs,
-        attribution: buildAttribution({
-          url: normalizedUrl,
-          source: 'MCP',
-        }),
-      })
-
-      let status = 'QUEUED'
-      if (waitForCompletion) {
-        const result = await pollAuditUntilDone({ auditId, signal: abortSignal })
-        status = result.status
-      }
-
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              reportId: auditId,
-              status,
-              reportUrl: `${appUrl}/report/${auditId}`,
-              estimatedWaitSeconds,
-              rateLimitRetryAfter,
-              queuePosition,
-              scheduledStartAt,
-              queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
-              queueReason:
-                delayMs > 0
-                  ? 'rate_limit'
-                  : workerEstimate.waitingJobs > 0
-                    ? 'backlog'
-                    : undefined,
-            }),
-          },
-        ],
-      }
-    }
-  )
+  registerTaskTools(server, user, options)
 
   server.tool(
     'ff_get_check_status',
@@ -357,139 +235,6 @@ export function registerAllTools(
   )
 
   server.tool(
-    'ff_monitoring',
-    'Run a new check on the same URL to verify fixes',
-    {
-      parentReportId: z.string(),
-      waitForCompletion: z.boolean().optional(),
-    },
-    async ({ parentReportId, waitForCompletion }) => {
-      await assertMcpAccess(user)
-
-      const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
-      if (!freshUser) throw new Error('User not found')
-
-      const [userLimit, workerEstimate] = await Promise.all([
-        recordRateLimit({
-          scope: 'mcp-user',
-          identifier: freshUser.id,
-          limit: 60,
-          windowSeconds: 3600,
-        }),
-        getWorkerQueueEstimate(),
-      ])
-
-      const rateLimitRetryAfter = userLimit.exceeded ? userLimit.retryAfterSeconds : 0
-      const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } =
-        computeEnqueueDelay(rateLimitRetryAfter, workerEstimate)
-
-      const outcome = await startMonitoringAudit(parentReportId, freshUser, { delayMs })
-      if (!outcome.ok) {
-        throw new Error(outcome.error)
-      }
-
-      const { auditId } = outcome.result
-
-      let status = 'QUEUED'
-      let nextFixes: Array<{
-        checkId: string | null
-        problem: string
-        severity: string
-        rubric: string
-        fixPrompt: string | null
-      }> = []
-      let diffSummary: { fixed: number; remaining: number; newIssues: number; regressed: number } | null =
-        null
-
-      if (waitForCompletion) {
-        const result = await pollAuditUntilDone({ auditId, signal: abortSignal })
-        status = result.status
-        if (status === 'COMPLETED') {
-          const child = await prisma.audit.findUnique({
-            where: { id: auditId },
-            include: {
-              flags: {
-                where: { status: { in: ['OPEN', 'REGRESSED'] } },
-                orderBy: { position: 'asc' },
-              },
-              parent: {
-                include: { flags: true },
-              },
-            },
-          })
-          if (child) {
-            const ranked = rankFlagsByPriority(
-              child.flags.map((f) => ({
-                id: f.id,
-                checkId: f.checkId,
-                rubric: f.rubric,
-                severity: f.severity,
-                impactTag: f.impactTag,
-                problem: f.problem,
-                evidence: f.evidence,
-                whyItMatters: f.whyItMatters,
-                fix: f.fix,
-                agentPrompt: f.agentPrompt,
-                cursorPrompt: f.cursorPrompt,
-                claudePrompt: f.claudePrompt,
-                windsurfPrompt: f.windsurfPrompt,
-                lovablePrompt: f.lovablePrompt,
-                boltPrompt: f.boltPrompt,
-                verificationRule: f.verificationRule,
-                pageUrl: f.pageUrl,
-                confidence: f.confidence,
-              })),
-              [],
-              3
-            )
-            nextFixes = ranked.map(({ flag }) => ({
-              checkId: flag.checkId ?? null,
-              problem: flag.problem,
-              severity: flag.severity,
-              rubric: flag.rubric,
-              fixPrompt: resolveFixPrompt(flag),
-            }))
-            if (child.parentId) {
-              const diff = await getFlagDiffSummary(child.parentId, child.id)
-              diffSummary = {
-                fixed: diff.fixed.length,
-                remaining: diff.unchanged.length,
-                newIssues: diff.newIssues.length,
-                regressed: diff.regressed.length,
-              }
-            }
-          }
-        }
-      }
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              reportId: auditId,
-              status,
-              rateLimitRetryAfter,
-              estimatedWaitSeconds,
-              queuePosition,
-              scheduledStartAt,
-              queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
-              queueReason:
-                delayMs > 0
-                  ? 'rate_limit'
-                  : workerEstimate.waitingJobs > 0
-                    ? 'backlog'
-                    : undefined,
-              nextFixes,
-              diffSummary,
-            }),
-          },
-        ],
-      }
-    }
-  )
-
-  server.tool(
     'ff_plan_mode_prompt',
     'Get a single plan-mode Finish Plan prompt for an audit (paste into Cursor/Claude plan mode)',
     { reportId: z.string() },
@@ -504,6 +249,8 @@ export function registerAllTools(
       if (audit.status !== 'COMPLETED') {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
+      const { parseProductContract } = await import('../audit/product-contract')
+      const contract = parseProductContract(audit.productContract)
       const flags = audit.flags.map((f) => ({
         id: f.id,
         checkId: f.checkId,
@@ -524,7 +271,14 @@ export function registerAllTools(
         pageUrl: f.pageUrl,
         confidence: f.confidence,
       }))
-      const prompt = buildPlanModePrompt(flags, { url: audit.url })
+      const prompt = buildPlanModePrompt(flags, {
+        url: audit.url,
+        limit: 3,
+        contract,
+      })
+      const planCount = rankFlagsByPriority(flags, [], 3, contract).filter((r) =>
+        Boolean(r.flag.agentPrompt || r.flag.cursorPrompt || r.flag.fix)
+      ).length
       return {
         content: [
           {
@@ -533,7 +287,7 @@ export function registerAllTools(
               reportId,
               url: audit.url,
               prompt,
-              flagCount: flags.length,
+              flagCount: planCount,
             }),
           },
         ],
@@ -625,10 +379,11 @@ export function registerAllTools(
         source: f.source,
       }))
       const top = rankFlagsByPriority(flags, audit.rubrics, limit ?? 3, contract)
-      const planPrompt = buildPlanModePrompt(
-        top.map((t) => t.flag),
-        { url: audit.url }
-      )
+      const planPrompt = buildPlanModePrompt(flags, {
+        url: audit.url,
+        limit: limit ?? 3,
+        contract,
+      })
       return {
         content: [
           {
@@ -1071,7 +826,7 @@ export function registerAllTools(
 
   server.tool(
     'generate-fix-prompt',
-    'Generate a custom fix prompt for any problem description. Useful for Bolt/Lovable users who cannot call ff_check_url directly.',
+    'Generate a custom fix prompt for any problem description. Useful for Bolt/Lovable users who cannot call ff_check_and_plan directly.',
     {
       problem: z.string().min(10).describe('Describe the issue you want fixed'),
       context: z.string().optional().describe('Page URL, technology stack, or any context'),

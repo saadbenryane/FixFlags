@@ -44,7 +44,8 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Five execution risks | `knowledge/market.md` → Five Execution Risks |
 | Distribution strategy | `knowledge/market.md` → Distribution Strategy |
 | Agency channel | `knowledge/market.md` → Fastest Agency Channel |
-| Product vision | `knowledge/product.md` → Vision |
+| Product vision and north-star system layers | `knowledge/vision.md` |
+| Product mechanics and moat | `knowledge/product.md` |
 | Product moat | `knowledge/product.md` → The Moat |
 | Product Contract (intent layer) | `knowledge/product.md` → Product Contract |
 | Two product surfaces (Launch Check vs Release Verification) | `knowledge/product.md` → Two Product Surfaces |

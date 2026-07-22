@@ -30,6 +30,8 @@ P2 growth work (audience landers, authentic testimonials, monitoring UI) is gate
 | `recheck_completed` | Compare page **and** report with `recheckDiff` |
 | `report_signup_cta_clicked` | `ReportSignupCta` (`from`: `value_strip` \| `sample_fix` \| `limit_gate`), `AuditLimitGate` |
 | `audits_claimed` | `ClaimAnonymousAudits` after successful claim |
+| `product_contract_saved` | `ProductContractCard` after successful PATCH |
+| `remember_shown` | `ProductMemoryStrip` when verified learnings render |
 
 **Anon funnel stages (GA4):** `started_audit` (`is_logged_in: false`) → `viewed_report` → `report_signup_cta_clicked` → `signed_up` → `audits_claimed` → `fix_prompt_copied` → `recheck_*`.
 

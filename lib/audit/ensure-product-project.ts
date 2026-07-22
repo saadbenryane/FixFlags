@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import {
   canonicalProductUrl,
   parseProductIntelligence,
@@ -8,7 +9,7 @@ import {
 
 /**
  * Find or create a Project that anchors Product Intelligence for this user + host.
- * Auto-created projects are available on all plans (not gated by Agency project UI limit).
+ * Auto-created anchors set `isAnchor` and do not consume Agency project UI slots.
  */
 export async function ensureProductProject(
   userId: string,
@@ -37,14 +38,28 @@ export async function ensureProductProject(
     }
   }
 
-  const created = await prisma.project.create({
-    data: {
-      userId,
-      name: productNameFromUrl(auditUrl),
-      url: canonical,
-    },
-    select: { id: true, productIntelligence: true },
-  })
+  let created: { id: string; productIntelligence: unknown }
+  try {
+    created = await prisma.project.create({
+      data: {
+        userId,
+        name: productNameFromUrl(auditUrl),
+        url: canonical,
+        isAnchor: true,
+      },
+      select: { id: true, productIntelligence: true },
+    })
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+      throw error
+    }
+    const concurrent = await prisma.project.findFirst({
+      where: { userId, url: canonical, isAnchor: true },
+      select: { id: true, productIntelligence: true },
+    })
+    if (!concurrent) throw error
+    created = concurrent
+  }
 
   return {
     id: created.id,

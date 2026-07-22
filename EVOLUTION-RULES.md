@@ -34,6 +34,8 @@ Examples:
 - Changing pricing? Update knowledge/strategy.md (pricing tiers).
 - Fixing a bug that reveals a design principle? Update DECISIONS.md.
 - Refactoring architecture? Update ARCHITECTURE.md.
+- Changing the north-star narrative or system layers? Update knowledge/vision.md.
+- Changing Product Contract, Flag, truth, or moat mechanics? Update knowledge/product.md.
 
 ### During Implementation
 

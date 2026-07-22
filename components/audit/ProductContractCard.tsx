@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 import { cn } from '@/lib/utils'
 
 interface ProductContractCardProps {
@@ -67,6 +68,7 @@ export function ProductContractCard({
       }
       if (data?.productContract) {
         setContract(data.productContract)
+        trackEvent('product_contract_saved', { audit_id: auditId })
       } else {
         setContract({
           purpose: purpose.trim(),

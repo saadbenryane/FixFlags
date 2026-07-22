@@ -10,7 +10,7 @@ import {
   fetchPageSpeedData,
   toStoredPageSpeedResult,
 } from '../pagespeed'
-import { runAllChecks, computeRubricScores } from '../checks'
+import { runAllChecks, computeRubricScores, suppressOverlappingFlags } from '../checks'
 import { runFlowChecks } from '../checks/flow'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import type { FlowScanResult } from '../flow/run-flow-scan'
@@ -262,16 +262,17 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
-  const flags = detFlags
-    .concat(
-      input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
-    )
-    .concat(
-      input.primary && input.position === 0
-        ? runNetworkEngagementChecks(screenshots?.networkFailures ?? [])
-        : []
-    )
-    .map((flag) => ({
+  const flags = suppressOverlappingFlags(
+    detFlags
+      .concat(
+        input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
+      )
+      .concat(
+        input.primary && input.position === 0
+          ? runNetworkEngagementChecks(screenshots?.networkFailures ?? [])
+          : []
+      )
+  ).map((flag) => ({
       ...flag,
       checkId:
         input.position === 0

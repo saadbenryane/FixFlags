@@ -26,6 +26,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/terms', seoKey: 'terms', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'

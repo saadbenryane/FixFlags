@@ -35,13 +35,16 @@ export function canViewDeterministicFixes(
   return audit.userId === viewer.id
 }
 
-export function canViewAiViaMaxPublicShare(
+export function canViewAiViaAgencyPublicShare(
   audit: AiAccessAudit,
   ownerCanSharePublicly: boolean
 ): boolean {
   if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
   return ownerCanSharePublicly
 }
+
+/** @deprecated Use canViewAiViaAgencyPublicShare */
+export const canViewAiViaMaxPublicShare = canViewAiViaAgencyPublicShare
 
 export async function canViewPrescriptionContentForAudit(
   audit: AiAccessAudit,
@@ -54,7 +57,7 @@ export async function canViewPrescriptionContentForAudit(
     where: { id: audit.userId },
     select: { id: true, role: true, plan: true, subscriptionStatus: true },
   })
-  return canViewAiViaMaxPublicShare(audit, owner ? canSharePublicly(owner) : false)
+  return canViewAiViaAgencyPublicShare(audit, owner ? canSharePublicly(owner) : false)
 }
 
 export async function canViewDeterministicFixesForAudit(

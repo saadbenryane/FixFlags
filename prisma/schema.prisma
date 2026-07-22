@@ -476,19 +476,26 @@ model ApiKey {
 }
 
 model Project {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
   url                  String
   /** Persistent Product Intelligence JSON — see knowledge/product-intelligence.md */
   productIntelligence  Json?
+  /** Auto-created PI anchor (does not consume Agency project slots). */
+  isAnchor             Boolean   @default(false)
+  /** Recurring verify: weekly | daily | null when off */
+  watchInterval        String?
+  watchNextRunAt       DateTime?
+  watchLastRunAt       DateTime?
   audits               Audit[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([userId])
   @@index([userId, url])
+  @@index([watchNextRunAt])
   @@map("projects")
 }
 
@@ -531,6 +538,8 @@ model Audit {
   aiReviewAt           DateTime?
   journeyReviewIncluded Boolean             @default(false)
   journeyReviewAt      DateTime?
+  /** Idempotency claim for Product Watch regression email. */
+  watchNotifiedAt      DateTime?
 
   startedAt       DateTime?
   completedAt     DateTime?

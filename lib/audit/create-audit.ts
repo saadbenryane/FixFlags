@@ -49,21 +49,21 @@ export class AuditLimitError extends Error {
   ) {
     const action =
       options?.action ??
-      (code === 'AUTH_REQUIRED' || code === 'ANON_LIMIT'
+      (code === 'AUTH_REQUIRED'
         ? 'signup'
         : code === 'UPGRADE_REQUIRED'
           ? 'upgrade'
           : 'buy_credits')
     const message =
       options?.message ??
-      (code === 'AUTH_REQUIRED' || code === 'ANON_LIMIT'
+      (code === 'AUTH_REQUIRED'
         ? 'You’ve used your free scan. Create a free account for fix prompts and more checks.'
         : code === 'UPGRADE_REQUIRED'
           ? 'New URL check limit reached. Upgrade to continue.'
           : 'New URL check limit reached. Buy credits or upgrade your plan to continue.')
     super(message)
     this.name = 'AuditLimitError'
-    this.code = code === 'ANON_LIMIT' ? 'AUTH_REQUIRED' : code
+    this.code = code
     this.action = action
   }
 }

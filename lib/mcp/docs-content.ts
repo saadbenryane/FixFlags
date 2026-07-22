@@ -1,7 +1,7 @@
 import { SITE_URL, BRAND } from '@/lib/marketing/copy'
 
 export const MCP_TOOL_DEFINITIONS = [
-  { name: 'ff_check_url', desc: 'Start a FixFlags check on any URL. Returns reportId.' },
+  { name: 'ff_check_and_plan', desc: 'Start a FixFlags check on any URL. Returns reportId.' },
   { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
   { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
   {
@@ -9,7 +9,7 @@ export const MCP_TOOL_DEFINITIONS = [
     desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach)',
   },
   { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-  { name: 'ff_monitoring', desc: 'Run a new check on the same URL to verify fixes.' },
+  { name: 'ff_recheck_and_compare', desc: 'Run a new check on the same URL to verify fixes.' },
   {
     name: 'ff_compare',
     desc: 'Compare two reports: see what improved, stayed the same, or regressed.',

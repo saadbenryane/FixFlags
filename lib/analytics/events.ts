@@ -40,6 +40,8 @@ type FunnelEvent =
   | 'audit_intent'
   | 'report_signup_cta_clicked'
   | 'audits_claimed'
+  | 'product_contract_saved'
+  | 'remember_shown'
 
 type EventParams = {
   landing_view: {
@@ -103,6 +105,8 @@ type EventParams = {
     from: 'value_strip' | 'sample_fix' | 'limit_gate'
   }
   audits_claimed: { claimed_count: number }
+  product_contract_saved: { audit_id?: string }
+  remember_shown: { audit_id?: string; learning_count?: number }
 }
 
 function deviceClass(): string | undefined {

@@ -2,7 +2,7 @@
 
 ## Project Responsibility
 
-FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor. Pre-revenue / testing stage, prioritizing distribution over depth.
+FixFlags is the independent Product Intelligence System for AI-built software. Paste a URL, get a Finish Plan across Message, Experience, and Reach, apply the fixes in your AI editor, then re-check the result.
 
 ## System Entry Points
 
@@ -10,7 +10,8 @@ FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Me
 |-------------|------|---------|
 | Next.js bootstrap | `app/layout.tsx` | Root layout, providers, global styles |
 | Edge middleware | `middleware.ts` → `proxy.ts` | CSP, HSTS, auth gating, rate limiting |
-| Audit pipeline | `lib/audit/deterministic-audit.ts` | Core audit runner (check modules, scoring, persist) |
+| Audit pipeline | `lib/audit/runner.ts` | Pipeline orchestration and completion behavior |
+| Task contracts | `lib/audit/task-contracts.ts` | Check-to-plan and re-check-to-diff application outcomes |
 | Queue worker | `lib/queue/inline-worker.ts` | BullMQ job processor (audit jobs) |
 | Standalone worker | `worker/index.ts` | Separate worker process (production scaling) |
 | Marketing copy | `lib/marketing/copy.ts` | Single source of truth for all marketing text |
@@ -27,8 +28,7 @@ FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Me
 | `app/(marketing)/` | Public pages: homepage, pricing, FAQ, help, tools, docs, changelog, roast | — |
 | `app/(auth)/` | Sign-in, sign-up, forgot/reset password | — |
 | `app/(app)/` | Authenticated dashboard, billing, settings | — |
-| `app/audit/[id]/` | Live audit page (polling, progressive rendering) | — |
-| `app/report/[id]/` | Completed audit report | — |
+| `app/report/[id]/` | Progressive and completed report | — |
 | `app/admin/` | Admin dashboard | — |
 | `app/api/` | All API routes (audits, auth, MCP, Stripe, cron, health) | — |
 | `components/` | React components organized by feature area | [components/codemap.md](components/codemap.md) |
@@ -44,7 +44,7 @@ FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Me
 | `lib/prompts/` | AI system prompts (triage + prescription) | — |
 | `lib/marketing/` | Copy SSoT, metadata, SEO, structured data | — |
 | `lib/help/` | Help Center catalog, search, contextual hrefs, SLA | — |
-| `lib/mcp/` | Model Context Protocol server (14 tools) | — |
+| `lib/mcp/` | Model Context Protocol server (16 tools) | — |
 | `lib/design/` | Design tokens, brand spec | — |
 | `prisma/` | Database schema, migrations, seed | — |
 | `scripts/` | CLI scripts (demo audits, backfills, guards, validation) | [scripts/codemap.md](scripts/codemap.md) |
@@ -79,7 +79,7 @@ FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Me
 ## Cross-System Flows
 
 ### Audit Pipeline Flow
-1. User submits URL → `app/api/audits/route.ts` creates audit record
+1. User submits URL → `app/api/checks/route.ts` calls the shared check-to-plan task contract
 2. Audit enqueued to BullMQ → `lib/queue/client.ts`
 3. Worker picks up job → `lib/queue/inline-worker.ts` or `worker/index.ts`
 4. Pipeline stages: QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
@@ -108,4 +108,4 @@ FixFlags is the QA layer for AI-built products. Paste a URL, get Flags across Me
 - **Marketing copy** is centralized in `lib/marketing/copy.ts`; components import from there
 - **Design tokens** use semantic names (`bg-card`, `text-brand`); raw hex only in `tokens.css` and `brand-spec.ts`
 - **AI prompts** split system (stable, cacheable) from user (per-request) for prompt caching
-- **Report UI** has strict section order: Hero → rubrics → Product Contract → Top Priorities → Journey → Flow → Action Timeline → Flags → Previews → Launch → Re-check
+- **Report UI** has strict section order documented in AGENTS.md, including Product Contract → Finish Plan → Journey → Flow → Action Timeline → Flags.

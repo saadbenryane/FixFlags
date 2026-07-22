@@ -3,9 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'fs'
 import { parseMetadataFromHtml } from '../metadata'
 import { runAllChecks } from '../checks'
-import { rankFlagsByPriority } from '../priority-flags'
-import type { PageSpeedResult } from '../pagespeed'
-import type { PageMetadata } from '../metadata'
+import { rankFlagsByPriority, type RankableFlag } from '../priority-flags'
 
 const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 
@@ -21,7 +19,6 @@ const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
  *  4. System expresses uncertainty instead of unsupported claims
  */
 
-const EMPTY_PS: PageSpeedResult = { score: null, metrics: {} }
 const NO_CONSOLE: Array<{ type: string; text: string }> = []
 const NO_HEADERS: Record<string, string> = {}
 
@@ -38,11 +35,6 @@ function runFixtureChecks(file: string, url: string) {
     undefined,
     NO_HEADERS
   )
-}
-
-function top3CheckIds(flags: Array<{ checkId: string }>): string[] {
-  const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId))
-  return rankFlagsByPriority(sorted as any, [], 3).map((r) => r.flag.checkId ?? '')
 }
 
 interface FixtureEval {
@@ -116,8 +108,8 @@ describe('report quality eval: top-3 ranking', () => {
   for (const fixture of FIXTURES) {
     it(`${fixture.file} top-3 are correct and distinct`, async () => {
       const { flags } = await runFixtureChecks(fixture.file, fixture.url)
-      const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId))
-      const ranked = rankFlagsByPriority(sorted as any, [], 3)
+      const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId)) as RankableFlag[]
+      const ranked = rankFlagsByPriority(sorted, [], 3)
       const top3Ids = ranked.map((r) => r.flag.checkId ?? '')
 
       // Top-3 must be distinct (no duplicates)

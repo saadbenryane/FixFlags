@@ -12,27 +12,31 @@ Job to be done:
 
 Do not launch as “AI website auditing with N checks.” Long-term category is Product Intelligence; acquisition language stays Launch Check.
 
+**Competitive posture:** Direct war is Scout/Signo (live product QA). CodeRabbit is adjacent (pre-merge code gate). Do not partner CodeRabbit for GTM. Do not clone Scout chat spectacle.
+
 ## Core loop (wedge expression)
 
-Paste link → understand Product (Contract) → Finish Plan → copy fix → publish → re-check → remember.
+Paste link → understand Product (Contract) → Finish Plan → copy fix → publish → re-check → remember → (optional) watch.
 
 Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision.md).
 
 ## Now (ordered)
 
-1. **Knowledge OS** — Vision canon in `knowledge/` + skills (Phase 0).
-2. **Persistent Product Intelligence** — Project-scoped PI; Contract carries across audits.
-3. **Finish Plan UX** — Promote Top Priorities; contract-aware ranking.
-4. **Verify → Remember** — Re-check clears write verified learnings; intentional dismissals update PI.
-5. **Dogfood precision** — Credible Finish Plan (false positives, dupes, prioritization).
-6. **Acquisition wedge** — Anon teaser → claim → fix → re-check (do not break).
+1. **Finish Plan ≤3 everywhere** — plan prompt, MCP, export Finish Plan path (not all-flags dump).
+2. **Contract merge-not-wipe** — edits preserve verifiedLearnings / notes / risks.
+3. **Remember visible** — ProductMemoryStrip on report when Project PI has learnings.
+4. **Claim → Project** — anon claim attaches `ensureProductProject`.
+5. **Dogfood precision** — suppress twin FPs; credible top-3.
+6. **Agency handoff honesty** — share path, hashed passwords, project quota vs anchors, Fix PR docs.
+7. **Project product watch** — Prisma schedule + recovery tick + regression email (Pro/Agency).
+8. **Agent CLI core loop** — `check` returns Finish Plan ≤3; `recheck` returns verification diff + next plan.
 
 ## Next (after thesis signals)
 
 - Repo signals into Finish Plan
-- CLI `understand` / `finish` / `verify` / `status` (cloud-backed first)
-- Scheduling / continuous verify only after Remember works
+- Benchmark task-shaped CLI workflows against raw MCP; add deeper PI commands only from usage evidence
 - MCP PI tools polish
+- Agency nurture / referral program
 
 ## Later (demand-triggered)
 
@@ -40,7 +44,8 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 - Agent Integrity checks
 - Design Integrity pass
 - Team shared PI / enterprise isolation
-- Authenticated journey architecture (staged; see historical notes in git history / integrity-engine)
+- Authenticated journey architecture (staged)
+- White-label share, CI Action, full Vercel OAuth
 
 ## What not to build now
 
@@ -49,17 +54,20 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 - Backlog generator
 - Open-sourcing the Intelligence Network
 - Training on customer PI
-- Chasing every Scout feature before Remember works
+- Chasing every Scout feature
+- CodeRabbit partnership as GTM
+- Scout-style conversational QA on the audit path
 
 ## Thesis validation signals
 
 | Signal | Means |
-|--------|-------|
+|--------|--------|
 | Users edit Contract and it persists on next scan | PI valued |
 | Finish Plan (≤3) drives action more than flag dump | Improve valued |
-| Re-check updates “what we know” | Remember valued |
+| Re-check updates “what we know” (visible) | Remember valued |
+| Product watch enqueues + regression email | Retention valued |
 | MCP/context reduces re-explaining the Product | Workflow adoption |
 
 ## Weekly focus
 
-Protect Flag → Fix → Re-check. Ship PI/Finish Plan/Remember before more check modules or growth graph pages.
+Protect Flag → Fix → Re-check → Remember. Prefer Finish Plan quality and watch habit over more check modules or growth graph pages.

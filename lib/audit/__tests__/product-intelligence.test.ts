@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   appendIntentionalNote,
+  appendKnownRisk,
   appendVerifiedLearning,
   canonicalProductUrl,
   contractFromProductIntelligence,
+  mergeContractIntoProductIntelligence,
   mergeHeuristicIntoProjectPi,
   parseProductIntelligence,
   productIntelligenceFromContract,
@@ -67,5 +69,25 @@ describe('product-intelligence', () => {
     pi = appendIntentionalNote(pi, 'Pricing page is intentionally minimal')
     expect(pi.verifiedLearnings?.[0]?.checkId).toBe('cta-missing')
     expect(pi.intentionalNotes?.[0]).toContain('intentionally')
+  })
+
+  it('merges contract edits without wiping memory', () => {
+    let pi = productIntelligenceFromContract(heuristic)
+    pi = appendVerifiedLearning(pi, {
+      checkId: 'cta-missing',
+      summary: 'Verified fixed: CTA missing',
+      auditId: 'audit-1',
+      at: '2026-07-20T12:00:00.000Z',
+    })
+    pi = appendKnownRisk(pi, 'Mobile nav is acceptable for now')
+    const merged = mergeContractIntoProductIntelligence(pi, {
+      ...heuristic,
+      purpose: 'User-edited purpose',
+      source: 'user',
+    })
+    expect(merged.purpose).toBe('User-edited purpose')
+    expect(merged.source).toBe('user')
+    expect(merged.verifiedLearnings?.[0]?.checkId).toBe('cta-missing')
+    expect(merged.knownRisks?.[0]).toContain('Mobile nav')
   })
 })

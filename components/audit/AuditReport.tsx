@@ -28,7 +28,6 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
   auditHasFixPrompts,
   rankFlagsByPriority,
-  countFixPrompts,
   buildPlanModePrompt,
   resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
@@ -55,6 +54,8 @@ import {
   type JourneyReviewSummary,
 } from '@/components/audit/JourneyReviewTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
+import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
+import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 
@@ -98,6 +99,9 @@ interface AuditReportProps {
     flagVisualEvidence?: import('@/lib/audit/persist-visual-evidence').FlagVisualEvidenceMap
     actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
     productContract?: import('@/lib/audit/product-contract').ProductContract | null
+    verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
+    intentionalNotes?: string[]
+    knownRisks?: string[]
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -106,6 +110,10 @@ interface AuditReportProps {
   isViewerOwner?: boolean
   variant?: 'default' | 'sample'
   showMonitoringHint?: boolean
+  projectId?: string | null
+  canWatchProduct?: boolean
+  canDailyWatch?: boolean
+  watchInterval?: 'weekly' | 'daily' | null
   atAuditLimit?: boolean
   screenshotLimited?: boolean
   screenshotPartial?: boolean
@@ -133,6 +141,10 @@ export function AuditReport({
   isViewerOwner = true,
   variant = 'default',
   showMonitoringHint = false,
+  projectId = null,
+  canWatchProduct = false,
+  canDailyWatch = false,
+  watchInterval = null,
   atAuditLimit = false,
   screenshotLimited = false,
   screenshotPartial = false,
@@ -184,6 +196,7 @@ export function AuditReport({
           evidenceAnchors: audit.evidenceAnchors,
           previewMeta: audit.previewMeta,
           flagVisualEvidence: audit.flagVisualEvidence,
+          productContract: audit.productContract ?? null,
         })
       : null
 
@@ -192,7 +205,8 @@ export function AuditReport({
     !isSample &&
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
-  const showPriorities = !isSample && Boolean(explorerModel) && hasFixPrompts && showPrescription
+  const showPriorities =
+    !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
 
   return (
     <Container
@@ -288,23 +302,6 @@ export function AuditReport({
         </>
       )}
 
-      {!isSample && fixPromptLocked && (
-        <Card className="space-y-3 p-5 text-center sm:p-6">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(audit.flags.length)}</p>
-            <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3">
-            <ReportSignupCta href={signUpHref} from="value_strip" size="sm">
-              {ANON_VALUE_STRIP.primaryCta}
-            </ReportSignupCta>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
-            </Button>
-          </div>
-        </Card>
-      )}
-
       {showContract && audit.productContract ? (
         <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
           <ProductContractCard
@@ -315,28 +312,51 @@ export function AuditReport({
         </div>
       ) : null}
 
-      {!isSample && explorerModel && hasFixPrompts && showPrescription && (
+      {!isSample && auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length) ? (
+        <ProductMemoryStrip
+          auditId={auditId}
+          verifiedLearnings={audit.verifiedLearnings}
+          intentionalNotes={audit.intentionalNotes}
+          knownRisks={audit.knownRisks}
+        />
+      ) : null}
+
+      {!isSample && explorerModel && (hasFixPrompts || fixPromptLocked) && (
         <section id="report-finish-plan" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div className="flex items-center justify-between gap-4">
             <div>
               <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {REPORT_COPY.sectionTitles.topPrioritiesHint}
+                {fixPromptLocked
+                  ? 'Top issues to finish. Sign up to unlock fix prompts and re-check proof.'
+                  : REPORT_COPY.sectionTitles.topPrioritiesHint}
               </p>
             </div>
-            {(() => {
-              const total = countFixPrompts(audit.flags)
-              if (total === 0) return null
-              return (
-                <PromptCopyButton
-                  prompt={buildPlanModePrompt(audit.flags, { url: audit.url })}
-                  label={REPORT_COPY.sectionTitles.copyFixPlan(total)}
-                  compact
-                  kind="plan"
-                  auditId={auditId}
-                />
-              )
-            })()}
+            {showPrescription && hasFixPrompts
+              ? (() => {
+                  const planFlags = rankFlagsByPriority(
+                    audit.flags,
+                    audit.rubricRows,
+                    3,
+                    audit.productContract ?? null
+                  ).map((r) => r.flag)
+                  const withPrompts = planFlags.filter((f) => resolveFixPrompt(f))
+                  if (withPrompts.length === 0) return null
+                  return (
+                    <PromptCopyButton
+                      prompt={buildPlanModePrompt(audit.flags, {
+                        url: audit.url,
+                        limit: 3,
+                        contract: audit.productContract ?? null,
+                      })}
+                      label={REPORT_COPY.sectionTitles.copyFixPlan(withPrompts.length)}
+                      compact
+                      kind="plan"
+                      auditId={auditId}
+                    />
+                  )
+                })()
+              : null}
           </div>
           <div className="grid gap-3">
             {rankFlagsByPriority(
@@ -345,16 +365,7 @@ export function AuditReport({
               3,
               audit.productContract ?? null
             ).map(({ flag, rubricName }) => {
-              const prompt = resolveFixPrompt(flag)
-              if (!prompt) return null
-              const toolPrompts = {
-                universal: flag.agentPrompt,
-                cursor: flag.cursorPrompt,
-                claude: flag.claudePrompt,
-                windsurf: flag.windsurfPrompt,
-                lovable: flag.lovablePrompt,
-                bolt: flag.boltPrompt,
-              }
+              const prompt = showPrescription ? resolveFixPrompt(flag) : null
               const impact = impactTagLabel(flag.impactTag)
               return (
                 <Card key={flag.id} className="p-4 sm:p-5">
@@ -376,15 +387,28 @@ export function AuditReport({
                       {flag.evidence.trim().length > 180 ? '…' : ''}
                     </p>
                   ) : null}
-                  <FixPromptBlock
-                    prompt={prompt}
-                    toolPrompts={toolPrompts}
-                    showToolSelector
-                    rows={2}
-                    clamp
-                    variant="compact"
-                    nested
-                  />
+                  {prompt ? (
+                    <FixPromptBlock
+                      prompt={prompt}
+                      toolPrompts={{
+                        universal: flag.agentPrompt,
+                        cursor: flag.cursorPrompt,
+                        claude: flag.claudePrompt,
+                        windsurf: flag.windsurfPrompt,
+                        lovable: flag.lovablePrompt,
+                        bolt: flag.boltPrompt,
+                      }}
+                      showToolSelector
+                      rows={2}
+                      clamp
+                      variant="compact"
+                      nested
+                    />
+                  ) : fixPromptLocked ? (
+                    <ReportSignupCta href={signUpHref} from="value_strip" size="sm" className="mt-1">
+                      Unlock fix prompt
+                    </ReportSignupCta>
+                  ) : null}
                 </Card>
               )
             })}
@@ -444,6 +468,23 @@ export function AuditReport({
         <LaunchGates checklist={audit.launchReadiness.checklist} />
       ) : null}
 
+      {!isSample && fixPromptLocked && (
+        <Card className="space-y-3 p-5 text-center sm:p-6">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(audit.flags.length)}</p>
+            <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            <ReportSignupCta href={signUpHref} from="value_strip" size="sm">
+              {ANON_VALUE_STRIP.primaryCta}
+            </ReportSignupCta>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {!isSample && fixPromptLocked && sampleFixFlag && (
         <section id="report-sample-fix" className="scroll-mt-[var(--header-offset)]">
           <SampleFixCard
@@ -456,12 +497,21 @@ export function AuditReport({
 
       <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         {showMonitoringHint && isLoggedIn && isViewerOwner && (
-          <Card className="space-y-2 p-5">
+          <Card className="space-y-3 p-5">
             <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
-            <p className="text-sm text-muted-foreground text-pretty">
-              {REPORT_COPY.recheckHint.bodyPrefix}{' '}
-              <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}
-            </p>
+            {projectId ? (
+              <ProductWatchControls
+                projectId={projectId}
+                canWatch={canWatchProduct}
+                canDaily={canDailyWatch}
+                initialInterval={watchInterval}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground text-pretty">
+                {REPORT_COPY.recheckHint.bodyPrefix}{' '}
+                <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}
+              </p>
+            )}
           </Card>
         )}
 

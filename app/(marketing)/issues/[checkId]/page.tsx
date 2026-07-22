@@ -13,7 +13,6 @@ import {
   issuePageTitle,
   issuePageDescription,
   rubricLabel,
-  humanizeCheckId,
 } from '@/lib/marketing/issue-page'
 import { SITE_URL } from '@/lib/marketing/copy'
 
@@ -140,7 +139,7 @@ export default async function IssuePage({ params }: Props) {
                     {data.examples.map((ex, i) => (
                       <div
                         key={`${ex.hostname}-${i}`}
-                        className="flex items-center justify-between rounded-lg border border-border/40 bg-background/50 px-4 py-3"
+                        className="flex items-center justify-between rounded-card border border-border/40 bg-background/50 px-4 py-3"
                       >
                         <div>
                           <span className="font-medium text-foreground">{ex.hostname}</span>

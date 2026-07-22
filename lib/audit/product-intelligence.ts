@@ -102,6 +102,41 @@ export function productIntelligenceFromContract(contract: ProductContract): Prod
   }
 }
 
+/**
+ * Update contract fields on existing PI without wiping verified learnings,
+ * intentional notes, known risks, constraints, or decisions.
+ */
+export function mergeContractIntoProductIntelligence(
+  existing: ProductIntelligence | null,
+  contract: ProductContract
+): ProductIntelligence {
+  const base = existing ?? productIntelligenceFromContract(contract)
+  return {
+    ...base,
+    purpose: contract.purpose,
+    firstValueJourney: contract.firstValueJourney,
+    criticalOutcomes: [...contract.criticalOutcomes],
+    source: contract.source === 'user' ? 'user' : base.source === 'heuristic' ? 'merged' : base.source,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function appendKnownRisk(
+  pi: ProductIntelligence,
+  risk: string
+): ProductIntelligence {
+  const cleaned = risk.trim()
+  if (!cleaned) return pi
+  const prev = pi.knownRisks ?? []
+  if (prev.some((n) => n.toLowerCase() === cleaned.toLowerCase())) return pi
+  return {
+    ...pi,
+    knownRisks: [cleaned, ...prev].slice(0, MAX_INTENTIONAL),
+    source: pi.source === 'heuristic' ? 'merged' : pi.source,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 export function contractFromProductIntelligence(pi: ProductIntelligence): ProductContract {
   return {
     purpose: pi.purpose,

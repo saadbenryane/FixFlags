@@ -25,6 +25,7 @@ import { parseEvidenceAnchorsFromPerformanceData } from '@/lib/audit/evidence-hi
 import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -91,6 +92,13 @@ export const auditFullInclude = {
     },
   },
   screenshots: true,
+  project: {
+    select: {
+      id: true,
+      productIntelligence: true,
+      watchInterval: true,
+    },
+  },
 } as const
 
 async function fetchAuditRow(id: string) {
@@ -201,6 +209,14 @@ export async function getGatedAuditForRequest(id: string) {
   const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
   const actionTimeline = parseActionTimeline(audit.performanceData)
   const productContract = parseProductContract(audit.productContract)
+  const productIntelligence = parseProductIntelligence(audit.project?.productIntelligence)
+  const verifiedLearnings = productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
+  const intentionalNotes = productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
+  const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
+  const watchInterval =
+    audit.project?.watchInterval === 'weekly' || audit.project?.watchInterval === 'daily'
+      ? audit.project.watchInterval
+      : null
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -277,6 +293,10 @@ export async function getGatedAuditForRequest(id: string) {
       flagVisualEvidence,
       actionTimeline,
       productContract,
+      verifiedLearnings,
+      intentionalNotes,
+      knownRisks,
+      watchInterval,
       triageAt: audit.triageAt,
       isLegacyDeterministic,
       rubricRows,

@@ -4,14 +4,14 @@ import type { NextRequest } from 'next/server'
 /**
  * Route-level billing gating on POST /api/checks (core scan endpoint).
  * Re-checks use a separate route and are never gated on quota.
- * Anon teaser gate lives inside createAndEnqueueAudit.
+ * Anon teaser gate lives inside the shared checkAndPlan task service.
  */
 
 const prismaMock = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
-const createAndEnqueueAudit = vi.hoisted(() => vi.fn())
+const checkAndPlan = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
@@ -20,9 +20,9 @@ vi.mock('@/lib/audit/create-audit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/audit/create-audit')>()
   return {
     ...actual,
-    createAndEnqueueAudit,
   }
 })
+vi.mock('@/lib/audit/task-contracts', () => ({ checkAndPlan }))
 vi.mock('@/lib/security/rate-limit', () => ({
   enforceRateLimit: vi.fn(),
   recordRateLimit: vi.fn().mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
@@ -66,11 +66,15 @@ describe('POST /api/checks - billing gating enforcement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getSession.mockResolvedValue(null)
-    createAndEnqueueAudit.mockResolvedValue({ auditId: 'audit-1', status: 'QUEUED' })
+    checkAndPlan.mockResolvedValue({
+      reportId: 'audit-1',
+      reportUrl: 'https://fixflags.com/report/audit-1',
+      status: 'QUEUED',
+    })
   })
 
   it('returns 402 AUTH_REQUIRED when createAndEnqueueAudit rejects anon teaser', async () => {
-    createAndEnqueueAudit.mockRejectedValue(
+    checkAndPlan.mockRejectedValue(
       new AuditLimitError('AUTH_REQUIRED', {
         action: 'signup',
         message: 'You’ve used your free scan. Create a free account for fix prompts and more checks.',
@@ -89,8 +93,8 @@ describe('POST /api/checks - billing gating enforcement', () => {
     const res = await POST(postReq({ url: 'https://example.com', mode: 'critical_path' }))
 
     expect(res.status).toBe(201)
-    expect(createAndEnqueueAudit).toHaveBeenCalled()
-    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBe('test-client')
+    expect(checkAndPlan).toHaveBeenCalled()
+    expect(checkAndPlan.mock.calls[0][0].clientId).toBe('test-client')
   })
 
   it('returns 201 for FREE user on critical_path mode (now free for all)', async () => {
@@ -100,13 +104,13 @@ describe('POST /api/checks - billing gating enforcement', () => {
     const res = await POST(postReq({ url: 'https://example.com', mode: 'critical_path' }))
 
     expect(res.status).toBe(201)
-    expect(createAndEnqueueAudit).toHaveBeenCalled()
-    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBeUndefined()
+    expect(checkAndPlan).toHaveBeenCalled()
+    expect(checkAndPlan.mock.calls[0][0].clientId).toBeUndefined()
   })
 
   it('returns 402 when createAndEnqueueAudit throws AuditLimitError', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
-    createAndEnqueueAudit.mockRejectedValue(new AuditLimitError('UPGRADE_REQUIRED'))
+    checkAndPlan.mockRejectedValue(new AuditLimitError('UPGRADE_REQUIRED'))
 
     const res = await POST(postReq())
 
@@ -118,7 +122,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
 
   it('returns 402 with buy_credits for paid TOKEN_LIMIT', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
-    createAndEnqueueAudit.mockRejectedValue(
+    checkAndPlan.mockRejectedValue(
       new AuditLimitError('TOKEN_LIMIT', {
         action: 'buy_credits',
         message: 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
@@ -137,7 +141,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
   it('returns 403 when parentId belongs to another user', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     const { ParentAuditError } = await import('@/lib/audit/create-audit')
-    createAndEnqueueAudit.mockRejectedValue(
+    checkAndPlan.mockRejectedValue(
       new ParentAuditError('You can only continue from your own reports', 403)
     )
 
@@ -146,12 +150,12 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(res.status).toBe(403)
     const body = await res.json()
     expect(body.code).toBe('PARENT_AUDIT_INVALID')
-    expect(createAndEnqueueAudit).toHaveBeenCalled()
+    expect(checkAndPlan).toHaveBeenCalled()
   })
 
   it('returns 401 when anonymous caller passes parentId', async () => {
     const { ParentAuditError } = await import('@/lib/audit/create-audit')
-    createAndEnqueueAudit.mockRejectedValue(
+    checkAndPlan.mockRejectedValue(
       new ParentAuditError('Sign in to continue from an existing report', 401)
     )
 
@@ -168,8 +172,8 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.reportId).toBe('audit-1')
-    expect(createAndEnqueueAudit).toHaveBeenCalledTimes(1)
-    expect(createAndEnqueueAudit.mock.calls[0][0].clientId).toBe('test-client')
+    expect(checkAndPlan).toHaveBeenCalledTimes(1)
+    expect(checkAndPlan.mock.calls[0][0].clientId).toBe('test-client')
   })
 
   it('returns 201 for authenticated BUILDER user on critical_path', async () => {
@@ -179,6 +183,6 @@ describe('POST /api/checks - billing gating enforcement', () => {
     const res = await POST(postReq({ url: 'https://example.com', mode: 'critical_path' }))
 
     expect(res.status).toBe(201)
-    expect(createAndEnqueueAudit).toHaveBeenCalledTimes(1)
+    expect(checkAndPlan).toHaveBeenCalledTimes(1)
   })
 })

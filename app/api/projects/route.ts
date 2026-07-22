@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
       })
   }
 
-  const count = await prisma.project.count({ where: { userId: user.id } })
+  const count = await prisma.project.count({
+    where: { userId: user.id, isAnchor: false },
+  })
   if (count >= limit) {
       return apiError(`Project limit reached (${limit})`, 402, {
         code: 'PROJECT_LIMIT',
@@ -78,6 +80,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       name: parsed.data.name.trim(),
       url: parsed.data.url.trim(),
+      isAnchor: false,
     },
   })
 

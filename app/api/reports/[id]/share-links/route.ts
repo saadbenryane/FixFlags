@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { canManageAudit } from '@/lib/audit/access'
 import { canSharePublicly } from '@/lib/auth/entitlements'
+import { hashSharePassword } from '@/lib/security/share-password'
 
 function generateToken(): string {
   return randomUUID().replace(/-/g, '').slice(0, 16)
@@ -95,7 +96,10 @@ export async function POST(
         auditId: id,
         token: generateToken(),
         label: typeof label === 'string' ? label.slice(0, 100) : null,
-        password: typeof password === 'string' && password.length > 0 ? password : null,
+        password:
+          typeof password === 'string' && password.length > 0
+            ? hashSharePassword(password)
+            : null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         maxViews: typeof maxViews === 'number' ? maxViews : null,
       },

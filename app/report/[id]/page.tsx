@@ -302,6 +302,9 @@ export default async function ReportPage({ params }: Props) {
       evidenceAnchors: audit.evidenceAnchors,
       flagVisualEvidence: audit.flagVisualEvidence,
       productContract: audit.productContract,
+      verifiedLearnings: audit.verifiedLearnings,
+      intentionalNotes: audit.intentionalNotes,
+      knownRisks: audit.knownRisks,
       actionTimeline: audit.actionTimeline,
     }
 
@@ -360,6 +363,14 @@ export default async function ReportPage({ params }: Props) {
           isViewerOwner={isOwner}
           variant={isMarketingSample ? 'sample' : 'default'}
           showMonitoringHint={isLoggedIn && isOwner}
+          projectId={audit.projectId}
+          canWatchProduct={entitlements?.canWatchProduct ?? false}
+          canDailyWatch={(user?.plan ?? 'FREE') === 'TEAM'}
+          watchInterval={
+            audit.watchInterval === 'weekly' || audit.watchInterval === 'daily'
+              ? audit.watchInterval
+              : null
+          }
           atAuditLimit={atAuditLimit}
           screenshotLimited={limited}
           screenshotPartial={partial}

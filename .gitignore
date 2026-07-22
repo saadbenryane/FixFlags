@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+**/node_modules/
 /.pnp
 .pnp.js
 
@@ -12,7 +12,7 @@
 
 # production
 /build
-/dist
+**/dist/
 
 # misc
 .data/
@@ -38,3 +38,7 @@ next-env.d.ts
 
 # playwright / build artifacts
 /output/
+
+# generated agent evaluation reports
+/scripts/agent-evals/reports/*.json
+.agent-runs/

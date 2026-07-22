@@ -69,7 +69,14 @@ export function canScanRepositories(
   return canSharePublicly(user)
 }
 
-/** Authenticated users can monitor reports they own; quota is not consumed. */
+/** Authenticated Pro/Agency can enable Project product watch (recurring verify). */
+export function canAccessProductWatch(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
+  return canAccessPaidFeatures(user)
+}
+
+/** Manual re-check is always available to the report owner; not a plan gate. */
 export function canAccessMonitoring(): boolean {
   return true
 }
@@ -86,6 +93,7 @@ export interface UserEntitlements {
   canExportSummary: boolean
   canAccessPaidFeatures: boolean
   canMonitor: boolean
+  canWatchProduct: boolean
   canUseMcp: boolean
   canScanRepositories: boolean
 }
@@ -101,6 +109,7 @@ export function getEntitlements(
     canExportSummary: canExportSummary(user),
     canAccessPaidFeatures: paid,
     canMonitor: canAccessMonitoring(),
+    canWatchProduct: canAccessProductWatch(user),
     canUseMcp: canUseApiKeys(user),
     canScanRepositories: canScanRepositories(user),
   }

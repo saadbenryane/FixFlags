@@ -86,7 +86,7 @@ Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules int
 
 Until automated Touch-tier tests cover report chrome:
 
-1. Completed report: explorer ring is small (~68px); filters sit close under score; no "Scanned · …" / "Top fix · …" row; no Overview sticky tab; Priorities tab when Top Priorities exist.
+1. Completed report: explorer ring is small (~68px); filters sit close under score; no "Scanned · …" / "Top fix · …" row; no Overview sticky tab; Finish Plan tab when plan items exist.
 2. Sticky toolbar sits under site header; section jump clears both.
 3. Share status appears once (banner, not hero). Hero has `ScoreDot`, not a second ring.
 4. Anon locked report: value strip + SampleFixCard only (no claim-guide card).

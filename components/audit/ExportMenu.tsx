@@ -17,7 +17,6 @@ import { PromptPreviewModal } from '@/components/audit/PromptPreviewModal'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
 import {
   buildPlanModePrompt,
-  collectAllFixPrompts,
   collectFixPromptsByRubric,
   countFixPrompts,
   countFixPromptsByRubric,
@@ -154,16 +153,22 @@ export function ExportMenu({
               <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() =>
-                  openPreview('Fix plan for your editor', buildPlanModePrompt(flags, { url }))
+                  openPreview(
+                    'Finish Plan for your editor',
+                    buildPlanModePrompt(flags, { url, limit: 3 })
+                  )
                 }
                 className="gap-2"
               >
                 <Eye className="h-4 w-4" />
-                Fix plan for your editor
+                Finish Plan (≤3)
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
-                  openPreview(`All prompts (${totalPrompts})`, collectAllFixPrompts(flags))
+                  openPreview(
+                    `All prompts (${totalPrompts})`,
+                    buildPlanModePrompt(flags, { url, limit: null })
+                  )
                 }
                 className="gap-2"
               >

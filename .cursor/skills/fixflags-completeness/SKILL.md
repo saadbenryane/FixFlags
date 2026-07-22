@@ -22,15 +22,19 @@ npm run brand:hex-guard
 npm run ui:drift-guard
 npm run seo:guard
 npm run test:unit   # record count; never hardcode in docs
+npm run test:cli
 npm run build
 npm run worker:build
+npm run test:e2e
 ```
 
 **Deploy packaging gate** (when `Dockerfile`, `package.json`, `package-lock.json`, or `.npmrc` change):
 
 ```bash
-rm -rf node_modules && npm ci --include=dev
-docker build -t fixflags:local .
+clean_dir="$(mktemp -d)"
+git archive HEAD | tar -x -C "$clean_dir"
+npm ci --include=dev --prefix "$clean_dir"
+docker build -t fixflags:local "$clean_dir"
 ```
 
 Railway uses `railway.toml` `builder = "DOCKERFILE"` (not Nixpacks). If `.npmrc` exists, Dockerfile must `COPY` it before `npm ci`. Production Chromium: apt package + `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
@@ -42,6 +46,20 @@ docker compose up -d && npm run setup && npm run verify
 ```
 
 CI runs a **subset** of verify (no `db:validate`/`db:check`/`db:drift`, no `docker build`). Document this split; do not claim CI runs full verify.
+
+## Phase 1.5 — Baseline ownership
+
+- Read `.agents/BOARD.md`, claim the scope, and inventory the dirty tree before editing.
+- Never reset, stash, clean, or overwrite another agent's work.
+- On `main`, require `origin/main` to be an ancestor before pushing. Coordinate if it diverged.
+- Generated dependencies and build output must not be tracked (`**/node_modules`, `**/dist`).
+
+## Phase 1.6 — Canonical task and route contracts
+
+- Check-to-plan and re-check-to-diff outcomes live in `lib/audit/task-contracts.ts`.
+- MCP/CLI happy paths use `ff_check_and_plan` and `ff_recheck_and_compare` exactly once per task.
+- HTTP creation is `/api/checks`; report reads and mutations are `/api/reports/[id]/*`.
+- Grep must be clean for `/api/audits`, `app/audit`, `ff_check_url`, and `ff_monitoring` outside historical migrations.
 
 ## Phase 2 — Stale term grep
 
@@ -85,6 +103,14 @@ Search canonical docs and skills for:
 | `QA layer` as sole one-liner without Product Intelligence | Prefer vision-aligned one-liner in PRODUCT.md; acquisition can still say Launch Check |
 | `` `Max` `` plan / Max tier | Live display is **Agency** (`TEAM`); see `lib/billing/plans.ts` |
 | `Top Priorities` as primary section name in new UI copy | Prefer **Finish Plan** (`#report-finish-plan`) |
+| `buildPlanModePrompt` dumping all flags as Finish Plan | Default `limit: 3`; all-prompts is separate export |
+| Contract PATCH wiping `verifiedLearnings` | Must use `mergeContractIntoProductIntelligence` |
+| Remember claimed without UI | `ProductMemoryStrip` required when learnings exist |
+| Orphan `scheduled-monitoring.ts` / dual schedulers | Project watch via `project-watch.ts` + recovery-scheduler only |
+| Anon `canCreateLinks` for share | Agency owner only; match share-links API |
+| Plaintext share passwords | `hashSharePassword` / `verifySharePassword` |
+| Auto PI projects burning Agency 5-slot count | `isAnchor: true` excluded from project limit |
+| `coding loop` / sole `QA layer` acquisition framing | Launch Check; CodeRabbit is adjacent |
 | Full feature lists in `docs/offering.md` / `docs/business-model.md` | Stubs only; canon is PRODUCT.md + knowledge/strategy.md |
 | `docs/growth/architecture.md` / `docs/growth/roadmap.md` | Renamed to `growth-architecture.md` / `growth-roadmap.md` |
 
@@ -206,6 +232,8 @@ Checks:
 ## Definition of done
 
 - [ ] All Phase 1 commands pass (verify green locally if DB available)
+- [ ] CLI pack/install and Playwright acceptance gates pass
+- [ ] Canonical task/route grep is clean
 - [ ] Phase 2 grep clean in canonical docs/skills
 - [ ] Phase 3 facts match code
 - [ ] Phase 7 conversion/report contracts verified (CTA, nav, one explorer, billing gates)

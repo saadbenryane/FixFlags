@@ -17,10 +17,29 @@ export async function runCase(caseId) {
     ])
     const grade = caseDef.grade(result)
     const duration = Date.now() - start
-    return { caseId, grade, result, duration, error: null }
+    return {
+      caseId,
+      grade,
+      result,
+      duration,
+      metrics: {
+        toolTurns: result?.status == null ? 0 : 1,
+        inputTokens: null,
+        outputTokens: null,
+        outputBytes: (result?.stdoutBytes || 0) + (result?.stderrBytes || 0),
+      },
+      error: null,
+    }
   } catch (error) {
     const duration = Date.now() - start
-    return { caseId, grade: 'fail', result: null, duration, error: error.message }
+    return {
+      caseId,
+      grade: 'fail',
+      result: null,
+      duration,
+      metrics: { toolTurns: null, inputTokens: null, outputTokens: null, outputBytes: null },
+      error: error.message,
+    }
   }
 }
 

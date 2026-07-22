@@ -62,7 +62,8 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 | Document | Primary Question | Location |
 |----------|-----------------|----------|
 | Market | What is the market context? | `knowledge/market.md` |
-| Product Strategy | What is the product vision and moat? | `knowledge/product.md` |
+| Product Vision | What system are we building and why? | `knowledge/vision.md` |
+| Product Mechanics | How do the Contract, Flag, truth, and moat work? | `knowledge/product.md` |
 | Pricing & Revenue | How do we make money? | `knowledge/strategy.md` |
 | Execution Plan | What do we build this quarter? | `knowledge/execution.md` |
 | Roadmap | What is the repository-level direction? | `ROADMAP.md` |
@@ -70,7 +71,8 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 
 **Rules:**
 - knowledge/market.md contains market context, competitors, segments, risks, distribution.
-- knowledge/product.md contains product vision, moat, Product Contract, Flag system, truth system, repair specification.
+- knowledge/vision.md contains the north-star narrative and system layers.
+- knowledge/product.md contains the moat, Product Contract, Flag system, truth system, and repair specification.
 - knowledge/strategy.md contains pricing philosophy, tier structure, revenue model, unit economics.
 - knowledge/execution.md contains the six-month plan, weekly dashboard, what to build/defer.
 - ROADMAP.md contains repository-level direction: Now / Next / Later / Not planned.
@@ -79,7 +81,8 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 **Never duplicate:**
 - Pricing tiers: only in knowledge/strategy.md
 - Competitor analysis: only in knowledge/market.md
-- Product vision: only in knowledge/product.md
+- Product vision: only in knowledge/vision.md
+- Product mechanics: only in knowledge/product.md
 - Execution milestones: only in knowledge/execution.md
 
 ---

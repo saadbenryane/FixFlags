@@ -21,7 +21,7 @@ URL-first autonomous testing is crowded. Paste-URL is **not** a moat.
 | General website audit / SEO | Ahrefs, Semrush, Screaming Frog | Broad SEO, not ship-ready for AI-built apps |
 | Accessibility checkers | axe, WAVE, Lighthouse, Pa11y | Single dimension; no AI-editor fix prompts |
 | Performance tools | PageSpeed Insights, GTmetrix | Performance only |
-| AI code review | CodeRabbit, Greptile | Code-level, not live-site QA |
+| AI code review | CodeRabbit, Greptile | Adjacent: pre-merge code gate, not live-site Launch Check. Do not partner for GTM; do not compete feature-for-feature. |
 | Autonomous test platforms | Momentic, Checkly, Mabl, Virtuoso | Compete on test-case generation; we do not |
 
 ## Positioning matrix (honest)
@@ -40,7 +40,7 @@ URL-first autonomous testing is crowded. Paste-URL is **not** a moat.
 
 ## Our wedge (restated)
 
-1. **Which failure matters** — Product Contract + ranked Top Priorities, not a letter grade dump.
+1. **Which failure matters** — Product Contract + ranked Finish Plan (≤3), not a letter grade dump.
 2. **Precise repair contracts** — evidence + expected behavior + verification, rendered as Cursor/Claude/Lovable/Bolt prompts and MCP.
 3. **Verified outcomes** — re-check with parent diff; cleared Flags are the proof.
 4. **Truth labels** — Reproduced / Detected / Observed on every Flag (credibility vs agent spectacle false positives).

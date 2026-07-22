@@ -51,16 +51,16 @@ describe('parseJsonRpcResponseOutcome', () => {
 })
 
 describe('extractAuditIdFromToolResult', () => {
-  it('reads reportId from ff_check_url JSON text content', () => {
+  it('reads reportId from ff_check_and_plan JSON text content', () => {
     const auditId = extractAuditIdFromToolResult(
-      'ff_check_url',
+      'ff_check_and_plan',
       JSON.stringify({ reportId: 'new-audit-1', status: 'QUEUED' })
     )
     assert.equal(auditId, 'new-audit-1')
   })
 
   it('reads parentReportId from tool params shape', () => {
-    const auditId = extractAuditIdFromToolResult('ff_monitoring', {
+    const auditId = extractAuditIdFromToolResult('ff_recheck_and_compare', {
       parentReportId: 'parent-9',
     })
     assert.equal(auditId, 'parent-9')

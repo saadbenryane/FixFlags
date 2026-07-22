@@ -38,14 +38,27 @@ description: FixFlags Product Intelligence System — vision, Product Intelligen
 | Concern | Code |
 |---------|------|
 | Contract / PI types | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
-| Project PI column | Prisma `Project.productIntelligence` |
-| Finish Plan ranking | `lib/audit/priority-flags.ts` |
+| Project PI column | Prisma `Project.productIntelligence` (+ `isAnchor`, watch fields) |
+| Finish Plan ranking | `lib/audit/priority-flags.ts` (`rankFlagsByPriority`, `buildPlanModePrompt` default limit 3) |
 | Report Finish Plan UI | `components/audit/AuditReport.tsx` `#report-finish-plan` |
-| MCP | `get_product_context`, `get_current_finish_plan` (+ existing tools) |
-| Remember on re-check | finalize / monitoring + PI verifiedLearnings |
+| Remember UI | `components/audit/ProductMemoryStrip.tsx` |
+| Task contracts | `lib/audit/task-contracts.ts` (check → plan, re-check → diff + next plan) |
+| MCP | `ff_check_and_plan`, `ff_recheck_and_compare`, plus context/plan drill-down tools |
+| Agent CLI | `fixflags-cli/`: `check` → Finish Plan ≤3; `recheck` → verification diff + next plan |
+| Remember on re-check | `diffFlagsAgainstParent` → `verifiedLearnings` |
+| Contract edit | `mergeContractIntoProductIntelligence` (never wipe memory) |
+| Claim → Project | `lib/audit/claim-anonymous.ts` + `ensureProductProject` |
+| Product watch | `lib/audit/project-watch.ts` + recovery-scheduler tick |
 
-## When updating docs
+Anchor creation is concurrency-safe through the partial unique database index. Watch processing permits one active scheduled re-check per project and claims regression notification before sending.
 
-- Put new vision content only in `knowledge/vision.md`.
-- Update `PRODUCT.md` only for shipped behavior.
-- Point skills and AGENTS to canon; do not duplicate the vision narrative.
+## Shipped vs aspirational checklist
+
+- **Shipped:** Contract, Finish Plan ≤3, Remember writes + UI, claim→Project, Project watch, task-shaped agent CLI.
+- **Not shipped:** portable PI export, five UI rubrics, white-label, CI Action, Vercel OAuth, Scout chat.
+
+## Hard rules (additions)
+
+8. **Contract PATCH merges** into existing PI. Never `productIntelligenceFromContract` alone when Project PI exists.
+9. **Finish Plan copy/export/MCP plan prompt ≤3** by default. “All prompts” is a separate labeled export.
+10. **Remember must be visible** when learnings exist (`ProductMemoryStrip`). Do not claim Remember in PRODUCT.md without UI.

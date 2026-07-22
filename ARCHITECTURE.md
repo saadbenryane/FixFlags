@@ -211,7 +211,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 | Layer | Components |
 |-------|------------|
-| Page shell | `components/audit/AuditReport.tsx`, hero, toolbar, `RubricBar`, Top Priorities, `ShareStatusBanner` |
+| Page shell | `components/audit/AuditReport.tsx`, hero, toolbar, `RubricBar`, Finish Plan, `ShareStatusBanner` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |
 | Flag detail | `FlagDetailPanel`, `LockedInspectionPane`, visual evidence via `flag.visualUrl` |

@@ -47,7 +47,7 @@ export default async function AdminAuditDetailPage({
             <Link href={`/report/${audit.id}`}>View report</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <a href={`/api/audits/${audit.id}/logs`} download>Download logs</a>
+            <a href={`/api/reports/${audit.id}/logs`} download>Download logs</a>
           </Button>
         </div>
       </PageHeader>

@@ -8,6 +8,12 @@ import {
 import { remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
 import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
+import { ensureProductProject, saveProjectIntelligence } from '@/lib/audit/ensure-product-project'
+import {
+  mergeContractIntoProductIntelligence,
+  parseProductIntelligence,
+} from '@/lib/audit/product-intelligence'
+import { parseProductContract } from '@/lib/audit/product-contract'
 
 export async function claimAnonymousAudits(userId: string): Promise<number> {
   const cookieStore = await cookies()
@@ -25,6 +31,9 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
       aiReviewAt: true,
       skipUsageCount: true,
       usageCountedAt: true,
+      url: true,
+      projectId: true,
+      productContract: true,
     },
   })
 
@@ -37,6 +46,28 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     where: { id: { in: audits.map((a) => a.id) } },
     data: { userId },
   })
+
+  // Attach each claimed audit to a Product project so Remember / Contract persist.
+  for (const audit of audits) {
+    if (audit.projectId) continue
+    try {
+      const project = await ensureProductProject(userId, audit.url)
+      const contract = parseProductContract(audit.productContract)
+      if (contract) {
+        const existing = parseProductIntelligence(project.productIntelligence)
+        await saveProjectIntelligence(
+          project.id,
+          mergeContractIntoProductIntelligence(existing, contract)
+        )
+      }
+      await prisma.audit.update({
+        where: { id: audit.id },
+        data: { projectId: project.id },
+      })
+    } catch {
+      // Non-fatal: claim still owns the audit; project can attach on later edit/re-check.
+    }
+  }
 
   // Claimed teasers count toward Free lifetime quota (idempotent via usageCountedAt).
   for (const audit of audits) {

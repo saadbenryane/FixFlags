@@ -13,22 +13,21 @@
 
 ## Now
 
-- **Product Intelligence Evolution (Phase 0–1)** — Canonize vision docs; persist Project-scoped Product Intelligence; promote Finish Plan; Verify→Remember on re-check; MCP PI tool aliases; agent-evals for ranking. See board `product-intelligence-vision`.
-  *Signal:* Contract edit persists on next scan; Finish Plan copy/re-check updates PI learnings.
-
-- **Dogfood audit quality** — False positives, dupes, vague findings, weak prioritization; credible top-3 Finish Plan. Board `dogfood-audit-quality`.
-
-- **Distribution harden (built locally)** — Website Roast (`/roast`), badge API, `fixflags-cli`, IDE integrations exist in tree; harden entitlements, docs accuracy, and ship. Do not market as published npm global until CLI is publishable.
-  *See:* `app/(marketing)/roast/`, `fixflags-cli/`, `ide-integrations/`.
+- **Launch Check Completeness** — Finish Plan ≤3, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `launch-check-completeness`.
+  *Signal:* Contract edit keeps learnings; Copy Finish Plan has ≤3; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
 
-- **Residual hardening** — not blocking ads, but required before scaling:
-  - Extend API route contract tests beyond the critical path (checks, status, re-check, api-keys, projects)
-  - Broader auth/session runtime coverage
-  - Expand Touch-tier report-state matrix
+- **Distribution harden** — Roast, badge API, CLI entitlements/docs; do not market npm global until publishable.
+
+- **Residual hardening** — API route contract tests beyond critical path; auth/session coverage; Touch-tier matrix.
   *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).
+
+## Recently closed (also)
+
+- **Product Intelligence Phase 0–1 foundations** — Project PI, Finish Plan UI, Remember writes, MCP context tools (thesis UI gaps closed in launch-check-completeness).
+- **Dogfood audit quality** — Absorbed into launch-check-completeness.
 
 ## Readiness (reconciled)
 
@@ -46,8 +45,6 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 - **Repo signals into Finish Plan** — Optional repo connect feeds Implementation Integrity into the same prioritized plan (entitlement expansion after thesis).
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
-- **Scheduling / recurring scans** — After Remember works; email on regressions.
-  *Signal:* Users ask for automatic checks / churn from one-and-done scanners.
 - **Evolution tracking** — Trend quality over time per Product / URL.
 - **MCP polish** — Lovable/Bolt MCP; PI tools refined.
 - **Knowledge graph Phase 2** — Public issue/benchmark pages (growth graph, not customer PI). See `docs/growth/growth-roadmap.md`.
@@ -61,6 +58,10 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - Authenticated journey architecture (staged)
 - Personas, testing modes, full session video (demand-triggered)
 - Platform-native `.fixflags` subdomain trick
+
+## Shipped retention (was Next)
+
+- **Project product watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Pro/Agency. Manual re-check remains free for all owners.
 
 ## Not planned
 

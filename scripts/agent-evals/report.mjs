@@ -11,6 +11,8 @@ export function generateReport(results) {
       passed: results.filter((r) => r.grade === 'pass').length,
       failed: results.filter((r) => r.grade === 'fail').length,
       avgDuration: results.reduce((sum, r) => sum + r.duration, 0) / results.length,
+      measuredInputTokens: results.filter((r) => r.metrics?.inputTokens != null).length,
+      measuredOutputTokens: results.filter((r) => r.metrics?.outputTokens != null).length,
     },
     results,
   }
@@ -28,6 +30,7 @@ export function printSummary(report) {
   console.log(`Passed: ${report.summary.passed}`)
   console.log(`Failed: ${report.summary.failed}`)
   console.log(`Avg Duration: ${report.summary.avgDuration.toFixed(0)}ms`)
+  console.log(`Token telemetry: ${report.summary.measuredInputTokens}/${report.summary.total} input, ${report.summary.measuredOutputTokens}/${report.summary.total} output`)
   console.log('\nResults:')
   for (const result of report.results) {
     const icon = result.grade === 'pass' ? '✓' : '✗'

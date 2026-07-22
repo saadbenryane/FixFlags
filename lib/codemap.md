@@ -45,7 +45,7 @@ Core business logic for FixFlags: audit engine, queue, billing, graph, prompts, 
 | `utils.ts` | Shared utilities (`rubricIcon()`, etc.) |
 | `rubric-icons.ts` | Rubric icon mappings |
 | `get-app-url.ts` | App URL resolution |
-| `scheduled-monitoring.ts` | Scheduled monitoring config |
+| `project-watch.ts` | Project-scoped recurring verify + regression email |
 
 ## Integration Points
 - **App routes:** `app/api/` imports from `lib/` for business logic

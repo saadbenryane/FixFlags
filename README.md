@@ -94,6 +94,20 @@ FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/sett
 
 See [MCP docs](/docs/mcp) for full tool reference.
 
+### Agent CLI
+
+The in-repo `fixflags-cli/` package turns the common agent workflow into two
+task-shaped commands over the same MCP endpoint:
+
+```bash
+fixflags check https://your-app.com --wait --plan
+fixflags recheck <reportId> --wait --diff
+```
+
+`check` returns the current three-item Finish Plan. `recheck` performs a fresh
+capture and returns the verification diff plus the next Finish Plan. See
+[`fixflags-cli/README.md`](fixflags-cli/README.md) for local setup and JSON output.
+
 **OAuth sign-in:** Set both `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (and/or GitHub equivalents) in `.env.local`. Sign-in and sign-up pages show Google/GitHub buttons automatically.
 
 ## Production deployment (Railway)

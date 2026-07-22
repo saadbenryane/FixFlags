@@ -9,7 +9,7 @@ interface Props {
 export function ReportFeedback({ auditId }: Props) {
   async function submit(vote: 1 | -1, comment?: string) {
     try {
-      const res = await fetch(`/api/audits/${auditId}/feedback`, {
+      const res = await fetch(`/api/reports/${auditId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

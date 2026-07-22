@@ -343,7 +343,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         items: [
           'Generate an API key in Settings → API Keys (Pro plan).',
           'Paste the HTTP config into Cursor, Claude Code, or Windsurf, or use one-click install from the MCP docs page.',
-          'Run ff_check_url to verify your key.',
+          'Run ff_check_and_plan to verify your key.',
         ],
       },
       {

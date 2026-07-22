@@ -67,7 +67,7 @@ export function ProjectAssignSelect({ auditId, initialProjectId, enabled, compac
     setProjectId(resolvedId)
     setSaving(true)
     try {
-      const res = await fetch(`/api/audits/${auditId}/project`, {
+      const res = await fetch(`/api/reports/${auditId}/project`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: resolvedId || null }),

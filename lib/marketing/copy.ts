@@ -11,7 +11,7 @@ import { getMarketingPlans, proUpgradeCta } from '@/lib/billing/plans'
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'The QA layer for AI-built products.',
+  tagline: 'Finish what your AI started.',
   category: 'Release readiness for AI-built products.',
   oneLiner: 'FixFlags is the release readiness layer for AI-built products.',
   supportEmail: 'hello@fixflags.com',
@@ -328,14 +328,14 @@ export const MCP_SECTION = {
   cta: 'See MCP setup',
   workflow: `User: "Check https://myapp.com and review the Experience rubric"
 
-Claude calls: ff_check_url → ff_get_rubric("EXPERIENCE")
+Claude calls: ff_check_and_plan → ff_get_rubric("EXPERIENCE")
 Claude: "Experience needs attention. Two Flags:
   - Primary CTA is below fold on 375px screens
   - 3 buttons with tap targets under 40px
   Should I apply fixes now?"
 User: "Yes"
 Claude: applies fixes
-Claude: calls ff_monitoring
+Claude: calls ff_recheck_and_compare
 Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`,
 } as const
 
@@ -422,13 +422,13 @@ export const HOW_IT_WORKS_PAGE = {
   mcp: {
     label: 'MCP workflow',
     title: 'Your agent reads the same report you do.',
-    body: 'MCP is the open standard that lets coding agents call outside tools. Connect FixFlags and site QA becomes part of the coding loop instead of a separate tab.',
+    body: 'MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Launch Check and fix prompts land in the editor you already use.',
     transcript: `User: "Check the landing page and fix the highest-impact issue"
 
-Agent calls: ff_check_url
+Agent calls: ff_check_and_plan
 Agent reads: Experience rubric and top Flag
 Agent applies: mobile CTA layout fix
-Agent calls: ff_monitoring
+Agent calls: ff_recheck_and_compare
 Agent reports: "Experience moved to Pass. One Flag cleared."`,
   },
   finalCta: {
@@ -472,7 +472,7 @@ export const CHANGELOG_ENTRIES = [
 
 export const BLOG_POSTS = [
   {
-    slug: 'why-ai-built-sites-need-a-second-pass',
+    slug: 'why-ai-built-sites-need-a-launch-check',
     title: 'Why AI-built sites still need a final review',
     date: '2026-07-02',
     excerpt:
@@ -954,10 +954,13 @@ export const REPORT_COPY = {
     timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
     previews: 'Share & search previews',
     copyFixPlan: (n: number) => `Copy Finish Plan (${Math.min(3, n)})`,
+    remember: 'What we proved',
+    rememberHint: 'Verified on re-check. Stays with this product across scans.',
   },
   stickyNav: {
     contract: 'Contract',
     priorities: 'Finish Plan',
+    remember: 'Proved',
     journey: 'Journey',
     flow: 'Flow',
     timeline: 'Timeline',
@@ -1001,7 +1004,7 @@ export const MCP_DOCS = {
   quickStart: [
     'Generate an API key in Settings → API Keys (Pro plan)',
     'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
-    'Run ff_check_url: use the curl test below to verify your key',
+    'Run ff_check_and_plan: use the curl test below to verify your key',
     'Optional: build the local CLI from fixflags-cli/ (`npm run build` then `node bin/fixflags.js`)',
   ],
   builderRequired: 'Requires Pro plan',
@@ -1031,7 +1034,7 @@ export const MCP_DOCS = {
   lovableBoltNote:
     'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
   tools: [
-    { name: 'ff_check_url', desc: 'Start a check on any URL. Returns reportId.' },
+    { name: 'ff_check_and_plan', desc: 'Start a check on any URL. Returns reportId.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
     { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
     {
@@ -1039,7 +1042,7 @@ export const MCP_DOCS = {
       desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
     },
     { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-    { name: 'ff_monitoring', desc: 'Re-check the same URL to see which Flags cleared.' },
+    { name: 'ff_recheck_and_compare', desc: 'Re-check the same URL to see which Flags cleared.' },
     {
       name: 'ff_compare',
       desc: 'Compare two reports: see what improved, stayed the same, or regressed.',

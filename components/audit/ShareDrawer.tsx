@@ -82,14 +82,14 @@ export function ShareDrawer({
   const [newMaxViews, setNewMaxViews] = useState('')
 
   const shareUrl = `${SITE_URL}/report/${auditId}`
-  const canCreateLinks = isAnonymous || (isLoggedIn && isOwner && canPublicShare)
+  const canCreateLinks = isLoggedIn && isOwner && canPublicShare
   const canViewLinks = isLoggedIn && isOwner
 
   const fetchLinks = useCallback(async () => {
     if (!canViewLinks) return
     setLinksError(false)
     try {
-      const res = await fetch(`/api/audits/${auditId}/share-links`)
+      const res = await fetch(`/api/reports/${auditId}/share-links`)
       if (!res.ok) {
         setLinksError(true)
         return
@@ -114,7 +114,7 @@ export function ShareDrawer({
       if (newExpiry) body.expiresAt = new Date(newExpiry).toISOString()
       if (newMaxViews) body.maxViews = parseInt(newMaxViews, 10)
 
-      const res = await fetch(`/api/audits/${auditId}/share-links`, {
+      const res = await fetch(`/api/reports/${auditId}/share-links`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -155,7 +155,7 @@ export function ShareDrawer({
 
   async function handleRevoke(linkId: string) {
     try {
-      const res = await fetch(`/api/audits/${auditId}/share-links?shareId=${linkId}`, {
+      const res = await fetch(`/api/reports/${auditId}/share-links?shareId=${linkId}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error()
@@ -185,7 +185,7 @@ export function ShareDrawer({
     if (isPublic) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/audits/${auditId}/toggle-public`, { method: 'PATCH' })
+      const res = await fetch(`/api/reports/${auditId}/toggle-public`, { method: 'PATCH' })
       if (res.status === 402) {
         const content = getUpgradeMomentContent('share_public')
         toast.error(content.headline, {

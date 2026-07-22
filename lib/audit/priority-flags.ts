@@ -224,17 +224,26 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
 
 /**
  * Build a structured goal-loop prompt with 3 phases (Research → Plan → Fix).
- * Each issue includes a confidence key and evidence. The prompt tells the AI
- * to fix one issue at a time and verify before moving on.
+ * Defaults to the Finish Plan (≤3 highest-leverage issues). Pass `limit: null`
+ * or a higher number only for explicit "all prompts" exports.
  */
 export function buildPlanModePrompt(
   flags: RankableFlag[],
-  options: { url?: string | null } = {}
+  options: {
+    url?: string | null
+    limit?: number | null
+    contract?: ProductContract | null
+  } = {}
 ): string {
-  const sorted = [...flags].sort(compareFlagsByPriority)
+  const limit = options.limit === undefined ? 3 : options.limit
+  const ranked =
+    limit == null
+      ? [...flags].sort((a, b) => compareFlagsByPriority(a, b, options.contract))
+      : rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
+
   const items: string[] = []
   const byConfidence: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 }
-  for (const flag of sorted) {
+  for (const flag of ranked) {
     const prompt = resolveFixPrompt(flag)
     if (!prompt) continue
     const confidence = resolveFixConfidence(flag)

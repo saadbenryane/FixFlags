@@ -181,6 +181,9 @@ function fullCommands() {
     command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']),
     command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']),
     command('seo:guard', 'npm', ['run', 'seo:guard']),
+    command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
+    command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
+    command('test:cli', 'npm', ['run', 'test:cli']),
     command('build', 'npm', ['run', 'build']),
     command('worker:build', 'npm', ['run', 'worker:build']),
   ]

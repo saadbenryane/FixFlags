@@ -26,14 +26,15 @@ Read before changing product logic or writing copy that promises a feature.
 | Audit create/queue | `lib/audit/create-audit.ts`, `lib/audit/recover-audit-job.ts`, `worker/index.ts` |
 | Audit pipeline | `docs/audit-pipeline.md`, `.cursor/skills/fixflags-audit-pipeline/SKILL.md` |
 | Triage / prescription | `lib/audit/runner.ts`, `pipeline/finalize-from-outcome.ts`, `run-ai-review.ts` |
-| Re-check | `lib/audit/recheck.ts` |
+| Task outcomes | `lib/audit/task-contracts.ts` (`checkAndPlan`, `recheckAndCompare`) |
+| Re-check | `lib/audit/monitoring.ts` |
 | Sample provenance | `lib/marketing/live-sample.ts` (`SampleSource`: live \| curated \| fixture) |
 | Billing gate | `lib/billing/credits.ts` (`wouldBlockNewCheckWithCredits`) |
 | Report explorer | `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
 | Sample explorer | `components/marketing/sample/SampleReportExplorer.tsx`, `HeroProductPreview.tsx` |
 | Live explorer adapter | `components/audit/LiveReportExplorer.tsx` |
 | Rubric bar | `components/audit/RubricBar.tsx` (compact jump links; not a second flag browser) |
-| Top Priorities / Finish Plan | `components/audit/AuditReport.tsx` `#report-finish-plan`, `lib/audit/priority-flags.ts` |
+| Finish Plan | `components/audit/AuditReport.tsx` `#report-finish-plan`, `lib/audit/priority-flags.ts` |
 | Share status | `components/audit/ShareStatusBanner.tsx`, `lib/audit/share-status.ts` |
 | Funnel events | `lib/analytics/events.ts`, `.cursor/skills/fixflags-analytics/SKILL.md` |
 | Admin funnel | `app/admin/analytics/page.tsx` |
@@ -74,7 +75,11 @@ When shipping user-visible work, add a plain-language entry to `CHANGELOG_ENTRIE
 | Action | Counts toward monthly/lifetime audit limit? |
 |--------|---------------------------------------------|
 | New URL audit | Yes (unless admin/dev unlimited) |
-| Re-check (owned report) | **No** (`skipUsageCount: true` in `recheck.ts`) |
+| Re-check (owned report) | **No** (`skipUsageCount: true` in `monitoring.ts`) |
+
+Web, MCP, and CLI must share the task outcomes. Do not coordinate create → poll → report → plan or re-check → compare in a transport client.
+
+Canonical boundaries: `/api/checks`, `/api/reports/[id]/*`, `ff_check_and_plan`, and `ff_recheck_and_compare`. Do not add compatibility redirects.
 
 Copy must say: monthly/lifetime limits apply to **new URL checks**; re-checks on owned reports are unlimited and free on quota.
 
@@ -152,10 +157,11 @@ Do not reintroduce removed nav shells (`ReportMiniNav`, `CompletenessHeader`, `R
 ## Product Contract, Finish Plan, truth, and competitive boundary
 
 - **Product Contract / PI** (`lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts`): inferred purpose, first-value journey, critical outcomes. Project-scoped `productIntelligence` persists across audits; Audit stores a snapshot. Shown above Finish Plan on completed reports **and** on progressive when the status API has returned a contract. Signed-in owners edit via `PATCH /api/reports/[id]/product-contract` (`source: 'user'`; updates project + audit). `run-journey-reviews.ts` reorders templates from contract keywords. See `knowledge/product-intelligence.md`.
-- **Finish Plan** (≤3): `rankFlagsByPriority` with Contract/PI bias; UI `#report-finish-plan`; copy via `buildPlanModePrompt`. See `knowledge/finish-plan.md`.
-- **Truth labels** (`deriveTruthLabel` in `lib/report/explorer-model.ts`): Reproduced (journey/network/overlay), Detected (deterministic), Observed (AI). Visible in FlagDetailPanel (use `deriveTruthLabel`, not ad-hoc prefixes). Flag `source` must be passed from report page and status partial flags.
-- **Sticky nav:** Contract + Finish Plan + Timeline tabs when those sections exist (`ReportStickyToolbar`). Tabs must match DOM order; no Overview destination.
-- **Dismissal:** Flag thumbs / "Incorrect finding" must stay obvious. "This is intentional" updates PI `intentionalNotes`. Full taxonomy later; do not remove incorrect-feedback path.
+- **Finish Plan** (≤3): `rankFlagsByPriority` with Contract/PI bias; UI `#report-finish-plan`; `buildPlanModePrompt` defaults to limit 3 + contract. Explorer sort must pass contract. Separate Export “All prompts” uses `limit: null`.
+- **Remember:** `ProductMemoryStrip` shows `verifiedLearnings` / notes / risks. Claim must `ensureProductProject`. Contract edit uses `mergeContractIntoProductIntelligence`.
+- **Product watch:** Pro/Agency Project `watchInterval`; `lib/audit/project-watch.ts`; regression email only. Free keeps manual re-check.
+- **Competitive boundary:** Scout/Signo = direct. CodeRabbit = adjacent code gate (do not partner for GTM; do not sell as PR review).
+- **Dismissal:** Intentional → `intentionalNotes`; low_priority → `knownRisks`.
 - **Do not build** Scout-style conversational QA chat on the audit path. Depth = Contract + Finish Plan + probes + Flags + re-check + Remember.
 - **Roast / badge / CLI** create audits through the same entitlement gate as `/api/checks` (no unlimited anonymous bypass). Roast strings live in `lib/marketing/copy.ts`.
 - **Rubrics:** Message / Experience / Reach only. Five integrity dimensions are Integrity Engine framework — see `fixflags-product-intelligence` skill.
@@ -252,6 +258,7 @@ Canonical setup: [`docs/stripe-setup.md`](../../docs/stripe-setup.md). Config he
 - Docs/config in `MCP_DOCS` in `copy.ts`; full guide UI via `components/help/McpGuideContent.tsx`
 - `pollAuditUntilDone()` for `waitForCompletion`; return final status, not stale `QUEUED`
 - Route aborts on client disconnect
+- `fixflags-cli/` wraps the core loop as `check` (completed report + Finish Plan ≤3) and `recheck` (fresh capture + diff + next plan). `scan` remains an alias.
 
 ## Deploy packaging
 

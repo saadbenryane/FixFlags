@@ -94,22 +94,9 @@ See `.env.example` for full list.
 | `npm run auth:check` | Verify auth env configuration |
 | `npm run signups` | Count signups |
 
-### Sandbox worktrees
+### Concurrent agent work
 
-For parallel agent work, create isolated worktrees:
-
-```bash
-git worktree add ../qewos-<task-id> agent/<task-id>-<description>
-# In the worktree directory:
-cp ../qewos/.env.local .env.local  
-# Edit DATABASE_URL if using sandbox database
-npm install
-npm run setup
-npm run dev -p 3001
-```
-
-Use the sandbox databases defined in `.claude/launch.json`:
-- `dev-sandbox` (port 3001) and `dev-sandbox-2` (port 3002) each set their own isolated `DATABASE_URL`; see `.claude/launch.json` for the exact connection strings. The primary local DB (`fixflags`) is defined in `docker-compose.yml` and `.env.example`.
+Agents work directly on `main` and coordinate write ownership through `.agents/BOARD.md`. Do not create worktrees for routine tasks. Preserve existing changes and stop when file ownership conflicts.
 
 ## Debugging
 
@@ -146,7 +133,7 @@ Use the sandbox databases defined in `.claude/launch.json`:
 
 ## Local admin
 
-Email: `saadbenryane@gmail.com` / password: `password123`
+Set `SEED_ADMIN_EMAIL` and a unique 12+ character `SEED_ADMIN_PASSWORD` in `.env.local`, then run `npm run db:seed`.
 - Unlimited scans
 - `/admin` dashboard with run costs
 - Created by `npm run db:seed`

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
+import { verifySharePassword } from '@/lib/security/share-password'
 
 async function resolveLink(token: string) {
   const link = await prisma.shareLink.findUnique({
@@ -79,7 +80,7 @@ export async function POST(
 
     const { link } = resolved
 
-    if (!link.password || link.password !== password) {
+    if (!verifySharePassword(link.password, password)) {
       return apiError('Incorrect password', 401)
     }
 

@@ -270,6 +270,49 @@ for (const filePath of allFiles) {
   }
 }
 
+const semanticChecks = [
+  {
+    file: 'CANONICAL-SOURCES.md',
+    id: 'vision-ownership',
+    description: 'North-star vision belongs to knowledge/vision.md',
+    pattern: /Product vision\s*\|\s*`knowledge\/product\.md`/i,
+  },
+  {
+    file: 'knowledge/README.md',
+    id: 'vision-ownership',
+    description: 'North-star vision belongs to knowledge/vision.md',
+    pattern: /Product vision:\s*only in knowledge\/product\.md/i,
+  },
+  {
+    file: 'DEVELOPMENT.md',
+    id: 'fixed-credentials',
+    description: 'Development docs must not contain a fixed admin password',
+    pattern: /password123|Email:\s*`[^`]+`\s*\/\s*password:/i,
+  },
+  {
+    file: '.cursor/skills/fixflags-completeness/SKILL.md',
+    id: 'unsafe-clean-install',
+    description: 'Completeness workflow must not recursively delete dependencies',
+    pattern: /rm\s+-rf\s+(?:\.\/)?node_modules/i,
+  },
+]
+
+for (const check of semanticChecks) {
+  const absolute = join(ROOT, check.file)
+  if (!statSync(absolute).isFile()) continue
+  const content = readFileSync(absolute, 'utf8')
+  const match = content.match(check.pattern)
+  if (!match) continue
+  violations.push({
+    file: check.file,
+    rule: check.id,
+    description: check.description,
+    canonical: 'CANONICAL-SOURCES.md',
+    line: content.slice(0, match.index).split('\n').length,
+    matchPreview: match[0].slice(0, 120).replace(/\n/g, ' '),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------

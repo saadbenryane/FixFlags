@@ -23,7 +23,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
   async function handleCreate() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/audits/${auditId}/share-links`, {
+      const res = await fetch(`/api/reports/${auditId}/share-links`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: 'Compare view' }),

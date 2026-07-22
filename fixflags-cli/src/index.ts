@@ -3,319 +3,262 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
-import { readFileSync, existsSync, writeFileSync } from 'fs'
-import { join } from 'path'
-import { homedir } from 'os'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import {
+  checkAndPlan,
+  recheckAndDiff,
+  type FinishPlan,
+  type McpCaller,
+} from './workflows.js'
 
 const CONFIG_PATH = join(homedir(), '.fixflags')
-const API_BASE = process.env.FIXFLAGS_API_URL || 'https://fixflags.com'
+const API_BASE = (process.env.FIXFLAGS_API_URL || 'https://fixflags.com').replace(/\/$/, '')
+const PROMPT_PREVIEW_LENGTH = 700
 
 interface Config {
   apiKey?: string
 }
 
 function loadConfig(): Config {
-  if (existsSync(CONFIG_PATH)) {
-    try {
-      return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as Config
-    } catch {
-      return {}
-    }
+  if (!existsSync(CONFIG_PATH)) return {}
+  try {
+    return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as Config
+  } catch {
+    return {}
   }
-  return {}
 }
 
-function saveConfig(config: Config) {
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
+function saveConfig(config: Config): void {
+  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 })
+}
+
+function requireApiKey(): string {
+  const apiKey = process.env.FIXFLAGS_API_KEY || loadConfig().apiKey
+  if (!apiKey) {
+    throw new Error(
+      'Not authenticated. Set FIXFLAGS_API_KEY or run: fixflags auth --api-key <key>'
+    )
+  }
+  return apiKey
 }
 
 let rpcId = 1
 
-async function callMcpTool(
-  tool: string,
-  args: Record<string, unknown>,
-  apiKey: string
-): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/api/mcp`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'x-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: rpcId++,
-      method: 'tools/call',
-      params: { name: tool, arguments: args },
-    }),
-  })
+function createMcpCaller(apiKey: string): McpCaller {
+  return async (tool, args) => {
+    const response = await fetch(`${API_BASE}/api/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: rpcId++,
+        method: 'tools/call',
+        params: { name: tool, arguments: args },
+      }),
+    })
 
-  const body = (await res.json().catch(() => null)) as {
-    error?: { message?: string }
-    result?: { content?: Array<{ type: string; text?: string }> }
-  } | null
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string }
+      result?: { content?: Array<{ type: string; text?: string }> }
+    } | null
 
-  if (!res.ok) {
-    throw new Error(body?.error?.message || `API error ${res.status}`)
-  }
-  if (body?.error) {
-    throw new Error(body.error.message || 'MCP tool error')
-  }
+    if (!response.ok) {
+      throw new Error(body?.error?.message || `FixFlags API error ${response.status}`)
+    }
+    if (body?.error) throw new Error(body.error.message || 'FixFlags tool error')
 
-  const text = body?.result?.content?.find((c) => c.type === 'text')?.text
-  if (!text) {
-    throw new Error('Empty MCP response')
-  }
-  try {
-    return JSON.parse(text)
-  } catch {
-    return { raw: text }
+    const text = body?.result?.content?.find((item) => item.type === 'text')?.text
+    if (!text) throw new Error(`FixFlags returned no data for ${tool}`)
+    try {
+      return JSON.parse(text)
+    } catch {
+      return { raw: text }
+    }
   }
 }
 
-const RUBRIC_COLORS: Record<string, typeof chalk.green> = {
-  MESSAGE: chalk.magenta,
-  EXPERIENCE: chalk.cyan,
-  REACH: chalk.yellow,
-  Message: chalk.magenta,
-  Experience: chalk.cyan,
-  Reach: chalk.yellow,
+function promptPreview(prompt: string | null | undefined, full: boolean): string | null {
+  if (!prompt) return null
+  if (full || prompt.length <= PROMPT_PREVIEW_LENGTH) return prompt
+  return `${prompt.slice(0, PROMPT_PREVIEW_LENGTH)}\n[truncated, rerun with --full]`
 }
 
-const SEVERITY_COLORS: Record<string, typeof chalk.red> = {
-  CRITICAL: chalk.bgRed.white,
-  IMPORTANT: chalk.red,
-  POLISH: chalk.yellow,
-}
+function printPlan(plan: FinishPlan | undefined, full: boolean): void {
+  const items = plan?.items ?? []
+  if (items.length === 0) {
+    console.log(chalk.green('Finish Plan: 0 unresolved improvements.'))
+    return
+  }
 
-function formatFlag(flag: {
-  severity: string
-  problem: string
-  rubric: string
-  fix?: string | null
-}): string {
-  const sevColor = SEVERITY_COLORS[flag.severity] || chalk.white
-  const lines = [
-    `  ${sevColor(flag.severity.padEnd(10))} ${chalk.white(flag.problem)}`,
-    `  ${chalk.gray('Rubric:')} ${flag.rubric}`,
-  ]
-  if (flag.fix) {
-    const preview = flag.fix.slice(0, 120)
-    lines.push(
-      `  ${chalk.green('Fix:')} ${chalk.gray(preview)}${flag.fix.length > 120 ? '...' : ''}`
+  console.log(chalk.bold(`Finish Plan (${items.length})`))
+  for (const [index, item] of items.entries()) {
+    console.log('')
+    console.log(
+      `${chalk.bold(`${index + 1}.`)} ${chalk.red(item.severity)} · ${chalk.cyan(item.rubric)}`
     )
+    console.log(item.problem)
+    const prompt = promptPreview(item.fixPrompt, full)
+    if (prompt) console.log(`${chalk.gray('Fix:')}\n${prompt}`)
   }
-  return lines.join('\n')
+}
+
+function fail(error: unknown): void {
+  console.error(chalk.red(`Error: ${(error as Error).message}`))
+  process.exitCode = 1
 }
 
 const program = new Command()
 
 program
   .name('fixflags')
-  .description('FixFlags CLI — QA for AI-built products')
-  .version('0.1.0')
+  .description('Finish and verify AI-built products')
+  .version('0.2.0-beta.1')
 
 program
   .command('auth')
-  .description('Authenticate with FixFlags')
-  .option('--api-key <key>', 'API key from fixflags.com/settings')
-  .action(async (opts) => {
-    const config = loadConfig()
-    const apiKey = opts.apiKey || config.apiKey
-
-    if (apiKey) {
-      config.apiKey = apiKey
-      saveConfig(config)
-      console.log(chalk.green('Authenticated with FixFlags.'))
+  .description('Save a FixFlags API key locally')
+  .option('--api-key <key>', 'API key from fixflags.com/settings/api-keys')
+  .action((options: { apiKey?: string }) => {
+    const apiKey = options.apiKey || process.env.FIXFLAGS_API_KEY
+    if (!apiKey) {
+      console.log('Create an API key at https://fixflags.com/settings/api-keys')
+      console.log('Then run: fixflags auth --api-key <your-key>')
       return
     }
-
-    console.log(chalk.yellow('Get your API key at: https://fixflags.com/settings'))
-    console.log(chalk.gray('Then run: fixflags auth --api-key <your-key>'))
+    saveConfig({ apiKey })
+    console.log(chalk.green('Authenticated with FixFlags.'))
   })
 
 program
-  .command('scan <url>')
-  .description('Scan a URL for issues across Message, Experience, and Reach')
-  .option('--wait', 'Wait for results (default: true)', true)
-  .option('--critical-path', 'Scan up to 6 related pages (default)', true)
-  .option('--single', 'Scan only the given URL')
-  .option('--json', 'Output raw JSON')
-  .action(async (url: string, opts) => {
-    const config = loadConfig()
-    if (!config.apiKey) {
-      console.log(chalk.red('Not authenticated. Run: fixflags auth --api-key <key>'))
-      process.exit(1)
-    }
-
-    const spinner = ora('Starting scan...').start()
-
-    try {
-      const createResult = (await callMcpTool(
-        'ff_check_url',
-        {
-          url,
-          waitForCompletion: false,
-          mode: opts.single ? 'single' : 'critical_path',
-        },
-        config.apiKey
-      )) as { reportId: string; status: string; reportUrl?: string }
-
-      const reportId = createResult.reportId
-      if (!reportId) {
-        spinner.fail('No reportId returned from ff_check_url')
-        process.exit(1)
+  .command('check <url>')
+  .alias('scan')
+  .description('Check a URL and return its three-item Finish Plan')
+  .option('--wait', 'Wait for the completed check', true)
+  .option('--no-wait', 'Return as soon as the check is queued')
+  .option('--plan', 'Return the current Finish Plan', true)
+  .option('--single', 'Check only the given URL')
+  .option('--full', 'Print complete fix prompts')
+  .option('--json', 'Print structured JSON')
+  .action(
+    async (
+      url: string,
+      options: {
+        wait: boolean
+        plan?: boolean
+        single?: boolean
+        full?: boolean
+        json?: boolean
       }
+    ) => {
+      const spinner = ora({ text: 'Checking product...', isEnabled: !options.json }).start()
+      try {
+        const call = createMcpCaller(requireApiKey())
+        const result = await checkAndPlan(call, url, {
+          wait: options.wait,
+          single: Boolean(options.single),
+          apiBase: API_BASE,
+        })
 
-      spinner.text = `Scan started (${reportId}). Waiting for results...`
-
-      if (!opts.wait) {
-        spinner.succeed(
-          `Scan started! Track at: ${createResult.reportUrl || `${API_BASE}/report/${reportId}`}`
+        spinner.stop()
+        const hasCritical = Boolean(
+          result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0)
         )
-        return
-      }
-
-      let status = createResult.status || 'QUEUED'
-      while (status !== 'COMPLETED' && status !== 'FAILED') {
-        await new Promise((r) => setTimeout(r, 3000))
-        const statusResult = (await callMcpTool(
-          'ff_get_check_status',
-          { reportId },
-          config.apiKey
-        )) as { status: string }
-        status = statusResult.status
-        spinner.text = `Scan in progress... (${status})`
-      }
-
-      if (status === 'FAILED') {
-        spinner.fail('Scan failed.')
-        process.exit(1)
-      }
-
-      spinner.succeed('Scan complete!')
-
-      const report = (await callMcpTool('ff_get_report', { reportId }, config.apiKey)) as {
-        score?: number | null
-        verdict?: string | null
-        rubricDetails?: Array<{ name: string; score: number | null; grade: string | null }>
-      }
-
-      const rubrics = ['MESSAGE', 'EXPERIENCE', 'REACH'] as const
-      const allFlags: Array<{
-        severity: string
-        problem: string
-        rubric: string
-        fix?: string | null
-      }> = []
-
-      for (const rubric of rubrics) {
-        try {
-          const rubricResult = (await callMcpTool(
-            'ff_get_rubric',
-            { reportId, rubric },
-            config.apiKey
-          )) as {
-            flags?: Array<{ severity: string; problem: string; fix?: string | null }>
-          }
-          for (const f of rubricResult.flags || []) {
-            allFlags.push({ ...f, rubric })
-          }
-        } catch {
-          // Rubric may be missing on degraded reports
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2))
+          if (hasCritical) process.exitCode = 1
+          return
         }
-      }
+        if (!options.wait) {
+          console.log(`Check queued: ${result.reportId}`)
+          console.log(`Report: ${result.reportUrl}`)
+          return
+        }
 
-      const payload = {
-        reportId,
-        reportUrl: `${API_BASE}/report/${reportId}`,
-        score: report.score ?? null,
-        verdict: report.verdict ?? null,
-        rubrics: report.rubricDetails || [],
-        flags: allFlags,
-      }
-
-      if (opts.json) {
-        console.log(JSON.stringify(payload, null, 2))
-      } else {
+        console.log(chalk.bold.cyan('FixFlags Check'))
+        console.log(`Report: ${result.reportUrl}`)
+        if (result.score != null) console.log(`Score: ${result.score}`)
+        if (result.verdict) console.log(`Verdict: ${result.verdict}`)
         console.log('')
-        console.log(chalk.bold.cyan('FixFlags Report'))
-        console.log(chalk.gray(`Report: ${payload.reportUrl}`))
-        if (payload.score != null) {
-          console.log(chalk.gray(`Score: ${payload.score}`))
-        }
+        printPlan(result.finishPlan, Boolean(options.full))
         console.log('')
+        console.log(chalk.gray(`Next: fixflags recheck ${result.reportId} --wait --diff`))
 
-        if (payload.rubrics.length > 0) {
-          console.log(chalk.bold('Rubric Scores:'))
-          for (const r of payload.rubrics) {
-            const color = RUBRIC_COLORS[r.name] || chalk.white
-            const label = r.score !== null ? `${r.score}/100` : 'N/A'
-            console.log(`  ${color(`${r.name}: ${label}`)}`)
-          }
-          console.log('')
-        }
-
-        if (allFlags.length === 0) {
-          console.log(chalk.green('No issues found. Looking good!'))
-        } else {
-          console.log(chalk.bold(`Found ${allFlags.length} issue(s):\n`))
-          const byRubric = allFlags.reduce(
-            (acc, f) => {
-              ;(acc[f.rubric] ||= []).push(f)
-              return acc
-            },
-            {} as Record<string, typeof allFlags>
-          )
-          for (const [rubric, rubricFlags] of Object.entries(byRubric)) {
-            const color = RUBRIC_COLORS[rubric] || chalk.white
-            console.log(color.bold(`  ${rubric} (${rubricFlags.length})`))
-            for (const flag of rubricFlags) {
-              console.log(formatFlag(flag))
-              console.log('')
-            }
-          }
-        }
-
-        console.log(chalk.gray('Paste fix prompts into Cursor, Claude Code, Lovable, or Bolt.'))
-        console.log(chalk.gray(`Re-check: fixflags scan ${url}`))
+        if (hasCritical) process.exitCode = 1
+      } catch (error) {
+        spinner.stop()
+        fail(error)
       }
-
-      const hasCritical = allFlags.some((f) => f.severity === 'CRITICAL')
-      if (hasCritical) {
-        process.exit(1)
-      }
-    } catch (err) {
-      spinner.fail(`Error: ${(err as Error).message}`)
-      process.exit(1)
     }
-  })
+  )
+
+program
+  .command('recheck <reportId>')
+  .description('Run a fresh check and show what improved or regressed')
+  .option('--wait', 'Wait for the completed re-check', true)
+  .option('--no-wait', 'Return as soon as the re-check is queued')
+  .option('--diff', 'Show the verification diff', true)
+  .option('--full', 'Print complete remaining fix prompts')
+  .option('--json', 'Print structured JSON')
+  .action(
+    async (
+      reportId: string,
+      options: { wait: boolean; diff?: boolean; full?: boolean; json?: boolean }
+    ) => {
+      const spinner = ora({ text: 'Re-checking product...', isEnabled: !options.json }).start()
+      try {
+        const result = await recheckAndDiff(createMcpCaller(requireApiKey()), reportId, {
+          wait: options.wait,
+        })
+        spinner.stop()
+
+        if (options.json) {
+          console.log(JSON.stringify(result, null, 2))
+          return
+        }
+        if (!options.wait) {
+          console.log(`Re-check queued: ${result.reportId}`)
+          return
+        }
+
+        console.log(chalk.bold.cyan('FixFlags Re-check'))
+        console.log(`Report: ${result.reportUrl || `${API_BASE}/report/${result.reportId}`}`)
+        if (options.diff && result.diff) {
+          console.log('')
+          console.log(chalk.bold('Verification'))
+          console.log(`Fixed: ${result.diff.fixed}`)
+          console.log(`Remaining: ${result.diff.remaining}`)
+          console.log(`New: ${result.diff.newIssues}`)
+          console.log(`Regressed: ${result.diff.regressed}`)
+        }
+        console.log('')
+        printPlan({ reportId: result.reportId, items: result.nextFixes }, Boolean(options.full))
+      } catch (error) {
+        spinner.stop()
+        fail(error)
+      }
+    }
+  )
 
 program
   .command('status <reportId>')
-  .description('Check the status of a scan')
-  .action(async (reportId: string) => {
-    const config = loadConfig()
-    if (!config.apiKey) {
-      console.log(chalk.red('Not authenticated. Run: fixflags auth --api-key <key>'))
-      process.exit(1)
-    }
-
+  .description('Get the current status of a check')
+  .option('--json', 'Print structured JSON')
+  .action(async (reportId: string, options: { json?: boolean }) => {
     try {
-      const result = (await callMcpTool(
-        'ff_get_check_status',
-        { reportId },
-        config.apiKey
-      )) as { status: string; progress?: number }
-      console.log(chalk.cyan(`Status: ${result.status}`))
-      if (result.progress != null) {
-        console.log(chalk.gray(`Progress: ${result.progress}%`))
-      }
-    } catch (err) {
-      console.log(chalk.red(`Error: ${(err as Error).message}`))
-      process.exit(1)
+      const result = await createMcpCaller(requireApiKey())('ff_get_check_status', {
+        reportId,
+      })
+      if (options.json) console.log(JSON.stringify(result, null, 2))
+      else console.log(`Status: ${(result as { status?: string }).status ?? 'UNKNOWN'}`)
+    } catch (error) {
+      fail(error)
     }
   })
 
-program.parse()
+program.parseAsync().catch(fail)

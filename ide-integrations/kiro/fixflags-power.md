@@ -18,13 +18,13 @@ FixFlags is the QA layer for AI-built products. Scan any public web app across M
 
 ## Live MCP tools
 
-- `ff_check_url`
+- `ff_check_and_plan`
 - `ff_get_check_status`
 - `ff_get_report`
 - `ff_get_rubric` (`MESSAGE` | `EXPERIENCE` | `REACH`)
 - `ff_get_flag`
 - `ff_plan_mode_prompt`
-- `ff_monitoring`
+- `ff_recheck_and_compare`
 - `ff_compare`
 - `generate-fix-prompt`
 
@@ -35,7 +35,7 @@ There is no `ff_get_report_flags` tool.
 ### Scan a URL
 
 1. Ask for a publicly accessible app URL.
-2. Call `ff_check_url` (prefer `waitForCompletion: true`).
+2. Call `ff_check_and_plan` (prefer `waitForCompletion: true`).
 3. Call `ff_get_report` for scores; `ff_get_rubric` per rubric for Flags.
 4. Present by rubric:
 
@@ -47,7 +47,7 @@ There is no `ff_get_report_flags` tool.
 
 ### Fix and re-check
 
-Apply fix prompts in the codebase, then call `ff_monitoring` on the same URL. Re-checks are free and unlimited on owned reports.
+Apply fix prompts in the codebase, then call `ff_recheck_and_compare` on the same URL. Re-checks are free and unlimited on owned reports.
 
 ## Notes
 
