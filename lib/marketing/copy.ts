@@ -1500,4 +1500,8 @@ export const SEO = {
     title: 'Terms of Service',
     description: 'Terms for using FixFlags.',
   },
+  issues: {
+    title: 'Issue Library',
+    description: 'Real issues found across audited sites. Frequency, affected frameworks, examples, and fixes.',
+  },
 } as const

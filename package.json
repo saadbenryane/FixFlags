@@ -16,6 +16,7 @@
     "ui:drift-guard": "node scripts/ui-drift-guard.mjs",
     "brand:icons": "node scripts/generate-brand-icons.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",
+    "knowledge:duplication-guard": "node scripts/knowledge-duplication-guard.mjs",
     "auth:check": "tsx scripts/check-auth-env.ts",
     "test:unit": "vitest run",
     "test:watch": "vitest",

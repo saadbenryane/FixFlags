@@ -13,6 +13,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| merge-origin-main-sync | auto | Merged origin/main into local main; auto-resolved overlaps; pushed | 2026-07-21 |
 | completeness-final | auto | Gates, truth residual, design/copy, dead code, Strength/Touch CRITICAL, skills/docs | 2026-07-20 |
 | product-intelligence-vision | auto | Vision canon + Phase 1 PI/Finish Plan/Remember + skills | 2026-07-20 |
 | lean-fix-markdown-panel | auto | Collapse Why/Evidence/Verify into lean Markdown Fix box; SeveritySignal; Wrench icon | 2026-07-20 |

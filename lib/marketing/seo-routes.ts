@@ -66,6 +66,12 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     ],
   },
   {
+    title: 'Issue Library',
+    links: [
+      { path: '/issues', label: 'Issues we detect', note: 'Frequency, fixes, and affected frameworks' },
+    ],
+  },
+  {
     title: 'Optional',
     optional: true,
     links: [
