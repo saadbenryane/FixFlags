@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { CheckCircle2, AlertTriangle, CircleDot, Plus } from 'lucide-react'
@@ -56,7 +57,7 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
         </div>
         {compareHref ? (
           <Button asChild variant="outline" size="sm" className="rounded-full">
-            <Link href={compareHref}>{RECHECK_DIFF_COPY.compareCta}</Link>
+            <Link href={compareHref as Route}>{RECHECK_DIFF_COPY.compareCta}</Link>
           </Button>
         ) : (
           <p className="text-xs text-muted-foreground">

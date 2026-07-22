@@ -45,7 +45,7 @@ function resolvePriceIds(subscription: Stripe.Subscription): string[] {
   return subscription.items.data.map((item) => item.price.id).filter(Boolean)
 }
 
-export async function processSubscription(
+async function processSubscription(
   tx: Prisma.TransactionClient,
   subscription: Stripe.Subscription
 ): Promise<void> {

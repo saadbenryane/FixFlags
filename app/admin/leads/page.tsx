@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { LeadStatus, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -52,7 +53,7 @@ export default async function AdminLeadsPage({
           const active = (statusFilter ?? undefined) === item.value
           return (
             <Button key={item.label} variant={active ? 'default' : 'outline'} size="sm" asChild>
-              <Link href={href}>{item.label}</Link>
+              <Link href={href as Route}>{item.label}</Link>
             </Button>
           )
         })}

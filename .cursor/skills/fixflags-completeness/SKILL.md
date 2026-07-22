@@ -1,261 +1,32 @@
 ---
 name: fixflags-completeness
-description: Repeatable completeness, consistency, and docs-accuracy pass for FixFlags. Use when auditing whether work is truly done, eliminating doc drift, fixing silent UX failures, or closing verification gaps. Triggers on completeness pass, docs accuracy, verify green, drift audit, ship readiness.
+description: Reconcile FixFlags code, product contracts, UI, tests, skills, and canonical documentation before declaring work complete. Use for completeness passes, launch readiness, contract drift, or full verification.
 ---
 
-# FixFlags Completeness Pass
+# FixFlags completeness
 
-**Read [`AGENTS.md`](../../AGENTS.md) first.** This skill encodes a repeatable workflow; canonical facts live in AGENTS.md only.
+Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the write scope on `main`. Preserve every existing change.
 
-## When to run
+## Workflow
 
-- After a large refactor or pre-ship audit
-- When docs and code may have drifted
-- Before claiming `npm run verify` green or "work complete"
+1. Stabilize ownership. Snapshot Git state and wait for overlapping writers.
+2. Run `npm run doctor` and `npm run completeness:audit` before editing. Treat failures as evidence, not exceptions to bypass.
+3. Trace the user outcome through Flag → Fix → Re-check → Remember. Inspect route, service, persistence, UI, and entitlement boundaries together.
+4. Fix the underlying contract. Consolidate shared decisions in services; keep routes as validation and response adapters.
+5. Verify changed behavior with focused tests, actual runtime flows, responsive screenshots, and accessibility checks.
+6. Run `npm run verify`, `npm run test:e2e`, the relevant packaging/Docker gates, and production smoke checks when credentials exist.
+7. Reconcile canonical Markdown only after behavior passes. Record missing infrastructure or credentials as blockers.
 
-## Phase 1 — Automated gates
+## Required references
 
-```bash
-npm run typecheck
-npm run lint
-npm run brand:hex-guard
-npm run ui:drift-guard
-npm run seo:guard
-npm run test:unit   # record count; never hardcode in docs
-npm run test:cli
-npm run build
-npm run worker:build
-npm run test:e2e
-```
+- Read [references/drift-rules.md](references/drift-rules.md) for manual review areas not fully enforceable by scripts.
+- Read `knowledge/report-contract.md` when report structure or access changes.
+- Read `docs/audit-pipeline.md` when capture, queue, judging, or finalize changes.
 
-**Deploy packaging gate** (when `Dockerfile`, `package.json`, `package-lock.json`, or `.npmrc` change):
+## Non-negotiable gates
 
-```bash
-clean_dir="$(mktemp -d)"
-git archive HEAD | tar -x -C "$clean_dir"
-npm ci --include=dev --prefix "$clean_dir"
-docker build -t fixflags:local "$clean_dir"
-```
-
-Railway uses `railway.toml` `builder = "DOCKERFILE"` (not Nixpacks). If `.npmrc` exists, Dockerfile must `COPY` it before `npm ci`. Production Chromium: apt package + `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
-
-Local full gate (requires Docker Compose + `.env.local`):
-
-```bash
-docker compose up -d && npm run setup && npm run verify
-```
-
-CI runs a **subset** of verify (no `db:validate`/`db:check`/`db:drift`, no `docker build`). Document this split; do not claim CI runs full verify.
-
-## Phase 1.5 — Baseline ownership
-
-- Read `.agents/BOARD.md`, claim the scope, and inventory the dirty tree before editing.
-- Never reset, stash, clean, or overwrite another agent's work.
-- On `main`, require `origin/main` to be an ancestor before pushing. Coordinate if it diverged.
-- Generated dependencies and build output must not be tracked (`**/node_modules`, `**/dist`).
-
-## Phase 1.6 — Canonical task and route contracts
-
-- Read `knowledge/report-contract.md`; it is the only report-order source.
-
-- Check-to-plan and re-check-to-diff outcomes live in `lib/audit/task-contracts.ts`.
-- MCP/CLI happy paths use `ff_check_and_plan` and `ff_recheck_and_compare` exactly once per task.
-- HTTP creation is `/api/checks`; report reads and mutations are `/api/reports/[id]/*`.
-- Grep must be clean for `/api/audits`, `app/audit`, `ff_check_url`, and `ff_monitoring` outside historical migrations.
-- Run `npm run product:contract-guard` for stale routes, forbidden homepage duplication, sample provenance, prompt leaks, and focused deep imports.
-
-## Phase 1.7 — Completion release integrity
-
-- Database: all migrations applied; no build-time missing-column logs.
-- Focused bundle: `FocusedAuditReport` has no explorer, journey, flow, timeline, preview, launch-gate, MCP, or share-control imports.
-- Sample: marketing render is deterministic and versioned; no Prisma query or silent fallback.
-- Claim: Product anchor/Contract/usage/prescription workflow is retryable; cookie survives failures; no swallowed attachment or queue error.
-- Share: opening a token never updates `Audit.isPublic`; password grants are signed, HttpOnly, scoped, and metadata-safe; admission increments once atomically.
-- E2E: anonymous core loop and Agency password-share/revoke loop run against seeded Postgres and queue services.
-
-## Phase 2 — Stale term grep
-
-Search canonical docs and skills for:
-
-| Term | Why stale |
-|------|-----------|
-| `888`, `1,629`, `1629` | Hardcoded test counts |
-| `DEDUP_RULES` | Real dedup is `suppressOverlappingFlags()` |
-| `STUDIO` plan | Schema is FREE/BUILDER/TEAM only |
-| `/Users/saadbenryane/Code/qewos` | Use repo-relative paths |
-| `CI is not on GitHub` | CI exists; claim must match `ci.yml` |
-| `second pass` | Banned marketing phrase |
-| `34 models`, `39 models`, `6 MCP tools`, `500 chars` prescription | See AGENTS.md Project facts |
-| `133`, `133 check`, `133/129 check`, `129 check` | Hardcoded check ID counts — use `ALL_CHECK_IDS.length` / AGENTS.md |
-| `13 tools`, `v2.3.0`, `multi-stage build` | Stale counts/deploy claims — AGENTS.md + Dockerfile truth |
-| `Example feedback` (homepage) | Use `ReportExamplesSection` / sample explorer Flag output; no invented testimonials |
-| `Analytics (NOT IMPLEMENTED` | Client funnel events are shipped in `lib/analytics/events.ts` |
-| `puppeteer` on audit path | Playwright only (`page-session`, `screenshot`) |
-| `Chromium/Puppeteer` in `nixpacks.toml` as deploy path | Unused; Railway uses Dockerfile |
-| `RubricsPanel` as live surface | Dead; use `RubricBar` + `ReportExplorer` |
-| `ReportMiniNav`, `CompletenessHeader` | Removed; use `ReportStickyToolbar`, inline report sections |
-| `showOverview` / Overview sticky tab | Removed; status callouts sit under toolbar, not a nav destination |
-| `hasFixPrompts` on `ReportExplorer` / `LiveReportExplorer` | Dead prop — per-flag `hasFixPrompt` drives Wrench indicator |
-| `REPORT_COPY.explorer.scanned` / `scanning` / `stillScanning` | Removed with FixLoop status chrome |
-| Explorer score `md` or `lg` | Live explorer uses `sm` only |
-| `Run audit` | Stale CTA — canonical is **Review my site** (`HERO.primaryCta` in `copy.ts`) |
-| `Check my site` as `HERO.primaryCta` | Drift — hero must match voice table (**Review my site**) |
-| `ANON_CLAIM_GUIDE` | Dead copy — anon CTAs are value strip + `SampleFixCard` only |
-| `claim_guide` / `explorer` signup `from` | Removed from analytics union — only `value_strip` \| `sample_fix` \| `limit_gate` |
-| `experience-visual-polish` partial | Folded into `ai-rubric-pass` — capabilities are 47 live / 0 partial |
-| `no auto-fix PRs` / findings-only repo scan | Fix PR create is shipped for Agency — update PRODUCT/offering |
-| `No component tests` / Touch 10% | Stale — progressive/failure/empty tests exist; sync QUALITY/test-strategy |
-| `How to Start`, `How to start toggle` | Removed homepage pattern — nav is How it works / Sample / Pricing |
-| `six rubrics`, `Six rubrics` | Three rubrics only: Message, Experience, Reach |
-| `ai-review.*triage` in docs | ai-review is prescription only |
-| `includeAi` skips triage | includeAi gates prescription only |
-| `unlimited deterministic` (at Free limit) | Free = 3 new URL checks; re-checks free; new checks blocked at limit |
-| `upgrade for unlimited` | Pro is 25/mo, not unlimited |
-| `subscription-only` ignoring packs | Credit packs are paid overflow (`lib/billing/credits.ts`) |
-| `QA layer` as sole one-liner without Product Intelligence | Prefer vision-aligned one-liner in PRODUCT.md; acquisition can still say Launch Check |
-| `` `Max` `` plan / Max tier | Live display is **Agency** (`TEAM`); see `lib/billing/plans.ts` |
-| `Top Priorities` as primary section name in new UI copy | Prefer **Finish Plan** (`#report-finish-plan`) |
-| `buildPlanModePrompt` dumping all flags as Finish Plan | Default `limit: 3`; all-prompts is separate export |
-| Contract PATCH wiping `verifiedLearnings` | Must use `mergeContractIntoProductIntelligence` |
-| Remember claimed without UI | `ProductMemoryStrip` required when learnings exist |
-| Orphan `scheduled-monitoring.ts` / dual schedulers | Project watch via `project-watch.ts` + recovery-scheduler only |
-| Anon `canCreateLinks` for share | Agency owner only; match share-links API |
-| Plaintext share passwords | `hashSharePassword` / `verifySharePassword` |
-| Auto PI projects burning Agency 5-slot count | `isAnchor: true` excluded from project limit |
-| `coding loop` / sole `QA layer` acquisition framing | Launch Check; CodeRabbit is adjacent |
-| Full feature lists in `docs/offering.md` / `docs/business-model.md` | Stubs only; canon is PRODUCT.md + knowledge/strategy.md |
-| `docs/growth/architecture.md` / `docs/growth/roadmap.md` | Renamed to `growth-architecture.md` / `growth-roadmap.md` |
-
-## Phase 2.4 — Payments readiness
-
-Before claiming revenue-ready:
-
-- [ ] `docs/stripe-setup.md` price IDs match Railway `STRIPE_*_PRICE_ID`
-- [ ] `/api/health` → `billingConfigured: true`
-- [ ] Webhook tests pass: `app/api/webhooks/stripe/__tests__/route.test.ts`
-- [ ] Terms include cancel/refund/credit-pack language
-- [ ] Grep clean: `unlimited deterministic`, `upgrade for unlimited`
-- [ ] `BILLING_REQUIRED=true` on Railway; secrets only in `.env.local` / Railway
-
-## Phase 2.5 — Audit pipeline grep
-
-- `grep -r "500 char" docs/` — prescription is 5000 chars
-- `grep -r "34 model" docs/` — use `grep -c '^model ' prisma/schema.prisma`
-- Confirm `docs/audit-pipeline.md` matches `lib/audit/runner.ts` flow
-- Post-deploy: `npm run smoke:triage:prod` when changing triage/finalize
-
-## Phase 3 — Cross-check facts against code
-
-| Fact | Source of truth |
-|------|-----------------|
-| Prisma models | `grep -c '^model ' prisma/schema.prisma` |
-| Check modules | `lib/audit/checks/index.ts` `checkers[]` |
-| Check IDs | `lib/audit/check-ids.ts` `ALL_CHECK_IDS` |
-| MCP tools | `lib/mcp/*.ts` `server.tool()` |
-| Page text limits | `lib/audit/page-text-limits.ts` |
-| Pipeline version | `lib/audit/pipeline-config.ts` |
-
-## Phase 4 — UX silent failure audit
-
-In product UI (not pipeline parse fallbacks), grep for:
-
-- Empty `catch {}` without user feedback
-- `fetch` without `res.ok` + `parseApiErrorResponse`
-- Pagination `hasMore` hardcoded `true`
-- Hand-rolled `rounded-lg border` panels (use `Card`/`Surface`/`Callout`)
-- `AiReviewPendingRefresh` must surface a soft refresh state after max polls (never hang silently)
-
-## Phase 4.5 — Guards and dead copy
-
-- `brand:hex-guard` allowlists SVG artwork under `app/api/badge/` and `app/api/tools/roast/` (AGENTS invariant)
-- `ui:drift-guard` allowlists `components/help/` for editorial `font-display`; report surfaces use `font-serif` / `SectionTitle`
-- Report section titles + sticky labels live in `REPORT_COPY.sectionTitles` / `REPORT_COPY.stickyNav` — no hardcoded chrome strings
-- Grep clean: `ANON_CLAIM_GUIDE`, `FlagEvidenceScreenshot`, `summaryByRubric`
-
-## Phase 5 — Doc alignment
-
-- `test-strategy.md` ↔ `QUALITY.md` blocker ratings must agree
-- `ROADMAP.md` Now section reflects QUALITY evidence (Beat Scout is closed)
-- Skills cross-link AGENTS.md; no duplicated volatile counts
-- `lib/audit/page-text-limits.ts` is canonical for 2500/5000 limits
-- Capabilities: run `npm run audit:capabilities` after folding/adding capability rows; update AGENTS.md Project facts
-- `CHANGELOG_ENTRIES` must list user-facing outcomes for shipped work (no internal jargon; banned term `scan`)
-
-## Phase 6 — Billing test coverage
-
-Core scan endpoint must have route tests:
-
-- `app/api/checks/__tests__/route.test.ts` — 402 paths + 201 success
-- Mirror pattern from `app/api/api-keys/__tests__/route.test.ts`
-- Critical path also: `app/api/reports/[id]/status/__tests__/`, `app/api/reports/[id]/monitoring/__tests__/`
-
-Re-checks are never gated (separate route; document in test comments).
-
-## Phase 7 — Conversion & report completeness
-
-Marketing and report surfaces must match product contracts:
-
-- **Primary CTA:** `HERO.primaryCta` is **Review my site** (not "Run audit", "Get started", or "Check my site").
-- **Homepage nav:** How it works / Sample / Pricing (`lib/site/nav.ts` `MARKETING_LINKS`).
-- **One explorer:** exactly one report explorer on homepage (`SampleReportSection` → `HeroProductPreview` → `SampleReportExplorer`); no second in hero.
-- **Report ownership:** `ReportExplorer` owns flag browsing; `RubricBar` is compact rubric jump links; do not resurrect `RubricsPanel` / `RubricCard` / `ReportHeroHeader`. Sticky tabs must match DOM (Contract / Priorities / Journey / Flow / Timeline / Flags / …). No Overview tab.
-- **Report density:** explorer `ScoreRingGauge` is `sm`; no duplicate share status in hero; anon CTAs = value strip + `SampleFixCard` only.
-- **Progressive seam:** same chrome as completed (`AuditReportHero` + `RubricBar` + sticky); status poll passes `productContract` + partial flag `checkId`/`source`; hide empty Action Timeline; no progressive `RubricSummaryGrid`; partial Callout only when `reportCompleteness === 'PARTIAL'`.
-- **Share status:** `ShareStatusBanner` mounted on live reports (not hero-text-only).
-- **Visual evidence:** either wired via `tryCaptureVisualEvidenceForAudit` or absent from the tree — no orphan `lib/audit/capture` modules.
-- **Browser stack:** single vendor (Playwright). Grep for `from 'puppeteer'` under `lib/audit` must be empty.
-- **Re-checks:** free and unlimited on owned reports; never gate behind quota.
-- **Billing gate:** new URL checks enforce Free lifetime / paid monthly limits via `wouldBlockNewCheckWithCredits` in `create-audit.ts`.
-- **Limit CTA match:** `AuditLimitGate` must honor `action` (`signup` | `upgrade` | `buy_credits`). Paid overflow links to `/billing#credit-packs`, not a fake upgrade.
-- **Copy vs plans:** Free features in `copy.ts` / FAQ / email match `PLAN_DEFINITIONS.FREE` (3 new URL checks; never "unlimited deterministic").
-- **No orphan marketing chrome:** no unused trust-badge components; no `trySampleHint` under the sample CTA; no `ANON_CLAIM_GUIDE`.
-- **parentId:** re-check/monitoring must validate parent ownership via `assertParentAuditAllowed`.
-- **Help / support:** every new error, limit, or billing stuck surface links a help article (`lib/help/contextual.ts`) and can open chat. SLA strings single-sourced (`SUPPORT_CHAT` === `SUPPORT_WELCOME_MESSAGE`). `/faq` and `/docs/mcp` stay in sync with Help (canonical MCP = `/help/mcp`). Never market priority support.
-- **Repo Fix PR:** Agency repo findings can open a Fix PR — do not document as findings-only.
-
-## Phase 7.5 — Funnel / analytics
-
-See [`.cursor/skills/fixflags-analytics/SKILL.md`](../fixflags-analytics/SKILL.md).
-
-```bash
-rg "trackEvent\('" --glob '*.{ts,tsx}' -g '!node_modules'
-# Every FunnelEvent union member must have a call site (or be removed).
-```
-
-Grep skills/docs for stale conversion terms:
-
-```bash
-rg -i 'ReportMiniNav|CompletenessHeader|ReportHeroHeader|ReportScoreOverview|six rubrics|"Run audit"|"Check my site"|ANON_CLAIM_GUIDE|How to Start|39 models|133 check|\\b133/133\\b|showOverview|report-overview|explorer\\.scanned|hasFixPrompts=\{|no auto-fix PRs|experience-visual-polish' .cursor/skills docs AGENTS.md ARCHITECTURE.md QUALITY.md test-strategy.md DESIGN.md PRODUCT.md
-rg 'ReportHeroHeader|RubricSummaryGrid' components/audit/AuditReportProgressive.tsx
-rg 'reportCompleteness !== .FULL.' components/audit/
-```
-
-## Phase 8 — Sample provenance
-
-Marketing pages use the versioned curated sample snapshot. Production audit rows never choose homepage content at render time. Eligibility helpers remain for validating newly generated candidate snapshots.
-
-Checks:
-
-- `lib/marketing/__tests__/sample-provenance.test.ts` passes
-- `isEligibleMarketingSample()` rejects near-empty audits regardless of score
-- Homepage/sample pages identify the curated demo snapshot honestly; fixture routes remain offline/demo only
-- Display scores derive from production helpers (`resolveDisplayScores`, `calculateOverallScore`)
-
-## Definition of done
-
-- [ ] All Phase 1 commands pass (verify green locally if DB available)
-- [ ] CLI pack/install and Playwright acceptance gates pass
-- [ ] Canonical task/route grep is clean
-- [ ] Phase 2 grep clean in canonical docs/skills
-- [ ] Phase 3 facts match code
-- [ ] Phase 7 conversion/report contracts verified (CTA, nav, one explorer, billing gates)
-- [ ] Phase 8 sample provenance tests pass; no score-floor eligibility
-- [ ] No silent UX failures in touched surfaces
-- [ ] `test-strategy.md` aligned with `QUALITY.md`
-- [ ] Skills updated; `lean-visual.md` exists for UI passes
-
-## Companion skills
-
-- `fixflags-product` — entitlements, billing, pipeline behavior
-- `fixflags-design-system` + `fixflags-marketing/lean-visual.md` — token compliance
-- `fixflags-ui-upgrade` — orchestrator for visual polish
+- `npm run completeness:audit` owns counts, MCP/integration names, sticky destinations, Product/schema contracts, stale plan APIs, and tracked generated clutter.
+- `npm run test:scripts` protects the completeness checker itself.
+- Do not weaken quality evaluations to make a suite green. Find state pollution or adjudicate source evidence.
+- Do not report Product Watch, protected sharing, CLI, or MCP contracts as shipped until their acceptance paths pass.
+- Never retain plaintext compatibility, URL-prefix Product identity, silent catches, or half-functional startup behavior.

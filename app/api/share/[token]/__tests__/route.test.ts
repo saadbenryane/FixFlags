@@ -54,11 +54,11 @@ describe('/api/share/[token]', () => {
     const response = (await GET(new NextRequest('http://localhost/api/share/token-1'), {
       params: Promise.resolve({ token: 'token-1' }),
     }))!
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(307)
     expect(prismaMock.shareLink.updateMany).toHaveBeenCalledTimes(1)
     expect(response.headers.get('set-cookie')).toMatch(/HttpOnly/i)
     expect(response.headers.get('set-cookie')).toContain('Path=/')
-    expect(await response.json()).toEqual({ url: '/share/token-1' })
+    expect(response.headers.get('location')).toBe('http://localhost/share/token-1')
   })
 
   it('rejects the wrong password without consuming a view', async () => {

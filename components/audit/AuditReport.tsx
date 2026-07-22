@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { type ReactNode } from 'react'
@@ -27,10 +28,8 @@ import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
   auditHasFixPrompts,
-  rankFlagsByPriority,
-  buildPlanModePrompt,
-  resolveFixPrompt,
 } from '@/lib/audit/priority-flags'
+import { buildFinishPlan } from '@/lib/audit/finish-plan'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -176,6 +175,9 @@ export function AuditReport({
   const showJourneyReview = !isSample && journeyReviews.length > 0
   const showFlow = !isSample && Boolean(audit.flowData)
   const showContract = !isSample && Boolean(audit.productContract)
+  const showRemember = !isSample && Boolean(
+    auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
+  )
   const showTimeline = !isSample && (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = !isSample && Boolean(audit.previewMeta)
 
@@ -211,6 +213,13 @@ export function AuditReport({
 
   const showPriorities =
     showFinishPlan && !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
+  const finishPlan = buildFinishPlan({
+    flags: audit.flags,
+    rubricRows: audit.rubricRows,
+    url: audit.url,
+    contract: audit.productContract ?? null,
+    promptAccess: showPrescription ? 'all' : 'none',
+  })
 
   return (
     <Container
@@ -219,7 +228,7 @@ export function AuditReport({
     >
       {backToPlanHref ? (
         <Button asChild variant="ghost" className="min-h-11 w-fit">
-          <Link href={backToPlanHref}>{REPORT_COPY.focused.backToPlan}</Link>
+          <Link href={backToPlanHref as Route}>{REPORT_COPY.focused.backToPlan}</Link>
         </Button>
       ) : null}
       <AuditReportHero
@@ -247,6 +256,7 @@ export function AuditReport({
         <>
           <ReportStickyToolbar
             showContract={showContract}
+            showRemember={showRemember}
             showPriorities={showPriorities}
             showJourney={showJourney || showJourneyReview}
             showFlow={showFlow}
@@ -321,7 +331,7 @@ export function AuditReport({
         </div>
       ) : null}
 
-      {!isSample && auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length) ? (
+      {showRemember && auditId ? (
         <ProductMemoryStrip
           auditId={auditId}
           verifiedLearnings={audit.verifiedLearnings}
@@ -337,86 +347,55 @@ export function AuditReport({
               <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {fixPromptLocked
-                  ? 'Top issues to finish. Sign up to unlock fix prompts and re-check proof.'
-                  : REPORT_COPY.sectionTitles.topPrioritiesHint}
+                  ? REPORT_COPY.sectionTitles.topPrioritiesLocked
+                  : aiReviewPending
+                    ? REPORT_COPY.sectionTitles.topPrioritiesGenerating
+                    : REPORT_COPY.sectionTitles.topPrioritiesHint}
               </p>
             </div>
-            {showPrescription && hasFixPrompts
-              ? (() => {
-                  const planFlags = rankFlagsByPriority(
-                    audit.flags,
-                    audit.rubricRows,
-                    3,
-                    audit.productContract ?? null
-                  ).map((r) => r.flag)
-                  const withPrompts = planFlags.filter((f) => resolveFixPrompt(f))
-                  if (withPrompts.length === 0) return null
-                  return (
-                    <PromptCopyButton
-                      prompt={buildPlanModePrompt(audit.flags, {
-                        url: audit.url,
-                        limit: 3,
-                        contract: audit.productContract ?? null,
-                      })}
-                      label={REPORT_COPY.sectionTitles.copyFixPlan(withPrompts.length)}
-                      compact
-                      kind="plan"
-                      auditId={auditId}
-                    />
-                  )
-                })()
-              : null}
+            {finishPlan.copyPrompt ? (
+              <PromptCopyButton
+                prompt={finishPlan.copyPrompt}
+                label={REPORT_COPY.sectionTitles.copyFixPlan(finishPlan.visiblePromptCount)}
+                compact
+                kind="plan"
+                auditId={auditId}
+              />
+            ) : null}
           </div>
           <div className="grid gap-3">
-            {rankFlagsByPriority(
-              audit.flags,
-              audit.rubricRows,
-              3,
-              audit.productContract ?? null
-            ).map(({ flag, rubricName }) => {
-              const prompt = showPrescription ? resolveFixPrompt(flag) : null
-              const impact = impactTagLabel(flag.impactTag)
+            {finishPlan.items.map((item) => {
+              const impact = impactTagLabel(item.impactTag)
               return (
-                <Card key={flag.id} className="p-4 sm:p-5">
+                <Card key={item.id} className="p-4 sm:p-5">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <SeveritySignal severity={flag.severity} />
+                    <SeveritySignal severity={item.severity} />
                     <span className="meta-label text-muted-foreground">
-                      {rubricLabel(rubricName)}
+                      {rubricLabel(item.rubricName)}
                     </span>
                     {impact ? (
                       <span className="text-2xs text-muted-foreground">{impact}</span>
                     ) : null}
                   </div>
                   <p className="mb-3 text-sm font-medium leading-snug text-pretty">
-                    {flag.problem}
+                    {item.problem}
                   </p>
-                  {flag.evidence?.trim() ? (
+                  {item.evidence.trim() ? (
                     <p className="mb-3 text-xs leading-snug text-muted-foreground text-pretty">
-                      {flag.evidence.trim().slice(0, 180)}
-                      {flag.evidence.trim().length > 180 ? '…' : ''}
+                      {item.evidence.trim().slice(0, 180)}
+                      {item.evidence.trim().length > 180 ? '…' : ''}
                     </p>
                   ) : null}
-                  {prompt ? (
+                  {item.prompt ? (
                     <FixPromptBlock
-                      prompt={prompt}
-                      toolPrompts={{
-                        universal: flag.agentPrompt,
-                        cursor: flag.cursorPrompt,
-                        claude: flag.claudePrompt,
-                        windsurf: flag.windsurfPrompt,
-                        lovable: flag.lovablePrompt,
-                        bolt: flag.boltPrompt,
-                      }}
+                      prompt={item.prompt}
+                      toolPrompts={item.toolPrompts ?? undefined}
                       showToolSelector
                       rows={2}
                       clamp
                       variant="compact"
                       nested
                     />
-                  ) : fixPromptLocked ? (
-                    <ReportSignupCta href={signUpHref} from="value_strip" size="sm" className="mt-1">
-                      Unlock fix prompt
-                    </ReportSignupCta>
                   ) : null}
                 </Card>
               )

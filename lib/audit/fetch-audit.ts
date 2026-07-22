@@ -130,10 +130,7 @@ export async function resolveIsPaidForAudit(
   return tier === 'paid'
 }
 
-export async function getGatedAuditForRequest(
-  id: string,
-  _options?: { tokenShare?: boolean }
-) {
+export async function getGatedAuditForRequest(id: string) {
   const session = await resolveSessionUser()
   const audit = await fetchAuditRow(id)
 

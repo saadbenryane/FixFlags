@@ -42,18 +42,17 @@ export function ProductMemoryStrip({
     <section
       id="report-remember"
       aria-labelledby="report-remember-heading"
-      className="space-y-3"
+      className="scroll-mt-[var(--header-offset)] space-y-3"
     >
       <div>
         <h2
           id="report-remember-heading"
           className="text-lg font-semibold tracking-tight text-foreground"
         >
-          {REPORT_COPY.sectionTitles.remember ?? 'What we proved'}
+          {REPORT_COPY.sectionTitles.remember}
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {REPORT_COPY.sectionTitles.rememberHint ??
-            'Verified on re-check. Stays with this product across scans.'}
+          {REPORT_COPY.sectionTitles.rememberHint}
         </p>
       </div>
       {hasLearnings ? (

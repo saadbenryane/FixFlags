@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, LockKeyhole } from 'lucide-react'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
@@ -160,7 +161,7 @@ export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
 
       <div className="flex flex-col gap-3 border-t border-border/40 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <Button asChild variant="outline" className="min-h-11">
-          <Link href={model.details.href}>
+          <Link href={model.details.href as Route}>
             {REPORT_COPY.focused.detailsCta(model.details.flagCount)}
             <ArrowRight aria-hidden />
           </Link>

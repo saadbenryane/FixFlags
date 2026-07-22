@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { CheckCircle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -54,10 +55,10 @@ export function LockedInspectionPane({
 
       <div className="flex flex-wrap gap-3">
         <Button asChild size="sm">
-          <Link href={signInHref}>{LOCKED_INSPECTION.primaryCta}</Link>
+          <Link href={signInHref as Route}>{LOCKED_INSPECTION.primaryCta}</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <Link href={signUpHref}>{LOCKED_INSPECTION.secondaryCta}</Link>
+          <Link href={signUpHref as Route}>{LOCKED_INSPECTION.secondaryCta}</Link>
         </Button>
       </div>
     </div>

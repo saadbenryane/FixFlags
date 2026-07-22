@@ -708,8 +708,11 @@ export const LANDING_PAGE = {
     label: '',
     headline: 'A review you can paste into your editor.',
     body: 'Each Flag has evidence, impact, and a fix prompt.',
-    cta: 'Explore all Flags',
-    ctaWithCount: (n: number) => `Explore all ${n} Flags`,
+    cta: 'View full sample review',
+    ctaWithCount: (flagCount: number) => {
+      void flagCount
+      return 'View full sample review'
+    },
     illustrativeLabel: '',
   },
   footer: {
@@ -973,6 +976,8 @@ export const REPORT_COPY = {
     topPriorities: 'Finish Plan',
     topPrioritiesHint:
       'The highest-leverage improvements next. Copy into Cursor, Claude Code, or any editor with plan mode.',
+    topPrioritiesLocked: 'Your highest-priority issues. Sign up for the fix prompt and re-check proof.',
+    topPrioritiesGenerating: 'Your highest-priority issues are ready. Fix prompts are still generating.',
     productContract: 'Product contract',
     productContractHeading: 'What this product appears to do',
     journey: 'User journey walk',
@@ -1305,6 +1310,18 @@ export const SHARE_COPY = {
   privateLinkCopied: 'Private link copied',
   privateLinkCopiedDetail: 'This link only works for you while signed in.',
   agencyCta: 'Agency',
+  access: {
+    openingTitle: 'Opening shared report',
+    openingBody: 'Checking that this link is still available.',
+    retry: 'Try again',
+    openFailed: 'Could not open this share link.',
+    passwordTitle: 'Password required',
+    passwordBody: 'This report is protected. Enter its password to continue.',
+    passwordLabel: 'Share password',
+    passwordPlaceholder: 'Enter password',
+    checking: 'Checking…',
+    viewReport: 'View report',
+  },
 } as const
 
 export const ANON_VALUE_STRIP = {

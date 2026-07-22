@@ -69,23 +69,33 @@ test('checkAndPlan returns the authoritative queued outcome without coordinating
   )
 })
 
-test('checkAndPlan does not report a timed-out wait as a completed plan', async () => {
+test('checkAndPlan continues through status and completed report after the server wait window', async () => {
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-running',
       reportUrl: 'https://fixflags.com/report/report-running',
       status: 'CHECKING',
     },
+    ff_get_check_status: [{ reportId: 'report-running', status: 'CHECKING' }, { reportId: 'report-running', status: 'COMPLETED' }],
+    ff_get_report: {
+      reportId: 'report-running',
+      reportUrl: 'https://fixflags.com/report/report-running',
+      status: 'COMPLETED',
+      finishPlan: { reportId: 'report-running', items: [] },
+    },
   })
 
-  await assert.rejects(
-    checkAndPlan(mock.call, 'https://example.com', {
-      wait: true,
-      single: false,
-      apiBase: 'https://fixflags.com',
-    }),
-    /still CHECKING after the server wait window/
-  )
+  const result = await checkAndPlan(mock.call, 'https://example.com', {
+    wait: true,
+    single: false,
+    apiBase: 'https://fixflags.com',
+    pollIntervalMs: 0,
+    maxWaitMs: 100,
+  })
+  assert.equal(result.status, 'COMPLETED')
+  assert.deepEqual(mock.calls.map((item) => item.tool), [
+    'ff_check_and_plan', 'ff_get_check_status', 'ff_get_check_status', 'ff_get_report',
+  ])
 })
 
 test('recheckAndDiff uses the combined monitoring response without extra calls', async () => {
@@ -96,14 +106,10 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
       reportUrl: 'https://fixflags.com/report/child-1',
       status: 'COMPLETED',
       diff: { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 },
-      nextFixes: [
-        {
-          problem: 'Proof remains weak',
-          rubric: 'MESSAGE',
-          severity: 'IMPORTANT',
-          fixPrompt: 'Add product evidence.',
-        },
-      ],
+      nextFinishPlan: {
+        reportId: 'child-1',
+        items: [{ problem: 'Proof remains weak', rubric: 'MESSAGE', severity: 'IMPORTANT', fixPrompt: 'Add product evidence.' }],
+      },
     },
   })
 
@@ -112,7 +118,7 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
   })
 
   assert.deepEqual(result.diff, { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 })
-  assert.equal(result.nextFixes.length, 1)
+  assert.equal(result.nextFinishPlan.items.length, 1)
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])
 })
 
@@ -123,7 +129,7 @@ test('recheckAndDiff rejects a malformed authoritative outcome', async () => {
 
   await assert.rejects(
     recheckAndDiff(mock.call, 'parent-2', { wait: true }),
-    /did not return a re-check report ID/
+    /reportId must be a non-empty string/
   )
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])
 })

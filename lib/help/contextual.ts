@@ -1,4 +1,4 @@
-import type { HelpArticleSlug, HelpCategoryId } from './types'
+import type { HelpArticlePath, HelpArticleSlug, HelpCategoryId } from './types'
 import { helpArticlePath } from './types'
 
 export type HelpSurface =
@@ -70,21 +70,21 @@ const ARTICLE_CATEGORY: Record<HelpArticleSlug, HelpCategoryId> = {
   'contact-us': 'account',
 }
 
-export function helpHrefForSlug(slug: HelpArticleSlug): string {
+export function helpHrefForSlug(slug: HelpArticleSlug): HelpArticlePath {
   return helpArticlePath(ARTICLE_CATEGORY[slug], slug)
 }
 
-export function helpHrefForFailureCode(failureCode?: string | null): string {
+export function helpHrefForFailureCode(failureCode?: string | null): HelpArticlePath {
   const slug =
     (failureCode && FAILURE_CODE_ARTICLES[failureCode]) || SURFACE_ARTICLES.audit_failure
   return helpHrefForSlug(slug)
 }
 
-export function helpHrefForLimitAction(action?: string | null): string {
+export function helpHrefForLimitAction(action?: string | null): HelpArticlePath {
   const slug = (action && LIMIT_ACTION_ARTICLES[action]) || SURFACE_ARTICLES.audit_limit
   return helpHrefForSlug(slug)
 }
 
-export function helpHrefForSurface(surface: HelpSurface): string {
+export function helpHrefForSurface(surface: HelpSurface): HelpArticlePath {
   return helpHrefForSlug(SURFACE_ARTICLES[surface])
 }

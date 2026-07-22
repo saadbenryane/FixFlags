@@ -5,7 +5,6 @@ import { User } from '@prisma/client'
 import { RUBRIC_ORDER, type RubricName } from '../audit/constants'
 import {
   computeRubricsFromRows,
-  computeShareStatusFromRubrics,
 } from '../audit/rubric'
 import { canUseApiKeys } from '../auth/permissions'
 import {
@@ -25,6 +24,7 @@ import {
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
 import { buildRepoFindingPayload } from '@/lib/mcp/repo-finding-payload'
 import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { loadCompletedTaskOutcome } from '@/lib/audit/task-contracts'
 
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
   if (flag.checkId) return `check:${flag.checkId}`
@@ -64,65 +64,17 @@ export function registerAllTools(
     async ({ reportId }) => {
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
-        include: {
-          rubrics: {
-            orderBy: { name: 'asc' },
-            include: { flags: { select: { severity: true } } },
-          },
-          flags: { select: { severity: true, rubric: true } },
-          screenshots: true,
-        },
+        select: { id: true, userId: true, isPublic: true },
       })
       if (!audit) throw new Error('Report not found')
       await assertAuditAccess(audit, user.id)
-      if (audit.status !== 'COMPLETED') {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({ status: audit.status, message: 'Check not yet complete' }),
-            },
-          ],
-        }
-      }
-
-      const rubricSources = audit.rubrics.map((r) => ({
-        name: r.name,
-        grade: r.grade,
-        score: r.score,
-        flags: r.flags.map((f) => ({ severity: f.severity })),
-      }))
-      const flatFlags = audit.flags.map((f) => ({ severity: f.severity, rubric: f.rubric }))
-      const rubrics = computeRubricsFromRows(rubricSources, flatFlags)
-      const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
+      const outcome = await loadCompletedTaskOutcome(reportId)
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({
-              reportId: audit.id,
-              url: audit.url,
-              pageJob: audit.pageJob,
-              pageType: audit.pageType,
-              verdict: audit.verdict,
-              score: audit.score,
-              shareStatus,
-              rubrics: rubrics.map((r) => ({
-                name: r.name,
-                status: r.status,
-                flagCount: r.flagCount,
-                criticalCount: r.criticalCount,
-                importantCount: r.importantCount,
-              })),
-              rubricDetails: audit.rubrics.map((r) => ({
-                name: r.name,
-                grade: r.grade,
-                score: r.score,
-                status: r.status,
-                summary: r.summary,
-              })),
-            }),
+            text: JSON.stringify(outcome),
           },
         ],
       }

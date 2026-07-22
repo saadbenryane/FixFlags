@@ -16,12 +16,11 @@ import { toast } from 'sonner'
 import { PromptPreviewModal } from '@/components/audit/PromptPreviewModal'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
 import {
-  buildPlanModePrompt,
   collectFixPromptsByRubric,
   countFixPrompts,
   countFixPromptsByRubric,
 } from '@/lib/audit/priority-flags'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildAllFixPrompts, buildFinishPlan } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
@@ -173,7 +172,7 @@ export function ExportMenu({
                 onClick={() =>
                   openPreview(
                     `All prompts (${totalPrompts})`,
-                    buildPlanModePrompt(flags, { url, limit: null })
+                    buildAllFixPrompts({ flags, url })
                   )
                 }
                 className="gap-2"

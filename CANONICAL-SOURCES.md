@@ -224,7 +224,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 
 | Concept | Canonical Source |
 |---------|------------------|
-| Project facts (check counts, model counts, etc.) | `AGENTS.md` → Project facts |
+| Volatile project facts (check counts, model counts, tools) | Generate from code with `npm run agent` and `npm run audit:capabilities` |
 | Key directories and authoritative files | `AGENTS.md` → Key directories and authoritative files |
 | Verified commands | `AGENTS.md` → Verified commands |
 | Product invariants | `AGENTS.md` → Critical invariants → Product |

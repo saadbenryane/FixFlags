@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
@@ -52,12 +53,12 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
         {needsSignup ? (
           <>
             <Button asChild size="sm">
-              <Link href={signUpHref} onClick={() => trackReportSignupCta('limit_gate')}>
+              <Link href={signUpHref as Route} onClick={() => trackReportSignupCta('limit_gate')}>
                 Create free account
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <Link href={signInHref}>Sign in</Link>
+              <Link href={signInHref as Route}>Sign in</Link>
             </Button>
           </>
         ) : isPaidAtLimit ? (

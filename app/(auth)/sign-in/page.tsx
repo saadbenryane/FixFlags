@@ -75,10 +75,18 @@ function SignInForm() {
       typeof PublicKeyCredential !== 'undefined' &&
       typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
     if (!canAutofill) return
-    void PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
-      if (!available) return
-      void authClient.signIn.passkey({ autoFill: true })
-    })
+    void PublicKeyCredential.isConditionalMediationAvailable()
+      .then(async (available) => {
+        if (!available) return
+        await authClient.signIn.passkey({ autoFill: true })
+      })
+      .catch((error) => {
+        // Conditional passkey UI is an enhancement. Browsers may cancel it on
+        // navigation or when no credential is available.
+        if (document.visibilityState === 'visible') {
+          console.warn('Conditional passkey sign-in was unavailable', error)
+        }
+      })
   }, [])
 
   async function handlePasskeySignIn() {

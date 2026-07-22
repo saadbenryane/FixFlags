@@ -39,7 +39,7 @@ description: FixFlags Product Intelligence System — vision, Product Intelligen
 | Concern | Code |
 |---------|------|
 | Contract / PI types | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
-| Project PI column | Prisma `Project.productIntelligence` (+ `isAnchor`, watch fields) |
+| Product persistence | Prisma `Project.productIntelligence`, `canonicalHost`, `isManaged`, and `productIntelligenceRevision` |
 | Finish Plan service | `lib/audit/finish-plan.ts` (`buildFinishPlan`) |
 | Focused report / details | `FocusedAuditReport.tsx`; `AuditReport.tsx` on `/details` |
 | Remember UI | `components/audit/ProductMemoryStrip.tsx` |

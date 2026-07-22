@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -108,7 +109,7 @@ export default async function AdminPage() {
               <CardContent className="space-y-2">
                 <StatValue>{s.value}</StatValue>
                 <Button variant="link" className="h-auto p-0 text-xs" asChild>
-                  <Link href={s.href}>View</Link>
+                  <Link href={s.href as Route}>View</Link>
                 </Button>
               </CardContent>
             </Card>

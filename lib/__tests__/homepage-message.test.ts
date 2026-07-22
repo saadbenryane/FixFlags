@@ -275,9 +275,9 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.editorIntegrations.headline, /Cursor|Claude|Lovable/i)
   })
 
-  it('sample report section exposes an explore-all CTA', () => {
-    assert.match(LANDING_PAGE.sampleReport.cta, /explore all/i)
-    assert.match(LANDING_PAGE.sampleReport.ctaWithCount(7), /Explore all 7 Flags/)
+  it('sample report section links to the full sample review', () => {
+    assert.equal(LANDING_PAGE.sampleReport.cta, 'View full sample review')
+    assert.equal(LANDING_PAGE.sampleReport.ctaWithCount(7), 'View full sample review')
   })
 
   it('landing page exposes three-rubric check story', () => {

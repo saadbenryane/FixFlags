@@ -1,13 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { SHARE_COPY } from '@/lib/marketing/copy'
 
 export function ShareLinkPageClient({
   token,
@@ -16,44 +16,44 @@ export function ShareLinkPageClient({
   token: string
   requiresPassword: boolean
 }) {
-  const router = useRouter()
   const [password, setPassword] = useState('')
   const [pending, setPending] = useState(!requiresPassword)
   const [error, setError] = useState<string | null>(null)
 
-  const authorize = useCallback(async (method: 'GET' | 'POST', enteredPassword?: string) => {
+  const authorize = useCallback(async (enteredPassword: string) => {
     setPending(true)
     setError(null)
     try {
       const response = await fetch(`/api/share/${token}`, {
-        method,
-        headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
-        body: method === 'POST' ? JSON.stringify({ password: enteredPassword }) : undefined,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: enteredPassword }),
       })
       if (!response.ok) throw new Error((await parseApiErrorResponse(response)).message)
-      router.refresh()
+      const data = await response.json() as { url: string }
+      window.location.assign(data.url)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not open this share link.')
+      setError(caught instanceof Error ? caught.message : SHARE_COPY.access.openFailed)
     } finally {
       setPending(false)
     }
-  }, [router, token])
+  }, [token])
 
   useEffect(() => {
-    if (!requiresPassword) void authorize('GET')
-  }, [authorize, requiresPassword])
+    if (!requiresPassword) window.location.assign(`/api/share/${token}`)
+  }, [requiresPassword, token])
 
   if (!requiresPassword) {
     return (
       <Container className="flex min-h-[60vh] items-center justify-center py-12" aria-live="polite">
         <Card className="w-full max-w-sm space-y-4 p-6 text-center">
           <Loader2 className="mx-auto h-7 w-7 animate-spin text-brand" aria-hidden />
-          <CardTitle>Opening shared report</CardTitle>
-          <p className="text-sm text-muted-foreground">Checking that this link is still available.</p>
+          <CardTitle>{SHARE_COPY.access.openingTitle}</CardTitle>
+          <p className="text-sm text-muted-foreground">{SHARE_COPY.access.openingBody}</p>
           {error ? (
             <div className="space-y-3" role="alert">
               <p className="text-sm text-destructive">{error}</p>
-              <Button onClick={() => void authorize('GET')} className="min-h-11">Try again</Button>
+              <Button onClick={() => window.location.assign(`/api/share/${token}`)} className="min-h-11">{SHARE_COPY.access.retry}</Button>
             </div>
           ) : null}
         </Card>
@@ -67,20 +67,20 @@ export function ShareLinkPageClient({
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <Lock className="h-6 w-6 text-muted-foreground" aria-hidden />
         </div>
-        <CardTitle>Password required</CardTitle>
-        <p className="text-sm text-muted-foreground">This report is protected. Enter its password to continue.</p>
+        <CardTitle>{SHARE_COPY.access.passwordTitle}</CardTitle>
+        <p className="text-sm text-muted-foreground">{SHARE_COPY.access.passwordBody}</p>
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            void authorize('POST', password)
+            void authorize(password)
           }}
           className="space-y-3"
         >
           <Input
             type="password"
             autoComplete="current-password"
-            aria-label="Share password"
-            placeholder="Enter password"
+            aria-label={SHARE_COPY.access.passwordLabel}
+            placeholder={SHARE_COPY.access.passwordPlaceholder}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={Boolean(error)}
@@ -88,7 +88,7 @@ export function ShareLinkPageClient({
           />
           {error ? <p id="share-password-error" className="text-sm text-destructive" role="alert">{error}</p> : null}
           <Button type="submit" className="min-h-11 w-full" disabled={pending || !password}>
-            {pending ? 'Checking…' : 'View report'}
+            {pending ? SHARE_COPY.access.checking : SHARE_COPY.access.viewReport}
           </Button>
         </form>
       </Card>

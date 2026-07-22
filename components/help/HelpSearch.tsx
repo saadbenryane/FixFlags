@@ -1,6 +1,7 @@
 'use client'
 
 import { useDeferredValue, useMemo, useState } from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { HELP_CENTER } from '@/lib/marketing/copy'
@@ -37,7 +38,7 @@ export function HelpSearch() {
           {results.map((hit) => (
             <li key={hit.article.slug}>
               <Link
-                href={hit.href}
+                href={hit.href as Route}
                 className="block px-4 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
               >
                 <p className="text-sm font-medium text-foreground">{hit.article.title}</p>

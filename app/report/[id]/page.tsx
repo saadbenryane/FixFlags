@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
-import { AuditReport } from '@/components/audit/AuditReport'
 import { FocusedAuditReport } from '@/components/audit/FocusedAuditReport'
-import { AuditPageActions } from '@/components/audit/AuditPageActions'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
@@ -11,8 +9,6 @@ import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
-import { normalizeInternalScreenshotUrl, resolveScreenshotUx } from '@/lib/audit/screenshot-types'
-import type { ScreenshotCaptureStatus, AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefresh'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
@@ -25,30 +21,6 @@ import { assembleReportViewModel } from '@/lib/report/report-view-model'
 
 interface Props {
   params: Promise<{ id: string }>
-}
-
-function parseScreenshots(val: unknown): AuditScreenshot[] {
-  if (!Array.isArray(val)) return []
-  return val
-    .filter((s): s is AuditScreenshot =>
-      s !== null && typeof s === 'object' && 'device' in s && 'url' in s
-    )
-    .map((s) => ({
-      ...s,
-      url: typeof s.url === 'string' ? normalizeInternalScreenshotUrl(s.url) : '',
-    }))
-    .filter((s) => s.url.length > 0)
-}
-
-function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined {
-  if (typeof audit !== 'object' || audit === null) return undefined
-  const rec = audit as Record<string, unknown>
-  const capture = rec.screenshotCapture
-  if (typeof capture !== 'object' || capture === null) return undefined
-  const c = capture as Record<string, unknown>
-  return typeof c.desktop === 'string' && typeof c.mobile === 'string'
-    ? (capture as ScreenshotCaptureStatus)
-    : undefined
 }
 
 function topIssueFromFlags(
@@ -128,29 +100,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export async function ReportRoute({
-  params,
-  mode = 'focused',
-  accessMode = 'report',
-  shareToken,
-}: Props & {
-  mode?: 'focused' | 'details'
-  accessMode?: 'report' | 'share'
-  shareToken?: string
-}) {
+export async function loadReportRouteState(params: Props['params'], shareToken?: string) {
   const { id } = await params
-  const result = await getGatedAuditForRequest(id, { tokenShare: accessMode === 'share' })
+  const result = await getGatedAuditForRequest(id)
 
   if (result.kind === 'not_found') {
     notFound()
   }
 
   if (result.kind === 'forbidden') {
-    return (
-      <AuditShell session={null}>
-        <ReportAccessDeniedStatus />
-      </AuditShell>
-    )
+    return { kind: 'forbidden' as const }
   }
 
   const { audit, accessContext, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed, sampleFixFlag } = result
@@ -319,85 +278,6 @@ export async function ReportRoute({
       actionTimeline: audit.actionTimeline,
     }
 
-    const journeyPages = (audit.pages ?? []).map((p) => ({
-      id: p.id,
-      url: p.url,
-      title: p.title,
-      role: p.role,
-      position: p.position,
-      flagCount: p.flags.length,
-      criticalCount: p.flags.filter((f) => f.severity === 'CRITICAL').length,
-      importantCount: p.flags.filter((f) => f.severity === 'IMPORTANT').length,
-    }))
-
-    const journeyReviews = (
-      (audit as { journeyReviews?: Array<{
-        id: string
-        journeyType: string
-        status: string
-        goalAchieved: boolean | null
-        completedSteps: number
-        steps: Array<{
-          stepNumber: number
-          actionType: string
-          url: string
-          screenshotAfterUrl: string | null
-          reasoning: string | null
-        }>
-        _count: { findings: number }
-      }> }).journeyReviews ?? []
-    ).map((r) => ({
-      id: r.id,
-      journeyType: r.journeyType,
-      status: r.status,
-      goalAchieved: r.goalAchieved,
-      completedSteps: r.completedSteps,
-      findingsCount: r._count.findings,
-      steps: r.steps,
-    }))
-
-    const screenshots = parseScreenshots(audit.screenshots)
-    const captureStatus = parseCaptureStatus(audit)
-    const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
-
-    const toolbarActions = (
-      <AuditPageActions
-        auditId={id}
-        url={audit.url}
-        score={audit.score}
-        verdict={audit.verdict}
-        topIssue={topIssue}
-        flags={flags}
-        rubrics={rubricRows.map((r) => ({
-          name: r.name,
-          grade: r.grade,
-          score: r.score,
-          rubricPrompt: r.rubricPrompt,
-          flags: r.flags.map((f) => ({
-            severity: f.severity,
-            problem: f.problem,
-            rubric: f.rubric,
-          })),
-        }))}
-        isPaid={viewerIsPaid}
-        isLoggedIn={isLoggedIn}
-        isOwner={isOwner}
-        isAnonymous={isAnonymous}
-        isPublic={audit.isPublic}
-        compareAuditId={
-          canAccessCompareView
-            ? audit.parentId
-              ? id
-              : latestMonitoring?.id ?? null
-            : null
-        }
-        canExportSummary={entitlements?.canExportSummary ?? false}
-        canSharePublicly={entitlements?.canSharePublicly ?? false}
-        showFixPrompts={showDeterministicFixes}
-        toolbar
-      />
-    )
-
     const focusedModel = assembleReportViewModel({
       auditId: id,
       audit: reportAudit,
@@ -411,71 +291,60 @@ export async function ReportRoute({
       detailsHref: shareToken ? `/share/${shareToken}/details` : undefined,
     })
 
-    return (
-      <AuditShell
-        session={session}
-        showAdmin={user && session ? isAdminUser({ id: session.user.id, role: user.role }) : false}
-      >
-        {mode === 'focused' ? (
-          <FocusedAuditReport model={focusedModel} />
-        ) : (
-        <AuditReport
-          audit={reportAudit}
-          auditId={id}
-          viewerIsPaid={viewerIsPaid}
-          viewerPlan={user?.plan ?? 'FREE'}
-          isLoggedIn={isLoggedIn}
-          isViewerOwner={isOwner}
-          variant={isMarketingSample ? 'sample' : 'default'}
-          showMonitoringHint={isLoggedIn && isOwner}
-          projectId={audit.projectId}
-          canWatchProduct={entitlements?.canWatchProduct ?? false}
-          canDailyWatch={(user?.plan ?? 'FREE') === 'TEAM'}
-          watchInterval={
-            audit.watchInterval === 'weekly' || audit.watchInterval === 'daily'
-              ? audit.watchInterval
-              : null
-          }
-          atAuditLimit={atAuditLimit}
-          screenshotLimited={limited}
-          screenshotPartial={partial}
-          showPrescription={showPrescription}
-          showDeterministicFixes={showDeterministicFixes}
-          aiReviewPending={aiReviewPending}
-          triageDegraded={triageDegraded}
-          prescriptionFailed={prescriptionFailed}
-          failureCode={audit.failureCode ?? null}
-          pages={journeyPages}
-          journeyReviews={journeyReviews}
-          recheckDiff={recheckDiff}
-          sampleFixFlag={sampleFixFlag as typeof flags[number] | null}
-          compareHref={
-            canAccessCompareView && audit.parentId ? `/compare/${id}` : null
-          }
-          toolbarActions={toolbarActions}
-          backToPlanHref={
-            mode === 'details'
-              ? shareToken
-                ? `/share/${shareToken}`
-                : `/report/${id}`
-              : undefined
-          }
-          showFinishPlan={mode !== 'details'}
-        />
-        )}
-        <McpFixNudge auditId={id} isPaid={viewerIsPaid} />
-        <AiReviewPendingRefresh auditId={id} enabled={aiReviewPending} />
-      </AuditShell>
-    )
+    return {
+      kind: 'completed' as const,
+      id,
+      audit,
+      session,
+      user,
+      isLoggedIn,
+      isOwner,
+      isAnonymous,
+      isMarketingSample,
+      showPrescription,
+      showDeterministicFixes,
+      aiReviewPending,
+      triageDegraded,
+      prescriptionFailed,
+      sampleFixFlag: sampleFixFlag as typeof flags[number] | null,
+      latestMonitoring,
+      recheckDiff,
+      atAuditLimit,
+      entitlements,
+      canAccessCompareView,
+      viewerIsPaid,
+      rubricRows,
+      flags,
+      reportAudit,
+      focusedModel,
+      topIssue,
+      shareToken,
+    }
+  }
+
+  return { kind: 'progressive' as const, id, audit, session }
+}
+
+export async function ReportRoute({ params, shareToken }: Props & { shareToken?: string }) {
+  const state = await loadReportRouteState(params, shareToken)
+  if (state.kind === 'forbidden') {
+    return <AuditShell session={null}><ReportAccessDeniedStatus /></AuditShell>
+  }
+  if (state.kind === 'progressive') {
+    return <AuditPageClient id={state.id} initialAudit={state.audit} pollStatus session={state.session} />
   }
 
   return (
-    <AuditPageClient
-      id={id}
-      initialAudit={audit}
-      pollStatus
-      session={session}
-    />
+    <AuditShell
+      session={state.session}
+      showAdmin={state.user && state.session
+        ? isAdminUser({ id: state.session.user.id, role: state.user.role })
+        : false}
+    >
+      <FocusedAuditReport model={state.focusedModel} />
+      <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
+      <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
+    </AuditShell>
   )
 }
 

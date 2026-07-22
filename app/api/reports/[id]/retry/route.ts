@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canAccessAudit } from '@/lib/audit/access'
+import { canManageAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { retryAudit } from '@/lib/audit/retry-audit'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
@@ -22,7 +22,7 @@ export async function POST(
       select: { userId: true, isPublic: true, status: true },
     })
     if (!audit) return apiError('Report not found', 404)
-    if (!canAccessAudit(audit, session?.user)) {
+    if (!canManageAudit(audit, session?.user)) {
       return apiError('You do not have access to this report', 403)
     }
     if (audit.status !== 'FAILED') {

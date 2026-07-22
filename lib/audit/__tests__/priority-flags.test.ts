@@ -10,6 +10,7 @@ import {
   countFixPrompts,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import { buildAllFixPrompts } from '@/lib/audit/finish-plan'
 
 function flag(overrides: Partial<RankableFlag>): RankableFlag {
   return {
@@ -37,6 +38,31 @@ describe('priority-flags', () => {
     assert.deepEqual(
       sorted.map((f) => f.id),
       ['important', 'high-confidence-polish', 'low-confidence-polish', 'trust-polish']
+    )
+  })
+
+  it('uses explicit stable precedence for equally ranked security headers', () => {
+    const sorted = [
+      flag({ checkId: 'security-content-type-options-missing', impactTag: 'TRUST' }),
+      flag({ checkId: 'security-csp-missing', impactTag: 'TRUST' }),
+      flag({ checkId: 'security-hsts-missing', impactTag: 'TRUST' }),
+    ].sort(compareFlagsByPriority)
+
+    assert.deepEqual(
+      sorted.map((item) => item.checkId),
+      ['security-hsts-missing', 'security-csp-missing', 'security-content-type-options-missing']
+    )
+  })
+
+  it('uses explicit stable precedence for equally ranked search findings', () => {
+    const sorted = [
+      flag({ checkId: 'broken-internal-links', impactTag: 'SEO' }),
+      flag({ checkId: 'description-missing', impactTag: 'SEO' }),
+    ].sort(compareFlagsByPriority)
+
+    assert.deepEqual(
+      sorted.map((item) => item.checkId),
+      ['description-missing', 'broken-internal-links']
     )
   })
 
@@ -163,14 +189,14 @@ describe('priority-flags', () => {
     assert.equal(result.includes('Fix D'), false)
   })
 
-  it('buildPlanModePrompt limit null includes all prompts', () => {
+  it('buildAllFixPrompts includes all prompts', () => {
     const flags = [
       flag({ id: '1', severity: 'CRITICAL', problem: 'A', agentPrompt: 'Fix A' }),
       flag({ id: '2', severity: 'IMPORTANT', problem: 'B', agentPrompt: 'Fix B' }),
       flag({ id: '3', severity: 'POLISH', problem: 'C', agentPrompt: 'Fix C' }),
       flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
     ]
-    const result = buildPlanModePrompt(flags, { limit: null })
+    const result = buildAllFixPrompts({ flags })
     assert.match(result, /4 issues/)
     assert.match(result, /Fix D/)
   })

@@ -34,7 +34,6 @@ export function PlaceholderDetectorClient() {
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [matches, setMatches] = useState<PlaceholderMatch[]>([])
-  const [normalizedUrl, setNormalizedUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [searched, setSearched] = useState(false)
 
@@ -42,7 +41,6 @@ export function PlaceholderDetectorClient() {
     e.preventDefault()
     setError('')
     setMatches([])
-    setNormalizedUrl(null)
     setSearched(false)
 
     const normalized = url.trim()
@@ -65,7 +63,6 @@ export function PlaceholderDetectorClient() {
       }
       const data = await res.json()
       setMatches(data.matches)
-      setNormalizedUrl(data.url)
       setSearched(true)
     } catch {
       setError('Something went wrong. Try again.')
@@ -131,7 +128,7 @@ export function PlaceholderDetectorClient() {
 
           <div className="flex justify-center pt-2">
             <Button variant="outline" asChild>
-              <Link href={`/report?url=${encodeURIComponent(normalizedUrl ?? url)}`}>
+              <Link href="#tool-audit">
                 {TOOLS.shared.ctaAudit}
                 <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden />
               </Link>
@@ -140,7 +137,7 @@ export function PlaceholderDetectorClient() {
         </div>
       )}
 
-      <Card variant="strong" className="p-6">
+      <Card id="tool-audit" variant="strong" className="p-6 scroll-mt-24">
         <div className="space-y-3">
           <h2 className="font-semibold">{TOOLS.shared.auditHeading}</h2>
           <p className="text-sm text-muted-foreground">{TOOLS.shared.auditSubhead}</p>

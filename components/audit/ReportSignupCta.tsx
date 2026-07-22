@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import type { ComponentProps } from 'react'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,7 @@ export function ReportSignupCta({
   return (
     <Button asChild variant={variant} size={size} className={className}>
       <Link
-        href={href}
+        href={href as Route}
         onClick={() => trackEvent('report_signup_cta_clicked', { from })}
       >
         {children}

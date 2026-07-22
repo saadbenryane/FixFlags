@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
@@ -66,7 +67,7 @@ export function HowItWorksSampleLink({
 }) {
   return (
     <Link
-      href={href}
+      href={href as Route}
       onClick={() => trackEvent('clicked_sample_cta', { placement: 'how_it_works' })}
       className="inline-flex min-h-10 items-center gap-2 py-1 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
     >

@@ -58,7 +58,7 @@ export interface RecheckAndCompareOutcome {
     newIssues: number
     regressed: number
   } | null
-  nextFixes: TaskFinishPlanItem[]
+  nextFinishPlan?: TaskFinishPlan
 }
 
 interface TaskQueueOptions {
@@ -116,7 +116,7 @@ function toRankableFlag(flag: {
   } as RankableFlag
 }
 
-async function loadCompletedOutcome(reportId: string): Promise<{
+export async function loadCompletedOutcome(reportId: string): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
@@ -186,6 +186,40 @@ async function loadCompletedOutcome(reportId: string): Promise<{
   }
 }
 
+export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckAndPlanOutcome & {
+  parentReportId?: string
+  diff?: RecheckAndCompareOutcome['diff']
+  nextFinishPlan?: TaskFinishPlan
+}> {
+  const audit = await prisma.audit.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true, parentId: true },
+  })
+  if (!audit) throw new Error('Report not found')
+  if (audit.status !== 'COMPLETED') {
+    return { reportId, reportUrl: reportUrl(reportId), status: audit.status }
+  }
+  const completed = await loadCompletedOutcome(reportId)
+  if (!audit.parentId) {
+    return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
+  }
+  const diff = await getFlagDiffSummary(audit.parentId, reportId)
+  return {
+    reportId,
+    reportUrl: reportUrl(reportId),
+    status: 'COMPLETED',
+    ...completed,
+    parentReportId: audit.parentId,
+    diff: {
+      fixed: diff.fixed.length,
+      remaining: diff.unchanged.length,
+      newIssues: diff.newIssues.length,
+      regressed: diff.regressed.length,
+    },
+    nextFinishPlan: completed.finishPlan,
+  }
+}
+
 export async function checkAndPlan(options: TaskQueueOptions & {
   url: string
   userId: string | null
@@ -245,7 +279,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     reportUrl: reportUrl(reportId),
     status,
     diff: null,
-    nextFixes: [],
   }
   if (!options.waitForCompletion || status !== 'COMPLETED') return base
 
@@ -261,6 +294,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
     },
-    nextFixes: completed.finishPlan.items,
+    nextFinishPlan: completed.finishPlan,
   }
 }

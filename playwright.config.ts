@@ -19,9 +19,12 @@ export default defineConfig({
   webServer: externalBaseUrl
     ? undefined
     : {
-        command: 'npm run dev',
+        // Keep browser verification isolated from active local development
+        // servers that may also be compiling the same workspace.
+        command:
+          'NEXT_DIST_DIR=.next-e2e npm run build && NEXT_DIST_DIR=.next-e2e npm run start',
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        reuseExistingServer: false,
+        timeout: 240_000,
       },
 })

@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
@@ -40,7 +41,7 @@ export function ContextualUpgradeCard({
       {showCta &&
         (primaryHref ? (
           <Button asChild>
-            <Link href={primaryHref}>{content.cta}</Link>
+            <Link href={primaryHref as Route}>{content.cta}</Link>
           </Button>
         ) : (
           <div className="flex justify-center">

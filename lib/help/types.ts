@@ -1,3 +1,5 @@
+import type { Route } from 'next'
+
 export type HelpCategoryId =
   | 'getting-started'
   | 'checks-and-reports'
@@ -55,10 +57,16 @@ export type HelpBlock =
   | { type: 'ol'; items: readonly string[] }
   | { type: 'callout'; text: string }
 
-export function helpArticlePath(categoryId: HelpCategoryId, slug: HelpArticleSlug): string {
-  return `/help/${categoryId}/${slug}`
+export type HelpArticlePath = Route
+export type HelpCategoryPath = Route
+
+export function helpArticlePath(
+  categoryId: HelpCategoryId,
+  slug: HelpArticleSlug
+): HelpArticlePath {
+  return `/help/${categoryId}/${slug}` as Route
 }
 
-export function helpCategoryPath(categoryId: HelpCategoryId): string {
-  return `/help/${categoryId}`
+export function helpCategoryPath(categoryId: HelpCategoryId): HelpCategoryPath {
+  return `/help/${categoryId}` as Route
 }

@@ -1,16 +1,17 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
+import type { Route } from 'next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 const PAID_PLANS = ['BUILDER', 'TEAM'] as const
 const FUNNEL_SOURCES = ['pricing', 'report', 'hero', 'final'] as const
 
-export function sanitizeNextPath(next: string | null): string | null {
+export function sanitizeNextPath(next: string | null): Route | null {
   if (!next) return null
   if (!next.startsWith('/') || next.startsWith('//')) return null
-  return next
+  return next as Route
 }
 
 export function sanitizeFunnelFrom(from: string | null): string | null {
@@ -36,14 +37,14 @@ export function buildPostLoginQuery(
   plan: string | null,
   from: string | null,
   options?: { newUser?: boolean }
-): string {
+): Route {
   const params = new URLSearchParams()
   appendAuthParams(params, next, plan, from)
   // Marks first-time OAuth accounts (better-auth's newUserCallbackURL) so
   // post-login can fire the signed_up event; email signups track on the form.
   if (options?.newUser) params.set('signup', '1')
   const qs = params.toString()
-  return qs ? `/post-login?${qs}` : '/post-login'
+  return (qs ? `/post-login?${qs}` : '/post-login') as Route
 }
 
 export function useAuthRedirect() {
@@ -99,18 +100,18 @@ export function useAuthRedirect() {
     router.push(next ?? '/dashboard')
   }, [next, plan, router])
 
-  function signInHref(extraNext?: string) {
+  function signInHref(extraNext?: string): Route {
     const params = new URLSearchParams()
     appendAuthParams(params, extraNext ?? next, plan, from)
     const qs = params.toString()
-    return qs ? `/sign-in?${qs}` : '/sign-in'
+    return (qs ? `/sign-in?${qs}` : '/sign-in') as Route
   }
 
-  function signUpHref() {
+  function signUpHref(): Route {
     const params = new URLSearchParams()
     appendAuthParams(params, next, plan, from)
     const qs = params.toString()
-    return qs ? `/sign-up?${qs}` : '/sign-up'
+    return (qs ? `/sign-up?${qs}` : '/sign-up') as Route
   }
 
   return {

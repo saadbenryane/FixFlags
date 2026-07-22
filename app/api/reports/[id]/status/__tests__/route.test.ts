@@ -6,17 +6,21 @@ const prismaMock = vi.hoisted(() => ({
   flag: { count: vi.fn() },
 }))
 const resolveSessionUser = vi.hoisted(() => vi.fn())
-const canAccessAudit = vi.hoisted(() => vi.fn())
+const resolveAuditAccess = vi.hoisted(() => vi.fn())
 const recoverAuditJobOnPoll = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
-vi.mock('@/lib/audit/access', () => ({ canAccessAudit }))
+vi.mock('@/lib/audit/access', () => ({ resolveAuditAccess }))
 vi.mock('@/lib/audit/recover-audit-job', () => ({ recoverAuditJobOnPoll }))
-vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
+  cookies: async () => ({ get: vi.fn() }),
+}))
 vi.mock('@/lib/security/rate-limit', () => ({
   recordRateLimit: vi.fn().mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
   requestClientId: () => 'test-client',
+  RateLimitError: class RateLimitError extends Error { retryAfter = 60 },
 }))
 
 import { GET } from '@/app/api/reports/[id]/status/route'
@@ -74,7 +78,7 @@ describe('GET /api/reports/[id]/status', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resolveSessionUser.mockResolvedValue({ user: { id: 'u1' } })
-    canAccessAudit.mockReturnValue(true)
+    resolveAuditAccess.mockResolvedValue('owner')
     prismaMock.flag.count.mockResolvedValue(1)
     prismaMock.audit.findUnique.mockResolvedValue(baseAudit)
   })
@@ -86,7 +90,7 @@ describe('GET /api/reports/[id]/status', () => {
   })
 
   it('returns 403 when the viewer cannot access the report', async () => {
-    canAccessAudit.mockReturnValue(false)
+    resolveAuditAccess.mockResolvedValue('denied')
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     expect(res.status).toBe(403)
   })

@@ -29,7 +29,6 @@ describe('POST /api/reports/[id]/monitoring', () => {
       reportUrl: 'https://fixflags.com/report/child-1',
       status: 'QUEUED',
       diff: null,
-      nextFixes: [],
     })
   })
 

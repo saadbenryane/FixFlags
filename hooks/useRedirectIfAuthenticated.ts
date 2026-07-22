@@ -10,9 +10,18 @@ export function useRedirectIfAuthenticated() {
 
   useEffect(() => {
     void (async () => {
-      const { data } = await authClient.getSession()
-      if (data?.user) {
-        await navigateAfterAuth()
+      try {
+        const { data } = await authClient.getSession()
+        if (data?.user) {
+          await navigateAfterAuth()
+        }
+      } catch (error) {
+        // This background check is routinely cancelled when the visitor leaves
+        // the auth page. Keep the form usable and surface genuine live-page
+        // failures to diagnostics without creating an unhandled rejection.
+        if (document.visibilityState === 'visible') {
+          console.warn('Could not check the current session', error)
+        }
       }
     })()
   }, [navigateAfterAuth])

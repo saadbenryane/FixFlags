@@ -114,7 +114,7 @@ describe('task contracts', () => {
     })
 
     expect(outcome.diff).toEqual({ fixed: 1, remaining: 0, newIssues: 0, regressed: 0 })
-    expect(outcome.nextFixes).toHaveLength(1)
+    expect(outcome.nextFinishPlan?.items).toHaveLength(1)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,
     })

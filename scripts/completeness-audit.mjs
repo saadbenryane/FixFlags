@@ -1,0 +1,85 @@
+import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+
+const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const read = (root, file) => readFileSync(path.join(root, file), 'utf8')
+
+export function collectMcpTools(source) {
+  return [...source.matchAll(/server\.tool\(\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+}
+
+export function runCompletenessAudit(root = DEFAULT_ROOT) {
+  const failures = []
+  const assert = (condition, message) => { if (!condition) failures.push(message) }
+
+  const schema = read(root, 'prisma/schema.prisma')
+  const modelCount = (schema.match(/^model /gm) ?? []).length
+  assert(modelCount > 0, 'Prisma schema has no models')
+  const codemapModels = Number(read(root, 'CODEMAP.md').match(/\| DB schema \|[^\n]*\| (\d+) Prisma models \|/)?.[1])
+  assert(modelCount === codemapModels, `Prisma model count drift: code=${modelCount}, CODEMAP=${codemapModels}`)
+
+  const mcpSource = `${read(root, 'lib/mcp/tools.ts')}\n${read(root, 'lib/mcp/task-tools.ts')}`
+  const tools = [...new Set(collectMcpTools(mcpSource))]
+  assert(tools.length === 16, `MCP tool count drift: expected=16, code=${tools.length}`)
+
+  const integrationFiles = [
+    'fixflags-cli/src/index.ts',
+    'fixflags-cli/src/workflows.ts',
+    'lib/help/catalog.ts',
+    'lib/marketing/copy.ts',
+    'lib/mcp/docs-content.ts',
+    'ide-integrations/README.md',
+    'ide-integrations/cursor/fixflags.mdc',
+    'ide-integrations/claude-code/fixflags-skill.md',
+    'ide-integrations/kiro/fixflags-power.md',
+  ]
+  const integrationText = integrationFiles.map((file) => read(root, file)).join('\n')
+  for (const stale of ['ff_check_url', 'ff_monitoring']) {
+    assert(!integrationText.includes(stale), `Obsolete MCP tool reference: ${stale}`)
+  }
+  for (const canonical of ['ff_check_and_plan', 'ff_recheck_and_compare']) {
+    assert(tools.includes(canonical), `Canonical MCP tool is not registered: ${canonical}`)
+    assert(integrationText.includes(canonical), `Canonical MCP tool is absent from integrations: ${canonical}`)
+  }
+  assert(!read(root, 'fixflags-cli/src/index.ts').includes(".alias('scan')"), 'Unpublished CLI scan alias is still registered')
+  assert(!read(root, 'fixflags-cli/README.md').includes('fixflags scan '), 'CLI README still documents scan')
+
+  const toolbar = read(root, 'components/audit/ReportStickyToolbar.tsx')
+  const reportSources = [
+    'components/audit/AuditReport.tsx',
+    'components/audit/AuditReportProgressive.tsx',
+    'components/audit/ProductMemoryStrip.tsx',
+    'components/audit/RecheckDiffStrip.tsx',
+    'components/audit/FlowScanTimeline.tsx',
+    'components/audit/PreviewCards.tsx',
+    'components/audit/LaunchGates.tsx',
+  ].map((file) => read(root, file)).join('\n')
+  const sectionIds = [...toolbar.matchAll(/id:\s*['"]([^'"]+)['"]/g)].map((match) => match[1])
+  for (const sectionId of sectionIds) {
+    assert(reportSources.includes(`id="${sectionId}"`) || reportSources.includes(`id={${sectionId}`), `Sticky destination has no report section: ${sectionId}`)
+  }
+
+  assert(schema.includes('canonicalHost') && schema.includes('isManaged'), 'Product identity schema is missing canonicalHost/isManaged')
+  assert(schema.includes('productIntelligenceRevision'), 'Product Intelligence revision is missing')
+  assert(schema.includes('passwordHash') && !/model ShareLink[\s\S]*?\n\}/.exec(schema)?.[0].includes('password     '), 'ShareLink passwordHash contract drift')
+  assert(!read(root, 'app/api/projects/route.ts').includes('isAnchor'), 'Managed quota still uses isAnchor')
+  assert(!read(root, 'components/audit/ExportMenu.tsx').includes('limit: null'), 'Finish Plan still uses limit:null')
+
+  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n')
+  const clutter = tracked.filter((file) => /(^|\/)node_modules\//.test(file) || /(^|\/)dist\//.test(file))
+  assert(clutter.length === 0, `Tracked generated dependencies/artifacts: ${clutter.slice(0, 5).join(', ')}`)
+
+  return { ok: failures.length === 0, failures, facts: { modelCount, mcpToolCount: tools.length, sectionCount: sectionIds.length } }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const result = runCompletenessAudit()
+  if (!result.ok) {
+    for (const failure of result.failures) console.error(`FAIL ${failure}`)
+    process.exitCode = 1
+  } else {
+    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.sectionCount} sticky destinations`)
+  }
+}

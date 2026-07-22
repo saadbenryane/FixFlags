@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
@@ -37,7 +38,7 @@ export function StatusPage({ title, description, actions = [], className }: Prop
               disabled={action.loading}
               asChild={Boolean(action.href)}
             >
-              {action.href ? <Link href={action.href}>{action.label}</Link> : action.label}
+              {action.href ? <Link href={action.href as Route}>{action.label}</Link> : action.label}
             </Button>
           ))}
         </div>

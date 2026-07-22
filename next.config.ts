@@ -6,6 +6,9 @@ import type { NextConfig } from 'next'
 // present at `next build`, only as runtime env on the deployed service.
 
 const nextConfig: NextConfig = {
+  // Lets concurrent verification use an isolated output directory without
+  // racing a developer's active `.next` process.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   poweredByHeader: false,
   allowedDevOrigins: ['127.0.0.1'],
   turbopack: {

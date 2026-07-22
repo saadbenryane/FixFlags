@@ -82,7 +82,6 @@ export default async function ShareLinkPage({ params }: Props) {
   return (
     <ReportRoute
       params={Promise.resolve({ id: link!.auditId })}
-      accessMode="share"
       shareToken={token}
     />
   )

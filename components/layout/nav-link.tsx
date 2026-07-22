@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { isNavActive } from '@/lib/site/nav-active'
@@ -34,7 +35,7 @@ export function NavLink({
 
   return (
     <Link
-      href={href}
+      href={href as Route}
       aria-current={active ? 'page' : undefined}
       onClick={handleClick}
       className={cn(className, active ? activeClassName : inactiveClassName)}

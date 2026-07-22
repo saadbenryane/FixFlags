@@ -3,7 +3,9 @@ import { expect, test } from '@playwright/test'
 const widths = [375, 768, 1280]
 
 test('homepage first-value entry is usable by keyboard', async ({ page }) => {
+  const hydrated = page.waitForResponse((response) => response.url().includes('/api/me'))
   await page.goto('/')
+  await hydrated
   const urlInput = page.getByLabel('Website URL').first()
   await expect(urlInput).toBeVisible()
   await urlInput.focus()
@@ -27,13 +29,19 @@ for (const width of widths) {
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {
   const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  const recordError = (error: Error) => {
+    const detail = (error.stack || error.message).trim()
+    if (detail) errors.push(detail)
+  }
+  page.on('pageerror', recordError)
 
   await page.goto('/sign-in')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await page.goto('/pricing')
-  await expect(page.getByText('$29')).toBeVisible()
-  await expect(page.getByText('$99')).toBeVisible()
+  const pricingPage = await page.context().newPage()
+  pricingPage.on('pageerror', recordError)
+  await pricingPage.goto('/pricing')
+  await expect(pricingPage.getByText('$29')).toBeVisible()
+  await expect(pricingPage.getByText('$99')).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -45,7 +53,7 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
   await page.getByLabel('Website URL').first().fill('https://example.com')
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await page.waitForURL(/\/report\//, { timeout: 30_000 })
-  await expect(page.locator('#report-flags')).toBeVisible({ timeout: 180_000 })
+  await expect(page.locator('#report-finish-plan')).toBeVisible({ timeout: 180_000 })
 
   await page.goto('/')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')

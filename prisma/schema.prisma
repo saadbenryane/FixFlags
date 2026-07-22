@@ -290,23 +290,23 @@ model RepoScan {
 }
 
 model RepoScanFinding {
-  id           String     @id @default(cuid())
-  repoScanId   String
-  repoScan     RepoScan   @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
-  severity     Severity
-  category     String
-  filePath     String
-  lineStart    Int?
-  lineEnd      Int?
-  problem      String
-  evidence     String     @db.Text
-  fix          String     @db.Text
-  agentPrompt  String?    @db.Text
-  cursorPrompt String?    @db.Text
-  claudePrompt String?    @db.Text
-  windsurfPrompt String?  @db.Text
-  createdAt    DateTime   @default(now())
-  fixPr        RepoFixPr?
+  id             String     @id @default(cuid())
+  repoScanId     String
+  repoScan       RepoScan   @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+  severity       Severity
+  category       String
+  filePath       String
+  lineStart      Int?
+  lineEnd        Int?
+  problem        String
+  evidence       String     @db.Text
+  fix            String     @db.Text
+  agentPrompt    String?    @db.Text
+  cursorPrompt   String?    @db.Text
+  claudePrompt   String?    @db.Text
+  windsurfPrompt String?    @db.Text
+  createdAt      DateTime   @default(now())
+  fixPr          RepoFixPr?
 
   @@index([repoScanId])
   @@map("repo_scan_findings")
@@ -445,14 +445,14 @@ model Passkey {
 
 /// Two-factor secrets and backup codes (better-auth twoFactor plugin)
 model TwoFactor {
-  id                     String    @id @default(cuid())
-  userId                 String
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  secret                 String
-  backupCodes            String
-  verified               Boolean   @default(true)
-  failedVerificationCount Int      @default(0)
-  lockedUntil            DateTime?
+  id                      String    @id @default(cuid())
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
 
   @@index([userId])
   @@index([secret])
@@ -476,32 +476,40 @@ model ApiKey {
 }
 
 model Project {
-  id                   String    @id @default(cuid())
-  userId               String
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                 String
-  url                  String
-  /** Lowercase hostname without www. Exact Product identity within an account. */
-  canonicalHost        String
-  /** Persistent Product Intelligence JSON — see knowledge/product-intelligence.md */
-  productIntelligence  Json?
-  /** Optimistic concurrency revision for all Product Intelligence mutations. */
-  productIntelligenceRevision Int @default(0)
-  /** Agency-promoted Project. Internal Products remain available without consuming quota. */
-  isManaged            Boolean   @default(false)
-  watchInterval        ProjectWatchInterval?
-  watchNextRunAt       DateTime?
-  watchLeaseUntil      DateTime?
-  watchLastAttemptAt   DateTime?
-  watchLastRunAt       DateTime?
-  watchConsecutiveFailures Int   @default(0)
-  watchLastError       String?
-  audits               Audit[]
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                          String                @id @default(cuid())
+  userId                      String
+  user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                        String
+  url                         String
+  /**
+   * Lowercase hostname without www. Exact Product identity within an account.
+   */
+  canonicalHost               String
+  /**
+   * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
+   */
+  productIntelligence         Json?
+  /**
+   * Optimistic concurrency revision for all Product Intelligence mutations.
+   */
+  productIntelligenceRevision Int                   @default(0)
+  /**
+   * Agency-promoted Project. Internal Products remain available without consuming quota.
+   */
+  isManaged                   Boolean               @default(false)
+  watchInterval               ProjectWatchInterval?
+  watchNextRunAt              DateTime?
+  watchLeaseUntil             DateTime?
+  watchLastAttemptAt          DateTime?
+  watchLastRunAt              DateTime?
+  watchConsecutiveFailures    Int                   @default(0)
+  watchLastError              String?
+  audits                      Audit[]
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
 
-  @@index([userId])
   @@unique([userId, canonicalHost])
+  @@index([userId])
   @@index([watchNextRunAt])
   @@index([watchLeaseUntil])
   @@map("projects")
@@ -549,27 +557,27 @@ model Audit {
   score    Int?
 
   parentId         String?
-  parent           Audit?  @relation("Monitoring", fields: [parentId], references: [id])
-  monitoringAudits Audit[] @relation("Monitoring")
+  parent           Audit?          @relation("Monitoring", fields: [parentId], references: [id])
+  monitoringAudits Audit[]         @relation("Monitoring")
   recheckTrigger   RecheckTrigger?
 
-  isPublic             Boolean              @default(false)
-  skipUsageCount       Boolean              @default(false)
-  auditMode            AuditMode            @default(CRITICAL_PATH)
-  launchReadiness      Json?
-  launchReadinessState LaunchReadinessState @default(UNKNOWN)
-  reportCompleteness   ReportCompleteness   @default(UNKNOWN)
-  evidenceCoverage     Json?
-  includeAi            Boolean              @default(true)
-  triageAt             DateTime?
-  aiReviewAt           DateTime?
-  journeyReviewIncluded Boolean             @default(false)
-  journeyReviewAt      DateTime?
+  isPublic                   Boolean                 @default(false)
+  skipUsageCount             Boolean                 @default(false)
+  auditMode                  AuditMode               @default(CRITICAL_PATH)
+  launchReadiness            Json?
+  launchReadinessState       LaunchReadinessState    @default(UNKNOWN)
+  reportCompleteness         ReportCompleteness      @default(UNKNOWN)
+  evidenceCoverage           Json?
+  includeAi                  Boolean                 @default(true)
+  triageAt                   DateTime?
+  aiReviewAt                 DateTime?
+  journeyReviewIncluded      Boolean                 @default(false)
+  journeyReviewAt            DateTime?
   watchRegressionCount       Int?
   watchNotificationStatus    WatchNotificationStatus @default(NOT_APPLICABLE)
   watchNotificationAttempts  Int                     @default(0)
   watchNotificationLastError String?
-  watchNotifiedAt             DateTime?
+  watchNotifiedAt            DateTime?
 
   startedAt       DateTime?
   completedAt     DateTime?
@@ -585,7 +593,9 @@ model Audit {
   performanceData Json?
   consoleErrors   Json?
   flowData        Json?
-  /** Inferred product intent: purpose, first-value journey, critical outcomes. */
+  /**
+   * Inferred product intent: purpose, first-value journey, critical outcomes.
+   */
   productContract Json?
 
   normalizedDomain String?
@@ -597,14 +607,14 @@ model Audit {
   gclid            String?
   fbclid           String?
 
-  rubrics     ReportRubric[]
-  screenshots Screenshot[]
-  flags       Flag[]
-  pages       AuditPage[]
+  rubrics        ReportRubric[]
+  screenshots    Screenshot[]
+  flags          Flag[]
+  pages          AuditPage[]
   journeyReviews JourneyReview[]
-  runCost     AuditRunCost?
-  shareLinks  ShareLink[]
-  feedback    AuditFeedback[]
+  runCost        AuditRunCost?
+  shareLinks     ShareLink[]
+  feedback       AuditFeedback[]
 
   // Knowledge-graph back-references. Nullable + optional so the migration
   // is safe to apply to existing audits; filled by
@@ -627,30 +637,30 @@ model Audit {
 }
 
 model JourneyReview {
-  id              String              @id @default(cuid())
-  auditId         String
-  audit           Audit               @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  journeyType     String
-  startUrl        String
-  status          JourneyReviewStatus @default(QUEUED)
-  completedSteps  Int                 @default(0)
-  maxSteps        Int                 @default(10)
-  goalAchieved    Boolean?
-  blockedReason   String?
-  abandonedReason String?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  durationMs      Int?
-  plannerInputTokens    Int     @default(0)
-  plannerOutputTokens   Int     @default(0)
+  id                    String              @id @default(cuid())
+  auditId               String
+  audit                 Audit               @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  journeyType           String
+  startUrl              String
+  status                JourneyReviewStatus @default(QUEUED)
+  completedSteps        Int                 @default(0)
+  maxSteps              Int                 @default(10)
+  goalAchieved          Boolean?
+  blockedReason         String?
+  abandonedReason       String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  durationMs            Int?
+  plannerInputTokens    Int                 @default(0)
+  plannerOutputTokens   Int                 @default(0)
   plannerModel          String?
-  evaluatorInputTokens  Int     @default(0)
-  evaluatorOutputTokens Int     @default(0)
+  evaluatorInputTokens  Int                 @default(0)
+  evaluatorOutputTokens Int                 @default(0)
   evaluatorModel        String?
-  steps           JourneyStep[]
-  findings        JourneyFinding[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  steps                 JourneyStep[]
+  findings              JourneyFinding[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@index([auditId])
   @@index([status])
@@ -880,12 +890,12 @@ model ReportRubric {
   confidence      Float?
   summary         String          @db.Text
 
-  rubricPrompt  String  @db.Text
-  cursorPrompt  String? @db.Text
-  claudePrompt  String? @db.Text
+  rubricPrompt   String  @db.Text
+  cursorPrompt   String? @db.Text
+  claudePrompt   String? @db.Text
   windsurfPrompt String? @db.Text
-  lovablePrompt String? @db.Text
-  boltPrompt    String? @db.Text
+  lovablePrompt  String? @db.Text
+  boltPrompt     String? @db.Text
 
   flags Flag[]
 
@@ -929,12 +939,12 @@ model Flag {
   fix          String     @db.Text
   confidence   Float
 
-  agentPrompt   String? @db.Text
-  cursorPrompt  String? @db.Text
-  claudePrompt  String? @db.Text
+  agentPrompt    String? @db.Text
+  cursorPrompt   String? @db.Text
+  claudePrompt   String? @db.Text
   windsurfPrompt String? @db.Text
-  lovablePrompt String? @db.Text
-  boltPrompt    String? @db.Text
+  lovablePrompt  String? @db.Text
+  boltPrompt     String? @db.Text
 
   verificationRule String? @db.Text
 

@@ -29,9 +29,6 @@ For CI, set `FIXFLAGS_API_KEY` instead of writing a local config file. Set
 # Check a URL and return its top three improvements
 fixflags check https://your-app.com --wait --plan
 
-# `scan` remains a backwards-compatible alias
-fixflags scan https://your-app.com
-
 # Print complete fix prompts instead of bounded previews
 fixflags check https://your-app.com --full
 

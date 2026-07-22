@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import { headers } from 'next/headers'
 
 /** Path + query for post-login redirect (set by middleware). */
@@ -10,6 +11,6 @@ export async function getRequestedPath(fallback = '/dashboard'): Promise<string>
   return pathname
 }
 
-export function signInUrl(nextPath: string): string {
-  return `/sign-in?next=${encodeURIComponent(nextPath)}`
+export function signInUrl(nextPath: string): Route {
+  return `/sign-in?next=${encodeURIComponent(nextPath)}` as Route
 }

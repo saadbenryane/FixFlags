@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
-import { ReportRoute } from '@/app/report/[id]/page'
+import { DetailedReportRoute } from '@/app/report/[id]/details/page'
 import { SHARE_GRANT_COOKIE, verifyShareGrant } from '@/lib/security/share-grant'
 import { canSharePublicly } from '@/lib/auth/entitlements'
 
@@ -35,10 +35,8 @@ export default async function SharedReportDetailsPage({ params }: { params: Prom
     grant.linkVersion !== link.version
   ) notFound()
   return (
-    <ReportRoute
+    <DetailedReportRoute
       params={Promise.resolve({ id: link.auditId })}
-      mode="details"
-      accessMode="share"
       shareToken={token}
     />
   )

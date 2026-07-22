@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Instagram } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
@@ -81,7 +82,7 @@ function FooterSocialLink({
 }) {
   return (
     <Link
-      href={href}
+      href={href as Route}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -106,7 +107,7 @@ function FooterColumn({
         {links.map((link) => (
           <li key={`${link.href}-${link.label}`}>
             <Link
-              href={link.href}
+              href={link.href as Route}
               className="inline-flex min-h-[24px] items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}

@@ -54,7 +54,7 @@ async function authorize(token: string, password?: string) {
   return { link }
 }
 
-async function respond(token: string, password?: string) {
+async function respond(token: string, password?: string, requestUrl?: string) {
   const result = await authorize(token, password)
   if ('error' in result) return result.error
   const grant = createShareGrant({
@@ -63,7 +63,10 @@ async function respond(token: string, password?: string) {
     linkVersion: result.link.version,
     expiresAt: result.link.expiresAt,
   })
-  const response = NextResponse.json({ url: `/share/${token}` })
+  const destination = `/share/${token}`
+  const response = requestUrl
+    ? NextResponse.redirect(new URL(destination, requestUrl))
+    : NextResponse.json({ url: destination })
   response.cookies.set(SHARE_GRANT_COOKIE, grant.value, {
     httpOnly: true,
     sameSite: 'lax',
@@ -76,12 +79,12 @@ async function respond(token: string, password?: string) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params
-    return await respond(token)
+    return await respond(token, undefined, request.url)
   } catch (error) {
     return handleRouteError(error)
   }

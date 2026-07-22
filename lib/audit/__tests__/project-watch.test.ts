@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
   projectUpdate: vi.fn(),
+  projectUpdateMany: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
   auditUpdateMany: vi.fn(),
+  auditUpdate: vi.fn(),
   startMonitoringAudit: vi.fn(),
   canAccessProductWatch: vi.fn(),
   getFlagDiffSummary: vi.fn(),
@@ -14,17 +16,23 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    project: { findMany: mocks.projectFindMany, update: mocks.projectUpdate },
+    project: {
+      findMany: mocks.projectFindMany,
+      update: mocks.projectUpdate,
+      updateMany: mocks.projectUpdateMany,
+    },
     audit: {
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
       updateMany: mocks.auditUpdateMany,
+      update: mocks.auditUpdate,
     },
   },
 }))
 vi.mock('@/lib/audit/monitoring', () => ({ startMonitoringAudit: mocks.startMonitoringAudit }))
 vi.mock('@/lib/auth/entitlements', () => ({
   canAccessProductWatch: mocks.canAccessProductWatch,
+  canSharePublicly: vi.fn(() => true),
 }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
@@ -34,8 +42,9 @@ import { notifyWatchRegression, processDueProjectWatches } from '@/lib/audit/pro
 const project = {
   id: 'project-1',
   userId: 'user-1',
-  url: 'https://example.com/',
-  watchInterval: 'weekly',
+  watchInterval: 'WEEKLY',
+  watchNextRunAt: new Date('2026-07-22T10:00:00.000Z'),
+  watchConsecutiveFailures: 0,
   user: { id: 'user-1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'ACTIVE' },
 }
 
@@ -44,13 +53,12 @@ describe('Product Watch', () => {
     vi.clearAllMocks()
     mocks.projectFindMany.mockResolvedValue([project])
     mocks.projectUpdate.mockResolvedValue(project)
+    mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.canAccessProductWatch.mockReturnValue(true)
   })
 
   it('does not enqueue an overlapping scheduled re-check', async () => {
-    mocks.auditFindFirst
-      .mockResolvedValueOnce({ id: 'parent-1' })
-      .mockResolvedValueOnce({ id: 'active-child' })
+    mocks.auditFindFirst.mockResolvedValueOnce({ id: 'active-child' })
 
     const result = await processDueProjectWatches()
 
@@ -69,7 +77,12 @@ describe('Product Watch', () => {
 
     expect(mocks.projectUpdate).toHaveBeenCalledWith({
       where: { id: 'project-1' },
-      data: { watchInterval: null, watchNextRunAt: null },
+      data: {
+        watchInterval: null,
+        watchNextRunAt: null,
+        watchLeaseUntil: null,
+        watchLastError: 'Product Watch disabled after entitlement loss',
+      },
     })
     expect(mocks.startMonitoringAudit).not.toHaveBeenCalled()
   })
@@ -79,8 +92,13 @@ describe('Product Watch', () => {
       id: 'child-1',
       url: 'https://example.com/',
       projectId: 'project-1',
+      recheckTrigger: 'WATCH',
+      completedAt: new Date('2026-07-22T12:00:00.000Z'),
+      watchRegressionCount: 1,
+      watchNotificationStatus: 'SENT',
+      watchNotificationAttempts: 1,
       user: { email: 'owner@example.com', name: 'Owner' },
-      project: { watchInterval: 'weekly' },
+      project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],

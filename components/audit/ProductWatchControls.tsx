@@ -1,17 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy'
+
+type Interval = 'weekly' | 'daily' | null
+type WatchState = {
+  watchInterval: Interval
+  watchNextRunAt: string | null
+  watchLastRunAt: string | null
+  watchLastAttemptAt: string | null
+  watchConsecutiveFailures: number
+  watchLastError: string | null
+  readiness: { available: boolean; error: string | null }
+}
 
 interface ProductWatchControlsProps {
   projectId: string
   canWatch: boolean
-  /** Agency can choose daily; Pro is weekly-only. */
   canDaily?: boolean
-  initialInterval?: 'weekly' | 'daily' | null
+  initialInterval?: Interval
+}
+
+const initialState = (interval: Interval): WatchState => ({
+  watchInterval: interval,
+  watchNextRunAt: null,
+  watchLastRunAt: null,
+  watchLastAttemptAt: null,
+  watchConsecutiveFailures: 0,
+  watchLastError: null,
+  readiness: { available: true, error: null },
+})
+
+function formatDate(value: string | null): string {
+  if (!value) return PRODUCT_WATCH_COPY.never
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 export function ProductWatchControls({
@@ -20,34 +44,47 @@ export function ProductWatchControls({
   canDaily = false,
   initialInterval = null,
 }: ProductWatchControlsProps) {
-  const [interval, setIntervalState] = useState<'weekly' | 'daily' | null>(initialInterval)
+  const [state, setState] = useState<WatchState>(() => initialState(initialInterval))
   const [saving, setSaving] = useState(false)
 
-  async function save(next: 'weekly' | 'daily' | null) {
+  useEffect(() => {
+    if (!canWatch) return
+    const controller = new AbortController()
+    fetch(`/api/projects/${projectId}/watch`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(PRODUCT_WATCH_COPY.loadFailed)
+        setState(await response.json() as WatchState)
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        toast.error(PRODUCT_WATCH_COPY.loadFailed)
+      })
+    return () => controller.abort()
+  }, [canWatch, projectId])
+
+  async function save(next: Interval) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}/watch`, {
+      const response = await fetch(`/api/projects/${projectId}/watch`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ interval: next }),
       })
-      const data = (await res.json().catch(() => null)) as
-        | { watchInterval?: string | null; error?: string; message?: string }
-        | null
-      if (!res.ok) {
-        toast.error(data?.error || data?.message || 'Could not update watch')
+      const data = await response.json().catch(() => null) as (WatchState & { error?: string; message?: string }) | null
+      if (!response.ok || !data) {
+        toast.error(data?.error || data?.message || PRODUCT_WATCH_COPY.updateFailed)
         return
       }
-      setIntervalState(
-        data?.watchInterval === 'weekly' || data?.watchInterval === 'daily'
-          ? data.watchInterval
-          : null
-      )
+      setState(data)
       toast.success(
-        next ? `Watching ${next === 'daily' ? 'daily' : 'weekly'}` : 'Product watch off'
+        next === 'daily'
+          ? PRODUCT_WATCH_COPY.successDaily
+          : next === 'weekly'
+            ? PRODUCT_WATCH_COPY.successWeekly
+            : PRODUCT_WATCH_COPY.successOff
       )
     } catch {
-      toast.error('Could not update watch')
+      toast.error(PRODUCT_WATCH_COPY.updateFailed)
     } finally {
       setSaving(false)
     }
@@ -59,52 +96,42 @@ export function ProductWatchControls({
         {REPORT_COPY.recheckHint.bodyPrefix}{' '}
         <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}{' '}
         <Link href="/pricing" className="text-link font-medium underline-offset-2 hover:underline">
-          Pro adds weekly watch
-        </Link>
-        .
+          {PRODUCT_WATCH_COPY.proLink}
+        </Link>.
       </p>
     )
   }
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground text-pretty">
-        Watch this product: FixFlags re-checks on a schedule and emails you only if something
-        regresses.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={interval === 'weekly' ? 'default' : 'outline'}
-          disabled={saving}
-          onClick={() => void save('weekly')}
-        >
-          Weekly
-        </Button>
-        {canDaily ? (
-          <Button
-            type="button"
-            size="sm"
-            variant={interval === 'daily' ? 'default' : 'outline'}
-            disabled={saving}
-            onClick={() => void save('daily')}
-          >
-            Daily
-          </Button>
-        ) : null}
-        {interval ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={saving}
-            onClick={() => void save(null)}
-          >
-            Turn off
-          </Button>
-        ) : null}
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground text-pretty">{PRODUCT_WATCH_COPY.description}</p>
+      <div role="radiogroup" aria-label="Product Watch interval" className="flex flex-wrap gap-2">
+        {(['weekly', ...(canDaily ? ['daily'] : []), null] as Interval[]).map((option) => {
+          const label = option === 'weekly' ? PRODUCT_WATCH_COPY.weekly : option === 'daily' ? PRODUCT_WATCH_COPY.daily : PRODUCT_WATCH_COPY.off
+          return (
+            <button
+              key={option ?? 'off'}
+              type="button"
+              role="radio"
+              aria-checked={state.watchInterval === option}
+              disabled={saving || (option !== null && !state.readiness.available)}
+              onClick={() => void save(option)}
+              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-checked:border-brand aria-checked:bg-brand aria-checked:text-brand-foreground"
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
+      {!state.readiness.available ? (
+        <p role="alert" className="text-xs text-destructive">{PRODUCT_WATCH_COPY.unavailable}</p>
+      ) : null}
+      <dl className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
+        <div><dt>{PRODUCT_WATCH_COPY.nextRun}</dt><dd className="text-foreground">{formatDate(state.watchNextRunAt)}</dd></div>
+        <div><dt>{PRODUCT_WATCH_COPY.lastRun}</dt><dd className="text-foreground">{formatDate(state.watchLastRunAt)}</dd></div>
+        <div><dt>{PRODUCT_WATCH_COPY.lastAttempt}</dt><dd className="text-foreground">{formatDate(state.watchLastAttemptAt)}</dd></div>
+      </dl>
+      {state.watchLastError ? <p role="alert" className="text-xs text-destructive">{state.watchLastError}</p> : null}
     </div>
   )
 }

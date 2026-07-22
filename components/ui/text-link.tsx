@@ -1,4 +1,5 @@
 import * as React from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -6,8 +7,14 @@ type TextLinkProps = {
   className?: string
   children: React.ReactNode
 } & (
-  | ({ href: string } & Omit<React.ComponentPropsWithoutRef<typeof Link>, 'className' | 'children'>)
-  | ({ href?: undefined } & Omit<React.ComponentPropsWithoutRef<'a'>, 'className' | 'children'>)
+  | ({ href: string } & Omit<
+      React.ComponentPropsWithoutRef<typeof Link>,
+      'className' | 'children' | 'href'
+    >)
+  | ({ href?: undefined } & Omit<
+      React.ComponentPropsWithoutRef<'a'>,
+      'className' | 'children' | 'href'
+    >)
 )
 
 const linkClassName =
@@ -16,7 +23,7 @@ const linkClassName =
 export function TextLink({ className, children, href, ...props }: TextLinkProps) {
   if (href) {
     return (
-      <Link href={href} className={cn(linkClassName, className)} {...props}>
+      <Link href={href as Route} className={cn(linkClassName, className)} {...props}>
         {children}
       </Link>
     )

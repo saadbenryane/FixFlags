@@ -1,4 +1,5 @@
 'use client'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -79,7 +80,7 @@ export function PricingPageClient() {
                 <PricingCTAButton
                   plan={plan.plan}
                   cta={plan.cta}
-                  signUpHref={plan.href}
+                  signUpHref={plan.href as Route}
                   highlight={plan.highlight}
                   isLoggedIn={isLoggedIn}
                   currentPlan={currentPlan}

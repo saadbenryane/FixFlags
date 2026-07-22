@@ -4,6 +4,7 @@ import { isProdStorageConfigured, isAiProviderConfigured } from '@/lib/env'
 import { isBillingFullyConfigured } from '@/lib/billing/config'
 import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/audit/judge-config'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
+import { productWatchReadiness } from '@/lib/audit/project-watch'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,7 @@ export async function GET() {
   const storageConfigured =
     process.env.NODE_ENV === 'production' ? isProdStorageConfigured() : true
   const billingConfigured = isBillingFullyConfigured()
+  const productWatch = productWatchReadiness()
   const ai = {
     configured: isAiProviderConfigured(),
     providerChain: getJudgeProviderChain(),
@@ -36,6 +38,7 @@ export async function GET() {
   if (!storageConfigured) degraded.push('storage')
   if (!ai.configured) degraded.push('ai')
   if (!billingConfigured) degraded.push('billing')
+  if (!productWatch.available) degraded.push('product_watch')
 
   try {
     await prisma.$queryRaw`SELECT 1`
@@ -49,6 +52,9 @@ export async function GET() {
       aiConfigured: ai.configured,
       aiProviderChain: ai.providerChain,
       aiConfiguredProviders: ai.configuredProviders,
+      productWatch,
+      emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL),
+      workerConfigured: Boolean(process.env.REDIS_URL),
       ...(degraded.length > 0 ? { degraded } : {}),
     })
   } catch {
@@ -60,6 +66,9 @@ export async function GET() {
         billingConfigured,
         aiConfigured: ai.configured,
         aiProviderChain: ai.providerChain,
+        productWatch,
+        emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL),
+        workerConfigured: Boolean(process.env.REDIS_URL),
       },
       { status: 503 }
     )

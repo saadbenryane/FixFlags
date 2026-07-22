@@ -18,6 +18,25 @@ const IMPACT_PRIORITY: Record<string, number> = {
   EMOTION: 10,
 }
 
+// Stable precedence for sibling checks whose impact/severity are otherwise
+// identical. This keeps ranking independent of customer-facing problem copy
+// while putting the broadest transport/browser protections first.
+const CHECK_PRIORITY: Record<string, number> = {
+  'security-hsts-missing': 0,
+  'security-hsts-too-short': 1,
+  'security-csp-missing': 2,
+  'security-csp-unsafe-inline': 3,
+  'security-content-type-options-missing': 4,
+  'security-frame-options-missing': 5,
+  'description-missing': 10,
+  'broken-internal-links': 11,
+}
+
+function checkPriority(flag: RankableFlag): number {
+  const checkId = (flag.checkId ?? '').split('::page:')[0]
+  return CHECK_PRIORITY[checkId] ?? 99
+}
+
 function impactRank(impactTag: string | null | undefined): number {
   return impactTag ? IMPACT_PRIORITY[impactTag] ?? 99 : 99
 }
@@ -68,18 +87,19 @@ function compareFlagPrioritySignals(
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff
 
+  const alignmentDiff =
+    Math.min(contractAlignmentBoost(a, contract), corridorBoost(a)) -
+    Math.min(contractAlignmentBoost(b, contract), corridorBoost(b))
+  if (alignmentDiff !== 0) return alignmentDiff
+
   const impactDiff = impactRank(a.impactTag) - impactRank(b.impactTag)
   if (impactDiff !== 0) return impactDiff
 
   const confidenceDiff = confidenceRank(b.confidence) - confidenceRank(a.confidence)
   if (confidenceDiff !== 0) return confidenceDiff
 
-  const corridorDiff = corridorBoost(a) - corridorBoost(b)
-  if (corridorDiff !== 0) return corridorDiff
-
-  const contractDiff =
-    contractAlignmentBoost(a, contract) - contractAlignmentBoost(b, contract)
-  if (contractDiff !== 0) return contractDiff
+  const checkDiff = checkPriority(a) - checkPriority(b)
+  if (checkDiff !== 0) return checkDiff
 
   return 0
 }
@@ -224,22 +244,19 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
 
 /**
  * Build a structured goal-loop prompt with 3 phases (Research → Plan → Fix).
- * Defaults to the Finish Plan (≤3 highest-leverage issues). Pass `limit: null`
- * or a higher number only for explicit "all prompts" exports.
+ * Defaults to the Finish Plan (≤3 highest-leverage issues). Explicit all-prompt
+ * exports use buildAllFixPrompts instead of changing this contract.
  */
 export function buildPlanModePrompt(
   flags: RankableFlag[],
   options: {
     url?: string | null
-    limit?: number | null
+    limit?: number
     contract?: ProductContract | null
   } = {}
 ): string {
   const limit = options.limit === undefined ? 3 : options.limit
-  const ranked =
-    limit == null
-      ? [...flags].sort((a, b) => compareFlagsByPriority(a, b, options.contract))
-      : rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
+  const ranked = rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
 
   const items: string[] = []
   const byConfidence: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 }

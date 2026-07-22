@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,10 +33,10 @@ export function LockedContentTeaser({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Button asChild size="sm">
-          <Link href={signUpHref}>{LOCKED_CONTENT_TEASER.primaryCta}</Link>
+          <Link href={signUpHref as Route}>{LOCKED_CONTENT_TEASER.primaryCta}</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <Link href={signInHref}>{LOCKED_CONTENT_TEASER.secondaryCta}</Link>
+          <Link href={signInHref as Route}>{LOCKED_CONTENT_TEASER.secondaryCta}</Link>
         </Button>
       </div>
     </div>

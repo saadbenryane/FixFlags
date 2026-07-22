@@ -58,7 +58,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
           reportUrl: 'http://example.test/report/report-2',
           status: 'COMPLETED',
           diff: { fixed: 1, remaining: 0, newIssues: 0, regressed: 0 },
-          nextFixes: [],
+          nextFinishPlan: { reportId: 'report-2', items: [] },
         },
       }
 

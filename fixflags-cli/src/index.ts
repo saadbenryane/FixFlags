@@ -170,7 +170,6 @@ program
 
 program
   .command('check <url>')
-  .alias('scan')
   .description('Check a URL and return its three-item Finish Plan')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
@@ -272,7 +271,7 @@ program
           console.log(`Regressed: ${result.diff.regressed}`)
         }
         console.log('')
-        printPlan({ reportId: result.reportId, items: result.nextFixes }, Boolean(options.full))
+        if (result.nextFinishPlan) printPlan(result.nextFinishPlan, Boolean(options.full))
       } catch (error) {
         spinner.stop()
         fail(error, json)

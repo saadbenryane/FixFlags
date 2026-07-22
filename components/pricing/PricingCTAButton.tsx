@@ -1,4 +1,5 @@
 'use client'
+import type { Route } from 'next'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -11,7 +12,7 @@ import { trackEvent } from '@/lib/analytics/events'
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM'
   cta: string
-  signUpHref: string
+  signUpHref: Route
   highlight?: boolean
   isLoggedIn: boolean
   currentPlan: string

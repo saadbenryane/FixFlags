@@ -16,6 +16,7 @@ const ROOT = process.cwd()
 const SKIP = new Set([
   'node_modules', '.next', 'dist', 'fixflags-cli',
   '.git', '.agents', '.cursor', '.ui-craft', 'ide-integrations',
+  'test-results', 'playwright-report',
 ])
 
 // ---------------------------------------------------------------------------

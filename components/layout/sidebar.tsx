@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -65,7 +66,7 @@ function SidebarNav({ onNav, showAdmin }: { onNav?: () => void; showAdmin?: bool
     return (
       <Link
         key={item.href}
-        href={item.href}
+        href={item.href as Route}
         onClick={() => handleClick(item.href)}
         aria-current={active ? 'page' : undefined}
         className={cn(

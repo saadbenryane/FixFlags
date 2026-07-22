@@ -15,7 +15,8 @@
     "build": "tsc",
     "prepack": "npm run build",
     "dev": "tsx src/index.ts",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "package:check": "npm run build && node test/package-contents.mjs"
   },
   "keywords": [
     "qa",

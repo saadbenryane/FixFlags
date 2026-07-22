@@ -207,7 +207,7 @@ When you need information about a topic, go to the canonical source:
 
 ### What Changes Frequently
 
-- Project facts (check counts, model counts, test counts)
+- Volatile project facts are generated from code with `npm run agent`, `npm run audit:capabilities`, and the relevant test command.
 - Current capabilities
 - Roadmap status (Now / Next / Later)
 - Implementation details

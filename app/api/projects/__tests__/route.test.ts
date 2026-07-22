@@ -8,8 +8,9 @@ import type { NextRequest } from 'next/server'
  */
 
 const prismaMock = vi.hoisted(() => ({
+  $transaction: vi.fn(),
   user: { findUnique: vi.fn() },
-  project: { count: vi.fn(), create: vi.fn() },
+  project: { count: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 
@@ -43,9 +44,11 @@ const postReq = {
 describe('POST /api/projects - billing gating enforcement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    prismaMock.$transaction.mockImplementation(async (operation) => operation(prismaMock))
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.project.count.mockResolvedValue(0)
-    prismaMock.project.create.mockResolvedValue({ id: 'proj-1', name: 'My site', url: 'https://example.com' })
+    prismaMock.project.findUnique.mockResolvedValue(null)
+    prismaMock.project.upsert.mockResolvedValue({ id: 'proj-1', name: 'My site', url: 'https://example.com' })
   })
 
   it('returns 401 when there is no session', async () => {
@@ -54,7 +57,7 @@ describe('POST /api/projects - billing gating enforcement', () => {
     const res = await POST(postReq)
 
     expect(res.status).toBe(401)
-    expect(prismaMock.project.create).not.toHaveBeenCalled()
+    expect(prismaMock.project.upsert).not.toHaveBeenCalled()
   })
 
   it('returns 402 UPGRADE_REQUIRED for a FREE user (no project quota)', async () => {
@@ -65,7 +68,7 @@ describe('POST /api/projects - billing gating enforcement', () => {
     expect(res.status).toBe(402)
     const body = await res.json()
     expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(prismaMock.project.create).not.toHaveBeenCalled()
+    expect(prismaMock.project.upsert).not.toHaveBeenCalled()
   })
 
   it('lets a TEAM user create a project - never blocked on an owned feature', async () => {
@@ -74,6 +77,6 @@ describe('POST /api/projects - billing gating enforcement', () => {
     const res = await POST(postReq)
 
     expect(res.status).toBe(201)
-    expect(prismaMock.project.create).toHaveBeenCalledTimes(1)
+    expect(prismaMock.project.upsert).toHaveBeenCalledTimes(1)
   })
 })

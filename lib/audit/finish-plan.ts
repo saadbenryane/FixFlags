@@ -35,6 +35,19 @@ export interface FinishPlan {
   visiblePromptCount: number
 }
 
+/** Explicit export path for every prompt. This is not a Finish Plan. */
+export function buildAllFixPrompts(input: {
+  flags: RankableFlag[]
+  url?: string | null
+  contract?: ProductContract | null
+}): string {
+  return buildPlanModePrompt(input.flags, {
+    url: input.url,
+    limit: input.flags.length,
+    contract: input.contract ?? null,
+  })
+}
+
 /** Authoritative ranking, cap, Contract bias, and prompt-redaction contract. */
 export function buildFinishPlan(input: {
   flags: RankableFlag[]

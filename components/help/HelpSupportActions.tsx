@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { HELP_CENTER, SUPPORT_CHAT } from '@/lib/marketing/copy'
@@ -27,7 +28,7 @@ export function HelpSupportActions({
   return (
     <>
       <Button asChild variant="outline" size={size}>
-        <Link href={helpHref}>{HELP_CENTER.viewHelpCta}</Link>
+        <Link href={helpHref as Route}>{HELP_CENTER.viewHelpCta}</Link>
       </Button>
       <Button type="button" variant="ghost" size={size} onClick={openChat}>
         {HELP_CENTER.askSupportCta}

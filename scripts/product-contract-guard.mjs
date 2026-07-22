@@ -14,6 +14,7 @@ const codeFiles = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.js', '*.m
 }).trim().split('\n').filter(Boolean).filter((path) => !path.startsWith('prisma/migrations/'))
 
 for (const path of codeFiles) {
+  if (path === 'scripts/product-contract-guard.mjs') continue
   if (!existsSync(join(root, path))) continue
   const source = read(path)
   for (const stale of ['/api/audits', 'ff_check_url', 'ff_monitoring']) {
@@ -35,6 +36,7 @@ if (sample.includes("from '@/lib/db'") || sample.includes('prisma.audit')) {
 }
 
 const focused = read('components/audit/FocusedAuditReport.tsx')
+const focusedRoute = read('app/report/[id]/page.tsx')
 for (const deep of [
   'ReportExplorer',
   'LiveReportExplorer',
@@ -48,6 +50,9 @@ for (const deep of [
 ]) {
   if (focused.includes(deep)) {
     violations.push(`components/audit/FocusedAuditReport.tsx: deep-review import ${deep}`)
+  }
+  if (focusedRoute.includes(deep)) {
+    violations.push(`app/report/[id]/page.tsx: deep-review import ${deep}`)
   }
 }
 

@@ -182,7 +182,7 @@ export function MetaPreviewClient() {
 
           <div className="flex justify-center">
             <Button variant="outline" asChild>
-              <Link href={`/report?url=${encodeURIComponent(result.url)}`}>
+              <Link href="#tool-audit">
                 {copy.ctaAudit}
                 <ExternalLink className="ml-1.5 h-4 w-4" aria-hidden />
               </Link>
@@ -191,7 +191,7 @@ export function MetaPreviewClient() {
         </div>
       )}
 
-      <Card variant="strong" className="p-6">
+      <Card id="tool-audit" variant="strong" className="p-6 scroll-mt-24">
         <div className="space-y-3">
           <h2 className="font-semibold">{copy.auditHeading}</h2>
           <p className="text-sm text-muted-foreground">{copy.auditSubhead}</p>
