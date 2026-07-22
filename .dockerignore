@@ -1,6 +1,15 @@
 node_modules
 .next
+.next-*
 dist
+coverage
+.nyc_output
+.cache
+.turbo
+playwright-report
+test-results
+blob-report
+.agent-runs
 .git
 .data
 .env
@@ -12,4 +21,6 @@ screenshot.png
 tsconfig.tsbuildinfo
 .cursor
 .claude
+.opencode
+.playwright-cli
 .github

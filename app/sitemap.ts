@@ -5,6 +5,10 @@ import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
 
 const baseUrl = SITE_URL.replace(/\/$/, '')
 
+// The issue inventory is backed by PostgreSQL and is only available at runtime.
+// Keeping this route dynamic prevents image builds from querying production data.
+export const dynamic = 'force-dynamic'
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 

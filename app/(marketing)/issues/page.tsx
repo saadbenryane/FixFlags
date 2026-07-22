@@ -9,7 +9,8 @@ import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { prisma } from '@/lib/db'
 
 export const metadata = buildPageMetadata('issues', '/issues')
-export const revalidate = 3600
+// This library is a live projection of the PostgreSQL knowledge graph.
+export const dynamic = 'force-dynamic'
 
 export default async function IssuesIndexPage() {
   const issues = await getIndexableIssueCheckIds()
