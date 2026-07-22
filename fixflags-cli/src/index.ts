@@ -108,8 +108,17 @@ function printPlan(plan: FinishPlan | undefined, full: boolean): void {
   }
 }
 
-function fail(error: unknown): void {
-  console.error(chalk.red(`Error: ${(error as Error).message}`))
+function fail(error: unknown, json = false): void {
+  const message = (error as Error).message
+  const recovery = message.includes('authenticated')
+    ? 'Set FIXFLAGS_API_KEY or run: fixflags auth --api-key <key>'
+    : 'Check the command input and retry. Run fixflags --help if needed.'
+  if (json) {
+    console.error(JSON.stringify({ error: { code: 'FIXFLAGS_ERROR', message, recovery } }))
+  } else {
+    console.error(chalk.red(`Error: ${message}`))
+    console.error(chalk.gray(`Next: ${recovery}`))
+  }
   process.exitCode = 1
 }
 
@@ -119,6 +128,30 @@ program
   .name('fixflags')
   .description('Finish and verify AI-built products')
   .version('0.2.0-beta.1')
+  .option('--json', 'Print structured JSON')
+  .action((options: { json?: boolean }) => {
+    const authenticated = Boolean(process.env.FIXFLAGS_API_KEY || loadConfig().apiKey)
+    const payload = {
+      schemaVersion: 1,
+      service: 'FixFlags',
+      api: API_BASE,
+      authenticated,
+      workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
+      next: authenticated
+        ? ['fixflags check <url>', 'fixflags --help']
+        : ['fixflags auth --api-key <key>', 'Create a key at https://fixflags.com/settings/api-keys'],
+    }
+    if (options.json) console.log(JSON.stringify(payload, null, 2))
+    else {
+      console.log('service: FixFlags')
+      console.log(`api: ${payload.api}`)
+      console.log(`authenticated: ${authenticated ? 'yes' : 'no'}`)
+      console.log('workflows: 3')
+      for (const workflow of payload.workflows) console.log(`  ${workflow}`)
+      console.log('next:')
+      for (const item of payload.next) console.log(`  ${item}`)
+    }
+  })
 
 program
   .command('auth')
@@ -156,7 +189,8 @@ program
         json?: boolean
       }
     ) => {
-      const spinner = ora({ text: 'Checking product...', isEnabled: !options.json }).start()
+      const json = Boolean(options.json || program.opts().json)
+      const spinner = ora({ text: 'Checking product...', isEnabled: !json }).start()
       try {
         const call = createMcpCaller(requireApiKey())
         const result = await checkAndPlan(call, url, {
@@ -169,7 +203,7 @@ program
         const hasCritical = Boolean(
           result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0)
         )
-        if (options.json) {
+        if (json) {
           console.log(JSON.stringify(result, null, 2))
           if (hasCritical) process.exitCode = 1
           return
@@ -192,7 +226,7 @@ program
         if (hasCritical) process.exitCode = 1
       } catch (error) {
         spinner.stop()
-        fail(error)
+        fail(error, json)
       }
     }
   )
@@ -210,14 +244,15 @@ program
       reportId: string,
       options: { wait: boolean; diff?: boolean; full?: boolean; json?: boolean }
     ) => {
-      const spinner = ora({ text: 'Re-checking product...', isEnabled: !options.json }).start()
+      const json = Boolean(options.json || program.opts().json)
+      const spinner = ora({ text: 'Re-checking product...', isEnabled: !json }).start()
       try {
         const result = await recheckAndDiff(createMcpCaller(requireApiKey()), reportId, {
           wait: options.wait,
         })
         spinner.stop()
 
-        if (options.json) {
+        if (json) {
           console.log(JSON.stringify(result, null, 2))
           return
         }
@@ -240,7 +275,7 @@ program
         printPlan({ reportId: result.reportId, items: result.nextFixes }, Boolean(options.full))
       } catch (error) {
         spinner.stop()
-        fail(error)
+        fail(error, json)
       }
     }
   )
@@ -250,14 +285,15 @@ program
   .description('Get the current status of a check')
   .option('--json', 'Print structured JSON')
   .action(async (reportId: string, options: { json?: boolean }) => {
+    const json = Boolean(options.json || program.opts().json)
     try {
       const result = await createMcpCaller(requireApiKey())('ff_get_check_status', {
         reportId,
       })
-      if (options.json) console.log(JSON.stringify(result, null, 2))
+      if (json) console.log(JSON.stringify(result, null, 2))
       else console.log(`Status: ${(result as { status?: string }).status ?? 'UNKNOWN'}`)
     } catch (error) {
-      fail(error)
+      fail(error, json)
     }
   })
 

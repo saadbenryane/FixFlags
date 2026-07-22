@@ -4,7 +4,6 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| axi-project-agent-pilot | in_progress | codex | main | Independent AXI-style project context, affected verification, real evals, bounded output, harness measurement | `scripts/project-agent*`, `scripts/agent-evals/**`, `package.json`, `AGENTS.md` | Do not overlap dirty FixFlags CLI or current product completion files | 2026-07-22 |
 | current-product-completion | in_progress | codex | main | Canonical task contracts, route cutover, product hardening, CLI beta, E2E/CI, docs and skills | app, components, lib, prisma, fixflags-cli, tests, docs, skills | Preserve and integrate launch-check-completeness + agent-native-cli baseline | 2026-07-22 |
 
 ---
@@ -13,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| axi-project-agent-pilot | codex | Independent AXI-style project context, affected verification, real evals, bounded output, and harness measurement | 2026-07-22 |
 | agent-native-cli | codex | Task-shaped check → Finish Plan and re-check → verification diff CLI workflows | 2026-07-22 |
 | launch-check-completeness | auto | PI/Finish Plan/Remember, dogfood, Agency share, Project watch, skills/docs | 2026-07-22 |
 | dogfood-audit-quality | auto | Absorbed into launch-check-completeness | 2026-07-22 |

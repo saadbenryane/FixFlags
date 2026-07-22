@@ -78,6 +78,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Public graph reads go through `lib/graph/queries.ts`.
 - Edge middleware must not import Prisma or Node-only modules.
 - Shared report behavior belongs in existing audit/report utilities, not duplicated component logic.
+- Check-to-plan and re-check-to-diff behavior belongs in `lib/audit/task-contracts.ts`; transports call one task-shaped outcome.
+- Public HTTP boundaries are `/api/checks` and `/api/reports/[id]/*`. Do not add `/api/audits` compatibility routes.
 
 Full pipeline behavior and report composition live in [docs/audit-pipeline.md](docs/audit-pipeline.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DESIGN.md](DESIGN.md).
 

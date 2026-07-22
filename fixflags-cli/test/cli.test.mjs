@@ -98,3 +98,21 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
     'ff_recheck_and_compare',
   ])
 })
+
+test('built CLI no-argument view is live, compact, and successful', async () => {
+  const result = await runCli([], 'https://fixflags.test')
+  assert.equal(result.code, 0, result.stderr)
+  assert.match(result.stdout, /service: FixFlags/)
+  assert.match(result.stdout, /authenticated: yes/)
+  assert.match(result.stdout, /check <url>/)
+  assert.doesNotMatch(result.stdout, /Usage:/)
+})
+
+test('built CLI returns structured errors in JSON mode', async () => {
+  const result = await runCli(['status', 'missing', '--json'], 'http://127.0.0.1:1')
+  assert.equal(result.code, 1)
+  const payload = JSON.parse(result.stderr)
+  assert.equal(payload.error.code, 'FIXFLAGS_ERROR')
+  assert.ok(payload.error.message)
+  assert.ok(payload.error.recovery)
+})
