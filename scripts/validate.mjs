@@ -216,9 +216,11 @@ export function fullCommands() {
 export function releaseCommands() {
   return [
     command('clean-install', 'npm', ['ci']),
+    command('fresh-database', 'node', ['scripts/release-database.mjs']),
     ...fullCommands(),
     command('test:e2e', 'npm', ['run', 'test:e2e']),
     command('container:build', 'docker', ['build', '-t', 'fixflags:release-check', '.']),
+    command('container:ready', 'node', ['scripts/container-smoke.mjs']),
     command('deployed-smoke', 'npm', ['run', 'smoke:release']),
   ]
 }

@@ -63,6 +63,8 @@ See `.env.example` for full list.
 | `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
 | `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
+Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, and `RELEASE_SMOKE_URL`. The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`.
+
 ### Demo / testing
 | Command | Purpose |
 |---------|---------|

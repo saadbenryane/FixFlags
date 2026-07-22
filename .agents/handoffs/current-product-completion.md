@@ -2,42 +2,46 @@
 
 ## Status
 
-Paused for workspace coordination on 2026-07-22. Another Codex task is actively
-editing the same `main` worktree without a board claim. It changed report, share,
-claim, Finish Plan, MCP, and task-contract files while browser verification was
-running. Do not overwrite or discard those changes.
+Local launch verification is green. The release bar is implemented and intentionally blocked until designated external resources are provided. Do not replace those failures with test fallbacks.
 
-## Completed in this task
+The main branch changed concurrently during this work. Commit `da73376` contains the coordinated product, auth, report, readiness, verification, skill, and documentation changes. It accidentally captured `.cache/next-build.lock` while a verification build was active; the current working tree deletes that ephemeral tracked file.
 
-- Added canonical `checkAndPlan` and `recheckAndCompare` application services.
-- Cut web, MCP, and CLI task flows over to the canonical contracts.
-- Removed legacy audit routes, app redirects, plaintext share-password support,
-  obsolete anonymous-limit aliases, and CLI server-compatibility fallbacks.
-- Hardened Product Watch concurrency and notification idempotency.
-- Added CLI beta metadata and MIT license; removed tracked generated CLI output.
-- Added Playwright/CI gates, CLI tests, knowledge validation, and documentation
-  and skill updates.
-- Updated dependency pins and removed high/critical audit findings.
+## Completed
 
-## Verification before the collision
+- `scripts/validate.mjs` is the shared full/release command manifest used by local verification and CI.
+- Generated Next, coverage, distribution, cache, and test artifact trees are excluded from lint and changed-file planning.
+- Full verification covers database validation/status/drift, source lint, typecheck, guards, route/skill/completeness audits, dependency audit, script/unit/CLI tests, application build, and worker build.
+- Verification builds use a recoverable process lock and `.next-verify`; Playwright uses isolated `.next-e2e` and port 3107.
+- `verify:release` adds clean install, explicit disposable database reset, E2E, Docker image build, container readiness, and deployed readiness/browser/R2/AI probes.
+- `/api/health/ready` returns 503 until every launch-required subsystem is ready; production startup rejects missing launch capabilities. Explicit degraded mode is loopback-only.
+- The dependency audit reports no advisories.
+- The generated route-contract registry covers every current API route without storing a volatile count.
+- Live PostgreSQL/Redis recovery evaluation covers processing, retry-after-failure, and duplicate-job idempotency. Product Watch unit coverage includes regression-only and idempotent notifications.
+- The detailed PlantDad sample now renders Contract, Remember, Journey, Flow, Timeline, Flags, previews, and launch gates with consistent fixture identity.
+- Shared controls, navigation, report actions, and footer targets meet the 44×44px interaction contract.
+- The report browser contract passes at 375, 768, and 1280px with no overflow or client errors.
+- Repository skills were consolidated and a validator now enforces frontmatter, naming, links, reference depth, stale terms, size, and volatile-fact rules.
+- Canonical Markdown no longer references a nonexistent AGENTS “Project facts” section.
 
-- Typecheck: passed.
-- Lint: passed.
-- Target Vitest suites: 45 tests passed.
-- Knowledge and UI drift guards: passed.
-- Public Playwright smoke tests: four passed. The remaining two were invalidated
-  by repeated hot reloads caused by concurrent file edits.
+## Verified
 
-## Resume checklist
+- `npm run verify`: passed, including database checks, 2,044 unit tests (one intentional skip), CLI package verification, production application build, and worker build.
+- `npm run test:e2e`: eight passed, one credentialed queue-backed test skipped.
+- Detailed sample Playwright contract after final PlantDad correction: three passed.
+- `npm run agent -- eval recovery`: passed against local PostgreSQL and Redis.
+- `npm audit --audit-level=moderate`: zero advisories.
+- `npm run test:scripts`, `npm run lint`, and `git diff --check`: passed after the final release-only additions.
 
-1. Wait until the worktree has stopped changing and reconcile every overlapping
-   file, especially `lib/audit/task-contracts.ts`, `lib/audit/finish-plan.ts`,
-   `lib/mcp/tools.ts`, report pages/components, sharing, and claim logic.
-2. Confirm `origin/main` is an ancestor of `main` and review all commits made by
-   the concurrent task.
-3. Run CLI tests and package dry-run/clean-install validation.
-4. Run database validate/status/drift, full unit/script/guard/capability suites,
-   application and worker builds, E2E, and Docker build.
-5. Do not publish the CLI until the canonical server contract is deployed and
-   production smoke tests pass. Check npm authentication at that point.
+## Remaining release blockers
 
+1. Provide `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; local doctor currently fails only the AI environment requirement.
+2. Provide `RELEASE_FRESH_DATABASE_URL` for a disposable database whose name includes `release` or `test`, plus `RELEASE_ALLOW_DATABASE_RESET=true`.
+3. Provide `RELEASE_CONTAINER_ENV_FILE` with production-like non-customer resources.
+4. Provide `RELEASE_SMOKE_URL` (and bearer token when required), then run `npm run verify:release`.
+5. Run the credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. The current route registry describes applicable cases but does not substitute for per-route integration tests.
+6. Extend the runtime recovery evaluation from an isolated BullMQ queue to the application audit queue for stale-job recovery and lock contention.
+7. Complete the remaining report/MCP/marketing module splits and dead-code adjudication. Do not refactor solely to meet a file-size target.
+
+## Safe release command
+
+Run `npm run verify:release` only with the designated release resources above. The database gate is destructive only to `RELEASE_FRESH_DATABASE_URL` and refuses the normal `DATABASE_URL` or a database name without `release`/`test`.
