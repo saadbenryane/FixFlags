@@ -112,13 +112,14 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 | Endpoint | Checks |
 |----------|--------|
 | `GET /api/health` | DB, `storageConfigured`, `aiConfigured` |
+| `GET /api/health/ready` | Strict database, Redis, worker, Chromium, R2, AI, PageSpeed, auth, billing, email, and Product Watch readiness; returns 503 on any missing launch capability |
 | `GET /api/health/ai` | Provider keys + triage schema loaded |
 | `GET /api/health/browser` | Chromium + R2 connectivity |
 | `GET /api/health/worker` | Redis + worker heartbeat |
 
 ## Debugging runbook
 
-1. `curl https://fixflags.com/api/health` — confirm `aiConfigured: true`, `storageConfigured: true`
+1. `curl https://fixflags.com/api/health/ready` — confirm `ok: true`
 2. Check Railway env: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` on web service (inline worker)
 3. Redeploy after setting keys (SDK clients init at module load)
 4. Pipeline log events: `triage_step_failed`, `triage_degraded`, `triage_runner_retry`, `recovery_force_failed`

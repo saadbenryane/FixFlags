@@ -39,6 +39,11 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     qualities: [75, 82],
+    localPatterns: [
+      {
+        pathname: '/api/screenshots/**',
+      },
+    ],
     remotePatterns: [
       {
         protocol: 'https',

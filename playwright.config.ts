@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const externalBaseUrl = process.env.E2E_BASE_URL
-const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3000'
+const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3107'
 
 export default defineConfig({
   testDir: './e2e',
@@ -22,7 +22,7 @@ export default defineConfig({
         // Keep browser verification isolated from active local development
         // servers that may also be compiling the same workspace.
         command:
-          'NEXT_DIST_DIR=.next-e2e npm run build && NEXT_DIST_DIR=.next-e2e npm run start',
+          'FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e npm run build -- --no-lint && FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e PORT=3107 npm run start',
         url: baseURL,
         reuseExistingServer: false,
         timeout: 240_000,

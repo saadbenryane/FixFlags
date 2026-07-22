@@ -54,6 +54,8 @@ describe('Product Watch', () => {
     mocks.projectFindMany.mockResolvedValue([project])
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
     mocks.canAccessProductWatch.mockReturnValue(true)
   })
 
@@ -108,5 +110,59 @@ describe('Product Watch', () => {
     await notifyWatchRegression('parent-1', 'child-1')
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('sends only for a measured regression with a stable idempotency key', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      id: 'child-1',
+      url: 'https://example.com/',
+      projectId: 'project-1',
+      recheckTrigger: 'WATCH',
+      completedAt: new Date('2026-07-22T12:00:00.000Z'),
+      watchRegressionCount: null,
+      watchNotificationStatus: null,
+      watchNotificationAttempts: 0,
+      user: { email: 'owner@example.com', name: 'Owner' },
+      project: { watchInterval: 'WEEKLY' },
+    })
+    mocks.getFlagDiffSummary.mockResolvedValue({
+      fixed: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
+    })
+
+    await notifyWatchRegression('parent-1', 'child-1')
+
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
+    expect(mocks.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'owner@example.com' }),
+      { idempotencyKey: 'fixflags-watch-child-1-v1' }
+    )
+    expect(mocks.auditUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'child-1' },
+      data: expect.objectContaining({ watchNotificationStatus: 'SENT' }),
+    }))
+  })
+
+  it('records a clean watch result without sending email', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      id: 'child-1',
+      url: 'https://example.com/',
+      projectId: 'project-1',
+      recheckTrigger: 'WATCH',
+      completedAt: new Date('2026-07-22T12:00:00.000Z'),
+      watchRegressionCount: null,
+      watchNotificationStatus: null,
+      watchNotificationAttempts: 0,
+      user: { email: 'owner@example.com', name: 'Owner' },
+      project: { watchInterval: 'WEEKLY' },
+    })
+    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [{ id: 'fixed' }], unchanged: [], newIssues: [], regressed: [] })
+
+    await notifyWatchRegression('parent-1', 'child-1')
+
+    expect(mocks.sendEmail).not.toHaveBeenCalled()
+    expect(mocks.auditUpdate).toHaveBeenCalledWith({
+      where: { id: 'child-1' },
+      data: { watchRegressionCount: 0, watchNotificationStatus: 'NOT_APPLICABLE' },
+    })
   })
 })

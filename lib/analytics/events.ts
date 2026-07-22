@@ -43,6 +43,9 @@ type FunnelEvent =
   | 'product_contract_saved'
   | 'remember_shown'
 
+export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
+export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
+
 type EventParams = {
   landing_view: {
     path?: string
@@ -81,16 +84,28 @@ type EventParams = {
   started_checkout: { plan: string; is_logged_in: boolean }
   completed_checkout: { plan: string }
   audit_limit_reached: { reason?: string }
-  viewed_report: { audit_id?: string; is_owner?: boolean }
+  viewed_report: {
+    audit_id?: string
+    is_owner?: boolean
+    surface?: ReportSurface
+    access_state?: ReportAccessState
+    item_count?: number
+  }
   first_finding_viewed: {
     audit_id?: string
     check_id?: string
     severity?: string
+    surface?: ReportSurface
+    access_state?: ReportAccessState
+    item_position?: number
   }
   fix_prompt_copied: {
     kind?: 'flag' | 'plan' | 'export'
     audit_id?: string
     tool?: string
+    surface?: ReportSurface
+    access_state?: ReportAccessState
+    item_position?: number
   }
   recheck_started: { audit_id?: string }
   recheck_completed: {
@@ -131,8 +146,12 @@ export function trackEvent<T extends FunnelEvent>(
   params?: EventParams[T],
 ) {
   if (typeof window === 'undefined' || typeof window.gtag === 'undefined') return
+  const eventParams = {
+    device: deviceClass(),
+    ...(params as Record<string, unknown> | undefined),
+  }
   try {
-    window.gtag('event', event, params as Record<string, unknown>)
+    window.gtag('event', event, eventParams)
   } catch {
     /* ga not available */
   }
@@ -152,7 +171,7 @@ export function trackEvent<T extends FunnelEvent>(
   }
 
   if (event === 'viewed_report') {
-    fireMetaPixelEvent('ViewContent', params as Record<string, unknown>)
+    fireMetaPixelEvent('ViewContent', eventParams)
   }
 }
 

@@ -13,20 +13,19 @@ Each eval file should define:
 - **Latest verified result:** Date and outcome of last run
 - **Known weaknesses:** What the eval does not cover
 
-## Eval inventory
+## Executable inventory
 
-*(To be populated as evals are created.)*
+| Area | Command | Behavior exercised |
+|---|---|---|
+| Functional audit | `npm run agent -- eval audit` | Offline baseline-to-fixed Flag → Fix regression fixture |
+| Report contract, responsive, accessibility | `npm run agent -- eval ui` | Detailed sample sections, identity, target size, overflow, and client errors at 375/768/1280 |
+| Runtime recovery | `npm run agent -- eval recovery` | Live PostgreSQL query, Redis processing, retry recovery, and duplicate-job idempotency |
+| CLI packaging | `npm run agent -- eval cli` | CLI tests, build, package contents, and install smoke |
+| Billing | `npm run agent -- eval billing` | Entitlement and billing behavior tests |
+| Prompt contract | `npm run agent -- eval prompts` | Prompt composition and provider contract tests |
+| Knowledge | `npm run agent -- eval docs` | Canonical knowledge duplication guard |
 
-### Suggested evals
-
-- **Functional:** Full audit cycle on demo fixture (offline + rendered + flow)
-- **Data:** Persist/retrieve roundtrip with known flags
-- **Visual:** Brand color compliance, UI drift against design tokens
-- **Accessibility:** Lighthouse a11y score, keyboard navigation smoke test
-- **Content:** No banned phrases, no em dashes, no hardcoded copy
-- **Voice:** Anti-slop scoring of marketing pages
-- **Responsive:** Report page at 375px, 768px, 1280px
-- **Regression:** Known sites produce expected flag counts
+The release bar is `npm run verify:release`. Missing credentials or infrastructure are failures, not skipped successes.
 
 ## Improvement workflow
 

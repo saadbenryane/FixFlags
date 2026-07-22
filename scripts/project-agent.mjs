@@ -63,13 +63,13 @@ export const contexts = {
 
 export const evals = {
   orientation: ['node', ['scripts/project-agent.mjs', '--json']],
-  docs: ['node', ['--test', 'scripts/validate.test.mjs']],
-  ui: ['npm', ['run', 'ui:drift-guard']],
-  audit: ['npx', ['vitest', 'run', 'lib/audit/__tests__/priority-flags.test.ts']],
+  docs: ['npm', ['run', 'knowledge:duplication-guard']],
+  ui: ['npx', ['playwright', 'test', '--grep', 'detailed sample fulfills']],
+  audit: ['npm', ['run', 'demo:audit:offline']],
   prompts: ['npx', ['vitest', 'run', 'lib/prompts/']],
   billing: ['npx', ['vitest', 'run', 'lib/billing/']],
-  cli: ['npm', ['--prefix', 'fixflags-cli', 'test']],
-  recovery: ['node', ['--test', 'scripts/project-agent.test.mjs']],
+  cli: ['npm', ['run', 'test:cli']],
+  recovery: ['node', ['scripts/evals/runtime-recovery.mjs']],
 }
 
 function git(cwd, args) {

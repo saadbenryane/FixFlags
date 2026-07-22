@@ -13,6 +13,7 @@ import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
+import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
@@ -21,7 +22,7 @@ import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { trackEvent } from '@/lib/analytics/events'
 
 function SignUpForm() {
-  const { oauthCallbackURL, oauthNewUserCallbackURL, postLoginHref, signInHref, plan, from } =
+  const { next, oauthCallbackURL, oauthNewUserCallbackURL, postLoginHref, signInHref, plan, from } =
     useAuthRedirect()
   const router = useRouter()
   useRedirectIfAuthenticated()
@@ -72,6 +73,7 @@ function SignUpForm() {
       : null
 
   const showPlanSteps = plan && plan in AUTH.signUp.planTitles
+  const isReportContext = Boolean(next?.match(/^\/report\/[^/?#]+$/))
   const subtitle = planTitle
     ? planTitle
     : from === 'pricing'
@@ -91,9 +93,13 @@ function SignUpForm() {
         </p>
       }
     >
-      <div className="rounded-card bg-muted/30 p-4 shadow-none">
-        <AuthValueProps />
-      </div>
+      {isReportContext ? (
+        <AuthReportContext next={next} />
+      ) : (
+        <div className="rounded-card bg-muted/30 p-4 shadow-none">
+          <AuthValueProps />
+        </div>
+      )}
       {oauth.anyEnabled && (
         <OAuthButtons
           callbackURL={oauthCallbackURL}
@@ -101,6 +107,7 @@ function SignUpForm() {
           google={oauth.google}
           github={oauth.github}
           disabled={loading}
+          from={from ?? undefined}
         />
       )}
       {oauth.anyEnabled && (

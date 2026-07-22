@@ -61,7 +61,7 @@ Optional async: ai-review (prescription: fix prompts, evidence, whyItMatters)
 
 | Area | Why it's strong |
 |------|-----------------|
-| Deterministic checks | Fast, cheap, reproducible, explainable. Check IDs live in `lib/audit/check-ids.ts` (see AGENTS.md Project facts). |
+| Deterministic checks | Fast, cheap, reproducible, explainable. Check IDs live in `lib/audit/check-ids.ts`. |
 | Two-phase AI | Triage is cheap and runs for everyone. Prescription is gated and detailed. |
 | Flow scan | Already does basic CTA-click testing. 20 flow-specific check IDs. |
 | Evidence model | Every flag has a screenshot, check ID, and severity. Audit trail is solid. |

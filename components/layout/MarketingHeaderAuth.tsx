@@ -28,7 +28,7 @@ export function MarketingHeaderAuth({
         <Link
           href="/sign-in"
           onClick={onNavigate}
-          className="block text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="flex min-h-11 min-w-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           Log in
         </Link>
@@ -51,7 +51,7 @@ export function MarketingHeaderAuth({
       <div className={cn('flex items-center gap-3 sm:gap-4', 'ml-3')}>
         <Link
           href="/sign-in"
-          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 min-w-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           Log in
         </Link>

@@ -85,7 +85,7 @@ function FooterSocialLink({
       href={href as Route}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       aria-label={label}
     >
       {children}
@@ -108,7 +108,7 @@ function FooterColumn({
           <li key={`${link.href}-${link.label}`}>
             <Link
               href={link.href as Route}
-              className="inline-flex min-h-[24px] items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex min-h-11 min-w-11 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>

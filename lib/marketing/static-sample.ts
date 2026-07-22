@@ -1,13 +1,14 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { DEFAULT_SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { calculateOverallScore, gradeFromScore, statusFromScore } from '@/lib/audit/scoring'
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
+import { originalFixture } from '@/lib/demo/fixtures/original'
+import { DEMO_BRAND } from '@/lib/demo/brand'
 
-const SCREENSHOT_BASE = '/samples'
-const SAMPLE_URL = DEFAULT_SAMPLE_AUDIT_URL
+const SAMPLE_SCREENSHOT = '/demo/hero-original.svg'
+const SAMPLE_URL = 'https://plantdad-demo.app/demo'
 
 const STATIC_FLAGS: RankableFlag[] = [
   {
@@ -18,12 +19,12 @@ const STATIC_FLAGS: RankableFlag[] = [
     impactTag: 'CONVERSION',
     problem: 'Hero headline repeats the product category instead of the outcome',
     evidence:
-      'Desktop 1280x900: headline reads "Your desk deserves a plant that does not give up on you". Describes the tool category, not the visitor outcome.',
+      `Desktop 1280x900: headline reads "${originalFixture.headline}". It is memorable but does not state the concrete monitoring outcome quickly.`,
     whyItMatters:
       'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
     fix: 'Lead with the outcome: who it is for and what they get after signing up.',
     agentPrompt:
-      'Update the H1 to lead with outcome: "Keep your office plants alive with zero effort." Keep under 12 words at 1280px viewport.',
+      'Update the H1 to name the audience and outcome, for example: "Keep every desk plant alive without guessing." Keep it under 12 words at 1280px.',
     verificationRule: 'New headline fits single line at 1280px viewport width.',
     pageUrl: null,
   },
@@ -141,7 +142,7 @@ const STATIC_RUBRIC_ROWS: ReportRubricRow[] = (
       id: 'rubric-message',
       name: 'MESSAGE' as const,
       summary:
-        'CTA visible above fold on desktop. Value proposition clear but could target plant parents more directly.',
+        'CTA is visible above the fold on desktop, but the headline does not identify the audience or a concrete outcome.',
     },
     {
       id: 'rubric-experience',
@@ -213,16 +214,59 @@ export function getStaticSampleAudit(): LiveSampleAudit {
     screenshots: [
       {
         device: 'DESKTOP',
-        url: `${SCREENSHOT_BASE}/demo-original-desktop.webp`,
+        url: SAMPLE_SCREENSHOT,
         width: 1280,
         height: 900,
       },
       {
         device: 'MOBILE',
-        url: `${SCREENSHOT_BASE}/demo-original-mobile.webp`,
+        url: SAMPLE_SCREENSHOT,
         width: 375,
         height: 812,
       },
+    ],
+    productContract: {
+      purpose: 'Help plant owners monitor health and keep their plants alive',
+      firstValueJourney: 'Understand the monitoring benefit, choose Adopt a plant, and reach signup',
+      criticalOutcomes: [
+        'The primary CTA is visible and opens signup',
+        'Visitors understand how PlantDad monitors plant health',
+        'Shared links show a branded preview',
+      ],
+      inferredAt: '2026-06-10T14:30:00Z',
+      source: 'heuristic',
+    },
+    verifiedLearnings: [
+      {
+        checkId: 'cta-visible-desktop',
+        summary: 'The primary CTA remains visible above the fold at 1280px.',
+        auditId: 'curated-sample-v0',
+        at: '2026-06-09T14:30:00Z',
+      },
+    ],
+    previewMeta: {
+      title: `${DEMO_BRAND.name} · Smart plant monitoring`,
+      description: originalFixture.subhead,
+      ogTitle: DEMO_BRAND.name,
+      ogDescription: originalFixture.subhead,
+      ogImage: null,
+      ogImageOk: false,
+      url: SAMPLE_URL,
+    },
+    flowData: {
+      status: 'success',
+      ctaText: originalFixture.primaryCta.label,
+      ctaHref: originalFixture.primaryCta.href,
+      finalUrl: `${SAMPLE_URL}/signup`,
+      steps: [
+        { label: 'Landing page', screenshotUrl: SAMPLE_SCREENSHOT, url: SAMPLE_URL },
+        { label: 'Primary CTA', screenshotUrl: SAMPLE_SCREENSHOT, url: `${SAMPLE_URL}/signup` },
+      ],
+    },
+    actionTimeline: [
+      { t: 0, kind: 'navigate', label: `Opened the ${DEMO_BRAND.name} landing page`, url: SAMPLE_URL },
+      { t: 820, kind: 'capture', label: 'Captured desktop and mobile evidence', url: SAMPLE_URL },
+      { t: 1460, kind: 'click', label: `Clicked ${originalFixture.primaryCta.label}`, url: `${SAMPLE_URL}/signup` },
     ],
   }
 }

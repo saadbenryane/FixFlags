@@ -74,7 +74,7 @@ function FlagNavigation({
           type="button"
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="h-11 w-11"
           onClick={onPrevious}
           aria-label="Previous flag"
           disabled={total <= 1}
@@ -85,7 +85,7 @@ function FlagNavigation({
           type="button"
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="h-11 w-11"
           onClick={onNext}
           aria-label="Next flag"
           disabled={total <= 1}

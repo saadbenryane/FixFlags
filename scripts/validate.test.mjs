@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildPlan } from './validate.mjs'
+import { buildPlan, isGeneratedPath } from './validate.mjs'
 
 describe('validate.mjs', () => {
   describe('buildPlan', () => {
@@ -78,9 +78,49 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('test:unit'))
       assert.ok(labels.includes('brand:hex-guard'))
       assert.ok(labels.includes('ui:drift-guard'))
+      assert.ok(labels.includes('product:contract-guard'))
       assert.ok(labels.includes('seo:guard'))
+      assert.ok(labels.includes('completeness:audit'))
+      assert.ok(labels.includes('test:scripts'))
+      assert.ok(labels.includes('db:drift'))
       assert.ok(labels.includes('build'))
       assert.ok(labels.includes('worker:build'))
+      assert.deepEqual(plan.commands.find((item) => item.label === 'build'), {
+        label: 'build',
+        executable: 'node',
+        args: ['scripts/next-build.mjs'],
+      })
+      assert.ok(labels.includes('security:audit'))
+    })
+
+    it('release mode extends full validation with browser and container checks', () => {
+      const labels = buildPlan('release', []).commands.map((command) => command.label)
+      assert.ok(labels.includes('test:e2e'))
+      assert.ok(labels.includes('container:build'))
+      assert.ok(labels.includes('clean-install'))
+      assert.ok(labels.includes('deployed-smoke'))
+      assert.ok(labels.includes('test:unit'))
+    })
+
+    it('ignores generated build and test artifacts', () => {
+      for (const file of [
+        '.next/server/app.js',
+        '.next-e2e/types/app.ts',
+        '.cache/eslint/result',
+        'coverage/index.html',
+        'fixflags-cli/dist/index.js',
+        'playwright-report/index.html',
+        'test-results/result.json',
+      ]) {
+        assert.equal(isGeneratedPath(file), true, file)
+      }
+      assert.equal(isGeneratedPath('app/report/[id]/page.tsx'), false)
+    })
+
+    it('drops generated paths before planning affected validation', () => {
+      const plan = buildPlan('affected', ['.next-e2e/types/app.ts'])
+      assert.equal(plan.commands.length, 0)
+      assert.equal(plan.reason, 'no changed files detected')
     })
 
     it('lint-changed mode only lints changed TS files', () => {

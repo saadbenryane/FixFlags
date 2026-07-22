@@ -9,12 +9,12 @@ export function LandingHeroSection() {
       <Container className="relative">
         <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
           <h1 className="max-w-[24ch] text-balance font-serif text-4xl font-medium leading-display tracking-display motion-safe:animate-fade-in-up motion-safe:[animation-delay:40ms] motion-safe:[animation-fill-mode:both] sm:text-5xl lg:text-6xl">
-            <span className="whitespace-nowrap">
+            <span>
               <span className="text-brand">{HERO.headlineAccent}</span>{' '}
               {HERO.headlineLine1}
             </span>
-            <span aria-hidden> </span>
             <br className="hidden sm:block" />
+            <span className="sm:hidden" aria-hidden>{' '}</span>
             <span className="text-brand">{HERO.headlineLine2}</span>
           </h1>
 

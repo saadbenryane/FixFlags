@@ -79,6 +79,21 @@ const fullValidationPrefixes = ['.github/', 'prisma/']
 
 const docsOnlyExtensions = new Set(['.md', '.txt'])
 
+const generatedPathPatterns = [
+  /(^|\/)\.next(?:-[^/]*)?(\/|$)/,
+  /(^|\/)\.cache(\/|$)/,
+  /(^|\/)coverage(\/|$)/,
+  /(^|\/)dist(\/|$)/,
+  /(^|\/)node_modules(\/|$)/,
+  /(^|\/)output(\/|$)/,
+  /(^|\/)playwright-report(\/|$)/,
+  /(^|\/)test-results(\/|$)/,
+]
+
+export function isGeneratedPath(file) {
+  return generatedPathPatterns.some((pattern) => pattern.test(file))
+}
+
 function runGit(args, options = {}) {
   const result = spawnSync('git', args, {
     cwd: workspaceRoot,
@@ -111,7 +126,7 @@ function changedFilesFromGit() {
       .split('\n')
       .map((f) => f.trim())
       .filter(Boolean)
-      .filter((f) => !f.includes('/node_modules/'))
+      .filter((f) => !isGeneratedPath(f))
   )].sort()
 }
 
@@ -173,29 +188,52 @@ function changedLintCommand(files) {
   ])]
 }
 
-function fullCommands() {
+export function fullCommands() {
   return [
+    command('db:validate', 'npm', ['run', 'db:validate']),
+    command('db:check', 'npm', ['run', 'db:check']),
+    command('db:drift', 'npm', ['run', 'db:drift']),
     command('typecheck', 'npx', ['tsc', '--noEmit', '--incremental', 'false']),
     command('lint', 'npm', ['run', 'lint']),
-    command('test:unit', 'npm', ['run', 'test:unit']),
     command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']),
     command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']),
+    command('product:contract-guard', 'npm', ['run', 'product:contract-guard']),
+    command('routes:contract-guard', 'npm', ['run', 'routes:contract-guard']),
+    command('skills:validate', 'npm', ['run', 'skills:validate']),
     command('seo:guard', 'npm', ['run', 'seo:guard']),
     command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
+    command('completeness:audit', 'npm', ['run', 'completeness:audit']),
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
+    command('security:audit', 'npm', ['audit', '--audit-level=moderate']),
+    command('test:scripts', 'npm', ['run', 'test:scripts']),
+    command('test:unit', 'npm', ['run', 'test:unit']),
     command('test:cli', 'npm', ['run', 'test:cli']),
-    command('build', 'npm', ['run', 'build']),
+    command('build', 'node', ['scripts/next-build.mjs']),
     command('worker:build', 'npm', ['run', 'worker:build']),
   ]
 }
 
+export function releaseCommands() {
+  return [
+    command('clean-install', 'npm', ['ci']),
+    ...fullCommands(),
+    command('test:e2e', 'npm', ['run', 'test:e2e']),
+    command('container:build', 'docker', ['build', '-t', 'fixflags:release-check', '.']),
+    command('deployed-smoke', 'npm', ['run', 'smoke:release']),
+  ]
+}
+
 export function buildPlan(requestedMode, providedFiles) {
-  const files = providedFiles ?? changedFilesFromGit()
+  const files = (providedFiles ?? changedFilesFromGit()).filter((file) => !isGeneratedPath(file))
   const fullRequired = files.some(isFullValidationFile)
   const codeFiles = files.filter((f) => !isDocsOnlyFile(f))
 
   if (requestedMode === 'full') {
     return { files, commands: fullCommands(), reason: 'full validation requested' }
+  }
+
+  if (requestedMode === 'release') {
+    return { files, commands: releaseCommands(), reason: 'release validation requested' }
   }
 
   if (requestedMode === 'lint-changed') {

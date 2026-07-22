@@ -12,25 +12,6 @@ function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
 }
 
-function FunnelBar({ value, max, label }: { value: number; max: number; label: string }) {
-  const percent = pct(value, max)
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-32 text-sm text-muted-foreground shrink-0">{label}</span>
-      <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-brand rounded-full transition-all"
-          style={{ width: `${Math.max(percent, 1)}%` }}
-        />
-      </div>
-      <span className="font-mono text-sm tabular-nums w-20 text-right">{value.toLocaleString()}</span>
-      <span className="font-mono text-xs text-muted-foreground tabular-nums w-14 text-right">
-        {percent}%
-      </span>
-    </div>
-  )
-}
-
 export default async function AdminAnalyticsPage() {
   const todayStart = startOf(0)
   const weekAgo = startOf(7)
@@ -48,7 +29,6 @@ export default async function AdminAnalyticsPage() {
     auditsToday,
     auditsWeek,
     auditsMonth,
-    totalAudits,
     anonAuditsMonth,
     anonCompletedMonth,
     anonUnlinkedLeads,
@@ -64,7 +44,6 @@ export default async function AdminAnalyticsPage() {
     prisma.audit.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.audit.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.audit.count({ where: { createdAt: { gte: monthAgo } } }),
-    prisma.audit.count(),
     prisma.audit.count({ where: { userId: null, createdAt: { gte: monthAgo } } }),
     prisma.audit.count({
       where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
@@ -119,8 +98,6 @@ export default async function AdminAnalyticsPage() {
 
   const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
   const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
-
-  const funnelMax = Math.max(totalUsers, usersWithAudits, paidUsers, totalAudits, 1)
 
   const periodStats = [
     {
@@ -203,12 +180,26 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Conversion funnel (all time)</SectionTitle>
-        <div className="space-y-2">
-          <FunnelBar value={totalUsers} max={funnelMax} label="Total users" />
-          <FunnelBar value={usersWithAudits} max={funnelMax} label="Started an audit" />
-          <FunnelBar value={usersWithCompletedAudits} max={funnelMax} label="Completed an audit" />
-          <FunnelBar value={paidUsers} max={funnelMax} label="Paid users" />
+        <SectionTitle>Account and audit totals (all time)</SectionTitle>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          These are independent database totals, not sequential funnel steps. Use the GA4 event funnel for stage-to-stage conversion.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Total accounts', value: totalUsers },
+            { label: 'Accounts with an audit', value: usersWithAudits },
+            { label: 'Accounts with a completed audit', value: usersWithCompletedAudits },
+            { label: 'Paid accounts', value: paidUsers },
+          ].map((item) => (
+            <Card key={item.label} className="border-0 shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground">{item.label}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatValue>{item.value.toLocaleString()}</StatValue>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 

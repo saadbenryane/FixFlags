@@ -20,7 +20,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 |------|--------|---------------|----------|
 | False positives after check changes | ✅ DONE | Real-site regression suite: frozen HTML fixtures with expected flag profiles | 6 fixtures in `regression-sites.test.ts`, run in CI (HTML-derivable checks) |
 | AI judge hallucinates rubrics | ✅ DONE | Bad schema → hard reject. Empty evidence → discard. Wrong rubric → fail. | `judge-contract.test.ts` + prescription contract; blank evidence discarded in `mergePrescriptionResults` |
-| CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | All IDs via `checks.test.ts` (count: AGENTS.md Project facts → `ALL_CHECK_IDS`) |
+| CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | All IDs generated from `ALL_CHECK_IDS` and exercised by `checks.test.ts` |
 | Unclear what each check verifies | ✅ DONE | Verification rules for every checkId | All documented |
 | Form validation | ✅ DONE | Form validation ratio test (50% threshold) | `checks.test.ts` asserts IMPORTANT vs POLISH by ratio |
 | Score math edge cases | ✅ DONE | computeRubricScores: all CRITICAL, module failures, PageSpeed unavailable | `checks.test.ts` computeRubricScores suite |
@@ -36,10 +36,10 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | API route contracts | 🔶 IMPORTANT | Critical path: 200/400/401/402/403/404 on checks, status, re-check, api-keys, projects | Critical path covered; remaining routes pending |
 | Rate limiting | 🔶 IMPORTANT | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 lifetime new URL checks. Paid: plan limit. Redis outage fail-open is intentional availability tradeoff. | Partially implemented |
 | Auth / session integrity | 🔶 IMPORTANT | Claim-before-next, entitlements, re-check never gated | Claim + redirect + monitoring tests; full login/logout E2E still open |
-| CI pipeline | ⚠️ CRITICAL | Solo founder can `npm run verify` before shipping. BLOCKER with second person. | GitHub Actions runs subset; local verify is stricter |
+| CI pipeline | ✅ DONE | CI and local full verification use `scripts/validate.mjs`. | GitHub Actions runs `npm run validate:full` plus browser journeys |
 | Migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Drift detection passes. | Passes |
 | Worker crash recovery | 🔶 IMPORTANT | Worker dies mid-capture → retry. Detection tested. Recovery path untested. | Partial |
-| Queue job processing | 🔶 IMPORTANT | Jobs submitted, processed, failed, retried | 0 tests |
+| Queue job processing | ✅ DONE | Live PostgreSQL/Redis evaluation submits, processes, retries after failure, and checks duplicate-job idempotency. | `npm run agent -- eval recovery` |
 
 ### Touch — Experience
 
@@ -100,7 +100,7 @@ Until automated Touch-tier tests cover report chrome:
 Completion requires evidence, not confidence. Before claiming work:
 - [ ] Run `npm run typecheck` — zero errors
 - [ ] Run `npm run lint` — zero errors
-- [ ] Run `npm run test:unit` — all passing (count measured per run; see `AGENTS.md` Project facts)
+- [ ] Run `npm run test:unit` and record the measured result for that run.
 - [ ] Run relevant guards
 - [ ] Verify actual behavior (not just test pass)
 - [ ] Check edge cases, responsive states, loading/empty/error states

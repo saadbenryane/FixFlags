@@ -38,7 +38,7 @@ Canonical skills live in `.cursor/skills/`. Prefer those over any mirrored copie
 | `fixflags-marketing` | Copy, GTM, positioning |
 | `fixflags-completeness` | Doc drift, verify green |
 | `fixflags-analytics` | Funnel events |
-| `fixflags-design-*` / `fixflags-ui-upgrade` | Design system and polish |
+| `fixflags-design-system` | Design system, accessibility, responsive review, and polish |
 
 Vision alignment: agents doing product strategy must read `knowledge/vision.md` and must not invent parallel narratives in skills.
 

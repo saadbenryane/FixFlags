@@ -17,7 +17,7 @@ Customer **Product Intelligence** (Project-scoped) is separate from the growth `
 ## System overview
 
 Next.js 15 application (App Router) with:
-- PostgreSQL 16 database (Prisma 6 ORM; model count in AGENTS.md Project facts)
+- PostgreSQL 16 database with Prisma 6 ORM
 - Redis 7 queue (BullMQ 5) for async audit processing
 - Inline worker mode (default) or separate worker process
 - Self-hosted scheduler for recovery + nurture (no external cron)
@@ -185,7 +185,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
 - Billing enforcement: `lib/billing/limits.ts`, `lib/billing/credits.ts`, `lib/billing/config.ts`
-- Health: `/api/health` includes `billingConfigured`
+- Liveness: `/api/health` remains a low-cost diagnostic snapshot; launch readiness is `/api/health/ready`.
 
 ## Deployment
 
@@ -193,7 +193,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 - **Dedicated worker:** `INLINE_WORKER=false`, deploy separate worker service
 - **Container:** Single-stage Docker (Debian bookworm-slim + apt Chromium). Railway uses `Dockerfile` via `railway.toml`. Playwright launches system Chromium (`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
 - **Platform:** Railway (fly.io-compatible)
-- **Health:** `/api/health` (DB+Redis), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2)
+- **Health:** `/api/health` (liveness), `/api/health/ready` (strict launch contract), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2), `/api/health/ai?validate=1` (live provider credentials)
 
 ## Key Data Flows
 
@@ -244,13 +244,13 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 - No Prisma/Node imports on edge runtime (proxy.ts)
 - `serverExternalPackages`: playwright, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.
 - R2 is required for production screenshots. Missing R2 → service boots, scans fail with clear message.
-- Missing AI keys → triage/prescription disabled; scans complete with deterministic checks (`/api/health` reports `aiConfigured: false`)
+- Missing AI keys may be an explicit local degraded mode. Production startup and `/api/health/ready` reject the incomplete launch capability.
 - No `next build`-time OAuth gating (resolved at runtime via `/api/auth/providers`)
 - OAuth callback URL: `https://fixflags.com/api/auth/callback/google`
 
 ## Database snapshot
 
-Model count: regenerate with `grep -c '^model ' prisma/schema.prisma` (canonical value in AGENTS.md Project facts).
+Generate the current model count from `prisma/schema.prisma` with `grep -c '^model ' prisma/schema.prisma`; do not store it in documentation.
 
 Models span:
 - **Auth:** User, Session, Account, Verification

@@ -17,6 +17,8 @@ interface SiteShellProps {
   footer?: 'default' | 'minimal'
   showAdmin?: boolean
   adminInboxUnread?: number
+  showHeaderNavigation?: boolean
+  showSupport?: boolean
   /**
    * Backdrop intensity. Defaults from variant (marketing gets the animated
    * 'full' mesh, app/admin the static 'minimal' grid). Work surfaces that
@@ -35,9 +37,11 @@ export function SiteShell({
   footer,
   showAdmin,
   adminInboxUnread = 0,
+  showHeaderNavigation = true,
+  showSupport,
   backdrop,
 }: SiteShellProps) {
-  const showSupport = variant !== 'admin'
+  const supportEnabled = showSupport ?? variant !== 'admin'
   const hasSidebar = variant === 'app'
   const resolvedFooter = footer ?? (variant === 'marketing' ? 'default' : 'minimal')
   const resolvedBackdrop = backdrop ?? (variant === 'marketing' ? 'full' : 'minimal')
@@ -67,6 +71,7 @@ export function SiteShell({
               logoHref={logoHref}
               right={headerRight}
               adminInboxUnread={adminInboxUnread}
+              showNavigation={showHeaderNavigation}
             />
             <ActiveAuditBanner />
             <main id="main-content" className="flex-1" tabIndex={-1}>
@@ -76,11 +81,11 @@ export function SiteShell({
         )}
         {showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}
         {showFooter && resolvedFooter === 'default' && <Footer />}
-        {showSupport && <SupportWidgetLazy />}
+        {supportEnabled && <SupportWidgetLazy />}
       </div>
     </div>
   )
 
-  if (!showSupport) return shell
+  if (!supportEnabled) return shell
   return <SupportProvider>{shell}</SupportProvider>
 }

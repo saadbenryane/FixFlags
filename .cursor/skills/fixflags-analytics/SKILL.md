@@ -5,13 +5,13 @@ description: FixFlags launch funnel analytics — event registry, required call 
 
 # FixFlags Analytics / Funnel
 
-**Read [`AGENTS.md`](../../AGENTS.md) first.** Canonical event types live in [`lib/analytics/events.ts`](../../lib/analytics/events.ts).
+Read [`AGENTS.md`](../../../AGENTS.md) first. Canonical event types live in [`lib/analytics/events.ts`](../../../lib/analytics/events.ts).
 
 ## North-star
 
 % of completed scans where the user copies a fix and later re-checks.
 
-P2 growth work (audience landers, authentic testimonials, monitoring UI) is gated on ~100 completed scans. See [`.agents/handoffs/launch-funnel-p2.md`](../../.agents/handoffs/launch-funnel-p2.md).
+Growth thresholds and deferred work live in [`ROADMAP.md`](../../../ROADMAP.md) and the [launch funnel handoff](../../../.agents/handoffs/launch-funnel-p2.md); do not duplicate them here.
 
 ## Event registry (must have call sites)
 
@@ -41,7 +41,7 @@ Before shipping funnel changes: every `FunnelEvent` union member must have a `tr
 
 ## Admin
 
-[`app/admin/analytics/page.tsx`](../../app/admin/analytics/page.tsx) documents the funnel for operators. Includes **Anonymous wedge (last 30 days)** counts and link to `/admin/leads`. Keep descriptions in sync with real semantics.
+[`app/admin/analytics/page.tsx`](../../../app/admin/analytics/page.tsx) documents the funnel for operators. Keep descriptions in sync with real semantics.
 
 ## Scan duration claims
 

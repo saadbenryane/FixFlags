@@ -36,6 +36,7 @@ interface HeaderProps {
   right?: React.ReactNode
   className?: string
   adminInboxUnread?: number
+  showNavigation?: boolean
 }
 
 export function Header({
@@ -44,6 +45,7 @@ export function Header({
   right,
   className,
   adminInboxUnread = 0,
+  showNavigation = true,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -79,7 +81,11 @@ export function Header({
         <div
           className={cn(
             'grid h-14 items-center gap-3',
-            isMarketing ? 'grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr]' : 'grid-cols-[auto_1fr_auto]'
+            !showNavigation
+              ? 'grid-cols-[1fr_auto]'
+              : isMarketing
+                ? 'grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr]'
+                : 'grid-cols-[auto_1fr_auto]'
           )}
         >
           <div className="flex min-w-0 items-center gap-3">
@@ -95,90 +101,100 @@ export function Header({
             )}
           </div>
 
-          <nav
-            className={cn(
-              'items-center gap-0.5',
-              isMarketing ? 'hidden justify-center md:flex' : 'hidden md:flex'
-            )}
-          >
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.href}
-                href={link.href}
-                className={NAV_LINK_BASE}
-                activeClassName={NAV_LINK_ACTIVE}
-                inactiveClassName={NAV_LINK_INACTIVE}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  {link.label}
-                  {variant === 'admin' && link.href === '/admin/feedback' && adminInboxUnread > 0 && (
-                    <Badge variant="destructive" size="sm" className="h-4 min-w-4 px-1">
-                      {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
-                    </Badge>
-                  )}
-                </span>
-              </NavLink>
-            ))}
-          </nav>
+          {showNavigation ? (
+            <nav
+              className={cn(
+                'items-center gap-0.5',
+                isMarketing ? 'hidden justify-center md:flex' : 'hidden md:flex'
+              )}
+            >
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.href}
+                  href={link.href}
+                  className={NAV_LINK_BASE}
+                  activeClassName={NAV_LINK_ACTIVE}
+                  inactiveClassName={NAV_LINK_INACTIVE}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {link.label}
+                    {variant === 'admin' &&
+                      link.href === '/admin/feedback' &&
+                      adminInboxUnread > 0 && (
+                        <Badge variant="destructive" size="sm" className="h-4 min-w-4 px-1">
+                          {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
+                        </Badge>
+                      )}
+                  </span>
+                </NavLink>
+              ))}
+            </nav>
+          ) : null}
 
           <div className="flex items-center justify-end gap-1">
             <div className="hidden items-center gap-0.5 md:flex">
               {resolvedRight}
             </div>
 
-            <div className="flex items-center gap-1 md:hidden">
-              {isMarketing && (
-                <MarketingHeaderAuth mode="mobileTop" />
-              )}
-              <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px]">
-                <SheetHeader>
-                  <SheetTitle>
-                    <Logo variant="wordmark" size="sm" />
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="mt-6 flex flex-col gap-1">
-                  {navLinks.map((link) => (
-                    <NavLink
-                      key={link.href}
-                      href={link.href}
-                      onNavigate={() => setOpen(false)}
-                      className={NAV_LINK_MOBILE_BASE}
-                      activeClassName={NAV_LINK_MOBILE_ACTIVE}
-                      inactiveClassName={NAV_LINK_INACTIVE}
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        {link.label}
-                        {variant === 'admin' && link.href === '/admin/feedback' && adminInboxUnread > 0 && (
-                          <Badge variant="destructive" size="sm" className="h-4 min-w-4 px-1">
-                            {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
-                          </Badge>
+            {showNavigation ? (
+              <div className="flex items-center gap-1 md:hidden">
+                {isMarketing && <MarketingHeaderAuth mode="mobileTop" />}
+                <Sheet open={open} onOpenChange={setOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="Open menu">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[280px]">
+                    <SheetHeader>
+                      <SheetTitle>
+                        <Logo variant="wordmark" size="sm" />
+                      </SheetTitle>
+                    </SheetHeader>
+                    <nav className="mt-6 flex flex-col gap-1">
+                      {navLinks.map((link) => (
+                        <NavLink
+                          key={link.href}
+                          href={link.href}
+                          onNavigate={() => setOpen(false)}
+                          className={NAV_LINK_MOBILE_BASE}
+                          activeClassName={NAV_LINK_MOBILE_ACTIVE}
+                          inactiveClassName={NAV_LINK_INACTIVE}
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            {link.label}
+                            {variant === 'admin' &&
+                              link.href === '/admin/feedback' &&
+                              adminInboxUnread > 0 && (
+                                <Badge
+                                  variant="destructive"
+                                  size="sm"
+                                  className="h-4 min-w-4 px-1"
+                                >
+                                  {adminInboxUnread > 9 ? '9+' : adminInboxUnread}
+                                </Badge>
+                              )}
+                          </span>
+                        </NavLink>
+                      ))}
+                      <div className="mt-4 space-y-3 border-t pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Theme</span>
+                          <ThemeToggle />
+                        </div>
+                        {isMarketing && (
+                          <MarketingHeaderAuth
+                            mode="mobileSheet"
+                            onNavigate={() => setOpen(false)}
+                          />
                         )}
-                      </span>
-                    </NavLink>
-                  ))}
-                  <div className="mt-4 space-y-3 border-t pt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Theme</span>
-                      <ThemeToggle />
-                    </div>
-                    {isMarketing && (
-                      <MarketingHeaderAuth
-                        mode="mobileSheet"
-                        onNavigate={() => setOpen(false)}
-                      />
-                    )}
-                    {!isMarketing && <div>{resolvedRight}</div>}
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
-            </div>
+                        {!isMarketing && <div>{resolvedRight}</div>}
+                      </div>
+                    </nav>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            ) : null}
           </div>
         </div>
       </Container>

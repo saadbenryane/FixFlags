@@ -909,8 +909,10 @@ export const REPORT_COPY = {
     eyebrow: 'Your next three fixes',
     evidence: 'Evidence',
     fix: 'Editor-ready fix',
-    promptLocked: 'Create a free account to copy the remaining fixes and prove them with a re-check.',
-    signUpCta: 'Get all three fixes',
+    promptLocked: 'Unlock the other two fix prompts and re-check this URL after you ship.',
+    signUpCta: 'Save report and unlock fixes',
+    copyNextStepOwner: 'Ship the fix, then re-check this URL to see what cleared.',
+    copyNextStepAnonymous: 'Ship the fix, then save this report to re-check it.',
     detailsCta: (count: number) => `View full review (${count} Flags)`,
     backToPlan: 'Back to Finish Plan',
     rubricProof: 'Why this plan is credible',
@@ -1148,6 +1150,18 @@ export const MCP_DOCS = {
 } as const
 
 export const AUTH = {
+  reportContext: {
+    title: (hostname: string) => `Save ${hostname}`,
+    loadingTitle: 'Save this report',
+    body: 'Unlock the other two fix prompts and keep this report for unlimited re-checks.',
+    backCta: 'Back to report',
+    saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
+    unlocking: 'Unlocking your Finish Plan',
+    redirecting: 'Your report is saved. Taking you back to the fixes.',
+    waiting: 'This will only take a moment.',
+    saveError: 'Your account is ready, but we could not save your report yet.',
+    retryCta: 'Try saving again',
+  },
   signIn: {
     title: 'Sign in to your account',
     subtitle: 'Use your email and password to continue',

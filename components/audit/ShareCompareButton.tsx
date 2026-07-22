@@ -69,14 +69,14 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
       <Input
         value={link}
         readOnly
-        className="h-8 flex-1 text-xs font-mono"
+        className="h-11 flex-1 text-xs font-mono"
         onClick={(e) => e.currentTarget.select()}
       />
-      <Button variant="outline" size="sm" className="h-8 gap-1.5 shrink-0" onClick={copyLink}>
+      <Button variant="outline" size="sm" className="h-11 gap-1.5 shrink-0" onClick={copyLink}>
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         Copy
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+      <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" asChild>
         <a href={link} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="h-3.5 w-3.5" />
         </a>

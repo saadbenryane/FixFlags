@@ -49,6 +49,13 @@ export default async function SampleDetailsPage() {
           completedAt: sample.audit.completedAt,
           pageSpeedErrors: sample.audit.pageSpeedErrors,
           evidenceAnchors,
+          previewMeta: sample.audit.previewMeta,
+          flowData: sample.audit.flowData,
+          actionTimeline: sample.audit.actionTimeline,
+          productContract: sample.audit.productContract,
+          verifiedLearnings: sample.audit.verifiedLearnings,
+          intentionalNotes: sample.audit.intentionalNotes,
+          knownRisks: sample.audit.knownRisks,
         }}
         auditId={sample.audit.id}
         viewerIsPaid={false}
@@ -58,6 +65,32 @@ export default async function SampleDetailsPage() {
         screenshotLimited={limited}
         screenshotPartial={partial}
         showPrescription
+        journeyReviews={[
+          {
+            id: 'curated-sample-journey',
+            journeyType: 'first-visit',
+            status: 'completed',
+            goalAchieved: true,
+            completedSteps: 2,
+            findingsCount: 1,
+            steps: [
+              {
+                stepNumber: 1,
+                actionType: 'navigate',
+                url: sample.audit.url,
+                screenshotAfterUrl: '/demo/hero-original.svg',
+                reasoning: 'Reviewed the first-visit message and primary action',
+              },
+              {
+                stepNumber: 2,
+                actionType: 'click',
+                url: `${sample.audit.url}/signup`,
+                screenshotAfterUrl: '/demo/hero-original.svg',
+                reasoning: 'Confirmed the CTA destination after scrolling on mobile',
+              },
+            ],
+          },
+        ]}
       />
     </Section>
   )

@@ -20,13 +20,29 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { shareStatusMessage } from '@/lib/audit/share-status'
 import type { ReportViewModel } from '@/lib/report/report-view-model'
 import { impactTagLabel, rubricLabel } from '@/lib/utils'
+import { FocusedReportTracker } from '@/components/audit/FocusedReportTracker'
+import type { ReportAccessState } from '@/lib/analytics/events'
 
 export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
   const verdict = displayVerdict(model.summary.verdict)
   const demonstratedIndex = model.finishPlan.items.findIndex((item) => item.prompt)
+  const accessState: ReportAccessState = model.access.isOwner
+    ? 'owner'
+    : model.access.isLoggedIn
+      ? 'signed_in'
+      : 'anonymous'
+  const copyNextStep = model.recheck.canRecheck
+    ? REPORT_COPY.focused.copyNextStepOwner
+    : REPORT_COPY.focused.copyNextStepAnonymous
 
   return (
     <Container variant="report" className="space-y-8 py-6 sm:py-10">
+      <FocusedReportTracker
+        auditId={model.summary.auditId}
+        accessState={accessState}
+        itemCount={model.finishPlan.items.length}
+        firstFinding={model.finishPlan.items[0] ?? null}
+      />
       <AuditReportHero
         score={model.summary.score}
         pageType={model.summary.pageType}
@@ -75,6 +91,9 @@ export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
               label={REPORT_COPY.sectionTitles.copyFixPlan(model.finishPlan.visiblePromptCount)}
               kind="plan"
               auditId={model.summary.auditId}
+              surface="focused"
+              accessState={accessState}
+              nextStep={copyNextStep}
             />
           ) : null}
         </div>
@@ -120,6 +139,11 @@ export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
                             rows={3}
                             variant="compact"
                             nested
+                            auditId={model.summary.auditId}
+                            surface="focused"
+                            accessState={accessState}
+                            itemPosition={index + 1}
+                            copyNextStep={copyNextStep}
                           />
                         </div>
                       ) : null}

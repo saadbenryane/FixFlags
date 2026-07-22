@@ -5,9 +5,9 @@ description: FixFlags Product Intelligence System — vision, Product Intelligen
 
 # FixFlags Product Intelligence
 
-**Read [`AGENTS.md`](../../AGENTS.md) first.** Volatile counts live only in AGENTS.md Project facts.
+Read [`AGENTS.md`](../../../AGENTS.md) first. Generate volatile facts from code and repository commands.
 
-**Do not confuse vision with shipped product.** Shipped truth: [`PRODUCT.md`](../../PRODUCT.md). North star: [`knowledge/vision.md`](../../knowledge/vision.md).
+**Do not confuse vision with shipped product.** Shipped truth: [`PRODUCT.md`](../../../PRODUCT.md). North star: [`knowledge/vision.md`](../../../knowledge/vision.md).
 
 ## Canonical homes (one concept each)
 

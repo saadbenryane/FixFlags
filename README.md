@@ -114,12 +114,12 @@ capture and returns the verification diff plus the next Finish Plan. See
 
 **One service is enough.** Railway builds the **Web** service from `Dockerfile` (`railway.toml`). The image `CMD` runs `npm start` (`prestart` applies migrations). By default it also runs the audit worker in-process (`INLINE_WORKER` defaults on) plus a self-hosted scheduler that recovers stuck audits and sends nurture emails; no separate worker and no external cron required. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
 
-- Deploy healthcheck: `GET /api/health` (DB only, stays lenient).
+- Liveness: `GET /api/health`. Deployment promotion uses strict `GET /api/health/ready` and receives 503 until all launch-required subsystems are ready.
 - Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.
 - Scanning diagnostics: `GET /api/health/browser` (launches Chromium + screenshots, checks R2 connectivity). If every scan fails with "scanner temporarily unavailable", curl this first — it pinpoints whether the browser or storage subsystem is broken.
 - Worker heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis).
 
-> R2 is **required for scanning** in production. If it is missing the service still boots (so deploys land and diagnostics stay reachable) and `/api/health` reports `storageConfigured: false`, but every scan fails fast with the clear "scanner temporarily unavailable" message until all `R2_*` vars are set. Boot is only blocked by genuinely fatal config (database, Redis, auth secret).
+> R2, a live worker, Chromium, AI, PageSpeed, production auth, billing, email, and Product Watch dependencies are launch requirements. Production validation and `/api/health/ready` reject partial configuration; local development can still run an explicitly visible degraded mode.
 
 **SSO:** Google/GitHub buttons appear automatically once `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (or the GitHub pair) are set on the deployed service — availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed**. Register the callback `https://fixflags.com/api/auth/callback/google` and run `npm run auth:check` to verify.
 
@@ -129,7 +129,7 @@ Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`; use ~`2` on a smal
 
 All services share the same `DATABASE_URL` and `REDIS_URL`.
 
-> GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build` on push to main and PRs. It does **not** run `db:validate`, `db:check`, or `db:drift`. Local `npm run verify` is the stricter bar (requires Postgres). Railway's Docker build is the deploy-time gate.
+> GitHub Actions and local full verification share `scripts/validate.mjs`. Use `npm run verify:release` for the clean-install, browser, Docker, and deployed readiness bar.
 
 Local dev: `npm run dev` runs Next.js **and** the inline worker, so audits process end-to-end with a single command (set `INLINE_WORKER=false` to use `npm run dev:all` with a separate worker instead).
 

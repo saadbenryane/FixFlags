@@ -60,7 +60,8 @@ See `.env.example` for full list.
 | `npm run brand:hex-guard` | Enforce brand hex color compliance |
 | `npm run ui:drift-guard` | Detect UI drift from design system |
 | `npm run seo:guard` | SEO compliance checks |
-| `npm run verify` | All quality checks: validate + migration status + drift + typecheck + lint + guards + test + build |
+| `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
+| `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
 ### Demo / testing
 | Command | Purpose |
@@ -100,7 +101,8 @@ Agents work directly on `main` and coordinate write ownership through `.agents/B
 
 ## Debugging
 
-- Health check: `curl http://localhost:3000/api/health` (DB, `storageConfigured`, `aiConfigured`)
+- Liveness: `curl http://localhost:3000/api/health`
+- Launch readiness: `curl http://localhost:3000/api/health/ready` (503 until every launch-required subsystem is ready)
 - AI readiness: `GET /api/health/ai`
 - Worker diagnostics: `GET /api/health/worker` (heartbeat age, queue depth)
 - Browser diagnostics: `GET /api/health/browser` (Playwright + R2)
@@ -128,7 +130,7 @@ Agents work directly on `main` and coordinate write ownership through `.agents/B
 1. Railway dashboard → FixFlags web service → Variables
 2. Set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`
 3. Redeploy (SDK clients init at module load)
-4. Verify: `curl https://fixflags.com/api/health` → `"aiConfigured":true`
+4. Verify: `curl https://fixflags.com/api/health/ready` → `"ok":true`
 5. Smoke: `npm run smoke:triage:prod`
 
 ## Local admin
@@ -158,7 +160,7 @@ INLINE_WORKER=false npm run worker:start
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
-CI: GitHub Actions (`ci.yml`) runs typecheck, lint, guards, `test:unit`, `build`, and `worker:build`. It does **not** run DB migration checks or `docker build`. Local `npm run verify` is stricter; run `docker build` before push when deploy packaging files change.
+CI uses the same `scripts/validate.mjs` full manifest as local verification, then runs browser journeys. `npm run verify:release` adds clean installation, Docker, and deployed readiness probes and requires designated release resources.
 
 ## Screenshot regeneration
 

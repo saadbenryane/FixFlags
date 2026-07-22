@@ -168,7 +168,7 @@ and identified 6 architectural gaps.
 - **The existing codebase is remarkably well-structured for pre-launch.**
   The knowledge graph schema covers the right entities, the persist/query
   boundary is correctly enforced, and the audit pipeline already captures
-  everything needed for rich public pages. Check IDs across 22 modules (count in AGENTS.md Project facts → `ALL_CHECK_IDS`) are a goldmine of data waiting to be aggregated.
+  everything needed for rich public pages. The check IDs generated from `ALL_CHECK_IDS` are a goldmine of data waiting to be aggregated.
 
 - **Industry/tech detection is the single biggest blocker to benchmark
   pages.** The `htmlMetadata` JSON on `AuditPage` likely already contains

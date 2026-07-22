@@ -77,7 +77,7 @@ export function FooterNewsletter() {
               setSuccess('')
             }}
             disabled={loading}
-            className="h-10"
+            className="h-11"
             autoComplete="email"
             aria-invalid={Boolean(error)}
             aria-describedby={error ? 'footer-newsletter-error' : success ? 'footer-newsletter-success' : undefined}
@@ -93,7 +93,7 @@ export function FooterNewsletter() {
             </Callout>
           ) : null}
         </div>
-        <Button type="submit" size="sm" disabled={loading} className="h-10 w-full px-5 sm:w-auto">
+        <Button type="submit" size="sm" disabled={loading} className="h-11 w-full px-5 sm:w-auto">
           {cta}
         </Button>
       </form>

@@ -52,29 +52,7 @@ jobs:
 
       - run: npx prisma migrate deploy
 
-      - run: npm run typecheck
-
-      - run: npm run lint
-
-      - run: npm run brand:hex-guard
-
-      - run: npm run ui:drift-guard
-
-      - run: npm run product:contract-guard
-
-      - run: npm run seo:guard
-
-      - run: npm run knowledge:duplication-guard
-
-      - run: npm run audit:capabilities
-
-      - run: npm run test:unit
-
-      - run: npm run test:cli
-
-      - run: npm run build
-
-      - run: npm run worker:build
+      - run: npm run validate:full
 
       - run: npx playwright install --with-deps chromium
 

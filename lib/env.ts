@@ -34,6 +34,7 @@ const envSchema = z.object({
   STRIPE_API_VERSION: z.string().default('2025-02-24.acacia'),
   BILLING_REQUIRED: z.enum(['true', 'false']).optional(),
   DEV_SIMULATE_BILLING: z.enum(['true', 'false']).optional(),
+  FIXFLAGS_ALLOW_DEGRADED_LOCAL: z.enum(['true', 'false']).optional(),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
@@ -107,6 +108,21 @@ function missingStorageVars(): string[] {
   return R2_STORAGE_VARS.filter((k) => !process.env[k])
 }
 
+const PRODUCTION_FEATURE_VARS = [
+  'PAGESPEED_API_KEY',
+  'CRON_SECRET',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
+  'ADMIN_NOTIFICATION_EMAIL',
+] as const
+
+export function missingProductionLaunchVars(): string[] {
+  const missing = PRODUCTION_FEATURE_VARS.filter((key) => !process.env[key]) as string[]
+  missing.push(...missingStorageVars())
+  if (!isAiProviderConfigured()) missing.push('OPENAI_API_KEY or ANTHROPIC_API_KEY')
+  return missing
+}
+
 /** Whether production screenshot storage (R2) is fully configured. */
 export function isProdStorageConfigured(): boolean {
   return missingStorageVars().length === 0
@@ -117,6 +133,18 @@ export function isAiProviderConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)
 }
 
+export function isExplicitLocalDegradedMode(): boolean {
+  if (process.env.FIXFLAGS_ALLOW_DEGRADED_LOCAL !== 'true') return false
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL
+  if (!configuredUrl) return false
+  try {
+    const hostname = new URL(configuredUrl).hostname
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  } catch {
+    return false
+  }
+}
+
 export function validateWorkerEnv(): void {
   const required = ['DATABASE_URL', 'REDIS_URL'] as const
   const missing = required.filter((k) => !process.env[k])
@@ -125,16 +153,13 @@ export function validateWorkerEnv(): void {
     // queue. There is nothing to degrade to.
     throw new Error(`Missing required env vars: ${missing.join(', ')}`)
   }
+  const localDegraded = isExplicitLocalDegradedMode()
   if (!isAiProviderConfigured()) {
-    // Triage runs inline for every audit; prescription runs in a follow-up job.
-    // Both require at least one provider key. Boot continues so the app stays
-    // up, but scans finalize without AI until keys are set. /api/health reports
-    // aiConfigured: false for operators.
     const message =
       '[env] No OPENAI_API_KEY or ANTHROPIC_API_KEY set. Triage and prescription ' +
       'are disabled; audits will complete with deterministic checks only.'
-    if (process.env.NODE_ENV === 'production') {
-      console.error(message)
+    if (process.env.NODE_ENV === 'production' && !localDegraded) {
+      throw new Error(message)
     } else {
       console.warn(message)
     }
@@ -144,26 +169,17 @@ export function validateWorkerEnv(): void {
       '[env] No PAGESPEED_API_KEY set. PageSpeed calls use IP-based quota and ' +
       'will likely hit rate limits (429), causing Experience flags to be thinner ' +
       'and rubric scores to be penalized. Set PAGESPEED_API_KEY for reliable results.'
-    if (process.env.NODE_ENV === 'production') {
-      console.error(message)
+    if (process.env.NODE_ENV === 'production' && !localDegraded) {
+      throw new Error(message)
     } else {
       console.warn(message)
     }
   }
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && !localDegraded) {
     if (!isProdStorageConfigured()) {
-      // Non-fatal by design. Throwing here crashes the web service (it runs the
-      // worker in-process) and crash-loops dedicated workers; on a platform that
-      // rolls back on a failed healthcheck that silently freezes the deploy and
-      // leaves the previous (also-broken) image serving. Instead we log loudly,
-      // keep booting, and let each scan fail with STORAGE_NOT_CONFIGURED -> the
-      // clear "scanner temporarily unavailable" message. /api/health and
-      // /api/health/browser report the misconfiguration for operators.
-      console.error(
+      throw new Error(
         '[env] R2 screenshot storage is NOT configured in production ' +
-          `(missing: ${missingStorageVars().join(', ')}). Scans will fail at the ` +
-          'screenshot step until R2_BUCKET_NAME, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, ' +
-          'R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL are set. See /api/health/browser.'
+          `(missing: ${missingStorageVars().join(', ')}).`
       )
     }
   } else {
@@ -178,27 +194,18 @@ export function validateWorkerEnv(): void {
 
 export function validateProductionEnv(): void {
   if (process.env.NODE_ENV !== 'production') return
+  if (process.env.NEXT_PHASE === 'phase-production-build') return
   getEnv()
-  // Fatal prerequisites: the service genuinely cannot serve without these, so
-  // they throw and abort boot: DATABASE_URL/REDIS_URL (validateWorkerEnv) and a
-  // strong, matching auth secret/url (validateAuthEnv).
   validateWorkerEnv()
+  if (isExplicitLocalDegradedMode()) {
+    console.warn('[env] Explicit localhost degraded mode enabled; launch readiness remains unavailable.')
+    return
+  }
   validateAuthEnv()
-  // Recommended-but-degradable: missing these disables a feature (transactional
-  // email, cron auth, the sample report) but must NOT crash the service or
-  // freeze the deploy. Log loudly so it is obvious in deploy logs, then boot.
-  const recommended = [
-    'CRON_SECRET',
-    'RESEND_API_KEY',
-    'RESEND_FROM_EMAIL',
-    'ADMIN_NOTIFICATION_EMAIL',
-    'SAMPLE_AUDIT_URL',
-  ] as const
-  const missing = recommended.filter((k) => !process.env[k])
+  const missing = missingProductionLaunchVars()
   if (missing.length > 0) {
-    console.error(
-      `[env] Missing recommended production env vars: ${missing.join(', ')}. ` +
-        'The app will boot, but the related features are degraded until they are set.'
+    throw new Error(
+      `[env] Production launch configuration is incomplete. Missing: ${missing.join(', ')}.`
     )
   }
   validateStripeBillingEnv()

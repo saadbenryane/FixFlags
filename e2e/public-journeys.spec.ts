@@ -25,6 +25,41 @@ for (const width of widths) {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
+
+  test(`detailed sample fulfills its report contract at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.goto('/samples/details')
+
+    for (const sectionId of ['report-contract', 'report-remember', 'report-journey', 'report-flow', 'report-timeline', 'report-flags', 'report-previews', 'report-launch-gates']) {
+      await expect(page.locator(`#${sectionId}`)).toBeVisible()
+    }
+    await expect(page.getByText(/PlantDad/i).first()).toBeVisible()
+    await expect(page.getByText(/fixflags\.com/i)).toHaveCount(0)
+
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
+
+    const undersizedControls = await page
+      .locator('button, input, select, textarea, [role="button"], [role="tab"], header a[href], footer a[href]')
+      .evaluateAll((elements) => elements
+        .filter((element) => {
+          const rect = element.getBoundingClientRect()
+          const style = getComputedStyle(element)
+          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && (rect.width < 44 || rect.height < 44)
+        })
+        .map((element) => ({
+          text: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 60),
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height,
+        })))
+    expect(undersizedControls).toEqual([])
+    expect(errors).toEqual([])
+  })
 }
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {

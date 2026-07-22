@@ -236,7 +236,7 @@ export function ShareDrawer({
             </p>
           </div>
           <SheetClose asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-11 w-11">
               <X className="h-4 w-4" />
             </Button>
           </SheetClose>
@@ -352,7 +352,7 @@ export function ShareDrawer({
                         placeholder="Label (e.g. Client review)"
                         value={newLabel}
                         onChange={(e) => setNewLabel(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-11 text-xs"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
@@ -362,7 +362,7 @@ export function ShareDrawer({
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="h-8 text-xs"
+                            className="h-11 text-xs"
                           />
                         </div>
                         <div className="space-y-1">
@@ -373,7 +373,7 @@ export function ShareDrawer({
                             min="1"
                             value={newMaxViews}
                             onChange={(e) => setNewMaxViews(e.target.value)}
-                            className="h-8 text-xs"
+                            className="h-11 text-xs"
                           />
                         </div>
                       </div>
@@ -383,7 +383,7 @@ export function ShareDrawer({
                           type="date"
                           value={newExpiry}
                           onChange={(e) => setNewExpiry(e.target.value)}
-                          className="h-8 text-xs"
+                          className="h-11 text-xs"
                         />
                       </div>
                       <Button
@@ -418,7 +418,7 @@ export function ShareDrawer({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7"
+                                  className="h-11 w-11"
                                   onClick={() => handleRevoke(link.id)}
                                   title="Revoke link"
                                 >
@@ -448,7 +448,7 @@ export function ShareDrawer({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 gap-1.5 h-7 text-2xs"
+                                className="h-11 flex-1 gap-1.5 text-2xs"
                                 onClick={() => {
                                   copyToClipboard(linkUrl, link.id)
                                 }}
@@ -463,7 +463,7 @@ export function ShareDrawer({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0"
+                                className="h-11 w-11 p-0"
                                 asChild
                               >
                                 <a href={linkUrl} target="_blank" rel="noopener noreferrer">

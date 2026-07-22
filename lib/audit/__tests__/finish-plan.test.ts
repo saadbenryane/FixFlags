@@ -37,8 +37,23 @@ describe('buildFinishPlan', () => {
       demonstratedFlag: flags[1],
     })
     expect(plan.items.filter((item) => item.prompt)).toHaveLength(1)
+    expect(plan.items[0]?.id).toBe('critical')
     expect(plan.items.find((item) => item.id === 'critical')?.prompt).toBe('Fix critical')
     expect(plan.copyPrompt).toBeNull()
+  })
+
+  it('puts the demonstrated fix first when a higher-ranked summary has no prompt', () => {
+    const criticalWithoutFix = { ...flag('critical-no-fix', 'CRITICAL'), fix: undefined }
+    const demonstrated = flag('important-fix', 'IMPORTANT')
+    const plan = buildFinishPlan({
+      flags: [criticalWithoutFix, demonstrated, flag('polish-fix', 'POLISH')],
+      promptAccess: 'one',
+      demonstratedFlag: demonstrated,
+    })
+
+    expect(plan.items[0]?.id).toBe('important-fix')
+    expect(plan.items[0]?.prompt).toBe('Fix important-fix')
+    expect(plan.items[1]?.id).toBe('critical-no-fix')
   })
 
   it('redacts every prompt when access is none', () => {

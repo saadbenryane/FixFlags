@@ -1,271 +1,48 @@
 ---
 name: fixflags-marketing
-description: FixFlags go-to-market, ICP segmentation, message research, copy frameworks, and channel targeting. Use when writing or revising marketing copy, positioning, landing pages, ads, SEO, FAQs, upgrade moments, audience expansion, or GTM strategy for FixFlags. Triggers on marketing, copy, ICP, targeting, positioning, messaging audit, existing website owners, or ship-ready messaging.
+description: Research, write, and validate FixFlags positioning and conversion copy without drifting from shipped product behavior, voice, or evidence.
 ---
 
-# FixFlags Marketing
+# FixFlags marketing
 
-**Read [`AGENTS.md`](../../AGENTS.md) first.** Volatile facts and banned phrases live there. Do not hardcode counts.
+Read `AGENTS.md`, `PRODUCT.md`, `knowledge/vision.md`, `docs/voice-and-copy.md`, and `lib/marketing/copy.ts`. Use `knowledge/report-contract.md` for sample/report promises and `fixflags-product` for entitlements.
 
-Read before changing marketing copy, positioning, or GTM.
+## Procedure
 
-**Canonical sources (always check first):**
-- Vision / category (strategy): `knowledge/vision.md`, `.cursor/skills/fixflags-product-intelligence/SKILL.md`
-- Focused report and sample hierarchy: `knowledge/report-contract.md`
-- Copy constants: `lib/marketing/copy.ts` (`UPGRADE_MOMENTS`, `MCP_DOCS`, `FAQ`, `HELP_CENTER`, `SUPPORT_CHAT`)
-- Help articles: `lib/help/catalog.ts` (bodies + categories; not hardcoded in pages)
-- Product behavior (entitlements, billing, support): `.cursor/skills/fixflags-product/SKILL.md`
-- Voice rules: `docs/voice-and-copy.md`
-- Upgrade moment resolver: `lib/billing/upgrade-moments.ts` (strings live in `copy.ts`)
-- Design polish: `.cursor/skills/fixflags-design-system/SKILL.md`
-- Evidence & problem bars: [evidence-pack.md](evidence-pack.md)
+1. Choose one reader and trigger moment: an AI shipper preparing to share a build, or a site owner diagnosing weak conversion.
+2. State audience, job, promise, proof, and path in that order. If the five-second recall lacks audience, outcome, or mechanism, fix positioning before visual polish.
+3. Lead with customer verbs and real output: grades, evidence, flags, fix prompts, and re-check proof.
+4. Resolve every feature, quota, timing, and support claim against shipped code or measured evidence.
+5. Put visible copy in the typed surface modules exported through `lib/marketing/copy.ts`; do not hardcode it in components.
+6. Run the product-contract, SEO, voice, and relevant UI/browser guards.
 
-**Do not overclaim:** Local OSS runtime, five UI rubrics, enterprise isolation, or “we train on your product” are not shipped. Acquisition language stays Launch Check / finish the app; strategic category is Product Intelligence.
+## Audience framing
 
-## Help Center copy
+| Reader | Trigger | Lead promise | Proof |
+|---|---|---|---|
+| AI shipper | Before launch, demo, or sharing a generated app | Catch launch gaps and get editor-ready fixes | Curated sample, evidence, fix prompt, re-check |
+| Site owner | Traffic exists but conversion or trust is weak | See what is costing signups and what to fix first | Their URL, prioritized evidence, verified improvement |
 
-- Public name: **Help Center** (`/help`). Task-oriented articles, not blog posts.
-- Chat escalation copy must match `SUPPORT_CHAT` / `lib/help/sla.ts` (one reply-window promise).
-- FAQ (`/faq`) stays short Q&A; deep how-tos live in Help. Link FAQ → Help.
-- No “priority support,” “dedicated support,” or Intercom-style hype. Calm, specific, actionable.
+Do not mix both readers in one hero or block.
 
-## Two audiences (do not collapse them)
+## Voice
 
-FixFlags serves two distinct jobs. Write for **one primary reader per page or block**. Mixing them dilutes conversion.
+- Calm, concrete, concise, builder-to-builder.
+- Short sentences and contractions are welcome. No em dashes, fake urgency, unsupported superlatives, invented social proof, or vague AI/platform filler.
+- Name the mechanism and boundary. “Three prioritized fixes with evidence” is stronger than “comprehensive insights.”
+- Use Re-check in user-facing copy. “Monitoring” remains internal unless Product Watch is the named surface.
 
-| Segment | Job to be done | Trigger moment | Lead pain | Primary proof |
-|---------|----------------|----------------|-----------|---------------|
-| **AI shipper** | Catch launch gaps before sharing a link | Pre-launch, demo day, first deploy | Mobile breaks, blank link previews, vague hero | Sample report + fix prompts for Cursor/Lovable/Bolt |
-| **Existing site owner** | Find what the live site is still costing them | Traffic but weak conversion, stale site, post-redesign doubt | Bounce, low demo rate, broken previews, trust gaps | Graded report on *their* URL + prioritized fix list |
+## Canonical supporting references
 
-**AI shipper** copy leads with: ship, paste URL, fix prompts, re-check loop, MCP in editor.
+- Audience research: `audiences.md`
+- Interview and JTBD workflow: `jtbd-research.md`, `research-workflows.md`
+- Evidence and claims: `evidence-pack.md`
+- Visual conversion guidance: `lean-visual.md`
+- Accepted examples: `copy-examples.md`
 
-**Existing site owner** copy leads with: live site, lost signups, evidence-backed grades, what to fix first, no agency retainer.
+## Avoid
 
-See [audiences.md](audiences.md) for pains, objections, channels, and disqualifiers per segment.
-
-## Message stack (every hero must pass)
-
-Use this order when drafting or auditing any page:
-
-1. **Audience**, who this is for *today* (named role + situation)
-2. **Job**, what problem they have when they land
-3. **Promise**, outcome in plain language (not category fluff)
-4. **Proof**, sample output, grades, evidence line, or concrete finding
-5. **Path**, primary CTA as a promise of what happens next
-
-Run the **5-second test**: hide the page. Can you state audience, outcome, and mechanism? If not, fix positioning before polish.
-
-## Jobs-to-be-Done (JTBD), pick segment first
-
-Each segment hires FixFlags for a different job. Write the job, not the product.
-
-| Segment | Job statement (solution-free) | Functional outcome | Emotional outcome |
-|---------|------------------------------|--------------------|-------------------|
-| **AI shipper** | When I'm about to share a link I just built, help me catch embarrassing gaps fast | Graded report + fix prompts in my editor | Confidence before the launch post |
-| **Existing site owner** | When my live site gets traffic but weak conversion, help me see what's costing signups | Prioritized evidence I can act on or hand off | Relief from guessing; proof for stakeholders |
-
-**Four Forces of Progress** (address in copy order):
-
-1. **Push**, pain of the status quo (blank previews, flat conversion, client call tomorrow)
-2. **Pull**, appeal of the new outcome (graded fixes, re-check proof, 60 seconds)
-3. **Anxiety**, fear of switching (another tool, hype, wasted time) → reduce with free audit, sample report, boundaries
-4. **Habit**, inertia ("Lighthouse is enough", "we'll fix it later") → name what habit misses
-
-Use customer verbs, not adjectives. "See what's costing signups" beats "comprehensive audit platform."
-
-Switch interview questions and force mapping: [jtbd-research.md](jtbd-research.md).
-
-## Copy frameworks (pick one primary frame per section)
-
-| Framework | Best for | FixFlags pattern |
-|-----------|----------|-------------------|
-| **PAS** (Problem → Agitation → Solution) | Problem sections, ads, email | Name the broken preview / mobile CTA / trust gap, show launch cost, offer graded audit |
-| **BAB** (Before → After → Bridge) | Existing site owners, re-check upsell | Before: traffic, weak conversion. After: graded fixes shipped. Bridge: paste URL |
-| **AIDA** | Long landing flow | Attention: headline score hook. Interest: sample findings. Desire: fix prompts. Action: audit CTA |
-| **FAB** | Feature rows, comparison table | Feature → why it matters at launch → outcome (grade up, link preview fixed) |
-| **Messaging stack audit** | Homepage review | Mark each line as **claim** or **proof**. Every claim needs connected proof within one scroll |
-
-**Review priority** (fix in this order): audience clarity → primary CTA promise → proof/trust → objections → lower-commitment step (sample report).
-
-**80/20 rule:** Most conversion lift comes from headline, lead (subhead + first proof), and primary CTA. Polish lower sections only after hero passes 5-second test.
-
-## Voice (non-negotiable)
-
-From `docs/voice-and-copy.md`:
-
-- **KISS:** One idea per sentence. Cut adjectives. No "still broken" or "graded" in marketing copy.
-- Operator clarity: short sentences, verb-first CTAs, name tools when relevant
-- Prefer: ship, fix, evidence, report, outcome, proof, check
-- Avoid: unlock, leverage, holistic, comprehensive, graded, still broken, 10x, game-changing, em dashes, **second pass**, Fix my live site (see AGENTS.md banned phrases)
-- CTAs are **promises**: `HERO.primaryCta` is **"Review my site"** — verb-first, not "Get started" or "Check my site". Keep `HERO` aligned with `docs/voice-and-copy.md` Action row.
-- Plan labels in copy: **Pro** (BUILDER enum), **Agency** (TEAM) only — never promise unbuilt features
-- One contextual CTA angle per page; never paste the same block everywhere
-- **Rule of one** per block: one reader, one pain, one outcome, one action
-
-## Hero contract (homepage)
-
-- Trust line: only `OFFER.short` under the URL field. No badge row. No second privacy/claim paragraph.
-- Sample CTA: `HERO.trySampleCta` alone. **No** `trySampleHint` subtitle.
-- Ban on marketing surfaces: `compatibility is not endorsement`, `read-only review`, `claim the report`, `fix prompt ready`, `Agent-ready`, `\bunlock\b`
-- Before shipping copy: diff strings against `PLAN_DEFINITIONS` in `lib/billing/plans.ts` (Free = 3 new URL checks on account; **1 anon teaser** without account)
-- **Anon wedge copy:** teaser shows what's broken; account unlocks fix prompts, save, re-check, and 3 URL checks. Never say "first report fully unlocked" for anonymous viewers. Align FAQ/Help with `OFFER.line`.
-
-## ICP research workflow
-
-Before expanding copy to a new segment, run this checklist:
-
-```
-Research progress:
-- [ ] Segment hypothesis named (who + situation + trigger)
-- [ ] 5 real sites or users interviewed or observed (or 5 public audits as proxy)
-- [ ] Top 3 pains in their words (not product language)
-- [ ] Top 3 objections + honest answers
-- [ ] Disqualifiers written (who we are NOT for)
-- [ ] Channel fit scored (see below)
-- [ ] Message draft passes 5-second test + voice checklist
-- [ ] Changes land in lib/marketing/copy.ts (single source of truth)
-```
-
-**ICP scoring dimensions** (weight from real usage when available):
-
-| Dimension | Signals for FixFlags |
-|-----------|----------------------|
-| Firmographic / situational | Solo builder, small team, agency, indie SaaS, portfolio site |
-| Technographic | Uses Cursor/Lovable/Bolt, Webflow, WordPress, Next.js, Framer |
-| Behavioral | Visited pricing, ran audit, hit hidden findings, used re-check |
-| Trigger | Launch this week, redesign shipped, ad spend live, client demo scheduled |
-
-Tier A (prioritize): trigger + technographic fit + ran free audit.
-Tier B (nurture): fit but no trigger yet, sample report, SEO content.
-Tier C (deprioritize): enterprise QA teams, password-protected-only workflows, no public URL.
-
-Full research methods: [research-workflows.md](research-workflows.md).
-
-## Channel targeting cheat sheet
-
-| Channel | AI shipper angle | Existing site owner angle |
-|---------|------------------|---------------------------|
-| **Homepage hero** | Check before you ship | Live site — see what to fix first |
-| **Homepage nav** | How it works / Sample / Pricing | Same three links; Sample anchors to `#sample-review` |
-| **Homepage body** | Three-item Finish Plan preview → fix loop → Message/Experience/Reach → why AI → editor integrations → final CTA | One proof preview; no repeated Flag examples or invented testimonials |
-| **SEO** | ai website audit, lovable audit, cursor qa | homepage audit, conversion audit, fix website conversion |
-| **Sample report** | What a first ship looks like | Proof that strong sites still fail checks |
-| **Pricing** | Pay when you're shipping | Pay when fixes matter (re-check, MCP) |
-| **Upgrade moments** | Hidden findings, re-check loop | Score flat after fixes, share report with client (Agency+) |
-| **MCP docs** | HTTP `/api/mcp` + API key (Pro+) | Secondary; note Lovable/Bolt copy-paste path |
-
-## Editing marketing copy (workflow)
-
-1. Identify **primary segment** for this page/block
-2. Read current strings in `lib/marketing/copy.ts`
-3. Draft using message stack + one framework
-4. Score against voice checklist in `docs/voice-and-copy.md`
-5. Check visual/copy alignment with design system skill
-6. Update `copy.ts` only, pages import from there
-7. For FAQ/objections, add question in visitor language, answer with evidence + boundary
-
-## Homepage contract
-
-- **Nav links:** How it works · Sample · Pricing (`MARKETING_LINKS` in `lib/site/nav.ts`)
-- **Section order:** Hero → three-item sample Finish Plan → Fix loop → Message/Experience/Reach → Why AI → Editor integrations → Final CTA
-- **Rubric titles:** Message / Experience / Reach only. Never "Message gaps", "Experience friction", "Reach misses", "Makes sense", "Works", or "Ready to share".
-- **Section headlines:** One job each. No inventory "three areas/places" framing. Keep paste → fix → re-check vivid in How it works + Final CTA; do not restate the same loop in Sample + Integrations bodies.
-- **Funnel events:** see `.cursor/skills/fixflags-analytics/SKILL.md` and `.agents/handoffs/launch-funnel-p2.md` (P2 gated on ~100 scans)
-- **One proof surface:** `SampleReportSection` renders three ranked problems, selected evidence, and one complete fix. Do not add a second explorer or deeper Flag-example section.
-- **Editor logos:** `EditorIntegrationsSection` / `EditorToolMarks`, not the hero
-- **Sample provenance:** marketing uses the versioned curated snapshot; `/samples/details` shows the full snapshot. Do not query production audits while rendering marketing pages.
-
-## Product–copy alignment
-
-Before shipping marketing changes, verify against `fixflags-product` skill:
-
-- Re-check: unlimited on owned reports (never gated); compare: Pro+ only
-- Share links: Agency (TEAM) only
-- MCP: Pro+ only, HTTP config in docs
-- Prices/teaser: from `getMarketingPlans()`, not hardcoded
-- Local dev: `npm run dev` runs inline worker by default
-
-## Anti-patterns
-
-- **Tribe badge overload**, name AI tools once per page, not every section
-- **Category copy**, "comprehensive quality platform" → paste URL, get grades
-- **Dual headline**, one outcome per hero
-- **Proof decoration**, Stripe sample must support a claim, not fill space
-- **False urgency**, no countdown fake scarcity
-- **Everyone ICP**, if FAQ says "for everyone with a website," rewrite with boundaries
-
-## Output templates
-
-### Positioning one-liner
-
-```
-For [segment] who [situation/trigger], FixFlags [mechanism] so they [outcome].
-Unlike [alternative], we [differentiator with evidence].
-```
-
-### Messaging diagnosis (after auditing a page)
-
-```markdown
-## Messaging diagnosis, [page]
-
-**Implied audience:** …
-**Should commit to:** …
-**Top 3 claims (verbatim):** …
-**Proof map:** claim → evidence (or gap)
-**Transition break:** where trust drops
-**CTA path:** what click promises vs what product delivers
-**Recommended fixes (priority order):** …
-```
-
-### Segment experiment brief
-
-```markdown
-## Segment: [name]
-**Trigger:** …
-**Headline hypothesis:** …
-**Subhead:** …
-**Primary pain (3):** …
-**Proof asset:** sample / audit / re-check
-**Disqualifier:** …
-**Success metric:** audit starts, signup, upgrade moment
-```
-
-## Competitive wedge (vs Scout / Signo)
-
-Lead with **precise repair + re-check proof**, not "AI QA agent" or live chat spectacle.
-
-| Say | Do not say |
-|-----|------------|
-| Check before you ship. Get Flags your editor can fix. Re-check to prove it. | Watch our AI agent click around your site |
-| Ranked Finish Plan (≤3) with evidence | Letter grade / traffic lights as the product |
-| Paste the fix into Cursor, Claude, Lovable, or Bolt | Comprehensive autonomous QA suite / coding-loop code review |
-| Re-checks are free; Pro/Agency can watch weekly | Set it and forget it monitoring without entitlement |
-| Code review asks if the change is safe to merge; FixFlags asks if the product is ready for a human | We replace CodeRabbit |
-
-**CodeRabbit / Greptile:** Adjacent. Complementary layers. Not a partnership GTM bet.
-
-**Roast tool:** All roast taglines, verdicts, and page UI strings live in `lib/marketing/copy.ts` (`ROAST_COPY`). Never hardcode in `RoastClient` or the roast API route. Full report link uses `reportUrl` / `auditId`, never the scanned URL.
-
-Canonical competitor table: `docs/growth/competitors.md` and `knowledge/market.md`. Moat: `knowledge/product.md`.
-
-**Agency handoff:** Share links + projects + draft Fix PRs (secrets auto-patch only). Acquisition stays URL → Finish Plan.
-
-## Quota language (must match entitlements)
-
-| Say | Do not say |
-|-----|------------|
-| 3 new URL checks (Free lifetime) | Unlimited deterministic checks (implies new checks continue at limit) |
-| Unlimited re-checks on reports you own | Unlimited checks / unlimited audits |
-| Upgrade for 25/mo (Pro) | Upgrade for unlimited |
-| Credit packs for paid overflow | Subscription-only with no packs |
-
-At Free limit, **new URL checks are blocked**. Re-checks stay free. Align `UPGRADE_MOMENTS`, FAQ, and sign-up subtitle with `create-audit` / `wouldBlockNewCheckWithCredits`.
-
-## Additional resources
-
-- Segment deep dive: [audiences.md](audiences.md)
-- Research & competitive workflows: [research-workflows.md](research-workflows.md)
-- JTBD / switch interviews: [jtbd-research.md](jtbd-research.md)
-- Evidence pack (stats, problem bars): [evidence-pack.md](evidence-pack.md)
-- Before/after copy examples: [copy-examples.md](copy-examples.md)
+- Claiming unshipped local runtime, five UI rubrics, white-labeling, enterprise isolation, or fabricated performance.
+- Treating a curated sample as a live FixFlags audit.
+- Storing prices, quotas, feature availability, or volatile counts in this skill.
+- Solving a conversion issue with ornament before message, proof, and path are correct.

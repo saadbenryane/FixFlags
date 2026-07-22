@@ -10,6 +10,7 @@ import {
 import { TerminalShell } from '@/components/ui/terminal-shell'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
 interface FixPromptBlockProps {
   prompt: string
@@ -25,6 +26,11 @@ interface FixPromptBlockProps {
   variant?: 'terminal' | 'compact'
   /** Use concentric inner radius when nested inside a rounded-card shell */
   nested?: boolean
+  auditId?: string
+  surface?: ReportSurface
+  accessState?: ReportAccessState
+  itemPosition?: number
+  copyNextStep?: string
 }
 
 const promptBodyClassName =
@@ -76,6 +82,11 @@ export function FixPromptBlock({
   showToolSelector = false,
   variant = 'terminal',
   nested = false,
+  auditId,
+  surface,
+  accessState,
+  itemPosition,
+  copyNextStep,
 }: FixPromptBlockProps) {
   const [preferredTool, setPreferredTool] = usePreferredTool()
   const resolvedPrompt = showToolSelector
@@ -114,6 +125,11 @@ export function FixPromptBlock({
               showCursorAction={showCursorAction}
               compact
               tool={showToolSelector ? preferredTool : undefined}
+              auditId={auditId}
+              surface={surface}
+              accessState={accessState}
+              itemPosition={itemPosition}
+              nextStep={copyNextStep}
             />
           </div>
         </div>
@@ -140,6 +156,11 @@ export function FixPromptBlock({
             showCursorAction={showCursorAction}
             compact
             tool={showToolSelector ? preferredTool : undefined}
+            auditId={auditId}
+            surface={surface}
+            accessState={accessState}
+            itemPosition={itemPosition}
+            nextStep={copyNextStep}
           />
         }
       >

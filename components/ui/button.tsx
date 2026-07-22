@@ -23,11 +23,11 @@ const buttonVariants = cva(
           "border-0 bg-gradient-score-animated text-brand-foreground shadow-sm hover:brightness-110 hover:shadow-md motion-safe:hover:animate-gradient-shift motion-safe:focus-visible:animate-gradient-shift",
       },
       size: {
-        default: "h-10 px-5",
-        xs: "h-8 px-3 text-xs",
-        sm: "h-9 px-4 text-sm",
-        lg: "h-11 px-8",
-        icon: "h-10 w-10",
+        default: "h-11 min-w-11 px-5",
+        xs: "h-11 min-w-11 px-3 text-xs",
+        sm: "h-11 min-w-11 px-4 text-sm",
+        lg: "h-12 min-w-11 px-8",
+        icon: "h-11 w-11",
       },
     },
     defaultVariants: {

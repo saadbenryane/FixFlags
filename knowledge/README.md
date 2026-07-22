@@ -115,7 +115,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 
 **Never duplicate:**
 - Audit pipeline stages: only in docs/audit-pipeline.md
-- Check module count: only in AGENTS.md Project facts (regenerate with `npm run audit:capabilities`)
+- Check capabilities and module counts: generate with `npm run audit:capabilities`; do not store volatile counts in Markdown.
 - Directory structure: only in CODEMAP.md
 - Verified commands: only in AGENTS.md and DEVELOPMENT.md (AGENTS.md for agents, DEVELOPMENT.md for humans)
 
@@ -252,7 +252,7 @@ When you need information about a topic, go to the canonical source:
 4. **Leave obsolete knowledge.** Delete it.
 5. **Reference non-canonical sources.** Always link to the canonical source.
 6. **Overload a document.** If a document answers multiple unrelated questions, split it.
-7. **Hardcode facts that change.** Use regeneration commands (see AGENTS.md Project facts).
+7. **Hardcode facts that change.** Generate volatile facts from code and repository commands.
 
 ---
 

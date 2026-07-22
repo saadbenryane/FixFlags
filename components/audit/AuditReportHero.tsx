@@ -1,13 +1,17 @@
 'use client'
 
 import Image from 'next/image'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ImageOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScoreDot } from '@/components/ui/score-dot'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import {
+  normalizeInternalScreenshotUrl,
+  type AuditScreenshot,
+} from '@/lib/audit/screenshot-types'
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
@@ -50,6 +54,14 @@ export function AuditReportHero({
   const isMinimal = variant === 'minimal'
   const hostname = url ? displayHostname(url) : null
   const firstScreenshot = !scanning ? screenshots?.[0] : screenshots?.[0]
+  const firstScreenshotUrl = firstScreenshot
+    ? normalizeInternalScreenshotUrl(firstScreenshot.url)
+    : null
+  const [screenshotFailed, setScreenshotFailed] = useState(false)
+
+  useEffect(() => {
+    setScreenshotFailed(false)
+  }, [firstScreenshotUrl])
   const durationSec = scanning
     ? null
     : durationFromTimestamps(durationMs, startedAt, completedAt)
@@ -83,14 +95,24 @@ export function AuditReportHero({
       <div className="flex gap-4">
         {firstScreenshot && (
           <div className="hidden sm:block shrink-0">
-            <Image
-              src={firstScreenshot.url}
-              alt={`Screenshot of ${hostname ?? 'site'}`}
-              width={80}
-              height={56}
-              className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
-              style={{ aspectRatio: '1280 / 900' }}
-            />
+            {firstScreenshotUrl && !screenshotFailed ? (
+              <Image
+                src={firstScreenshotUrl}
+                alt={`Screenshot of ${hostname ?? 'site'}`}
+                width={80}
+                height={56}
+                className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
+                style={{ aspectRatio: '1280 / 900' }}
+                onError={() => setScreenshotFailed(true)}
+              />
+            ) : (
+              <div
+                className="flex aspect-[1280/900] w-20 items-center justify-center rounded-[var(--radius-inner)] bg-muted/55 text-muted-foreground ring-1 ring-border/40"
+                aria-label="Screenshot preview unavailable"
+              >
+                <ImageOff className="h-4 w-4" aria-hidden />
+              </div>
+            )}
           </div>
         )}
 

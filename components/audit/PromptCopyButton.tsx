@@ -4,7 +4,11 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { trackEvent } from '@/lib/analytics/events'
+import {
+  trackEvent,
+  type ReportAccessState,
+  type ReportSurface,
+} from '@/lib/analytics/events'
 
 interface Props {
   prompt: string
@@ -16,6 +20,10 @@ interface Props {
   kind?: 'flag' | 'plan' | 'export'
   auditId?: string
   tool?: string
+  surface?: ReportSurface
+  accessState?: ReportAccessState
+  itemPosition?: number
+  nextStep?: string
 }
 
 export function PromptCopyButton({
@@ -27,14 +35,25 @@ export function PromptCopyButton({
   kind = 'flag',
   auditId,
   tool,
+  surface,
+  accessState,
+  itemPosition,
+  nextStep,
 }: Props) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
     await navigator.clipboard.writeText(prompt)
-    trackEvent('fix_prompt_copied', { kind, audit_id: auditId, tool })
+    trackEvent('fix_prompt_copied', {
+      kind,
+      audit_id: auditId,
+      tool,
+      surface,
+      access_state: accessState,
+      item_position: itemPosition,
+    })
     setCopied(true)
-    toast.success('Prompt copied')
+    toast.success('Prompt copied', nextStep ? { description: nextStep } : undefined)
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -46,7 +65,7 @@ export function PromptCopyButton({
         size="icon"
         onClick={handleCopy}
         aria-label={copied ? 'Copied' : label}
-        className={cn('h-7 w-7 text-muted-foreground hover:text-foreground', className)}
+        className={cn('h-11 w-11 text-muted-foreground hover:text-foreground', className)}
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
@@ -55,6 +74,7 @@ export function PromptCopyButton({
 
   return (
     <Button
+      type="button"
       variant="outline"
       size={compact ? 'xs' : 'sm'}
       onClick={handleCopy}

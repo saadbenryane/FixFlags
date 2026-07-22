@@ -36,6 +36,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByLabelText(/Score pending/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('status')).toHaveTextContent(/complete/i)
   })
 
   it('renders product contract when provided', () => {

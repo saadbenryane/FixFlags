@@ -171,15 +171,15 @@ export function AuditReport({
   const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
-  const showJourney = !isSample && pages.length > 1
-  const showJourneyReview = !isSample && journeyReviews.length > 0
-  const showFlow = !isSample && Boolean(audit.flowData)
-  const showContract = !isSample && Boolean(audit.productContract)
-  const showRemember = !isSample && Boolean(
+  const showJourney = pages.length > 1
+  const showJourneyReview = journeyReviews.length > 0
+  const showFlow = Boolean(audit.flowData)
+  const showContract = Boolean(audit.productContract)
+  const showRemember = Boolean(
     auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
   )
-  const showTimeline = !isSample && (audit.actionTimeline?.length ?? 0) > 0
-  const showPreviews = !isSample && Boolean(audit.previewMeta)
+  const showTimeline = (audit.actionTimeline?.length ?? 0) > 0
+  const showPreviews = Boolean(audit.previewMeta)
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes

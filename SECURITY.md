@@ -74,7 +74,7 @@
 - Next.js 15: regular updates, check security advisories
 - better-auth 1.6: relatively new auth library, audit updates
 - BullMQ 5: relies on Redis security
-- All npm packages: regular `npm audit`
+- All npm packages: `npm audit --audit-level=moderate` is part of full verification. High/critical and unresolved applicable moderate advisories block release.
 
 ## Prompt injection risks
 

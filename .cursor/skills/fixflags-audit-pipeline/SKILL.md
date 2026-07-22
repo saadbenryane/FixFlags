@@ -5,10 +5,10 @@ description: FixFlags audit pipeline — triage, prescription, scan failures, re
 
 # FixFlags Audit Pipeline
 
-**Read [`AGENTS.md`](../../AGENTS.md) first.** Volatile counts live there only.
+Read [`AGENTS.md`](../../../AGENTS.md) first. Generate volatile facts from code and repository commands.
 
-**Canonical doc:** [`docs/audit-pipeline.md`](../../docs/audit-pipeline.md)
-**Report hierarchy:** [`knowledge/report-contract.md`](../../knowledge/report-contract.md). Do not duplicate its order here.
+**Canonical doc:** [`docs/audit-pipeline.md`](../../../docs/audit-pipeline.md)
+**Report hierarchy:** [`knowledge/report-contract.md`](../../../knowledge/report-contract.md). Do not duplicate its order here.
 
 **Product framing:** The audit pipeline is the Integrity Engine’s primary **browser observer + verifier**. Customer Product Intelligence is separate (`knowledge/product-intelligence.md`, `knowledge/integrity-engine.md`). Do not treat the scanner as the entire product.
 

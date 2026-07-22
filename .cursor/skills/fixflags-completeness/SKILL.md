@@ -10,11 +10,11 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 ## Workflow
 
 1. Stabilize ownership. Snapshot Git state and wait for overlapping writers.
-2. Run `npm run doctor` and `npm run completeness:audit` before editing. Treat failures as evidence, not exceptions to bypass.
+2. Run `npm run doctor`, `npm run completeness:audit`, and `npm run agent -- verify --dry-run` before editing. Treat failures as evidence, not exceptions to bypass.
 3. Trace the user outcome through Flag → Fix → Re-check → Remember. Inspect route, service, persistence, UI, and entitlement boundaries together.
 4. Fix the underlying contract. Consolidate shared decisions in services; keep routes as validation and response adapters.
 5. Verify changed behavior with focused tests, actual runtime flows, responsive screenshots, and accessibility checks.
-6. Run `npm run verify`, `npm run test:e2e`, the relevant packaging/Docker gates, and production smoke checks when credentials exist.
+6. Run `npm run verify` for the full local gate and `npm run verify:release` for clean install, browser, container, and deployed readiness probes. Missing release credentials are blockers, never skips.
 7. Reconcile canonical Markdown only after behavior passes. Record missing infrastructure or credentials as blockers.
 
 ## Required references
@@ -26,6 +26,8 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 ## Non-negotiable gates
 
 - `npm run completeness:audit` owns counts, MCP/integration names, sticky destinations, Product/schema contracts, stale plan APIs, and tracked generated clutter.
+- `npm run routes:contract-guard` generates the endpoint inventory and applicable acceptance cases from code.
+- `npm run skills:validate` protects skill frontmatter, links, reference depth, stale terms, length, and volatile facts.
 - `npm run test:scripts` protects the completeness checker itself.
 - Do not weaken quality evaluations to make a suite green. Find state pollution or adjudicate source evidence.
 - Do not report Product Watch, protected sharing, CLI, or MCP contracts as shipped until their acceptance paths pass.

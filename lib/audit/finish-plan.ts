@@ -64,9 +64,16 @@ export function buildFinishPlan(input: {
     input.contract ?? null
   )
   const demonstratedId = input.demonstratedFlag?.id
+  const orderedRanked =
+    input.promptAccess === 'one' && demonstratedId
+      ? [
+          ...ranked.filter(({ flag }) => flag.id === demonstratedId),
+          ...ranked.filter(({ flag }) => flag.id !== demonstratedId),
+        ]
+      : ranked
   let demonstratedPromptUsed = false
 
-  const items = ranked.map(({ flag, rubricName }) => {
+  const items = orderedRanked.map(({ flag, rubricName }) => {
     const source = flag.id === demonstratedId ? input.demonstratedFlag ?? flag : flag
     const mayShowPrompt =
       input.promptAccess === 'all' ||

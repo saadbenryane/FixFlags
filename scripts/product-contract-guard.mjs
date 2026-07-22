@@ -7,6 +7,11 @@ import { join } from 'node:path'
 const root = process.cwd()
 const read = (path) => readFileSync(join(root, path), 'utf8')
 const violations = []
+const legacyContractFixtureFiles = new Set([
+  'scripts/completeness-audit.mjs',
+  'scripts/completeness-audit.test.mjs',
+  'scripts/product-contract-guard.test.mjs',
+])
 
 const codeFiles = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.js', '*.mjs'], {
   cwd: root,
@@ -14,7 +19,7 @@ const codeFiles = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.js', '*.m
 }).trim().split('\n').filter(Boolean).filter((path) => !path.startsWith('prisma/migrations/'))
 
 for (const path of codeFiles) {
-  if (path === 'scripts/product-contract-guard.mjs') continue
+  if (path === 'scripts/product-contract-guard.mjs' || legacyContractFixtureFiles.has(path)) continue
   if (!existsSync(join(root, path))) continue
   const source = read(path)
   for (const stale of ['/api/audits', 'ff_check_url', 'ff_monitoring']) {

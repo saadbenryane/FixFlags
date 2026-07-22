@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
@@ -110,12 +111,13 @@ function SignInForm() {
   const subtitle = oauth.anyEnabled
     ? AUTH.signIn.subtitleWithOAuth
     : AUTH.signIn.subtitle
+  const isReportContext = Boolean(next?.match(/^\/report\/[^/?#]+$/))
 
   return (
     <AuthCard
       title={AUTH.signIn.title}
       subtitle={subtitle}
-      trustLine={AUTH.signIn.trustLine}
+      trustLine={isReportContext ? undefined : AUTH.signIn.trustLine}
       footer={
         <p className="text-center text-sm text-muted-foreground">
           {AUTH.signIn.footer}{' '}
@@ -123,6 +125,7 @@ function SignInForm() {
         </p>
       }
     >
+      {isReportContext ? <AuthReportContext next={next} /> : null}
       {oauth.anyEnabled && (
         <OAuthButtons
           callbackURL={oauthCallbackURL}
@@ -130,6 +133,7 @@ function SignInForm() {
           google={oauth.google}
           github={oauth.github}
           disabled={loading !== null}
+          from={from ?? undefined}
         />
       )}
       {oauth.anyEnabled && (

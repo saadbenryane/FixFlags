@@ -99,7 +99,9 @@ export function AuditInput({
       return
     }
 
+    setUrl(normalized)
     setLoading(true)
+    let handedOffToReport = false
     try {
       const params = new URLSearchParams(window.location.search)
       const res = await fetch('/api/checks', {
@@ -155,11 +157,12 @@ export function AuditInput({
             typeof data.queuePosition === 'number' ? data.queuePosition : undefined,
         })
       }
+      handedOffToReport = true
       router.push(reportId ? `/report/${reportId}` : '/dashboard')
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
-      setLoading(false)
+      if (!handedOffToReport) setLoading(false)
     }
   }
 

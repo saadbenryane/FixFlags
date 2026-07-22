@@ -31,10 +31,11 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-e2e-prod/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
+    ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
-    "next-env.d.ts",
-    ".next-e2e-prod/types/**/*.ts"
+    "next-env.d.ts"
   ],
   "exclude": [
     ".next",

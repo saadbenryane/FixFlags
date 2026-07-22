@@ -142,7 +142,7 @@ export function MarkdownPromptBox({
                 type="button"
                 variant="ghost"
                 size="xs"
-                className="h-7 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
+                className="gap-1.5 px-2 text-muted-foreground hover:text-foreground"
                 disabled={installing}
                 onClick={connectCursorMcp}
                 aria-label={FIX_ACTION_COPY.cursorMcpAriaLabel}

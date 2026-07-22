@@ -11,6 +11,7 @@ import { FIX_ACTION_COPY } from '@/lib/audit/fix-action-copy'
 import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
 import { SITE_URL } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
 interface PromptActionRowProps {
   prompt: string
@@ -20,6 +21,11 @@ interface PromptActionRowProps {
   compact?: boolean
   dark?: boolean
   tool?: string
+  auditId?: string
+  surface?: ReportSurface
+  accessState?: ReportAccessState
+  itemPosition?: number
+  nextStep?: string
 }
 
 export function PromptActionRow({
@@ -30,6 +36,11 @@ export function PromptActionRow({
   compact = false,
   dark = false,
   tool,
+  auditId,
+  surface,
+  accessState,
+  itemPosition,
+  nextStep,
 }: PromptActionRowProps) {
   const { user } = useMe()
   const [installing, setInstalling] = useState(false)
@@ -81,6 +92,11 @@ export function PromptActionRow({
         label={copyLabel}
         compact={compact}
         tool={tool}
+        auditId={auditId}
+        surface={surface}
+        accessState={accessState}
+        itemPosition={itemPosition}
+        nextStep={nextStep}
         className={cn(
           dark &&
             'border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'

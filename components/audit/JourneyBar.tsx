@@ -160,7 +160,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
             <Button
               variant="outline"
               size="sm"
-              className="h-8 rounded-full text-xs"
+              className="h-11 rounded-full text-xs"
               onClick={handleScanDeeper}
               disabled={scanning}
             >

@@ -183,7 +183,10 @@ export function AuditReportProgressive({
         </Callout>
       )}
 
-      <section id="report-finish-plan" className="space-y-4" aria-live="polite" aria-busy={isLoading}>
+      <section id="report-finish-plan" className="space-y-4" aria-busy={isLoading}>
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {displayProgress}% complete. {activityMessage ?? 'Preparing your Finish Plan.'}
+        </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="section-label mb-2">{REPORT_COPY.focused.eyebrow}</p>

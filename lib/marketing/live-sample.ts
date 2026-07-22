@@ -34,6 +34,13 @@ export type LiveSampleAudit = {
   launchReadiness: ReturnType<typeof parseLaunchReadiness>
   rubrics: RubricComputed[]
   shareStatus: ShareStatus
+  previewMeta?: import('@/lib/audit/preview-meta').PreviewMeta | null
+  flowData?: import('@/lib/audit/flow-data').FlowData | null
+  actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
+  productContract?: import('@/lib/audit/product-contract').ProductContract | null
+  verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
+  intentionalNotes?: string[]
+  knownRisks?: string[]
 }
 
 export type SampleResult = {
@@ -75,7 +82,7 @@ async function fixtureSample(): Promise<SampleResult> {
 
 export async function getLiveSampleAudit(): Promise<SampleResult> {
   // Marketing rendering is deterministic. This versioned snapshot is generated
-  // from the completed PlantDad demo audit and reviewed with the sample tests.
+  // from the completed LaunchPad demo audit and reviewed with the sample tests.
   // Production audit rows never affect homepage output or availability.
   const result = await fixtureSample()
   return { ...result, source: 'curated' }

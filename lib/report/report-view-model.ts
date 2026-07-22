@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { RecheckDiffSummary } from '@/components/audit/RecheckDiffStrip'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { buildFinishPlan, type FinishPlan } from '@/lib/audit/finish-plan'
@@ -77,7 +78,10 @@ export function assembleReportViewModel(input: {
       verdict: input.audit.verdict,
       score: input.audit.score,
       shareStatus: input.audit.shareStatus,
-      screenshots: input.audit.screenshots ?? [],
+      screenshots: (input.audit.screenshots ?? []).map((screenshot) => ({
+        ...screenshot,
+        url: normalizeInternalScreenshotUrl(screenshot.url),
+      })),
       rubrics: input.audit.rubrics,
       rubricRows: input.audit.rubricRows,
     },

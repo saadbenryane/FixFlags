@@ -7,7 +7,19 @@ import importPlugin from 'eslint-plugin-import'
 
 const config = [
   {
-    ignores: ['.next/**', 'dist/**', 'node_modules/**', 'next-env.d.ts'],
+    ignores: [
+      '.next/**',
+      '.next-*/**',
+      '.cache/**',
+      'coverage/**',
+      'dist/**',
+      'fixflags-cli/dist/**',
+      'node_modules/**',
+      'output/**',
+      'playwright-report/**',
+      'test-results/**',
+      'next-env.d.ts',
+    ],
   },
 
   ...tsPlugin.configs['flat/recommended'],
