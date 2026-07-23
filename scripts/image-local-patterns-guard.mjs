@@ -7,7 +7,7 @@
  * Required public prefixes used by next/image must remain listed.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 
 const ROOT = process.cwd()
 const CONFIG_PATH = join(ROOT, 'next.config.ts')
