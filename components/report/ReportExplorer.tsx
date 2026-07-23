@@ -485,6 +485,7 @@ export function ReportExplorer({
         onSelectFlag={goToFlag}
         compact={config.compact}
         demonstratedFlagId={demonstratedFlagId}
+        variant={variant}
       />
     ) : (
       <p className="text-sm text-muted-foreground">

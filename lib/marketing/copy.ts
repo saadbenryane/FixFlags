@@ -709,8 +709,8 @@ export const LANDING_PAGE = {
     headline: 'A review you can paste into your editor.',
     body: 'Each Flag has evidence, impact, and a fix prompt.',
     previewEyebrow: 'Fix list',
-    previewTitle: 'Every fix, ranked and ready',
-    previewBadge: 'Screenshot evidence included',
+    previewTitle: 'Sample review',
+    previewBadge: '',
     cta: 'View full sample review',
     ctaWithCount: (flagCount: number) => {
       void flagCount
