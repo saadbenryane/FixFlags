@@ -226,6 +226,7 @@ export function fullCommands() {
     command('security:audit', 'npm', ['audit', '--audit-level=moderate']),
     command('test:scripts', 'npm', ['run', 'test:scripts']),
     command('test:unit', 'npm', ['run', 'test:unit']),
+    command('accuracy:eval', 'npm', ['run', 'accuracy:eval']),
     command('test:cli', 'npm', ['run', 'test:cli']),
     command('build', 'node', ['scripts/next-build.mjs']),
     command('worker:build', 'npm', ['run', 'worker:build']),

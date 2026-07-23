@@ -86,6 +86,7 @@ export const evals = {
   docs: ['npm', ['run', 'knowledge:duplication-guard']],
   ui: ['npx', ['playwright', 'test', '--grep', 'detailed sample fulfills']],
   audit: ['npm', ['run', 'demo:audit:offline']],
+  accuracy: ['npm', ['run', 'accuracy:eval']],
   prompts: ['npx', ['vitest', 'run', 'lib/prompts/']],
   billing: ['npx', ['vitest', 'run', 'lib/billing/']],
   cli: ['npm', ['run', 'test:cli']],

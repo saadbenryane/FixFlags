@@ -138,11 +138,33 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   // through these sources, so checking only the element's own text produced large
   // false-positive counts (e.g. 28 "unnamed links" on stripe.com). aria-hidden
   // elements are removed from the accessibility tree and need no name.
+  const isInHiddenSubtree = ($el: ReturnType<typeof $>): boolean => {
+    if ($el.is('[hidden]') || $el.attr('aria-hidden') === 'true') return true
+    return $el.parents('[hidden], [aria-hidden="true"]').length > 0
+  }
+
+  const SR_ONLY_CLASS = /\b(sr-only|visually-hidden|screen-reader-only|skip-nav|skip-link)\b/i
+
   const hasAccessibleName = ($el: ReturnType<typeof $>): boolean => {
     if ($el.attr('aria-hidden') === 'true') return true
     if ($el.text().trim()) return true
+    const srOnlyText = $el
+      .find('[class]')
+      .toArray()
+      .filter((child) => SR_ONLY_CLASS.test($(child).attr('class') || ''))
+      .map((child) => $(child).text().trim())
+      .find(Boolean)
+    if (srOnlyText) return true
     if (($el.attr('aria-label') || '').trim()) return true
-    if (($el.attr('aria-labelledby') || '').trim()) return true
+    const labelledBy = ($el.attr('aria-labelledby') || '').trim()
+    if (labelledBy) {
+      const labelText = labelledBy
+        .split(/\s+/)
+        .map((id) => $(`#${id.replace(/"/g, '')}`).text().trim())
+        .filter(Boolean)
+        .join(' ')
+      if (labelText) return true
+    }
     if (($el.attr('title') || '').trim()) return true
     const hasLabeledImg = $el
       .find('img')
@@ -150,11 +172,25 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
       .some((img) => ($(img).attr('alt') || '').trim() !== '')
     if (hasLabeledImg) return true
     if ($el.find('svg[aria-label], svg > title').length > 0) return true
+    if ($el.is('a')) {
+      const cls = ($el.attr('class') || '').toLowerCase()
+      if (/\babsolute\b/.test(cls) && /\binset-0\b/.test(cls)) {
+        const container = $el.closest('article, li, section, [class*="card"]')
+        const heading = container.find('h2, h3, h4').first().text().trim()
+        if (heading.length >= 4) return true
+      }
+    }
     const hasLabeledChild = $el
       .find('[aria-label], [title]')
       .toArray()
       .some((c) => (($(c).attr('aria-label') ?? $(c).attr('title')) || '').trim() !== '')
     return hasLabeledChild
+  }
+
+  const shouldCountInteractive = ($el: ReturnType<typeof $>): boolean => {
+    if (isInHiddenSubtree($el)) return false
+    if ($el.closest('template').length > 0) return false
+    return true
   }
 
   // Forms and inputs
@@ -195,13 +231,17 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   // Buttons without an accessible name
   let buttonsWithoutText = 0
   $('button, [role="button"]').each((_, el) => {
-    if (!hasAccessibleName($(el))) buttonsWithoutText++
+    const $el = $(el)
+    if (!shouldCountInteractive($el)) return
+    if (!hasAccessibleName($el)) buttonsWithoutText++
   })
 
   // Links without an accessible name
   let linksWithoutText = 0
   $('a').each((_, el) => {
-    if (!hasAccessibleName($(el))) linksWithoutText++
+    const $el = $(el)
+    if (!shouldCountInteractive($el)) return
+    if (!hasAccessibleName($el)) linksWithoutText++
   })
 
   // iframes without title
@@ -333,7 +373,26 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, MAX_RAW_TEXT)
 
   const h1s: string[] = []
-  $('h1').each((_, el) => { h1s.push($(el).text().trim()) })
+  $('h1').each((_, el) => {
+    const text = $(el).text().replace(/\s+/g, ' ').trim()
+    if (!text) return
+    const normalized = text.length >= 24 ? (() => {
+      const compact = text.replace(/\s+/g, '')
+      for (let parts = 2; parts <= 4; parts++) {
+        const chunkLen = Math.floor(compact.length / parts)
+        if (chunkLen < 12) continue
+        const chunk = compact.slice(0, chunkLen)
+        if (chunk.repeat(parts) === compact) {
+          return text.slice(0, Math.floor(text.length / parts)).trim() || text
+        }
+      }
+      return text
+    })() : text
+    // Responsive layouts often duplicate the same H1 for mobile/desktop.
+    if (!h1s.some((existing) => existing === normalized || existing.includes(normalized) || normalized.includes(existing))) {
+      h1s.push(normalized)
+    }
+  })
 
   const h2s: string[] = []
   $('h2').each((_, el) => { h2s.push($(el).text().trim()) })

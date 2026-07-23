@@ -31,4 +31,33 @@ describe('non-HTML regression fixture', () => {
 
     expect(checkIds.sort()).toEqual(fixture.expectedCheckIds)
   })
+
+  it('freezes mobile-only poor performance thresholds', () => {
+    const desktop: PageSpeedResult = {
+      strategy: 'desktop',
+      score: 88,
+      lcp: 1800,
+      cls: 0.04,
+      fcp: 1200,
+      tbt: 120,
+      inp: null,
+      opportunities: [],
+      failedAccessibilityAudits: [],
+      diagnostics: {},
+    }
+    const mobile: PageSpeedResult = {
+      strategy: 'mobile',
+      score: 52,
+      lcp: 5200,
+      cls: 0.18,
+      fcp: 2800,
+      tbt: 700,
+      inp: 420,
+      opportunities: [],
+      failedAccessibilityAudits: [],
+      diagnostics: {},
+    }
+    const checkIds = runPerformanceChecks(desktop, mobile).map((flag) => flag.checkId).sort()
+    expect(checkIds).toEqual(['inp-poor'])
+  })
 })

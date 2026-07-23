@@ -82,7 +82,6 @@ describe('parseMetadataFromHtml', () => {
   })
 
   it('counts an icon-only link labeled by a child as named, not missing text', () => {
-    // Regression: linksWithoutText used to check only the <a>'s own text, so
     // icon-only links labeled by a child img[alt], svg <title>, or aria-label
     // were wrongly counted as unnamed (28 false positives on stripe.com).
     const html = `<!DOCTYPE html>
@@ -97,6 +96,45 @@ describe('parseMetadataFromHtml', () => {
 </html>`
     const meta = parseMetadataFromHtml(html, BASE_URL)
     assert.equal(meta.linksWithoutText, 1)
+  })
+
+  it('ignores links inside hidden subtrees', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Hidden subtree accessibility test page</title></head>
+<body>
+  <div hidden><a href="/hidden"></a></div>
+  <a href="/visible"></a>
+</body>
+</html>`
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(meta.linksWithoutText, 1)
+  })
+
+  it('treats sr-only child text as an accessible name', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Screen reader only label test page</title></head>
+<body>
+  <button><span class="sr-only">Open menu</span><svg></svg></button>
+  <button><svg></svg></button>
+</body>
+</html>`
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(meta.buttonsWithoutText, 1)
+  })
+
+  it('deduplicates responsive duplicate h1 text', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Duplicate h1 test page title here</title></head>
+<body>
+  <h1 class="mobile">Ship faster</h1>
+  <h1 class="desktop">Ship faster</h1>
+</body>
+</html>`
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.deepEqual(meta.h1s, ['Ship faster'])
   })
 
   it('detects analytics without cookie consent', () => {

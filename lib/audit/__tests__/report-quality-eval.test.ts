@@ -22,13 +22,11 @@ const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 const NO_CONSOLE: Array<{ type: string; text: string }> = []
 const NO_HEADERS: Record<string, string> = {}
 
-function runFixtureChecks(file: string, url: string) {
+function runFixtureChecks(file: string, url: string, options?: { brokenLinks?: boolean }) {
   const html = readFileSync(`${FIXTURE_DIR}/${file}`, 'utf-8')
   const meta = parseMetadataFromHtml(html, url)
   const originalFetch = globalThis.fetch
 
-  // Quality fixtures must not depend on the current state of public websites.
-  // These failures are intentional evidence encoded by clean-page.html.
   const knownMissingUrls = new Set([
     'https://fixflags.com/contact',
     'https://fixflags.com/get-started',
@@ -37,7 +35,8 @@ function runFixtureChecks(file: string, url: string) {
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const requestedUrl = new URL(input instanceof Request ? input.url : input.toString())
-    const status = knownMissingUrls.has(requestedUrl.toString()) ? 404 : 200
+    const status =
+      options?.brokenLinks && knownMissingUrls.has(requestedUrl.toString()) ? 404 : 200
     return new Response('', { status })
   }) as typeof fetch
 
@@ -120,12 +119,37 @@ const FIXTURES: FixtureEval[] = [
     knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
     expectedPresent: ['description-missing', 'form-missing-validation'],
   },
+  {
+    file: 'saadbenryane-com.html',
+    url: 'https://saadbenryane.com',
+    expectedTop3: ['no-cta-detected', 'trust-no-direct-contact', 'messaging-no-audience'],
+    knownFalsePositives: ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
+    expectedPresent: ['no-cta-detected', 'trust-no-direct-contact', 'skip-link-missing'],
+  },
+  {
+    file: 'lovable-dev.html',
+    url: 'https://lovable.dev',
+    expectedTop3: ['security-hsts-missing', 'security-csp-missing', 'security-content-type-options-missing'],
+    knownFalsePositives: ['messaging-weak-value-prop', 'links-no-text', 'buttons-no-text'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'friction-no-social-proof'],
+  },
+  {
+    file: 'bolt-new.html',
+    url: 'https://bolt.new',
+    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'security-hsts-missing'],
+    knownFalsePositives: ['messaging-weak-value-prop'],
+    expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
+  },
 ]
 
 describe('report quality eval: top-3 ranking', () => {
   for (const fixture of FIXTURES) {
     it(`${fixture.file} top-3 are correct and distinct`, async () => {
-      const { flags } = await runFixtureChecks(fixture.file, fixture.url)
+      const { flags } = await runFixtureChecks(
+        fixture.file,
+        fixture.url,
+        { brokenLinks: fixture.file === 'clean-page.html' }
+      )
       const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId)) as RankableFlag[]
       const ranked = rankFlagsByPriority(sorted, [], 3)
       const top3Ids = ranked.map((r) => r.flag.checkId ?? '')
@@ -147,7 +171,11 @@ describe('report quality eval: top-3 ranking', () => {
     })
 
     it(`${fixture.file} has no known false positives`, async () => {
-      const { flags } = await runFixtureChecks(fixture.file, fixture.url)
+      const { flags } = await runFixtureChecks(
+        fixture.file,
+        fixture.url,
+        { brokenLinks: fixture.file === 'clean-page.html' }
+      )
       const flagIds = new Set(flags.map((f) => f.checkId))
 
       for (const fp of fixture.knownFalsePositives) {
@@ -159,7 +187,11 @@ describe('report quality eval: top-3 ranking', () => {
     })
 
     it(`${fixture.file} has expected flags present`, async () => {
-      const { flags } = await runFixtureChecks(fixture.file, fixture.url)
+      const { flags } = await runFixtureChecks(
+        fixture.file,
+        fixture.url,
+        { brokenLinks: fixture.file === 'clean-page.html' }
+      )
       const flagIds = new Set(flags.map((f) => f.checkId))
 
       for (const expected of fixture.expectedPresent) {
