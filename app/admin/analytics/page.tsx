@@ -7,6 +7,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import { StatValue } from '@/components/admin/StatValue'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { subscriptionMetrics } from '@/lib/analytics/subscription-metrics'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
@@ -51,14 +52,31 @@ export default async function AdminAnalyticsPage() {
     prisma.lead.count({ where: { linkedUserId: null } }),
   ])
 
-  const [activePaidUsers, churnedThisMonth, completedAuditsMonth, trafficSources] =
+  const [
+    activePaidUsers,
+    subscriptionTransitions,
+    firstSubscriptionEvent,
+    completedAuditsMonth,
+    trafficSources,
+  ] =
     await Promise.all([
       prisma.user.findMany({
         where: { plan: { not: 'FREE' }, subscriptionStatus: { in: ['ACTIVE', 'TRIALING'] } },
         select: { plan: true },
       }),
-      prisma.user.count({
-        where: { subscriptionStatus: 'CANCELED', updatedAt: { gte: monthAgo } },
+      prisma.subscriptionLifecycleEvent.findMany({
+        where: { occurredAt: { gte: monthAgo } },
+        select: {
+          userId: true,
+          previousPlan: true,
+          plan: true,
+          occurredAt: true,
+        },
+        orderBy: { occurredAt: 'asc' },
+      }),
+      prisma.subscriptionLifecycleEvent.findFirst({
+        select: { occurredAt: true },
+        orderBy: { occurredAt: 'asc' },
       }),
       prisma.audit.findMany({
         where: { status: 'COMPLETED', createdAt: { gte: monthAgo }, startedAt: { not: null }, completedAt: { not: null } },
@@ -77,12 +95,10 @@ export default async function AdminAnalyticsPage() {
     0
   )
   const paidUserCount = activePaidUsers.length
-  // Approximation: churn = canceled this month / (currently active + canceled this month).
-  // A precise cohort-based churn rate needs a subscription-event history table, not yet tracked.
-  const churnRate =
-    paidUserCount + churnedThisMonth > 0
-      ? (churnedThisMonth / (paidUserCount + churnedThisMonth)) * 100
-      : 0
+  const hasCompleteLifecycleWindow =
+    firstSubscriptionEvent !== null && firstSubscriptionEvent.occurredAt <= monthAgo
+  const { newMrr, expansionMrr, churnedMrr, churnedUsers, churnRate } =
+    subscriptionMetrics(subscriptionTransitions, paidUserCount, hasCompleteLifecycleWindow)
 
   const avgAuditDurationSeconds =
     completedAuditsMonth.length > 0
@@ -205,7 +221,7 @@ export default async function AdminAnalyticsPage() {
 
       <section className="space-y-4">
         <SectionTitle>Revenue (current)</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="border-0 shadow-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">MRR</CardTitle>
@@ -224,17 +240,26 @@ export default async function AdminAnalyticsPage() {
           </Card>
           <Card className="border-0 shadow-card">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Churn rate (30d, approx.)</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground font-medium">New + expansion MRR (30d)</CardTitle>
             </CardHeader>
             <CardContent>
-              <StatValue>{churnRate.toFixed(1)}%</StatValue>
+              <StatValue>${(newMrr + expansionMrr).toLocaleString()}</StatValue>
+              <span className="text-xs text-muted-foreground">${newMrr} new · ${expansionMrr} expansion</span>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-muted-foreground font-medium">Churn (30d)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatValue>{churnRate === null ? 'N/A' : `${churnRate.toFixed(1)}%`}</StatValue>
+              <span className="text-xs text-muted-foreground">{churnedUsers} accounts · ${churnedMrr} MRR</span>
             </CardContent>
           </Card>
         </div>
         <p className="text-xs text-muted-foreground">
-          Churn rate is canceled-this-month over (active + canceled-this-month) &mdash; an approximation.
-          New/expansion/churned MRR broken out by cohort needs a subscription-event history table, which
-          doesn&rsquo;t exist yet.
+          Revenue transitions come from idempotent Stripe lifecycle events. Churn remains N/A until a
+          complete 30-day event window exists; historical transitions are not invented during migration.
         </p>
       </section>
 

@@ -148,6 +148,7 @@ function FlagDetailPane({
   aiEnhancementPending,
   signUpHref,
   onSelectFlag,
+  compact = false,
 }: {
   model: ReportExplorerModel
   flag: ReportExplorerModel['flags'][number]
@@ -160,6 +161,7 @@ function FlagDetailPane({
   aiEnhancementPending?: boolean
   signUpHref?: string
   onSelectFlag: (flagId: string) => void
+  compact?: boolean
 }) {
   const showDesktop = flag.evidenceDevices.includes('desktop')
   const showMobile = flag.evidenceDevices.includes('mobile')
@@ -192,7 +194,12 @@ function FlagDetailPane({
           signUpHref={signUpHref}
         />
       ) : (
-        <>
+        <div
+          className={cn(
+            compact && !shareableFlag &&
+              'lg:grid lg:grid-cols-[minmax(11rem,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-5'
+          )}
+        >
           {!shareableFlag && (
             <ScreenshotWithHighlights
               host={model.displayHost}
@@ -203,7 +210,7 @@ function FlagDetailPane({
               onPinSelect={onSelectFlag}
               showDesktop={showDesktop}
               showMobile={showMobile}
-              className="mb-5"
+              className={cn('mb-5', compact && 'lg:mb-0')}
             />
           )}
 
@@ -215,7 +222,7 @@ function FlagDetailPane({
             signUpHref={signUpHref}
             previewMeta={model.previewMeta}
           />
-        </>
+        </div>
       )}
     </div>
   )
@@ -436,6 +443,7 @@ export function ReportExplorer({
         aiEnhancementPending={aiEnhancementPending}
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
+        compact={config.compact}
       />
     ) : (
       <p className="text-sm text-muted-foreground">

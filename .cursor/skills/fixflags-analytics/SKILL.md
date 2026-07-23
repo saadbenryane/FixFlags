@@ -43,6 +43,11 @@ Before shipping funnel changes: every `FunnelEvent` union member must have a `tr
 
 [`app/admin/analytics/page.tsx`](../../../app/admin/analytics/page.tsx) documents the funnel for operators. Keep descriptions in sync with real semantics.
 
+- Acquisition and visit attribution come from GA4-backed `GrowthArtifact` records.
+- Subscription activation, expansion, cancellation, payment failure, and churn come from `SubscriptionLifecycleEvent`, never `User.updatedAt`.
+- Keep event-derived revenue cohorts separate from acquisition totals. Do not label independently sourced totals as a conversion funnel.
+- Scheduler jobs persist their canonical results. Writing documentation exports is an explicit developer command only.
+
 ## Scan duration claims
 
 ```bash
@@ -56,4 +61,5 @@ Do **not** put “Usually ready in X–Y minutes” on the hero until median/p90
 ```bash
 rg "trackEvent\('" --glob '*.{ts,tsx}' -g '!node_modules'
 rg "type FunnelEvent" -A 30 lib/analytics/events.ts
+npm run agent -- eval growth
 ```

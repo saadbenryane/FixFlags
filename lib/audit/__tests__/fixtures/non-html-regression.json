@@ -1,0 +1,63 @@
+{
+  "desktopPageSpeed": {
+    "strategy": "desktop",
+    "score": 42,
+    "lcp": 4800,
+    "cls": 0.31,
+    "fcp": 1800,
+    "tbt": 420,
+    "inp": null,
+    "opportunities": [
+      { "id": "render-blocking-resources", "title": "Render blocking", "description": "", "savings": 800 },
+      { "id": "unused-javascript", "title": "Unused JavaScript", "description": "", "savings": 150000 },
+      { "id": "unused-css-rules", "title": "Unused CSS", "description": "", "savings": 60000 },
+      { "id": "uses-webp-images", "title": "Modern images", "description": "", "savings": 80000 }
+    ],
+    "failedAccessibilityAudits": [],
+    "diagnostics": {}
+  },
+  "mobilePageSpeed": {
+    "strategy": "mobile",
+    "score": 60,
+    "lcp": 3200,
+    "cls": 0.12,
+    "fcp": 2000,
+    "tbt": 500,
+    "inp": 650,
+    "opportunities": [],
+    "failedAccessibilityAudits": [],
+    "diagnostics": {}
+  },
+  "networkFailures": [
+    {
+      "url": "https://example.com/api/signup",
+      "method": "POST",
+      "status": 401,
+      "resourceType": "fetch",
+      "sameOrigin": true,
+      "engagementPath": true,
+      "at": 1
+    }
+  ],
+  "overlay": {
+    "tag": "div",
+    "id": "launch-modal",
+    "className": "fixed overlay",
+    "role": "dialog",
+    "text": "Join the waitlist",
+    "zIndex": "9999"
+  },
+  "expectedCheckIds": [
+    "api-engagement-unauthorized",
+    "cls-critical",
+    "flow-cta-dead-end",
+    "inp-critical",
+    "lcp-critical",
+    "overlay-blocks-cta",
+    "perf-score-critical",
+    "render-blocking",
+    "unoptimized-images",
+    "unused-css-large",
+    "unused-js-large"
+  ]
+}

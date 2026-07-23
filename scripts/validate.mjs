@@ -77,6 +77,18 @@ const fullValidationFiles = new Set([
 
 const fullValidationPrefixes = ['.github/', 'prisma/']
 
+const containerValidationFiles = new Set([
+  '.dockerignore',
+  'Dockerfile',
+  'next.config.ts',
+  'package.json',
+  'package-lock.json',
+  'railway.toml',
+  'railway.worker.toml',
+  'scripts/db-run.mjs',
+  'scripts/runtime-start.mjs',
+])
+
 const docsOnlyExtensions = new Set(['.md', '.txt'])
 
 const generatedPathPatterns = [
@@ -141,7 +153,14 @@ function scopesForFile(file) {
 }
 
 function isFullValidationFile(file) {
-  return fullValidationFiles.has(file) || fullValidationPrefixes.some((p) => file.startsWith(p))
+  return fullValidationFiles.has(file) ||
+    containerValidationFiles.has(file) ||
+    fullValidationPrefixes.some((p) => file.startsWith(p))
+}
+
+function withContainerValidation(commands, files) {
+  if (!files.some((file) => containerValidationFiles.has(file))) return commands
+  return [...commands, command('container:build', 'docker', ['build', '-t', 'fixflags:verify', '.'])]
 }
 
 function isDocsOnlyFile(file) {
@@ -231,7 +250,11 @@ export function buildPlan(requestedMode, providedFiles) {
   const codeFiles = files.filter((f) => !isDocsOnlyFile(f))
 
   if (requestedMode === 'full') {
-    return { files, commands: fullCommands(), reason: 'full validation requested' }
+    return {
+      files,
+      commands: withContainerValidation(fullCommands(), files),
+      reason: 'full validation requested',
+    }
   }
 
   if (requestedMode === 'release') {
@@ -263,7 +286,11 @@ export function buildPlan(requestedMode, providedFiles) {
   }
 
   if (fullRequired) {
-    return { files, commands: fullCommands(), reason: 'shared validation config changed; using full validation' }
+    return {
+      files,
+      commands: withContainerValidation(fullCommands(), files),
+      reason: 'shared validation config changed; using full validation',
+    }
   }
 
   const commands = []

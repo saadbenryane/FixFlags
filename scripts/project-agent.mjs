@@ -59,6 +59,26 @@ export const contexts = {
     files: ['QUALITY.md', 'DEVELOPMENT.md', 'lib/queue/', '.agents/learnings/'],
     commands: ['npm run agent -- learn', 'npm run agent -- verify --dry-run'],
   },
+  release: {
+    description: 'Build and validate the production-like web, worker, database, and container release path.',
+    files: ['Dockerfile', 'scripts/runtime-start.mjs', 'scripts/validate.mjs', 'lib/health/', 'DEVELOPMENT.md'],
+    commands: ['npm run agent -- eval release', 'npm run verify:release'],
+  },
+  growth: {
+    description: 'Change scheduled acquisition, analytics artifacts, nurture, or growth reporting safely.',
+    files: ['lib/growth/', 'lib/analytics/', 'lib/queue/recovery-scheduler.ts', 'app/admin/analytics/'],
+    commands: ['npm run agent -- eval growth', 'npm run agent -- verify --dry-run'],
+  },
+  auth: {
+    description: 'Change authentication, anonymous claiming, sessions, recovery, or entitlements.',
+    files: ['lib/auth/', 'app/(auth)/', 'SECURITY.md'],
+    commands: ['npm run agent -- eval auth', 'npm run agent -- verify --dry-run'],
+  },
+  security: {
+    description: 'Review access control, protected sharing, webhooks, secrets, middleware, and release boundaries.',
+    files: ['SECURITY.md', 'lib/security/', 'middleware.ts', 'app/api/webhooks/'],
+    commands: ['npm run agent -- eval security', 'npm run agent -- verify --dry-run'],
+  },
 }
 
 export const evals = {
@@ -70,6 +90,10 @@ export const evals = {
   billing: ['npx', ['vitest', 'run', 'lib/billing/']],
   cli: ['npm', ['run', 'test:cli']],
   recovery: ['node', ['scripts/evals/runtime-recovery.mjs']],
+  release: ['npm', ['run', 'verify:release']],
+  growth: ['npx', ['vitest', 'run', 'lib/growth/', 'lib/analytics/']],
+  auth: ['npx', ['vitest', 'run', 'lib/auth/', 'app/(auth)/']],
+  security: ['npx', ['vitest', 'run', 'lib/security/', 'app/api/webhooks/']],
 }
 
 function git(cwd, args) {

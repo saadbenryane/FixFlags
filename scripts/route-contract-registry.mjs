@@ -37,6 +37,11 @@ function casesFor(boundary, methods, file) {
   if (file.includes('[')) cases.add('not-found')
   if (/checkout|credit-pack|portal|watch|repo-scans|retry/.test(file)) cases.add('plan-gated')
   if (/checkout|credit-pack|watch|retry|select|connect|feedback/.test(file)) cases.add('conflict')
+  if (boundary === 'secret') cases.add('secret-validation')
+  if (boundary === 'webhook') cases.add('signature-validation')
+  if (methods.some((method) => method !== 'GET') && /webhooks|cron|recheck|retry|checkout|credit-pack|watch/.test(file)) {
+    cases.add('idempotent-retry')
+  }
   return [...cases]
 }
 

@@ -39,14 +39,16 @@ function FlagList({
   flags,
   selectedFlagId,
   onSelectFlag,
+  numbered = false,
 }: {
   flags: FixLoopFlagItem[]
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
+  numbered?: boolean
 }) {
   return (
     <ul className="space-y-1" aria-label="Report Flags">
-      {flags.map((flag) => {
+      {flags.map((flag, index) => {
         const selected = selectedFlagId === flag.id
         const RubricIcon = rubricIcon(flag.rubric)
         const ImpactIcon = impactTagIcon(flag.impactTag)
@@ -67,6 +69,19 @@ function FlagList({
                 selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
               )}
             >
+              {numbered ? (
+                <span
+                  className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-2xs font-semibold tabular-nums',
+                    selected
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                  aria-hidden
+                >
+                  {index + 1}
+                </span>
+              ) : null}
               <SeveritySignal severity={flag.severity} className="h-4 w-4" />
               <span
                 className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
@@ -107,7 +122,12 @@ export function ReportFixLoop({
         {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}
       </p>
     ) : interactive ? (
-      <FlagList flags={flags} selectedFlagId={selectedFlagId} onSelectFlag={onSelectFlag} />
+      <FlagList
+        flags={flags}
+        selectedFlagId={selectedFlagId}
+        onSelectFlag={onSelectFlag}
+        numbered={compact && variant === 'panel'}
+      />
     ) : (
       <p className="px-1 py-2 text-xs leading-relaxed text-muted-foreground">
         {count === 1 ? '1 check flagged' : `${count} checks flagged`}. Review the detail pane to copy

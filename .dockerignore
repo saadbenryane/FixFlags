@@ -24,3 +24,15 @@ tsconfig.tsbuildinfo
 .opencode
 .playwright-cli
 .github
+
+# Documentation & knowledge (not needed in image)
+*.md
+knowledge/
+docs/
+.agents/
+
+# Development & CI config
+.vscode
+.idea
+*.swp
+*.swo

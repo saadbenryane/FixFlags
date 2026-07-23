@@ -17,7 +17,7 @@ Use this file for judgment-heavy review. Deterministic drift belongs in `scripts
 
 ## Report and Finish Plan
 
-- Product Contract → Remember → Finish Plan → Journey → Flow → Timeline → Flags → Previews → Launch → Re-check.
+- Report hierarchy and order live only in [`knowledge/report-contract.md`](../../../../knowledge/report-contract.md). Review that source instead of copying its sequence here.
 - Sticky destinations and conditional DOM sections use the same predicates.
 - One `buildFinishPlan` result owns cards, count, prompt, MCP, CLI, REST, and re-check output. All-prompts export is separate.
 - Anonymous reports have only the value strip and Sample Fix CTA. Never add signup buttons to each Flag or Finish Plan card.
@@ -29,4 +29,3 @@ Use this file for judgment-heavy review. Deterministic drift belongs in `scripts
 - Verify keyboard focus, dialog/sheet semantics, reduced motion, horizontal sticky navigation, error recovery, and queue crash recovery.
 - Run three consecutive unit suites when suite-order instability was observed.
 - Build the Docker image when package or container inputs change. Do not infer production smoke success without credentials and a deployed target.
-

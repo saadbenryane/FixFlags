@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
-import type { Plan, Prisma, SubscriptionStatus } from '@prisma/client'
+import type {
+  Plan,
+  Prisma,
+  SubscriptionLifecycleType,
+  SubscriptionStatus,
+} from '@prisma/client'
 import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
@@ -48,7 +53,16 @@ function resolvePriceIds(subscription: Stripe.Subscription): string[] {
 async function processSubscription(
   tx: Prisma.TransactionClient,
   subscription: Stripe.Subscription
-): Promise<void> {
+): Promise<{
+  userId: string
+  email: string | null
+  previousPlan: Plan
+  plan: Plan
+  status: SubscriptionStatus
+  priceId: string | null
+  unitAmount: number | null
+  currency: string | null
+}> {
   const user = await resolveSubscriptionUser(tx, subscription)
   if (!user) throw new Error(`No user found for Stripe subscription ${subscription.id}`)
 
@@ -77,6 +91,43 @@ async function processSubscription(
       ...(resetUsage ? { auditsUsed: 0 } : {}),
     },
   })
+  const price = subscription.items.data.find((item) => planFromPriceId(item.price.id))?.price
+  return {
+    userId: user.id,
+    email: user.email,
+    previousPlan: user.plan,
+    plan: effectivePlan,
+    status,
+    priceId: price?.id ?? priceIds[0] ?? null,
+    unitAmount: price?.unit_amount ?? null,
+    currency: price?.currency ?? null,
+  }
+}
+
+async function recordSubscriptionLifecycle(
+  tx: Prisma.TransactionClient,
+  event: Stripe.Event,
+  type: SubscriptionLifecycleType,
+  subscription: Stripe.Subscription,
+  result: Awaited<ReturnType<typeof processSubscription>>,
+): Promise<void> {
+  await tx.subscriptionLifecycleEvent.create({
+    data: {
+      stripeEventId: event.id,
+      stripeEventType: event.type,
+      type,
+      userId: result.userId,
+      subscriptionId: subscription.id,
+      customerId: String(subscription.customer),
+      previousPlan: result.previousPlan,
+      plan: result.plan,
+      status: result.status,
+      priceId: result.priceId,
+      unitAmount: result.unitAmount,
+      currency: result.currency,
+      occurredAt: new Date(event.created * 1000),
+    },
+  })
 }
 
 function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
@@ -89,20 +140,16 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 async function syncSubscriptionFromInvoice(
   tx: Prisma.TransactionClient,
   invoice: Stripe.Invoice
-): Promise<{ userId: string; email: string | null; subscriptionId: string } | null> {
+): Promise<{
+  subscription: Stripe.Subscription
+  result: Awaited<ReturnType<typeof processSubscription>>
+} | null> {
   const subscriptionId = invoiceSubscriptionId(invoice)
   if (!subscriptionId) return null
 
   const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
-  await processSubscription(tx, subscription)
-
-  const user = await resolveSubscriptionUser(tx, subscription)
-  if (!user) return null
-  return {
-    userId: user.id,
-    email: user.email,
-    subscriptionId,
-  }
+  const result = await processSubscription(tx, subscription)
+  return { subscription, result }
 }
 
 export async function POST(req: NextRequest) {
@@ -156,19 +203,40 @@ export async function POST(req: NextRequest) {
       if (alreadyProcessed) return
 
       switch (event.type) {
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
-        case 'customer.subscription.deleted':
-          await processSubscription(tx, event.data.object)
+        case 'customer.subscription.created': {
+          const result = await processSubscription(tx, event.data.object)
+          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_CREATED', event.data.object, result)
           break
+        }
+        case 'customer.subscription.updated': {
+          const result = await processSubscription(tx, event.data.object)
+          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_UPDATED', event.data.object, result)
+          break
+        }
+        case 'customer.subscription.deleted': {
+          const result = await processSubscription(tx, event.data.object)
+          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_DELETED', event.data.object, result)
+          break
+        }
 
         case 'invoice.payment_failed': {
-          paymentFailedBox.current = await syncSubscriptionFromInvoice(tx, event.data.object)
+          const synced = await syncSubscriptionFromInvoice(tx, event.data.object)
+          if (synced) {
+            await recordSubscriptionLifecycle(tx, event, 'PAYMENT_FAILED', synced.subscription, synced.result)
+            paymentFailedBox.current = {
+              userId: synced.result.userId,
+              email: synced.result.email,
+              subscriptionId: synced.subscription.id,
+            }
+          }
           break
         }
 
         case 'invoice.payment_succeeded': {
-          await syncSubscriptionFromInvoice(tx, event.data.object)
+          const synced = await syncSubscriptionFromInvoice(tx, event.data.object)
+          if (synced) {
+            await recordSubscriptionLifecycle(tx, event, 'PAYMENT_SUCCEEDED', synced.subscription, synced.result)
+          }
           break
         }
 

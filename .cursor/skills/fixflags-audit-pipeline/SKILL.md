@@ -58,6 +58,7 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 npm run test:unit -- lib/audit/__tests__/run-audit.test.ts lib/audit/__tests__/outcome.test.ts
 npm run smoke:triage:prod   # post-deploy, requires prod keys
 npm run demo:audit:offline  # deterministic checks only
+npm run agent -- eval recovery # PostgreSQL + Redis retry/idempotency evaluation
 ```
 
 ## Anti-patterns
@@ -100,3 +101,4 @@ Do **not** add Scout-style conversational "check anything else" chat on the audi
 4. Railway web service has `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 5. Redeploy after key changes
 6. `npm run smoke:triage:prod`
+7. `npm run verify:release` with disposable database reset authorization, container environment, and deployed smoke credentials; required checks may not be skipped

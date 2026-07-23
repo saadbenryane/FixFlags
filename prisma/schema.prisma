@@ -199,6 +199,14 @@ enum SupportMessageRole {
   SYSTEM
 }
 
+enum SubscriptionLifecycleType {
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_DELETED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+}
+
 model User {
   id                      String             @id @default(cuid())
   email                   String             @unique
@@ -237,6 +245,7 @@ model User {
   githubConnection        GithubConnection?
   repoScans               RepoScan[]
   repoFixPrs              RepoFixPr[]
+  subscriptionLifecycle   SubscriptionLifecycleEvent[]
 
   @@map("users")
 }
@@ -1017,6 +1026,30 @@ model ProcessedStripeEvent {
   @@index([type])
   @@index([processedAt])
   @@map("processed_stripe_events")
+}
+
+model SubscriptionLifecycleEvent {
+  id              String                    @id @default(cuid())
+  stripeEventId   String                    @unique
+  stripeEventType String
+  type            SubscriptionLifecycleType
+  userId          String
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId  String?
+  customerId      String?
+  previousPlan    Plan?
+  plan            Plan
+  status          SubscriptionStatus
+  priceId         String?
+  unitAmount      Int?
+  currency        String?
+  occurredAt      DateTime
+  createdAt       DateTime                  @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
+  @@index([status, occurredAt])
+  @@map("subscription_lifecycle_events")
 }
 
 model McpInteraction {

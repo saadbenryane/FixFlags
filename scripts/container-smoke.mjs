@@ -22,10 +22,10 @@ try {
   docker([
     'run', '--detach', '--name', name,
     '--env-file', envFile,
-    '--publish', '127.0.0.1::3000',
+    '--publish', '127.0.0.1::8080',
     'fixflags:release-check',
   ])
-  const binding = docker(['port', name, '3000/tcp']).split('\n')[0]
+  const binding = docker(['port', name, '8080/tcp']).split('\n')[0]
   const port = binding.match(/:(\d+)$/)?.[1]
   if (!port) throw new Error(`Could not resolve container port from ${binding}`)
 

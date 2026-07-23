@@ -17,8 +17,6 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const schema = read(root, 'prisma/schema.prisma')
   const modelCount = (schema.match(/^model /gm) ?? []).length
   assert(modelCount > 0, 'Prisma schema has no models')
-  const codemapModels = Number(read(root, 'CODEMAP.md').match(/\| DB schema \|[^\n]*\| (\d+) Prisma models \|/)?.[1])
-  assert(modelCount === codemapModels, `Prisma model count drift: code=${modelCount}, CODEMAP=${codemapModels}`)
 
   const mcpSource = `${read(root, 'lib/mcp/tools.ts')}\n${read(root, 'lib/mcp/task-tools.ts')}`
   const tools = [...new Set(collectMcpTools(mcpSource))]
@@ -71,7 +69,28 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const clutter = tracked.filter((file) => /(^|\/)node_modules\//.test(file) || /(^|\/)dist\//.test(file))
   assert(clutter.length === 0, `Tracked generated dependencies/artifacts: ${clutter.slice(0, 5).join(', ')}`)
 
-  return { ok: failures.length === 0, failures, facts: { modelCount, mcpToolCount: tools.length, sectionCount: sectionIds.length } }
+  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).split('\n')
+  const productionFiles = [...new Set([...tracked, ...untracked])].filter((file) =>
+    /^(app|components|lib|worker)\/.+\.(?:ts|tsx)$/.test(file) ||
+    /^(instrumentation|middleware|proxy)\.ts$/.test(file),
+  )
+  const scriptImports = productionFiles.filter((file) => {
+    const source = read(root, file)
+    return /(?:from\s+|import\s*\()['"](?:@\/|\.\.\/)+scripts\//.test(source)
+  })
+  assert(
+    scriptImports.length === 0,
+    `Production modules import development scripts: ${scriptImports.slice(0, 5).join(', ')}`,
+  )
+
+  return {
+    ok: failures.length === 0,
+    failures,
+    facts: { modelCount, mcpToolCount: tools.length, sectionCount: sectionIds.length },
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -24,3 +24,14 @@ test('protected mutations include access and input contracts', () => {
     assert.ok(contract.cases.includes('invalid-input'), contract.file)
   }
 })
+
+test('secret and webhook boundaries declare validation and retry contracts', () => {
+  const contracts = collectRouteContracts()
+  const secret = contracts.filter(({ boundary }) => boundary === 'secret')
+  const webhooks = contracts.filter(({ boundary }) => boundary === 'webhook')
+  assert.ok(secret.length > 0)
+  assert.ok(webhooks.length > 0)
+  assert.ok(secret.every(({ cases }) => cases.includes('secret-validation')))
+  assert.ok(webhooks.every(({ cases }) => cases.includes('signature-validation')))
+  assert.ok(webhooks.every(({ cases }) => cases.includes('idempotent-retry')))
+})

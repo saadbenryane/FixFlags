@@ -21,6 +21,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Product Contract and Remember | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
 | Marketing copy | `lib/marketing/copy.ts` |
 | Runtime requirements | `lib/env.ts`, `lib/health/readiness.ts`, `DEVELOPMENT.md` |
+| Runtime and release execution | `.cursor/skills/fixflags-runtime-release/SKILL.md` |
 | Verification | `scripts/validate.mjs`, `QUALITY.md` |
 
 ## Invariants

@@ -29,8 +29,11 @@ describe('project-agent', () => {
     assert.equal(result.state.changedFiles.truncated, false)
   })
 
-  it('exposes all eight pilot contexts', () => {
-    assert.deepEqual(Object.keys(contexts).sort(), ['audit', 'billing', 'cli', 'docs', 'orientation', 'prompts', 'recovery', 'ui'])
+  it('exposes focused product and operational contexts', () => {
+    assert.deepEqual(Object.keys(contexts).sort(), [
+      'audit', 'auth', 'billing', 'cli', 'docs', 'growth', 'orientation', 'prompts',
+      'recovery', 'release', 'security', 'ui',
+    ])
   })
 
   it('returns usage exit code for unknown commands and contexts', () => {

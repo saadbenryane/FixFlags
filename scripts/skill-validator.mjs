@@ -6,6 +6,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const SKILLS_ROOT = '.cursor/skills'
+const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const MAX_SKILL_LINES = 180
 const STALE = [
   /AGENTS\.md Project facts/i,
@@ -68,6 +69,18 @@ export function validateSkills(root = process.cwd()) {
       if (!existsSync(absolute)) errors.push(`${path.relative(root, file)}: broken link ${match[1]}`)
       if (target.includes('references/') && target.split('/').filter(Boolean).length > 2) {
         errors.push(`${path.relative(root, file)}: reference depth exceeds one level (${target})`)
+      }
+    }
+  }
+
+  const deprecatedRoot = path.join(root, DEPRECATED_SKILLS_ROOT)
+  if (existsSync(deprecatedRoot)) {
+    for (const file of markdownFiles(deprecatedRoot)) {
+      if (path.basename(file) === 'README.md') continue
+      const source = readFileSync(file, 'utf8')
+      const substantiveLines = source.split('\n').filter((line) => line.trim() && !line.startsWith('#'))
+      if (!/deprecated pointer/i.test(source) || substantiveLines.length > 1) {
+        errors.push(`${path.relative(root, file)}: deprecated mirror must be a fact-free canonical pointer`)
       }
     }
   }

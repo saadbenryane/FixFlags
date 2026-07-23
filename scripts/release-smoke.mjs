@@ -20,3 +20,12 @@ async function probe(path, label) {
 await probe('/api/health/ready', 'launch readiness')
 await probe('/api/health/browser', 'Chromium and R2')
 await probe('/api/health/ai?validate=1', 'AI credentials')
+
+const { runRouteBoundarySmoke } = await import('./route-boundary-smoke.mjs')
+const routeCount = await runRouteBoundarySmoke(
+  baseUrl,
+  process.env.RELEASE_SMOKE_BEARER
+    ? { authorization: `Bearer ${process.env.RELEASE_SMOKE_BEARER}` }
+    : {},
+)
+console.log(`PASS route boundary smoke (${routeCount} routes)`)

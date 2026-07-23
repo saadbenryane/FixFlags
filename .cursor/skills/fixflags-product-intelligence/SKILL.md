@@ -64,3 +64,4 @@ Anchor creation is concurrency-safe through the partial unique database index. W
 9. **Finish Plan copy/export/MCP plan prompt ≤3** by default. “All prompts” is a separate labeled export.
 10. **Remember must be visible** when learnings exist (`ProductMemoryStrip`). Do not claim Remember in PRODUCT.md without UI.
 11. **Report order lives only in `knowledge/report-contract.md`.** Link to it; do not restate it in skills.
+12. **Every transport uses task contracts.** UI, HTTP, watch, MCP, export, and CLI consume the same bounded Finish Plan and parent verification diff.

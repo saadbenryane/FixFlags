@@ -35,8 +35,8 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 
 1. Identify the canonical view model, access state, and shared primitive before editing JSX.
 2. Exercise loading, empty, error, forbidden, partial, completed, shared, anonymous, owner, watched, and re-check states as applicable.
-3. Check 375, 768, and 1280px with no horizontal overflow or clipped actions.
-4. Verify keyboard order, focus visibility, semantic names, heading order, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.
+3. Check 375, 768, and 1280px with no horizontal overflow, clipped actions, hydration failures, or console errors.
+4. Verify keyboard order, focus visibility, semantic names, heading order, 44px targets, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.
 5. Run `npm run ui:drift-guard`, focused component tests, and `npm run agent -- eval ui`. Inspect browser artifacts when failures occur.
 
 ## Avoid

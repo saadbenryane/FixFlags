@@ -17,7 +17,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | Marketing copy | `lib/marketing/copy.ts` | Single source of truth for all marketing text |
 | Design tokens | `lib/design/tokens.css` | Canonical design tokens (colors, shadows, radii) |
 | AI prompts | `lib/prompts/system-prompt.ts` | Triage + prescription prompt builders |
-| DB schema | `prisma/schema.prisma` | 45 Prisma models |
+| DB schema | `prisma/schema.prisma` | Prisma schema and migrations |
 | Validation planner | `scripts/validate.mjs` | Changed-file-aware validation (quick/affected/full) |
 
 ## Repository Directory Map

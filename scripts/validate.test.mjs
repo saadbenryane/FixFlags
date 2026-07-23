@@ -20,6 +20,12 @@ describe('validate.mjs', () => {
       const plan = buildPlan('quick', ['package.json'])
       assert.ok(plan.commands.length > 5)
       assert.equal(plan.reason, 'shared validation config changed; using full validation')
+      assert.ok(plan.commands.some((command) => command.label === 'container:build'))
+    })
+
+    it('builds the image when container packaging changes', () => {
+      const plan = buildPlan('affected', ['Dockerfile'])
+      assert.ok(plan.commands.some((command) => command.label === 'container:build'))
     })
 
     it('runs full validation when prisma schema changes', () => {

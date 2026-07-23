@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   // Lets concurrent verification use an isolated output directory without
   // racing a developer's active `.next` process.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
+  output: 'standalone',
   poweredByHeader: false,
   allowedDevOrigins: ['127.0.0.1'],
   turbopack: {
@@ -42,6 +43,12 @@ const nextConfig: NextConfig = {
     localPatterns: [
       {
         pathname: '/api/screenshots/**',
+      },
+      {
+        pathname: '/brand/**',
+      },
+      {
+        pathname: '/marketing/**',
       },
     ],
     remotePatterns: [

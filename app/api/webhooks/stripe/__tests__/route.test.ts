@@ -16,6 +16,7 @@ const {
   mockNotify,
   mockSubscriptionsRetrieve,
   mockConstructEvent,
+  mockCreateLifecycle,
 } = vi.hoisted(() => ({
   mockFindUniqueProcessed: vi.fn(),
   mockCreateProcessed: vi.fn(),
@@ -30,6 +31,7 @@ const {
   mockNotify: vi.fn(),
   mockSubscriptionsRetrieve: vi.fn(),
   mockConstructEvent: vi.fn(),
+  mockCreateLifecycle: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -48,6 +50,9 @@ vi.mock('@/lib/db', () => ({
       update: mockCreditUpdate,
       deleteMany: mockCreditDeleteMany,
     },
+    subscriptionLifecycleEvent: {
+      create: mockCreateLifecycle,
+    },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) =>
       cb({
         processedStripeEvent: {
@@ -63,6 +68,9 @@ vi.mock('@/lib/db', () => ({
           findUnique: mockCreditFindUnique,
           update: mockCreditUpdate,
           deleteMany: mockCreditDeleteMany,
+        },
+        subscriptionLifecycleEvent: {
+          create: mockCreateLifecycle,
         },
       })
     ),
@@ -120,6 +128,7 @@ function makeRequest(body: string, signature?: string) {
 const baseUser = {
   id: 'user_1',
   email: 'a@example.com',
+  plan: 'FREE',
   stripeCurrentPeriodEnd: null,
 }
 
@@ -140,6 +149,7 @@ beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_x'
   mockFindUniqueProcessed.mockResolvedValue(null)
   mockCreateProcessed.mockResolvedValue({})
+  mockCreateLifecycle.mockResolvedValue({})
   mockUserFindUnique.mockResolvedValue(baseUser)
   mockUserFindFirst.mockResolvedValue(baseUser)
   mockUserUpdate.mockResolvedValue({})
@@ -183,6 +193,7 @@ describe('POST /api/webhooks/stripe', () => {
   it('syncs subscription created to BUILDER', async () => {
     const event = {
       id: 'evt_sub',
+      created: Math.floor(Date.now() / 1000),
       type: 'customer.subscription.created',
       data: { object: subscriptionObject('active') },
     }
@@ -193,6 +204,15 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockApplyPlanLimits).toHaveBeenCalledWith('user_1', 'BUILDER', expect.anything())
     expect(mockUserUpdate).toHaveBeenCalled()
     expect(mockCreateProcessed).toHaveBeenCalled()
+    expect(mockCreateLifecycle).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        stripeEventId: 'evt_sub',
+        type: 'SUBSCRIPTION_CREATED',
+        previousPlan: 'FREE',
+        plan: 'BUILDER',
+        status: 'ACTIVE',
+      }),
+    })
   })
 
   it('payment_failed syncs subscription and notifies admin', async () => {
@@ -200,6 +220,7 @@ describe('POST /api/webhooks/stripe', () => {
     mockSubscriptionsRetrieve.mockResolvedValue(pastDueSub)
     const event = {
       id: 'evt_fail',
+      created: Math.floor(Date.now() / 1000),
       type: 'invoice.payment_failed',
       data: { object: { subscription: 'sub_1' } },
     }

@@ -2,9 +2,9 @@ import { tryAcquireLock } from './lock'
 import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
 import { processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
-import { runIssueRollup } from '@/scripts/growth/issue-frequencies'
-import { runGscPull } from '@/scripts/growth/pull-gsc'
-import { runGaPull } from '@/scripts/growth/pull-ga'
+import { runIssueRollup } from '@/lib/growth/issue-rollup'
+import { runGscPull } from '@/lib/growth/gsc-pull'
+import { runGaPull } from '@/lib/growth/ga-pull'
 import { logger } from '@/lib/logger'
 
 const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
