@@ -11,6 +11,7 @@ import {
 } from '../../audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
 import { buildUnifiedFinishPlan } from '../../audit/load-finish-plan-flags'
+import { loadCompletedTaskOutcome } from '../../audit/task-contracts'
 
 export function registerFlagTools(server: McpServer, user: User) {
   server.tool(

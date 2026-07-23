@@ -144,6 +144,7 @@ function FlagDetailPane({
   onSelectFlag,
   compact = false,
   demonstratedFlagId,
+  variant = 'live',
 }: {
   model: ReportExplorerModel
   flag: ReportExplorerModel['flags'][number]
@@ -157,10 +158,12 @@ function FlagDetailPane({
   onSelectFlag: (flagId: string) => void
   compact?: boolean
   demonstratedFlagId?: string
+  variant?: 'hero' | 'live'
 }) {
   const showDesktop = flag.evidenceDevices.includes('desktop')
   const showMobile = flag.evidenceDevices.includes('mobile')
   const shareableFlag = isShareableCheck(flag.checkId)
+  const isHero = variant === 'hero'
 
   return (
     <div className="min-w-0">
@@ -180,13 +183,8 @@ function FlagDetailPane({
         </div>
       </header>
 
-      <div
-        className={cn(
-          compact && !shareableFlag &&
-            'lg:grid lg:grid-cols-[minmax(11rem,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-5'
-        )}
-      >
-        {!shareableFlag && (
+      <div className={cn(isHero && 'space-y-6')}>
+        {!shareableFlag && !isHero && (
           <ScreenshotWithHighlights
             host={model.displayHost}
             desktopScreenshot={model.desktopScreenshot}
@@ -199,15 +197,29 @@ function FlagDetailPane({
             className={cn('mb-5', compact && 'lg:mb-0')}
           />
         )}
+        {isHero && !shareableFlag && (
+          <ScreenshotWithHighlights
+            host={model.displayHost}
+            desktopScreenshot={model.desktopScreenshot}
+            mobileScreenshot={model.mobileScreenshot}
+            highlights={model.allHighlights}
+            selectedFlagId={flag.id}
+            onPinSelect={onSelectFlag}
+            showDesktop={showDesktop}
+            showMobile={showMobile}
+          />
+        )}
 
-        <FlagDetailPanel
-          flag={flag}
-          showFeedback={showFeedback}
-          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
-          aiEnhancementPending={aiEnhancementPending}
-          signUpHref={signUpHref}
-          previewMeta={model.previewMeta}
-        />
+        <div className={cn(isHero && 'pt-2')}>
+          <FlagDetailPanel
+            flag={flag}
+            showFeedback={showFeedback}
+            aiLocked={aiLocked && flag.id !== demonstratedFlagId}
+            aiEnhancementPending={aiEnhancementPending}
+            signUpHref={signUpHref}
+            previewMeta={model.previewMeta}
+          />
+        </div>
       </div>
     </div>
   )

@@ -5,7 +5,7 @@ import { User } from '@prisma/client'
 import { RUBRIC_ORDER } from '../../audit/constants'
 import { computeRubricsFromRows } from '../../audit/rubric'
 import { canAccessCompare } from '../../auth/entitlements'
-import { assertAuditAccess } from '@/lib/mcp/access'
+import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
 import { buildAiFlagMatchKey } from '../../audit/validate-judge-output'
 import { classifyArbitraryReportFlagDiff } from '../../audit/diff-flags'
 
