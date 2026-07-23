@@ -224,6 +224,8 @@ describe('persistTriageResults', () => {
           impactTag: 'CONVERSION' as const,
           severity: 'IMPORTANT' as const,
           problem: 'AI discovered issue',
+          evidence: 'Hero CTA is below the fold on mobile.',
+          whyItMatters: 'Mobile visitors may never start signup.',
           confidence: 0.7,
           pageUrl: null,
         },
@@ -276,9 +278,9 @@ describe('persistTriageResults', () => {
     }
     const triageOutput = makeTriageOutput({
       newFlags: [
-        { rubric: 'MESSAGE' as const, impactTag: 'CONVERSION' as const, severity: 'IMPORTANT' as const, problem: 'AI flag A', confidence: 0.7, pageUrl: null },
-        { rubric: 'EXPERIENCE' as const, impactTag: 'FRICTION' as const, severity: 'POLISH' as const, problem: 'AI flag B', confidence: 0.6, pageUrl: null },
-        { rubric: 'REACH' as const, impactTag: 'SEO' as const, severity: 'IMPORTANT' as const, problem: 'AI flag C', confidence: 0.8, pageUrl: null },
+        { rubric: 'MESSAGE' as const, impactTag: 'CONVERSION' as const, severity: 'IMPORTANT' as const, problem: 'AI flag A', evidence: 'Evidence A', whyItMatters: 'Impact A', confidence: 0.7, pageUrl: null },
+        { rubric: 'EXPERIENCE' as const, impactTag: 'FRICTION' as const, severity: 'POLISH' as const, problem: 'AI flag B', evidence: 'Evidence B', whyItMatters: 'Impact B', confidence: 0.6, pageUrl: null },
+        { rubric: 'REACH' as const, impactTag: 'SEO' as const, severity: 'IMPORTANT' as const, problem: 'AI flag C', evidence: 'Evidence C', whyItMatters: 'Impact C', confidence: 0.8, pageUrl: null },
       ],
     })
 

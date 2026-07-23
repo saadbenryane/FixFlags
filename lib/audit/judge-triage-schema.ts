@@ -8,14 +8,10 @@ import {
 } from './zod-json-schema'
 
 /**
- * Phase-1 "triage" schema. Deliberately small: it produces the teaser a cold
- * visitor sees on their OWN site - a real score, verdict, rubric grades, and
- * flag *titles* - but NONE of the expensive, extractable payload (fix prompts,
- * evidence, whyItMatters, per-tool prompts, enrichments). That payload is
- * generated only after signup by the phase-2 "prescription" pass.
- *
- * Keeping the tool schema this small is what keeps the triage call cheap: the
- * model has far fewer fields to fill, so output tokens stay low.
+ * Phase-1 "triage" schema. Produces the teaser a cold visitor sees: score,
+ * verdict, rubric grades, flag titles, plus short evidence and whyItMatters.
+ * Fix prompts and per-tool editor prompts stay for the phase-2 prescription
+ * pass after signup/claim. Keep the schema small so triage stays cheap.
  */
 
 const impactTagSchema = z.enum([
@@ -109,6 +105,18 @@ export const triageOutputSchema = z
               .string()
               .min(1)
               .describe('The flag title - one concise line naming the issue'),
+            evidence: z
+              .string()
+              .min(1)
+              .describe(
+                '1-2 sentences of concrete page evidence (quote copy, layout, or behavior). No fix instructions.'
+              ),
+            whyItMatters: z
+              .string()
+              .min(1)
+              .describe(
+                '1-2 sentences on user or business impact. No fix steps and no editor prompts.'
+              ),
             confidence: z.number().min(0).max(1),
             // Nullable+required (not optional) so this schema can be generated in
             // OpenAI strict-mode form, which requires every property in `required`.
@@ -121,7 +129,7 @@ export const triageOutputSchema = z
           .strict()
       )
       .describe(
-        '2-5 net-new flag TITLES only, for UX-expert issues deterministic rules cannot catch. Do not restate a deterministic flag. Do NOT write fixes or prompts - titles only.'
+        '2-5 net-new flags for UX-expert issues deterministic rules cannot catch. Include problem, evidence, and whyItMatters. Do not restate a deterministic flag. Do NOT write fixes or editor prompts.'
       ),
   })
   .strict()

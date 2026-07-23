@@ -30,6 +30,9 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - `ReportExplorer` is the only detailed flag browser. Rubric summaries link into it; they do not duplicate it.
 - Evidence remains device-specific. Never show a healthy twin viewport as filler.
 - Sample evidence must identify itself as a curated fixture and keep URL, brand, screenshots, copy, and metadata consistent.
+- Live anonymous: show real evidence; lock prompts except the one demonstrated fix. Never toast “Copied!” for a signup placeholder.
+- Rubric score and Pass / Needs Attention / Blocked must not contradict; fix scoring or presentation at the shared model, not with per-page copy.
+- Customer-facing Flow/Timeline never shows `chrome-error://` or other browser-internal URLs.
 
 ## Workflow
 
@@ -38,6 +41,13 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 3. Check 375, 768, and 1280px with no horizontal overflow, clipped actions, hydration failures, or console errors.
 4. Verify keyboard order, focus visibility, semantic names, heading order, 44px targets, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.
 5. Run `npm run ui:drift-guard`, focused component tests, and `npm run agent -- eval ui`. Inspect browser artifacts when failures occur.
+
+## Brand assets
+
+- Logo and marketing visuals live under `/brand/**` and `/marketing/**`.
+- Keep those paths in `next.config.ts` `images.localPatterns` whenever that allowlist exists.
+- Pre-compressed brand/marketing assets use `unoptimized` so an allowlist regression cannot blank the live logo (see learning `next-image-local-patterns-blank-assets.md`).
+- `npm run image:local-patterns-guard` must stay green.
 
 ## Avoid
 

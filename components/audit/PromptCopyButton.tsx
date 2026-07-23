@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isUsableFixPrompt } from '@/lib/audit/priority-flags'
 import {
   trackEvent,
   type ReportAccessState,
@@ -41,9 +42,14 @@ export function PromptCopyButton({
   nextStep,
 }: Props) {
   const [copied, setCopied] = useState(false)
+  const safePrompt = isUsableFixPrompt(prompt) ? prompt.trim() : null
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(prompt)
+    if (!safePrompt) {
+      toast.error('Create a free account to copy this fix prompt')
+      return
+    }
+    await navigator.clipboard.writeText(safePrompt)
     trackEvent('fix_prompt_copied', {
       kind,
       audit_id: auditId,
@@ -55,6 +61,10 @@ export function PromptCopyButton({
     setCopied(true)
     toast.success('Prompt copied', nextStep ? { description: nextStep } : undefined)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (!safePrompt) {
+    return null
   }
 
   if (iconOnly) {

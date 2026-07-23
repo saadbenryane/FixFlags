@@ -12,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| customer-journey-completion | cloud-agent | Phases 1–3 anon evidence/honest Copy/score/nav; merged to main | 2026-07-23 |
 | strategic-sprint | cloud-agent | Preview scan access, Railway deploy gate, Lovable/Bolt partners, unified Finish Plan, MCP quality gate | 2026-07-23 |
 | fix-live-images | cloud-agent | Restore live logo/marketing images; unoptimized public assets + localPatterns guard; merged to main | 2026-07-23 |
 | launch-quality-accuracy | cloud-agent | Scan accuracy baseline, accuracy-eval CI gate, HTML parser FP fixes, builder fixtures, corpus refactor, completion plan, skills | 2026-07-23 |

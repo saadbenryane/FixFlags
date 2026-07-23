@@ -8,7 +8,7 @@ describe('marketing nav labels', () => {
       MARKETING_LINKS.map((link) => [link.label, link.href]),
       [
         ['How it works', '/how-it-works'],
-        ['Sample report', '/#sample-review'],
+        ['Sample report', '/samples'],
         ['Pricing', '/pricing'],
       ]
     )
@@ -20,10 +20,10 @@ describe('marketing nav labels', () => {
     assert.equal(changelog.href, '/changelog')
   })
 
-  it('keeps Sample report nav pointed at the inline homepage explorer', () => {
+  it('keeps Sample report nav pointed at the canonical samples Finish Plan', () => {
     const sample = MARKETING_LINKS.find((link) => link.label === 'Sample report')
     assert.ok(sample)
-    assert.equal(sample.href, '/#sample-review')
+    assert.equal(sample.href, '/samples')
   })
 })
 

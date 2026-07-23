@@ -87,6 +87,8 @@ describe('triageOutputSchema', () => {
           impactTag: 'CLARITY',
           severity: 'IMPORTANT',
           problem: 'Hero copy does not make the primary user outcome concrete',
+          evidence: 'Hero subhead restates the category instead of a buyer outcome.',
+          whyItMatters: 'Visitors leave before they understand what to do next.',
           confidence: 0.82,
           pageUrl: null,
         },
@@ -94,6 +96,7 @@ describe('triageOutputSchema', () => {
     })
 
     assert.equal(parsed.newFlags[0].pageUrl, null)
+    assert.match(parsed.newFlags[0].evidence, /Hero subhead/)
   })
 
   it('keeps Anthropic schema on OpenAPI nullable while OpenAI schema uses strict JSON Schema', () => {
@@ -145,6 +148,8 @@ describe('triageOutputSchema', () => {
             impactTag: 'CLARITY',
             severity: 'IMPORTANT',
             problem: 'The page gives visitors no next step',
+            evidence: 'No primary CTA appears in the first viewport.',
+            whyItMatters: 'Visitors who land cold have no clear action.',
             confidence: 0.9,
             pageUrl: null,
           },

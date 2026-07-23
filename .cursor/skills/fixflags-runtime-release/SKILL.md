@@ -35,8 +35,9 @@ Generate the current input list from `scripts/validate.mjs`. At minimum, contain
 - Clean dependency install, schema validation, migrations, drift check, typecheck, lint, unit and browser suites.
 - Built image starts web and dedicated worker, exposes correct health failures, finds Chromium, and forwards shutdown signals.
 - Queue recovery, retry exhaustion, duplicate-job idempotency, and scheduler locks are exercised against disposable PostgreSQL and Redis.
-- Deployed smoke validates health, browser/storage, AI configuration, and generated route authorization boundaries.
+- Deployed smoke validates health, browser/storage, AI configuration, generated route authorization boundaries, and optimized brand/marketing `_next/image` URLs (200, not `"url" parameter is not allowed`).
 - No required check is skipped and no shipped-readiness claim is updated before the credentialed journey matrix passes.
+- After every production deploy, confirm `/api/health` commit matches the intended `main` tip before claiming UI fixes are live.
 
 ## Release credential checklist
 
