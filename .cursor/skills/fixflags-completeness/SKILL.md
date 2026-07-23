@@ -46,4 +46,4 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 - Do not weaken quality evaluations to make a suite green. Find state pollution or adjudicate source evidence.
 - Do not report Product Watch, protected sharing, CLI, or MCP contracts as shipped until their acceptance paths pass.
 - Never retain plaintext compatibility, URL-prefix Product identity, silent catches, or half-functional startup behavior.
-- Do not mark Touch or launch complete while production brand assets 400, anon evidence is locked placeholders, or Copy prompt lies.
+- Do not mark Touch or launch complete while anon evidence is locked placeholders or Copy prompt lies.
