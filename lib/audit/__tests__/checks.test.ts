@@ -1027,6 +1027,29 @@ describe('computeRubricScores', () => {
     assert.equal(scores.REACH, 75)
   })
 
+  it('caps a rubric with any CRITICAL flag below the Pass threshold', () => {
+    const scores = computeRubricScores(
+      [
+        {
+          checkId: 'msg-critical-one',
+          rubric: 'MESSAGE',
+          severity: 'CRITICAL',
+          problem: '',
+          evidence: '',
+          fix: '',
+          confidence: 1,
+          source: 'DETERMINISTIC',
+        },
+      ],
+      null,
+      null,
+      { pageSpeedAvailable: { desktop: false, mobile: false } }
+    )
+    // Without the blocked ceiling, one CRITICAL only drops ~7 points (~93).
+    assert.ok((scores.MESSAGE ?? 100) <= 74)
+    assert.equal(scores.MESSAGE, 74)
+  })
+
   it('drives MESSAGE toward floor when all flags are CRITICAL', () => {
     const criticalFlags = Array.from({ length: 8 }, (_, i) => ({
       checkId: `msg-critical-${i}`,

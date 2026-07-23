@@ -40,9 +40,18 @@ Do not mix both readers in one hero or block.
 - Visual conversion guidance: `lean-visual.md`
 - Accepted examples: `copy-examples.md`
 
+## First-value conversion
+
+1. Logged-out primary action is the free scan (`Review my site` → `/#audit`), not account creation.
+2. “Create free account” belongs after triage value (locked remaining prompts, save report, quota).
+3. Sample Finish Plan may show unlocked prompts; live anonymous must still match PRODUCT: evidence visible + exactly one real demonstrated prompt.
+4. Never promise “evidence included” in marketing if live anon gates evidence behind signup.
+5. Keep header/footer sample destinations consistent with `/samples` as the canonical sample Finish Plan.
+
 ## Avoid
 
 - Claiming unshipped local runtime, five UI rubrics, white-labeling, enterprise isolation, or fabricated performance.
 - Treating a curated sample as a live FixFlags audit.
 - Storing prices, quotas, feature availability, or volatile counts in this skill.
 - Solving a conversion issue with ornament before message, proof, and path are correct.
+- Competing nav CTAs (“Try free” vs “Review my site”) that skip the proof surface.

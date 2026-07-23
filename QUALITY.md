@@ -46,7 +46,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Focused versus detailed report contract | ⚠️ CRITICAL | Focused route has ≤3 fixes and no deep explorer bundles; details nav matches DOM; anonymous has exactly one complete fix | `finish-plan.test.ts`, product contract guard, browser matrix |
+| Focused versus detailed report contract | ⚠️ CRITICAL | Focused route has ≤3 fixes and no deep explorer bundles; details nav matches DOM; anonymous shows real evidence + exactly one complete (non-placeholder) fix prompt; remaining prompts gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit still manual |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px | No responsive tests |

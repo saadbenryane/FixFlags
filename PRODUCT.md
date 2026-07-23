@@ -50,9 +50,10 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 ## What we ship
 
 ### Anonymous teaser (no account)
-- 1 free teaser scan: scores, rubrics, every prioritized problem/evidence summary, and exactly one complete demonstrated fix
+- 1 free teaser scan: scores, rubrics, every prioritized problem/evidence summary (real page evidence, not signup placeholders), and exactly one complete demonstrated fix prompt
 - Remaining fix prompts, ownership, and re-check require signup + a successful claim
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
+- Access control is read-time; do not persist gate copy into Flag evidence/fix fields
 
 ### Free (forever)
 - 3 new URL checks lifetime (claimed teaser counts as 1; full report with fix prompts)

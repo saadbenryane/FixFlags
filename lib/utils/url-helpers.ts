@@ -53,3 +53,19 @@ export function parsePageLabel(url: string): string {
     return ''
   }
 }
+
+/**
+ * Customer-facing evidence URL. Hides browser-internal error pages while
+ * preserving normal http(s) destinations for Flow/Timeline UI.
+ */
+export function displayEvidenceUrl(
+  url: string | null | undefined,
+  fallback = 'Could not load destination'
+): string | null {
+  if (!url?.trim()) return null
+  const trimmed = url.trim()
+  if (/^chrome-error:/i.test(trimmed) || /^chrome:/i.test(trimmed) || /^about:blank$/i.test(trimmed)) {
+    return fallback
+  }
+  return trimmed
+}

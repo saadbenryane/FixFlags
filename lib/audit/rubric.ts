@@ -8,6 +8,9 @@ export const GRADE_THRESHOLDS = {
   D: 40,
 } as const
 
+/** Max displayed/persisted score when a rubric has CRITICAL flags (status BLOCKED). */
+export const BLOCKED_RUBRIC_SCORE_CEILING = GRADE_THRESHOLDS.B - 1
+
 export const LAUNCH_CHECKLIST_IDS = [
   'https',
   'social-preview',

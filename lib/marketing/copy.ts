@@ -151,7 +151,7 @@ export const SCORE_HELP = {
   short:
     'Score starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
   detail:
-    'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
+    'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. A rubric with any Critical flag is Blocked and its score stays below the Pass threshold. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
   /** Canonical deep link: keep in sync with lib/help scores-and-severity */
   faqHref: '/help/checks-and-reports/scores-and-severity',
 } as const
@@ -206,7 +206,7 @@ export const HERO = {
   subhead:
     'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Review my site',
-  navSignUpCta: 'Try free',
+  navSignUpCta: 'Review my site',
   trySampleCta: 'See a sample review',
   urlPlaceholder: 'your-site.com',
 } as const
@@ -1344,14 +1344,12 @@ export const ANON_VALUE_STRIP = {
 } as const
 
 export const LOCKED_INSPECTION = {
-  headline: 'Sign in to inspect this issue',
-  body: 'This report includes evidence, screenshots, and fix prompts for every flag.',
+  headline: 'Sign in for the fix prompt',
+  body: 'Evidence stays visible. Create a free account to unlock editor-ready fix prompts and re-check.',
   features: [
-    'Screenshot evidence with interactive pins',
-    'Detailed explanation of the issue',
-    'Why this matters for your users',
-    'How to verify the fix',
     'Fix prompt for your editor',
+    'Copy the remaining Finish Plan prompts',
+    'Unlimited re-check on this report after claim',
   ],
   primaryCta: 'Sign in',
   secondaryCta: 'Create free account',

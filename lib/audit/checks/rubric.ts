@@ -1,5 +1,6 @@
 import type { DeterministicFlag } from './index'
 import type { PageSpeedResult } from '../pagespeed'
+import { BLOCKED_RUBRIC_SCORE_CEILING } from '@/lib/audit/rubric'
 
 export const SCAN_STEP_FAILURE_PENALTY = 25
 
@@ -151,5 +152,10 @@ function scoreFromFindings(findings: DeterministicFlag[]): number {
   score -= counts.CRITICAL * Math.log(1 + counts.CRITICAL) * 10
   score -= counts.IMPORTANT * Math.log(1 + counts.IMPORTANT) * 6
   score -= counts.POLISH * Math.log(1 + counts.POLISH) * 2
-  return clampRubricScore(Math.round(score))
+  const clamped = clampRubricScore(Math.round(score))
+  // Status is BLOCKED when any CRITICAL flag exists; keep the number below Pass.
+  if (counts.CRITICAL > 0) {
+    return Math.min(clamped, BLOCKED_RUBRIC_SCORE_CEILING)
+  }
+  return clamped
 }

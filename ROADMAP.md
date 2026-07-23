@@ -13,11 +13,14 @@
 
 ## Now
 
-- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`.
-  *Signal:* anonymous URL → progressive complete Fix list → one demonstrated prompt → successful claim → copy → free re-check → diff; Agency password share → canonical report → revoke.
+- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
+  *Signal:* anonymous URL → progressive complete Fix list with real evidence → one demonstrated prompt (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → canonical report → revoke.
 
 - **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.
+
+- **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
+  *Signal:* Phases 1–3 of customer-journey-completion-plan.md accepted on production dogfood.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
@@ -40,7 +43,7 @@ Single honest baseline across [QUALITY.md](./QUALITY.md) and [test-strategy.md](
 |------|-----------|----------|
 | Truth | ~95% | Screenshot/flow/PageSpeed fixtures still not frozen into regression suite |
 | Strength | ~85% | Remaining non-critical API routes; queue unit depth |
-| Touch | ~35% | Progressive/failure/empty covered; full density matrix still expanding |
+| Touch | ~35% | First-value dogfood gaps open (see customer-journey-completion-plan); density matrix still expanding |
 
 Monetization blockers (regression fixtures, judge contract, persist layer, pipeline state machine, billing gating) are closed.
 

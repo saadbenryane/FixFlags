@@ -124,7 +124,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
+        text: 'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. A rubric with any Critical flag is Blocked and its score stays below the Pass threshold. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
       },
       {
         type: 'h2',

@@ -7,6 +7,7 @@ import {
   isPublicMarketingSample,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromFlags,
+  findHighestSeverityFlagWithFix,
 } from '@/lib/audit/report-access'
 
 const aiReviewAt = new Date('2026-01-01')
@@ -154,5 +155,23 @@ describe('report-access', () => {
     assert.equal(stripped[0]?.evidence, 'e')
     assert.equal(stripped[1]?.agentPrompt, null)
     assert.equal(stripped[1]?.whyItMatters, 'w')
+  })
+
+  it('ignores legacy signup-gate fix strings when picking a demonstrated prompt', () => {
+    const picked = findHighestSeverityFlagWithFix([
+      {
+        source: 'AI',
+        severity: 'CRITICAL',
+        problem: 'AI flag',
+        fix: 'Sign up to get the fix prompt.',
+      },
+      {
+        source: 'DETERMINISTIC',
+        severity: 'IMPORTANT',
+        problem: 'Det flag',
+        fix: 'Raise the primary CTA into the first mobile viewport.',
+      },
+    ])
+    assert.equal(picked?.problem, 'Det flag')
   })
 })

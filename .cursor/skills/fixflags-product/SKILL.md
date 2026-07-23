@@ -31,7 +31,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 - The user loop is Flag → Fix → Re-check; re-checks are fresh, full, free, and diff against their parent.
 - Public rubrics are exactly Message, Experience, and Reach.
-- Anonymous users receive one teaser scan; evidence stays visible and fix prompts stay gated until claim.
+- Anonymous users receive one teaser scan: real evidence on all Finish Plan items, exactly one complete demonstrated fix prompt, remaining prompts gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as flag evidence/fix.
 - Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
 - HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.
 - Public boundaries remain `/api/checks` and `/api/reports/[id]/*`; do not add legacy audit routes.
@@ -47,8 +47,16 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 5. Run `npm run agent -- verify --dry-run`, the focused evaluation, and `npm run agent -- verify`.
 6. Update canonical Markdown only after behavior passes.
 
+## Anonymous wedge checklist
+
+1. Trace `getGatedAuditForRequest` → `promptAccess` → Finish Plan → Copy UI → `/details` explorer.
+2. Assert live anon evidence is real page evidence, not `Create a free account to see evidence…`.
+3. Assert Copy prompt is absent or copies a real editor prompt; never toast success on a gate placeholder.
+4. Keep marketing sample unlock on the sample path only (`isPublicMarketingSample` / `variant="sample"`).
+
 ## Do not ship
 
 - Roadmap “Next” or “Later” work disguised as completion.
 - Silent production degradation, hardcoded provider answers, fake proof, duplicated canonical facts, or compatibility fallbacks.
 - A UI-only gate without matching server access control, or a route-only implementation unavailable to other transports.
+- Production dogfood gaps filed as “Touch later” when they break first-value trust (see `.agents/sessions/customer-journey-completion-plan.md`).
