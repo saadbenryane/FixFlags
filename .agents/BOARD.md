@@ -5,7 +5,6 @@
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
-| launch-readiness-docs | in_progress | cloud-agent | cursor/launch-quality-accuracy-bff3 | Accuracy corpus refactor, completion plan, skills/docs reconciliation | lib/audit/accuracy-corpus.ts, skills, QUALITY.md, sessions | Merge PR #4 after verify | 2026-07-23 |
 
 ---
 
@@ -13,7 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
-| launch-quality-accuracy | cloud-agent | Scan accuracy baseline, accuracy-eval CI gate, HTML parser FP fixes, 3 builder fixtures | 2026-07-23 |
+| launch-quality-accuracy | cloud-agent | Scan accuracy baseline, accuracy-eval CI gate, HTML parser FP fixes, builder fixtures, corpus refactor, completion plan, skills | 2026-07-23 |
 | axi-project-agent-pilot | codex | Independent AXI-style project context, affected verification, real evals, bounded output, and harness measurement | 2026-07-22 |
 | agent-native-cli | codex | Task-shaped check → Finish Plan and re-check → verification diff CLI workflows | 2026-07-22 |
 | launch-check-completeness | auto | PI/Finish Plan/Remember, dogfood, Agency share, Project watch, skills/docs | 2026-07-22 |
