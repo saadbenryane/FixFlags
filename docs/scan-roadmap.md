@@ -84,11 +84,12 @@ flowchart TD
 |-------------|-------|
 | ~~Repo-connected codebase scanning~~ | **Shipped.** GitHub OAuth, repo allow-listing, on-demand scan, `/report/repo/[id]` on Agency. |
 | ~~Draft Fix PRs~~ | **Shipped.** Draft PR with fix prompt; mechanical auto-patch only for exposed secrets in `.env*` files. |
-| CI deploy gate | GitHub Action / Railway webhook; fail on launch gate regression — **trigger:** 10+ Agency subscribers |
+| CI deploy gate | **Partially shipped.** Railway deployment webhook enqueues Launch Checks (`docs/railway-deploy-check.md`). Fail-on-regression gate — **trigger:** 10+ Agency subscribers |
+| Preview / password URLs | **Partially shipped.** Agency project scan access (HTTP basic auth, cookies, headers) for public preview URLs. Localhost/private networks still unsupported. |
 | Weekly pulse | Scheduled re-check digest email on REGRESSED flags — **trigger:** habit retention data (not a paid re-check substitute) |
 | Auto-fix PRs on repo scans | Open a PR with fixes applied, not just findings — natural next step once repo scanning has usage data |
 | Consent-blocking measurement | `measurement-consent-scan` capability — **trigger:** after measurement false-positive review |
-| Staging / password URLs | **trigger:** feature-request volume |
+| Staging / password URLs | Absorbed into preview scan access (Agency); localhost/private networks remain unsupported |
 | Vision fallback for journeys | Canvas / no-ARIA pages — **trigger:** journey accuracy plateau |
 | Graph `/issues/[checkId]` | **trigger:** `MIN_SAMPLE_SIZE` (20) met in production |
 

@@ -6,8 +6,9 @@ Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, 
 ## Entry Points
 | File | Purpose |
 |------|---------|
-| `deterministic-audit.ts` | Main audit runner (orchestrates capture → checks → scoring → persist) |
-| `runner.ts` | Check module runner (iterates checkers, collects flags) |
+| `runner.ts` | Main audit orchestrator (capture → checks → journey → finalize) |
+| `pipeline/run-page.ts` | Per-page capture, slow replay, checks, triage |
+| `deterministic-audit.ts` | Offline/demo probe runner (not production) |
 | `checks/index.ts` | Barrel for 22 check modules (`checkers[]` array) |
 | `persist.ts` | Saves audit results to DB (flags, scores, metadata) |
 | `finalize.ts` | Post-check finalization (diff against parent, journey flags, visual evidence) |

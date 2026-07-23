@@ -16,6 +16,7 @@ import { compareDemoFixtures } from '@/lib/demo/audit-demo-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
 function countImportantFalseBlockers(flags: RankableFlag[], tier: AccuracyFixtureTier): number {
@@ -90,6 +91,11 @@ function evaluateNonHtmlFixture() {
     networkFailures: Parameters<typeof runNetworkEngagementChecks>[0]
     overlay: Parameters<typeof runOverlayBlockerChecks>[1]
     expectedCheckIds: string[]
+    slowReplay?: {
+      timeToFirstTextMs: number
+      timeToCtaMs: number
+      screenshotUrls: string[]
+    }
   }
 
   const checkIds = [
@@ -99,8 +105,11 @@ function evaluateNonHtmlFixture() {
   ].map((flag) => flag.checkId)
   const flowCheckId = flowCheckIdForStatus('dead_end')
   if (flowCheckId) checkIds.push(flowCheckId)
+  if (fixture.slowReplay) {
+    checkIds.push(...runSlowReplayChecks(fixture.slowReplay).map((flag) => flag.checkId))
+  }
 
-  const actual = checkIds.sort()
+  const actual = [...new Set(checkIds)].sort()
   const expected = [...fixture.expectedCheckIds].sort()
   if (actual.join(',') !== expected.join(',')) {
     failures.push(`non-html regression mismatch: expected ${expected.join(', ')}, got ${actual.join(', ')}`)

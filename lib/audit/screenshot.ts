@@ -22,6 +22,7 @@ import {
 } from './browser/page-capture'
 import { BrowserLaunchError, isInfrastructureAuditError } from './pipeline-errors'
 import type { NetworkFailureRecord } from './browser/network-monitor'
+import type { FormProbeResult } from './browser/journey-safety'
 import { createActionTimeline, type ActionTimelineEvent } from './action-timeline'
 
 let browser: Browser | null = null
@@ -124,6 +125,7 @@ export interface ScreenshotResult {
   responseHeaders?: Record<string, string> | null
   networkFailures?: NetworkFailureRecord[]
   actionTimeline?: ActionTimelineEvent[]
+  formProbe?: FormProbeResult | null
 }
 
 interface ViewportCapture {
@@ -310,12 +312,14 @@ async function captureDesktopWithFlow(
   ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline: ActionTimelineEvent[]
+    formProbe: FormProbeResult | null
   }
 > {
   const timeline = createActionTimeline()
   const result: ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline: ActionTimelineEvent[]
+    formProbe: FormProbeResult | null
   } = {
     base64: null,
     url: null,
@@ -323,6 +327,7 @@ async function captureDesktopWithFlow(
     html: null,
     flowResult: null,
     actionTimeline: [],
+    formProbe: null,
   }
 
   let page: Page | null = null
@@ -335,11 +340,13 @@ async function captureDesktopWithFlow(
       consoleErrors,
       settle: false,
       scanAccess,
+      journeySafe: runFlow,
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
     result.networkFailures = [...session.networkFailures]
+    result.formProbe = session.formProbe
     timeline.push('capture', 'Page loaded', { url: page.url() })
 
     const initial = await readLoadSnapshot(page)
@@ -378,6 +385,7 @@ async function captureDesktopWithFlow(
           fetchHeaders: scanAccessToFetchHeaders(scanAccess),
         })
         result.networkFailures = [...session.networkFailures]
+        result.formProbe = session.formProbe
         timeline.push('flow', `Flow scan ${result.flowResult.status}`, {
           url: result.flowResult.finalUrl,
           status: result.flowResult.httpStatus,
@@ -404,6 +412,7 @@ async function captureDesktopWithFlow(
     disposeNetwork?.()
     await closeSessionPage(page)
     result.actionTimeline = timeline.snapshot()
+    result.formProbe = result.formProbe ?? null
   }
 
   return result
@@ -431,6 +440,7 @@ async function captureMobileViewport(
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
+    result.networkFailures = [...session.networkFailures]
 
     const initial = await readLoadSnapshot(page)
     const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -484,6 +494,7 @@ export async function captureScreenshots(
   let desktop: ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline?: ActionTimelineEvent[]
+    formProbe?: FormProbeResult | null
   }
   if (desktopSettled.status === 'fulfilled') {
     desktop = desktopSettled.value
@@ -506,6 +517,11 @@ export async function captureScreenshots(
     ? { ...mobile.captureMetrics, loadExperience }
     : null
 
+  const mergedNetworkFailures = [
+    ...(desktop.networkFailures ?? []),
+    ...(mobile.networkFailures ?? []),
+  ]
+
   return {
     desktopUrl: desktop.url,
     mobileUrl: mobile.url,
@@ -523,8 +539,9 @@ export async function captureScreenshots(
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
-    networkFailures: desktop.networkFailures ?? [],
+    networkFailures: mergedNetworkFailures,
     actionTimeline: desktop.actionTimeline ?? [],
+    formProbe: desktop.formProbe ?? null,
   }
 }
 

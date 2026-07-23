@@ -20,7 +20,7 @@
 |-----|-------------------|--------------|
 | stripe.com | 0 | PASS — POLISH only (risk reversal, analytics HTML, skip link) |
 | vercel.com | 0 | PASS — POLISH only |
-| linear.app | 3 IMPORTANT | HTML-only SSR artifact (buttons/links/input labels). Full browser path required for final adjudication. Not counted as launch blocker for soft launch. |
+| linear.app | 3 IMPORTANT (HTML probe) | **Open:** run full Playwright pipeline (`npm run accuracy:probe` insufficient for SSR). Adjudicate FP/FN; freeze rendered fixture if needed. See credentialed-journey-matrix accuracy backlog. |
 | fixflags.com/demo/v1 | 0 live probe | PASS after fetch context |
 
 ## Tier B — AI-builder archetype

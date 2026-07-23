@@ -60,10 +60,10 @@
 | API route contracts | 🔶 IMPORTANT | Critical path covered (checks, status, re-check, api-keys, projects); remaining routes pending |
 | Rate limiting | 🔶 IMPORTANT | Anon 1 teaser + Free 3 lifetime + plan limits. Redis fail-open is intentional. Partial coverage |
 | Auth / session management | 🔶 IMPORTANT | Claim-before-next + entitlements + monitoring tests; full login/logout E2E still open |
-| CI pipeline | ⚠️ CRITICAL | GitHub Actions runs typecheck/lint/guards/test/build. Local `npm run verify` is stricter (includes DB checks). |
-| Database migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Not in CI. A bad migration on deploy corrupts production data. |
-| Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` for detection. Recovery path partially tested. |
-| Queue job processing | 🔶 IMPORTANT | BullMQ jobs submitted, processed, failed, retried. Limited test coverage. |
+| CI pipeline | ✅ DONE | GitHub Actions runs `npm run validate:full` (manifest in `scripts/validate.mjs`). Local `npm run verify` adds DB drift and release probes. |
+| Database migration safety | ✅ DONE (local verify) | `npm run verify` runs `db:check` + `db:drift`. CI uses disposable DB in release gate when credentials provided. |
+| Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` + `recovery-full.mjs` (isolated queue + app audit requeue). Stale CAPTURING mid-run still partial. |
+| Queue job processing | 🔶 IMPORTANT | BullMQ via `runtime-recovery.mjs` + application audit requeue integration test. Full worker crash mid-capture eval partial. |
 
 ### Ready for monetization when:
 

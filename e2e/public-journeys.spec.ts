@@ -26,6 +26,20 @@ for (const width of widths) {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
+  test(`focused sample preview is usable at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.goto('/samples')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
+    expect(errors).toEqual([])
+  })
+
   test(`detailed sample fulfills its report contract at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []

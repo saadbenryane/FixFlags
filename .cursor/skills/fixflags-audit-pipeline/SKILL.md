@@ -67,8 +67,18 @@ npm run smoke:triage:prod      # post-deploy, requires prod keys
 
 **Scan accuracy skill:** `.cursor/skills/fixflags-scan-accuracy/SKILL.md` for corpus architecture and adjudication rules.
 
+**Browser capture skill:** `.cursor/skills/fixflags-browser-capture/SKILL.md` for Playwright capture, flow, slow replay, journey, and network probes. Do not adopt chrome-devtools-mcp or AXI browser CLIs for production scans.
+
+## Browser capture truth
+
+- Production path: `runner.ts` → `pipeline/run-page.ts` → `captureScreenshots` + `runSlowReplay` (budget permitting).
+- Playwright singleton per worker; each operation uses an isolated browser context closed on exit.
+- `deterministic-audit.ts` is offline/demo only.
+- AXI applies to agent-facing CLI/MCP (`fixflags-cli/`, `scripts/project-agent.mjs`), not audit capture.
+
 ## Anti-patterns
 
+- Replacing Playwright capture with chrome-devtools-mcp, chrome-devtools-axi, or conversational browser agents
 - Treating `includeAi: false` as "skip triage" — triage always runs on primary page
 - Marking audit FAILED when triage fails but capture succeeded — use `finalizeTriageDegraded`
 - Editing offering.md "fix prompts on every report" without checking `report-access.ts`

@@ -23,7 +23,7 @@ Async job queue for audit processing. Manages job enqueue, worker processing, he
 
 ## Integration Points
 - **Audit pipeline:** `lib/audit/create-audit.ts` enqueues jobs
-- **Worker:** Processes jobs via `lib/audit/deterministic-audit.ts`
+- **Worker:** Processes jobs via `lib/audit/runner.ts`
 - **Recovery:** `lib/audit/stuck-audit-recovery.ts` detects stalled audits
 - **Redis:** Shared connection for queue + lock + heartbeat
 

@@ -5,6 +5,7 @@ import type { NetworkFailureRecord } from '@/lib/audit/browser/network-monitor'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
 interface Fixture {
@@ -13,6 +14,11 @@ interface Fixture {
   networkFailures: NetworkFailureRecord[]
   overlay: Parameters<typeof runOverlayBlockerChecks>[1]
   expectedCheckIds: string[]
+  slowReplay?: {
+    timeToFirstTextMs: number
+    timeToCtaMs: number
+    screenshotUrls: string[]
+  }
 }
 
 describe('non-HTML regression fixture', () => {
@@ -28,8 +34,11 @@ describe('non-HTML regression fixture', () => {
     ].map((flag) => flag.checkId)
     const flowCheckId = flowCheckIdForStatus('dead_end')
     if (flowCheckId) checkIds.push(flowCheckId)
+    if (fixture.slowReplay) {
+      checkIds.push(...runSlowReplayChecks(fixture.slowReplay).map((flag) => flag.checkId))
+    }
 
-    expect(checkIds.sort()).toEqual(fixture.expectedCheckIds)
+    expect([...new Set(checkIds)].sort()).toEqual([...fixture.expectedCheckIds].sort())
   })
 
   it('freezes mobile-only poor performance thresholds', () => {

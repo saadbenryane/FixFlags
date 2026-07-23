@@ -36,6 +36,6 @@ npm run agent -- verify
 
 ## Follow-ups (not blocking this sprint)
 
-- CLI `scanAccess` flag for protected previews in CI
 - Broader route-contract coverage beyond critical paths
+- Fail-on-regression Railway deploy gate (block deploy when launch gates regress)
 - White-label / team workspaces (roadmap)
