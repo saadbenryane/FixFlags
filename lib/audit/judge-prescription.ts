@@ -11,32 +11,18 @@ import {
   buildPrescriptionUserPrompt,
 } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
-import { getProviderConfig, getConfiguredJudgeProviderChain } from './judge-config'
+import { getProviderConfig } from './judge-config'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
-import { logger } from '@/lib/logger'
 import type { ExistingFlagForPrescription } from './flag-types'
+import {
+  anthropic,
+  openai,
+  runLlmWithRetry,
+  type LlmUsage,
+} from './judge-runner'
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null
-
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 2000
-
-export interface PrescriptionUsage {
-  inputTokens: number
-  outputTokens: number
-  model: string
-  /** Prompt-cache tokens served from cache (Anthropic: cache_read_input_tokens). */
-  cacheReadTokens?: number
-  /** Prompt-cache tokens written to cache this call (Anthropic: cache_creation_input_tokens). */
-  cacheWriteTokens?: number
-}
+export type PrescriptionUsage = LlmUsage
 
 export interface PrescriptionResult {
   output: PrescriptionOutput
@@ -93,7 +79,6 @@ export function validatePrescriptionOutput(
     throw new JudgeContractError('expected exactly 3 rubric prescriptions')
   }
 
-  // Quality gate: validate fix prompt specificity
   for (const rx of output.flagPrescriptions) {
     validateFixQuality(rx)
   }
@@ -111,7 +96,6 @@ function validateFixQuality(rx: {
 }): void {
   const fix = rx.fix.trim()
 
-  // Fix must contain at least 2 lines (numbered steps or bullet points)
   const lines = fix.split('\n').filter((l) => l.trim().length > 0)
   if (lines.length < 2) {
     throw new JudgeContractError(
@@ -119,7 +103,6 @@ function validateFixQuality(rx: {
     )
   }
 
-  // Fix must contain concrete replacements (before/after pattern or specific selectors)
   const hasSpecificity =
     fix.includes('→') ||
     fix.includes('replace') ||
@@ -142,7 +125,6 @@ function validateFixQuality(rx: {
     )
   }
 
-  // Evidence must reference something concrete on the page
   const evidence = rx.evidence.trim()
   if (evidence.length < 20) {
     throw new JudgeContractError(
@@ -150,7 +132,6 @@ function validateFixQuality(rx: {
     )
   }
 
-  // WhyItMatters must explain business impact, not just technical description
   const why = rx.whyItMatters.trim()
   if (why.length < 15) {
     throw new JudgeContractError(
@@ -158,7 +139,6 @@ function validateFixQuality(rx: {
     )
   }
 
-  // Verification rule must be checkable
   const vr = rx.verificationRule.trim()
   if (vr.length < 10) {
     throw new JudgeContractError(
@@ -198,8 +178,6 @@ async function runAnthropicPrescription(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        // Stable instructions live in `system` with a cache breakpoint so the
-        // tools + system prefix is prompt-cached across audits (~0.1x on reads).
         system: [
           {
             type: 'text',
@@ -315,8 +293,6 @@ async function runOpenAIPrescription(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        // System-first ordering makes the stable instruction block the cacheable
-        // prefix for OpenAI's automatic prompt caching (~0.5x on cached input).
         messages: [
           { role: 'system', content: buildPrescriptionSystemPrompt() },
           { role: 'user', content },
@@ -372,10 +348,6 @@ async function runPrescriptionWithProvider(
   }
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function isPrescriptionAttemptRetryable(err: unknown): boolean {
   return (
     isRetryableJudgeError(err) ||
@@ -390,35 +362,11 @@ export async function runPrescriptionWithRetry(
   mobileBase64: string | null,
   maxTimeoutMs?: number
 ): Promise<PrescriptionResult> {
-  const chain = getConfiguredJudgeProviderChain()
-  if (chain.length === 0) {
-    throw new Error('No AI provider keys configured')
-  }
-
-  let lastError: Error | null = null
-
-  for (const provider of chain) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const result = await runPrescriptionWithProvider(
-          provider,
-          context,
-          desktopBase64,
-          mobileBase64,
-          maxTimeoutMs
-        )
-        logger.info('prescription succeeded', { provider, attempt })
-        return result
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err))
-        logger.warn('prescription attempt failed', { provider, attempt, err: lastError.message })
-        if (!isPrescriptionAttemptRetryable(err)) break
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS * attempt)
-        }
-      }
-    }
-  }
-
-  throw lastError ?? new Error('Prescription failed: no providers available')
+  return runLlmWithRetry({
+    label: 'prescription',
+    input: { context, desktopBase64, mobileBase64, maxTimeoutMs },
+    attemptFn: (provider, { context, desktopBase64, mobileBase64, maxTimeoutMs }) =>
+      runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64, maxTimeoutMs),
+    isRetryable: isPrescriptionAttemptRetryable,
+  })
 }

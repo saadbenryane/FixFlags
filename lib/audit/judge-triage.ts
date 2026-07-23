@@ -10,47 +10,28 @@ import { buildTriageSystemPrompt, buildTriageUserPrompt } from '../prompts/syste
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
-import { getTriageProviderConfig, getConfiguredJudgeProviderChain } from './judge-config'
+import { getTriageProviderConfig } from './judge-config'
 import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
-import { logger } from '@/lib/logger'
 import { RUBRIC_ORDER } from './constants'
+import {
+  anthropic,
+  openai,
+  isProviderConfigured,
+  runLlmWithRetry,
+  type LlmUsage,
+} from './judge-runner'
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null
-
-/**
- * Whether at least one LLM provider is configured. When false, triage cannot
- * run and the pipeline should skip straight to a deterministic-only report
- * instead of attempting (and failing) an LLM call on every scan.
- */
-export function isTriageProviderConfigured(): boolean {
-  return Boolean(anthropic || openai)
-}
-
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 2000
-type ScreenshotHint = 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
-
-export interface TriageUsage {
-  inputTokens: number
-  outputTokens: number
-  model: string
-  /** Prompt-cache tokens served from cache (Anthropic: cache_read_input_tokens). */
-  cacheReadTokens?: number
-  /** Prompt-cache tokens written to cache this call (Anthropic: cache_creation_input_tokens). */
-  cacheWriteTokens?: number
-}
+export type TriageUsage = LlmUsage
 
 export interface TriageResult {
   output: TriageOutput
   usage: TriageUsage
+}
+
+export function isTriageProviderConfigured(): boolean {
+  return isProviderConfigured()
 }
 
 function buildTriageContext(
@@ -91,7 +72,7 @@ function buildTriageContext(
   }
 }
 
-function getScreenshotHint(desktopBase64: string | null, mobileBase64: string | null): ScreenshotHint {
+function getScreenshotHint(desktopBase64: string | null, mobileBase64: string | null): 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile' {
   if (desktopBase64 && mobileBase64) return 'desktop-and-mobile'
   if (desktopBase64) return 'desktop-only'
   if (mobileBase64) return 'mobile-only'
@@ -177,8 +158,6 @@ async function runAnthropicTriage(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        // Stable instructions live in `system` with a cache breakpoint so the
-        // tools + system prefix is prompt-cached across audits (~0.1x on reads).
         system: [
           {
             type: 'text',
@@ -272,8 +251,6 @@ async function runOpenAITriage(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
-        // System-first ordering makes the stable instruction block the cacheable
-        // prefix for OpenAI's automatic prompt caching (~0.5x on cached input).
         messages: [
           { role: 'system', content: buildTriageSystemPrompt() },
           { role: 'user', content },
@@ -333,10 +310,6 @@ async function runTriageWithProvider(
   }
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function isTriageAttemptRetryable(err: unknown): boolean {
   return (
     isRetryableJudgeError(err) ||
@@ -356,39 +329,12 @@ export async function runTriageWithRetry(
   maxTimeoutMs?: number
 ): Promise<TriageResult> {
   const context = buildTriageContext(url, metadata, desktop, mobile, flags)
-  const chain = getConfiguredJudgeProviderChain()
-  if (chain.length === 0) {
-    throw new Error('No AI provider keys configured')
-  }
 
-  const attemptErrors: string[] = []
-  let lastError: Error | null = null
-
-  for (const provider of chain) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const result = await runTriageWithProvider(
-          provider,
-          context,
-          flags,
-          desktopBase64,
-          mobileBase64,
-          maxTimeoutMs
-        )
-        logger.info('triage succeeded', { provider, attempt })
-        return result
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err))
-        attemptErrors.push(`${provider}#${attempt}: ${lastError.message}`)
-        logger.warn('triage attempt failed', { provider, attempt, err: lastError.message })
-        if (!isTriageAttemptRetryable(err)) break
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS * attempt)
-        }
-      }
-    }
-  }
-
-  const detail = attemptErrors.length > 0 ? attemptErrors.join('; ') : 'no attempts recorded'
-  throw lastError ?? new Error(`Triage failed: ${detail}`)
+  return runLlmWithRetry({
+    label: 'triage',
+    input: { context, flags, desktopBase64, mobileBase64, maxTimeoutMs },
+    attemptFn: (provider, { context, flags, desktopBase64, mobileBase64, maxTimeoutMs }) =>
+      runTriageWithProvider(provider, context, flags, desktopBase64, mobileBase64, maxTimeoutMs),
+    isRetryable: isTriageAttemptRetryable,
+  })
 }
