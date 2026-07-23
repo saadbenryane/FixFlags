@@ -106,12 +106,19 @@ export function PromptToolSelector({
   )
 }
 
-export function usePreferredTool(): [PromptToolKey, (tool: PromptToolKey) => void] {
-  const [preferred, setPreferred] = useState<PromptToolKey>('universal')
+export function usePreferredTool(
+  defaultTool?: PromptToolKey
+): [PromptToolKey, (tool: PromptToolKey) => void] {
+  const [preferred, setPreferred] = useState<PromptToolKey>(defaultTool ?? 'universal')
 
   useEffect(() => {
-    setPreferred(getStoredPreference())
-  }, [])
+    const stored = getStoredPreference()
+    if (stored !== 'universal' || !defaultTool) {
+      setPreferred(stored)
+      return
+    }
+    setPreferred(defaultTool)
+  }, [defaultTool])
 
   return [preferred, setPreferred]
 }

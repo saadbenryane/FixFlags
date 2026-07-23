@@ -184,7 +184,7 @@ export async function persistJourneyResult(
 export async function runJourneyReviewsForAudit(
   auditId: string,
   startUrl: string,
-  options: { included: boolean; deadline: number }
+  options: { included: boolean; deadline: number; scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null }
 ): Promise<number> {
   if (!options.included) return 0
 
@@ -216,6 +216,7 @@ export async function runJourneyReviewsForAudit(
         startUrl,
         journeyType,
         deadlineMs: Date.now() + Math.min(JOURNEY_BUDGET_MS, remaining()),
+        scanAccess: options.scanAccess,
       })
       const findings = await persistJourneyResult(auditId, result)
       findingCount += findings.length

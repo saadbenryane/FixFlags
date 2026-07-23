@@ -6,6 +6,7 @@ import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { logger } from '@/lib/logger'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
+import type { ScanAccessConfig } from '@/lib/audit/scan-access'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { getVisualDescriptor, type VisualDescriptor } from './visual-types'
 import { captureLoadFrames, captureInteractionFrames, type FrameSet } from './frames'
@@ -45,7 +46,8 @@ export async function captureVisualEvidence(
   auditId: string,
   flags: Array<{ checkId: string; severity: string; rubric: string }>,
   device: 'desktop' | 'mobile' = 'mobile',
-  metrics?: VisualCaptureMetrics
+  metrics?: VisualCaptureMetrics,
+  scanAccess?: ScanAccessConfig | null
 ): Promise<VisualCaptureResult> {
   const result: VisualCaptureResult = { visuals: [], additionalFrames: [] }
 
@@ -163,7 +165,15 @@ export async function captureVisualEvidence(
     const desc = getVisualDescriptor(flag.checkId)
     if (desc.type !== 'side-by-side') continue
     try {
-      const evidence = await captureSideBySide(browser, page, auditId, flag.checkId, desc, device)
+      const evidence = await captureSideBySide(
+        browser,
+        page,
+        auditId,
+        flag.checkId,
+        desc,
+        device,
+        scanAccess
+      )
       if (evidence) result.visuals.push(evidence)
     } catch (err) {
       logger.error(`Failed to capture side-by-side for ${flag.checkId}`, err)
@@ -183,7 +193,8 @@ async function captureSideBySide(
   auditId: string,
   checkId: string,
   desc: VisualDescriptor,
-  device: 'desktop' | 'mobile'
+  device: 'desktop' | 'mobile',
+  scanAccess?: ScanAccessConfig | null
 ): Promise<VisualEvidence | null> {
   const mode = desc.sideBySideMode ?? 'before-after'
   const leftBuf = Buffer.from(await currentPage.screenshot({ type: 'png', fullPage: false }))
@@ -198,6 +209,7 @@ async function captureSideBySide(
     const session = await createAuditPage(browser, currentPage.url(), {
       profile: otherProfile,
       settle: true,
+      scanAccess,
     })
     try {
       rightBuf = Buffer.from(await session.page.screenshot({ type: 'png', fullPage: false }))

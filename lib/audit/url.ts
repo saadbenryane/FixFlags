@@ -118,7 +118,12 @@ export async function assertPublicAuditUrl(raw: string): Promise<URL> {
 
 export async function safeFetchHtml(
   rawUrl: string,
-  options: { timeoutMs?: number; maxBytes?: number; maxRedirects?: number } = {}
+  options: {
+    timeoutMs?: number
+    maxBytes?: number
+    maxRedirects?: number
+    headers?: Record<string, string>
+  } = {}
 ): Promise<{ html: string; finalUrl: string; headers: Record<string, string> }> {
   const timeoutMs = options.timeoutMs ?? 10_000
   const maxBytes = options.maxBytes ?? 5_000_000
@@ -135,6 +140,7 @@ export async function safeFetchHtml(
         headers: {
           'User-Agent': 'FixFlags/1.0 (+https://fixflags.com)',
           Accept: 'text/html,application/xhtml+xml',
+          ...(options.headers ?? {}),
         },
       })
 

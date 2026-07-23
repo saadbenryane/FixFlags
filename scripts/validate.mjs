@@ -37,8 +37,9 @@ const scopes = {
     test: ['npx', ['vitest', 'run', 'lib/marketing/']],
   },
   mcp: {
-    prefixes: ['lib/mcp/'],
+    prefixes: ['lib/mcp/', 'scripts/mcp-quality-gate.mjs'],
     test: ['npx', ['vitest', 'run', 'lib/mcp/']],
+    gate: ['npm', ['run', 'mcp:quality-gate']],
   },
   components: {
     prefixes: ['components/'],
@@ -216,16 +217,19 @@ export function fullCommands() {
     command('lint', 'npm', ['run', 'lint']),
     command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']),
     command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']),
+    command('image:local-patterns-guard', 'npm', ['run', 'image:local-patterns-guard']),
     command('product:contract-guard', 'npm', ['run', 'product:contract-guard']),
     command('routes:contract-guard', 'npm', ['run', 'routes:contract-guard']),
     command('skills:validate', 'npm', ['run', 'skills:validate']),
     command('seo:guard', 'npm', ['run', 'seo:guard']),
     command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
     command('completeness:audit', 'npm', ['run', 'completeness:audit']),
+    command('mcp:quality-gate', 'npm', ['run', 'mcp:quality-gate']),
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
     command('security:audit', 'npm', ['audit', '--audit-level=moderate']),
     command('test:scripts', 'npm', ['run', 'test:scripts']),
     command('test:unit', 'npm', ['run', 'test:unit']),
+    command('accuracy:eval', 'npm', ['run', 'accuracy:eval']),
     command('test:cli', 'npm', ['run', 'test:cli']),
     command('build', 'node', ['scripts/next-build.mjs']),
     command('worker:build', 'npm', ['run', 'worker:build']),
@@ -311,9 +315,11 @@ export function buildPlan(requestedMode, providedFiles) {
       }
     }
     commands.push(...scopeCommands([...testScopes], 'test'))
+    commands.push(...scopeCommands([...testScopes], 'gate'))
 
     commands.push(command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']))
     commands.push(command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']))
+    commands.push(command('image:local-patterns-guard', 'npm', ['run', 'image:local-patterns-guard']))
     commands.push(command('seo:guard', 'npm', ['run', 'seo:guard']))
   }
 

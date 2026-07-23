@@ -7,6 +7,8 @@ import { recordRateLimit } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
+import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
+import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 
 function taskResult(outcome: object, queue: {
   delayMs: number
@@ -45,10 +47,15 @@ export function registerTaskTools(
       url: z.string().url(),
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
       mode: z.enum(['single', 'critical_path']).optional(),
+      scanAccess: scanAccessInputSchema.optional(),
     },
-    async ({ url, waitForCompletion, mode }) => {
+    async ({ url, waitForCompletion, mode, scanAccess }) => {
       const freshUser = await assertMcpAccess(user)
       const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
+      if (scanAccess && !canUseEphemeralScanAccess(freshUser)) {
+        throw new Error('Preview scan access requires the Agency plan')
+      }
+      const resolvedScanAccess = scanAccess ? parseScanAccessInput(scanAccess) : null
       const [userLimit, hostLimit, workerEstimate] = await Promise.all([
         recordRateLimit({
           scope: 'mcp-user', identifier: freshUser.id, limit: 60, windowSeconds: 3600,
@@ -74,6 +81,7 @@ export function registerTaskTools(
         waitForCompletion,
         signal: options?.signal,
         attribution: buildAttribution({ url: normalizedUrl, source: 'MCP' }),
+        scanAccess: resolvedScanAccess,
       })
       return taskResult(outcome, {
         ...queue,

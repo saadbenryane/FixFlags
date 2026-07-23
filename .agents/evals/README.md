@@ -18,6 +18,7 @@ Each eval file should define:
 | Area | Command | Behavior exercised |
 |---|---|---|
 | Functional audit | `npm run agent -- eval audit` | Offline baseline-to-fixed Flag → Fix regression fixture |
+| Scan accuracy | `npm run agent -- eval accuracy` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression |
 | Report contract, responsive, accessibility | `npm run agent -- eval ui` | Detailed sample sections, identity, target size, overflow, and client errors at 375/768/1280 |
 | Runtime recovery | `npm run agent -- eval recovery` | Live PostgreSQL query, Redis processing, retry recovery, and duplicate-job idempotency |
 | CLI packaging | `npm run agent -- eval cli` | CLI tests, build, package contents, and install smoke |

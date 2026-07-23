@@ -174,6 +174,33 @@ program
     console.log(chalk.green('Authenticated with FixFlags.'))
   })
 
+function parseScanAccessFromCli(options: {
+  scanAccessFile?: string
+  basicAuth?: string
+  cookie?: string
+}): Record<string, unknown> | undefined {
+  if (options.scanAccessFile) {
+    const raw = JSON.parse(readFileSync(options.scanAccessFile, 'utf-8')) as unknown
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('Scan access file must contain a JSON object')
+    }
+    return raw as Record<string, unknown>
+  }
+  const config: Record<string, unknown> = {}
+  if (options.basicAuth) {
+    const separator = options.basicAuth.indexOf(':')
+    if (separator <= 0) throw new Error('Basic auth must be user:password')
+    config.httpBasic = {
+      username: options.basicAuth.slice(0, separator),
+      password: options.basicAuth.slice(separator + 1),
+    }
+  }
+  if (options.cookie) {
+    config.cookies = [{ name: 'session', value: options.cookie }]
+  }
+  return Object.keys(config).length > 0 ? config : undefined
+}
+
 program
   .command('check <url>')
   .description('Check a URL and return every ranked fix')
@@ -183,6 +210,9 @@ program
   .option('--single', 'Check only the given URL')
   .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')
+  .option('--scan-access-file <path>', 'JSON file with httpBasic, cookies, or headers (Agency)')
+  .option('--basic-auth <credentials>', 'HTTP basic auth as user:password (Agency)')
+  .option('--cookie <value>', 'Session cookie value for protected previews (Agency)')
   .option('--json', 'Print structured JSON')
   .action(
     async (
@@ -193,6 +223,9 @@ program
         single?: boolean
         limit?: string
         full?: boolean
+        scanAccessFile?: string
+        basicAuth?: string
+        cookie?: string
         json?: boolean
       }
     ) => {
@@ -200,10 +233,12 @@ program
       const spinner = ora({ text: 'Checking product...', isEnabled: !json }).start()
       try {
         const call = createMcpCaller(requireApiKey())
+        const scanAccess = parseScanAccessFromCli(options)
         const result = await checkAndPlan(call, url, {
           wait: options.wait,
           single: Boolean(options.single),
           apiBase: API_BASE,
+          scanAccess,
         })
 
         spinner.stop()

@@ -204,7 +204,7 @@ export const HERO = {
   headlineAccent: 'Finish',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your URL. Find what AI missed before your users do, then copy fixes back into your editor.',
+    'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
@@ -501,7 +501,7 @@ export const LANDING_PAGE = {
   logoCloud: {
     label: 'Paste fixes into the tools you already use',
     disclaimer: '',
-    logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
+    logos: ['Cursor', 'Lovable', 'Bolt', 'Replit', 'Claude Code', 'Codex', 'Windsurf'] as const,
   },
   checkDimensions: {
     label: '',
@@ -647,8 +647,8 @@ export const LANDING_PAGE = {
     ] as const,
   },
   editorIntegrations: {
-    headline: 'Cursor, Claude, Lovable, Bolt, and more.',
-    body: 'Each Flag includes a prompt shaped for the editor you already use.',
+    headline: 'Cursor, Lovable, Bolt, Replit, and more.',
+    body: 'Each Flag includes a prompt shaped for the editor you already use. Copy it, paste it, fix the issue, then re-check.',
   },
   productEvidence: {
     headline: 'What a review actually catches',
@@ -820,7 +820,7 @@ export const FAQ = [
   {
     question: 'Does it work on staging/password-protected sites?',
     answer:
-      'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
+      'Yes for preview URLs you can reach over HTTPS (ngrok, Vercel preview, Cloudflare tunnel). On Agency projects, save HTTP basic auth or a session cookie under Projects → Preview access. Localhost and private networks are still not supported.',
   },
   {
     question: 'We already have a live site. Is this only for pre-launch?',
@@ -908,6 +908,11 @@ export const PRICING = {
 export const PLANS = getMarketingPlans()
 
 export const REPORT_COPY = {
+  lovableBolt: {
+    heroTitle: 'Paste this into Lovable or Bolt',
+    heroBody: 'One click copies a fix prompt tuned for your builder. Ship the change, then re-check here.',
+    defaultToolHint: 'Choose your builder, copy the fix, paste it into your AI editor.',
+  },
   sampleFocused: {
     eyebrow: 'Sample fix list',
     title: 'See every fix FixFlags found',
@@ -1569,5 +1574,10 @@ export const SEO = {
   issues: {
     title: 'Issue Library',
     description: 'Real issues found across audited sites. Frequency, affected frameworks, examples, and fixes.',
+  },
+  partners: {
+    title: 'Expert program',
+    description:
+      'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch issues before client handoff.',
   },
 } as const

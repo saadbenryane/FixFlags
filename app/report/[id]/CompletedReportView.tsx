@@ -10,7 +10,7 @@ import {
   type AuditScreenshot,
   type ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import type { loadReportRouteState } from './page'
+import type { loadReportRouteState } from './load-report-route-state'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,

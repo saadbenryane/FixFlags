@@ -1,6 +1,6 @@
 # FixFlags Testing Strategy
 
-*Last updated: 2026-07-20*
+*Last updated: 2026-07-23*
 
 > **Ship readiness evidence:** See [`QUALITY.md`](QUALITY.md) for current automated coverage and ratings. This doc tracks residual hardening goals and the original monetization bar.
 
@@ -34,7 +34,7 @@
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Real-site regression suite | ✅ DONE | HTML-derivable checks frozen in `regression-sites.test.ts`. Screenshot/flow/PageSpeed modules still need fixtures. |
+| Real-site regression suite | ✅ DONE | HTML corpus in `lib/audit/accuracy-corpus.ts`; gate via `npm run accuracy:eval`. `regression-sites.test.ts` covers a narrower HTML-derivable subset. Screenshot/flow/PageSpeed modules still need live fixtures. |
 | AI judge contract validation | ✅ DONE | `judge-contract.test.ts` + blank-evidence discard |
 | Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. Count: AGENTS.md Project facts (`ALL_CHECK_IDS` in `lib/audit/check-ids.ts`). |
 | Verification rules for every check | ✅ DONE | Every checkId has a human-readable verification rule. |
@@ -60,10 +60,10 @@
 | API route contracts | 🔶 IMPORTANT | Critical path covered (checks, status, re-check, api-keys, projects); remaining routes pending |
 | Rate limiting | 🔶 IMPORTANT | Anon 1 teaser + Free 3 lifetime + plan limits. Redis fail-open is intentional. Partial coverage |
 | Auth / session management | 🔶 IMPORTANT | Claim-before-next + entitlements + monitoring tests; full login/logout E2E still open |
-| CI pipeline | ⚠️ CRITICAL | GitHub Actions runs typecheck/lint/guards/test/build. Local `npm run verify` is stricter (includes DB checks). |
-| Database migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Not in CI. A bad migration on deploy corrupts production data. |
-| Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` for detection. Recovery path partially tested. |
-| Queue job processing | 🔶 IMPORTANT | BullMQ jobs submitted, processed, failed, retried. Limited test coverage. |
+| CI pipeline | ✅ DONE | GitHub Actions runs `npm run validate:full` (manifest in `scripts/validate.mjs`). Local `npm run verify` adds DB drift and release probes. |
+| Database migration safety | ✅ DONE (local verify) | `npm run verify` runs `db:check` + `db:drift`. CI uses disposable DB in release gate when credentials provided. |
+| Worker crash recovery | 🔶 IMPORTANT | `stuck-audit-recovery.test.ts` + `recovery-full.mjs` (isolated queue + app audit requeue). Stale CAPTURING mid-run still partial. |
+| Queue job processing | 🔶 IMPORTANT | BullMQ via `runtime-recovery.mjs` + application audit requeue integration test. Full worker crash mid-capture eval partial. |
 
 ### Ready for monetization when:
 

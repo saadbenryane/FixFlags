@@ -8,9 +8,9 @@ import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
-  type RankableFlag,
-} from '@/lib/audit/priority-flags'
-import { buildFinishPlan, buildFixList } from '@/lib/audit/finish-plan'
+  buildUnifiedFinishPlan,
+  buildUnifiedFixList,
+} from '@/lib/audit/load-finish-plan-flags'
 
 export interface TaskRubricSummary {
   name: string
@@ -79,50 +79,26 @@ function reportUrl(reportId: string): string {
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
-function toRankableFlag(flag: {
-  id: string
-  checkId: string | null
-  rubric: string
-  severity: string
-  impactTag: string | null
-  problem: string
-  evidence: string | null
-  whyItMatters: string | null
-  fix: string | null
-  agentPrompt: string | null
-  cursorPrompt: string | null
-  claudePrompt: string | null
-  windsurfPrompt: string | null
-  lovablePrompt: string | null
-  boltPrompt: string | null
-  verificationRule: string | null
-  pageUrl: string | null
-  confidence: number | null
-  source: string
-  status: string
-}): RankableFlag {
-  return {
-    id: flag.id,
-    checkId: flag.checkId,
-    rubric: flag.rubric,
-    severity: flag.severity,
-    impactTag: flag.impactTag,
-    problem: flag.problem,
-    evidence: flag.evidence,
-    whyItMatters: flag.whyItMatters,
-    fix: flag.fix,
-    agentPrompt: flag.agentPrompt,
-    cursorPrompt: flag.cursorPrompt,
-    claudePrompt: flag.claudePrompt,
-    windsurfPrompt: flag.windsurfPrompt,
-    lovablePrompt: flag.lovablePrompt,
-    boltPrompt: flag.boltPrompt,
-    verificationRule: flag.verificationRule,
-    pageUrl: flag.pageUrl,
-    confidence: flag.confidence,
-    source: flag.source,
-    status: flag.status,
-  } as RankableFlag
+function toTaskItems(
+  items: Array<{
+    id: string
+    checkId?: string | null
+    problem: string
+    rubricName: string
+    severity: string
+    impactTag?: string | null
+    prompt: string | null
+  }>
+): TaskFinishPlanItem[] {
+  return items.map((item) => ({
+    flagId: item.id,
+    checkId: item.checkId ?? null,
+    problem: item.problem,
+    rubric: item.rubricName,
+    severity: item.severity,
+    impactTag: item.impactTag ?? null,
+    fixPrompt: item.prompt,
+  }))
 }
 
 export async function loadCompletedOutcome(reportId: string): Promise<{
@@ -165,39 +141,18 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   }))
 
   const contract = parseProductContract(audit.productContract)
-  const flags = audit.flags.map(toRankableFlag)
-  const fixList = buildFixList({
-    flags,
+  const planInput = {
+    userId: audit.userId,
+    auditUrl: audit.url,
+    flags: audit.flags,
     rubricRows: audit.rubrics,
-    url: audit.url,
     contract,
-    promptAccess: 'all',
-  })
-  const items = fixList.items.map((item) => ({
-    flagId: item.id,
-    checkId: item.checkId ?? null,
-    problem: item.problem,
-    rubric: item.rubricName,
-    severity: item.severity,
-    impactTag: item.impactTag ?? null,
-    fixPrompt: item.prompt,
-  }))
-  const legacyPlan = buildFinishPlan({
-    flags,
-    rubricRows: audit.rubrics,
-    url: audit.url,
-    contract,
-    promptAccess: 'all',
-  })
-  const legacyItems = legacyPlan.items.map((item) => ({
-    flagId: item.id,
-    checkId: item.checkId ?? null,
-    problem: item.problem,
-    rubric: item.rubricName,
-    severity: item.severity,
-    impactTag: item.impactTag ?? null,
-    fixPrompt: item.prompt,
-  }))
+    promptAccess: 'all' as const,
+  }
+  const [fixList, legacyPlan] = await Promise.all([
+    buildUnifiedFixList(planInput),
+    buildUnifiedFinishPlan(planInput),
+  ])
 
   return {
     score: audit.score,
@@ -206,14 +161,14 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
     fixList: {
       reportId,
       url: audit.url,
-      items,
+      items: toTaskItems(fixList.items),
       planPrompt: fixList.copyPrompt ?? '',
       totalCount: fixList.totalCount,
     },
     finishPlan: {
       reportId,
       url: audit.url,
-      items: legacyItems,
+      items: toTaskItems(legacyPlan.items),
       planPrompt: legacyPlan.copyPrompt ?? '',
     },
   }
@@ -262,6 +217,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   clientId?: string
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   attribution?: AuditAttribution
+  scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null
 }): Promise<CheckAndPlanOutcome> {
   const { auditId, status: initialStatus } = await createAndEnqueueAudit({
     url: options.url,
@@ -271,6 +227,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     auditMode: options.auditMode ?? 'CRITICAL_PATH',
     delayMs: options.delayMs,
     attribution: options.attribution,
+    scanAccess: options.scanAccess ?? null,
   })
 
   let status: string = initialStatus

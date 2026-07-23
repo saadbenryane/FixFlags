@@ -49,4 +49,5 @@ export interface PipelineContext {
     cacheWriteTokens?: number
   }
   includeAi: boolean
+  scanAccess?: import('../scan-access').ScanAccessConfig | null
 }

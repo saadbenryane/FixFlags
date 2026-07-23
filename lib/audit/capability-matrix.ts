@@ -614,8 +614,8 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     tool: 'browser-capture',
     status: 'live',
     checkIds: ['slow-3g-blank-screen', 'slow-3g-cta-delayed'],
-    verify: 'npm run demo:audit:flow',
-    notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s.',
+    verify: 'npm run test:unit -- lib/audit/__tests__/run-page-production-path.test.ts',
+    notes: 'Network emulation at 3G speeds with screenshots at 2s/5s/8s. Wired in pipeline/run-page.ts.',
   },
 
   // EXPERIENCE - design language

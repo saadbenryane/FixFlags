@@ -17,6 +17,15 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 6. Run `npm run verify` for the full local gate and `npm run verify:release` for clean install, browser, container, and deployed readiness probes. Missing release credentials are blockers, never skips.
 7. Reconcile canonical Markdown only after behavior passes. Record missing infrastructure or credentials as blockers.
 
+## Exit criteria (product completion)
+
+- `npm run verify` green on `main`
+- `npm run verify:release` executed with designated credentials (not skipped)
+- [`.agents/sessions/credentialed-journey-matrix.md`](../../../.agents/sessions/credentialed-journey-matrix.md) signed off for revenue-critical journeys
+- Manual report contract smoke (anonymous + signed-in) per QUALITY §86–96
+- Browser capture truth: slow replay wired in `run-page.ts`; capability matrix matches production wiring
+- AXI applies to CLI/MCP agent tooling only — not Playwright audit capture (see `fixflags-browser-capture` skill)
+
 ## Required references
 
 - Read [references/drift-rules.md](references/drift-rules.md) for manual review areas not fully enforceable by scripts.
@@ -26,7 +35,11 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 ## Non-negotiable gates
 
 - `npm run completeness:audit` owns counts, MCP/integration names, sticky destinations, Product/schema contracts, stale plan APIs, and tracked generated clutter.
+- `npm run accuracy:eval` owns offline scan accuracy: gold-standard false blockers, builder top-3, demo v1 repair, non-HTML regression.
 - `npm run routes:contract-guard` generates the endpoint inventory and applicable acceptance cases from code.
+- Finish Plan ranking must use `buildUnifiedFinishPlan` on every surface (report, MCP, export, task contracts).
+- Preview scan access is Agency-gated at the API and threaded through capture, journey, flow, and visual evidence paths.
+- CI deploy hooks: Railway project webhook at `/api/webhooks/railway` with `apiKey`, `url`, and optional `webhookSecret`.
 - `npm run skills:validate` protects skill frontmatter, links, reference depth, stale terms, length, and volatile facts.
 - `npm run test:scripts` protects the completeness checker itself.
 - Do not weaken quality evaluations to make a suite green. Find state pollution or adjudicate source evidence.

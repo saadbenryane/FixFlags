@@ -40,6 +40,17 @@ A Journey Review system would simulate a first-time visitor interacting with the
 
 **What this is not:** This is not a replacement for the deterministic audit. The deterministic scanner is objectively better at finding missing alt text, broken OG tags, and slow Lighthouse scores. Journey Review is a second layer that answers questions deterministic checks cannot: "Does the signup flow actually work?" "Can a new visitor find pricing?" "Is the onboarding confusing?"
 
+### Evaluated alternatives (2026-07-23)
+
+| Approach | Verdict | Rationale |
+|----------|---------|-----------|
+| **Playwright deterministic orchestration** (shipped) | **Keep** | Reproducible check IDs, evidence anchors, SSRF/payment safety, regression fixtures |
+| **chrome-devtools-axi / chrome-devtools-mcp** ([axi.md](https://www.axi.md)) | **Reject for scans** | Optimized for open-ended agent browsing; higher variance, no structured Finish Plan contract |
+| **Vision-loop / Computer Use agents** | **Reject** | 45x cost, slower, worse on ARIA-rich apps per landscape analysis below |
+| **AXI principles for FixFlags CLI/MCP** | **Adopt selectively** | Agent-ergonomic output for `fixflags-cli/` and `lib/mcp/tools.ts`, not capture |
+
+AXI's browser benchmark compares agent-driven CLIs for Wikipedia/GitHub extraction tasks. FixFlags audits are bounded FSM runs with deterministic checks, not multi-turn agent exploration.
+
 ---
 
 ## 2. Current Architecture Audit

@@ -2,6 +2,7 @@ import type { Browser, Page } from 'playwright'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { createAuditPage, settleAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import type { ScanAccessConfig } from '@/lib/audit/scan-access'
 import {
   captureAccessibilityTree,
   probeEmailForAudit,
@@ -60,6 +61,7 @@ export async function runJourneyTemplate(
     journeyType: JourneyType
     maxSteps?: number
     deadlineMs?: number
+    scanAccess?: ScanAccessConfig | null
   }
 ): Promise<JourneyRunResult> {
   const started = Date.now()
@@ -75,6 +77,7 @@ export async function runJourneyTemplate(
   const session = await createAuditPage(browser, options.startUrl, {
     profile: DESKTOP_CAPTURE_PROFILE,
     journeySafe: true,
+    scanAccess: options.scanAccess,
   })
   const page = session.page
   const origin = new URL(options.startUrl).origin

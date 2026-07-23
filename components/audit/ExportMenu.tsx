@@ -42,6 +42,8 @@ interface ExportMenuProps {
   verdict?: string | null
   rubrics: ExportRubric[]
   flags: RankableFlag[]
+  contract?: import('@/lib/audit/product-contract').ProductContract | null
+  finishPlanPrompt?: string | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
   size?: 'sm' | 'default'
@@ -54,6 +56,8 @@ export function ExportMenu({
   verdict,
   rubrics,
   flags,
+  contract = null,
+  finishPlanPrompt,
   canExportSummary = false,
   showFixPrompts = false,
   size = 'sm',
@@ -117,10 +121,7 @@ export function ExportMenu({
     await copyText('summary', summary, 'Report summary copied')
   }
 
-  const unresolvedFlags = flags.filter(
-    (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
-  )
-  const totalPrompts = countFixPrompts(unresolvedFlags)
+  const totalPrompts = countFixPrompts(flags)
 
   return (
     <>
@@ -142,40 +143,52 @@ export function ExportMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Copy to clipboard</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
+            {canExportSummary ? (
+              <FileText className="h-4 w-4" />
+            ) : (
+              <Lock className="h-4 w-4" />
+            )}
+            Report summary
+          </DropdownMenuItem>
           {showFixPrompts && totalPrompts > 0 && (
             <>
+              <DropdownMenuSeparator />
               <DropdownMenuLabel>Fix prompts</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() =>
                   openPreview(
-                    `Copy all fixes (${totalPrompts})`,
-                    buildAllFixPrompts({ flags: unresolvedFlags, url })
+                    'Finish Plan for your editor',
+                    finishPlanPrompt ??
+                    buildFinishPlan({
+                      flags,
+                      rubricRows: rubrics,
+                      url,
+                      contract,
+                      promptAccess: 'all',
+                    }).copyPrompt ??
+                    ''
                   )
                 }
                 className="gap-2"
               >
                 <Eye className="h-4 w-4" />
-                Copy all fixes ({totalPrompts})
+                Finish Plan (≤3)
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
                   openPreview(
-                    'Quick plan for your editor',
-                    buildFinishPlan({
-                      flags: unresolvedFlags,
-                      rubricRows: rubrics,
-                      url,
-                      promptAccess: 'all',
-                    }).copyPrompt ?? ''
+                    `All prompts (${totalPrompts})`,
+                    buildAllFixPrompts({ flags, url })
                   )
                 }
                 className="gap-2"
               >
                 <Eye className="h-4 w-4" />
-                Quick plan (3)
+                All prompts ({totalPrompts})
               </DropdownMenuItem>
               {RUBRIC_ORDER.map((rubric) => {
-                const count = countFixPromptsByRubric(unresolvedFlags, rubric)
+                const count = countFixPromptsByRubric(flags, rubric)
                 if (count === 0) return null
                 const rubricRow = rubrics.find((r) => r.name === rubric)
                 const rubricHeader = rubricRow?.rubricPrompt
@@ -187,7 +200,7 @@ export function ExportMenu({
                     onClick={() =>
                       copyText(
                         rubric,
-                        rubricHeader + collectFixPromptsByRubric(unresolvedFlags, rubric),
+                        rubricHeader + collectFixPromptsByRubric(flags, rubric),
                         `Copied ${count} ${rubricLabel(rubric)} prompts`,
                         'export'
                       )
@@ -199,15 +212,6 @@ export function ExportMenu({
               })}
             </>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
-            {canExportSummary ? (
-              <FileText className="h-4 w-4" />
-            ) : (
-              <Lock className="h-4 w-4" />
-            )}
-            Report summary
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

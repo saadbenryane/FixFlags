@@ -63,6 +63,7 @@ const ARTICLE_CATEGORY: Record<HelpArticleSlug, HelpCategoryId> = {
   'cancel-or-manage': 'billing-and-plans',
   'payment-past-due': 'billing-and-plans',
   'mcp-setup': 'mcp-and-editors',
+  'railway-deploy-check': 'mcp-and-editors',
   'lovable-bolt-paste': 'mcp-and-editors',
   'api-keys': 'mcp-and-editors',
   'sign-in-and-security': 'account',

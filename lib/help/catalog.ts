@@ -177,19 +177,50 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'public-urls-only',
     categoryId: 'checks-and-reports',
     title: 'Public URLs only',
-    excerpt: 'Localhost, private networks, and password-protected pages are not supported yet.',
-    searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private'],
+    excerpt: 'Public HTTPS URLs work everywhere. Agency projects can scan password-protected preview deploys.',
+    searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private', 'preview', 'basic auth'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
+        text: 'FixFlags checks publicly reachable HTTPS URLs. Localhost and private networks are not supported.',
       },
       {
         type: 'p',
-        text: 'Use a public preview URL from your host (Vercel, Netlify, Railway, and similar) when the production domain is not ready.',
+        text: 'Use a public preview URL from your host (Vercel, Netlify, Railway, and similar) when production is not ready.',
+      },
+      {
+        type: 'p',
+        text: 'On Agency, open a Project and configure preview scan access (HTTP basic auth or cookies) when a deploy is behind a password.',
       },
     ],
     related: ['why-check-failed', 'first-check'],
+  },
+  {
+    slug: 'railway-deploy-check',
+    categoryId: 'mcp-and-editors',
+    title: 'Railway deploy check',
+    excerpt: 'Enqueue a Launch Check after each Railway deployment succeeds.',
+    searchTokens: ['railway', 'deploy', 'webhook', 'ci', 'preview', 'release'],
+    body: [
+      {
+        type: 'p',
+        text: 'FixFlags can enqueue a Launch Check when your Railway service deploys successfully. This is the supported post-deploy gate when you host on Railway (no GitHub Action or Vercel webhook required).',
+      },
+      {
+        type: 'ol',
+        items: [
+          'Create a FixFlags API key from Settings → API keys (Pro or Agency).',
+          'Optional: set RAILWAY_WEBHOOK_SECRET on your FixFlags deployment and append webhookSecret to the webhook URL.',
+          'In Railway → Project → Settings → Webhooks, point a successful-deploy event to your FixFlags host with apiKey and url query parameters.',
+          'Use your service public HTTPS domain for url. Railway webhooks do not always include the public URL in the payload.',
+        ],
+      },
+      {
+        type: 'p',
+        text: 'The webhook enqueues a non-blocking critical-path check and returns reportId and reportUrl. For manual checks, run fixflags check with --wait from a Railway release command or shell script.',
+      },
+    ],
+    related: ['public-urls-only', 'mcp-setup', 'first-check'],
   },
   {
     slug: 'vs-lighthouse',

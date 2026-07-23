@@ -27,6 +27,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/tools/meta-preview', seoKey: 'metaPreview', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
+  { path: '/partners', seoKey: 'partners', priority: 0.5, changeFrequency: 'monthly' },
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'
@@ -46,6 +47,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/samples', label: 'Sample report', note: 'Full example output' },
       { path: '/pricing', label: 'Pricing', note: 'Free vs Pro plans' },
       { path: '/docs/mcp', label: 'MCP docs', note: 'Cursor / Claude Code integration' },
+      { path: '/partners', label: 'Expert program', note: 'Lovable and Bolt delivery partners' },
       { path: '/help', label: 'Help Center', note: 'Guides, billing, MCP, contact' },
       { path: '/help/mcp', label: 'MCP guide', note: 'Canonical MCP setup' },
     ],

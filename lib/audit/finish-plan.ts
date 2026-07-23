@@ -61,6 +61,8 @@ type PlanInput = {
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
+  /** Cap for buildFinishPlan only. buildFixList ignores this and returns all unresolved flags. */
+  limit?: number
 }
 
 function unresolvedFlags(flags: FixListFlag[]): FixListFlag[] {
@@ -151,5 +153,8 @@ export function buildFixList(input: PlanInput): FixList {
  * historical three-item Finish Plan. New product surfaces use buildFixList().
  */
 export function buildFinishPlan(input: PlanInput): FinishPlan {
-  return buildRankedFixes(input, { limit: 3, demonstratedFirst: true })
+  return buildRankedFixes(input, {
+    limit: input.limit ?? 3,
+    demonstratedFirst: true,
+  })
 }

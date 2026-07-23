@@ -117,7 +117,7 @@ function checkIds(findings: Array<{ checkId: string }>): string[] {
 describe('runMessagingClarityChecks', () => {
   it('flags weak value prop in headline', () => {
     assert.ok(
-      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['The platform for modern teams'] }))).includes('messaging-weak-value-prop')
+      checkIds(runMessagingClarityChecks(healthyMeta({ h1s: ['The platform solution'] }))).includes('messaging-weak-value-prop')
     )
   })
 

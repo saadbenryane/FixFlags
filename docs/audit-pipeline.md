@@ -140,6 +140,21 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 | `lib/audit/recover-audit-job.ts` | Stuck audit recovery |
 | `lib/audit/pipeline-config.ts` | Deadlines and budgets |
 
+## Browser capture (production)
+
+Production scans use **Playwright + Chromium** only (`lib/audit/screenshot.ts`, `lib/audit/browser/page-session.ts`). Do not use chrome-devtools-mcp, chrome-devtools-axi, or conversational browser agents on the audit path.
+
+| Step | Where | Notes |
+|------|-------|-------|
+| Desktop + mobile screenshots | `captureScreenshots` | Parallel pages; desktop required |
+| CTA flow scan | Primary page desktop session | `runFlowScan`; failures → `skipped` |
+| Slow 3G replay | `pipeline/run-page.ts` | `runSlowReplay` when deadline budget > 30s |
+| Network engagement | Desktop + mobile sessions | Merged `networkFailures`; `journeySafe` on flow capture |
+| Journey templates | `runner.ts` (Pro+) | Inline before finalize; not a separate queue job |
+| Visual evidence | `finalize-from-outcome.ts` | Graceful; must not fail audit |
+
+`lib/audit/deterministic-audit.ts` is an **offline/demo probe** (accuracy scripts, flow demos). It is not the production entry point.
+
 ## Page text limits
 
 Prescription uses **5000 chars** from `lib/audit/page-text-limits.ts`. Triage uses **2500 chars**. Change both the limits file and `buildPrescriptionPrompt` in `lib/prompts/system-prompt.ts` together.

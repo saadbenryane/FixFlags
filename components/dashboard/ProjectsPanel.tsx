@@ -15,6 +15,7 @@ import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { ProjectScanAccessPanel } from '@/components/settings/ProjectScanAccessPanel'
 
 interface ProjectRow {
   id: string
@@ -168,30 +169,33 @@ export function ProjectsPanel({ plan }: Props) {
       ) : (
         <div className="space-y-2">
           {projects.map((project) => (
-            <Card key={project.id}>
-              <CardContent className="py-3 px-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{project.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {project.url} · {project.auditCount} audit{project.auditCount !== 1 ? 's' : ''}
+            <div key={project.id} className="space-y-3">
+              <Card>
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{project.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {project.url} · {project.auditCount} audit{project.auditCount !== 1 ? 's' : ''}
+                    </div>
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(project)}
-                  disabled={deletingId === project.id}
-                  aria-label={`Delete ${project.name}`}
-                >
-                  {deletingId === project.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDelete(project)}
+                    disabled={deletingId === project.id}
+                    aria-label={`Delete ${project.name}`}
+                  >
+                    {deletingId === project.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+              <ProjectScanAccessPanel projectId={project.id} projectUrl={project.url} />
+            </div>
           ))}
         </div>
       )}

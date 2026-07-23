@@ -7,6 +7,7 @@ export type EditorMarkName =
   | 'Windsurf'
   | 'Lovable'
   | 'Bolt'
+  | 'Replit'
   | 'Codex'
 
 const SVG_MARKS: Record<EditorMarkName, ReactNode> = {
@@ -36,6 +37,11 @@ const SVG_MARKS: Record<EditorMarkName, ReactNode> = {
       <path d="M13.25 2.5 4.5 13.35h6.15L9.9 21.5l9.6-12.1h-6.25V2.5Z" />
     </svg>
   ),
+  Replit: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
+      <path d="M4 3.5A1.5 1.5 0 0 1 5.5 2h5A1.5 1.5 0 0 1 12 3.5v17A1.5 1.5 0 0 1 10.5 22h-5A1.5 1.5 0 0 1 4 20.5V3.5Zm11 0A1.5 1.5 0 0 1 16.5 2h2A1.5 1.5 0 0 1 20 3.5v5A1.5 1.5 0 0 1 18.5 10h-2A1.5 1.5 0 0 1 15 8.5v-5Z" />
+    </svg>
+  ),
   'Claude Code': (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden fill="none">
       <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.8" />
@@ -57,6 +63,7 @@ const MCP_TOOL_MARKS: Record<string, EditorMarkName | 'other'> = {
   windsurf: 'Windsurf',
   lovable: 'Lovable',
   bolt: 'Bolt',
+  replit: 'Replit',
   other: 'other',
 }
 

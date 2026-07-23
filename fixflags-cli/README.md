@@ -39,6 +39,11 @@ fixflags check https://your-app.com --single
 # Run a fresh check and return the verification diff + next Fix list
 fixflags recheck <reportId> --wait --diff
 
+# Protected preview deploys (Agency)
+fixflags check https://preview.up.railway.app --wait --basic-auth user:password
+fixflags check https://preview.up.railway.app --wait --cookie "session=value"
+fixflags check https://preview.up.railway.app --wait --scan-access-file ./scan-access.json
+
 # Structured output for agents and CI
 fixflags check https://your-app.com --json
 fixflags recheck <reportId> --json

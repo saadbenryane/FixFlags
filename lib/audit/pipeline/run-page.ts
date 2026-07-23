@@ -1,5 +1,5 @@
 import { prisma } from '../../db'
-import { captureScreenshots } from '../screenshot'
+import { captureScreenshots, getAuditBrowser } from '../screenshot'
 import {
   fetchAndParseMetadata,
   mergeRuntimeHeadMetadata,
@@ -12,8 +12,10 @@ import {
 } from '../pagespeed'
 import { runAllChecks, computeRubricScores, suppressOverlappingFlags } from '../checks'
 import { runFlowChecks } from '../checks/flow'
+import { runSlowReplayChecks } from '../checks/slow-replay'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import type { FlowScanResult } from '../flow/run-flow-scan'
+import { runSlowReplay, type SlowReplayResult } from '../flow/slow-replay-probe'
 import { serializeFlowData } from '../flow/flow-url'
 import { persistDeterministicFlags } from '../persist'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '../progress'
@@ -23,10 +25,11 @@ import { assertDeadline, accumulateTriageUsage } from './context'
 import { runTriageStep } from './triage-step'
 import { isTriageProviderConfigured, type TriageResult } from '../judge-triage'
 import { parseTriageFailure } from './triage-failure'
-import { MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
+import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { inferProductContract } from '../product-contract'
+import { scanAccessToFetchHeaders } from '../scan-access'
 import {
   mergeHeuristicIntoProjectPi,
   productIntelligenceFromContract,
@@ -61,6 +64,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   let screenshots: Awaited<ReturnType<typeof captureScreenshots>> | null = null
   let pagespeed: Awaited<ReturnType<typeof fetchPageSpeedData>> | null = null
   let flowResult: FlowScanResult | null = null
+  let slowReplayResult: SlowReplayResult | null = null
   let desktopBase64 = ''
   let mobileBase64: string | null = null
 
@@ -73,6 +77,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const [captured, speed] = await Promise.all([
     captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
       runFlow: input.primary && input.position === 0,
+      scanAccess: ctx.scanAccess,
     }),
     fetchPageSpeedData(normalizedUrl),
   ])
@@ -85,6 +90,36 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       event: 'flow_completed',
     })
   }
+
+  if (
+    input.primary &&
+    input.position === 0 &&
+    ctx.deadline - Date.now() > SLOW_REPLAY_MIN_BUDGET_MS
+  ) {
+    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'slow_replay_started' })
+    const slowReplayStart = Date.now()
+    try {
+      const browser = await getAuditBrowser()
+      slowReplayResult = await runSlowReplay(browser, ctx.auditId, normalizedUrl)
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'capturing',
+        event: 'slow_replay_completed',
+        durationMs: Date.now() - slowReplayStart,
+      })
+    } catch (err) {
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'capturing',
+        event: 'slow_replay_failed',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  } else if (input.primary && input.position === 0) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'capturing',
+      event: 'slow_replay_skipped_deadline',
+    })
+  }
+
   ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
 
   await logPipelineEvent(ctx.auditId, {
@@ -111,7 +146,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const metadataFromHtml = mergeRuntimeHeadMetadata(
     screenshots.desktopHtml
       ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
-      : await fetchAndParseMetadata(normalizedUrl),
+      : await fetchAndParseMetadata(normalizedUrl, {
+          headers: scanAccessToFetchHeaders(ctx.scanAccess),
+        }),
     screenshots.runtimeHeadMetadata
   )
   const storedPerformance = {
@@ -124,6 +161,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     loadExperience: screenshots.loadExperience ?? null,
     networkFailures: screenshots.networkFailures ?? [],
     actionTimeline: screenshots.actionTimeline ?? [],
+    slowReplay: slowReplayResult,
   }
 
   await prisma.$transaction([
@@ -270,7 +308,15 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       )
       .concat(
         input.primary && input.position === 0
-          ? runNetworkEngagementChecks(screenshots?.networkFailures ?? [])
+          ? runNetworkEngagementChecks(
+              screenshots?.networkFailures ?? [],
+              screenshots?.formProbe ?? null
+            )
+          : []
+      )
+      .concat(
+        input.primary && input.position === 0 && slowReplayResult
+          ? runSlowReplayChecks(slowReplayResult)
           : []
       )
   ).map((flag) => ({

@@ -5,6 +5,7 @@ import type { NetworkFailureRecord } from '@/lib/audit/browser/network-monitor'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
+import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
 interface Fixture {
@@ -13,6 +14,11 @@ interface Fixture {
   networkFailures: NetworkFailureRecord[]
   overlay: Parameters<typeof runOverlayBlockerChecks>[1]
   expectedCheckIds: string[]
+  slowReplay?: {
+    timeToFirstTextMs: number
+    timeToCtaMs: number
+    screenshotUrls: string[]
+  }
 }
 
 describe('non-HTML regression fixture', () => {
@@ -28,7 +34,41 @@ describe('non-HTML regression fixture', () => {
     ].map((flag) => flag.checkId)
     const flowCheckId = flowCheckIdForStatus('dead_end')
     if (flowCheckId) checkIds.push(flowCheckId)
+    if (fixture.slowReplay) {
+      checkIds.push(...runSlowReplayChecks(fixture.slowReplay).map((flag) => flag.checkId))
+    }
 
-    expect(checkIds.sort()).toEqual(fixture.expectedCheckIds)
+    expect([...new Set(checkIds)].sort()).toEqual([...fixture.expectedCheckIds].sort())
+  })
+
+  it('freezes mobile-only poor performance thresholds', () => {
+    const desktop: PageSpeedResult = {
+      strategy: 'desktop',
+      score: 88,
+      lcp: 1800,
+      cls: 0.04,
+      fcp: 1200,
+      tbt: 120,
+      inp: null,
+      opportunities: [],
+      failedAccessibilityAudits: [],
+      diagnostics: {},
+      raw: {},
+    }
+    const mobile: PageSpeedResult = {
+      strategy: 'mobile',
+      score: 52,
+      lcp: 5200,
+      cls: 0.18,
+      fcp: 2800,
+      tbt: 700,
+      inp: 420,
+      opportunities: [],
+      failedAccessibilityAudits: [],
+      diagnostics: {},
+      raw: {},
+    }
+    const checkIds = runPerformanceChecks(desktop, mobile).map((flag) => flag.checkId).sort()
+    expect(checkIds).toEqual(['inp-poor'])
   })
 })

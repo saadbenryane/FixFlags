@@ -38,9 +38,16 @@ The main branch changed concurrently during this work. Commit `da73376` contains
 2. Provide `RELEASE_FRESH_DATABASE_URL` for a disposable database whose name includes `release` or `test`, plus `RELEASE_ALLOW_DATABASE_RESET=true`.
 3. Provide `RELEASE_CONTAINER_ENV_FILE` with production-like non-customer resources.
 4. Provide `RELEASE_SMOKE_URL` (and bearer token when required), then run `npm run verify:release`.
-5. Run the credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. The current route registry describes applicable cases but does not substitute for per-route integration tests.
-6. Extend the runtime recovery evaluation from an isolated BullMQ queue to the application audit queue for stale-job recovery and lock contention.
+5. Run the credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. Matrix file: `.agents/sessions/credentialed-journey-matrix.md`.
+6. Extend the runtime recovery evaluation from an isolated BullMQ queue to the application audit queue for stale-job recovery and lock contention. **Partial:** `scripts/evals/recovery-full.mjs` + `recover-audit-app-queue.integration.test.ts` cover app-queue requeue; mid-CAPTURING crash eval still partial.
 7. Complete the remaining report/MCP/marketing module splits and dead-code adjudication. Do not refactor solely to meet a file-size target.
+
+## Pipeline truth (2026-07-23)
+
+- Slow 3G replay wired in `lib/audit/pipeline/run-page.ts` (production path).
+- Mobile + desktop `networkFailures` merged; primary flow capture uses `journeySafe` for engagement probe.
+- AXI/chrome-devtools-axi documented as rejected for audit capture; new `fixflags-browser-capture` skill.
+- `npm run verify:release` attempted; blocked at `RELEASE_FRESH_DATABASE_URL` (expected).
 
 ## Safe release command
 

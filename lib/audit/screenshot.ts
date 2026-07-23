@@ -8,6 +8,8 @@ import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
+import { scanAccessToFetchHeaders } from './scan-access'
+import type { ScanAccessConfig } from './scan-access'
 import {
   measureMobileLayout,
   type CaptureMetrics,
@@ -20,6 +22,7 @@ import {
 } from './browser/page-capture'
 import { BrowserLaunchError, isInfrastructureAuditError } from './pipeline-errors'
 import type { NetworkFailureRecord } from './browser/network-monitor'
+import type { FormProbeResult } from './browser/journey-safety'
 import { createActionTimeline, type ActionTimelineEvent } from './action-timeline'
 
 let browser: Browser | null = null
@@ -122,6 +125,7 @@ export interface ScreenshotResult {
   responseHeaders?: Record<string, string> | null
   networkFailures?: NetworkFailureRecord[]
   actionTimeline?: ActionTimelineEvent[]
+  formProbe?: FormProbeResult | null
 }
 
 interface ViewportCapture {
@@ -302,17 +306,20 @@ async function captureDesktopWithFlow(
   auditId: string,
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
-  runFlow: boolean
+  runFlow: boolean,
+  scanAccess?: ScanAccessConfig | null
 ): Promise<
   ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline: ActionTimelineEvent[]
+    formProbe: FormProbeResult | null
   }
 > {
   const timeline = createActionTimeline()
   const result: ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline: ActionTimelineEvent[]
+    formProbe: FormProbeResult | null
   } = {
     base64: null,
     url: null,
@@ -320,6 +327,7 @@ async function captureDesktopWithFlow(
     html: null,
     flowResult: null,
     actionTimeline: [],
+    formProbe: null,
   }
 
   let page: Page | null = null
@@ -331,11 +339,14 @@ async function captureDesktopWithFlow(
       profile: DESKTOP_CAPTURE_PROFILE,
       consoleErrors,
       settle: false,
+      scanAccess,
+      journeySafe: runFlow,
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
     result.networkFailures = [...session.networkFailures]
+    result.formProbe = session.formProbe
     timeline.push('capture', 'Page loaded', { url: page.url() })
 
     const initial = await readLoadSnapshot(page)
@@ -369,8 +380,12 @@ async function captureDesktopWithFlow(
           url: page.url(),
         }
         timeline.push('flow', 'Starting CTA flow scan')
-        result.flowResult = await runFlowScan(page, auditId, targetUrl, { landingStep })
+        result.flowResult = await runFlowScan(page, auditId, targetUrl, {
+          landingStep,
+          fetchHeaders: scanAccessToFetchHeaders(scanAccess),
+        })
         result.networkFailures = [...session.networkFailures]
+        result.formProbe = session.formProbe
         timeline.push('flow', `Flow scan ${result.flowResult.status}`, {
           url: result.flowResult.finalUrl,
           status: result.flowResult.httpStatus,
@@ -397,6 +412,7 @@ async function captureDesktopWithFlow(
     disposeNetwork?.()
     await closeSessionPage(page)
     result.actionTimeline = timeline.snapshot()
+    result.formProbe = result.formProbe ?? null
   }
 
   return result
@@ -407,7 +423,8 @@ async function captureMobileViewport(
   targetUrl: string,
   auditId: string,
   pageKey: string | undefined,
-  consoleErrors: Array<{ type: string; text: string }>
+  consoleErrors: Array<{ type: string; text: string }>,
+  scanAccess?: ScanAccessConfig | null
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
@@ -419,9 +436,11 @@ async function captureMobileViewport(
       profile: MOBILE_CAPTURE_PROFILE,
       consoleErrors,
       settle: false,
+      scanAccess,
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
+    result.networkFailures = [...session.networkFailures]
 
     const initial = await readLoadSnapshot(page)
     const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -458,26 +477,24 @@ export async function captureScreenshots(
   url: string,
   auditId: string,
   pageKey?: string,
-  options?: { runFlow?: boolean }
+  options?: { runFlow?: boolean; scanAccess?: ScanAccessConfig | null }
 ): Promise<ScreenshotResult> {
   await assertPublicAuditUrl(url)
   const b = await getBrowser()
   const consoleErrors: Array<{ type: string; text: string }> = []
   const captureFailures: PageCaptureFailure[] = []
   const runFlow = options?.runFlow ?? true
+  const scanAccess = options?.scanAccess ?? null
 
-  // Desktop and mobile use independent pages in the shared browser, so capture
-  // them concurrently. Sequential capture doubled the wall-clock cost of the
-  // slowest step (each page carries a 30s navigation timeout), which is what
-  // pushed slow sites past the audit deadline.
   const [desktopSettled, mobileSettled] = await Promise.allSettled([
-    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow),
-    captureMobileViewport(b, url, auditId, pageKey, consoleErrors),
+    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow, scanAccess),
+    captureMobileViewport(b, url, auditId, pageKey, consoleErrors, scanAccess),
   ])
 
   let desktop: ViewportCapture & {
     flowResult: FlowScanResult | null
     actionTimeline?: ActionTimelineEvent[]
+    formProbe?: FormProbeResult | null
   }
   if (desktopSettled.status === 'fulfilled') {
     desktop = desktopSettled.value
@@ -500,6 +517,11 @@ export async function captureScreenshots(
     ? { ...mobile.captureMetrics, loadExperience }
     : null
 
+  const mergedNetworkFailures = [
+    ...(desktop.networkFailures ?? []),
+    ...(mobile.networkFailures ?? []),
+  ]
+
   return {
     desktopUrl: desktop.url,
     mobileUrl: mobile.url,
@@ -517,8 +539,9 @@ export async function captureScreenshots(
     loadExperience,
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
-    networkFailures: desktop.networkFailures ?? [],
+    networkFailures: mergedNetworkFailures,
     actionTimeline: desktop.actionTimeline ?? [],
+    formProbe: desktop.formProbe ?? null,
   }
 }
 

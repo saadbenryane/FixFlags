@@ -57,6 +57,7 @@ interface WaitOptions {
 interface CheckOptions extends WaitOptions {
   single: boolean
   apiBase: string
+  scanAccess?: Record<string, unknown>
 }
 
 function record(value: unknown, tool: string): Record<string, unknown> {
@@ -197,6 +198,7 @@ export async function checkAndPlan(call: McpCaller, url: string, options: CheckO
     url,
     waitForCompletion: options.wait,
     mode: options.single ? 'single' : 'critical_path',
+    ...(options.scanAccess ? { scanAccess: options.scanAccess } : {}),
   }), 'ff_check_and_plan', options.apiBase)
   if (result.status === 'FAILED') throw new Error(`Check ${result.reportId} failed`)
   if (options.wait && result.status !== 'COMPLETED') {

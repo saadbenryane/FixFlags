@@ -49,6 +49,8 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Prescription | `lib/audit/run-ai-review.ts`, `judge-prescription.ts` |
 | Finalize | `lib/audit/finalize.ts` |
 | Recovery | `lib/audit/recover-audit-job.ts` |
+| Preview scan access | `lib/audit/scan-access.ts`, `scan-access-store.ts`, `browser/page-session.ts`; Agency-only API `app/api/projects/[id]/scan-access/route.ts` |
+| Finish Plan ranking | `lib/audit/load-finish-plan-flags.ts` (`buildUnifiedFinishPlan`), `finish-plan.ts`; include repo flags for Agency |
 | Failure copy | `lib/audit/user-facing-errors.ts`, `lib/marketing/copy.ts` AUDIT_ERRORS |
 | Report access | `lib/audit/report-access.ts`, `fetch-audit.ts` |
 
@@ -56,13 +58,27 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 
 ```bash
 npm run test:unit -- lib/audit/__tests__/run-audit.test.ts lib/audit/__tests__/outcome.test.ts
-npm run smoke:triage:prod   # post-deploy, requires prod keys
-npm run demo:audit:offline  # deterministic checks only
+npm run accuracy:eval          # offline corpus gate (gold 0 false blockers)
+npm run accuracy:probe -- <url> # live HTML adjudication before changing checks
+npm run demo:audit:offline     # deterministic demo v1 repair proof
 npm run agent -- eval recovery # PostgreSQL + Redis retry/idempotency evaluation
+npm run smoke:triage:prod      # post-deploy, requires prod keys
 ```
+
+**Scan accuracy skill:** `.cursor/skills/fixflags-scan-accuracy/SKILL.md` for corpus architecture and adjudication rules.
+
+**Browser capture skill:** `.cursor/skills/fixflags-browser-capture/SKILL.md` for Playwright capture, flow, slow replay, journey, and network probes. Do not adopt chrome-devtools-mcp or AXI browser CLIs for production scans.
+
+## Browser capture truth
+
+- Production path: `runner.ts` → `pipeline/run-page.ts` → `captureScreenshots` + `runSlowReplay` (budget permitting).
+- Playwright singleton per worker; each operation uses an isolated browser context closed on exit.
+- `deterministic-audit.ts` is offline/demo only.
+- AXI applies to agent-facing CLI/MCP (`fixflags-cli/`, `scripts/project-agent.mjs`), not audit capture.
 
 ## Anti-patterns
 
+- Replacing Playwright capture with chrome-devtools-mcp, chrome-devtools-axi, or conversational browser agents
 - Treating `includeAi: false` as "skip triage" — triage always runs on primary page
 - Marking audit FAILED when triage fails but capture succeeded — use `finalizeTriageDegraded`
 - Editing offering.md "fix prompts on every report" without checking `report-access.ts`
@@ -89,6 +105,8 @@ npm run agent -- eval recovery # PostgreSQL + Redis retry/idempotency evaluation
 - **Anti-FP:** Shared filter suppresses content Flags whose problem/evidence match tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
 - **Form silent failure:** `form-submit-silent-failure` when probe/submit gets 2xx but no success UI (or UI success with failed upstream).
 - **Report wiring:** the server assembler passes focused summary/Finish Plan/access data separately from detailed Contract/timeline/explorer data. Preserve flag `source` for evidence truth.
+- **Finish Plan:** always rank through `buildUnifiedFinishPlan` (live flags + Agency repo findings). Do not rebuild ad hoc in MCP, export, or report UI.
+- **Scan access:** thread `scanAccess` through Playwright (`createAuditPage`), fetch helpers (`scanAccessToFetchHeaders`), journey, flow, critical-path discovery, and visual capture side-by-side pages.
 ## Competitive boundary
 
 Do **not** add Scout-style conversational "check anything else" chat on the audit path. Depth comes from Product Contract, network/overlay probes, ranked Flags, and re-check proof.
