@@ -23,7 +23,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | Report or application UI | [DESIGN.md](DESIGN.md), `components/audit/`, `components/report/` | `npm run agent -- context ui` |
 | Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
-| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts` | `npm run agent -- context accuracy` |
+| Browser capture (Playwright) | [`.cursor/skills/fixflags-browser-capture/SKILL.md`](.cursor/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
+| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.cursor/skills/fixflags-scan-accuracy/SKILL.md`](.cursor/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
 | Public CLI | `fixflags-cli/` | `npm run agent -- context cli` |
@@ -77,7 +78,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 
 - Audit stages: QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED.
 - Deterministic checks register through `lib/audit/checks/index.ts`; check identities live in `lib/audit/check-ids.ts`.
-- Playwright is the browser implementation on the audit path. Do not reintroduce Puppeteer.
+- Playwright is the browser implementation on the audit path. Do not reintroduce Puppeteer or adopt chrome-devtools-mcp / chrome-devtools-axi for scans. AXI principles apply to agent-facing CLI/MCP tooling (`fixflags-cli/`, `lib/mcp/tools.ts`), not the audit capture pipeline.
 - Journey and network evidence must survive persistence and remain attached to the originating source.
 - Manual re-check always performs a fresh full capture and diffs against its parent.
 - Public graph reads go through `lib/graph/queries.ts`.
