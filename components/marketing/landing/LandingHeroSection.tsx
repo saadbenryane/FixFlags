@@ -1,4 +1,5 @@
 import { AuditInput } from '@/components/audit/AuditInput'
+import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { HERO } from '@/lib/marketing/copy'
@@ -27,6 +28,10 @@ export function LandingHeroSection() {
             className="mt-8 w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)] motion-safe:animate-fade-in-up motion-safe:[animation-delay:160ms] motion-safe:[animation-fill-mode:both]"
           >
             <AuditInput variant="landing" idSuffix="-hero" ctaPlacement="hero" />
+          </div>
+
+          <div className="mt-8 w-full max-w-2xl motion-safe:animate-fade-in-up motion-safe:[animation-delay:200ms] motion-safe:[animation-fill-mode:both]">
+            <EditorToolMarks compact showLabel className="items-center [&_ul]:justify-center" />
           </div>
         </div>
       </Container>

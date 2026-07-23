@@ -15,27 +15,46 @@ const TINTS = {
 
 type DimensionId = (typeof LANDING_PAGE.checkDimensions.cards)[number]['id']
 
-const SCENE_INDEX: Record<DimensionId, number> = {
-  message: 0,
-  experience: 1,
-  reach: 2,
+const RUBRICS_PANORAMA = {
+  light: '/marketing/visuals/rubrics-light.webp',
+  dark: '/marketing/visuals/rubrics-dark.webp',
+} as const
+
+const RUBRICS_TILES: Record<DimensionId, { light: string; dark: string }> = {
+  message: {
+    light: '/marketing/visuals/rubrics-01-light.webp',
+    dark: '/marketing/visuals/rubrics-01-dark.webp',
+  },
+  experience: {
+    light: '/marketing/visuals/rubrics-02-light.webp',
+    dark: '/marketing/visuals/rubrics-02-dark.webp',
+  },
+  reach: {
+    light: '/marketing/visuals/rubrics-03-light.webp',
+    dark: '/marketing/visuals/rubrics-03-dark.webp',
+  },
 }
+
+const TILE_SIZES = '90vw'
+const PANORAMA_SIZES = '(min-width: 1024px) 1024px, 100vw'
 
 function PanoramaImage({ className = '' }: { className?: string }) {
   return (
     <>
       <Image
-        src="/marketing/visuals/rubrics-light.webp"
+        src={RUBRICS_PANORAMA.light}
         alt=""
         fill
-        sizes="(min-width: 1024px) 1024px, 100vw"
+        sizes={PANORAMA_SIZES}
+        loading="lazy"
         className={cn('object-cover dark:hidden', className)}
       />
       <Image
-        src="/marketing/visuals/rubrics-dark.webp"
+        src={RUBRICS_PANORAMA.dark}
         alt=""
         fill
-        sizes="(min-width: 1024px) 1024px, 100vw"
+        sizes={PANORAMA_SIZES}
+        loading="lazy"
         className={cn('hidden object-cover dark:block', className)}
       />
     </>
@@ -43,31 +62,26 @@ function PanoramaImage({ className = '' }: { className?: string }) {
 }
 
 function MobileDimensionScene({ id }: { id: DimensionId }) {
-  const sceneIndex = SCENE_INDEX[id]
+  const tile = RUBRICS_TILES[id]
 
   return (
     <div className="relative aspect-square overflow-hidden rounded-nested-md bg-muted/35 shadow-glass md:hidden">
-      <div
-        className="absolute inset-y-0 w-full"
-        style={{ left: `${sceneIndex * -100}%` }}
-      >
-        <Image
-          src="/marketing/visuals/rubrics-light.webp"
-          alt=""
-          width={2172}
-          height={724}
-          sizes="100vw"
-          className="h-full w-auto max-w-none dark:hidden"
-        />
-        <Image
-          src="/marketing/visuals/rubrics-dark.webp"
-          alt=""
-          width={2172}
-          height={724}
-          sizes="100vw"
-          className="hidden h-full w-auto max-w-none dark:block"
-        />
-      </div>
+      <Image
+        src={tile.light}
+        alt=""
+        fill
+        sizes={TILE_SIZES}
+        loading="lazy"
+        className="object-cover object-center dark:hidden"
+      />
+      <Image
+        src={tile.dark}
+        alt=""
+        fill
+        sizes={TILE_SIZES}
+        loading="lazy"
+        className="hidden object-cover object-center dark:block"
+      />
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/35 to-transparent" />
     </div>
   )

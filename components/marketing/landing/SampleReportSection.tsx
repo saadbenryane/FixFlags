@@ -19,7 +19,7 @@ const HeroProductPreview = dynamic(
       (m) => m.HeroProductPreview
     ),
   {
-    ssr: true,
+    ssr: false,
     loading: () => (
       <div
         aria-hidden

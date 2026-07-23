@@ -501,7 +501,7 @@ export const LANDING_PAGE = {
   logoCloud: {
     label: 'Paste fixes into the tools you already use',
     disclaimer: '',
-    logos: ['Cursor', 'Codex', 'Lovable', 'Bolt', 'Claude Code', 'Windsurf'] as const,
+    logos: ['Cursor', 'Lovable', 'Bolt', 'Replit', 'Claude Code', 'Codex', 'Windsurf'] as const,
   },
   checkDimensions: {
     label: '',
@@ -647,8 +647,8 @@ export const LANDING_PAGE = {
     ] as const,
   },
   editorIntegrations: {
-    headline: 'Cursor, Claude, Lovable, Bolt, and more.',
-    body: 'Each Flag includes a prompt shaped for the editor you already use.',
+    headline: 'Cursor, Lovable, Bolt, Replit, and more.',
+    body: 'Each Flag includes a prompt shaped for the editor you already use. Copy it, paste it, fix the issue, then re-check.',
   },
   productEvidence: {
     headline: 'What a review actually catches',

@@ -49,6 +49,7 @@ function LoopPanorama() {
         alt=""
         fill
         sizes={PANORAMA_SIZES}
+        loading="lazy"
         quality={82}
         className="object-cover object-center dark:hidden"
       />
@@ -57,6 +58,7 @@ function LoopPanorama() {
         alt=""
         fill
         sizes={PANORAMA_SIZES}
+        loading="lazy"
         quality={82}
         className="hidden object-cover object-center dark:block"
       />
@@ -83,6 +85,7 @@ function LoopThirdScene({ index, className }: { index: number; className?: strin
         alt=""
         fill
         sizes={TILE_SIZES}
+        loading="lazy"
         quality={82}
         className="object-cover object-center dark:hidden"
       />
@@ -91,6 +94,7 @@ function LoopThirdScene({ index, className }: { index: number; className?: strin
         alt=""
         fill
         sizes={TILE_SIZES}
+        loading="lazy"
         quality={82}
         className="hidden object-cover object-center dark:block"
       />

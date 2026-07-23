@@ -10,6 +10,7 @@ import { sanitizeFixtureHtml } from '@/lib/audit/fixture-sanitize'
 const TARGETS = [
   { url: 'https://lovable.dev', file: 'lib/audit/__tests__/fixtures/sites/lovable-dev.html' },
   { url: 'https://bolt.new', file: 'lib/audit/__tests__/fixtures/sites/bolt-new.html' },
+  { url: 'https://cineverse.replit.app', file: 'lib/audit/__tests__/fixtures/sites/cineverse-replit-app.html' },
 ] as const
 
 async function main() {

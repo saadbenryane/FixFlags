@@ -90,6 +90,15 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
   },
   {
+    file: 'cineverse-replit-app.html',
+    url: 'https://cineverse.replit.app',
+    tier: 'builder',
+    maxImportantFalseBlockers: 2,
+    expectedTop3: ['h1-missing', 'security-hsts-missing', 'security-csp-missing'],
+    knownFalsePositives: [],
+    expectedPresent: ['h1-missing', 'measurement-ga-gtm-posthog-missing', 'no-privacy-policy'],
+  },
+  {
     file: 'saadbenryane-com.html',
     url: 'https://saadbenryane.com',
     tier: 'personal',

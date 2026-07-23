@@ -292,10 +292,11 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.logoCloud.label, /tools you already use/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Cursor',
-      'Codex',
       'Lovable',
       'Bolt',
+      'Replit',
       'Claude Code',
+      'Codex',
       'Windsurf',
     ])
     assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)

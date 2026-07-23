@@ -24,7 +24,7 @@ export function EditorIntegrationsSection() {
               </p>
             </div>
             <EditorToolMarks
-              showLabel={false}
+              showLabel
               className="mx-auto max-w-4xl items-center [&_ul]:justify-center"
             />
           </div>
