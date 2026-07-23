@@ -30,6 +30,13 @@ inputs:
 
 runs:
   using: 'composite'
+  outputs:
+    report_id:
+      description: 'FixFlags report id'
+      value: ${{ steps.check.outputs.report_id }}
+    report_url:
+      description: 'Public report URL'
+      value: ${{ steps.check.outputs.report_url }}
   steps:
     - name: Install FixFlags CLI
       shell: bash

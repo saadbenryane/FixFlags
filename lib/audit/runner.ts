@@ -80,7 +80,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
       const discovered =
         audit.auditMode === 'CRITICAL_PATH'
-          ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata)
+          ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata, ctx.scanAccess)
           : [{ url: audit.url, category: 'primary' as const }]
 
       for (const [index, page] of discovered.slice(1).entries()) {
@@ -112,6 +112,7 @@ export async function runAudit(auditId: string): Promise<void> {
       await runJourneyReviewsForAudit(auditId, audit.url, {
         included: audit.journeyReviewIncluded,
         deadline: ctx.deadline,
+        scanAccess: ctx.scanAccess,
       })
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)

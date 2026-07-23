@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import { runFlowScan, type FlowScanResult } from './flow/run-flow-scan'
 import { createAuditPage, settleAuditPage } from './browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE, MOBILE_CAPTURE_PROFILE } from './browser/capture-profile'
+import { scanAccessToFetchHeaders } from './scan-access'
 import type { ScanAccessConfig } from './scan-access'
 import {
   measureMobileLayout,
@@ -372,7 +373,10 @@ async function captureDesktopWithFlow(
           url: page.url(),
         }
         timeline.push('flow', 'Starting CTA flow scan')
-        result.flowResult = await runFlowScan(page, auditId, targetUrl, { landingStep })
+        result.flowResult = await runFlowScan(page, auditId, targetUrl, {
+          landingStep,
+          fetchHeaders: scanAccessToFetchHeaders(scanAccess),
+        })
         result.networkFailures = [...session.networkFailures]
         timeline.push('flow', `Flow scan ${result.flowResult.status}`, {
           url: result.flowResult.finalUrl,

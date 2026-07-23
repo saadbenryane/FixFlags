@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,7 +31,7 @@ export function ProjectScanAccessPanel({ projectId, projectUrl }: Props) {
   const [password, setPassword] = useState('')
   const [cookieHeader, setCookieHeader] = useState('')
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/projects/${projectId}/scan-access`)
@@ -45,11 +45,11 @@ export function ProjectScanAccessPanel({ projectId, projectUrl }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId])
 
   useEffect(() => {
     void load()
-  }, [projectId])
+  }, [load])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()

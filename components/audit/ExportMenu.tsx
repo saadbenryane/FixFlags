@@ -42,6 +42,7 @@ interface ExportMenuProps {
   verdict?: string | null
   rubrics: ExportRubric[]
   flags: RankableFlag[]
+  contract?: import('@/lib/audit/product-contract').ProductContract | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
   size?: 'sm' | 'default'
@@ -54,6 +55,7 @@ export function ExportMenu({
   verdict,
   rubrics,
   flags,
+  contract = null,
   canExportSummary = false,
   showFixPrompts = false,
   size = 'sm',
@@ -159,6 +161,7 @@ export function ExportMenu({
                       flags,
                       rubricRows: rubrics,
                       url,
+                      contract,
                       promptAccess: 'all',
                     }).copyPrompt ?? ''
                   )

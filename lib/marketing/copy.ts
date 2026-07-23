@@ -1585,4 +1585,9 @@ export const SEO = {
     title: 'Issue Library',
     description: 'Real issues found across audited sites. Frequency, affected frameworks, examples, and fixes.',
   },
+  partners: {
+    title: 'Expert program',
+    description:
+      'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch issues before client handoff.',
+  },
 } as const

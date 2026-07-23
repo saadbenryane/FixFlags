@@ -177,16 +177,20 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'public-urls-only',
     categoryId: 'checks-and-reports',
     title: 'Public URLs only',
-    excerpt: 'Localhost, private networks, and password-protected pages are not supported yet.',
-    searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private'],
+    excerpt: 'Public HTTPS URLs work everywhere. Agency projects can scan password-protected preview deploys.',
+    searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private', 'preview', 'basic auth'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
+        text: 'FixFlags checks publicly reachable HTTPS URLs. Localhost and private networks are not supported.',
       },
       {
         type: 'p',
-        text: 'Use a public preview URL from your host (Vercel, Netlify, Railway, and similar) when the production domain is not ready.',
+        text: 'Use a public preview URL from your host (Vercel, Netlify, Railway, and similar) when production is not ready.',
+      },
+      {
+        type: 'p',
+        text: 'On Agency, open a Project and configure preview scan access (HTTP basic auth or cookies) when a deploy is behind a password.',
       },
     ],
     related: ['why-check-failed', 'first-check'],

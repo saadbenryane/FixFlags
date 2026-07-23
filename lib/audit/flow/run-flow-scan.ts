@@ -62,6 +62,7 @@ export interface RunFlowScanOptions {
   /** Reuse desktop hero capture as step 0 instead of re-screenshotting. */
   landingStep?: FlowScanStep | null
   allowLocalhost?: boolean
+  fetchHeaders?: Record<string, string>
 }
 
 async function captureFlowStep(
@@ -90,9 +91,12 @@ function isConversionPathUrl(origin: string, url: string): boolean {
   return /pricing|plan|signup|sign-up|register|login|contact|demo|start/i.test(resolved)
 }
 
-async function fetchDestinationTrust(finalUrl: string): Promise<FlowScanResult['destinationTrust']> {
+async function fetchDestinationTrust(
+  finalUrl: string,
+  fetchHeaders?: Record<string, string>
+): Promise<FlowScanResult['destinationTrust']> {
   try {
-    const meta = await fetchAndParseMetadata(finalUrl)
+    const meta = await fetchAndParseMetadata(finalUrl, { headers: fetchHeaders })
     return {
       hasPrivacyPolicy: meta.hasPrivacyPolicy,
       hasContactInfo: meta.hasContactInfo,
@@ -216,11 +220,11 @@ export async function runFlowScan(
 
   const destinationTrust =
     urlsMeaningfullyChanged(landingUrl, finalUrl)
-      ? await fetchDestinationTrust(finalUrl)
+      ? await fetchDestinationTrust(finalUrl, options.fetchHeaders)
       : undefined
 
   const destinationUX = urlsMeaningfullyChanged(landingUrl, finalUrl)
-    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref)
+    ? await runDestinationUXProbes(page, ctaMeta.ctaText, ctaMeta.ctaHref, options.fetchHeaders)
     : undefined
 
   if (httpStatus && httpStatus >= 400) {

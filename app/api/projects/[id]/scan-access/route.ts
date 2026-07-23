@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { prisma } from '@/lib/db'
+import { canScanRepositories } from '@/lib/auth/entitlements'
 import {
   parseScanAccessInput,
   redactScanAccessForClient,
@@ -16,13 +17,21 @@ const bodySchema = z.object({
   scanAccess: scanAccessInputSchema.nullable().optional(),
 })
 
-async function assertProjectOwner(projectId: string, userId: string) {
+async function assertAgencyProjectOwner(projectId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
     select: { id: true, scanAccessEncrypted: true },
   })
-  if (!project) return null
-  return project
+  if (!project) return { kind: 'not_found' as const }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, plan: true, subscriptionStatus: true },
+  })
+  if (!user) return { kind: 'unauthorized' as const }
+  if (!canScanRepositories(user)) {
+    return { kind: 'upgrade_required' as const }
+  }
+  return { kind: 'ok' as const, project }
 }
 
 export async function GET(
@@ -34,10 +43,17 @@ export async function GET(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const project = await assertProjectOwner(id, session.user.id)
-    if (!project) return apiError('Project not found', 404)
+    const access = await assertAgencyProjectOwner(id, session.user.id)
+    if (access.kind === 'not_found') return apiError('Project not found', 404)
+    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
+    if (access.kind === 'upgrade_required') {
+      return apiError('Preview scan access requires the Agency plan', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'view_pricing',
+      })
+    }
 
-    const config = decryptScanAccess(project.scanAccessEncrypted)
+    const config = decryptScanAccess(access.project.scanAccessEncrypted)
     return NextResponse.json({
       configured: Boolean(config),
       summary: config ? redactScanAccessForClient(config) : null,
@@ -56,8 +72,15 @@ export async function PUT(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const project = await assertProjectOwner(id, session.user.id)
-    if (!project) return apiError('Project not found', 404)
+    const access = await assertAgencyProjectOwner(id, session.user.id)
+    if (access.kind === 'not_found') return apiError('Project not found', 404)
+    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
+    if (access.kind === 'upgrade_required') {
+      return apiError('Preview scan access requires the Agency plan', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'view_pricing',
+      })
+    }
 
     const body = await req.json().catch(() => ({}))
     const parsed = bodySchema.safeParse(body)
@@ -92,8 +115,15 @@ export async function DELETE(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const project = await assertProjectOwner(id, session.user.id)
-    if (!project) return apiError('Project not found', 404)
+    const access = await assertAgencyProjectOwner(id, session.user.id)
+    if (access.kind === 'not_found') return apiError('Project not found', 404)
+    if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
+    if (access.kind === 'upgrade_required') {
+      return apiError('Preview scan access requires the Agency plan', 402, {
+        code: 'UPGRADE_REQUIRED',
+        action: 'view_pricing',
+      })
+    }
 
     await persistProjectScanAccess(id, session.user.id, null)
     return NextResponse.json({ configured: false, summary: null })

@@ -7,11 +7,7 @@ import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
-import {
-  type RankableFlag,
-} from '@/lib/audit/priority-flags'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
-import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
+import { buildUnifiedFinishPlan } from '@/lib/audit/load-finish-plan-flags'
 
 export interface TaskRubricSummary {
   name: string
@@ -73,50 +69,6 @@ function reportUrl(reportId: string): string {
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
-function toRankableFlag(flag: {
-  id: string
-  checkId: string | null
-  rubric: string
-  severity: string
-  impactTag: string | null
-  problem: string
-  evidence: string | null
-  whyItMatters: string | null
-  fix: string | null
-  agentPrompt: string | null
-  cursorPrompt: string | null
-  claudePrompt: string | null
-  windsurfPrompt: string | null
-  lovablePrompt: string | null
-  boltPrompt: string | null
-  verificationRule: string | null
-  pageUrl: string | null
-  confidence: number | null
-  source: string
-}): RankableFlag {
-  return {
-    id: flag.id,
-    checkId: flag.checkId,
-    rubric: flag.rubric,
-    severity: flag.severity,
-    impactTag: flag.impactTag,
-    problem: flag.problem,
-    evidence: flag.evidence,
-    whyItMatters: flag.whyItMatters,
-    fix: flag.fix,
-    agentPrompt: flag.agentPrompt,
-    cursorPrompt: flag.cursorPrompt,
-    claudePrompt: flag.claudePrompt,
-    windsurfPrompt: flag.windsurfPrompt,
-    lovablePrompt: flag.lovablePrompt,
-    boltPrompt: flag.boltPrompt,
-    verificationRule: flag.verificationRule,
-    pageUrl: flag.pageUrl,
-    confidence: flag.confidence,
-    source: flag.source,
-  } as RankableFlag
-}
-
 export async function loadCompletedOutcome(reportId: string): Promise<{
   score: number | null
   verdict: string | null
@@ -156,13 +108,11 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   }))
 
   const contract = parseProductContract(audit.productContract)
-  const liveFlags = audit.flags.map(toRankableFlag)
-  const repoFlags = await loadRepoFlagsForAudit({ userId: audit.userId, auditUrl: audit.url })
-  const flags = [...liveFlags, ...repoFlags]
-  const plan = buildFinishPlan({
-    flags,
+  const plan = await buildUnifiedFinishPlan({
+    userId: audit.userId,
+    auditUrl: audit.url,
+    flags: audit.flags,
     rubricRows: audit.rubrics,
-    url: audit.url,
     contract,
     promptAccess: 'all',
   })

@@ -109,7 +109,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 ## Limitations and technical debt
 
 - Regression suite covers HTML-derivable checks only; screenshot/flow/PageSpeed modules are not yet frozen into fixtures
-- Route contract tests cover the critical path (checks create, api-keys, projects, report status poll, re-check); remaining API routes still lack handler-level tests
+- Route contract tests cover the critical path (checks create, api-keys, projects, scan-access, vercel webhook, report status poll, re-check); remaining API routes still lack handler-level tests
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
 - No team workspaces or white-label reports
@@ -138,8 +138,8 @@ Five concrete checks from report evidence. Fix before shipping:
 - **Core loop above all.** Every feature must serve Flag → Fix → Re-check.
 - **Every feature must serve the core loop.** If it does not fit Flag → Fix → Re-check, it does not ship.
 - **Re-checks are never gated.** A user who re-checks is a user who sees value.
-- **No staging, localhost, or password-protected site support.**
-- **No CI/CD integration yet.**
+- **Localhost and private networks are not supported.** Agency projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
+- **CI/CD:** GitHub Action (`actions/fixflags-check`) and Vercel deployment webhook (`/api/webhooks/vercel?apiKey=...`) enqueue Launch Checks on deploy.
 
 ## Unresolved questions
 

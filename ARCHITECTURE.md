@@ -215,7 +215,9 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 |-------|------------|
 | Focused page shell | `components/audit/FocusedAuditReport.tsx`, `ReportViewModel`, shared hero/rubric/prompt primitives |
 | Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, Contract/Memory, evidence timelines, explorer, previews, gates |
-| Finish Plan contract | `lib/audit/finish-plan.ts`, used by report, export, task outcomes, MCP, CLI response, sample |
+| Finish Plan contract | `lib/audit/load-finish-plan-flags.ts` (`buildUnifiedFinishPlan`), `lib/audit/finish-plan.ts`; report, export, task outcomes, MCP, CLI |
+| Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Agency API + MCP `scanAccess` on check |
+| Deploy CI gate | `actions/fixflags-check/`, `app/api/webhooks/vercel/route.ts` (`?apiKey=`); see `docs/vercel-webhook.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |

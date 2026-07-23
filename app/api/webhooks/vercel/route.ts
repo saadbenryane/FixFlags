@@ -27,6 +27,13 @@ function verifyVercelSignature(rawBody: string, signature: string | null, secret
   }
 }
 
+function resolveWebhookApiKey(req: NextRequest): string | null {
+  const fromQuery = req.nextUrl.searchParams.get('apiKey')
+  if (fromQuery?.trim()) return fromQuery.trim()
+  const fromHeader = req.headers.get('x-fixflags-api-key')
+  return fromHeader?.trim() || null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const secret = process.env.VERCEL_WEBHOOK_SECRET
@@ -44,9 +51,14 @@ export async function POST(req: NextRequest) {
     }
 
     const url = parsed.data.payload.deployment.url
-    const apiKey = req.headers.get('x-fixflags-api-key')
+    const apiKey = resolveWebhookApiKey(req)
     const user = await validateApiKey(apiKey)
-    if (!user) return apiError('Valid FixFlags API key required in x-fixflags-api-key header', 401)
+    if (!user) {
+      return apiError(
+        'Valid FixFlags API key required. Add ?apiKey=ff_live_... to the webhook URL in Vercel.',
+        401
+      )
+    }
 
     const outcome = await checkAndPlan({
       url,

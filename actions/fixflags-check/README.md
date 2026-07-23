@@ -35,6 +35,13 @@ Set `FIXFLAGS_API_KEY` in repository secrets. Generate one from **Settings → A
 | `fail-on-issues` | no | `false` | Fail when Finish Plan has items |
 | `base-url` | no | `https://fixflags.com` | API base URL |
 
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `report_id` | FixFlags report id |
+| `report_url` | Public report URL |
+
 ## Re-check after fixes
 
 ```yaml

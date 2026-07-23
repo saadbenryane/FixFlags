@@ -49,6 +49,8 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Prescription | `lib/audit/run-ai-review.ts`, `judge-prescription.ts` |
 | Finalize | `lib/audit/finalize.ts` |
 | Recovery | `lib/audit/recover-audit-job.ts` |
+| Preview scan access | `lib/audit/scan-access.ts`, `scan-access-store.ts`, `browser/page-session.ts`; Agency-only API `app/api/projects/[id]/scan-access/route.ts` |
+| Finish Plan ranking | `lib/audit/load-finish-plan-flags.ts` (`buildUnifiedFinishPlan`), `finish-plan.ts`; include repo flags for Agency |
 | Failure copy | `lib/audit/user-facing-errors.ts`, `lib/marketing/copy.ts` AUDIT_ERRORS |
 | Report access | `lib/audit/report-access.ts`, `fetch-audit.ts` |
 
@@ -93,6 +95,8 @@ npm run smoke:triage:prod      # post-deploy, requires prod keys
 - **Anti-FP:** Shared filter suppresses content Flags whose problem/evidence match tooling paths (`playwright-mcp`, `/tmp/`, `.yml` session dumps).
 - **Form silent failure:** `form-submit-silent-failure` when probe/submit gets 2xx but no success UI (or UI success with failed upstream).
 - **Report wiring:** the server assembler passes focused summary/Finish Plan/access data separately from detailed Contract/timeline/explorer data. Preserve flag `source` for evidence truth.
+- **Finish Plan:** always rank through `buildUnifiedFinishPlan` (live flags + Agency repo findings). Do not rebuild ad hoc in MCP, export, or report UI.
+- **Scan access:** thread `scanAccess` through Playwright (`createAuditPage`), fetch helpers (`scanAccessToFetchHeaders`), journey, flow, critical-path discovery, and visual capture side-by-side pages.
 ## Competitive boundary
 
 Do **not** add Scout-style conversational "check anything else" chat on the audit path. Depth comes from Product Contract, network/overlay probes, ranked Flags, and re-check proof.
