@@ -9,6 +9,9 @@ import {
 } from '@/lib/audit/create-audit'
 import { checkAndPlan } from '@/lib/audit/task-contracts'
 import { normalizeAuditUrl } from '@/lib/audit/url'
+import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
+import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
+import { prisma } from '@/lib/db'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
@@ -23,6 +26,7 @@ const createSchema = z.object({
   utmCampaign: z.string().optional(),
   gclid: z.string().optional(),
   fbclid: z.string().optional(),
+  scanAccess: scanAccessInputSchema.optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -93,6 +97,28 @@ export async function POST(req: NextRequest) {
     const referer = req.headers.get('referer')
     const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
     const clientSource = parseClientAuditSource(parsed.data.source)
+    if (parsed.data.scanAccess) {
+      if (!session?.user) {
+        return apiError('Sign in required for preview scan access', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
+      }
+      const scanAccessUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, role: true, plan: true, subscriptionStatus: true },
+      })
+      if (!scanAccessUser || !canUseEphemeralScanAccess(scanAccessUser)) {
+        return apiError('Preview scan access requires the Agency plan', 402, {
+          code: 'UPGRADE_REQUIRED',
+          action: 'view_pricing',
+        })
+      }
+    }
+    const scanAccess =
+      session?.user && parsed.data.scanAccess
+        ? parseScanAccessInput(parsed.data.scanAccess)
+        : null
+    if (parsed.data.scanAccess && session?.user && !scanAccess) {
+      return apiError('Scan access must include HTTP basic auth, cookies, or headers', 400)
+    }
     const attribution = buildAttribution({
       url,
       source: clientSource,
@@ -114,6 +140,7 @@ export async function POST(req: NextRequest) {
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
       attribution,
+      scanAccess,
     })
 
     return NextResponse.json(

@@ -21,6 +21,7 @@ import {
 import type { PipelineContext, PageRun } from './pipeline/types'
 import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
 import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
+import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
 
 export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
@@ -29,6 +30,7 @@ export async function runAudit(auditId: string): Promise<void> {
     if (audit.status === 'COMPLETED') return
 
     const startedAt = new Date()
+    const scanAccess = await resolveAuditScanAccess(auditId)
     const ctx: PipelineContext = {
       auditId,
       deadline: Date.now() + AUDIT_DEADLINE_MS,
@@ -36,6 +38,7 @@ export async function runAudit(auditId: string): Promise<void> {
       pagespeedCalls: 0,
       usage: { inputTokens: 0, outputTokens: 0, models: [] },
       includeAi: audit.includeAi,
+      scanAccess,
     }
 
     // Always fresh capture, including parented re-checks.
@@ -77,7 +80,7 @@ export async function runAudit(auditId: string): Promise<void> {
 
       const discovered =
         audit.auditMode === 'CRITICAL_PATH'
-          ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata)
+          ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata, ctx.scanAccess)
           : [{ url: audit.url, category: 'primary' as const }]
 
       for (const [index, page] of discovered.slice(1).entries()) {
@@ -109,6 +112,7 @@ export async function runAudit(auditId: string): Promise<void> {
       await runJourneyReviewsForAudit(auditId, audit.url, {
         included: audit.journeyReviewIncluded,
         deadline: ctx.deadline,
+        scanAccess: ctx.scanAccess,
       })
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)

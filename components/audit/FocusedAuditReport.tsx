@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowRight, CheckCircle2, LockKeyhole } from 'lucide-react'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { LovableBoltHeroCopy } from '@/components/audit/LovableBoltHeroCopy'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
 import { RecheckDiffStrip } from '@/components/audit/RecheckDiffStrip'
@@ -20,6 +21,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { shareStatusMessage } from '@/lib/audit/share-status'
 import type { ReportViewModel } from '@/lib/report/report-view-model'
 import { impactTagLabel, rubricLabel } from '@/lib/utils'
+import { inferBuilderToolFromUrl } from '@/lib/marketing/partners-copy'
 import { FocusedReportTracker } from '@/components/audit/FocusedReportTracker'
 import type { ReportAccessState } from '@/lib/analytics/events'
 
@@ -34,6 +36,7 @@ export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
   const copyNextStep = model.recheck.canRecheck
     ? REPORT_COPY.focused.copyNextStepOwner
     : REPORT_COPY.focused.copyNextStepAnonymous
+  const builderTool = inferBuilderToolFromUrl(model.summary.url)
 
   return (
     <Container variant="report" className="space-y-8 py-6 sm:py-10">
@@ -131,11 +134,25 @@ export function FocusedAuditReport({ model }: { model: ReportViewModel }) {
 
                       {item.prompt ? (
                         <div className="space-y-2">
+                          {index === 0 &&
+                          builderTool &&
+                          item.toolPrompts?.[builderTool]?.trim() ? (
+                            <LovableBoltHeroCopy
+                              tool={builderTool}
+                              prompt={item.toolPrompts[builderTool]!.trim()}
+                              auditId={model.summary.auditId}
+                              surface="focused"
+                              accessState={accessState}
+                              itemPosition={index + 1}
+                              copyNextStep={copyNextStep}
+                            />
+                          ) : null}
                           <p className="meta-label text-muted-foreground">{REPORT_COPY.focused.fix}</p>
                           <FixPromptBlock
                             prompt={item.prompt}
                             toolPrompts={item.toolPrompts ?? undefined}
                             showToolSelector
+                            defaultTool={builderTool ?? undefined}
                             rows={3}
                             variant="compact"
                             nested

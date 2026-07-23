@@ -15,6 +15,11 @@ import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/check-limit'
 import {
+  encryptScanAccess,
+  decryptScanAccess,
+  type ScanAccessConfig,
+} from '@/lib/audit/scan-access'
+import {
   checkAnonymousAuditAllowed,
   enforceAnonymousIpSoftCeiling,
   trackAnonymousAuditId,
@@ -34,6 +39,10 @@ export interface CreateAuditOptions {
   attribution?: AuditAttribution
   /** Client IP / fingerprint for anon soft IP ceiling. Required for anonymous creates in prod. */
   clientId?: string
+  /** Preview/staging credentials for authenticated targets (signed-in only). */
+  scanAccess?: ScanAccessConfig | null
+  /** When true, inherit Project.scanAccessEncrypted if scanAccess is omitted. */
+  useProjectScanAccess?: boolean
 }
 
 export interface CreateAuditResult {
@@ -143,24 +152,40 @@ export async function createAndEnqueueAudit(
   const journeyReviewIncluded = await resolveJourneyReviewIncluded(userId)
 
   let projectId: string | null = null
+  let inheritedScanAccessEncrypted: string | null = null
   if (userId) {
     if (options.parentId) {
       const parent = await prisma.audit.findUnique({
         where: { id: options.parentId },
-        select: { projectId: true },
+        select: { projectId: true, scanAccessEncrypted: true },
       })
       projectId = parent?.projectId ?? null
+      inheritedScanAccessEncrypted = parent?.scanAccessEncrypted ?? null
     }
     if (!projectId) {
       const project = await ensureProductProject(userId, url)
       projectId = project.id
     }
+    if (!inheritedScanAccessEncrypted && projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { scanAccessEncrypted: true },
+      })
+      inheritedScanAccessEncrypted = project?.scanAccessEncrypted ?? null
+    }
   }
+
+  const resolvedScanAccess =
+    options.scanAccess ??
+    (options.useProjectScanAccess !== false && inheritedScanAccessEncrypted
+      ? decryptScanAccess(inheritedScanAccessEncrypted)
+      : null)
 
   const data = {
     url,
     userId,
     projectId,
+    scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,
     recheckTrigger: options.parentId ? (options.recheckTrigger ?? 'MANUAL') : null,
     watchNotificationStatus:

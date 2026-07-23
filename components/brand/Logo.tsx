@@ -24,6 +24,9 @@ function Mark({ px }: { px: number }) {
         alt=""
         fill
         sizes={`${px}px`}
+        // Already-compressed brand PNG; skip /_next/image so a localPatterns
+        // allowlist regression cannot blank the live logo.
+        unoptimized
         className="object-contain"
       />
     </span>
@@ -43,6 +46,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
             fill
             priority={size !== 'sm'}
             sizes={`${LOCKUP_PX[size]}px`}
+            unoptimized
             className="object-contain dark:hidden"
           />
           <Image
@@ -51,6 +55,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
             fill
             priority={size !== 'sm'}
             sizes={`${LOCKUP_PX[size]}px`}
+            unoptimized
             className="hidden object-contain dark:block"
           />
         </span>

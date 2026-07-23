@@ -65,6 +65,18 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   assert(!read(root, 'app/api/projects/route.ts').includes('isAnchor'), 'Managed quota still uses isAnchor')
   assert(!read(root, 'components/audit/ExportMenu.tsx').includes('limit: null'), 'Finish Plan still uses limit:null')
 
+  const unifiedFinishPlanConsumers = [
+    'app/report/[id]/load-report-route-state.ts',
+    'lib/audit/task-contracts.ts',
+    'lib/mcp/tools.ts',
+  ]
+  for (const file of unifiedFinishPlanConsumers) {
+    assert(
+      read(root, file).includes('buildUnifiedFinishPlan'),
+      `Unified Finish Plan loader missing from ${file}`,
+    )
+  }
+
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n')
   const clutter = tracked.filter((file) => /(^|\/)node_modules\//.test(file) || /(^|\/)dist\//.test(file))
   assert(clutter.length === 0, `Tracked generated dependencies/artifacts: ${clutter.slice(0, 5).join(', ')}`)

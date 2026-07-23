@@ -13,7 +13,7 @@ import {
   type AuditScreenshot,
   type ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import { loadReportRouteState } from '../page'
+import { loadReportRouteState } from '../load-report-route-state'
 
 export const metadata: Metadata = {
   title: 'Full review',
@@ -57,8 +57,14 @@ export async function DetailedReportRoute({
   if (state.kind === 'progressive') {
     return <AuditPageClient id={state.id} initialAudit={state.audit} pollStatus session={state.session} />
   }
+  if (state.kind !== 'completed') {
+    return null
+  }
 
-  const journeyPages = (state.audit.pages ?? []).map((page) => ({
+  const completedState = state
+  const finishPlanFlags = completedState.finishPlanFlags ?? completedState.reportAudit.flags
+
+  const journeyPages = (completedState.audit.pages ?? []).map((page) => ({
     id: page.id,
     url: page.url,
     title: page.title,
@@ -90,7 +96,9 @@ export async function DetailedReportRoute({
       score={state.audit.score}
       verdict={state.audit.verdict}
       topIssue={state.topIssue}
-      flags={state.flags}
+      flags={finishPlanFlags}
+      contract={state.reportAudit.productContract ?? null}
+      finishPlanPrompt={completedState.finishPlan?.copyPrompt ?? null}
       rubrics={state.rubricRows.map((rubric) => ({
         name: rubric.name,
         grade: rubric.grade,
@@ -158,6 +166,7 @@ export async function DetailedReportRoute({
         toolbarActions={toolbarActions}
         backToPlanHref={shareToken ? `/share/${shareToken}` : `/report/${state.id}`}
         showFinishPlan={false}
+        finishPlan={completedState.finishPlan}
       />
       <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
       <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />

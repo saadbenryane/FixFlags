@@ -29,6 +29,7 @@ import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-conf
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { inferProductContract } from '../product-contract'
+import { scanAccessToFetchHeaders } from '../scan-access'
 import {
   mergeHeuristicIntoProjectPi,
   productIntelligenceFromContract,
@@ -76,6 +77,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const [captured, speed] = await Promise.all([
     captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
       runFlow: input.primary && input.position === 0,
+      scanAccess: ctx.scanAccess,
     }),
     fetchPageSpeedData(normalizedUrl),
   ])
@@ -144,7 +146,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const metadataFromHtml = mergeRuntimeHeadMetadata(
     screenshots.desktopHtml
       ? parseMetadataFromHtml(screenshots.desktopHtml, normalizedUrl)
-      : await fetchAndParseMetadata(normalizedUrl),
+      : await fetchAndParseMetadata(normalizedUrl, {
+          headers: scanAccessToFetchHeaders(ctx.scanAccess),
+        }),
     screenshots.runtimeHeadMetadata
   )
   const storedPerformance = {

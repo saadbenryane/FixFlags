@@ -22,6 +22,7 @@ export type HelpArticleSlug =
   | 'cancel-or-manage'
   | 'payment-past-due'
   | 'mcp-setup'
+  | 'railway-deploy-check'
   | 'lovable-bolt-paste'
   | 'api-keys'
   | 'sign-in-and-security'

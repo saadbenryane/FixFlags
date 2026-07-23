@@ -13,6 +13,8 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| strategic-sprint | cloud-agent | Preview scan access, Railway deploy gate, Lovable/Bolt partners, unified Finish Plan, MCP quality gate | 2026-07-23 |
+| fix-live-images | cloud-agent | Restore live logo/marketing images; unoptimized public assets + localPatterns guard; merged to main | 2026-07-23 |
 | launch-quality-accuracy | cloud-agent | Scan accuracy baseline, accuracy-eval CI gate, HTML parser FP fixes, builder fixtures, corpus refactor, completion plan, skills | 2026-07-23 |
 | axi-project-agent-pilot | codex | Independent AXI-style project context, affected verification, real evals, bounded output, and harness measurement | 2026-07-22 |
 | agent-native-cli | codex | Task-shaped check → Finish Plan and re-check → verification diff CLI workflows | 2026-07-22 |
