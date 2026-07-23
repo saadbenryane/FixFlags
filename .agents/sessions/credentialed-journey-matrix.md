@@ -6,7 +6,7 @@
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
-| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Blocked | Run `npm run doctor` locally |
+| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Pass | `npm run doctor` passes locally |
 | `RELEASE_FRESH_DATABASE_URL` + reset flag | Blocked | Required for `npm run verify:release` |
 | `RELEASE_CONTAINER_ENV_FILE` | Blocked | Production-like container env |
 | `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target |

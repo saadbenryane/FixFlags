@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   // racing a developer's active `.next` process.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   output: 'standalone',
+  // Sharp loads its platform libvips payload dynamically, so Next's static
+  // tracer cannot discover the native files from imports alone.
+  outputFileTracingIncludes: {
+    '/*': ['node_modules/@img/sharp-libvips-*/**/*'],
+  },
   poweredByHeader: false,
   allowedDevOrigins: ['127.0.0.1'],
   turbopack: {

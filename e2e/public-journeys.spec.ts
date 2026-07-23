@@ -134,11 +134,22 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
   test.skip(process.env.E2E_FULL !== 'true', 'Set E2E_FULL=true for the queue-backed journey')
   test.setTimeout(240_000)
 
+  const targetUrl = process.env.E2E_AUDIT_URL ?? 'https://example.com'
   await page.goto('/')
-  await page.getByLabel('Website URL').first().fill('https://example.com')
+  await page.getByLabel('Website URL').first().fill(targetUrl)
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await page.waitForURL(/\/report\//, { timeout: 30_000 })
-  await expect(page.locator('#report-finish-plan')).toBeVisible({ timeout: 180_000 })
+  const fixList = page.locator('#report-flags')
+  await expect(fixList).toBeVisible({ timeout: 180_000 })
+  await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
+
+  const copyButtons = fixList.getByRole('button', { name: /copy prompt/i })
+  await expect(copyButtons).toHaveCount(1)
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await copyButtons.first().click()
+  const copiedPrompt = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copiedPrompt.length).toBeGreaterThan(40)
+  expect(copiedPrompt).not.toMatch(/create (a free )?account|sign up/i)
 
   await page.goto('/')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')

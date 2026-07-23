@@ -136,6 +136,33 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     ],
     expectedPresent: ['description-missing', 'form-missing-validation'],
   },
+  {
+    file: 'linear-app.html',
+    url: 'https://linear.app',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: [],
+    knownFalsePositives: [],
+    expectedPresent: ['no-structured-data', 'cookie-consent-absent'],
+  },
+  {
+    file: 'v0-dev.html',
+    url: 'https://v0.dev',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: [],
+    knownFalsePositives: [],
+    expectedPresent: ['no-structured-data', 'measurement-ga-gtm-posthog-missing'],
+  },
+  {
+    file: 'replit-com.html',
+    url: 'https://replit.com',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: [],
+    knownFalsePositives: [],
+    expectedPresent: ['canonical-missing', 'h1-multiple'],
+  },
 ]
 
 /** Fixtures that participate in the launch accuracy gate (excludes control-only rows). */

@@ -34,13 +34,13 @@ The main branch changed concurrently during this work. Commit `da73376` contains
 
 ## Remaining release blockers
 
-1. Provide `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; local doctor currently fails only the AI environment requirement.
+1. Local AI configuration is present and `npm run doctor` passes.
 2. Provide `RELEASE_FRESH_DATABASE_URL` for a disposable database whose name includes `release` or `test`, plus `RELEASE_ALLOW_DATABASE_RESET=true`.
 3. Provide `RELEASE_CONTAINER_ENV_FILE` with production-like non-customer resources.
 4. Provide `RELEASE_SMOKE_URL` (and bearer token when required), then run `npm run verify:release`.
-5. Run the credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. Matrix file: `.agents/sessions/credentialed-journey-matrix.md`.
-6. Runtime recovery now exercises the isolated BullMQ queue and the application audit queue with required, non-skippable Redis integration coverage for stale QUEUED and mid-CAPTURING requeues. Lock-contention behavior remains covered by the scheduler/unit contract.
-7. Complete the remaining report/MCP/marketing module splits and dead-code adjudication. Do not refactor solely to meet a file-size target.
+5. Run the remaining credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. Matrix file: `.agents/sessions/credentialed-journey-matrix.md`.
+6. Runtime recovery now exercises the isolated BullMQ queue and the application audit queue with required, non-skippable Redis integration coverage for stale QUEUED and mid-CAPTURING requeues. Lock contention is covered by the atomic scheduler lock test.
+7. Continue behavior-driven dead-code adjudication only when reachability and tests prove a removal safe; do not refactor solely to meet a file-size target.
 
 ## Pipeline truth (2026-07-23)
 

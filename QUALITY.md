@@ -38,7 +38,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Auth / session integrity | 🔶 IMPORTANT | Claim-before-next, entitlements, re-check never gated | Claim + redirect + monitoring tests; full login/logout E2E still open |
 | CI pipeline | ✅ DONE | CI and local full verification use `scripts/validate.mjs`. | GitHub Actions runs `npm run validate:full` plus browser journeys |
 | Migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Drift detection passes. | Passes |
-| Worker crash recovery | 🔶 IMPORTANT | Worker dies mid-capture → retry. Detection tested. Recovery path untested. | Partial |
+| Worker crash recovery | 🔶 IMPORTANT | Worker dies mid-capture → retry. Required evaluation must not skip. | Isolated retry/idempotency plus real Redis application-queue requeue for stale QUEUED and CAPTURING states |
 | Queue job processing | ✅ DONE | Live PostgreSQL/Redis evaluation submits, processes, retries after failure, and checks duplicate-job idempotency. | `npm run agent -- eval recovery` |
 
 ### Touch — Experience
@@ -49,7 +49,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence + exactly one complete non-placeholder fix prompt; remaining prompts stay gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit still manual |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
-| Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px | No responsive tests |
+| Mobile-responsive layout | 🔶 IMPORTANT | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Playwright public journey matrix |
 | Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | Partial |
 | Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Lint + browser matrix |
 | Page load performance | 🔶 IMPORTANT | Canonical report loads without unnecessary duplicate report bundles | Production build route output |

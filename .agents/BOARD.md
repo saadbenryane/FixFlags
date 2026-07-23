@@ -5,6 +5,7 @@
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
+| made-with-intelligence | in_progress | codex-root | main | Evidence-backed technology detection, report profile, re-check diff, public profile safeguards, and normalized persistence | lib/audit technology capture, lib/graph technology reads, report/public UI, Prisma technology models, focused tests/docs | Preserve current-product-completion working tree; share canonical report and graph contracts | 2026-07-23 |
 
 ---
 

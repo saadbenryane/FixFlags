@@ -109,7 +109,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 
 ## Limitations and technical debt
 
-- Regression suite covers HTML-derivable checks only; screenshot/flow/PageSpeed modules are not yet frozen into fixtures
+- Regression suite covers HTML plus frozen PageSpeed, network, overlay, slow-replay, and dead-end-flow outputs; screenshot pixel rendering is not yet frozen
 - Route contract tests cover the critical path (checks create, api-keys, projects, scan-access, railway webhook, report status poll, re-check); remaining API routes still lack handler-level tests
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)

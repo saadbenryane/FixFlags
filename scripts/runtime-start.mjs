@@ -19,7 +19,8 @@ const migration = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy'], 
 })
 if (migration.status !== 0) process.exit(migration.status ?? 1)
 
-const webEntry = existsSync('server.js') ? 'server.js' : '.next/standalone/server.js'
+const nextDistDir = process.env.NEXT_DIST_DIR || '.next'
+const webEntry = existsSync('server.js') ? 'server.js' : `${nextDistDir}/standalone/server.js`
 const entry = mode === 'web' ? webEntry : 'dist/worker/index.js'
 if (!existsSync(entry)) {
   console.error(`Runtime entry is missing: ${entry}`)
