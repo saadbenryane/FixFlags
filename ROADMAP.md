@@ -14,13 +14,13 @@
 ## Now
 
 - **Product Hunt completion release** — focused three-fix report, separate full review, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood gaps: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
-  *Signal:* production brand `_next/image` healthy; anonymous URL → progressive → real evidence ×3 → one demonstrated fix (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → details → revoke.
+  *Signal:* anonymous URL → progressive → real evidence ×3 → one demonstrated fix (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → details → revoke.
 
 - **Launch Check Completeness** — Finish Plan ≤3, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy Finish Plan has ≤3; watch enqueues FULL re-check; regression email on watched projects.
 
-- **Customer journey trust close** — Deploy lag, anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Board `customer-journey-completion`.
-  *Signal:* Phase 0–3 of customer-journey-completion-plan.md accepted on production dogfood.
+- **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
+  *Signal:* Phases 1–3 of customer-journey-completion-plan.md accepted on production dogfood.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.

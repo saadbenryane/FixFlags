@@ -21,15 +21,16 @@ First-value trust is the acquisition surface. Broken logo + empty evidence + fak
 
 ## Correct approach
 
-1. Deploy `main` and smoke `_next/image` brand/marketing URLs on every release.
+1. Brand: keep `/brand/**` + `/marketing/**` in `localPatterns`, serve compressed brand assets `unoptimized`, guard with `npm run image:local-patterns-guard` (shipped as `fix-live-images`; see `next-image-local-patterns-blank-assets.md`).
 2. Persist real triage evidence/why; null fix prompts until prescription/claim paths fill them.
 3. Grant `promptAccess: 'one'` only when `resolveFixPrompt` is a real prompt; never feed gate strings to Copy UI.
 4. Keep PRODUCT.md / report-contract as the anon contract; keep AGENTS and skills aligned to that wording.
-5. Treat customer dogfood failures as Phase 0/1 completion work, not “Touch later.”
+5. Treat remaining dogfood failures (anon evidence, dishonest Copy) as Phase 1 now-work, not “Touch later.”
 
 ## Where prevention was encoded
 
-- `.agents/sessions/customer-journey-completion-plan.md`
+- Brand fix: `fix-live-images` + `.agents/learnings/next-image-local-patterns-blank-assets.md`
+- `.agents/sessions/customer-journey-completion-plan.md` (Phase 0 marked done 2026-07-23)
 - `.agents/sessions/launch-readiness-completion-plan.md` immediate actions
 - `.agents/sessions/credentialed-journey-matrix.md` anon row
 - `AGENTS.md` anon invariant

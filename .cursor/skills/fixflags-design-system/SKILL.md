@@ -44,9 +44,10 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 
 ## Brand assets
 
-- Logo and marketing visuals use `next/image` under `/brand/**` and `/marketing/**`.
-- Keep those paths in `next.config.ts` `images.localPatterns`. Do not “fix” broken optimizer 400s with `unoptimized` or raw `<img>` unless the design system explicitly requires it.
-- After deploy, smoke `_next/image` for logo lockup and one marketing visual.
+- Logo and marketing visuals live under `/brand/**` and `/marketing/**`.
+- Keep those paths in `next.config.ts` `images.localPatterns` whenever that allowlist exists.
+- Pre-compressed brand/marketing assets use `unoptimized` so an allowlist regression cannot blank the live logo (see learning `next-image-local-patterns-blank-assets.md`).
+- `npm run image:local-patterns-guard` must stay green.
 
 ## Avoid
 

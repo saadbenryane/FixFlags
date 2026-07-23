@@ -4,11 +4,11 @@
 
 ## Verdict
 
-FixFlags’ **promise is clear** and the **scan loop is fast**, but production first-value is incomplete: broken brand assets on the live deploy, anonymous Finish Plan evidence locked behind signup, and a Copy prompt control that can toast success while copying a gate string. Those are trust bugs. Fix them properly in the access/persistence design. Do not paper over them with UI-only fallbacks.
+FixFlags’ **promise is clear** and the **scan loop is fast**. Brand/first impression is restored (`fix-live-images` on `main`). Remaining first-value gaps: anonymous Finish Plan evidence locked behind signup, and a Copy prompt control that can toast success while copying a gate string. Fix those in the access/persistence design. Do not paper over them with UI-only fallbacks.
 
-| Dimension | Status after dogfood | Why |
-|-----------|----------------------|-----|
-| Brand / first impression | Broken on live | Production still on `ed73147`; `images.localPatterns` lacks `/brand/**` and `/marketing/**` (fixed on `main` since `24f4da9`) |
+| Dimension | Status | Why |
+|-----------|--------|-----|
+| Brand / first impression | **Solved** | `fix-live-images`: `/brand/**` + `/marketing/**` in `localPatterns`, Logo/`BrandIllustration` `unoptimized`, `npm run image:local-patterns-guard` |
 | Anonymous wedge | Contract drift | PRODUCT + report-contract require visible evidence + exactly one real demonstrated prompt; live AI flags persist locked placeholders |
 | Copy / gate honesty | Broken | `PromptCopyButton` copies whatever string it receives, including `TRIAGE_LOCKED_FIX` |
 | Score vs status | Confusing | CRITICAL → BLOCKED while log-decay score can stay ~92 |
@@ -27,20 +27,18 @@ FixFlags’ **promise is clear** and the **scan loop is fast**, but production f
 
 ---
 
-## Phase 0 — Production recovery (do now, ops)
+## Phase 0 — Brand recovery — **DONE** (2026-07-23)
 
-**Goal:** Live site matches `main` brand assets. No code change required if deploy catches up.
+Shipped via board `fix-live-images` on `main` (`1d25ac1` and follow-ups). Confirmed by product owner.
 
-| Action | Done when |
-|--------|-----------|
-| Deploy current `main` (at/after `24f4da9`, ideally tip) | `GET /api/health` commit ≠ `ed73147` |
-| Smoke optimized images | `_next/image?url=%2Fbrand%2Flogo-lockup-light.png&w=256&q=75` → 200 |
-| Smoke marketing visual | `_next/image?url=%2Fmarketing%2Fvisuals%2Floop-light.webp&w=640&q=82` → 200 |
-| Purge CDN image cache if 400s linger | Browser hard-refresh shows logo lockup |
+| Delivered | Where |
+|-----------|--------|
+| Allowlist `/brand/**` + `/marketing/**` | `next.config.ts` `images.localPatterns` |
+| Logo + marketing public assets `unoptimized` | `Logo.tsx`, marketing visuals (avoid optimizer blanking) |
+| CI guard | `scripts/image-local-patterns-guard.mjs` / `npm run image:local-patterns-guard` |
+| Learning | `.agents/learnings/next-image-local-patterns-blank-assets.md` |
 
-**Anti-pattern:** Switching Logo/`BrandIllustration` to `unoptimized` or raw `<img>` as the “fix.” `next/image` is correct; the allowlist was incomplete on the deployed commit and is already fixed on `main`.
-
-**Prevention:** Extend deployed smoke (runtime-release) with representative `/_next/image` brand + marketing URLs. Add a guard that fails CI when a `next/image` local `src` under `/brand/**` or `/marketing/**` is not covered by `images.localPatterns`.
+**Residual (not blocking Phase 1):** keep release smoke asserting brand URLs stay healthy after deploy.
 
 ---
 
@@ -163,11 +161,11 @@ Update matrix row “Anonymous wedge” from Partial → Pass only after Phase 1
 
 ---
 
-## Phase 6 — Distribution (explicitly after Phase 0–5)
+## Phase 6 — Distribution (explicitly after Phase 1–5)
 
 Do not scale ads / Product Hunt until:
 
-- [ ] Production images 200
+- [x] Production brand restored (Phase 0 / `fix-live-images`)
 - [ ] Anon wedge dogfood passes Phase 1 acceptance
 - [ ] `verify:release` green
 - [ ] Credentialed matrix signed for revenue paths
@@ -179,7 +177,7 @@ Do not scale ads / Product Hunt until:
 
 | Track | Owner note |
 |-------|------------|
-| Deploy Phase 0 | Release / Railway |
+| Phase 0 brand | **Done** — `fix-live-images` |
 | Phase 1–3 code | Claim BOARD scope that does not collide with `current-product-completion` write files; prefer sequential handoff if that task still owns `lib/audit/*` |
 | Skills / session docs | This plan |
 

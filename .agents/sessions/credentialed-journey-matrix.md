@@ -35,7 +35,7 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 - [ ] `/report/[id]` hierarchy: identity → diff → Finish Plan (≤3) → rubric → full review → re-check
 - [ ] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts
 - [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
-- [ ] Production logo / marketing `_next/image` 200
+- [x] Production brand restored (`fix-live-images` / Phase 0)
 - [ ] `/report/[id]/details`: Contract, Journey/Flow/Timeline, Flags, previews, watch
 - [ ] Progressive route: captures, early findings, three Finish Plan cards
 - [ ] `/samples` and loading shell never empty

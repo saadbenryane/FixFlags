@@ -23,7 +23,7 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 - `npm run verify:release` executed with designated credentials (not skipped)
 - [`.agents/sessions/credentialed-journey-matrix.md`](../../../.agents/sessions/credentialed-journey-matrix.md) signed off for revenue-critical journeys
 - Manual report contract smoke (anonymous + signed-in) per QUALITY.md report contract section
-- Production first-value dogfood per [customer-journey-completion-plan.md](../../../.agents/sessions/customer-journey-completion-plan.md): logo/`_next/image` 200, anon evidence visible, one real Copy prompt, no placeholder clipboard
+- Production first-value dogfood per [customer-journey-completion-plan.md](../../../.agents/sessions/customer-journey-completion-plan.md): Phase 0 brand done; anon evidence visible, one real Copy prompt, no placeholder clipboard
 - Browser capture truth: slow replay wired in `run-page.ts`; capability matrix matches production wiring
 - AXI applies to CLI/MCP agent tooling only — not Playwright audit capture (see `fixflags-browser-capture` skill)
 
