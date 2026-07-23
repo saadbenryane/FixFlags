@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| fix-live-images | in_progress | cloud-agent | cursor/fix-live-images-173c | Restore live logo/marketing images broken by next/image localPatterns allowlist | next.config.ts, components/brand/Logo.tsx, components/marketing/landing/*, scripts/image-local-patterns-guard.mjs | Live /_next/image returns 400 "url parameter is not allowed" for /brand and /marketing | 2026-07-23 |
+| fix-live-images | review | cloud-agent | cursor/fix-live-images-173c | Restore live logo/marketing images broken by next/image localPatterns allowlist | next.config.ts, components/brand/Logo.tsx, components/marketing/landing/*, scripts/image-local-patterns-guard.mjs | PR #7; merge + Railway redeploy required for live recovery | 2026-07-23 |
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
 
 ---
