@@ -6,6 +6,8 @@ import {
   scoreCtaLink,
   type LinkCategory,
 } from './flow/link-scoring'
+import type { ScanAccessConfig } from './scan-access'
+import { scanAccessToFetchHeaders } from './scan-access'
 import { logger } from '@/lib/logger'
 
 const MAX_URLS = 6
@@ -97,7 +99,10 @@ export function discoverCriticalPathUrls(
   return selectDiverse(primaryUrl, ranked)
 }
 
-async function fetchSitemapCandidates(origin: string): Promise<Array<{ href: string; text: string }>> {
+async function fetchSitemapCandidates(
+  origin: string,
+  fetchHeaders?: Record<string, string>
+): Promise<Array<{ href: string; text: string }>> {
   const sitemapUrl = new URL('/sitemap.xml', origin).toString()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), SITEMAP_TIMEOUT_MS)
@@ -105,7 +110,10 @@ async function fetchSitemapCandidates(origin: string): Promise<Array<{ href: str
     const res = await fetch(sitemapUrl, {
       method: 'GET',
       signal: controller.signal,
-      headers: { Accept: 'application/xml,text/xml,*/*' },
+      headers: {
+        Accept: 'application/xml,text/xml,*/*',
+        ...(fetchHeaders ?? {}),
+      },
     })
     if (!res.ok) return []
     const body = await res.text()
@@ -129,7 +137,8 @@ async function fetchSitemapCandidates(origin: string): Promise<Array<{ href: str
 
 async function fetchPageLinkCandidates(
   pageUrl: string,
-  origin: string
+  origin: string,
+  fetchHeaders?: Record<string, string>
 ): Promise<Array<{ href: string; text: string }>> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), BFS_TIMEOUT_MS)
@@ -137,7 +146,7 @@ async function fetchPageLinkCandidates(
     const res = await fetch(pageUrl, {
       method: 'GET',
       signal: controller.signal,
-      headers: { Accept: 'text/html' },
+      headers: { Accept: 'text/html', ...(fetchHeaders ?? {}) },
     })
     if (!res.ok) return []
     const html = await res.text()
@@ -167,8 +176,10 @@ function missingPriorityCategories(pages: DiscoveredPage[]): boolean {
  */
 export async function discoverCriticalPathUrlsEnriched(
   primaryUrl: string,
-  metadata: PageMetadata
+  metadata: PageMetadata,
+  scanAccess?: ScanAccessConfig | null
 ): Promise<DiscoveredPage[]> {
+  const fetchHeaders = scanAccessToFetchHeaders(scanAccess)
   let pages = discoverCriticalPathUrls(primaryUrl, metadata)
   if (!missingPriorityCategories(pages)) return pages
 
@@ -176,7 +187,7 @@ export async function discoverCriticalPathUrlsEnriched(
   const seen = new Set(pages.map((p) => p.url))
   const extras: RankedLink[] = []
 
-  const sitemapLinks = await fetchSitemapCandidates(origin)
+  const sitemapLinks = await fetchSitemapCandidates(origin, fetchHeaders)
   extras.push(...rankLinksFromPairs(origin, sitemapLinks, seen))
 
   // BFS depth 1: fetch the highest-scoring homepage link for more corridor links
@@ -190,7 +201,7 @@ export async function discoverCriticalPathUrlsEnriched(
     .sort((a, b) => b.score - a.score)[0]
 
   if (seed && seed.url !== normalizeCandidateUrl(primaryUrl)) {
-    const hopLinks = await fetchPageLinkCandidates(seed.url, origin)
+    const hopLinks = await fetchPageLinkCandidates(seed.url, origin, fetchHeaders)
     extras.push(...rankLinksFromPairs(origin, hopLinks, seen))
   }
 

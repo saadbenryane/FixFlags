@@ -56,11 +56,13 @@ export function buildFinishPlan(input: {
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
+  limit?: number
 }): FinishPlan {
+  const cap = input.limit ?? 3
   const ranked = rankFlagsByPriority(
     input.flags,
     input.rubricRows ?? [],
-    3,
+    cap,
     input.contract ?? null
   )
   const demonstratedId = input.demonstratedFlag?.id
@@ -110,7 +112,7 @@ export function buildFinishPlan(input: {
     input.promptAccess === 'all' && visiblePromptCount > 0
       ? buildPlanModePrompt(input.flags, {
           url: input.url,
-          limit: 3,
+          limit: cap,
           contract: input.contract ?? null,
         })
       : null

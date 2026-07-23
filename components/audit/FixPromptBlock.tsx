@@ -23,6 +23,7 @@ interface FixPromptBlockProps {
   showNextStep?: boolean
   showCursorAction?: boolean
   showToolSelector?: boolean
+  defaultTool?: PromptToolKey
   variant?: 'terminal' | 'compact'
   /** Use concentric inner radius when nested inside a rounded-card shell */
   nested?: boolean
@@ -80,6 +81,7 @@ export function FixPromptBlock({
   showNextStep = false,
   showCursorAction = false,
   showToolSelector = false,
+  defaultTool,
   variant = 'terminal',
   nested = false,
   auditId,
@@ -88,7 +90,7 @@ export function FixPromptBlock({
   itemPosition,
   copyNextStep,
 }: FixPromptBlockProps) {
-  const [preferredTool, setPreferredTool] = usePreferredTool()
+  const [preferredTool, setPreferredTool] = usePreferredTool(defaultTool)
   const resolvedPrompt = showToolSelector
     ? resolveToolPrompt(toolPrompts, preferredTool, prompt)
     : prompt

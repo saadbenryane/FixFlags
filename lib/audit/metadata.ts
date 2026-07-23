@@ -469,13 +469,17 @@ export function trimMetadataForStorage(metadata: PageMetadata) {
 }
 
 export async function fetchAndParseMetadataWithHeaders(
-  url: string
+  url: string,
+  options?: { headers?: Record<string, string> }
 ): Promise<{ metadata: PageMetadata; responseHeaders: Record<string, string> }> {
-  const { html, finalUrl, headers } = await safeFetchHtml(url)
+  const { html, finalUrl, headers } = await safeFetchHtml(url, { headers: options?.headers })
   return { metadata: parseMetadataFromHtml(html, finalUrl), responseHeaders: headers }
 }
 
-export async function fetchAndParseMetadata(url: string): Promise<PageMetadata> {
-  const { metadata } = await fetchAndParseMetadataWithHeaders(url)
+export async function fetchAndParseMetadata(
+  url: string,
+  options?: { headers?: Record<string, string> }
+): Promise<PageMetadata> {
+  const { metadata } = await fetchAndParseMetadataWithHeaders(url, options)
   return metadata
 }

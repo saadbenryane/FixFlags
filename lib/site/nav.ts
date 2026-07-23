@@ -24,6 +24,7 @@ export const FOOTER_COLUMNS = {
     { href: '/blog', label: 'Blog' },
   ],
   company: [
+    { href: '/partners', label: 'Expert program' },
     { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
     { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
     { href: '/privacy', label: 'Privacy Policy' },

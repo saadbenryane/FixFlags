@@ -162,6 +162,8 @@ INLINE_WORKER=false npm run worker:start
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
+**Post-deploy Launch Check (Railway):** configure a project webhook pointing at `/api/webhooks/railway?apiKey=...&url=https://YOUR-SERVICE.up.railway.app`. See [docs/railway-deploy-check.md](docs/railway-deploy-check.md).
+
 CI uses the same `scripts/validate.mjs` full manifest as local verification, then runs browser journeys. `npm run verify:release` adds clean installation, Docker, and deployed readiness probes and requires designated release resources.
 
 ## Screenshot regeneration

@@ -513,6 +513,10 @@ model Project {
   watchLastRunAt              DateTime?
   watchConsecutiveFailures    Int                   @default(0)
   watchLastError              String?
+  /**
+   * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
+   */
+  scanAccessEncrypted         String?               @db.Text
   audits                      Audit[]
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
@@ -606,6 +610,10 @@ model Audit {
    * Inferred product intent: purpose, first-value journey, critical outcomes.
    */
   productContract Json?
+  /**
+   * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
+   */
+  scanAccessEncrypted String? @db.Text
 
   normalizedDomain String?
   source           AuditSource @default(UNKNOWN)

@@ -1,5 +1,7 @@
 import type { Browser, ConsoleMessage, Page } from 'playwright'
 import { assertPublicAuditUrl } from '../url'
+import type { ScanAccessConfig } from '../scan-access'
+import { applyScanAccessCookies, scanAccessToPlaywrightContext } from '../scan-access'
 import type { CaptureProfile } from './capture-profile'
 import {
   applyJourneyRouteGuards,
@@ -39,6 +41,8 @@ export interface CreateAuditPageOptions {
   settle?: boolean
   /** Extra journey guards: block payments, downloads, and mutating form posts (with one engagement probe). */
   journeySafe?: boolean
+  /** HTTP basic auth, cookies, or headers for preview/staging targets. */
+  scanAccess?: ScanAccessConfig | null
 }
 
 export async function settleAuditPage(page: Page): Promise<void> {
@@ -55,6 +59,7 @@ export async function createAuditPage(
   options: CreateAuditPageOptions
 ): Promise<AuditPageSession> {
   const consoleErrors = options.consoleErrors ?? []
+  const playwrightAccess = scanAccessToPlaywrightContext(options.scanAccess)
 
   const context = await browser.newContext({
     viewport: { width: options.profile.width, height: options.profile.height },
@@ -62,7 +67,10 @@ export async function createAuditPage(
     deviceScaleFactor: options.profile.deviceScaleFactor ?? 1,
     locale: 'en-US',
     bypassCSP: true,
+    ...playwrightAccess,
   })
+
+  await applyScanAccessCookies(context, targetUrl, options.scanAccess)
 
   const page = await context.newPage()
 

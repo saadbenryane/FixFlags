@@ -93,7 +93,8 @@ async function measureLoadQuality(page: Page, deadlineMs = 6000): Promise<Destin
 export async function runDestinationUXProbes(
   page: Page,
   originCtaText: string | null,
-  originCtaHref: string | null
+  originCtaHref: string | null,
+  fetchHeaders?: Record<string, string>
 ): Promise<DestinationUXQuality> {
   const url = page.url()
 
@@ -168,7 +169,7 @@ export async function runDestinationUXProbes(
     }
   })
 
-  const metadata = await fetchAndParseMetadata(url).catch(() => null)
+  const metadata = await fetchAndParseMetadata(url, { headers: fetchHeaders }).catch(() => null)
 
   const ctaPromisesMatch = (() => {
     if (!originCtaText || !pageData.headline) return true

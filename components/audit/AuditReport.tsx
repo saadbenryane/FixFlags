@@ -29,7 +29,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
   auditHasFixPrompts,
 } from '@/lib/audit/priority-flags'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildFinishPlan, type FinishPlan } from '@/lib/audit/finish-plan'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -131,6 +131,7 @@ interface AuditReportProps {
   sampleFixFlag?: RankableFlag | null
   backToPlanHref?: string
   showFinishPlan?: boolean
+  finishPlan?: FinishPlan
 }
 
 export function AuditReport({
@@ -164,6 +165,7 @@ export function AuditReport({
   sampleFixFlag = null,
   backToPlanHref,
   showFinishPlan = true,
+  finishPlan: finishPlanProp,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
@@ -213,13 +215,15 @@ export function AuditReport({
 
   const showPriorities =
     showFinishPlan && !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
-  const finishPlan = buildFinishPlan({
-    flags: audit.flags,
-    rubricRows: audit.rubricRows,
-    url: audit.url,
-    contract: audit.productContract ?? null,
-    promptAccess: showPrescription ? 'all' : 'none',
-  })
+  const finishPlan =
+    finishPlanProp ??
+    buildFinishPlan({
+      flags: audit.flags,
+      rubricRows: audit.rubricRows,
+      url: audit.url,
+      contract: audit.productContract ?? null,
+      promptAccess: showPrescription ? 'all' : 'none',
+    })
 
   return (
     <Container

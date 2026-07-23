@@ -9,6 +9,7 @@ import {
   type VisualCaptureMetrics,
 } from '@/lib/audit/capture/visual-capture'
 import { getVisualDescriptor } from '@/lib/audit/capture/visual-types'
+import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
 
 export type FlagVisualEvidenceMap = Record<
   string,
@@ -75,11 +76,13 @@ export async function tryCaptureVisualEvidenceForAudit(
   try {
     const browser = await getAuditBrowser()
     const map: FlagVisualEvidenceMap = {}
+    const scanAccess = await resolveAuditScanAccess(auditId)
 
     // Prefer mobile: most animated/overlay checks target mobile UX.
     const mobileSession = await createAuditPage(browser, url, {
       profile: MOBILE_CAPTURE_PROFILE,
       settle: true,
+      scanAccess,
     })
     try {
       const mobileResult = await captureVisualEvidence(
@@ -88,7 +91,8 @@ export async function tryCaptureVisualEvidenceForAudit(
         auditId,
         candidates,
         'mobile',
-        metrics
+        metrics,
+        scanAccess
       )
       for (const v of mobileResult.visuals) {
         map[v.checkId] = {
@@ -114,6 +118,7 @@ export async function tryCaptureVisualEvidenceForAudit(
       const desktopSession = await createAuditPage(browser, url, {
         profile: DESKTOP_CAPTURE_PROFILE,
         settle: true,
+        scanAccess,
       })
       try {
         const desktopResult = await captureVisualEvidence(
@@ -122,7 +127,8 @@ export async function tryCaptureVisualEvidenceForAudit(
           auditId,
           remaining,
           'desktop',
-          metrics
+          metrics,
+          scanAccess
         )
         for (const v of desktopResult.visuals) {
           if (!map[v.checkId]) {

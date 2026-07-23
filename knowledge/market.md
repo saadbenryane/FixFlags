@@ -181,7 +181,7 @@ Do not publish humiliating audits of people's products. Use consented or recreat
 1. Copy fix for Lovable/Cursor
 2. GitHub issue export
 3. GitHub app or Action
-4. Vercel deployment check
+4. Railway deployment check (project webhook)
 5. MCP tool
 6. Formal marketplace listing
 7. Deeper platform partnerships

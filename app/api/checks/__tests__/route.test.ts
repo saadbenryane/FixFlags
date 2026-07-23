@@ -185,4 +185,46 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(res.status).toBe(201)
     expect(checkAndPlan).toHaveBeenCalledTimes(1)
   })
+
+  it('returns 401 when scanAccess is sent without a session', async () => {
+    const res = await POST(
+      postReq({
+        url: 'https://preview.example.com',
+        scanAccess: { httpBasic: { username: 'user', password: 'pass' } },
+      })
+    )
+
+    expect(res.status).toBe(401)
+    expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
+  it('returns 402 when scanAccess is sent on a non-Agency plan', async () => {
+    getSession.mockResolvedValue({ user: { id: 'user-1' } })
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
+
+    const res = await POST(
+      postReq({
+        url: 'https://preview.example.com',
+        scanAccess: { httpBasic: { username: 'user', password: 'pass' } },
+      })
+    )
+
+    expect(res.status).toBe(402)
+    const body = await res.json()
+    expect(body.code).toBe('UPGRADE_REQUIRED')
+    expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
+  it('passes scanAccess to checkAndPlan for Agency users', async () => {
+    getSession.mockResolvedValue({ user: { id: 'user-1' } })
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'TEAM' }))
+    const scanAccess = { httpBasic: { username: 'user', password: 'pass' } }
+
+    const res = await POST(postReq({ url: 'https://preview.example.com', scanAccess }))
+
+    expect(res.status).toBe(201)
+    expect(checkAndPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ scanAccess })
+    )
+  })
 })

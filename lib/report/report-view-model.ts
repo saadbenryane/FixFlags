@@ -68,8 +68,19 @@ export function assembleReportViewModel(input: {
   compareHref?: string | null
   toolbarActions?: ReactNode
   detailsHref?: string
+  finishPlan?: FinishPlan
 }): ReportViewModel {
   const promptAccess = input.showPrompts ? 'all' : input.demonstratedFlag ? 'one' : 'none'
+  const finishPlan =
+    input.finishPlan ??
+    buildFinishPlan({
+      flags: input.audit.flags,
+      rubricRows: input.audit.rubricRows,
+      url: input.audit.url,
+      contract: input.audit.productContract ?? null,
+      promptAccess,
+      demonstratedFlag: input.demonstratedFlag,
+    })
   return {
     summary: {
       auditId: input.auditId,
@@ -85,14 +96,7 @@ export function assembleReportViewModel(input: {
       rubrics: input.audit.rubrics,
       rubricRows: input.audit.rubricRows,
     },
-    finishPlan: buildFinishPlan({
-      flags: input.audit.flags,
-      rubricRows: input.audit.rubricRows,
-      url: input.audit.url,
-      contract: input.audit.productContract ?? null,
-      promptAccess,
-      demonstratedFlag: input.demonstratedFlag,
-    }),
+    finishPlan,
     details: {
       href: input.detailsHref ?? `/report/${input.auditId}/details`,
       flagCount: input.audit.flags.length,
