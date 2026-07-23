@@ -118,17 +118,18 @@ Replace full-page minified dumps with **curated DOM extracts** where possible (h
 
 **Goal:** Product feels world-class at first use.
 
-### 5.1 Manual report contract smoke (QUALITY.md §86–96)
+### 5.1 Manual report contract smoke (QUALITY.md report contract)
 
 Run on **one anonymous** and **one signed-in** journey:
 
 1. `/report/[id]` hierarchy: identity → diff → Finish Plan (≤3) → rubric → full review → re-check
-2. Anonymous: three summaries, exactly one complete fix prompt, one signup moment
-3. `/report/[id]/details`: Back, Contract/Memory, Journey/Flow/Timeline, Flags, previews, watch
+2. Anonymous: three evidence summaries, exactly one **real** complete fix prompt (clipboard ≠ gate string), one signup moment for remaining prompts
+3. `/report/[id]/details`: Back, Contract/Memory, Journey/Flow/Timeline, Flags, previews, watch; evidence visible while prompts gated
 4. Progressive route: captures, early findings, three Finish Plan cards; COMPLETED holds frame
 5. `/samples` and loading shell never empty; homepage/sample do not query production audits
 6. Password share: generic metadata, single authorize, no view inflation, revoke works
 7. 375 / 768 / 1280px, keyboard, 200% zoom, reduced motion, partial/failure/deleted states
+8. Production brand: logo and marketing `_next/image` return 200
 
 ### 5.2 Touch automation backlog
 
@@ -190,10 +191,13 @@ Do **not** scale (Product Hunt, paid ads) until:
 
 ## Immediate next actions (ordered)
 
-1. Merge PR #4 to `main`
-2. Provision release credentials; run `verify:release`
-3. Execute credentialed journey matrix (manual checklist minimum)
-4. Run manual report contract smoke (2 journeys)
-5. linear.app full-pipeline dogfood + adjudication
-6. Expand non-HTML regression fixtures from prod captures
-7. Touch-tier responsive automation for report routes
+1. **Deploy `main` to production** so `_next/image` brand/marketing assets stop 400ing (Phase 0 of customer-journey plan). Live was still on `ed73147` while `main` already had the allowlist fix.
+2. Execute [customer-journey-completion-plan.md](./customer-journey-completion-plan.md) Phases 1–3 (anon evidence truth, honest Copy, score/status, nav CTAs) before distribution claims.
+3. Provision release credentials; run `verify:release`
+4. Execute credentialed journey matrix (manual checklist minimum)
+5. Run manual report contract smoke (2 journeys) including production dogfood acceptance criteria
+6. linear.app full-pipeline dogfood + adjudication
+7. Expand non-HTML regression fixtures from prod captures
+8. Touch-tier responsive automation for report routes
+
+See also: [customer-journey-completion-plan.md](./customer-journey-completion-plan.md) for first-value trust gaps found in live dogfood.

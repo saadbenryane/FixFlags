@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| customer-journey-completion | in_progress | cloud-agent | cursor/customer-journey-completion-5413 | Production dogfood plan + skill/doc alignment for anon wedge, brand image smoke, honest Copy, score/status, nav CTAs | `.agents/sessions/customer-journey-completion-plan.md`, skills, AGENTS, launch/matrix docs | Coordinate Phase 1–3 code with current-product-completion before touching `lib/audit/*` | 2026-07-23 |
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
 
 ---

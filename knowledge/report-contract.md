@@ -21,7 +21,7 @@ FixFlags is one product: **paste URL → receive three prioritized fixes → cop
 7. Owner re-check
 8. At most one contextual signup or upgrade moment
 
-Anonymous reports expose all three problem and evidence summaries and exactly one complete demonstrated prompt. Other prompt fields are removed before rendering or API serialization.
+Anonymous reports expose all three problem and evidence summaries and exactly one complete demonstrated prompt. Evidence must be real page evidence, not signup-gate placeholder strings persisted into Flag rows. Other prompt fields are removed before rendering or API serialization. Copy controls must not toast success when no real prompt is available.
 
 ## Detailed review
 
@@ -43,3 +43,4 @@ Progressive UI builds toward three Finish Plan cards. Show honest status, captur
 - Interactive report targets are at least 44px and keyboard operable.
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
+- Anonymous dogfood: three real evidence summaries, one non-placeholder Copy prompt, remaining prompts gated; see `.agents/sessions/customer-journey-completion-plan.md`.

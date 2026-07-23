@@ -18,7 +18,7 @@ Record command output here when credentials are provisioned.
 
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
-| Anonymous wedge | `e2e/public-journeys.spec.ts` (`E2E_FULL=true`) | Partial | Queue-backed anon journey exists; run with full env |
+| Anonymous wedge | `e2e/public-journeys.spec.ts` (`E2E_FULL=true`) | Fail until Phase 1 | 2026-07-23 dogfood: AI flags persisted locked evidence; Copy toasted success on gate string. See customer-journey-completion-plan.md |
 | Passkeys / 2FA / recovery | `lib/auth/` unit tests | Partial | Route E2E not in default suite |
 | Billing / webhooks | `lib/billing/` + webhook route tests | Partial | Manual Stripe checkout sign-off required |
 | Re-check / diff / Remember | Unit + sample contract | Partial | FULL re-check path covered in unit tests |
@@ -33,7 +33,9 @@ Record command output here when credentials are provisioned.
 Run on **one anonymous** and **one signed-in** journey before distribution:
 
 - [ ] `/report/[id]` hierarchy: identity → diff → Finish Plan (≤3) → rubric → full review → re-check
-- [ ] Anonymous: three summaries, exactly one complete fix prompt, one signup moment
+- [ ] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts
+- [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
+- [ ] Production logo / marketing `_next/image` 200
 - [ ] `/report/[id]/details`: Contract, Journey/Flow/Timeline, Flags, previews, watch
 - [ ] Progressive route: captures, early findings, three Finish Plan cards
 - [ ] `/samples` and loading shell never empty

@@ -22,6 +22,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | Repository orientation | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md) | `npm run agent -- context orientation` |
 | Report or application UI | [DESIGN.md](DESIGN.md), `components/audit/`, `components/report/` | `npm run agent -- context ui` |
 | Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
+| First-value / anon dogfood | [`.agents/sessions/customer-journey-completion-plan.md`](.agents/sessions/customer-journey-completion-plan.md), [PRODUCT.md](PRODUCT.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
 | Browser capture (Playwright) | [`.cursor/skills/fixflags-browser-capture/SKILL.md`](.cursor/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
 | Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.cursor/skills/fixflags-scan-accuracy/SKILL.md`](.cursor/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
@@ -69,7 +70,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Marketing copy has one source of truth: `lib/marketing/copy.ts`. Do not hardcode it in components.
 - The product exposes exactly three report rubrics: Message, Experience, Reach.
 - Re-check remains the user-facing term. `monitoring` is an internal implementation term unless a separately defined product surface explicitly requires it.
-- The anonymous wedge is one teaser scan. Evidence remains visible; fix prompts remain gated until claim. Public APIs must not leak gated prompts.
+- The anonymous wedge is one teaser scan. Evidence stays visible on the Finish Plan; exactly one complete demonstrated fix prompt is shown; remaining prompts stay gated until claim. Public APIs must not leak gated prompts. Do not persist signup-gate strings as evidence or fix text.
 - Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 - Real product output is the proof surface. Do not invent testimonials, member counts, fake reports, or unsupported product claims.
 - Follow [SOUL.md](SOUL.md) and [docs/voice-and-copy.md](docs/voice-and-copy.md) for visible language. No em dashes or banned marketing filler.

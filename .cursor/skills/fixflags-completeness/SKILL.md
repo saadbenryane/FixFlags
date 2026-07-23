@@ -22,7 +22,8 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 - `npm run verify` green on `main`
 - `npm run verify:release` executed with designated credentials (not skipped)
 - [`.agents/sessions/credentialed-journey-matrix.md`](../../../.agents/sessions/credentialed-journey-matrix.md) signed off for revenue-critical journeys
-- Manual report contract smoke (anonymous + signed-in) per QUALITY §86–96
+- Manual report contract smoke (anonymous + signed-in) per QUALITY.md report contract section
+- Production first-value dogfood per [customer-journey-completion-plan.md](../../../.agents/sessions/customer-journey-completion-plan.md): logo/`_next/image` 200, anon evidence visible, one real Copy prompt, no placeholder clipboard
 - Browser capture truth: slow replay wired in `run-page.ts`; capability matrix matches production wiring
 - AXI applies to CLI/MCP agent tooling only — not Playwright audit capture (see `fixflags-browser-capture` skill)
 
@@ -42,3 +43,4 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 - Do not weaken quality evaluations to make a suite green. Find state pollution or adjudicate source evidence.
 - Do not report Product Watch, protected sharing, CLI, or MCP contracts as shipped until their acceptance paths pass.
 - Never retain plaintext compatibility, URL-prefix Product identity, silent catches, or half-functional startup behavior.
+- Do not mark Touch or launch complete while production brand assets 400, anon evidence is locked placeholders, or Copy prompt lies.
