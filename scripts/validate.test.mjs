@@ -55,6 +55,7 @@ describe('validate.mjs', () => {
       assert.ok(labels.some((l) => l.startsWith('test:')))
       assert.ok(labels.includes('brand:hex-guard'))
       assert.ok(labels.includes('ui:drift-guard'))
+      assert.ok(labels.includes('image:local-patterns-guard'))
       assert.ok(labels.includes('seo:guard'))
     })
 
@@ -84,6 +85,7 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('test:unit'))
       assert.ok(labels.includes('brand:hex-guard'))
       assert.ok(labels.includes('ui:drift-guard'))
+      assert.ok(labels.includes('image:local-patterns-guard'))
       assert.ok(labels.includes('product:contract-guard'))
       assert.ok(labels.includes('seo:guard'))
       assert.ok(labels.includes('completeness:audit'))

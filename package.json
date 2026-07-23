@@ -17,6 +17,7 @@
     "lint": "eslint . --max-warnings=0",
     "brand:hex-guard": "node scripts/brand-hex-guard.mjs",
     "ui:drift-guard": "node scripts/ui-drift-guard.mjs",
+    "image:local-patterns-guard": "node scripts/image-local-patterns-guard.mjs",
     "product:contract-guard": "node scripts/product-contract-guard.mjs",
     "routes:contract-guard": "node scripts/route-contract-registry.mjs",
     "skills:validate": "node scripts/skill-validator.mjs",

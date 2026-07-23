@@ -50,7 +50,7 @@ function LoopPanorama() {
         fill
         sizes={PANORAMA_SIZES}
         loading="lazy"
-        quality={82}
+        unoptimized
         className="object-cover object-center dark:hidden"
       />
       <Image
@@ -59,7 +59,7 @@ function LoopPanorama() {
         fill
         sizes={PANORAMA_SIZES}
         loading="lazy"
-        quality={82}
+        unoptimized
         className="hidden object-cover object-center dark:block"
       />
       <div
@@ -86,7 +86,7 @@ function LoopThirdScene({ index, className }: { index: number; className?: strin
         fill
         sizes={TILE_SIZES}
         loading="lazy"
-        quality={82}
+        unoptimized
         className="object-cover object-center dark:hidden"
       />
       <Image
@@ -95,7 +95,7 @@ function LoopThirdScene({ index, className }: { index: number; className?: strin
         fill
         sizes={TILE_SIZES}
         loading="lazy"
-        quality={82}
+        unoptimized
         className="hidden object-cover object-center dark:block"
       />
     </div>

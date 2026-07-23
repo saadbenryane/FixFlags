@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     qualities: [75, 82],
+    // When localPatterns is set it becomes an allowlist. A screenshots-only
+    // list previously returned 400 "url parameter is not allowed" for every
+    // brand and marketing asset on production. Keep these prefixes in sync
+    // with scripts/image-local-patterns-guard.mjs.
     localPatterns: [
       {
         pathname: '/api/screenshots/**',

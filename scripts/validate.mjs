@@ -216,6 +216,7 @@ export function fullCommands() {
     command('lint', 'npm', ['run', 'lint']),
     command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']),
     command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']),
+    command('image:local-patterns-guard', 'npm', ['run', 'image:local-patterns-guard']),
     command('product:contract-guard', 'npm', ['run', 'product:contract-guard']),
     command('routes:contract-guard', 'npm', ['run', 'routes:contract-guard']),
     command('skills:validate', 'npm', ['run', 'skills:validate']),
@@ -315,6 +316,7 @@ export function buildPlan(requestedMode, providedFiles) {
 
     commands.push(command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']))
     commands.push(command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']))
+    commands.push(command('image:local-patterns-guard', 'npm', ['run', 'image:local-patterns-guard']))
     commands.push(command('seo:guard', 'npm', ['run', 'seo:guard']))
   }
 

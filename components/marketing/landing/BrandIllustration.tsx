@@ -53,6 +53,8 @@ export function BrandIllustration({
         fill
         priority={priority}
         sizes={sizes}
+        // Pre-compressed marketing WebP; serve directly from /public.
+        unoptimized
         className={cn('object-cover', illustration.position, imageClassName)}
       />
       <div className={VEIL[veil]} />

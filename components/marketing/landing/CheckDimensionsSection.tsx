@@ -47,6 +47,7 @@ function PanoramaImage({ className = '' }: { className?: string }) {
         fill
         sizes={PANORAMA_SIZES}
         loading="lazy"
+        unoptimized
         className={cn('object-cover dark:hidden', className)}
       />
       <Image
@@ -55,6 +56,7 @@ function PanoramaImage({ className = '' }: { className?: string }) {
         fill
         sizes={PANORAMA_SIZES}
         loading="lazy"
+        unoptimized
         className={cn('hidden object-cover dark:block', className)}
       />
     </>
@@ -72,6 +74,7 @@ function MobileDimensionScene({ id }: { id: DimensionId }) {
         fill
         sizes={TILE_SIZES}
         loading="lazy"
+        unoptimized
         className="object-cover object-center dark:hidden"
       />
       <Image
@@ -80,6 +83,7 @@ function MobileDimensionScene({ id }: { id: DimensionId }) {
         fill
         sizes={TILE_SIZES}
         loading="lazy"
+        unoptimized
         className="hidden object-cover object-center dark:block"
       />
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/35 to-transparent" />
