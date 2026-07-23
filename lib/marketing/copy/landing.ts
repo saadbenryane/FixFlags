@@ -1,4 +1,4 @@
-import { BRAND, SITE_URL } from './brand'
+
 
 export const HERO = {
   badge: 'Check before you ship.',

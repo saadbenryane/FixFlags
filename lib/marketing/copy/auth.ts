@@ -1,0 +1,166 @@
+export const AUTH = {
+  reportContext: {
+    title: (hostname: string) => `Save ${hostname}`,
+    loadingTitle: 'Save this report',
+    body: 'Unlock every fix prompt and keep this report for unlimited re-checks.',
+    backCta: 'Back to report',
+    saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
+    unlocking: 'Unlocking your fix list',
+    redirecting: 'Your report is saved. Taking you back to the fixes.',
+    waiting: 'This will only take a moment.',
+    saveError: 'Your account is ready, but we could not save your report yet.',
+    retryCta: 'Try saving again',
+  },
+  signIn: {
+    title: 'Sign in to your account',
+    subtitle: 'Use your email and password to continue',
+    subtitleWithOAuth: 'Continue with Google or GitHub, or use email',
+    trustLine: 'Your report history stays on your account.',
+    tryWithoutAccount: 'Try without an account',
+    cta: 'Sign in',
+    passkeyCta: 'Sign in with passkey',
+    footer: 'Don\u2019t have an account?',
+    footerLink: 'Sign up',
+    forgotPassword: 'Forgot password?',
+    oauthNote: 'We never post or access your repositories.',
+  },
+  twoFactor: {
+    title: 'Confirm it\u2019s you',
+    subtitle: 'Use your passkey to finish signing in',
+    passkeyCta: 'Continue with passkey',
+    backupLabel: 'Or enter a backup code',
+    backupCta: 'Verify backup code',
+    backupPlaceholder: 'Backup code',
+    trustDevice: 'Remember this device for 30 days',
+    backToSignIn: 'Back to sign in',
+  },
+  security: {
+    title: 'Two-factor authentication',
+    description:
+      'Add a passkey, then require it after your password. Passkeys use your device biometrics or a security key.',
+    passkeysTitle: 'Passkeys',
+    passkeysEmpty: 'No passkeys yet. Add one to enable two-factor authentication.',
+    addPasskey: 'Add passkey',
+    renamePasskey: 'Rename',
+    deletePasskey: 'Remove',
+    enableTitle: 'Require passkey at sign-in',
+    enableDescription:
+      'After your password, FixFlags asks for a registered passkey before opening your account.',
+    enableCta: 'Enable passkey 2FA',
+    disableCta: 'Disable 2FA',
+    enabledBadge: 'Enabled',
+    disabledBadge: 'Off',
+    passwordLabel: 'Current password',
+    passwordlessHint: 'OAuth-only accounts can enable without a password.',
+    backupCodesTitle: 'Save your backup codes',
+    backupCodesBody:
+      'Store these somewhere safe. Each code works once if you lose access to your passkeys.',
+    backupCodesCopied: 'Backup codes copied',
+    copyBackupCodes: 'Copy codes',
+    regenerateBackupCodes: 'Generate new backup codes',
+  },
+  signUp: {
+    title: 'Create your free account',
+    subtitle: '3 new URL checks · Unlimited re-checks · Upgrade anytime',
+    subtitleWithOAuth: 'Continue with Google or GitHub, or create with email',
+    fromPricing: 'Create your free account: 3 new URL checks included, upgrade anytime',
+    oauthNote: 'We never post or access your repositories.',
+    cta: 'Create account',
+    footer: 'Already have an account?',
+    footerLink: 'Sign in',
+    planTitles: {
+      BUILDER: 'You\u2019re signing up for Pro, with 25 monthly checks, compare, and MCP from day one',
+      TEAM: 'You\u2019re signing up for Agency, ship client-ready share links and organize across up to 5 projects',
+    },
+    planSteps: [
+      'Create your account',
+      'Complete payment in Stripe',
+      'Run your first check from the dashboard',
+    ],
+  },
+  valueProps: [
+    { icon: 'history' as const, text: 'Report history saved to your account' },
+    { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
+    { icon: 'monitoring' as const, text: 'Re-check after fixes to see what cleared' },
+  ],
+  privacyNote: 'By creating an account, you agree to our Privacy Policy and Terms of Service.',
+  forgotPassword: {
+    title: 'Reset your password',
+    subtitle: 'Enter your email and we\u2019ll send a reset link',
+    sentSubtitle: 'Check your inbox',
+    sentBody: 'If an account exists for that email, we sent a password reset link.',
+    cta: 'Send reset link',
+    backToSignIn: 'Back to sign in',
+    error: 'Could not send reset email. Try again.',
+    notConfigured: 'Password reset requires email to be configured on the server.',
+  },
+  resetPassword: {
+    title: 'Choose a new password',
+    subtitle: 'Must be at least 8 characters',
+    cta: 'Update password',
+    mismatch: 'Passwords do not match',
+    success: 'Password updated. Sign in with your new password.',
+    error: 'Could not reset password. The link may have expired.',
+    invalidTitle: 'Invalid reset link',
+    invalidSubtitle: 'This link expired or was already used',
+    invalidBody: 'Request a new password reset link to continue.',
+    requestNewLink: 'Request a new link',
+  },
+} as const
+
+export const SHARE_COPY = {
+  privateTitle: 'Private report',
+  privateBody: 'This link only works for you while signed in. Upgrade to Agency for public share links anyone can open.',
+  privateLinkCta: 'Copy private link',
+  privateLinkCopied: 'Private link copied',
+  privateLinkCopiedDetail: 'This link only works for you while signed in.',
+  agencyCta: 'Agency',
+  access: {
+    openingTitle: 'Opening shared report',
+    openingBody: 'Checking that this link is still available.',
+    retry: 'Try again',
+    openFailed: 'Could not open this share link.',
+    passwordTitle: 'Password required',
+    passwordBody: 'This report is protected. Enter its password to continue.',
+    passwordLabel: 'Share password',
+    passwordPlaceholder: 'Enter password',
+    checking: 'Checking…',
+    viewReport: 'View report',
+  },
+} as const
+
+export const ANON_VALUE_STRIP = {
+  headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
+  body: 'Evidence and why it matters are below. Create a free account for fix prompts, re-check, and more URL checks.',
+  primaryCta: 'Create free account',
+  secondaryCta: 'Sign in',
+} as const
+
+export const LOCKED_INSPECTION = {
+  headline: 'Sign in to inspect this issue',
+  body: 'This report includes evidence, screenshots, and fix prompts for every flag.',
+  features: [
+    'Screenshot evidence with interactive pins',
+    'Detailed explanation of the issue',
+    'Why this matters for your users',
+    'How to verify the fix',
+    'Fix prompt for your editor',
+  ],
+  primaryCta: 'Sign in',
+  secondaryCta: 'Create free account',
+} as const
+
+export const LOCKED_CONTENT_TEASER = {
+  defaultLabel: 'Sign up to view',
+  fixPromptLabel: 'Create a free account to get the fix prompt for this flag',
+  primaryCta: 'Create free account',
+  secondaryCta: 'Sign in',
+} as const
+
+export const SAMPLE_FIX = {
+  label: 'Example fix',
+  fixTitle: 'Fix',
+  signInCta: 'Sign in',
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, re-check, and run more URL checks.`,
+  primaryCta: 'Create free account',
+} as const
