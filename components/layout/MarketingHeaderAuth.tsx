@@ -21,8 +21,8 @@ export function MarketingHeaderAuth({
   // logged-out state. Most marketing visitors are logged out, so this avoids a
   // late CTA pop-in; a signed-in visitor sees a brief swap to their avatar.
   if (!user) {
-    // Sheet: Log in only. Try free stays in the mobile top bar so the
-    // accessibility tree does not expose two signup CTAs when the menu opens.
+    // Sheet: Log in only. Primary scan CTA stays in the mobile top bar so the
+    // accessibility tree does not expose two Review CTAs when the menu opens.
     if (mode === 'mobileSheet') {
       return (
         <Link
@@ -39,8 +39,8 @@ export function MarketingHeaderAuth({
     if (mode === 'mobileTop') {
       return (
         <Button variant="ink" size="sm" asChild>
-          <Link href="/sign-up">
-            {HERO.navSignUpCta}
+          <Link href="/#audit">
+            {HERO.primaryCta}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
@@ -57,8 +57,8 @@ export function MarketingHeaderAuth({
         </Link>
         <span className="h-4 w-px bg-border/70" aria-hidden />
         <Button variant="ink" size="sm" asChild>
-          <Link href="/sign-up">
-            {HERO.navSignUpCta}
+          <Link href="/#audit">
+            {HERO.primaryCta}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>

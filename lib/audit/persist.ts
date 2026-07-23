@@ -237,10 +237,6 @@ export async function persistDeterministicFlags(
   })
 }
 
-const TRIAGE_LOCKED_EVIDENCE = 'Create a free account to see evidence and fix prompts.'
-const TRIAGE_LOCKED_WHY = 'Sign up to see why this matters and get a fix prompt for your editor.'
-const TRIAGE_LOCKED_FIX = 'Sign up to get the fix prompt.'
-
 export function buildTriageAiFlagRow(
   flag: TriageOutput['newFlags'][number],
   i: number,
@@ -257,9 +253,11 @@ export function buildTriageAiFlagRow(
     impactTag: aiImpactToEnum(flag.impactTag),
     severity: aiSeverityToEnum(flag.severity),
     problem: flag.problem,
-    evidence: TRIAGE_LOCKED_EVIDENCE,
-    whyItMatters: TRIAGE_LOCKED_WHY,
-    fix: TRIAGE_LOCKED_FIX,
+    evidence: flag.evidence.trim(),
+    whyItMatters: flag.whyItMatters.trim(),
+    // Fix prompts stay empty until prescription / claim unlock. Use '' so the
+    // non-null Flag.fix column stays valid without persisting gate copy.
+    fix: '',
     confidence: flag.confidence,
     agentPrompt: null,
     cursorPrompt: null,
@@ -267,7 +265,7 @@ export function buildTriageAiFlagRow(
     windsurfPrompt: null,
     lovablePrompt: null,
     boltPrompt: null,
-    verificationRule: 'Sign up to see verification steps.',
+    verificationRule: null,
     checkId: null,
     pageUrl: flag.pageUrl ?? null,
     fingerprint: flagFingerprint(flag),

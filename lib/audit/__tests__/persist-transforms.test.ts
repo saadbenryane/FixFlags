@@ -314,25 +314,56 @@ describe('buildTriageAiFlagRow', () => {
   const rMap = rubricMap([['MESSAGE', 'r1'], ['EXPERIENCE', 'r2']])
   const emptyPageMap = new Map<string, string>()
 
-  it('builds a row with locked triage evidence', () => {
-    const flag = { rubric: 'MESSAGE' as const, problem: 'Unclear value', impactTag: 'CONVERSION' as const, severity: 'IMPORTANT' as const, confidence: 0.8, pageUrl: null }
+  it('builds a row with real triage evidence and no gate placeholders', () => {
+    const flag = {
+      rubric: 'MESSAGE' as const,
+      problem: 'Unclear value',
+      evidence: 'Hero headline says "Welcome" with no product outcome.',
+      whyItMatters: 'Visitors cannot tell what to do next in the first screen.',
+      impactTag: 'CONVERSION' as const,
+      severity: 'IMPORTANT' as const,
+      confidence: 0.8,
+      pageUrl: null,
+    }
     const row = buildTriageAiFlagRow(flag, 0, emptyPageMap, rMap, 0)
     assert.equal(row.severity, 'IMPORTANT')
     assert.equal(row.impactTag, 'CONVERSION')
     assert.equal(row.rubricId, 'r1')
-    assert.ok(row.evidence.length > 0)
-    assert.ok(!row.evidence.includes('undefined'))
+    assert.equal(row.evidence, flag.evidence)
+    assert.equal(row.whyItMatters, flag.whyItMatters)
+    assert.equal(row.fix, '')
+    assert.equal(row.verificationRule, null)
+    assert.ok(!row.evidence.toLowerCase().includes('create a free account'))
+    assert.ok(!row.whyItMatters.toLowerCase().includes('sign up'))
   })
 
   it('maps invalid impactTag to null', () => {
-    const flag = { rubric: 'MESSAGE' as const, problem: 'Test', impactTag: 'INVALID', severity: 'POLISH' as const, confidence: 0.5, pageUrl: null }
+    const flag = {
+      rubric: 'MESSAGE' as const,
+      problem: 'Test',
+      evidence: 'Evidence on the page.',
+      whyItMatters: 'Impact for visitors.',
+      impactTag: 'INVALID',
+      severity: 'POLISH' as const,
+      confidence: 0.5,
+      pageUrl: null,
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = buildTriageAiFlagRow(flag as any, 0, emptyPageMap, rMap, 0)
     assert.equal(row.impactTag, null)
   })
 
   it('sets correct position', () => {
-    const flag = { rubric: 'EXPERIENCE' as const, problem: 'Slow load', impactTag: 'ACCESSIBILITY' as const, severity: 'CRITICAL' as const, confidence: 0.9, pageUrl: null }
+    const flag = {
+      rubric: 'EXPERIENCE' as const,
+      problem: 'Slow load',
+      evidence: 'LCP measured above 4s on mobile.',
+      whyItMatters: 'Slow first paint increases bounce risk.',
+      impactTag: 'ACCESSIBILITY' as const,
+      severity: 'CRITICAL' as const,
+      confidence: 0.9,
+      pageUrl: null,
+    }
     const row = buildTriageAiFlagRow(flag, 5, emptyPageMap, rMap, 0)
     assert.equal(row.position, 5)
   })

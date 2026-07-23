@@ -5,6 +5,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import { ArrowRight } from 'lucide-react'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { cn } from '@/lib/utils'
+import { displayEvidenceUrl } from '@/lib/utils/url-helpers'
 
 interface Props {
   flowData: FlowData
@@ -22,6 +23,7 @@ function statusCopy(status: string): { label: string; description: string } {
 export function FlowScanTimeline({ flowData }: Props) {
   const status = statusCopy(flowData.status)
   const hasSteps = flowData.steps.length > 0
+  const ctaHrefLabel = displayEvidenceUrl(flowData.ctaHref)
 
   return (
     <section
@@ -35,7 +37,7 @@ export function FlowScanTimeline({ flowData }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">
             FixFlags clicked your primary CTA and captured each step.
             {flowData.ctaText ? ` Target: "${flowData.ctaText}"` : null}
-            {flowData.ctaHref ? ` → ${flowData.ctaHref}` : null}.
+            {ctaHrefLabel ? ` → ${ctaHrefLabel}` : null}.
           </p>
         </div>
         {flowData.status !== 'success' && (
@@ -90,7 +92,7 @@ export function FlowScanTimeline({ flowData }: Props) {
                     )}
                   </Card>
                   <p className="truncate font-mono text-3xs text-muted-foreground">
-                    {step.url}
+                    {displayEvidenceUrl(step.url) ?? step.url}
                   </p>
                 </div>
               </li>

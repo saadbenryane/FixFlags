@@ -1,5 +1,6 @@
 import { canSharePublicly } from '@/lib/auth/entitlements'
 import { prisma } from '@/lib/db'
+import { flagHasFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
 
 type AiAccessAudit = {
   userId: string | null
@@ -68,10 +69,18 @@ export async function canViewDeterministicFixesForAudit(
 }
 
 type FlagLike = {
+  id?: string | null
   source?: string | null
+  severity?: string | null
+  problem?: string | null
+  rubric?: string | null
+  checkId?: string | null
+  impactTag?: string | null
+  confidence?: number | null
   agentPrompt?: string | null
   cursorPrompt?: string | null
   claudePrompt?: string | null
+  windsurfPrompt?: string | null
   lovablePrompt?: string | null
   boltPrompt?: string | null
   whyItMatters?: string | null
@@ -150,9 +159,26 @@ const SEVERITY_RANK: Record<string, number> = {
   POLISH: 2,
 }
 
-/** Find the highest-severity flag (CRITICAL > IMPORTANT > POLISH) with a fix prompt. */
+/** Find the highest-severity flag with a usable (non-placeholder) fix prompt. */
 export function findHighestSeverityFlagWithFix<T extends FlagLike>(flags: T[]): T | null {
-  const withFix = flags.filter((f) => f.fix)
+  const withFix = flags.filter((f) =>
+    flagHasFixPrompt({
+      id: String(f.id ?? f.problem ?? 'flag'),
+      problem: String(f.problem ?? ''),
+      severity: (f.severity as RankableFlag['severity']) ?? 'POLISH',
+      rubric: (f.rubric as RankableFlag['rubric']) ?? 'MESSAGE',
+      checkId: typeof f.checkId === 'string' ? f.checkId : undefined,
+      impactTag: (f.impactTag as RankableFlag['impactTag']) ?? undefined,
+      confidence: typeof f.confidence === 'number' ? f.confidence : null,
+      fix: typeof f.fix === 'string' ? f.fix : undefined,
+      agentPrompt: typeof f.agentPrompt === 'string' ? f.agentPrompt : null,
+      cursorPrompt: typeof f.cursorPrompt === 'string' ? f.cursorPrompt : null,
+      claudePrompt: typeof f.claudePrompt === 'string' ? f.claudePrompt : null,
+      windsurfPrompt: typeof f.windsurfPrompt === 'string' ? f.windsurfPrompt : null,
+      lovablePrompt: typeof f.lovablePrompt === 'string' ? f.lovablePrompt : null,
+      boltPrompt: typeof f.boltPrompt === 'string' ? f.boltPrompt : null,
+    })
+  )
   if (withFix.length === 0) return null
   return withFix.sort(
     (a, b) => (SEVERITY_RANK[a.severity as string] ?? 99) - (SEVERITY_RANK[b.severity as string] ?? 99)

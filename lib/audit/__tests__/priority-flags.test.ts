@@ -8,6 +8,7 @@ import {
   buildPlanModePrompt,
   collectFixPromptsByRubric,
   countFixPrompts,
+  resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
 import { buildAllFixPrompts } from '@/lib/audit/finish-plan'
@@ -227,5 +228,49 @@ describe('priority-flags', () => {
     )
 
     assert.equal(ranked[0].flag.problem, 'High impact better grade')
+  })
+
+  it('demotes Reach hardening headers behind conversion Flags in Finish Plan ranking', () => {
+    const sorted = [
+      flag({
+        id: 'hsts',
+        checkId: 'security-hsts-missing',
+        severity: 'CRITICAL',
+        impactTag: 'TRUST',
+        problem: 'HSTS missing',
+      }),
+      flag({
+        id: 'cta',
+        checkId: 'flow-cta-dead-end',
+        severity: 'IMPORTANT',
+        impactTag: 'CONVERSION',
+        problem: 'Primary CTA dead end',
+      }),
+    ].sort(compareFlagsByPriority)
+
+    assert.deepEqual(
+      sorted.map((f) => f.id),
+      ['cta', 'hsts']
+    )
+  })
+
+  it('rejects legacy signup-gate strings as usable fix prompts', () => {
+    assert.equal(
+      resolveFixPrompt(
+        flag({
+          fix: 'Sign up to get the fix prompt.',
+          agentPrompt: null,
+        })
+      ),
+      null
+    )
+    assert.equal(
+      resolveFixPrompt(
+        flag({
+          fix: 'Rewrite the hero CTA so it names the outcome.',
+        })
+      ),
+      'Rewrite the hero CTA so it names the outcome.'
+    )
   })
 })

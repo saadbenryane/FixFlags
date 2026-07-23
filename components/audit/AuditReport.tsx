@@ -512,7 +512,7 @@ export function AuditReport({
             <CardTitle>{REPORT_COPY.sampleCta.title}</CardTitle>
             <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
             <Button asChild>
-              <Link href="/">{HERO.primaryCta}</Link>
+              <Link href="/#audit">{HERO.primaryCta}</Link>
             </Button>
           </Card>
         )}

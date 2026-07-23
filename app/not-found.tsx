@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { SiteShell } from '@/components/layout/site-shell'
 import { Heading, Muted } from '@/components/ui/typography'
 import { Container } from '@/components/ui/container'
+import { HERO } from '@/lib/marketing/copy'
 
 export default function NotFound() {
   return (
@@ -20,7 +21,7 @@ export default function NotFound() {
             <Link href="/dashboard">Dashboard</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/">Start an audit</Link>
+            <Link href="/#audit">{HERO.primaryCta}</Link>
           </Button>
         </div>
       </Container>

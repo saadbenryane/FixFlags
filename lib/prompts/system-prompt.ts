@@ -75,7 +75,7 @@ TITLE CRAFTING RULES:
 - Omit markdown, quotes, punctuation at end
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
 
-For each new flag, provide just the TITLE (problem field, one line). Do NOT write evidence, fixes, or prompts in this phase.
+For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
 
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
@@ -164,7 +164,7 @@ export function buildTriagePrompt(context: TriageContext): string {
  * per-request flags, metadata, and page text in the USER block only.
  */
 export function buildPrescriptionSystemPrompt(): string {
-  return `You are FixFlags. Phase 1 triage is complete - the founder already sees their score, verdict, and flag titles. Your job now is the PRESCRIPTION: evidence, business impact, concrete fixes, and copy-paste agent prompts that are specific enough to hand to any AI coding tool.
+  return `You are FixFlags. Phase 1 triage is complete - the founder already sees their score, verdict, flag titles, evidence, and why it matters. Your job now is the PRESCRIPTION: sharpened evidence when needed, concrete fixes, and copy-paste agent prompts that are specific enough to hand to any AI coding tool.
 
 Do NOT change scores, verdicts, or flag titles. Key every flagPrescription by the exact flagKey provided in the request.
 

@@ -55,6 +55,23 @@ function corridorBoost(flag: RankableFlag): number {
   return 2
 }
 
+/**
+ * Demote Reach hardening headers in Finish Plan ranking only.
+ * Keeps severity/status honest while preferring conversion/first-visit Flags in top 3.
+ */
+function reachHardeningDemotion(flag: RankableFlag): number {
+  const checkId = (flag.checkId ?? '').split('::page:')[0]
+  if (
+    checkId.startsWith('security-hsts-') ||
+    checkId.startsWith('security-csp-') ||
+    checkId.startsWith('security-content-type-options-') ||
+    checkId.startsWith('security-frame-options-')
+  ) {
+    return 1
+  }
+  return 0
+}
+
 /** Lower is better. Boost Flags whose text aligns with Product Contract / PI. */
 function contractAlignmentBoost(
   flag: RankableFlag,
@@ -84,6 +101,9 @@ function compareFlagPrioritySignals(
   b: RankableFlag,
   contract?: ProductContract | null
 ): number {
+  const demotionDiff = reachHardeningDemotion(a) - reachHardeningDemotion(b)
+  if (demotionDiff !== 0) return demotionDiff
+
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff
 
@@ -144,6 +164,23 @@ export function countFlags(flags: RankableFlag[]): {
   }
 }
 
+/** Legacy signup-gate strings that were wrongly persisted as Flag evidence/fix. */
+export const LEGACY_LOCKED_PROMPT_TEXT = [
+  'Create a free account to see evidence and fix prompts.',
+  'Sign up to see why this matters and get a fix prompt for your editor.',
+  'Sign up to get the fix prompt.',
+  'Sign up to see verification steps.',
+] as const
+
+const LEGACY_LOCKED_PROMPT_SET = new Set<string>(LEGACY_LOCKED_PROMPT_TEXT)
+
+/** True when text is a real editor prompt, not empty or a signup placeholder. */
+export function isUsableFixPrompt(prompt: string | null | undefined): prompt is string {
+  const trimmed = prompt?.trim()
+  if (!trimmed) return false
+  return !LEGACY_LOCKED_PROMPT_SET.has(trimmed)
+}
+
 export function resolveFixPrompt(flag: RankableFlag): string | null {
   // agentPrompt/tool-specific prompts are the AI-crafted, copy-paste-ready
   // instructions ("what users most often copy-paste into Cursor/Claude" -
@@ -159,7 +196,10 @@ export function resolveFixPrompt(flag: RankableFlag): string | null {
     flag.boltPrompt,
     flag.fix,
   ]
-  return candidates.find((prompt) => prompt?.trim())?.trim() ?? null
+  for (const candidate of candidates) {
+    if (isUsableFixPrompt(candidate)) return candidate.trim()
+  }
+  return null
 }
 
 export function flagHasFixPrompt(flag: RankableFlag): boolean {

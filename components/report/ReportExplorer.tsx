@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
-import { LockedInspectionPane } from '@/components/report/LockedInspectionPane'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { Button } from '@/components/ui/button'
@@ -186,44 +185,35 @@ function FlagDetailPane({
         </div>
       </header>
 
-      {aiLocked ? (
-        <LockedInspectionPane
-          flagTitle={flag.title}
-          flagSeverity={flag.severity}
-          signInHref={signUpHref?.replace(/^\/sign-up/, '/sign-in') ?? '/sign-in'}
-          signUpHref={signUpHref}
-        />
-      ) : (
-        <div
-          className={cn(
-            compact && !shareableFlag &&
-              'lg:grid lg:grid-cols-[minmax(11rem,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-5'
-          )}
-        >
-          {!shareableFlag && (
-            <ScreenshotWithHighlights
-              host={model.displayHost}
-              desktopScreenshot={model.desktopScreenshot}
-              mobileScreenshot={model.mobileScreenshot}
-              highlights={model.allHighlights}
-              selectedFlagId={flag.id}
-              onPinSelect={onSelectFlag}
-              showDesktop={showDesktop}
-              showMobile={showMobile}
-              className={cn('mb-5', compact && 'lg:mb-0')}
-            />
-          )}
-
-          <FlagDetailPanel
-            flag={flag}
-            showFeedback={showFeedback}
-            aiLocked={aiLocked}
-            aiEnhancementPending={aiEnhancementPending}
-            signUpHref={signUpHref}
-            previewMeta={model.previewMeta}
+      <div
+        className={cn(
+          compact && !shareableFlag &&
+            'lg:grid lg:grid-cols-[minmax(11rem,0.72fr)_minmax(0,1.28fr)] lg:items-start lg:gap-5'
+        )}
+      >
+        {!shareableFlag && (
+          <ScreenshotWithHighlights
+            host={model.displayHost}
+            desktopScreenshot={model.desktopScreenshot}
+            mobileScreenshot={model.mobileScreenshot}
+            highlights={model.allHighlights}
+            selectedFlagId={flag.id}
+            onPinSelect={onSelectFlag}
+            showDesktop={showDesktop}
+            showMobile={showMobile}
+            className={cn('mb-5', compact && 'lg:mb-0')}
           />
-        </div>
-      )}
+        )}
+
+        <FlagDetailPanel
+          flag={flag}
+          showFeedback={showFeedback}
+          aiLocked={aiLocked}
+          aiEnhancementPending={aiEnhancementPending}
+          signUpHref={signUpHref}
+          previewMeta={model.previewMeta}
+        />
+      </div>
     </div>
   )
 }

@@ -18,7 +18,7 @@ Record command output here when credentials are provisioned.
 
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
-| Anonymous wedge | `e2e/public-journeys.spec.ts` (`E2E_FULL=true`) | Fail until Phase 1 | 2026-07-23 dogfood: AI flags persisted locked evidence; Copy toasted success on gate string. See customer-journey-completion-plan.md |
+| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` | Code Pass; live dogfood pending | Phase 1–3 implemented 2026-07-23: real triage evidence, usable-prompt gate, details evidence visible. Confirm on production after deploy. |
 | Passkeys / 2FA / recovery | `lib/auth/` unit tests | Partial | Route E2E not in default suite |
 | Billing / webhooks | `lib/billing/` + webhook route tests | Partial | Manual Stripe checkout sign-off required |
 | Re-check / diff / Remember | Unit + sample contract | Partial | FULL re-check path covered in unit tests |
