@@ -20,7 +20,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Check/re-check task outcomes | `lib/audit/task-contracts.ts` |
 | Finish Plan (all surfaces) | `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
 | Preview scan access (Agency) | `lib/audit/scan-access.ts`, `app/api/projects/[id]/scan-access/route.ts` |
-| CI deploy checks | `actions/fixflags-check/`, `app/api/webhooks/vercel/route.ts`, `docs/vercel-webhook.md` |
+| CI deploy checks | `app/api/webhooks/railway/route.ts`, `docs/railway-deploy-check.md` |
 | Product Contract and Remember | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
 | Marketing copy | `lib/marketing/copy.ts` |
 | Runtime requirements | `lib/env.ts`, `lib/health/readiness.ts`, `DEVELOPMENT.md` |
