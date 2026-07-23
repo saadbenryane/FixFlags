@@ -20,7 +20,7 @@ Aligned with Product Intelligence layers. Do not market until built.
 
 | Layer | Intent |
 |-------|--------|
-| **Free** | Public/local analysis, basic PI, limited projects, basic Finish Plan, essential browser checks |
+| **Free** | Public/local analysis, basic PI, limited projects, ranked Fix list, essential browser checks |
 | **Builder** | Deeper analysis, persistent PI, cloud-assisted reasoning, verification history, integrations, more usage |
 | **Team / Studio** | Shared PI, collaboration, multi-repo/env, agent coordination, release workflows, client workspaces |
 | **Enterprise** | Private deployment options, retention, SSO, audit logs, governance, org-wide PI |

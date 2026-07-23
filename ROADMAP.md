@@ -13,11 +13,11 @@
 
 ## Now
 
-- **Product Hunt completion release** — focused three-fix report, separate full review, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood gaps: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
-  *Signal:* anonymous URL → progressive → real evidence ×3 → one demonstrated fix (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → details → revoke.
+- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
+  *Signal:* anonymous URL → progressive complete Fix list with real evidence → one demonstrated prompt (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → canonical report → revoke.
 
-- **Launch Check Completeness** — Finish Plan ≤3, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
-  *Signal:* Contract edit keeps learnings; Copy Finish Plan has ≤3; watch enqueues FULL re-check; regression email on watched projects.
+- **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
+  *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1–3 of customer-journey-completion-plan.md accepted on production dogfood.
@@ -32,7 +32,7 @@
 
 ## Recently closed (also)
 
-- **Product Intelligence Phase 0–1 foundations** — Project PI, Finish Plan UI, Remember writes, MCP context tools (thesis UI gaps closed in launch-check-completeness).
+- **Product Intelligence Phase 0–1 foundations** — Project PI, Fix list UI, Remember writes, MCP context tools (thesis UI gaps closed in launch-check-completeness).
 - **Dogfood audit quality** — Absorbed into launch-check-completeness.
 
 ## Readiness (reconciled)
@@ -49,7 +49,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Next
 
-- **Repo signals into Finish Plan** — Optional repo connect feeds Implementation Integrity into the same prioritized plan (entitlement expansion after thesis).
+- **Repo signals into Fix list** — Optional repo connect feeds Implementation Integrity into the same prioritized list (entitlement expansion after thesis).
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
 - **Evolution tracking** — Trend quality over time per Product / URL.
 - **MCP polish** — Lovable/Bolt MCP; PI tools refined.
@@ -86,7 +86,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 | Item | Signal |
 |------|--------|
-| PI thesis | Contract persistence + Finish Plan action + Remember on re-check |
+| PI thesis | Contract persistence + Fix list action + Remember on re-check |
 | 100 paying users | Monetization blockers closed, conversion >5% |
 | Agency viability | 10+ Agency subscribers, CI/CD or white-label share demand |
 | Product-market fit | >20% MoM paid user growth for 3 consecutive months |

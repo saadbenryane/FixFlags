@@ -1,8 +1,5 @@
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { DevSampleMetaLogger } from '@/components/marketing/DevSampleMetaLogger'
-import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
@@ -37,14 +34,9 @@ export default async function SamplesPage() {
           </p>
         </header>
         <HeroProductPreview model={model} />
-        <div className="flex justify-center">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/samples/details">
-              {REPORT_COPY.sampleFocused.detailsCta}
-              <ArrowRight aria-hidden />
-            </Link>
-          </Button>
-        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          {REPORT_COPY.sampleFocused.completeList}
+        </p>
       </Container>
     </Section>
   )

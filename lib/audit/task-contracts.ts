@@ -7,7 +7,10 @@ import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
-import { buildUnifiedFinishPlan } from '@/lib/audit/load-finish-plan-flags'
+import {
+  buildUnifiedFinishPlan,
+  buildUnifiedFixList,
+} from '@/lib/audit/load-finish-plan-flags'
 
 export interface TaskRubricSummary {
   name: string
@@ -34,6 +37,10 @@ export interface TaskFinishPlan {
   planPrompt: string
 }
 
+export interface TaskFixList extends TaskFinishPlan {
+  totalCount: number
+}
+
 export interface CheckAndPlanOutcome {
   reportId: string
   reportUrl: string
@@ -41,6 +48,8 @@ export interface CheckAndPlanOutcome {
   score?: number | null
   verdict?: string | null
   rubrics?: TaskRubricSummary[]
+  fixList?: TaskFixList
+  /** @deprecated Use fixList. */
   finishPlan?: TaskFinishPlan
 }
 
@@ -56,6 +65,7 @@ export interface RecheckAndCompareOutcome {
     regressed: number
   } | null
   nextFinishPlan?: TaskFinishPlan
+  nextFixList?: TaskFixList
 }
 
 interface TaskQueueOptions {
@@ -69,10 +79,33 @@ function reportUrl(reportId: string): string {
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
+function toTaskItems(
+  items: Array<{
+    id: string
+    checkId?: string | null
+    problem: string
+    rubricName: string
+    severity: string
+    impactTag?: string | null
+    prompt: string | null
+  }>
+): TaskFinishPlanItem[] {
+  return items.map((item) => ({
+    flagId: item.id,
+    checkId: item.checkId ?? null,
+    problem: item.problem,
+    rubric: item.rubricName,
+    severity: item.severity,
+    impactTag: item.impactTag ?? null,
+    fixPrompt: item.prompt,
+  }))
+}
+
 export async function loadCompletedOutcome(reportId: string): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
+  fixList: TaskFixList
   finishPlan: TaskFinishPlan
 }> {
   const audit = await prisma.audit.findUnique({
@@ -108,33 +141,35 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   }))
 
   const contract = parseProductContract(audit.productContract)
-  const plan = await buildUnifiedFinishPlan({
+  const planInput = {
     userId: audit.userId,
     auditUrl: audit.url,
     flags: audit.flags,
     rubricRows: audit.rubrics,
     contract,
-    promptAccess: 'all',
-  })
-  const items = plan.items.map((item) => ({
-    flagId: item.id,
-    checkId: item.checkId ?? null,
-    problem: item.problem,
-    rubric: item.rubricName,
-    severity: item.severity,
-    impactTag: item.impactTag ?? null,
-    fixPrompt: item.prompt,
-  }))
+    promptAccess: 'all' as const,
+  }
+  const [fixList, legacyPlan] = await Promise.all([
+    buildUnifiedFixList(planInput),
+    buildUnifiedFinishPlan(planInput),
+  ])
 
   return {
     score: audit.score,
     verdict: audit.verdict,
     rubrics,
+    fixList: {
+      reportId,
+      url: audit.url,
+      items: toTaskItems(fixList.items),
+      planPrompt: fixList.copyPrompt ?? '',
+      totalCount: fixList.totalCount,
+    },
     finishPlan: {
       reportId,
       url: audit.url,
-      items,
-      planPrompt: plan.copyPrompt ?? '',
+      items: toTaskItems(legacyPlan.items),
+      planPrompt: legacyPlan.copyPrompt ?? '',
     },
   }
 }
@@ -143,6 +178,7 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
   nextFinishPlan?: TaskFinishPlan
+  nextFixList?: TaskFixList
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -170,6 +206,7 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
       regressed: diff.regressed.length,
     },
     nextFinishPlan: completed.finishPlan,
+    nextFixList: completed.fixList,
   }
 }
 
@@ -250,5 +287,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
       regressed: diff.regressed.length,
     },
     nextFinishPlan: completed.finishPlan,
+    nextFixList: completed.fixList,
   }
 }

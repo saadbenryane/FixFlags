@@ -40,25 +40,21 @@ if (sample.includes("from '@/lib/db'") || sample.includes('prisma.audit')) {
   violations.push('lib/marketing/live-sample.ts: marketing sample depends on runtime database state')
 }
 
-const focused = read('components/audit/FocusedAuditReport.tsx')
-const focusedRoute = read('app/report/[id]/page.tsx')
-for (const deep of [
-  'ReportExplorer',
-  'LiveReportExplorer',
-  'JourneyReviewTimeline',
-  'FlowScanTimeline',
-  'ActionTimeline',
-  'PreviewCards',
-  'LaunchGates',
-  'ProductWatchControls',
-  'CopyMcpCommand',
-]) {
-  if (focused.includes(deep)) {
-    violations.push(`components/audit/FocusedAuditReport.tsx: deep-review import ${deep}`)
-  }
-  if (focusedRoute.includes(deep)) {
-    violations.push(`app/report/[id]/page.tsx: deep-review import ${deep}`)
-  }
+const reportRoute = read('app/report/[id]/page.tsx')
+const completedReport = read('app/report/[id]/CompletedReportView.tsx')
+const auditReport = read('components/audit/AuditReport.tsx')
+const detailsRoute = read('app/report/[id]/details/page.tsx')
+if (!reportRoute.includes('CompletedReportView')) {
+  violations.push('app/report/[id]/page.tsx: canonical completed report view missing')
+}
+if (!completedReport.includes('AuditReport')) {
+  violations.push('app/report/[id]/CompletedReportView.tsx: canonical AuditReport missing')
+}
+if (!auditReport.includes('LiveReportExplorer')) {
+  violations.push('components/audit/AuditReport.tsx: complete Flag explorer missing')
+}
+if (!detailsRoute.includes('redirect(`/report/${id}`)')) {
+  violations.push('app/report/[id]/details/page.tsx: legacy details route must redirect')
 }
 
 for (const path of ['app/share/[token]/page.tsx', 'app/api/share/[token]/route.ts']) {

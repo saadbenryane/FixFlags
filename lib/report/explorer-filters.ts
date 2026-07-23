@@ -3,12 +3,6 @@ import type { ExplorerFlag } from '@/lib/report/explorer-model'
 
 export type RubricFilter = 'ALL' | RubricName
 
-export function priorityLabelForIndex(index: number): string {
-  if (index === 0) return 'Top fix'
-  if (index === 1) return 'Next'
-  return `Priority ${index + 1}`
-}
-
 export function pageFilterLabel(url: string, role: string): string {
   try {
     const pathname = new URL(url).pathname
@@ -24,13 +18,19 @@ export function countFlagsByRubric(
   flags: ExplorerFlag[],
   options: {
     pageFilter?: string | null
+    severityFilter?: string | null
+    impactFilter?: string | null
   } = {}
 ): Record<RubricName, number> {
   const counts = { MESSAGE: 0, EXPERIENCE: 0, REACH: 0 } as Record<RubricName, number>
   const pageFilter = options.pageFilter ?? null
+  const severityFilter = options.severityFilter ?? null
+  const impactFilter = options.impactFilter ?? null
 
   for (const flag of flags) {
     if (pageFilter && flag.pageUrl !== pageFilter) continue
+    if (severityFilter && flag.severity !== severityFilter) continue
+    if (impactFilter && flag.impactTag !== impactFilter) continue
     if (flag.rubric in counts) {
       counts[flag.rubric as RubricName] += 1
     }
@@ -43,14 +43,20 @@ export function filterExplorerFlags(
   options: {
     rubricFilter?: RubricFilter
     pageFilter?: string | null
+    severityFilter?: string | null
+    impactFilter?: string | null
   } = {}
 ): ExplorerFlag[] {
   const rubricFilter = options.rubricFilter ?? 'ALL'
   const pageFilter = options.pageFilter ?? null
+  const severityFilter = options.severityFilter ?? null
+  const impactFilter = options.impactFilter ?? null
 
   return flags.filter((flag) => {
     if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
     if (pageFilter && flag.pageUrl !== pageFilter) return false
+    if (severityFilter && flag.severity !== severityFilter) return false
+    if (impactFilter && flag.impactTag !== impactFilter) return false
     return true
   })
 }

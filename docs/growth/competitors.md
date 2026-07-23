@@ -40,7 +40,7 @@ URL-first autonomous testing is crowded. Paste-URL is **not** a moat.
 
 ## Our wedge (restated)
 
-1. **Which failure matters** — Product Contract + ranked Finish Plan (≤3), not a letter grade dump.
+1. **Which failure matters** — Product Contract + a complete ranked Fix list, not a letter grade dump.
 2. **Precise repair contracts** — evidence + expected behavior + verification, rendered as Cursor/Claude/Lovable/Bolt prompts and MCP.
 3. **Verified outcomes** — re-check with parent diff; cleared Flags are the proof.
 4. **Truth labels** — Reproduced / Detected / Observed on every Flag (credibility vs agent spectacle false positives).

@@ -213,9 +213,9 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 
 | Layer | Components |
 |-------|------------|
-| Focused page shell | `components/audit/FocusedAuditReport.tsx`, `ReportViewModel`, shared hero/rubric/prompt primitives |
+| Canonical report workspace | `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
 | Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, Contract/Memory, evidence timelines, explorer, previews, gates |
-| Finish Plan contract | `lib/audit/load-finish-plan-flags.ts` (`buildUnifiedFinishPlan`), `lib/audit/finish-plan.ts`; report, export, task outcomes, MCP, CLI |
+| Fix List contract | `buildFixList()` in `lib/audit/finish-plan.ts` via `loadFinishPlanFlags` / `buildUnifiedFixList`; report, API, export, task outcomes, MCP, CLI; `buildFinishPlan()` / `buildUnifiedFinishPlan()` are ≤3 compatibility |
 | Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Agency API + MCP `scanAccess` on check |
 | Deploy CI gate | `app/api/webhooks/railway/route.ts` (`?apiKey=` + `?url=`); see `docs/railway-deploy-check.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |

@@ -23,6 +23,7 @@ FixFlags is the QA layer for AI-built products. Scan any public web app across M
 - `ff_get_report`
 - `ff_get_rubric` (`MESSAGE` | `EXPERIENCE` | `REACH`)
 - `ff_get_flag`
+- `ff_get_all_fixes`
 - `ff_plan_mode_prompt`
 - `ff_recheck_and_compare`
 - `ff_compare`
@@ -36,7 +37,7 @@ There is no `ff_get_report_flags` tool.
 
 1. Ask for a publicly accessible app URL.
 2. Call `ff_check_and_plan` (prefer `waitForCompletion: true`).
-3. Call `ff_get_report` for scores; `ff_get_rubric` per rubric for Flags.
+3. Call `ff_get_report` for scores and `ff_get_all_fixes` for the complete ranked Fix list.
 4. Present by rubric:
 
 | Rubric | What it checks |

@@ -39,4 +39,4 @@ The open layer should work independently.
 | Cloud app + Integrity Engine | Closed |
 | Customer Product Intelligence | Customer-owned data; not OSS |
 
-Do not cut an OSS release before Phase 1 thesis signals (persistent PI, Finish Plan value, verify/remember). See [execution.md](./execution.md).
+Do not cut an OSS release before Phase 1 thesis signals (persistent PI, Fix list value, verify/remember). See [execution.md](./execution.md).

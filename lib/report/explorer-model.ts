@@ -5,7 +5,6 @@ import {
 } from '@/lib/audit/flag-copy'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
-  compareFlagsByPriority,
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
@@ -29,9 +28,7 @@ import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import type { ProductContract } from '@/lib/audit/product-contract'
-import { priorityLabelForIndex } from '@/lib/report/explorer-filters'
-
-export { priorityLabelForIndex } from '@/lib/report/explorer-filters'
+import { buildFixList } from '@/lib/audit/finish-plan'
 
 /**
  * Derive a visitor-facing truth label from the flag's source and checkId.
@@ -60,7 +57,6 @@ export interface ExplorerFlag {
   id: string
   checkId: string | null
   title: string
-  priorityLabel: string
   rubric: string
   rubricLabel: string
   severity: string
@@ -95,19 +91,12 @@ export interface ReportExplorerModel {
   previewMeta: PreviewMeta | null
 }
 
-function sortFlags(
-  flags: RankableFlag[],
-  contract?: ProductContract | null
-): RankableFlag[] {
-  return [...flags].sort((a, b) => compareFlagsByPriority(a, b, contract))
-}
-
 function mapLiveFlag(
   flag: RankableFlag,
-  index: number,
-  visualByCheckId?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
+  visualByCheckId?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>,
+  mayShowPrompt = true
 ): ExplorerFlag {
-  const fixPrompt = buildExpertFixPrompt(flag)
+  const fixPrompt = mayShowPrompt ? buildExpertFixPrompt(flag) : ''
   const copyFixPrompt = fixPrompt
   const sourceFix = resolveFixPrompt(flag)
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
@@ -116,7 +105,6 @@ function mapLiveFlag(
     id: flag.id,
     checkId: flag.checkId ?? null,
     title: flag.problem,
-    priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
     rubricLabel: rubricLabel(flag.rubric),
     severity: flag.severity,
@@ -128,19 +116,21 @@ function mapLiveFlag(
       : '',
     fixPrompt,
     copyFixPrompt,
-    toolPrompts: {
-      universal: flag.agentPrompt,
-      cursor: flag.cursorPrompt,
-      claude: flag.claudePrompt,
-      windsurf: flag.windsurfPrompt,
-      lovable: flag.lovablePrompt,
-      bolt: flag.boltPrompt,
-    },
+    toolPrompts: mayShowPrompt
+      ? {
+          universal: flag.agentPrompt,
+          cursor: flag.cursorPrompt,
+          claude: flag.claudePrompt,
+          windsurf: flag.windsurfPrompt,
+          lovable: flag.lovablePrompt,
+          bolt: flag.boltPrompt,
+        }
+      : {},
     verificationRule: flag.verificationRule ?? null,
     evidenceDevices: flag.checkId
       ? devicesForCheck(flag.checkId)
       : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
-    hasFixPrompt: Boolean(sourceFix),
+    hasFixPrompt: mayShowPrompt && Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
     visualUrl,
     truthLabel: deriveTruthLabel(flag.source, flag.checkId ?? null),
@@ -159,8 +149,31 @@ export function buildLiveExplorerModel(input: {
   previewMeta?: PreviewMeta | null
   flagVisualEvidence?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
   productContract?: ProductContract | null
+  promptAccess?: 'all' | 'one' | 'none'
+  demonstratedFlag?: RankableFlag | null
 }): ReportExplorerModel {
-  const sorted = sortFlags(input.flags, input.productContract)
+  const fixList = buildFixList({
+    flags: input.flags,
+    rubricRows: input.rubricRows.map((row) => ({
+      name: row.name,
+      grade: row.grade ?? null,
+    })),
+    url: input.url,
+    contract: input.productContract ?? null,
+    promptAccess: input.promptAccess ?? 'all',
+    demonstratedFlag: input.demonstratedFlag,
+  })
+  const flagsById = new Map(input.flags.map((flag) => [flag.id, flag]))
+  const sorted = fixList.items.flatMap((item) => {
+    const flag =
+      item.id === input.demonstratedFlag?.id
+        ? input.demonstratedFlag
+        : flagsById.get(item.id)
+    return flag ? [flag] : []
+  })
+  const promptVisibleById = new Map(
+    fixList.items.map((item) => [item.id, item.prompt !== null])
+  )
   const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
   const mobileScreenshot = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
   const desktop = desktopScreenshot ? normalizeInternalScreenshotUrl(desktopScreenshot) : null
@@ -176,7 +189,13 @@ export function buildLiveExplorerModel(input: {
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
-    flags: sorted.map((flag, index) => mapLiveFlag(flag, index, input.flagVisualEvidence)),
+    flags: sorted.map((flag) =>
+      mapLiveFlag(
+        flag,
+        input.flagVisualEvidence,
+        promptVisibleById.get(flag.id) ?? false
+      )
+    ),
     allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
     previewMeta: input.previewMeta ?? null,
   }
@@ -228,12 +247,11 @@ export function buildPartialExplorerModel(input: {
   })
 }
 
-function mapSampleFlag(flag: SampleFlagDisplay, index: number): ExplorerFlag {
+function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
   return {
     id: flag.id,
     checkId: null,
     title: flag.title,
-    priorityLabel: priorityLabelForIndex(index),
     rubric: flag.rubric,
     rubricLabel: flag.rubricLabel,
     severity: flag.severity,

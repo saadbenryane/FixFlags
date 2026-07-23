@@ -10,14 +10,6 @@ interface HeroProductPreviewProps {
 }
 
 export function HeroProductPreview({ className, model }: HeroProductPreviewProps) {
-  const items = model.flags.slice(0, 3)
-  const itemIds = new Set(items.map((item) => item.id))
-  const focusedModel: ReportExplorerModel = {
-    ...model,
-    flagCount: items.length,
-    flags: items,
-    allHighlights: model.allHighlights.filter((highlight) => itemIds.has(highlight.flagId)),
-  }
   const { previewEyebrow, previewTitle, previewBadge } = LANDING_PAGE.sampleReport
 
   return (
@@ -26,7 +18,7 @@ export function HeroProductPreview({ className, model }: HeroProductPreviewProps
         aria-hidden
         className="pointer-events-none absolute -inset-4 -z-10 rounded-3xl bg-[radial-gradient(ellipse_80%_60%_at_50%_60%,hsl(var(--foreground)/0.04),transparent_68%)]"
       />
-      <div className="overflow-hidden rounded-card glass-surface shadow-2xl">
+      <div className="overflow-clip rounded-card glass-surface shadow-2xl">
         <div className="border-b border-border/30 bg-card/70 px-5 py-4 sm:px-6 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -42,7 +34,7 @@ export function HeroProductPreview({ className, model }: HeroProductPreviewProps
           </div>
         </div>
         <SampleReportExplorer
-          model={focusedModel}
+          model={model}
           variant="hero"
           className="rounded-none bg-transparent shadow-none"
         />

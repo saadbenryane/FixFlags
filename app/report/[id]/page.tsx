@@ -1,16 +1,13 @@
 import type { Metadata } from 'next'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
-import { FocusedAuditReport } from '@/components/audit/FocusedAuditReport'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
 import { prisma } from '@/lib/db'
-import { isAdminUser } from '@/lib/auth/permissions'
-import { McpFixNudge } from '@/components/audit/McpFixNudge'
-import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefresh'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { CompletedReportView } from './CompletedReportView'
 import { loadReportRouteState } from './load-report-route-state'
 
 export { loadReportRouteState }
@@ -105,18 +102,7 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     return <AuditPageClient id={state.id} initialAudit={state.audit} pollStatus session={state.session} />
   }
 
-  return (
-    <AuditShell
-      session={state.session}
-      showAdmin={state.user && state.session
-        ? isAdminUser({ id: state.session.user.id, role: state.user.role })
-        : false}
-    >
-      <FocusedAuditReport model={state.focusedModel} />
-      <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
-      <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
-    </AuditShell>
-  )
+  return <CompletedReportView state={state} />
 }
 
 export default ReportRoute

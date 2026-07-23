@@ -1,6 +1,6 @@
 # Execution
 
-**FixFlags’ own Finish Plan** (what we build next). Customer Finish Plan artifact: [finish-plan.md](./finish-plan.md). Engineering tracker: [ROADMAP.md](../ROADMAP.md). Vision: [vision.md](./vision.md).
+**FixFlags’ own execution plan** (what we build next). Customer Fix list artifact: [finish-plan.md](./finish-plan.md). Engineering tracker: [ROADMAP.md](../ROADMAP.md). Vision: [vision.md](./vision.md).
 
 ## Strategic wedge
 
@@ -16,22 +16,22 @@ Do not launch as “AI website auditing with N checks.” Long-term category is 
 
 ## Core loop (wedge expression)
 
-Paste link → understand Product (Contract) → Finish Plan → copy fix → publish → re-check → remember → (optional) watch.
+Paste link → understand Product (Contract) → ranked Fix List → copy fix → publish → re-check → remember → (optional) watch.
 
 Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision.md).
 
 ## Now (ordered)
 
-1. **Focused loop** — `/report/[id]` is three fixes, proof, copy, full-review link, and re-check.
-2. **Depth without bloat** — `/report/[id]/details` keeps Contract, Memory, journeys, timeline, explorer, previews, gates, watch, and secondary actions.
-3. **Honest acquisition** — deterministic curated sample; anonymous gets all three summaries and exactly one complete fix.
+1. **Complete loop** — `/report/[id]` is every ranked Flag, proof, copy, supporting context, and re-check.
+2. **Depth without route splitting** — Contract, Memory, journeys, timeline, explorer, previews, gates, watch, and secondary actions stay on the canonical report.
+3. **Honest acquisition** — deterministic curated sample; anonymous gets every Flag and evidence summary plus exactly one complete fix.
 4. **Claim integrity** — Product anchor, Contract merge, usage, prescription enqueue, retry, then return to the report.
 5. **Share integrity** — direct token routes, signed password grant, atomic view admission, revocation/expiry/entitlement checks, private metadata.
 6. **Release proof** — database, static gates, unit, CLI pack, E2E, build/worker/Docker, local core loop, Agency share loop, production smoke.
 
 ## Next (after thesis signals)
 
-- Repo signals into Finish Plan
+- Repo signals into the Fix list
 - Benchmark task-shaped CLI workflows against raw MCP; add deeper PI commands only from usage evidence
 - MCP PI tools polish
 - Agency nurture / referral program
@@ -61,11 +61,11 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 | Signal | Means |
 |--------|--------|
 | Users edit Contract and it persists on next scan | PI valued |
-| Finish Plan (≤3) drives action more than flag dump | Improve valued |
+| Ranked complete Fix List drives action and repeat use | Improve valued |
 | Re-check updates “what we know” (visible) | Remember valued |
 | Product watch enqueues + regression email | Retention valued |
 | MCP/context reduces re-explaining the Product | Workflow adoption |
 
 ## Weekly focus
 
-Protect Flag → Fix → Re-check → Remember. Prefer Finish Plan quality and watch habit over more check modules or growth graph pages.
+Protect Flag → Fix → Re-check → Remember. Prefer Fix List quality and watch habit over more check modules or growth graph pages.

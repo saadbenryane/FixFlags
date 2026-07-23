@@ -1,4 +1,3 @@
-import type { Route } from 'next'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { type ReactNode } from 'react'
@@ -6,7 +5,6 @@ import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
-import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
@@ -26,11 +24,6 @@ import { ReportFeedback } from '@/components/report/ReportFeedback'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import {
-  auditHasFixPrompts,
-} from '@/lib/audit/priority-flags'
-import { buildFinishPlan, type FinishPlan } from '@/lib/audit/finish-plan'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import {
@@ -42,9 +35,6 @@ import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
-import { SampleFixCard } from '@/components/report/SampleFixCard'
-import { SeveritySignal } from '@/components/report/SeveritySignal'
-import { impactTagLabel, rubricLabel } from '@/lib/utils'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import { PreviewCards } from '@/components/audit/PreviewCards'
@@ -129,9 +119,6 @@ interface AuditReportProps {
   recheckDiff?: RecheckDiffSummary | null
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
-  backToPlanHref?: string
-  showFinishPlan?: boolean
-  finishPlan?: FinishPlan
 }
 
 export function AuditReport({
@@ -163,14 +150,10 @@ export function AuditReport({
   recheckDiff = null,
   compareHref = null,
   sampleFixFlag = null,
-  backToPlanHref,
-  showFinishPlan = true,
-  finishPlan: finishPlanProp,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const hasFixPrompts = auditHasFixPrompts(audit.flags)
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const userVerdict = displayVerdict(audit.verdict ?? null)
   const showJourney = pages.length > 1
@@ -205,36 +188,22 @@ export function AuditReport({
           previewMeta: audit.previewMeta,
           flagVisualEvidence: audit.flagVisualEvidence,
           productContract: audit.productContract ?? null,
+          promptAccess: fixPromptLocked ? (sampleFixFlag ? 'one' : 'none') : 'all',
+          demonstratedFlag: sampleFixFlag,
         })
       : null
+  const unresolvedFlagCount = explorerModel?.flagCount ?? 0
 
   const isPartialReport = audit.reportCompleteness === 'PARTIAL'
   const showStatusCallouts =
     !isSample &&
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
-  const showPriorities =
-    showFinishPlan && !isSample && Boolean(explorerModel) && (hasFixPrompts || fixPromptLocked)
-  const finishPlan =
-    finishPlanProp ??
-    buildFinishPlan({
-      flags: audit.flags,
-      rubricRows: audit.rubricRows,
-      url: audit.url,
-      contract: audit.productContract ?? null,
-      promptAccess: showPrescription ? 'all' : 'none',
-    })
-
   return (
     <Container
       variant="report"
       className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
     >
-      {backToPlanHref ? (
-        <Button asChild variant="ghost" className="min-h-11 w-fit">
-          <Link href={backToPlanHref as Route}>{REPORT_COPY.focused.backToPlan}</Link>
-        </Button>
-      ) : null}
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
         score={audit.score}
@@ -261,7 +230,6 @@ export function AuditReport({
           <ReportStickyToolbar
             showContract={showContract}
             showRemember={showRemember}
-            showPriorities={showPriorities}
             showJourney={showJourney || showJourneyReview}
             showFlow={showFlow}
             showTimeline={showTimeline}
@@ -325,6 +293,33 @@ export function AuditReport({
         </>
       )}
 
+      {explorerModel && unresolvedFlagCount > 0 ? (
+        <section id="report-flags" className="scroll-mt-[var(--header-offset)] space-y-3">
+          <div>
+            <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
+            <p className="mt-1 text-sm text-muted-foreground text-pretty">
+              {REPORT_COPY.sectionTitles.allFixesHint(unresolvedFlagCount)}
+            </p>
+          </div>
+          <LiveReportExplorer
+            model={explorerModel}
+            showFeedback={showFeedback}
+            aiLocked={fixPromptLocked}
+            aiEnhancementPending={isLoggedIn && aiReviewPending}
+            signUpHref={signUpHref}
+            pages={pages}
+            auditId={auditId}
+            demonstratedFlagId={sampleFixFlag?.id}
+          />
+        </section>
+      ) : (
+        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
+          <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
+            {REPORT_COPY.noFlags.body}
+          </Callout>
+        </section>
+      )}
+
       {showContract && audit.productContract ? (
         <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
           <ProductContractCard
@@ -344,76 +339,12 @@ export function AuditReport({
         />
       ) : null}
 
-      {showFinishPlan && !isSample && explorerModel && (hasFixPrompts || fixPromptLocked) && (
-        <section id="report-finish-plan" className="scroll-mt-[var(--header-offset)] space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {fixPromptLocked
-                  ? REPORT_COPY.sectionTitles.topPrioritiesLocked
-                  : aiReviewPending
-                    ? REPORT_COPY.sectionTitles.topPrioritiesGenerating
-                    : REPORT_COPY.sectionTitles.topPrioritiesHint}
-              </p>
-            </div>
-            {finishPlan.copyPrompt ? (
-              <PromptCopyButton
-                prompt={finishPlan.copyPrompt}
-                label={REPORT_COPY.sectionTitles.copyFixPlan(finishPlan.visiblePromptCount)}
-                compact
-                kind="plan"
-                auditId={auditId}
-              />
-            ) : null}
-          </div>
-          <div className="grid gap-3">
-            {finishPlan.items.map((item) => {
-              const impact = impactTagLabel(item.impactTag)
-              return (
-                <Card key={item.id} className="p-4 sm:p-5">
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <SeveritySignal severity={item.severity} />
-                    <span className="meta-label text-muted-foreground">
-                      {rubricLabel(item.rubricName)}
-                    </span>
-                    {impact ? (
-                      <span className="text-2xs text-muted-foreground">{impact}</span>
-                    ) : null}
-                  </div>
-                  <p className="mb-3 text-sm font-medium leading-snug text-pretty">
-                    {item.problem}
-                  </p>
-                  {item.evidence.trim() ? (
-                    <p className="mb-3 text-xs leading-snug text-muted-foreground text-pretty">
-                      {item.evidence.trim().slice(0, 180)}
-                      {item.evidence.trim().length > 180 ? '…' : ''}
-                    </p>
-                  ) : null}
-                  {item.prompt ? (
-                    <FixPromptBlock
-                      prompt={item.prompt}
-                      toolPrompts={item.toolPrompts ?? undefined}
-                      showToolSelector
-                      rows={2}
-                      clamp
-                      variant="compact"
-                      nested
-                    />
-                  ) : null}
-                </Card>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
       {(showJourney || showJourneyReview) ? (
         <div id="report-journey" className="scroll-mt-[var(--header-offset)] space-y-4">
           {showJourney ? (
             <JourneyBar
               pages={pages}
-              totalFlags={audit.flags.length}
+              totalFlags={unresolvedFlagCount}
               auditId={auditId}
               primaryUrl={audit.url}
             />
@@ -434,26 +365,6 @@ export function AuditReport({
         </section>
       ) : null}
 
-      {explorerModel ? (
-        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-          <LiveReportExplorer
-            model={explorerModel}
-            showFeedback={showFeedback}
-            aiLocked={fixPromptLocked}
-            aiEnhancementPending={isLoggedIn && aiReviewPending}
-            signUpHref={signUpHref}
-            pages={pages}
-            auditId={auditId}
-          />
-        </section>
-      ) : (
-        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-          <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
-            {REPORT_COPY.noFlags.body}
-          </Callout>
-        </section>
-      )}
-
       {showPreviews && audit.previewMeta ? <PreviewCards preview={audit.previewMeta} /> : null}
 
       {hasLaunchGates && audit.launchReadiness?.checklist ? (
@@ -463,7 +374,7 @@ export function AuditReport({
       {!isSample && fixPromptLocked && (
         <Card className="space-y-3 p-5 text-center sm:p-6">
           <div className="space-y-1">
-            <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(audit.flags.length)}</p>
+            <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(unresolvedFlagCount)}</p>
             <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
@@ -475,16 +386,6 @@ export function AuditReport({
             </Button>
           </div>
         </Card>
-      )}
-
-      {!isSample && fixPromptLocked && sampleFixFlag && (
-        <section id="report-sample-fix" className="scroll-mt-[var(--header-offset)]">
-          <SampleFixCard
-            flag={sampleFixFlag}
-            totalFlags={audit.flags.length}
-            signUpHref={signUpHref}
-          />
-        </section>
       )}
 
       <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">

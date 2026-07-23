@@ -222,6 +222,33 @@ export function registerAllTools(
   )
 
   server.tool(
+    'ff_get_all_fixes',
+    'Get every unresolved Flag and fix prompt for a completed report, ranked by launch impact',
+    { reportId: z.string() },
+    async ({ reportId }) => {
+      await assertMcpAccess(user)
+      const audit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        select: { id: true, userId: true, isPublic: true, status: true },
+      })
+      if (!audit) throw new Error('Report not found')
+      await assertAuditAccess(audit, user.id)
+      if (audit.status !== 'COMPLETED') {
+        throw new Error(`Report is ${audit.status}, not COMPLETED`)
+      }
+      const outcome = await loadCompletedTaskOutcome(reportId)
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(outcome.fixList ?? null),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
     'ff_get_product_context',
     'Get Product Intelligence / Product Contract for a report (what the product is, journeys, outcomes)',
     { reportId: z.string() },

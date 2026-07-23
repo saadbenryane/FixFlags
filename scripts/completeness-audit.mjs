@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -20,7 +20,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
 
   const mcpSource = `${read(root, 'lib/mcp/tools.ts')}\n${read(root, 'lib/mcp/task-tools.ts')}`
   const tools = [...new Set(collectMcpTools(mcpSource))]
-  assert(tools.length === 16, `MCP tool count drift: expected=16, code=${tools.length}`)
+  assert(tools.length === 17, `MCP tool count drift: expected=17, code=${tools.length}`)
 
   const integrationFiles = [
     'fixflags-cli/src/index.ts',
@@ -86,8 +86,9 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     encoding: 'utf8',
   }).split('\n')
   const productionFiles = [...new Set([...tracked, ...untracked])].filter((file) =>
-    /^(app|components|lib|worker)\/.+\.(?:ts|tsx)$/.test(file) ||
-    /^(instrumentation|middleware|proxy)\.ts$/.test(file),
+    existsSync(path.join(root, file)) &&
+    (/^(app|components|lib|worker)\/.+\.(?:ts|tsx)$/.test(file) ||
+      /^(instrumentation|middleware|proxy)\.ts$/.test(file)),
   )
   const scriptImports = productionFiles.filter((file) => {
     const source = read(root, file)

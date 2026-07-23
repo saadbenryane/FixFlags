@@ -73,27 +73,31 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByText('Opened page')).toBeInTheDocument()
   })
 
-  it('keeps the completed frame focused on the Finish Plan', () => {
+  it('keeps the completed frame focused on all fixes', () => {
     render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByRole('heading', { name: 'Finish Plan' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'All fixes' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Flags' })).not.toBeInTheDocument()
   })
 
-  it('streams partial flags into the Finish Plan as they are found', async () => {
+  it('streams every partial flag into the same Fix list as they are found', async () => {
+    const partialFlags = Array.from({ length: 5 }, (_, index) => ({
+      id: `f${index + 1}`,
+      severity: index === 0 ? 'CRITICAL' : 'IMPORTANT',
+      problem: `Discovered issue ${index + 1}`,
+      rubric: index % 2 === 0 ? 'MESSAGE' : 'EXPERIENCE',
+    }))
     render(
       <AuditReportProgressive
         status="CHECKING"
         url={URL}
-        flagCount={1}
-        partialFlags={[
-          { id: 'f1', severity: 'CRITICAL', problem: 'Headline promises nothing', rubric: 'MESSAGE' },
-        ]}
+        flagCount={partialFlags.length}
+        partialFlags={partialFlags}
       />
     )
-    expect(
-      (await screen.findAllByText('Headline promises nothing')).length
-    ).toBeGreaterThan(0)
+    for (const flag of partialFlags) {
+      expect((await screen.findAllByText(flag.problem)).length).toBeGreaterThan(0)
+    }
   })
 
   it('falls back to a skeleton frame while screenshots are pending', () => {

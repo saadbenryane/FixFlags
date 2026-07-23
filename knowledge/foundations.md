@@ -4,7 +4,7 @@ First-principles for FixFlags. Full narrative: [vision.md](./vision.md). Read vi
 
 ## Thesis
 
-AI reduces the cost of creating software. That increases the supply of plausible-looking products and the cost of knowing which are ready. FixFlags captures value by becoming the independent Product Intelligence System that understands the Product, improves it via a Finish Plan, verifies reality, and remembers what was proven.
+AI reduces the cost of creating software. That increases the supply of plausible-looking products and the cost of knowing which are ready. FixFlags captures value by becoming the independent Product Intelligence System that understands the Product, improves it through a ranked Fix list, verifies reality, and remembers what was proven.
 
 **The company optimizes for:** judgment over volume, evidence over assertion, verified outcomes over completed tasks, and recurring Product Intelligence over isolated audits.
 
@@ -34,7 +34,7 @@ Independence is brand, architecture, and business model.
 1. **The Product is the core object** — repos, URLs, and code are signals.
 2. **Understand before judge** — Product Contract / Product Intelligence precedes deep evaluation.
 3. **Evidence before recommendation** — every Flag carries truth class and proof.
-4. **Prioritize over inventory** — the Finish Plan beats a long backlog.
+4. **Prioritize without hiding** — the Fix list ranks every verified unresolved Flag.
 5. **Verify before confidence** — re-check is part of the product, never gated.
 6. **Remember for the Product** — learnings belong to customer Product Intelligence, not one chat.
 7. **Customer owns Product Intelligence** — FixFlags owns the Integrity Engine. See [privacy.md](./privacy.md).
@@ -59,7 +59,7 @@ Longer historical research notes (confirmed / refined / rejected) remain below f
 ### Refined
 
 - "QA for AI-built products" is too narrow as the long-term category; use Product Intelligence for strategy, keep Launch Check language for acquisition
-- Report should lead with Finish Plan and journey evidence, not a score
+- Report should lead with the ranked Fix list and journey evidence, not a score
 - Product intent must be captured before deep judgment
 - Security cannot be a simple readiness dimension
 

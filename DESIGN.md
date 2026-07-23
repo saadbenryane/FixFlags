@@ -58,7 +58,7 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 Share status appears once (`ShareStatusBanner`). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
-**Flags chrome:** Meta row is `SeveritySignal` → Rubric → Impact. List is severity-ranked; no severity filter pills. Evidence screenshots match `devicesForCheck` (issue device only).
+**Flags chrome:** Meta row is `SeveritySignal` → Rubric → Impact. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. Evidence screenshots match `devicesForCheck` (issue device only).
 
 **Progressive / loading:** The in-progress report uses the same altitudes as completed (`AuditReportHero` with scanning label, `RubricBar` loading, sticky, Contract → Timeline → Flags). Progress advances with real pipeline stages and partial flags; never fake. On COMPLETED, hold the progressive frame until `router.refresh()` swaps in SSR `AuditReport`.
 
@@ -136,7 +136,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## States
 
-Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The focused route is a calm decision surface with three numbered fixes. The details route is the dense inspection workspace. Do not merge their densities.
+Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The canonical report is one calm, dense-enough workspace: identity and readiness first, then a ranked master/detail Fix list containing every unresolved Flag. Keep the list independently scrollable on desktop and place the selected detail after the list on mobile. Legacy details URLs redirect to this workspace.
 
 Every interactive element must define: rest, hover, focus, active, disabled.
 

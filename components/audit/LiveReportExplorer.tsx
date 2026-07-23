@@ -15,6 +15,7 @@ interface LiveReportExplorerProps {
   loading?: boolean
   progress?: number
   auditId?: string
+  demonstratedFlagId?: string
 }
 
 export function LiveReportExplorer({
@@ -28,6 +29,7 @@ export function LiveReportExplorer({
   loading = false,
   progress,
   auditId,
+  demonstratedFlagId,
 }: LiveReportExplorerProps) {
   if (model.flags.length === 0 && !loading) return null
 
@@ -44,6 +46,7 @@ export function LiveReportExplorer({
       loading={loading}
       progress={progress}
       auditId={auditId}
+      demonstratedFlagId={demonstratedFlagId}
     />
   )
 }

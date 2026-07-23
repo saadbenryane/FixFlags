@@ -2,7 +2,7 @@
 
 ## Project Responsibility
 
-FixFlags is the independent Product Intelligence System for AI-built software. Paste a URL, get a Finish Plan across Message, Experience, and Reach, apply the fixes in your AI editor, then re-check the result.
+FixFlags is the independent Product Intelligence System for AI-built software. Paste a URL, get every unresolved Flag ranked across Message, Experience, and Reach, apply the fixes in your AI editor, then re-check the result.
 
 ## System Entry Points
 
@@ -28,8 +28,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `app/(marketing)/` | Public pages: homepage, pricing, FAQ, help, tools, docs, changelog, roast | — |
 | `app/(auth)/` | Sign-in, sign-up, forgot/reset password | — |
 | `app/(app)/` | Authenticated dashboard, billing, settings | — |
-| `app/report/[id]/` | Focused Finish Plan; `details/` owns the full technical review | `knowledge/report-contract.md` |
-| `app/share/[token]/` | Scoped focused/details share rendering | `lib/security/share-grant.ts` |
+| `app/report/[id]/` | Canonical complete report and ranked Fix list; `details/` redirects here | `knowledge/report-contract.md` |
+| `app/share/[token]/` | Scoped canonical share rendering; shared details links redirect after access checks | `lib/security/share-grant.ts` |
 | `app/admin/` | Admin dashboard | — |
 | `app/api/` | All API routes (audits, auth, MCP, Stripe, cron, health) | — |
 | `components/` | React components organized by feature area | [components/codemap.md](components/codemap.md) |
@@ -65,7 +65,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Billing/subscription logic** → `lib/billing/` (read `lib/billing/codemap.md`)
 - **Marketing copy** → `lib/marketing/copy.ts` ONLY (never hardcode in components)
 - **Design tokens** → `lib/design/tokens.css` (semantic tokens, never raw hex)
-- **Focused report UI** → `components/audit/FocusedAuditReport.tsx`, `lib/report/report-view-model.ts`
+- **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`
 - **Detailed report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`
 - **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
@@ -110,4 +110,4 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Marketing copy** is centralized in `lib/marketing/copy.ts`; components import from there
 - **Design tokens** use semantic names (`bg-card`, `text-brand`); raw hex only in `tokens.css` and `brand-spec.ts`
 - **AI prompts** split system (stable, cacheable) from user (per-request) for prompt caching
-- **Report UI** has strict section order documented in AGENTS.md, including Product Contract → Finish Plan → Journey → Flow → Action Timeline → Flags.
+- **Report UI** has strict section order documented in `knowledge/report-contract.md`: identity/readiness/re-check → complete Fix list → Product Contract → Journey → Flow → Action Timeline → previews/launch/watch/share.

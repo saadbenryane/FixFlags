@@ -6,9 +6,6 @@ import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } fro
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
-import { assembleReportViewModel } from '@/lib/report/report-view-model'
-import { buildUnifiedFinishPlan } from '@/lib/audit/load-finish-plan-flags'
-import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
 
 function topIssueFromFlags(
@@ -32,7 +29,18 @@ export async function loadReportRouteState(
     return { kind: 'forbidden' as const }
   }
 
-  const { audit, accessContext, isLoggedIn, session, showPrescription, showDeterministicFixes, aiReviewPending, triageDegraded, prescriptionFailed, sampleFixFlag } = result
+  const {
+    audit,
+    accessContext,
+    isLoggedIn,
+    session,
+    showPrescription,
+    showDeterministicFixes,
+    aiReviewPending,
+    triageDegraded,
+    prescriptionFailed,
+    sampleFixFlag,
+  } = result
   const isOwner = accessContext === 'owner'
   const isAnonymous = audit.userId === null
   const isMarketingSample = isPublicMarketingSample({
@@ -83,12 +91,12 @@ export async function loadReportRouteState(
     isAtCheckLimit(user.auditsUsed, pending, effectiveLimit)
 
   const entitlements = user && session
-      ? getEntitlements({
-          id: session.user.id,
-          role: user.role,
-          plan: user.plan,
-          subscriptionStatus: user.subscriptionStatus,
-        })
+    ? getEntitlements({
+        id: session.user.id,
+        role: user.role,
+        plan: user.plan,
+        subscriptionStatus: user.subscriptionStatus,
+      })
     : null
 
   const compareMonitoringAudit = audit.parentId
@@ -162,6 +170,7 @@ export async function loadReportRouteState(
       pageUrl: f.pageUrl,
       confidence: f.confidence,
       source: f.source ?? undefined,
+      status: f.status,
     }))
 
     const allFlags = await loadFinishPlanFlags({
@@ -200,35 +209,6 @@ export async function loadReportRouteState(
       actionTimeline: audit.actionTimeline,
     }
 
-    const contract = parseProductContract(audit.productContract)
-    const promptAccess = showDeterministicFixes ? 'all' : sampleFixFlag ? 'one' : 'none'
-    const finishPlan = await buildUnifiedFinishPlan({
-      userId: audit.userId,
-      auditUrl: audit.url,
-      flags,
-      rubricRows: audit.rubrics.map((rubric) => ({
-        name: rubric.name,
-        grade: rubric.grade ?? null,
-      })),
-      contract,
-      promptAccess,
-      demonstratedFlag: sampleFixFlag as typeof flags[number] | null,
-    })
-
-    const focusedModel = assembleReportViewModel({
-      auditId: id,
-      audit: reportAudit,
-      isLoggedIn,
-      isOwner,
-      isAnonymous,
-      showPrompts: showDeterministicFixes,
-      demonstratedFlag: sampleFixFlag as typeof flags[number] | null,
-      recheckDiff,
-      compareHref: canAccessCompareView && audit.parentId ? `/compare/${id}` : null,
-      detailsHref: shareToken ? `/share/${shareToken}/details` : undefined,
-      finishPlan,
-    })
-
     return {
       kind: 'completed' as const,
       id,
@@ -252,11 +232,8 @@ export async function loadReportRouteState(
       canAccessCompareView,
       viewerIsPaid,
       rubricRows,
-      flags,
-      finishPlanFlags: allFlags,
-      finishPlan,
+      flags: allFlags,
       reportAudit,
-      focusedModel,
       topIssue,
       shareToken,
     }

@@ -3,8 +3,10 @@ import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import {
   buildFinishPlan,
+  buildFixList,
   type FinishPlan,
   type FinishPlanPromptAccess,
+  type FixList,
 } from '@/lib/audit/finish-plan'
 
 type LiveFlag = {
@@ -27,6 +29,7 @@ type LiveFlag = {
   pageUrl: string | null
   confidence: number | null
   source?: string | null
+  status?: string | null
 }
 
 export function toRankableFlag(flag: LiveFlag): RankableFlag {
@@ -50,6 +53,7 @@ export function toRankableFlag(flag: LiveFlag): RankableFlag {
     pageUrl: flag.pageUrl,
     confidence: flag.confidence,
     source: flag.source ?? 'DETERMINISTIC',
+    status: flag.status,
   } as RankableFlag
 }
 
@@ -67,8 +71,7 @@ export async function loadFinishPlanFlags(input: {
   return [...live, ...repo]
 }
 
-/** Shared Finish Plan ranking for reports, MCP, exports, and task contracts. */
-export async function buildUnifiedFinishPlan(input: {
+type UnifiedPlanInput = {
   userId: string | null
   auditUrl: string
   flags: LiveFlag[]
@@ -77,7 +80,10 @@ export async function buildUnifiedFinishPlan(input: {
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
   limit?: number
-}): Promise<FinishPlan> {
+}
+
+/** Shared ≤3 Finish Plan ranking for compatibility surfaces. */
+export async function buildUnifiedFinishPlan(input: UnifiedPlanInput): Promise<FinishPlan> {
   const flags = await loadFinishPlanFlags({
     userId: input.userId,
     auditUrl: input.auditUrl,
@@ -91,5 +97,22 @@ export async function buildUnifiedFinishPlan(input: {
     promptAccess: input.promptAccess,
     demonstratedFlag: input.demonstratedFlag,
     limit: input.limit,
+  })
+}
+
+/** Shared complete Fix List ranking including Agency repo findings. */
+export async function buildUnifiedFixList(input: UnifiedPlanInput): Promise<FixList> {
+  const flags = await loadFinishPlanFlags({
+    userId: input.userId,
+    auditUrl: input.auditUrl,
+    flags: input.flags,
+  })
+  return buildFixList({
+    flags,
+    rubricRows: input.rubricRows,
+    url: input.auditUrl,
+    contract: input.contract ?? null,
+    promptAccess: input.promptAccess,
+    demonstratedFlag: input.demonstratedFlag,
   })
 }

@@ -26,7 +26,7 @@ For CI, set `FIXFLAGS_API_KEY` instead of writing a local config file. Set
 ## Usage
 
 ```bash
-# Check a URL and return its top three improvements
+# Check a URL and return every ranked fix
 fixflags check https://your-app.com --wait --plan
 
 # Print complete fix prompts instead of bounded previews
@@ -36,7 +36,7 @@ fixflags check https://your-app.com --full
 fixflags check https://your-app.com --no-wait
 fixflags check https://your-app.com --single
 
-# Run a fresh check and return the verification diff + next Finish Plan
+# Run a fresh check and return the verification diff + next Fix list
 fixflags recheck <reportId> --wait --diff
 
 # Protected preview deploys (Agency)
@@ -52,7 +52,7 @@ fixflags recheck <reportId> --json
 fixflags status <reportId>
 ```
 
-`check` waits by default, returns a maximum of three Finish Plan items, and exits non-zero when
+`check` waits by default, returns every unresolved fix, and exits non-zero when
 the completed report contains a critical Flag. `recheck` always performs a fresh capture and
 returns fixed, remaining, new, and regressed counts.
 

@@ -448,11 +448,11 @@ export const FINAL_CTA = {
 export const CHANGELOG_ENTRIES = [
   {
     date: '2026-07-22',
-    title: 'A faster Finish Plan and safer sharing',
+    title: 'A complete Fix list and safer sharing',
     items: [
-      'Every report now opens with the three fixes that matter most',
-      'The full evidence review stays available on a separate details page',
-      'The sample shows the same focused plan without a loading gap',
+      'Every report now opens with every unresolved Flag ranked by launch impact',
+      'Screenshots, evidence, and fixes now share one report workspace',
+      'The sample shows the same complete Fix list without a loading gap',
       'Password-protected share links stay private and can be revoked without exposing the report',
       'Sign-in waits until your anonymous report is safely attached to your account',
     ],
@@ -708,8 +708,8 @@ export const LANDING_PAGE = {
     label: '',
     headline: 'A review you can paste into your editor.',
     body: 'Each Flag has evidence, impact, and a fix prompt.',
-    previewEyebrow: 'Finish Plan',
-    previewTitle: 'Three fixes before you ship',
+    previewEyebrow: 'Fix list',
+    previewTitle: 'Every fix, ranked and ready',
     previewBadge: 'Screenshot evidence included',
     cta: 'View full sample review',
     ctaWithCount: (flagCount: number) => {
@@ -908,29 +908,22 @@ export const PRICING = {
 export const PLANS = getMarketingPlans()
 
 export const REPORT_COPY = {
-  focused: {
-    eyebrow: 'Your next three fixes',
-    evidence: 'Evidence',
-    fix: 'Editor-ready fix',
-    promptLocked: 'Unlock the other two fix prompts and re-check this URL after you ship.',
-    signUpCta: 'Save report and unlock fixes',
-    copyNextStepOwner: 'Ship the fix, then re-check this URL to see what cleared.',
-    copyNextStepAnonymous: 'Ship the fix, then save this report to re-check it.',
-    detailsCta: (count: number) => `View full review (${count} Flags)`,
-    backToPlan: 'Back to Finish Plan',
-    rubricProof: 'Why this plan is credible',
-    readinessBody: 'The Finish Plan below is ordered by launch impact.',
-  },
   lovableBolt: {
     heroTitle: 'Paste this into Lovable or Bolt',
     heroBody: 'One click copies a fix prompt tuned for your builder. Ship the change, then re-check here.',
     defaultToolHint: 'Choose your builder, copy the fix, paste it into your AI editor.',
   },
   sampleFocused: {
-    eyebrow: 'Sample Finish Plan',
-    title: 'See the three fixes FixFlags would ship first',
+    eyebrow: 'Sample fix list',
+    title: 'See every fix FixFlags found',
     body: 'A versioned, reviewed snapshot from a completed PlantDad demo audit.',
-    detailsCta: 'View the full sample review',
+    detailsCta: 'View the sample report',
+    completeList: 'This sample includes the complete ranked fix list.',
+  },
+  progressive: {
+    eyebrow: 'Fix list',
+    preparingFixList: 'Preparing your fix list…',
+    waitingForFlags: 'Flags will appear here as FixFlags verifies them.',
   },
   recheck: {
     label: 'Re-check',
@@ -983,11 +976,9 @@ export const REPORT_COPY = {
     body: 'PageSpeed data was unavailable for this run. Experience flags that need it may be thinner.',
   },
   sectionTitles: {
-    topPriorities: 'Finish Plan',
-    topPrioritiesHint:
-      'The highest-leverage improvements next. Copy into Cursor, Claude Code, or any editor with plan mode.',
-    topPrioritiesLocked: 'Your highest-priority issues. Sign up for the fix prompt and re-check proof.',
-    topPrioritiesGenerating: 'Your highest-priority issues are ready. Fix prompts are still generating.',
+    allFixes: 'All fixes',
+    allFixesHint: (count: number) =>
+      `${count} unresolved ${count === 1 ? 'Flag' : 'Flags'}, ranked by launch impact. Select one to inspect its evidence and fix.`,
     productContract: 'Product contract',
     productContractHeading: 'What this product appears to do',
     journey: 'User journey walk',
@@ -996,18 +987,16 @@ export const REPORT_COPY = {
     timelineProgressive: 'What FixFlags is doing',
     timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
     previews: 'Share & search previews',
-    copyFixPlan: (n: number) => `Copy Finish Plan (${Math.min(3, n)})`,
     remember: 'What we proved',
     rememberHint: 'Verified on re-check. Stays with this product across scans.',
   },
   stickyNav: {
     contract: 'Contract',
-    priorities: 'Finish Plan',
     remember: 'Proved',
     journey: 'Journey',
     flow: 'Flow',
     timeline: 'Timeline',
-    flags: 'Flags',
+    flags: 'Fixes',
     previews: 'Previews',
     launch: 'Launch',
   },
@@ -1077,7 +1066,7 @@ export const MCP_DOCS = {
   lovableBoltNote:
     'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
   tools: [
-    { name: 'ff_check_and_plan', desc: 'Check a URL and return the report plus its three-item Finish Plan.' },
+    { name: 'ff_check_and_plan', desc: 'Check a URL and return the report plus every ranked fix.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
     { name: 'ff_get_report', desc: 'Get rubric summaries (scores, grades, status) and shareStatus. Use ff_get_rubric or ff_get_flag for fix prompts.' },
     {
@@ -1085,7 +1074,8 @@ export const MCP_DOCS = {
       desc: 'Get detailed flags + fix prompt for one rubric (Message, Experience, Reach).',
     },
     { name: 'ff_get_flag', desc: 'Get the fix prompt for a specific flag.' },
-    { name: 'ff_recheck_and_compare', desc: 'Run a fresh re-check and return the verification diff plus next Finish Plan.' },
+    { name: 'ff_get_all_fixes', desc: 'Get every unresolved Flag and fix prompt, ranked by launch impact.' },
+    { name: 'ff_recheck_and_compare', desc: 'Run a fresh re-check and return the verification diff plus the next complete fix list.' },
     {
       name: 'ff_compare',
       desc: 'Compare two reports: see what improved, stayed the same, or regressed.',
@@ -1161,10 +1151,10 @@ export const AUTH = {
   reportContext: {
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this report',
-    body: 'Unlock the other two fix prompts and keep this report for unlimited re-checks.',
+    body: 'Unlock every fix prompt and keep this report for unlimited re-checks.',
     backCta: 'Back to report',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
-    unlocking: 'Unlocking your Finish Plan',
+    unlocking: 'Unlocking your fix list',
     redirecting: 'Your report is saved. Taking you back to the fixes.',
     waiting: 'This will only take a moment.',
     saveError: 'Your account is ready, but we could not save your report yet.',

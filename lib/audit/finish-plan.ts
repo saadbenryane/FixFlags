@@ -7,6 +7,7 @@ import {
 } from '@/lib/audit/priority-flags'
 
 export type FinishPlanPromptAccess = 'all' | 'one' | 'none'
+type FixListFlag = RankableFlag & { status?: string | null }
 
 export interface FinishPlanItem {
   id: string
@@ -35,39 +36,53 @@ export interface FinishPlan {
   visiblePromptCount: number
 }
 
+export interface FixList extends FinishPlan {
+  totalCount: number
+}
+
 /** Explicit export path for every prompt. This is not a Finish Plan. */
 export function buildAllFixPrompts(input: {
-  flags: RankableFlag[]
+  flags: FixListFlag[]
   url?: string | null
   contract?: ProductContract | null
 }): string {
-  return buildPlanModePrompt(input.flags, {
+  const flags = unresolvedFlags(input.flags)
+  return buildPlanModePrompt(flags, {
     url: input.url,
-    limit: input.flags.length,
+    limit: flags.length,
     contract: input.contract ?? null,
   })
 }
 
-/** Authoritative ranking, cap, Contract bias, and prompt-redaction contract. */
-export function buildFinishPlan(input: {
-  flags: RankableFlag[]
+type PlanInput = {
+  flags: FixListFlag[]
   rubricRows?: Array<{ name: string; grade: string | null }>
   url?: string | null
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
+  /** Cap for buildFinishPlan only. buildFixList ignores this and returns all unresolved flags. */
   limit?: number
-}): FinishPlan {
-  const cap = input.limit ?? 3
+}
+
+function unresolvedFlags(flags: FixListFlag[]): FixListFlag[] {
+  return flags.filter((flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED')
+}
+
+function buildRankedFixes(
+  input: PlanInput,
+  options: { limit: number; demonstratedFirst: boolean }
+): FinishPlan {
+  const unresolved = unresolvedFlags(input.flags)
   const ranked = rankFlagsByPriority(
-    input.flags,
+    unresolved,
     input.rubricRows ?? [],
-    cap,
+    options.limit,
     input.contract ?? null
   )
   const demonstratedId = input.demonstratedFlag?.id
   const orderedRanked =
-    input.promptAccess === 'one' && demonstratedId
+    options.demonstratedFirst && input.promptAccess === 'one' && demonstratedId
       ? [
           ...ranked.filter(({ flag }) => flag.id === demonstratedId),
           ...ranked.filter(({ flag }) => flag.id !== demonstratedId),
@@ -110,12 +125,36 @@ export function buildFinishPlan(input: {
   const visiblePromptCount = items.filter((item) => item.prompt).length
   const copyPrompt =
     input.promptAccess === 'all' && visiblePromptCount > 0
-      ? buildPlanModePrompt(input.flags, {
+      ? buildPlanModePrompt(unresolved, {
           url: input.url,
-          limit: cap,
+          limit: options.limit,
           contract: input.contract ?? null,
         })
       : null
 
   return { items, copyPrompt, visiblePromptCount }
+}
+
+/**
+ * Canonical complete, ranked fix list. Prompt access is applied per item so
+ * anonymous reports can keep every problem and evidence summary visible.
+ */
+export function buildFixList(input: PlanInput): FixList {
+  const totalCount = unresolvedFlags(input.flags).length
+  const plan = buildRankedFixes(input, {
+    limit: totalCount,
+    demonstratedFirst: false,
+  })
+  return { ...plan, totalCount }
+}
+
+/**
+ * Deprecated compatibility artifact for integrations that still expect the
+ * historical three-item Finish Plan. New product surfaces use buildFixList().
+ */
+export function buildFinishPlan(input: PlanInput): FinishPlan {
+  return buildRankedFixes(input, {
+    limit: input.limit ?? 3,
+    demonstratedFirst: true,
+  })
 }

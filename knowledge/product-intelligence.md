@@ -72,7 +72,7 @@ Reports, prompts, and scores are formats. The Flag is the durable finding unit. 
 
 ## Surfaces
 
-- **Basic (Launch Check):** Connect app → see understanding → correct Contract → Finish Plan → fix → re-check → PI improves.
+- **Basic (Launch Check):** Connect app → see understanding → correct Contract → Fix list → fix → re-check → PI improves.
 - **Advanced:** Local runtime, MCP (`get_product_context`), repo connect, CI verify, drift over time.
 
 Shipped surface today: [PRODUCT.md](../PRODUCT.md).

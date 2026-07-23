@@ -29,7 +29,7 @@ Existing tools (Lighthouse, PageSpeed) find technical problems but do not tell y
 
 ## Promise
 
-Paste your site. We reconstruct a basic Product understanding (Product Contract), review the live experience, produce a Finish Plan with fix prompts your builder can use, and re-check after you ship.
+Paste your site. We reconstruct a basic Product understanding (Product Contract), review the live experience, produce a ranked Fix list with prompts your builder can use, and re-check after you ship.
 
 ## Core loop
 
@@ -39,7 +39,7 @@ Paste your site. We reconstruct a basic Product understanding (Product Contract)
 
 1. User pastes a URL.
 2. Deterministic checks + AI review run on the page; Product Contract is inferred.
-3. User lands on a focused Finish Plan with at most three evidence-backed fixes. The full technical review is a separate details surface.
+3. User lands in one report workspace with every unresolved Flag ranked by launch impact.
 4. User pastes fix prompts into their AI editor.
 5. User ships fixes.
 6. User re-checks the same URL (free, unlimited).
@@ -50,7 +50,7 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 ## What we ship
 
 ### Anonymous teaser (no account)
-- 1 free teaser scan: scores, rubrics, three prioritized problem/evidence summaries (real page evidence, not signup placeholders), and exactly one complete demonstrated fix prompt
+- 1 free teaser scan: scores, rubrics, every prioritized problem/evidence summary (real page evidence, not signup placeholders), and exactly one complete demonstrated fix prompt
 - Remaining fix prompts, ownership, and re-check require signup + a successful claim
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 - Access control is read-time; do not persist gate copy into Flag evidence/fix fields
@@ -99,12 +99,12 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration; public tool names are registered in `lib/mcp/tools.ts` and checked by `npm run completeness:audit`.
 - Project-scoped Product Intelligence persistence
-- Focused `/report/[id]` Finish Plan and separate `/report/[id]/details` technical review, governed by `knowledge/report-contract.md`
-- Finish Plan (≤3 prioritized improvements) with contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
+- Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
+- Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
-- **Live progressive report:** after URL submit, `/report/{id}` honestly builds toward three Finish Plan cards; captures and early findings appear first, while Contract and timeline evidence stay behind “How FixFlags is checking”
+- **Live progressive report:** after URL submit, `/report/{id}` keeps the final Fix list layout in place and appends Flags as they arrive; Contract and timeline evidence stay behind “How FixFlags is checking”
 - **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 
 ## Limitations and technical debt

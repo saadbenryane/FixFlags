@@ -22,6 +22,8 @@ import {
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
+import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
+import { impactTagLabel, severityLabel } from '@/lib/utils'
 
 type ExplorerVariant = 'hero' | 'live'
 
@@ -39,6 +41,7 @@ interface ReportExplorerProps {
   progress?: number
   /** Optional audit id for funnel analytics on live reports. */
   auditId?: string
+  demonstratedFlagId?: string
 }
 
 const VARIANT_CONFIG = {
@@ -53,22 +56,16 @@ const VARIANT_CONFIG = {
 } as const
 
 function FlagNavigation({
-  index,
   total,
   onPrevious,
   onNext,
 }: {
-  index: number
   total: number
   onPrevious: () => void
   onNext: () => void
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <span className="font-mono text-2xs tabular-nums text-muted-foreground">
-        {index + 1} / {total}
-      </span>
-      <div className="flex items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="outline"
@@ -91,7 +88,6 @@ function FlagNavigation({
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-      </div>
     </div>
   )
 }
@@ -138,7 +134,6 @@ function RubricTabs({
 function FlagDetailPane({
   model,
   flag,
-  flagIndex,
   flagCount,
   onPrevious,
   onNext,
@@ -148,10 +143,10 @@ function FlagDetailPane({
   signUpHref,
   onSelectFlag,
   compact = false,
+  demonstratedFlagId,
 }: {
   model: ReportExplorerModel
   flag: ReportExplorerModel['flags'][number]
-  flagIndex: number
   flagCount: number
   onPrevious: () => void
   onNext: () => void
@@ -161,6 +156,7 @@ function FlagDetailPane({
   signUpHref?: string
   onSelectFlag: (flagId: string) => void
   compact?: boolean
+  demonstratedFlagId?: string
 }) {
   const showDesktop = flag.evidenceDevices.includes('desktop')
   const showMobile = flag.evidenceDevices.includes('mobile')
@@ -174,7 +170,6 @@ function FlagDetailPane({
             {flag.title}
           </h3>
           <FlagNavigation
-            index={flagIndex}
             total={flagCount}
             onPrevious={onPrevious}
             onNext={onNext}
@@ -208,7 +203,7 @@ function FlagDetailPane({
         <FlagDetailPanel
           flag={flag}
           showFeedback={showFeedback}
-          aiLocked={aiLocked}
+          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
           aiEnhancementPending={aiEnhancementPending}
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
@@ -231,12 +226,15 @@ export function ReportExplorer({
   loading = false,
   progress,
   auditId,
+  demonstratedFlagId,
 }: ReportExplorerProps) {
   const config = VARIANT_CONFIG[variant]
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
   const [pageFilter, setPageFilter] = useState<string | null>(null)
+  const [severityFilter, setSeverityFilter] = useState<string | null>(null)
+  const [impactFilter, setImpactFilter] = useState<string | null>(null)
   const [flagIndex, setFlagIndex] = useState(() =>
     clampFlagIndex(initialFlagIndex, model.flags.length)
   )
@@ -258,8 +256,10 @@ export function ReportExplorer({
     () =>
       countFlagsByRubric(model.flags, {
         pageFilter,
+        severityFilter,
+        impactFilter,
       }),
-    [model.flags, pageFilter]
+    [model.flags, pageFilter, severityFilter, impactFilter]
   )
 
   const effectiveRubricFilter = resolveRubricFilter(rubricFilter, rubricCounts)
@@ -275,8 +275,10 @@ export function ReportExplorer({
       filterExplorerFlags(model.flags, {
         rubricFilter: effectiveRubricFilter,
         pageFilter,
+        severityFilter,
+        impactFilter,
       }),
-    [model.flags, effectiveRubricFilter, pageFilter]
+    [model.flags, effectiveRubricFilter, pageFilter, severityFilter, impactFilter]
   )
 
   const flagCount = filteredFlags.length
@@ -284,7 +286,7 @@ export function ReportExplorer({
 
   useEffect(() => {
     setFlagIndex(0)
-  }, [effectiveRubricFilter, pageFilter])
+  }, [effectiveRubricFilter, pageFilter, severityFilter, impactFilter])
 
   useEffect(() => {
     setFlagIndex((current) => clampFlagIndex(current, filteredFlags.length))
@@ -294,8 +296,16 @@ export function ReportExplorer({
   const pageScopedFlags = filterExplorerFlags(model.flags, {
     rubricFilter: effectiveRubricFilter,
     pageFilter: null,
+    severityFilter,
+    impactFilter,
   })
   const hasPages = pages.length > 1
+  const availableSeverities = SEVERITY_ORDER.filter((severity) =>
+    model.flags.some((flag) => flag.severity === severity)
+  )
+  const availableImpacts = IMPACT_TAG_ORDER.filter((impact) =>
+    model.flags.some((flag) => flag.impactTag === impact)
+  )
 
   const showPrevious = useCallback(() => {
     if (flagCount <= 1) return
@@ -345,7 +355,6 @@ export function ReportExplorer({
   const fixLoopFlags: FixLoopFlagItem[] = filteredFlags.map((f) => ({
     id: f.id,
     title: f.title,
-    priorityLabel: f.priorityLabel,
     rubric: f.rubric,
     impactTag: f.impactTag,
     severity: f.severity,
@@ -371,36 +380,66 @@ export function ReportExplorer({
     </div>
   )
 
-  const secondaryFilters = hasPages && (
-    <div className="flex flex-wrap gap-1.5">
-      <FilterPill
-        size="sm"
-        icon={Globe}
-        active={pageFilter === null}
-        onClick={() => setPageFilter(null)}
-      >
-        {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
-      </FilterPill>
-      {pages.map((page) => {
-        const count = pageScopedFlags.filter((f) => f.pageUrl === page.url).length
-        if (count === 0) return null
-        const label = pageFilterLabel(page.url, page.role)
-        return (
+  const secondaryFilters = (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
+        <select
+          id="flag-severity-filter"
+          value={severityFilter ?? ''}
+          onChange={(event) => setSeverityFilter(event.target.value || null)}
+          className="min-h-9 rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
+          <option value="">All severities</option>
+          {availableSeverities.map((severity) => (
+            <option key={severity} value={severity}>{severityLabel(severity)}</option>
+          ))}
+        </select>
+        <label className="sr-only" htmlFor="flag-impact-filter">Filter by impact</label>
+        <select
+          id="flag-impact-filter"
+          value={impactFilter ?? ''}
+          onChange={(event) => setImpactFilter(event.target.value || null)}
+          className="min-h-9 rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
+          <option value="">All impacts</option>
+          {availableImpacts.map((impact) => (
+            <option key={impact} value={impact}>{impactTagLabel(impact)}</option>
+          ))}
+        </select>
+      </div>
+      {hasPages ? (
+        <div className="flex flex-wrap gap-1.5">
           <FilterPill
             size="sm"
-            key={page.url}
-            active={pageFilter === page.url}
-            onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
+            icon={Globe}
+            active={pageFilter === null}
+            onClick={() => setPageFilter(null)}
           >
-            {label} ({count})
+            {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
           </FilterPill>
-        )
-      })}
+          {pages.map((page) => {
+            const count = pageScopedFlags.filter((f) => f.pageUrl === page.url).length
+            if (count === 0) return null
+            const label = pageFilterLabel(page.url, page.role)
+            return (
+              <FilterPill
+                size="sm"
+                key={page.url}
+                active={pageFilter === page.url}
+                onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
+              >
+                {label} ({count})
+              </FilterPill>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 
   const listPane = (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-3 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin">
       {secondaryFilters}
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -424,7 +463,6 @@ export function ReportExplorer({
       <FlagDetailPane
         model={model}
         flag={currentFlag}
-        flagIndex={safeFlagIndex}
         flagCount={flagCount}
         onPrevious={showPrevious}
         onNext={showNext}
@@ -434,6 +472,7 @@ export function ReportExplorer({
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
         compact={config.compact}
+        demonstratedFlagId={demonstratedFlagId}
       />
     ) : (
       <p className="text-sm text-muted-foreground">
@@ -450,7 +489,7 @@ export function ReportExplorer({
           ref={detailRef}
           className={cn(
             'min-w-0 scroll-mt-24 border-t border-border/30 pt-6',
-            'lg:sticky lg:top-[calc(var(--header-offset)+1rem)] lg:border-t-0 lg:pt-0 lg:self-start'
+            'lg:sticky lg:top-[calc(var(--header-offset)+1rem)] lg:max-h-[calc(100vh-var(--header-offset)-2rem)] lg:overflow-y-auto lg:border-t-0 lg:pr-2 lg:pt-0 lg:self-start scrollbar-thin'
           )}
         >
           {detailPane}
@@ -460,7 +499,7 @@ export function ReportExplorer({
   )
 
   const shellClass = cn(
-    'overflow-hidden rounded-card glass-surface shadow-card',
+    'overflow-clip rounded-card glass-surface shadow-card',
     variant === 'hero' && 'shadow-2xl',
     className
   )

@@ -31,7 +31,7 @@ Report ID: ${auditId}
 Run these MCP tool calls:
 1. \`tools/call\` → \`ff_get_report\` with arguments: \`{"reportId":"${auditId}"}\`
 2. \`tools/call\` → \`ff_get_rubric\` for \`MESSAGE\`, \`EXPERIENCE\`, and \`REACH\`
-3. \`tools/call\` → \`ff_get_flag\` for the top flag IDs you plan to fix
+3. \`tools/call\` → \`ff_get_all_fixes\` for the complete ranked Fix list
 
 Example curl for the first call:
 \`\`\`bash
