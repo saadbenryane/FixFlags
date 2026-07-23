@@ -11,7 +11,7 @@
 | Gate | Result |
 |------|--------|
 | `npm run test:unit` | 2070 tests (2069 passed, 1 skipped) after fixes |
-| `npm run accuracy:eval` | PASS (8 HTML fixtures + demo v1 + non-HTML) |
+| `npm run accuracy:eval` | PASS (8 HTML corpus fixtures + demo v1 + non-HTML) |
 | `npm run demo:audit:offline` | 16 baseline flags, v1 = 0 |
 
 ## Tier A — gold standard (HTML probe)
@@ -58,8 +58,9 @@
 1. Accessible-name parser: hidden subtrees, sr-only labels, card stretch links (`absolute inset-0` + heading).
 2. `messaging-weak-value-prop`: only fires when headline has neither audience nor outcome.
 3. H1 extraction: dedupe responsive duplicates and repeated phrase runs.
-4. Frozen fixtures: `lovable-dev.html`, `bolt-new.html`, `v0-dev.html`.
+4. Frozen fixtures: `lovable-dev.html`, `bolt-new.html` (live `v0.dev` probe passes; no frozen fixture — HTML-only corpus).
 5. `npm run accuracy:eval` CI gate with gold/builder/personal/broken corpus.
+6. Shared corpus: `lib/audit/accuracy-corpus.ts` (single expectation source).
 
 ## Persona validation (automated)
 

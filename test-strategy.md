@@ -1,6 +1,6 @@
 # FixFlags Testing Strategy
 
-*Last updated: 2026-07-20*
+*Last updated: 2026-07-23*
 
 > **Ship readiness evidence:** See [`QUALITY.md`](QUALITY.md) for current automated coverage and ratings. This doc tracks residual hardening goals and the original monetization bar.
 
@@ -34,7 +34,7 @@
 
 | Issue | Rating | What we need |
 |-------|--------|-------------|
-| Real-site regression suite | ✅ DONE | HTML-derivable checks frozen in `regression-sites.test.ts`. Screenshot/flow/PageSpeed modules still need fixtures. |
+| Real-site regression suite | ✅ DONE | HTML corpus in `lib/audit/accuracy-corpus.ts`; gate via `npm run accuracy:eval`. `regression-sites.test.ts` covers a narrower HTML-derivable subset. Screenshot/flow/PageSpeed modules still need live fixtures. |
 | AI judge contract validation | ✅ DONE | `judge-contract.test.ts` + blank-evidence discard |
 | Check trigger matrix | ✅ DONE | Every checkId fires from at least one input. Count: AGENTS.md Project facts (`ALL_CHECK_IDS` in `lib/audit/check-ids.ts`). |
 | Verification rules for every check | ✅ DONE | Every checkId has a human-readable verification rule. |

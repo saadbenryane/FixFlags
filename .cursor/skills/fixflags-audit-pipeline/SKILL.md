@@ -56,10 +56,14 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 
 ```bash
 npm run test:unit -- lib/audit/__tests__/run-audit.test.ts lib/audit/__tests__/outcome.test.ts
-npm run smoke:triage:prod   # post-deploy, requires prod keys
-npm run demo:audit:offline  # deterministic checks only
+npm run accuracy:eval          # offline corpus gate (gold 0 false blockers)
+npm run accuracy:probe -- <url> # live HTML adjudication before changing checks
+npm run demo:audit:offline     # deterministic demo v1 repair proof
 npm run agent -- eval recovery # PostgreSQL + Redis retry/idempotency evaluation
+npm run smoke:triage:prod      # post-deploy, requires prod keys
 ```
+
+**Scan accuracy skill:** `.cursor/skills/fixflags-scan-accuracy/SKILL.md` for corpus architecture and adjudication rules.
 
 ## Anti-patterns
 

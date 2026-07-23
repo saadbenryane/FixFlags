@@ -24,6 +24,8 @@ Status per capability: `live` | `partial` | `planned`.
 
 | Layer | Command | Tests |
 |-------|---------|-------|
+| Offline accuracy gate | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo repair |
+| Live HTML adjudication | `npm run accuracy:probe -- <url>` | Before changing checks on real sites |
 | Copy / metadata / SEO | `npm run demo:audit:offline` | Fastest, no dev server |
 | Rendered HTML | `npm run demo:audit` | Needs `npm run dev` |
 | CTA flow | `npm run demo:audit:flow` | Playwright click path |
@@ -51,5 +53,6 @@ Each flag prompt: Problem / Why / Found / Do / Verify. No screenshot fluff for `
 
 ## Related skills
 
+- `fixflags-scan-accuracy` — corpus, probes, false-positive fixes, accuracy gate
 - `fixflags-product` — entitlements, pipeline, dev workflow
 - `fixflags-marketing` — copy, ICP, positioning

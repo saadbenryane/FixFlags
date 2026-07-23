@@ -44,6 +44,7 @@ describe('non-HTML regression fixture', () => {
       opportunities: [],
       failedAccessibilityAudits: [],
       diagnostics: {},
+      raw: {},
     }
     const mobile: PageSpeedResult = {
       strategy: 'mobile',
@@ -56,6 +57,7 @@ describe('non-HTML regression fixture', () => {
       opportunities: [],
       failedAccessibilityAudits: [],
       diagnostics: {},
+      raw: {},
     }
     const checkIds = runPerformanceChecks(desktop, mobile).map((flag) => flag.checkId).sort()
     expect(checkIds).toEqual(['inp-poor'])

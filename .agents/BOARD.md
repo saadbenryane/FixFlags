@@ -5,6 +5,7 @@
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
+| launch-readiness-docs | in_progress | cloud-agent | cursor/launch-quality-accuracy-bff3 | Accuracy corpus refactor, completion plan, skills/docs reconciliation | lib/audit/accuracy-corpus.ts, skills, QUALITY.md, sessions | Merge PR #4 after verify | 2026-07-23 |
 
 ---
 

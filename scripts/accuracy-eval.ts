@@ -1,14 +1,16 @@
 /**
  * Offline accuracy evaluation gate for FixFlags scan quality.
  *
- * Runs frozen HTML/JSON fixtures, demo v1 repair proof, and report-quality
- * expectations. Exits non-zero on regression.
- *
  *   npm run accuracy:eval
  */
-import { readFileSync, existsSync } from 'node:fs'
-import { parseMetadataFromHtml } from '@/lib/audit/metadata'
-import { runAllChecks } from '@/lib/audit/checks'
+import { existsSync, readFileSync } from 'node:fs'
+import {
+  ACCURACY_FIXTURE_DIR,
+  accuracyGateFixtures,
+  goldAccuracyFixtures,
+  type AccuracyFixtureTier,
+} from '@/lib/audit/accuracy-corpus'
+import { runAccuracyFixtureChecks } from '@/lib/audit/fixture-html'
 import { rankFlagsByPriority, type RankableFlag } from '@/lib/audit/priority-flags'
 import { compareDemoFixtures } from '@/lib/demo/audit-demo-fixtures'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
@@ -16,108 +18,8 @@ import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagemen
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
-const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
-const NO_CONSOLE: Array<{ type: string; text: string }> = []
-const NO_HEADERS: Record<string, string> = {}
-
-interface HtmlFixtureSpec {
-  file: string
-  url: string
-  tier: 'gold' | 'builder' | 'personal' | 'broken' | 'control'
-  maxImportantFalseBlockers: number
-  expectedTop3: string[]
-  knownFalsePositives: string[]
-  expectedPresent: string[]
-}
-
-const HTML_FIXTURES: HtmlFixtureSpec[] = [
-  {
-    file: 'clean-page.html',
-    url: 'https://fixflags.com/demo/v1',
-    tier: 'control',
-    maxImportantFalseBlockers: 99,
-    expectedTop3: [],
-    knownFalsePositives: [],
-    expectedPresent: [],
-  },
-  {
-    file: 'nextjs-org.html',
-    url: 'https://nextjs.org',
-    tier: 'gold',
-    maxImportantFalseBlockers: 0,
-    expectedTop3: ['messaging-no-audience', 'security-hsts-missing', 'security-csp-missing'],
-    knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation', 'images-empty-alt'],
-    expectedPresent: ['canonical-missing', 'measurement-ga-gtm-posthog-missing'],
-  },
-  {
-    file: 'vercel-com.html',
-    url: 'https://vercel.com',
-    tier: 'gold',
-    maxImportantFalseBlockers: 0,
-    expectedTop3: ['friction-no-risk-reversal', 'security-hsts-missing', 'security-csp-missing'],
-    knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text'],
-    expectedPresent: ['description-too-short', 'measurement-ga-gtm-posthog-missing'],
-  },
-  {
-    file: 'lovable-dev.html',
-    url: 'https://lovable.dev',
-    tier: 'builder',
-    maxImportantFalseBlockers: 0,
-    expectedTop3: ['security-hsts-missing', 'security-csp-missing', 'security-content-type-options-missing'],
-    knownFalsePositives: ['messaging-weak-value-prop', 'links-no-text', 'buttons-no-text'],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'friction-no-social-proof'],
-  },
-  {
-    file: 'bolt-new.html',
-    url: 'https://bolt.new',
-    tier: 'builder',
-    maxImportantFalseBlockers: 2,
-    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'security-hsts-missing'],
-    knownFalsePositives: ['messaging-weak-value-prop'],
-    expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
-  },
-  {
-    file: 'saadbenryane-com.html',
-    url: 'https://saadbenryane.com',
-    tier: 'personal',
-    maxImportantFalseBlockers: 2,
-    expectedTop3: ['no-cta-detected', 'trust-no-direct-contact', 'messaging-no-audience'],
-    knownFalsePositives: ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
-    expectedPresent: ['no-cta-detected', 'trust-no-direct-contact', 'skip-link-missing'],
-  },
-  {
-    file: 'broken-page.html',
-    url: 'https://example.com/broken',
-    tier: 'broken',
-    maxImportantFalseBlockers: 99,
-    expectedTop3: ['title-missing', 'form-missing-validation', 'h1-generic'],
-    knownFalsePositives: ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy'],
-    expectedPresent: ['title-missing', 'description-missing', 'no-cta-detected', 'form-missing-validation'],
-  },
-]
-
-function runFixtureChecks(file: string, url: string) {
-  const html = readFileSync(`${FIXTURE_DIR}/${file}`, 'utf-8')
-  const meta = parseMetadataFromHtml(html, url)
-  const originalFetch = globalThis.fetch
-  globalThis.fetch = (async () => new Response('', { status: 200 })) as typeof fetch
-
-  return runAllChecks(
-    url,
-    meta,
-    null,
-    null,
-    NO_CONSOLE,
-    undefined,
-    undefined,
-    NO_HEADERS
-  ).finally(() => {
-    globalThis.fetch = originalFetch
-  })
-}
-
-function countImportantFalseBlockers(flags: RankableFlag[], tier: HtmlFixtureSpec['tier']): number {
-  if (tier === 'broken' || tier === 'control') return 0
+function countImportantFalseBlockers(flags: RankableFlag[], tier: AccuracyFixtureTier): number {
+  if (tier === 'broken' || tier === 'control' || tier === 'structural') return 0
   return flags.filter((f) => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT').length
 }
 
@@ -125,19 +27,17 @@ async function evaluateHtmlFixtures() {
   const failures: string[] = []
   let goldImportantTotal = 0
 
-  for (const fixture of HTML_FIXTURES) {
-    if (!existsSync(`${FIXTURE_DIR}/${fixture.file}`)) {
+  for (const fixture of accuracyGateFixtures()) {
+    if (!existsSync(`${ACCURACY_FIXTURE_DIR}/${fixture.file}`)) {
       failures.push(`${fixture.file}: missing fixture file`)
       continue
     }
 
-    if (fixture.tier === 'control') continue
-
-    const { flags } = await runFixtureChecks(fixture.file, fixture.url)
+    const { flags } = await runAccuracyFixtureChecks(fixture)
     const flagIds = new Set(flags.map((f) => f.checkId))
     const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId)) as RankableFlag[]
     const top3 = rankFlagsByPriority(sorted, [], 3).map((r) => r.flag.checkId ?? '')
-    const importantCount = countImportantFalseBlockers(flags, fixture.tier)
+    const importantCount = countImportantFalseBlockers(flags as RankableFlag[], fixture.tier)
 
     if (fixture.tier === 'gold') goldImportantTotal += importantCount
     if (importantCount > fixture.maxImportantFalseBlockers) {
@@ -216,7 +116,8 @@ async function main() {
   ]
 
   console.log('FixFlags accuracy eval\n')
-  console.log(`HTML fixtures: ${HTML_FIXTURES.length}`)
+  console.log(`HTML gate fixtures: ${accuracyGateFixtures().length}`)
+  console.log(`Gold fixtures: ${goldAccuracyFixtures().length}`)
   console.log(`Failures: ${failures.length}`)
 
   if (failures.length > 0) {

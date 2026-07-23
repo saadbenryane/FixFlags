@@ -1,7 +1,7 @@
 # Scan accuracy — HTML parser false positives
 
 **Date:** 2026-07-23  
-**Evidence:** `scripts/accuracy-probe.ts` on v0.dev dropped from 161 → 0 IMPORTANT `links-no-text` after parser fixes; `npm run accuracy:eval` green with 9 frozen fixtures.
+**Evidence:** `npm run accuracy:probe` on v0.dev dropped from 161 → 0 IMPORTANT `links-no-text` after parser fixes; `npm run accuracy:eval` green with 8-corpus fixtures.
 
 ## Findings
 
@@ -12,5 +12,7 @@
 
 ## Prevention
 
-- `npm run accuracy:eval` gates gold/builder fixtures in CI.
-- Capture refreshed HTML with `npm run accuracy:capture-fixtures` when public sites change materially.
+- Expectations: `lib/audit/accuracy-corpus.ts` (single source)
+- Gate: `npm run accuracy:eval`
+- Live adjudication: `npm run accuracy:probe -- <url>`
+- Capture refresh: `npm run accuracy:capture-fixtures` via `lib/audit/fixture-sanitize.ts`

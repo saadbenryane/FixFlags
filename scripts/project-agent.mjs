@@ -59,6 +59,17 @@ export const contexts = {
     files: ['QUALITY.md', 'DEVELOPMENT.md', 'lib/queue/', '.agents/learnings/'],
     commands: ['npm run agent -- learn', 'npm run agent -- verify --dry-run'],
   },
+  accuracy: {
+    description: 'Improve scan accuracy, fixture corpus, false-positive fixes, and the accuracy CI gate.',
+    files: [
+      'lib/audit/accuracy-corpus.ts',
+      'lib/audit/fixture-html.ts',
+      'scripts/accuracy-eval.ts',
+      '.agents/sessions/launch-accuracy-baseline.md',
+      'QUALITY.md',
+    ],
+    commands: ['npm run accuracy:eval', 'npm run agent -- eval accuracy'],
+  },
   release: {
     description: 'Build and validate the production-like web, worker, database, and container release path.',
     files: ['Dockerfile', 'scripts/runtime-start.mjs', 'scripts/validate.mjs', 'lib/health/', 'DEVELOPMENT.md'],

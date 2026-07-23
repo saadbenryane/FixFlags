@@ -23,6 +23,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | Report or application UI | [DESIGN.md](DESIGN.md), `components/audit/`, `components/report/` | `npm run agent -- context ui` |
 | Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
+| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts` | `npm run agent -- context accuracy` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
 | Public CLI | `fixflags-cli/` | `npm run agent -- context cli` |
@@ -55,6 +56,8 @@ Do not read every linked document by default. Follow the task router and open de
 | `npm run validate:quick` | Changed-file lint and typecheck |
 | `npm run validate:affected` | Changed-file tests and guards |
 | `npm run verify` | Full DB, code, test, build, and worker gate |
+| `npm run accuracy:eval` | Offline scan accuracy gate (HTML corpus + demo repair + non-HTML) |
+| `npm run accuracy:probe` | Live HTML accuracy adjudication for real URLs |
 | `npm run dev` | Next.js application |
 | `npm run dev:all` | Application and separate worker |
 

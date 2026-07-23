@@ -18,7 +18,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
-| False positives after check changes | ✅ DONE | Real-site regression suite: frozen HTML fixtures with expected flag profiles | 6 fixtures in `regression-sites.test.ts`, run in CI (HTML-derivable checks) |
+| False positives after check changes | ✅ DONE | Real-site regression suite: frozen HTML fixtures with expected flag profiles | 8 fixtures in `accuracy-corpus.ts`; `npm run accuracy:eval` + `report-quality-eval.test.ts` in CI |
 | AI judge hallucinates rubrics | ✅ DONE | Bad schema → hard reject. Empty evidence → discard. Wrong rubric → fail. | `judge-contract.test.ts` + prescription contract; blank evidence discarded in `mergePrescriptionResults` |
 | CheckId never fires | ✅ DONE | Check trigger matrix: every checkId fires from at least one input | All IDs generated from `ALL_CHECK_IDS` and exercised by `checks.test.ts` |
 | Unclear what each check verifies | ✅ DONE | Verification rules for every checkId | All documented |
@@ -65,6 +65,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Brand hex | `npm run brand:hex-guard` | Brand color compliance | Yes |
 | UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
 | Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
+| Scan accuracy | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression | Yes (via `validate.mjs` full gate) |
 | SEO | `npm run seo:guard` | SEO compliance | Yes |
 | Migration | `npm run db:check` | Migration status | Verify script |
 | Drift | `npm run db:drift` | Schema drift | Verify script |
@@ -81,7 +82,9 @@ All five now have automated coverage, run in CI via `npm run test:unit`:
 4. ✅ Pipeline state machine — `run-audit.test.ts` (transitions, fail-at-step, timeout, retry-after-crash)
 5. ✅ Billing gating enforcement — route tests assert 402 for free, allow for paid (`/api/checks`, api-keys, projects)
 
-Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; extend route contract tests to the remaining API endpoints.
+Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; extend route contract tests to the remaining API endpoints; run manual report contract smoke (below); full-browser adjudication for SSR sites (e.g. linear.app).
+
+**Accuracy completion plan:** [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md)
 
 ## Report contract smoke (manual CRITICAL)
 

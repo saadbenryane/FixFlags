@@ -26,6 +26,7 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 ## Non-negotiable gates
 
 - `npm run completeness:audit` owns counts, MCP/integration names, sticky destinations, Product/schema contracts, stale plan APIs, and tracked generated clutter.
+- `npm run accuracy:eval` owns offline scan accuracy: gold-standard false blockers, builder top-3, demo v1 repair, non-HTML regression.
 - `npm run routes:contract-guard` generates the endpoint inventory and applicable acceptance cases from code.
 - `npm run skills:validate` protects skill frontmatter, links, reference depth, stale terms, length, and volatile facts.
 - `npm run test:scripts` protects the completeness checker itself.

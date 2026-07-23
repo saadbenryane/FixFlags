@@ -32,6 +32,7 @@
     "demo:audit": "tsx scripts/demo-fixture-audit.ts",
     "demo:audit:offline": "tsx scripts/demo-fixture-audit.ts --offline",
     "accuracy:eval": "tsx scripts/accuracy-eval.ts",
+    "accuracy:probe": "tsx scripts/accuracy-probe.ts",
     "accuracy:capture-fixtures": "tsx scripts/capture-accuracy-fixtures.ts",
     "demo:audit:flow": "tsx scripts/demo-fixture-flow-audit.ts",
     "demo:audit:production": "tsx scripts/demo-fixture-audit.ts https://fixflags.com --production",

@@ -1,167 +1,30 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'fs'
-import { parseMetadataFromHtml } from '../metadata'
-import { runAllChecks } from '../checks'
+import { ACCURACY_HTML_FIXTURES } from '../accuracy-corpus'
+import { runAccuracyFixtureChecks } from '../fixture-html'
 import { rankFlagsByPriority, type RankableFlag } from '../priority-flags'
 
-const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
-
 /**
- * Regression eval set: expected top-3 ranking, known false positives that must
- * NOT appear, and expected present flags for each audited page. Every assertion
- * must be verifiable against the source HTML, not against URL-specific logic.
- *
- * Success criteria (from AGENTS.md):
- *  1. Top-3 findings are consistently credible, distinct, evidence-backed, actionable
- *  2. No prominent false positives or duplicates in top-3
- *  3. Fixed issues disappear after re-check (tested via demo v1 below)
- *  4. System expresses uncertainty instead of unsupported claims
+ * Vitest mirror of the offline accuracy corpus. Expectations live in
+ * `lib/audit/accuracy-corpus.ts`; this file asserts top-3 quality only.
  */
 
-const NO_CONSOLE: Array<{ type: string; text: string }> = []
-const NO_HEADERS: Record<string, string> = {}
-
-function runFixtureChecks(file: string, url: string, options?: { brokenLinks?: boolean }) {
-  const html = readFileSync(`${FIXTURE_DIR}/${file}`, 'utf-8')
-  const meta = parseMetadataFromHtml(html, url)
-  const originalFetch = globalThis.fetch
-
-  const knownMissingUrls = new Set([
-    'https://fixflags.com/contact',
-    'https://fixflags.com/get-started',
-    'https://fixflags.com/og.png',
-  ])
-
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    const requestedUrl = new URL(input instanceof Request ? input.url : input.toString())
-    const status =
-      options?.brokenLinks && knownMissingUrls.has(requestedUrl.toString()) ? 404 : 200
-    return new Response('', { status })
-  }) as typeof fetch
-
-  return runAllChecks(
-    url,
-    meta,
-    null,
-    null,
-    NO_CONSOLE,
-    undefined,
-    undefined,
-    NO_HEADERS
-  ).finally(() => {
-    globalThis.fetch = originalFetch
-  })
-}
-
-interface FixtureEval {
-  file: string
-  url: string
-  /** checkIds expected to appear in top-3, in priority order */
-  expectedTop3: string[]
-  /** checkIds that must NOT appear anywhere in the flag output */
-  knownFalsePositives: string[]
-  /** checkIds expected to be present (not necessarily in top-3) */
-  expectedPresent: string[]
-}
-
-const FIXTURES: FixtureEval[] = [
-  {
-    file: 'clean-page.html',
-    url: 'https://fixflags.com/demo/v1',
-    // og-image-broken(SHARING) and broken-internal-links(SEO) rank highest
-    // among IMPORTANT flags. messaging-no-audience has CONVERSION impact
-    // so ranks first among POLISH.
-    expectedTop3: ['og-image-broken', 'broken-internal-links', 'messaging-no-audience'],
-    knownFalsePositives: [],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
-  },
-  {
-    file: 'broken-page.html',
-    url: 'https://example.com/broken',
-    // CRITICAL > IMPORTANT. form-missing-validation(CONVERSION) ranks
-    // above description-missing(SEO) by impact. h1-generic(CONVERSION)
-    // also outranks description-missing.
-    expectedTop3: ['title-missing', 'form-missing-validation', 'h1-generic'],
-    knownFalsePositives: ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy'],
-    expectedPresent: [
-      'title-missing',
-      'description-missing',
-      'no-cta-detected',
-      'form-missing-validation',
-      'images-missing-alt',
-    ],
-  },
-  {
-    file: 'nextjs-org.html',
-    url: 'https://nextjs.org',
-    // All POLISH. messaging-no-audience has CONVERSION impact (ranks first).
-    // security-hsts-missing(TRUST) before security-csp-missing(TRUST) by checkId.
-    expectedTop3: ['messaging-no-audience', 'security-hsts-missing', 'security-csp-missing'],
-    knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'form-missing-validation', 'images-empty-alt'],
-    expectedPresent: ['canonical-missing', 'measurement-ga-gtm-posthog-missing'],
-  },
-  {
-    file: 'vercel-com.html',
-    url: 'https://vercel.com',
-    // All POLISH. friction-no-risk-reversal has CONVERSION impact (ranks first).
-    // security-hsts/csp have TRUST impact.
-    expectedTop3: ['friction-no-risk-reversal', 'security-hsts-missing', 'security-csp-missing'],
-    knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text'],
-    expectedPresent: ['description-too-short', 'measurement-ga-gtm-posthog-missing'],
-  },
-  {
-    file: 'html5up-paradigm-shift.html',
-    url: 'https://html5up.net',
-    // All IMPORTANT. form-missing-validation(CONVERSION) ranks first.
-    // form-inputs-no-label(ACCESSIBILITY) second. description-missing(SEO) third.
-    expectedTop3: ['form-missing-validation', 'form-inputs-no-label', 'description-missing'],
-    knownFalsePositives: ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
-    expectedPresent: ['description-missing', 'form-missing-validation'],
-  },
-  {
-    file: 'saadbenryane-com.html',
-    url: 'https://saadbenryane.com',
-    expectedTop3: ['no-cta-detected', 'trust-no-direct-contact', 'messaging-no-audience'],
-    knownFalsePositives: ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
-    expectedPresent: ['no-cta-detected', 'trust-no-direct-contact', 'skip-link-missing'],
-  },
-  {
-    file: 'lovable-dev.html',
-    url: 'https://lovable.dev',
-    expectedTop3: ['security-hsts-missing', 'security-csp-missing', 'security-content-type-options-missing'],
-    knownFalsePositives: ['messaging-weak-value-prop', 'links-no-text', 'buttons-no-text'],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'friction-no-social-proof'],
-  },
-  {
-    file: 'bolt-new.html',
-    url: 'https://bolt.new',
-    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'security-hsts-missing'],
-    knownFalsePositives: ['messaging-weak-value-prop'],
-    expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
-  },
-]
-
 describe('report quality eval: top-3 ranking', () => {
-  for (const fixture of FIXTURES) {
+  for (const fixture of ACCURACY_HTML_FIXTURES) {
+    if (fixture.tier === 'control') continue
+
     it(`${fixture.file} top-3 are correct and distinct`, async () => {
-      const { flags } = await runFixtureChecks(
-        fixture.file,
-        fixture.url,
-        { brokenLinks: fixture.file === 'clean-page.html' }
-      )
+      const { flags } = await runAccuracyFixtureChecks(fixture)
       const sorted = [...flags].sort((a, b) => a.checkId.localeCompare(b.checkId)) as RankableFlag[]
       const ranked = rankFlagsByPriority(sorted, [], 3)
       const top3Ids = ranked.map((r) => r.flag.checkId ?? '')
 
-      // Top-3 must be distinct (no duplicates)
       assert.equal(
         new Set(top3Ids).size,
         top3Ids.length,
         `top-3 has duplicates: ${top3Ids.join(', ')}`
       )
 
-      // Top-3 must match expected (within expected tolerance)
       for (const expected of fixture.expectedTop3) {
         assert.ok(
           top3Ids.includes(expected),
@@ -171,11 +34,7 @@ describe('report quality eval: top-3 ranking', () => {
     })
 
     it(`${fixture.file} has no known false positives`, async () => {
-      const { flags } = await runFixtureChecks(
-        fixture.file,
-        fixture.url,
-        { brokenLinks: fixture.file === 'clean-page.html' }
-      )
+      const { flags } = await runAccuracyFixtureChecks(fixture)
       const flagIds = new Set(flags.map((f) => f.checkId))
 
       for (const fp of fixture.knownFalsePositives) {
@@ -187,11 +46,7 @@ describe('report quality eval: top-3 ranking', () => {
     })
 
     it(`${fixture.file} has expected flags present`, async () => {
-      const { flags } = await runFixtureChecks(
-        fixture.file,
-        fixture.url,
-        { brokenLinks: fixture.file === 'clean-page.html' }
-      )
+      const { flags } = await runAccuracyFixtureChecks(fixture)
       const flagIds = new Set(flags.map((f) => f.checkId))
 
       for (const expected of fixture.expectedPresent) {
