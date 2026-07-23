@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
   compareFlagsByPriority,
-  getTopFixPromptFromFlags,
   rankFlagsByPriority,
   collectAllFixPrompts,
   buildPlanModePrompt,
@@ -11,7 +10,7 @@ import {
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
-import { buildAllFixPrompts } from '@/lib/audit/finish-plan'
+import { buildAllFixPrompts, buildFixList } from '@/lib/audit/finish-plan'
 
 function flag(overrides: Partial<RankableFlag>): RankableFlag {
   return {
@@ -68,37 +67,40 @@ describe('priority-flags', () => {
   })
 
   it('uses priority order for the top copyable fix prompt', () => {
-    const top = getTopFixPromptFromFlags([
-      flag({ problem: 'Generic polish', severity: 'POLISH', impactTag: 'SEO', confidence: 0.9, fix: 'Fix SEO polish' }),
-      flag({ problem: 'Conversion polish', severity: 'POLISH', impactTag: 'CONVERSION', confidence: 0.8, fix: 'Fix conversion polish' }),
-    ])
+    const list = buildFixList({
+      flags: [
+        flag({ problem: 'Generic polish', severity: 'POLISH', impactTag: 'SEO', confidence: 0.9, fix: 'Fix SEO polish' }),
+        flag({ problem: 'Conversion polish', severity: 'POLISH', impactTag: 'CONVERSION', confidence: 0.8, fix: 'Fix conversion polish' }),
+      ],
+      promptAccess: 'all',
+    })
 
-    assert.equal(top?.flag, 'Conversion polish')
-    assert.equal(top?.prompt, 'Fix conversion polish')
+    assert.equal(list.items[0]?.problem, 'Conversion polish')
+    assert.equal(list.items[0]?.prompt, 'Fix conversion polish')
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once both exist', () => {
-    const top = getTopFixPromptFromFlags([
+    const prompt = resolveFixPrompt(
       flag({
         problem: 'Fully prescribed flag',
         fix: '1. Do a thing\n2. Do another thing',
         agentPrompt: 'Fix the hero headline in app/page.tsx to name the audience.',
-      }),
-    ])
+      })
+    )
 
-    assert.equal(top?.prompt, 'Fix the hero headline in app/page.tsx to name the audience.')
+    assert.equal(prompt, 'Fix the hero headline in app/page.tsx to name the audience.')
   })
 
   it('falls back through tool-specific prompts before the plain fix text', () => {
-    const top = getTopFixPromptFromFlags([
+    const prompt = resolveFixPrompt(
       flag({
         problem: 'Cursor-only flag',
         fix: 'Generic instructions',
         cursorPrompt: 'Cursor-specific instructions',
-      }),
-    ])
+      })
+    )
 
-    assert.equal(top?.prompt, 'Cursor-specific instructions')
+    assert.equal(prompt, 'Cursor-specific instructions')
   })
 
   it('countFixPrompts returns 0 when no flags have fix prompts', () => {

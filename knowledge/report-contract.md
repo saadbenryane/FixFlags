@@ -6,7 +6,7 @@ This is the canonical hierarchy for report code, copy, tests, documentation, and
 
 FixFlags is one product: **paste URL → receive every unresolved Flag ranked by impact → copy fixes into an AI editor → re-check and prove the result**.
 
-`buildFixList()` in `lib/audit/finish-plan.ts` owns ranking, Product Contract bias, prompt availability, and anonymous redaction. `buildFinishPlan()` remains only as a deprecated three-item compatibility artifact.
+`buildUnifiedPlanBundle()` aggregates live and repository Flags once. `buildFixList()` then owns complete ranking, Product Contract bias, prompt availability, and anonymous redaction. `buildFinishPlan()` remains only as a deprecated three-item compatibility artifact.
 
 ## Canonical report
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -10,6 +10,29 @@ export function collectMcpTools(source) {
   return [...source.matchAll(/server\.tool\(\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
 }
 
+export function collectMcpToolManifest(source) {
+  return new Map(
+    [...source.matchAll(/^\s{2}([a-zA-Z0-9]+):\s*\{\s*\n\s*name:\s*['"]([a-z0-9_-]+)['"]/gm)]
+      .map((match) => [match[1], match[2]])
+  )
+}
+
+export function collectRegisteredMcpToolKeys(source) {
+  return [...source.matchAll(/server\.tool\(\s*MCP_TOOLS\.([a-zA-Z0-9]+)\.name/g)]
+    .map((match) => match[1])
+}
+
+function mcpRegistrationSource(root) {
+  const toolDir = path.join(root, 'lib/mcp/tools')
+  const moduleFiles = readdirSync(toolDir)
+    .filter((file) => file.endsWith('.ts'))
+    .map((file) => path.join(toolDir, file))
+  return [
+    path.join(root, 'lib/mcp/task-tools.ts'),
+    ...moduleFiles,
+  ].map((file) => readFileSync(file, 'utf8')).join('\n')
+}
+
 export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const failures = []
   const assert = (condition, message) => { if (!condition) failures.push(message) }
@@ -18,9 +41,20 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const modelCount = (schema.match(/^model /gm) ?? []).length
   assert(modelCount > 0, 'Prisma schema has no models')
 
-  const mcpSource = `${read(root, 'lib/mcp/tools.ts')}\n${read(root, 'lib/mcp/task-tools.ts')}`
-  const tools = [...new Set(collectMcpTools(mcpSource))]
-  assert(tools.length === 17, `MCP tool count drift: expected=17, code=${tools.length}`)
+  const manifest = collectMcpToolManifest(read(root, 'lib/mcp/tool-manifest.ts'))
+  const registeredKeys = collectRegisteredMcpToolKeys(mcpRegistrationSource(root))
+  const duplicateKeys = registeredKeys.filter((key, index) => registeredKeys.indexOf(key) !== index)
+  const unknownKeys = registeredKeys.filter((key) => !manifest.has(key))
+  const missingKeys = [...manifest.keys()].filter((key) => !registeredKeys.includes(key))
+  const tools = [...manifest.values()]
+  assert(manifest.size === 17, `MCP tool manifest drift: expected=17, code=${manifest.size}`)
+  assert(duplicateKeys.length === 0, `MCP tools registered more than once: ${[...new Set(duplicateKeys)].join(', ')}`)
+  assert(unknownKeys.length === 0, `MCP registrations absent from manifest: ${[...new Set(unknownKeys)].join(', ')}`)
+  assert(missingKeys.length === 0, `MCP manifest tools not registered: ${missingKeys.join(', ')}`)
+  assert(
+    read(root, 'lib/mcp/docs-content.ts').includes("from '@/lib/mcp/tool-manifest'"),
+    'MCP documentation does not consume the canonical tool manifest',
+  )
 
   const integrationFiles = [
     'fixflags-cli/src/index.ts',
@@ -65,17 +99,25 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   assert(!read(root, 'app/api/projects/route.ts').includes('isAnchor'), 'Managed quota still uses isAnchor')
   assert(!read(root, 'components/audit/ExportMenu.tsx').includes('limit: null'), 'Finish Plan still uses limit:null')
 
-  const unifiedFinishPlanConsumers = [
-    'app/report/[id]/load-report-route-state.ts',
+  const unifiedFixListConsumers = [
     'lib/audit/task-contracts.ts',
-    'lib/mcp/tools.ts',
+    'lib/mcp/tools/flags.ts',
   ]
-  for (const file of unifiedFinishPlanConsumers) {
+  for (const file of unifiedFixListConsumers) {
     assert(
-      read(root, file).includes('buildUnifiedFinishPlan'),
-      `Unified Finish Plan loader missing from ${file}`,
+      read(root, file).includes('buildUnifiedFixList') ||
+        read(root, file).includes('buildUnifiedPlanBundle'),
+      `Canonical complete Fix List loader missing from ${file}`,
     )
   }
+  assert(
+    read(root, 'app/report/[id]/load-report-route-state.ts').includes('loadFinishPlanFlags'),
+    'Canonical report does not load the shared live and repository Flag set',
+  )
+  assert(
+    !read(root, 'components/audit/ExportMenu.tsx').includes('buildFinishPlan'),
+    'Primary report export still depends on the legacy three-item Finish Plan',
+  )
 
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n')
   const clutter = tracked.filter((file) => /(^|\/)node_modules\//.test(file) || /(^|\/)dist\//.test(file))
@@ -102,7 +144,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   return {
     ok: failures.length === 0,
     failures,
-    facts: { modelCount, mcpToolCount: tools.length, sectionCount: sectionIds.length },
+    facts: { modelCount, mcpToolCount: manifest.size, sectionCount: sectionIds.length },
   }
 }
 

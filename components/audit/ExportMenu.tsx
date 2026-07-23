@@ -20,7 +20,7 @@ import {
   countFixPrompts,
   countFixPromptsByRubric,
 } from '@/lib/audit/priority-flags'
-import { buildAllFixPrompts, buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildAllFixPrompts } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
@@ -43,7 +43,6 @@ interface ExportMenuProps {
   rubrics: ExportRubric[]
   flags: RankableFlag[]
   contract?: import('@/lib/audit/product-contract').ProductContract | null
-  finishPlanPrompt?: string | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
   size?: 'sm' | 'default'
@@ -57,7 +56,6 @@ export function ExportMenu({
   rubrics,
   flags,
   contract = null,
-  finishPlanPrompt,
   canExportSummary = false,
   showFixPrompts = false,
   size = 'sm',
@@ -158,34 +156,14 @@ export function ExportMenu({
               <DropdownMenuItem
                 onClick={() =>
                   openPreview(
-                    'Finish Plan for your editor',
-                    finishPlanPrompt ??
-                    buildFinishPlan({
-                      flags,
-                      rubricRows: rubrics,
-                      url,
-                      contract,
-                      promptAccess: 'all',
-                    }).copyPrompt ??
-                    ''
+                    `Complete Fix List (${totalPrompts})`,
+                    buildAllFixPrompts({ flags, url, contract })
                   )
                 }
                 className="gap-2"
               >
                 <Eye className="h-4 w-4" />
-                Finish Plan (≤3)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  openPreview(
-                    `All prompts (${totalPrompts})`,
-                    buildAllFixPrompts({ flags, url })
-                  )
-                }
-                className="gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                All prompts ({totalPrompts})
+                Complete Fix List ({totalPrompts})
               </DropdownMenuItem>
               {RUBRIC_ORDER.map((rubric) => {
                 const count = countFixPromptsByRubric(flags, rubric)

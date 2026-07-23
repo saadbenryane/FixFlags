@@ -27,6 +27,18 @@ export default defineConfig({
         },
       },
       {
+        resolve: { alias },
+        test: {
+          name: 'hooks',
+          globals: false,
+          environment: 'jsdom',
+          env,
+          include: ['hooks/**/*.test.ts'],
+          exclude: ['node_modules', '.next'],
+          testTimeout: 30_000,
+        },
+      },
+      {
         plugins: [react()],
         resolve: { alias },
         test: {

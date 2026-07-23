@@ -26,6 +26,7 @@
 3. **Worker ↔ Queue:** BullMQ uses Redis. No additional auth on local Redis. Production Redis should require `AUTH`.
 4. **External ↔ Application:** Stripe webhooks via signature verification. Cron endpoints via `CRON_SECRET` bearer token. MCP via API key (hashed, prefixed `ff_live_`).
 5. **GitHub API:** Tokens encrypted at rest. Only used for repo scanning (Agency plan).
+6. **Public URL fetches:** Audit capture, meta preview, placeholder detection, fixture capture, and graph backfills use `safeFetchHtml()`. It validates DNS and each redirect target, rejects private/reserved networks, requires HTML, and bounds response size.
 
 ## Authentication invariants
 

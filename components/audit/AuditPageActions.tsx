@@ -23,7 +23,6 @@ interface Props {
   topIssue?: string
   flags?: RankableFlag[]
   contract?: import('@/lib/audit/product-contract').ProductContract | null
-  finishPlanPrompt?: string | null
   rubrics: Array<{
     name: string
     grade: string | null
@@ -52,7 +51,6 @@ export function AuditPageActions({
   rubrics,
   flags = [],
   contract = null,
-  finishPlanPrompt = null,
   isPaid,
   isLoggedIn,
   isOwner,
@@ -121,7 +119,6 @@ export function AuditPageActions({
         rubrics={rubrics}
         flags={flags ?? []}
         contract={contract}
-        finishPlanPrompt={finishPlanPrompt}
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
       />

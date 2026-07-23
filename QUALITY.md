@@ -46,13 +46,13 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Focused versus detailed report contract | ⚠️ CRITICAL | Focused route has ≤3 fixes and no deep explorer bundles; details nav matches DOM; anonymous shows real evidence + exactly one complete (non-placeholder) fix prompt; remaining prompts gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
+| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence + exactly one complete non-placeholder fix prompt; remaining prompts stay gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit still manual |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | 🔶 IMPORTANT | Report page at 375px, 768px, 1280px | No responsive tests |
 | Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | Partial |
 | Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Lint + browser matrix |
-| Page load performance | 🔶 IMPORTANT | Focused report materially smaller than details and loads without deep explorer modules | Production build route output |
+| Page load performance | 🔶 IMPORTANT | Canonical report loads without unnecessary duplicate report bundles | Production build route output |
 | Coverage thresholds | 🔵 POLISH | Vitest coverage config | Not configured |
 
 ## Automated guards
@@ -90,10 +90,10 @@ Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules int
 
 Until automated Touch-tier tests cover report chrome:
 
-1. `/report/[id]`: identity → optional diff → three-item Finish Plan → rubric proof → full review → owner re-check.
-2. Anonymous report has all three summaries, one prompt, and one signup moment after that prompt.
-3. `/report/[id]/details`: Back to Finish Plan, Contract/Memory, Journey/Flow/Timeline, full Flags, previews, gates, watch/actions. Tabs match DOM.
-4. Progressive route shows captures, early findings, and three Finish Plan cards; Contract/timeline are collapsible. COMPLETED holds the frame until refresh.
+1. `/report/[id]`: identity → optional diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → owner re-check.
+2. Anonymous report exposes every problem and evidence summary, exactly one real prompt, and one contextual signup moment for remaining prompts.
+3. `/report/[id]/details`, sample details, and share details redirect to their canonical surfaces after enforcing the same access contract.
+4. Progressive route shows captures and every verified Flag in the same ranked explorer; Contract/timeline are collapsible. COMPLETED holds the frame until refresh.
 5. `/samples` and loading shell never render an empty main area. Homepage and sample do not query production audit rows.
 6. Password share metadata is generic; authorize once, refresh without another view increment, open details, then revoke.
 7. Verify 375, 768, and 1280px, keyboard focus, 200% zoom, reduced motion, partial/failure/deleted states.

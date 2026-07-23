@@ -1,38 +1,55 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const ROOT = process.cwd()
 const DOCS = join(ROOT, 'lib/mcp/docs-content.ts')
-const TOOLS = join(ROOT, 'lib/mcp/tools.ts')
+const MANIFEST = join(ROOT, 'lib/mcp/tool-manifest.ts')
+const TOOL_DIR = join(ROOT, 'lib/mcp/tools')
 const TASK_TOOLS = join(ROOT, 'lib/mcp/task-tools.ts')
 
 function read(path) {
   return readFileSync(path, 'utf8')
 }
 
-function collectRegisteredToolNames(source) {
-  return [...source.matchAll(/server\.tool\(\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+function collectManifest(source) {
+  return new Map(
+    [...source.matchAll(/^\s{2}([a-zA-Z0-9]+):\s*\{\s*\n\s*name:\s*['"]([a-z0-9_-]+)['"]/gm)]
+      .map((match) => [match[1], match[2]])
+  )
 }
 
-function collectCatalogToolNames(source) {
-  return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+function collectRegisteredToolKeys(source) {
+  return [...source.matchAll(/server\.tool\(\s*MCP_TOOLS\.([a-zA-Z0-9]+)\.name/g)]
+    .map((match) => match[1])
 }
 
 function main() {
   const docs = read(DOCS)
-  const toolsSource = `${read(TOOLS)}\n${read(TASK_TOOLS)}`
-  const registered = [...new Set(collectRegisteredToolNames(toolsSource))]
-  const catalog = [...new Set(collectCatalogToolNames(docs))]
+  const manifest = collectManifest(read(MANIFEST))
+  const toolsSource = [
+    read(TASK_TOOLS),
+    ...readdirSync(TOOL_DIR)
+      .filter((file) => file.endsWith('.ts'))
+      .map((file) => read(join(TOOL_DIR, file))),
+  ].join('\n')
+  const registeredKeys = collectRegisteredToolKeys(toolsSource)
+  const registered = registeredKeys.map((key) => manifest.get(key)).filter(Boolean)
+  const catalog = [...manifest.values()]
 
   const errors = []
-  if (registered.length < 16) {
-    errors.push(`Expected at least 16 registered MCP tools, found ${registered.length}`)
+  if (!docs.includes("from '@/lib/mcp/tool-manifest'")) {
+    errors.push('MCP documentation does not consume the canonical tool manifest')
   }
-  if (catalog.length < 16) {
-    errors.push(`Expected at least 16 tools in MCP_TOOL_DEFINITIONS, found ${catalog.length}`)
+  if (manifest.size !== 17) {
+    errors.push(`Expected 17 tools in the MCP manifest, found ${manifest.size}`)
   }
   if (registered.length !== catalog.length) {
     errors.push(`Registration count (${registered.length}) diverges from catalog (${catalog.length})`)
+  }
+  const duplicateKeys = registeredKeys.filter((key, index) => registeredKeys.indexOf(key) !== index)
+  for (const key of new Set(duplicateKeys)) errors.push(`MCP tool registered more than once: ${key}`)
+  for (const key of registeredKeys) {
+    if (!manifest.has(key)) errors.push(`Registered MCP key missing from manifest: ${key}`)
   }
 
   const registeredSet = new Set(registered)
@@ -61,7 +78,7 @@ function main() {
     process.exit(1)
   }
 
-  console.log(`MCP quality gate passed (${registered.length} tools registered and cataloged).`)
+  console.log(`MCP quality gate passed (${registered.length} typed tools registered and cataloged).`)
   console.log('Note: migrate to @modelcontextprotocol/server v2 when the stable release ships (2026-07-28 RC).')
 }
 

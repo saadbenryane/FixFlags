@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { User } from '@prisma/client'
 import { assertMcpAccess } from '@/lib/mcp/access'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 const TOOL_ADVICE: Record<string, string> = {
   cursor: 'In Cursor, reference files with @filename for context.',
@@ -19,8 +20,8 @@ const TOOL_SCOPE: Record<string, string> = {
 
 export function registerPromptGeneratorTools(server: McpServer, user: User) {
   server.tool(
-    'generate-fix-prompt',
-    'Generate a custom fix prompt for any problem description. Useful for Bolt/Lovable users who cannot call ff_check_and_plan directly.',
+    MCP_TOOLS.generateFixPrompt.name,
+    MCP_TOOLS.generateFixPrompt.desc,
     {
       problem: z.string().min(10).describe('Describe the issue you want fixed'),
       context: z.string().optional().describe('Page URL, technology stack, or any context'),

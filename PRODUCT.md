@@ -97,7 +97,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
 - Technology detection engine + /madewith/[hostname] pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
-- MCP integration; public tool names are registered in `lib/mcp/tools.ts` and checked by `npm run completeness:audit`.
+- MCP integration; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample

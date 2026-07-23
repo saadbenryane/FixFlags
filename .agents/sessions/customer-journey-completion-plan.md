@@ -64,7 +64,7 @@ Still verify on production after deploy:
 1. Finish Plan shows three titles + real evidence (not “Create a free account to see evidence…”)
 2. Exactly one Copy prompt copies a real editor-ready fix when a usable prompt exists
 3. Other items gate prompts only
-4. `/details` inspection pane shows evidence; fix area gated
+4. Canonical report inspection shows evidence while the selected fix area remains gated
 5. After claim, remaining prompts unlock without refresh bugs
 
 ---

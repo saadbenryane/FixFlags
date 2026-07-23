@@ -10,13 +10,17 @@ import {
   sanitizeRubricForRead,
 } from '../../audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
-import { buildUnifiedFinishPlan } from '../../audit/load-finish-plan-flags'
+import {
+  buildUnifiedFixList,
+  buildUnifiedPlanBundle,
+} from '../../audit/load-finish-plan-flags'
 import { loadCompletedTaskOutcome } from '../../audit/task-contracts'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
-    'ff_get_rubric',
-    'Get rubric status and all flags for a rubric',
+    MCP_TOOLS.getRubric.name,
+    MCP_TOOLS.getRubric.desc,
     {
       reportId: z.string(),
       rubric: z.enum(RUBRIC_ORDER as unknown as [string, ...string[]]),
@@ -87,8 +91,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_flag',
-    'Get detailed fix prompt for a specific flag',
+    MCP_TOOLS.getFlag.name,
+    MCP_TOOLS.getFlag.desc,
     {
       flagId: z.string(),
       tool: z.enum(['generic', 'cursor', 'claude', 'windsurf', 'lovable', 'bolt']).optional(),
@@ -115,8 +119,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_plan_mode_prompt',
-    'Get a single plan-mode Finish Plan prompt for an audit (paste into Cursor/Claude plan mode)',
+    MCP_TOOLS.planModePrompt.name,
+    MCP_TOOLS.planModePrompt.desc,
     { reportId: z.string() },
     async ({ reportId }) => {
       await assertMcpAccess(user)
@@ -131,7 +135,7 @@ export function registerFlagTools(server: McpServer, user: User) {
       }
       const { parseProductContract } = await import('../../audit/product-contract')
       const contract = parseProductContract(audit.productContract)
-      const plan = await buildUnifiedFinishPlan({
+      const plan = await buildUnifiedFixList({
         userId: audit.userId,
         auditUrl: audit.url,
         flags: audit.flags,
@@ -147,6 +151,7 @@ export function registerFlagTools(server: McpServer, user: User) {
               url: audit.url,
               prompt: plan.copyPrompt ?? '',
               flagCount: plan.visiblePromptCount,
+              totalCount: plan.totalCount,
             }),
           },
         ],
@@ -155,8 +160,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_all_fixes',
-    'Get every unresolved Flag and fix prompt for a completed report, ranked by launch impact',
+    MCP_TOOLS.getAllFixes.name,
+    MCP_TOOLS.getAllFixes.desc,
     { reportId: z.string() },
     async ({ reportId }) => {
       await assertMcpAccess(user)
@@ -182,8 +187,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_product_context',
-    'Get Product Intelligence / Product Contract for a report (what the product is, journeys, outcomes)',
+    MCP_TOOLS.getProductContext.name,
+    MCP_TOOLS.getProductContext.desc,
     { reportId: z.string() },
     async ({ reportId }) => {
       await assertMcpAccess(user)
@@ -224,8 +229,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_current_finish_plan',
-    'Get the current Finish Plan (top prioritized improvements) for a completed report',
+    MCP_TOOLS.getCurrentFinishPlan.name,
+    MCP_TOOLS.getCurrentFinishPlan.desc,
     { reportId: z.string(), limit: z.number().int().min(1).max(3).optional() },
     async ({ reportId, limit }) => {
       await assertMcpAccess(user)
@@ -243,7 +248,7 @@ export function registerFlagTools(server: McpServer, user: User) {
       }
       const { parseProductContract } = await import('../../audit/product-contract')
       const contract = parseProductContract(audit.productContract)
-      const plan = await buildUnifiedFinishPlan({
+      const { finishPlan: plan, fixList } = await buildUnifiedPlanBundle({
         userId: audit.userId,
         auditUrl: audit.url,
         flags: audit.flags,
@@ -270,6 +275,8 @@ export function registerFlagTools(server: McpServer, user: User) {
                 fixPrompt: item.prompt,
               })),
               planPrompt: plan.copyPrompt ?? '',
+              selectedCount: items.length,
+              totalCount: fixList.totalCount,
             }),
           },
         ],
@@ -277,4 +284,3 @@ export function registerFlagTools(server: McpServer, user: User) {
     }
   )
 }
-

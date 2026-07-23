@@ -221,7 +221,7 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |
-| Flag detail | `FlagDetailPanel`, `LockedInspectionPane`, visual evidence via `flag.visualUrl` |
+| Flag detail | `FlagDetailPanel` with access-redacted prompt state and visual evidence via `flag.visualUrl` |
 
 ### Capture stack
 

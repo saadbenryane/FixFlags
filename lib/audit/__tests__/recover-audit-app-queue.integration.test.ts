@@ -2,9 +2,12 @@ import { describe, it, vi, beforeEach, afterEach, expect } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { Queue } from 'bullmq'
 import IORedis from 'ioredis'
-import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
 
 const auditId = `eval-audit-${randomUUID()}`
+
+if (process.env.RECOVERY_APP_QUEUE_REQUIRED === 'true' && !process.env.REDIS_URL) {
+  throw new Error('REDIS_URL is required when application audit queue recovery is a release gate')
+}
 
 const prismaMock = vi.hoisted(() => ({
   audit: { update: vi.fn(async () => ({})) },
@@ -28,7 +31,10 @@ vi.mock('@/lib/queue/client', () => ({
   },
 }))
 
-import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
+import {
+  WORKER_DEAD_RECOVERY_SECONDS,
+  recoverAuditJobOnPoll,
+} from '@/lib/audit/recover-audit-job'
 
 const runIntegration = process.env.REDIS_URL ? describe : describe.skip
 
@@ -57,7 +63,7 @@ runIntegration('application audit queue recovery', () => {
   })
 
   it('requeues a stale queued audit when the application job is missing', async () => {
-    const staleUpdatedAt = new Date(Date.now() - AUDIT_DEADLINE_MS - 5_000)
+    const staleUpdatedAt = new Date(Date.now() - (WORKER_DEAD_RECOVERY_SECONDS + 5) * 1000)
     const result = await recoverAuditJobOnPoll(auditId, {
       status: 'QUEUED',
       updatedAt: staleUpdatedAt,
@@ -69,5 +75,23 @@ runIntegration('application audit queue recovery', () => {
     const job = await queueRef.current!.getJob(auditId)
     expect(job).not.toBeNull()
     expect(prismaMock.audit.update).toHaveBeenCalled()
+  })
+
+  it('requeues a stale mid-CAPTURING audit when the worker and job disappeared', async () => {
+    const staleUpdatedAt = new Date(Date.now() - (WORKER_DEAD_RECOVERY_SECONDS + 5) * 1000)
+    const startedAt = new Date(Date.now() - (WORKER_DEAD_RECOVERY_SECONDS + 5) * 1000)
+    const result = await recoverAuditJobOnPoll(auditId, {
+      status: 'CAPTURING',
+      updatedAt: staleUpdatedAt,
+      startedAt,
+      createdAt: startedAt,
+    })
+
+    expect(result).toBe('requeued')
+    expect(await queueRef.current!.getJob(auditId)).not.toBeNull()
+    expect(prismaMock.audit.update).toHaveBeenCalledWith({
+      where: { id: auditId },
+      data: { updatedAt: expect.any(Date), startedAt: null },
+    })
   })
 })

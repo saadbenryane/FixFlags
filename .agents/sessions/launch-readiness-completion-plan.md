@@ -122,10 +122,10 @@ Replace full-page minified dumps with **curated DOM extracts** where possible (h
 
 Run on **one anonymous** and **one signed-in** journey:
 
-1. `/report/[id]` hierarchy: identity → diff → Finish Plan (≤3) → rubric → full review → re-check
+1. `/report/[id]` hierarchy: identity → diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → re-check
 2. Anonymous: three evidence summaries, exactly one **real** complete fix prompt (clipboard ≠ gate string), one signup moment for remaining prompts
-3. `/report/[id]/details`: Back, Contract/Memory, Journey/Flow/Timeline, Flags, previews, watch; evidence visible while prompts gated
-4. Progressive route: captures, early findings, three Finish Plan cards; COMPLETED holds frame
+3. `/report/[id]/details`, sample details, and share details redirect to their canonical report surfaces with the same access checks
+4. Progressive route: captures and verified Flags append to the canonical ranked explorer; COMPLETED holds frame
 5. `/samples` and loading shell never empty; homepage/sample do not query production audits
 6. Password share: generic metadata, single authorize, no view inflation, revoke works
 7. 375 / 768 / 1280px, keyboard, 200% zoom, reduced motion, partial/failure/deleted states

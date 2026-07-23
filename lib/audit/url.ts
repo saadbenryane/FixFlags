@@ -44,7 +44,10 @@ export function isPublicIp(address: string): boolean {
 }
 
 export function isBlockedHostname(hostname: string): boolean {
-  const normalized = hostname.toLowerCase().replace(/\.$/, '')
+  const normalized = hostname
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^\[|\]$/g, '')
   return (
     normalized === 'localhost' ||
     normalized.endsWith('.localhost') ||
@@ -124,7 +127,12 @@ export async function safeFetchHtml(
     maxRedirects?: number
     headers?: Record<string, string>
   } = {}
-): Promise<{ html: string; finalUrl: string; headers: Record<string, string> }> {
+): Promise<{
+  html: string
+  finalUrl: string
+  statusCode: number
+  headers: Record<string, string>
+}> {
   const timeoutMs = options.timeoutMs ?? 10_000
   const maxBytes = options.maxBytes ?? 5_000_000
   const maxRedirects = options.maxRedirects ?? 5
@@ -189,6 +197,7 @@ export async function safeFetchHtml(
           Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)))
         ),
         finalUrl: current,
+        statusCode: response.status,
         headers: responseHeaders,
       }
     } finally {

@@ -2,10 +2,10 @@ export const AUTH = {
   reportContext: {
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this report',
-    body: 'Unlock every fix prompt and keep this report for unlimited re-checks.',
+    body: 'Get every fix prompt and keep this report for unlimited re-checks.',
     backCta: 'Back to report',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
-    unlocking: 'Unlocking your fix list',
+    unlocking: 'Getting your fix list ready',
     redirecting: 'Your report is saved. Taking you back to the fixes.',
     waiting: 'This will only take a moment.',
     saveError: 'Your account is ready, but we could not save your report yet.',

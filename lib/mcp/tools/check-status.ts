@@ -4,11 +4,12 @@ import { prisma } from '../../db'
 import { User } from '@prisma/client'
 import { assertAuditAccess } from '@/lib/mcp/access'
 import { loadCompletedTaskOutcome } from '../../audit/task-contracts'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 export function registerCheckStatusTools(server: McpServer, user: User) {
   server.tool(
-    'ff_get_check_status',
-    'Get the current status of a check report',
+    MCP_TOOLS.getCheckStatus.name,
+    MCP_TOOLS.getCheckStatus.desc,
     { reportId: z.string() },
     async ({ reportId }) => {
       const audit = await prisma.audit.findUnique({
@@ -24,8 +25,8 @@ export function registerCheckStatusTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_report',
-    'Get the full FixFlags report for a completed check',
+    MCP_TOOLS.getReport.name,
+    MCP_TOOLS.getReport.desc,
     { reportId: z.string() },
     async ({ reportId }) => {
       const audit = await prisma.audit.findUnique({

@@ -2,32 +2,10 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-
-function gradeFromScore(score: number): string {
-  if (score >= 90) return 'A'
-  if (score >= 80) return 'B'
-  if (score >= 65) return 'C'
-  if (score >= 50) return 'D'
-  return 'F'
-}
-
-/** SVG-only hex island (badge artwork). */
-function gradeColor(grade: string): string {
-  switch (grade) {
-    case 'A':
-      return '#22c55e'
-    case 'B':
-      return '#84cc16'
-    case 'C':
-      return '#eab308'
-    case 'D':
-      return '#f97316'
-    case 'F':
-      return '#ef4444'
-    default:
-      return '#6b7280'
-  }
-}
+import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { gradeFromScore } from '@/lib/audit/scoring'
+import { gradeColorHex } from '@/lib/design/brand-spec'
+import { handleRouteError } from '@/lib/api/errors'
 
 function generateBadgeSvg(
   grade: string,
@@ -69,21 +47,29 @@ export async function GET(
   const lookupUrl = urlResult.ok ? urlResult.url : withProtocol
   const domain = normalizeDomain(lookupUrl) || normalizeDomain(decoded)
 
-  const audit = domain
-    ? await prisma.audit.findFirst({
-        where: {
-          status: 'COMPLETED',
-          OR: [
-            { normalizedDomain: domain },
-            { url: { contains: domain } },
-          ],
-        },
-        orderBy: { completedAt: 'desc' },
-        include: {
-          rubrics: { select: { score: true } },
-        },
-      })
-    : null
+  if (!domain) {
+    return new Response(generateBadgeSvg('?', 0, decoded.slice(0, 30), gradeColorHex('?')), {
+      headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' },
+    })
+  }
+
+  const clientId = requestClientId(_req.headers)
+  try {
+    await enforceRateLimit({ scope: 'badge', identifier: clientId, limit: 30, windowSeconds: 60 })
+  } catch (error) {
+    return handleRouteError(error, 'Failed to load badge')
+  }
+
+  const audit = await prisma.audit.findFirst({
+    where: {
+      status: 'COMPLETED',
+      normalizedDomain: domain,
+    },
+    orderBy: { completedAt: 'desc' },
+    include: {
+      rubrics: { select: { score: true } },
+    },
+  })
 
   const displayHost = (() => {
     try {
@@ -94,7 +80,7 @@ export async function GET(
   })()
 
   if (!audit) {
-    return new Response(generateBadgeSvg('?', 0, displayHost, '#6b7280'), {
+    return new Response(generateBadgeSvg('?', 0, displayHost, gradeColorHex('?')), {
       headers: {
         'Content-Type': 'image/svg+xml',
         'Cache-Control': 'public, max-age=3600',
@@ -110,7 +96,7 @@ export async function GET(
     ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
     : 0
   const grade = gradeFromScore(overallScore)
-  const color = gradeColor(grade)
+  const color = gradeColorHex(grade)
 
   return new Response(generateBadgeSvg(grade, overallScore, displayHost, color), {
     headers: {

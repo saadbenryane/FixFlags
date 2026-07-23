@@ -11,6 +11,8 @@ import { prisma } from '@/lib/db'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { ROAST_COPY } from '@/lib/marketing/copy'
+import { gradeFromScore } from '@/lib/audit/scoring'
+import { gradeColorHex } from '@/lib/design/brand-spec'
 
 interface RoastResult {
   url: string
@@ -33,32 +35,6 @@ interface RoastResult {
   badgeSvg: string
 }
 
-/** SVG-only hex island (badge artwork). Prefer grade tokens conceptually. */
-function gradeColor(grade: string): string {
-  switch (grade) {
-    case 'A':
-      return '#22c55e'
-    case 'B':
-      return '#84cc16'
-    case 'C':
-      return '#eab308'
-    case 'D':
-      return '#f97316'
-    case 'F':
-      return '#ef4444'
-    default:
-      return '#6b7280'
-  }
-}
-
-function gradeFromScore(score: number): string {
-  if (score >= 90) return 'A'
-  if (score >= 80) return 'B'
-  if (score >= 65) return 'C'
-  if (score >= 50) return 'D'
-  return 'F'
-}
-
 function taglineFromGrade(grade: string): string {
   const key = grade as keyof typeof ROAST_COPY.taglines
   if (key in ROAST_COPY.taglines && key !== 'default') {
@@ -68,13 +44,13 @@ function taglineFromGrade(grade: string): string {
 }
 
 function rubricVerdict(name: string, score: number): string {
-  const grade = gradeFromScore(score) as 'A' | 'B' | 'C' | 'D' | 'F'
+  const grade = gradeFromScore(score)
   const byRubric = ROAST_COPY.rubricVerdicts[name as keyof typeof ROAST_COPY.rubricVerdicts]
   return byRubric?.[grade] || 'Checked.'
 }
 
 function generateBadgeSvg(grade: string, score: number, url: string): string {
-  const color = gradeColor(grade)
+  const color = gradeColorHex(grade)
   const hostname = (() => {
     try {
       return new URL(url).hostname.replace(/^www\./, '')

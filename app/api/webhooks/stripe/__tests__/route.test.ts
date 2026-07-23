@@ -174,6 +174,9 @@ describe('POST /api/webhooks/stripe', () => {
     })
     const res = await POST(makeRequest('{}', 't=1,v1=bad'))
     expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.message).toBe('Webhook signature verification failed')
+    expect(JSON.stringify(body)).not.toContain('bad sig')
   })
 
   it('is idempotent on replay with same payload', async () => {

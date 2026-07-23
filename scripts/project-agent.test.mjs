@@ -31,7 +31,7 @@ describe('project-agent', () => {
 
   it('exposes focused product and operational contexts', () => {
     assert.deepEqual(Object.keys(contexts).sort(), [
-      'audit', 'auth', 'billing', 'cli', 'docs', 'growth', 'orientation', 'prompts',
+      'accuracy', 'audit', 'auth', 'billing', 'cli', 'docs', 'growth', 'orientation', 'prompts',
       'recovery', 'release', 'security', 'ui',
     ])
   })

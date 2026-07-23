@@ -6,11 +6,12 @@ import { canScanRepositories } from '../../auth/entitlements'
 import { assertMcpAccess } from '@/lib/mcp/access'
 import { createAndEnqueueRepoScan, RepoScanRequestError } from '@/lib/repo-scan/create-repo-scan'
 import { buildRepoFindingPayload } from '@/lib/mcp/repo-finding-payload'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 export function registerRepoScanTools(server: McpServer, user: User) {
   server.tool(
-    'ff_start_repo_scan',
-    'Start a GitHub repository code scan for an allow-listed repo. Returns repoScanId.',
+    MCP_TOOLS.startRepoScan.name,
+    MCP_TOOLS.startRepoScan.desc,
     {
       repoFullName: z.string().min(3).describe('Repository full name, e.g. owner/repo'),
     },
@@ -46,8 +47,8 @@ export function registerRepoScanTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_list_repo_scans',
-    'List recent GitHub repository scans and finding counts.',
+    MCP_TOOLS.listRepoScans.name,
+    MCP_TOOLS.listRepoScans.desc,
     {
       limit: z
         .number()
@@ -123,8 +124,8 @@ export function registerRepoScanTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_repo_scan',
-    'Get a completed GitHub repository scan with code findings for branch-ready fixes.',
+    MCP_TOOLS.getRepoScan.name,
+    MCP_TOOLS.getRepoScan.desc,
     { repoScanId: z.string() },
     async ({ repoScanId }) => {
       await assertMcpAccess(user)
@@ -176,8 +177,8 @@ export function registerRepoScanTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_get_repo_finding',
-    'Get a branch-ready fix task for one GitHub repository scan finding.',
+    MCP_TOOLS.getRepoFinding.name,
+    MCP_TOOLS.getRepoFinding.desc,
     {
       findingId: z.string(),
       tool: z.enum(['generic', 'cursor', 'claude', 'windsurf']).optional(),

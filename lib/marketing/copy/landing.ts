@@ -10,7 +10,6 @@ export const HERO = {
   subhead:
     'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Review my site',
-  navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',
   urlPlaceholder: 'your-site.com',
 } as const

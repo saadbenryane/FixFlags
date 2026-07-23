@@ -2,7 +2,7 @@
  * Canonical offline accuracy corpus for HTML fixture expectations.
  *
  * Consumed by `scripts/accuracy-eval.ts`, `report-quality-eval.test.ts`, and
- * agent skills. Keep fixture expectations here — not duplicated in scripts.
+ * agent skills. Keep fixture expectations here; not duplicated in scripts.
  */
 
 export type AccuracyFixtureTier =

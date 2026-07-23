@@ -206,24 +206,6 @@ export function flagHasFixPrompt(flag: RankableFlag): boolean {
   return resolveFixPrompt(flag) !== null
 }
 
-export function auditHasFixPrompts(flags: RankableFlag[]): boolean {
-  return flags.some(flagHasFixPrompt)
-}
-
-export function getTopFixPromptFromFlags(
-  flags: RankableFlag[]
-): { prompt: string; flag?: string } | null {
-  const sorted = [...flags].sort(compareFlagsByPriority)
-
-  for (const flag of sorted) {
-    const prompt = resolveFixPrompt(flag)
-    if (prompt) {
-      return { prompt, flag: flag.problem }
-    }
-  }
-  return null
-}
-
 export function collectFixPromptsByRubric(
   flags: RankableFlag[],
   rubric: string
@@ -263,13 +245,6 @@ export function collectAllFixPrompts(flags: RankableFlag[]): string {
 
 function titleCaseRubric(rubric: string): string {
   return rubric.charAt(0).toUpperCase() + rubric.slice(1).toLowerCase()
-}
-
-export function fixConfidenceLabel(confidence: string | null | undefined): string {
-  if (confidence === 'HIGH') return 'HIGH'
-  if (confidence === 'MEDIUM') return 'MEDIUM'
-  if (confidence === 'LOW') return 'LOW'
-  return 'MEDIUM'
 }
 
 export function resolveFixConfidence(flag: RankableFlag): FixConfidence {

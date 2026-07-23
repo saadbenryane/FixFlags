@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { createHash } from 'node:crypto'
+import { AuditUrlError, safeFetchHtml } from '@/lib/audit/url'
 
 export interface MetaPreviewResult {
   url: string
@@ -27,22 +28,17 @@ export async function checkMetaPreview(url: string): Promise<MetaPreviewResult> 
     return { url, title: null, description: null, ogImage: null, ogTitle: null, ogDescription: null, twitterCard: null, twitterImage: null, favicon: null, hasCanonical: false, hasRobots: false, statusCode: null, error: 'Enter a URL' }
   }
 
-  let normalized: string
-  try {
-    const p = new URL(input.startsWith('http') ? input : `https://${input}`)
-    normalized = p.toString()
-  } catch {
-    return { url: input, title: null, description: null, ogImage: null, ogTitle: null, ogDescription: null, twitterCard: null, twitterImage: null, favicon: null, hasCanonical: false, hasRobots: false, statusCode: null, error: 'Invalid URL' }
-  }
+  const requestedUrl = /^https?:\/\//i.test(input) ? input : `https://${input}`
 
   try {
-    const res = await fetch(normalized, {
+    const {
+      html,
+      finalUrl: normalized,
+      statusCode,
+    } = await safeFetchHtml(requestedUrl, {
+      maxBytes: 2_000_000,
       headers: { 'User-Agent': 'FixFlags-MetaPreview/1.0' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(10_000),
     })
-
-    const html = await res.text()
     const getMeta = (name: string): string | null => {
       const patterns = [
         new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'),
@@ -90,17 +86,22 @@ export async function checkMetaPreview(url: string): Promise<MetaPreviewResult> 
       favicon,
       hasCanonical,
       hasRobots,
-      statusCode: res.status,
+      statusCode,
       error: null,
     }
   } catch (err) {
     return {
-      url: normalized,
+      url: input,
       title: null, description: null, ogImage: null, ogTitle: null, ogDescription: null,
       twitterCard: null, twitterImage: null, favicon: null,
       hasCanonical: false, hasRobots: false,
       statusCode: null,
-      error: err instanceof Error && err.name === 'TimeoutError' ? 'Request timed out' : 'Could not fetch page',
+      error:
+        err instanceof AuditUrlError
+          ? err.message
+          : err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+            ? 'Request timed out'
+            : 'Could not fetch page',
     }
   }
 }

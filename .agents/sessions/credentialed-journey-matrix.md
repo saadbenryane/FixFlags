@@ -32,12 +32,12 @@ Record command output here when credentials are provisioned.
 
 Run on **one anonymous** and **one signed-in** journey before distribution:
 
-- [ ] `/report/[id]` hierarchy: identity → diff → Finish Plan (≤3) → rubric → full review → re-check
+- [ ] `/report/[id]` hierarchy: identity → diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → re-check
 - [ ] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts
 - [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
 - [x] Production brand restored (`fix-live-images` / Phase 0)
-- [ ] `/report/[id]/details`: Contract, Journey/Flow/Timeline, Flags, previews, watch
-- [ ] Progressive route: captures, early findings, three Finish Plan cards
+- [ ] `/report/[id]/details`, sample details, and share details redirect after the same access checks
+- [ ] Progressive route: captures and verified Flags append to the canonical ranked explorer
 - [ ] `/samples` and loading shell never empty
 - [ ] Password share: generic metadata, authorize, no view inflation, revoke
 - [ ] 375 / 768 / 1280px, keyboard, reduced motion, partial/failure/deleted states
@@ -48,6 +48,7 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 - Mobile + desktop `networkFailures` merged in `captureScreenshots`
 - Primary flow capture uses `journeySafe` for engagement POST probe
 - AXI/chrome-devtools-axi rejected for audit capture; AXI applies to CLI/MCP agent tooling
+- Recovery evaluation loads its required environment and fails rather than silently skipping; stale QUEUED and mid-CAPTURING application-queue requeues pass against Redis.
 
 ## Accuracy adjudication backlog
 

@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { boundaryStatusAllowed, concreteRoute } from './route-boundary-smoke.mjs'
 
 test('concreteRoute resolves dynamic API paths without changing the public boundary', () => {
@@ -17,4 +18,10 @@ test('boundaryStatusAllowed rejects protected success and unexpected server fail
   assert.equal(boundaryStatusAllowed(session, 200), false)
   assert.equal(boundaryStatusAllowed(session, 500), false)
   assert.equal(boundaryStatusAllowed(health, 503), true)
+})
+
+test('deployed release smoke executes the complete generated route inventory', () => {
+  const releaseSmoke = readFileSync('scripts/release-smoke.mjs', 'utf8')
+  assert.match(releaseSmoke, /runRouteBoundarySmoke/)
+  assert.match(releaseSmoke, /RELEASE_SMOKE_URL/)
 })

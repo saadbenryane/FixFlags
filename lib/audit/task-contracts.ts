@@ -8,8 +8,7 @@ import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
-  buildUnifiedFinishPlan,
-  buildUnifiedFixList,
+  buildUnifiedPlanBundle,
 } from '@/lib/audit/load-finish-plan-flags'
 
 export interface TaskRubricSummary {
@@ -149,10 +148,7 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
     contract,
     promptAccess: 'all' as const,
   }
-  const [fixList, legacyPlan] = await Promise.all([
-    buildUnifiedFixList(planInput),
-    buildUnifiedFinishPlan(planInput),
-  ])
+  const { fixList, finishPlan: legacyPlan } = await buildUnifiedPlanBundle(planInput)
 
   return {
     score: audit.score,

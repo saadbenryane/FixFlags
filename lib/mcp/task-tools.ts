@@ -9,6 +9,7 @@ import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
 import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 function taskResult(outcome: object, queue: {
   delayMs: number
@@ -41,8 +42,8 @@ export function registerTaskTools(
   options?: { signal?: AbortSignal }
 ): void {
   server.tool(
-    'ff_check_and_plan',
-    'Check a URL and return its report plus every ranked fix. Includes the legacy Finish Plan for compatibility.',
+    MCP_TOOLS.checkAndPlan.name,
+    MCP_TOOLS.checkAndPlan.desc,
     {
       url: z.string().url(),
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
@@ -92,8 +93,8 @@ export function registerTaskTools(
   )
 
   server.tool(
-    'ff_recheck_and_compare',
-    'Run a fresh full re-check and return the verification diff plus the next complete fix list.',
+    MCP_TOOLS.recheckAndCompare.name,
+    MCP_TOOLS.recheckAndCompare.desc,
     {
       parentReportId: z.string(),
       waitForCompletion: z.boolean().optional(),

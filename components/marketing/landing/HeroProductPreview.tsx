@@ -1,6 +1,4 @@
-import { ImageIcon } from 'lucide-react'
 import { SampleReportExplorer } from '@/components/marketing/sample/SampleReportExplorer'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import { cn } from '@/lib/utils'
 

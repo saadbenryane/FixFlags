@@ -8,6 +8,7 @@ import { canAccessCompare } from '../../auth/entitlements'
 import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
 import { buildAiFlagMatchKey } from '../../audit/validate-judge-output'
 import { classifyArbitraryReportFlagDiff } from '../../audit/diff-flags'
+import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
   if (flag.checkId) return `check:${flag.checkId}`
@@ -16,8 +17,8 @@ function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: s
 
 export function registerCompareTools(server: McpServer, user: User) {
   server.tool(
-    'ff_compare',
-    'Compare two reports to see what improved, stayed the same, or regressed',
+    MCP_TOOLS.compare.name,
+    MCP_TOOLS.compare.desc,
     { beforeId: z.string(), afterId: z.string() },
     async ({ beforeId, afterId }) => {
       const [before, after] = await Promise.all([
@@ -153,8 +154,8 @@ export function registerCompareTools(server: McpServer, user: User) {
   )
 
   server.tool(
-    'ff_list_recent_audits',
-    'List recent audits with status, score, and key metadata. Supports pagination and filtering.',
+    MCP_TOOLS.listRecentAudits.name,
+    MCP_TOOLS.listRecentAudits.desc,
     {
       limit: z
         .number()
@@ -210,4 +211,3 @@ export function registerCompareTools(server: McpServer, user: User) {
     }
   )
 }
-

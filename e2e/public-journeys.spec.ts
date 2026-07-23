@@ -40,11 +40,11 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 
-  test(`detailed sample fulfills its report contract at ${width}px`, async ({ page }) => {
+  test(`canonical sample fulfills its complete report contract at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
-    await page.goto('/samples/details')
+    await page.goto('/samples')
 
     for (const sectionId of ['report-contract', 'report-remember', 'report-journey', 'report-flow', 'report-timeline', 'report-flags', 'report-previews', 'report-launch-gates']) {
       await expect(page.locator(`#${sectionId}`)).toBeVisible()
@@ -75,6 +75,42 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 }
+
+test('legacy sample details redirects to the canonical report surface', async ({ page }) => {
+  await page.goto('/samples/details')
+  await expect(page).toHaveURL(/\/samples$/)
+  await expect(page.locator('#report-flags')).toBeVisible()
+})
+
+test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/samples')
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%'
+  })
+
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  }))
+  expect(dimensions.reducedMotion).toBe(true)
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
+
+  await page.keyboard.press('Tab')
+  const focused = await page.evaluate(() => {
+    const active = document.activeElement
+    return active !== document.body && active !== document.documentElement
+  })
+  expect(focused).toBe(true)
+})
+
+test('deleted or unknown reports render an explicit not-found state', async ({ page }) => {
+  const response = await page.goto('/report/report-that-does-not-exist')
+  expect(response?.status()).toBe(404)
+  await expect(page.getByText(/not found|does not exist/i).first()).toBeVisible()
+})
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {
   const errors: string[] = []

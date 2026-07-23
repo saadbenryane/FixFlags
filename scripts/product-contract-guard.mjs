@@ -12,6 +12,11 @@ const legacyContractFixtureFiles = new Set([
   'scripts/completeness-audit.test.mjs',
   'scripts/product-contract-guard.test.mjs',
 ])
+const legacyFinishPlanFiles = new Set([
+  'lib/audit/finish-plan.ts',
+  'lib/audit/load-finish-plan-flags.ts',
+  'lib/audit/task-contracts.ts',
+])
 
 const codeFiles = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.js', '*.mjs'], {
   cwd: root,
@@ -24,6 +29,13 @@ for (const path of codeFiles) {
   const source = read(path)
   for (const stale of ['/api/audits', 'ff_check_url', 'ff_monitoring']) {
     if (source.includes(stale)) violations.push(`${path}: stale contract ${stale}`)
+  }
+  if (
+    source.includes('buildFinishPlan') &&
+    !path.includes('__tests__') &&
+    !legacyFinishPlanFiles.has(path)
+  ) {
+    violations.push(`${path}: new product surface depends on legacy buildFinishPlan`)
   }
 }
 
@@ -55,6 +67,11 @@ if (!auditReport.includes('LiveReportExplorer')) {
 }
 if (!detailsRoute.includes('redirect(`/report/${id}`)')) {
   violations.push('app/report/[id]/details/page.tsx: legacy details route must redirect')
+}
+
+const quality = read('QUALITY.md')
+for (const stale of ['three-item Finish Plan', 'Focused versus detailed report contract', 'Back to Finish Plan']) {
+  if (quality.includes(stale)) violations.push(`QUALITY.md: stale split-report contract "${stale}"`)
 }
 
 for (const path of ['app/share/[token]/page.tsx', 'app/api/share/[token]/route.ts']) {
