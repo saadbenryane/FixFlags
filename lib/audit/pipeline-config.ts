@@ -27,5 +27,8 @@ export const FINALIZE_RESERVE_MS = Number(process.env.FINALIZE_RESERVE_MS ?? 10_
  */
 export const MIN_JUDGE_BUDGET_MS = Number(process.env.MIN_JUDGE_BUDGET_MS ?? 25_000)
 
+/** Minimum remaining audit time before starting slow 3G replay on the primary page. */
+export const SLOW_REPLAY_MIN_BUDGET_MS = Number(process.env.SLOW_REPLAY_MIN_BUDGET_MS ?? 30_000)
+
 /** Cron threshold before an in-progress audit is considered stuck. Override via STUCK_AUDIT_MINUTES env var. */
 export const STUCK_AUDIT_MINUTES = Number(process.env.STUCK_AUDIT_MINUTES ?? 15)

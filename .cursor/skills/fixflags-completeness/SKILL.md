@@ -17,6 +17,15 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 6. Run `npm run verify` for the full local gate and `npm run verify:release` for clean install, browser, container, and deployed readiness probes. Missing release credentials are blockers, never skips.
 7. Reconcile canonical Markdown only after behavior passes. Record missing infrastructure or credentials as blockers.
 
+## Exit criteria (product completion)
+
+- `npm run verify` green on `main`
+- `npm run verify:release` executed with designated credentials (not skipped)
+- [`.agents/sessions/credentialed-journey-matrix.md`](../../../.agents/sessions/credentialed-journey-matrix.md) signed off for revenue-critical journeys
+- Manual report contract smoke (anonymous + signed-in) per QUALITY §86–96
+- Browser capture truth: slow replay wired in `run-page.ts`; capability matrix matches production wiring
+- AXI applies to CLI/MCP agent tooling only — not Playwright audit capture (see `fixflags-browser-capture` skill)
+
 ## Required references
 
 - Read [references/drift-rules.md](references/drift-rules.md) for manual review areas not fully enforceable by scripts.

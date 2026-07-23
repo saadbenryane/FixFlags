@@ -101,7 +101,7 @@ export const evals = {
   prompts: ['npx', ['vitest', 'run', 'lib/prompts/']],
   billing: ['npx', ['vitest', 'run', 'lib/billing/']],
   cli: ['npm', ['run', 'test:cli']],
-  recovery: ['node', ['scripts/evals/runtime-recovery.mjs']],
+  recovery: ['node', ['scripts/evals/recovery-full.mjs']],
   release: ['npm', ['run', 'verify:release']],
   growth: ['npx', ['vitest', 'run', 'lib/growth/', 'lib/analytics/']],
   auth: ['npx', ['vitest', 'run', 'lib/auth/', 'app/(auth)/']],

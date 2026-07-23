@@ -37,3 +37,15 @@ Generate the current input list from `scripts/validate.mjs`. At minimum, contain
 - Queue recovery, retry exhaustion, duplicate-job idempotency, and scheduler locks are exercised against disposable PostgreSQL and Redis.
 - Deployed smoke validates health, browser/storage, AI configuration, and generated route authorization boundaries.
 - No required check is skipped and no shipped-readiness claim is updated before the credentialed journey matrix passes.
+
+## Release credential checklist
+
+From [`.agents/handoffs/current-product-completion.md`](../../../.agents/handoffs/current-product-completion.md):
+
+1. `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+2. `RELEASE_FRESH_DATABASE_URL` + `RELEASE_ALLOW_DATABASE_RESET=true` (name includes `release` or `test`)
+3. `RELEASE_CONTAINER_ENV_FILE`
+4. `RELEASE_SMOKE_URL` (+ bearer if required)
+5. `npm run verify:release` end-to-end
+
+Record pass/fail in [`.agents/sessions/credentialed-journey-matrix.md`](../../../.agents/sessions/credentialed-journey-matrix.md).

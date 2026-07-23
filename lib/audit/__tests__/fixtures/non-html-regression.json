@@ -56,8 +56,15 @@
     "overlay-blocks-cta",
     "perf-score-critical",
     "render-blocking",
+    "slow-3g-blank-screen",
+    "slow-3g-cta-delayed",
     "unoptimized-images",
     "unused-css-large",
     "unused-js-large"
-  ]
+  ],
+  "slowReplay": {
+    "timeToFirstTextMs": 6000,
+    "timeToCtaMs": 9000,
+    "screenshotUrls": []
+  }
 }
