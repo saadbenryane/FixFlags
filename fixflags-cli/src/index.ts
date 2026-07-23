@@ -89,14 +89,20 @@ function promptPreview(prompt: string | null | undefined, full: boolean): string
   return `${prompt.slice(0, PROMPT_PREVIEW_LENGTH)}\n[truncated, rerun with --full]`
 }
 
-function printPlan(plan: FinishPlan | undefined, full: boolean): void {
-  const items = plan?.items ?? []
+function printPlan(
+  plan: FinishPlan | undefined,
+  full: boolean,
+  limit?: number,
+  label = 'All fixes'
+): void {
+  const allItems = plan?.items ?? []
+  const items = limit == null ? allItems : allItems.slice(0, limit)
   if (items.length === 0) {
-    console.log(chalk.green('Finish Plan: 0 unresolved improvements.'))
+    console.log(chalk.green(`${label}: 0 unresolved improvements.`))
     return
   }
 
-  console.log(chalk.bold(`Finish Plan (${items.length})`))
+  console.log(chalk.bold(`${label} (${items.length})`))
   for (const [index, item] of items.entries()) {
     console.log('')
     console.log(
@@ -170,11 +176,12 @@ program
 
 program
   .command('check <url>')
-  .description('Check a URL and return its three-item Finish Plan')
+  .description('Check a URL and return every ranked fix')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
-  .option('--plan', 'Return the current Finish Plan', true)
+  .option('--plan', 'Return the complete ranked fix list', true)
   .option('--single', 'Check only the given URL')
+  .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')
   .option('--json', 'Print structured JSON')
   .action(
@@ -184,6 +191,7 @@ program
         wait: boolean
         plan?: boolean
         single?: boolean
+        limit?: string
         full?: boolean
         json?: boolean
       }
@@ -218,7 +226,11 @@ program
         if (result.score != null) console.log(`Score: ${result.score}`)
         if (result.verdict) console.log(`Verdict: ${result.verdict}`)
         console.log('')
-        printPlan(result.finishPlan, Boolean(options.full))
+        const limit = options.limit ? Number.parseInt(options.limit, 10) : undefined
+        if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
+          throw new Error('--limit must be a positive integer')
+        }
+        printPlan(result.fixList ?? result.finishPlan, Boolean(options.full), limit)
         console.log('')
         console.log(chalk.gray(`Next: fixflags recheck ${result.reportId} --wait --diff`))
 
@@ -236,12 +248,13 @@ program
   .option('--wait', 'Wait for the completed re-check', true)
   .option('--no-wait', 'Return as soon as the re-check is queued')
   .option('--diff', 'Show the verification diff', true)
+  .option('--limit <count>', 'Print only the first count remaining fixes')
   .option('--full', 'Print complete remaining fix prompts')
   .option('--json', 'Print structured JSON')
   .action(
     async (
       reportId: string,
-      options: { wait: boolean; diff?: boolean; full?: boolean; json?: boolean }
+      options: { wait: boolean; diff?: boolean; limit?: string; full?: boolean; json?: boolean }
     ) => {
       const json = Boolean(options.json || program.opts().json)
       const spinner = ora({ text: 'Re-checking product...', isEnabled: !json }).start()
@@ -271,7 +284,13 @@ program
           console.log(`Regressed: ${result.diff.regressed}`)
         }
         console.log('')
-        if (result.nextFinishPlan) printPlan(result.nextFinishPlan, Boolean(options.full))
+        if (result.nextFixList ?? result.nextFinishPlan) {
+          const limit = options.limit ? Number.parseInt(options.limit, 10) : undefined
+          if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
+            throw new Error('--limit must be a positive integer')
+          }
+          printPlan(result.nextFixList ?? result.nextFinishPlan, Boolean(options.full), limit)
+        }
       } catch (error) {
         spinner.stop()
         fail(error, json)

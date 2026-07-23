@@ -40,7 +40,7 @@ export function registerTaskTools(
 ): void {
   server.tool(
     'ff_check_and_plan',
-    'Check a URL and return its report plus the current three-item Finish Plan.',
+    'Check a URL and return its report plus every ranked fix. Includes the legacy Finish Plan for compatibility.',
     {
       url: z.string().url(),
       waitForCompletion: z.boolean().optional().describe('Poll until complete (max 90s)'),
@@ -85,7 +85,7 @@ export function registerTaskTools(
 
   server.tool(
     'ff_recheck_and_compare',
-    'Run a fresh full re-check and return the verification diff plus next Finish Plan.',
+    'Run a fresh full re-check and return the verification diff plus the next complete fix list.',
     {
       parentReportId: z.string(),
       waitForCompletion: z.boolean().optional(),

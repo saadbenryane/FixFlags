@@ -17,7 +17,7 @@ function caller(responses) {
   }
 }
 
-test('checkAndPlan returns a completed three-item outcome', async () => {
+test('checkAndPlan prefers the complete fix list while retaining the legacy plan', async () => {
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-1',
@@ -26,6 +26,14 @@ test('checkAndPlan returns a completed three-item outcome', async () => {
       score: 82,
       verdict: 'Clear path, weak proof',
       rubrics: [{ name: 'MESSAGE', criticalCount: 0 }],
+      fixList: {
+        reportId: 'report-1',
+        totalCount: 2,
+        items: [
+          { problem: 'CTA is vague', rubric: 'MESSAGE', severity: 'IMPORTANT' },
+          { problem: 'Proof is missing', rubric: 'MESSAGE', severity: 'POLISH' },
+        ],
+      },
       finishPlan: {
         reportId: 'report-1',
         items: [{ problem: 'CTA is vague', rubric: 'MESSAGE', severity: 'IMPORTANT' }],
@@ -41,6 +49,7 @@ test('checkAndPlan returns a completed three-item outcome', async () => {
 
   assert.equal(result.reportId, 'report-1')
   assert.equal(result.score, 82)
+  assert.equal(result.fixList.items.length, 2)
   assert.equal(result.finishPlan.items.length, 1)
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_check_and_plan'])
   assert.deepEqual(mock.calls[0].args, {
@@ -105,6 +114,14 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
       reportId: 'child-1',
       reportUrl: 'https://fixflags.com/report/child-1',
       status: 'COMPLETED',
+      nextFixList: {
+        reportId: 'child-1',
+        totalCount: 2,
+        items: [
+          { problem: 'Proof remains weak', rubric: 'MESSAGE', severity: 'IMPORTANT', fixPrompt: 'Add product evidence.' },
+          { problem: 'Mobile spacing remains tight', rubric: 'EXPERIENCE', severity: 'POLISH', fixPrompt: 'Increase spacing.' },
+        ],
+      },
       diff: { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 },
       nextFinishPlan: {
         reportId: 'child-1',
@@ -118,6 +135,7 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
   })
 
   assert.deepEqual(result.diff, { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 })
+  assert.equal(result.nextFixList.items.length, 2)
   assert.equal(result.nextFinishPlan.items.length, 1)
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])
 })

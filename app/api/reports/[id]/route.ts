@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
+import { buildFixList } from '@/lib/audit/finish-plan'
 
 export async function GET(
   _req: NextRequest,
@@ -18,8 +19,23 @@ export async function GET(
       return apiError('You do not have access to this report', 403)
     }
 
-    const response = NextResponse.json(result.audit)
-    if (result.audit.isPublic) {
+    const fixList = buildFixList({
+      flags: result.audit.flags,
+      rubricRows: result.audit.rubrics.map((rubric) => ({
+        name: rubric.name,
+        grade: rubric.grade ?? null,
+      })),
+      url: result.audit.url,
+      contract: result.audit.productContract,
+      promptAccess: result.showDeterministicFixes
+        ? 'all'
+        : result.sampleFixFlag
+          ? 'one'
+          : 'none',
+      demonstratedFlag: result.sampleFixFlag,
+    })
+    const response = NextResponse.json({ ...result.audit, fixList })
+    if (result.audit.isPublic && !result.showDeterministicFixes) {
       response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300')
     }
     return response

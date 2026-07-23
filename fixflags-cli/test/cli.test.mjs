@@ -42,6 +42,24 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
           score: 84,
           verdict: 'One important improvement remains',
           rubrics: [{ name: 'MESSAGE', criticalCount: 0 }],
+          fixList: {
+            reportId: 'report-1',
+            totalCount: 2,
+            items: [
+              {
+                problem: 'CTA is vague',
+                rubric: 'MESSAGE',
+                severity: 'IMPORTANT',
+                fixPrompt: 'Name the user outcome in the CTA.',
+              },
+              {
+                problem: 'Proof is missing',
+                rubric: 'MESSAGE',
+                severity: 'POLISH',
+                fixPrompt: 'Add substantiated proof near the CTA.',
+              },
+            ],
+          },
           finishPlan: {
             reportId: 'report-1',
             items: [{
@@ -58,6 +76,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
           reportUrl: 'http://example.test/report/report-2',
           status: 'COMPLETED',
           diff: { fixed: 1, remaining: 0, newIssues: 0, regressed: 0 },
+          nextFixList: { reportId: 'report-2', totalCount: 0, items: [] },
           nextFinishPlan: { reportId: 'report-2', items: [] },
         },
       }
@@ -81,8 +100,9 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
     apiUrl
   )
   assert.equal(checked.code, 0, checked.stderr)
-  assert.match(checked.stdout, /Finish Plan \(1\)/)
+  assert.match(checked.stdout, /All fixes \(2\)/)
   assert.match(checked.stdout, /CTA is vague/)
+  assert.match(checked.stdout, /Proof is missing/)
   assert.match(checked.stdout, /fixflags recheck report-1/)
 
   const rechecked = await runCli(
@@ -91,7 +111,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
   )
   assert.equal(rechecked.code, 0, rechecked.stderr)
   assert.match(rechecked.stdout, /Fixed: 1/)
-  assert.match(rechecked.stdout, /Finish Plan: 0 unresolved improvements/)
+  assert.match(rechecked.stdout, /All fixes: 0 unresolved improvements/)
 
   assert.deepEqual(tools, [
     'ff_check_and_plan',

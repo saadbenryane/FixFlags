@@ -141,6 +141,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
     fingerprint?: string | null
     causeCertainty?: CauseCertainty | null
     fixConfidence?: FixConfidence | null
+    status?: string | null
   }
 
 /**

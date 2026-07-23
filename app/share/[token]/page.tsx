@@ -57,9 +57,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${hostname} review · ${BRAND.name}`
   return {
     title,
-    description: 'A shared FixFlags Finish Plan.',
+    description: 'A shared FixFlags report with ranked fixes and evidence.',
     robots: { index: false, follow: false },
-    openGraph: { title, description: 'A shared FixFlags Finish Plan.', url: `${SITE_URL}/share/${token}`, siteName: BRAND.name },
+    openGraph: { title, description: 'A shared FixFlags report with ranked fixes and evidence.', url: `${SITE_URL}/share/${token}`, siteName: BRAND.name },
   }
 }
 

@@ -7,7 +7,7 @@
 | Full vision | [vision.md](./vision.md) |
 | Product Intelligence model, Contract seed, dismissals | [product-intelligence.md](./product-intelligence.md) |
 | Integrity Engine, 5 dimensions, truth classes, security discipline | [integrity-engine.md](./integrity-engine.md) |
-| Finish Plan artifact | [finish-plan.md](./finish-plan.md) |
+| Fix List artifact | [finish-plan.md](./finish-plan.md) |
 | Privacy | [privacy.md](./privacy.md) |
 | Open source | [open-source.md](./open-source.md) |
 | Near-term build order | [execution.md](./execution.md) |
@@ -17,7 +17,7 @@
 
 | Surface | Audience | Entry |
 |---------|----------|-------|
-| **Launch Check** | Lovable / Bolt / Replit / less-technical | URL → Finish Plan → fix → re-check |
+| **Launch Check** | Lovable / Bolt / Replit / less-technical | URL → Fix list → fix → re-check |
 | **Release Verification** | Agencies, developers, teams | URL + repo + history + CI (deeper over time) |
 
 Architecture supports progressive depth. Marketing starts with Launch Check. Do not dump Release Verification into the first experience.

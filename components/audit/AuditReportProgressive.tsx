@@ -8,12 +8,11 @@ import { SectionTitle } from '@/components/ui/typography'
 import { Card } from '@/components/ui/card'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { RubricBar } from '@/components/audit/RubricBar'
-import { BrowserFrame } from '@/components/audit/BrowserFrame'
+import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
-import { displayHostname } from '@/lib/utils/url-helpers'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import {
   getActivityMessage,
@@ -26,6 +25,7 @@ import { getActiveAudit } from '@/lib/audit/active-audit'
 import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
+import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -85,7 +85,6 @@ export function AuditReportProgressive({
   rubrics = [],
   partialFlags = [],
   screenshots = [],
-  screenshotCapture,
   workerIdle = false,
   actionTimeline = [],
   productContract = null,
@@ -139,15 +138,23 @@ export function AuditReportProgressive({
     return { name, score: row?.score ?? null, grade: row?.grade ?? null }
   })
 
-  const hostname = url ? displayHostname(url) : undefined
   const userVerdict = displayVerdict(verdict ?? null)
   const scanningLabel = isLoading ? getScanningLabel(status, tick) : null
   const activityMessage = isLoading ? getActivityMessage(status, tick) : null
 
-  const desktopScreenshotUrl = screenshots.find((s) => s.device === 'DESKTOP')?.url ?? null
-  const mobileScreenshotUrl = screenshots.find((s) => s.device === 'MOBILE')?.url ?? null
-  const mobilePending = screenshotCapture?.mobile === 'pending' && !mobileScreenshotUrl
-  const showMobileFrame = Boolean(mobileScreenshotUrl || mobilePending)
+  const explorerModel = useMemo(
+    () =>
+      buildPartialExplorerModel({
+        url,
+        pageType,
+        score,
+        verdict,
+        flags: partialFlags,
+        screenshots,
+        rubrics,
+      }),
+    [url, pageType, score, verdict, partialFlags, screenshots, rubrics]
+  )
 
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
@@ -183,65 +190,35 @@ export function AuditReportProgressive({
         </Callout>
       )}
 
-      <section id="report-finish-plan" className="space-y-4" aria-busy={isLoading}>
+      <section id="report-flags" className="space-y-4" aria-busy={isLoading}>
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {displayProgress}% complete. {activityMessage ?? 'Preparing your Finish Plan.'}
+          {displayProgress}% complete. {activityMessage ?? REPORT_COPY.progressive.preparingFixList}
         </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="section-label mb-2">{REPORT_COPY.focused.eyebrow}</p>
-            <SectionTitle>{REPORT_COPY.sectionTitles.topPriorities}</SectionTitle>
+            <p className="section-label mb-2">{REPORT_COPY.progressive.eyebrow}</p>
+            <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
           </div>
           <p className="font-mono text-xs tabular-nums text-muted-foreground">
-            {displayProgress}% · {activityMessage ?? 'Preparing your Finish Plan…'}
+            {displayProgress}% · {activityMessage ?? REPORT_COPY.progressive.preparingFixList}
           </p>
         </div>
-        <div className="grid gap-3">
-          {[0, 1, 2].map((index) => {
-            const flag = partialFlags[index]
-            return (
-              <Card key={flag?.id ?? index} className="flex min-h-28 gap-4 p-5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-xs font-bold text-background">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1 space-y-2">
-                  {flag ? (
-                    <>
-                      <p className="meta-label text-muted-foreground">{flag.rubric}</p>
-                      <p className="text-sm font-medium leading-snug text-pretty">{flag.problem}</p>
-                    </>
-                  ) : (
-                    <>
-                      <Skeleton className="h-3 w-20" />
-                      <Skeleton className="h-5 w-4/5" />
-                      <Skeleton className="h-4 w-3/5" />
-                    </>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
-        </div>
+        {explorerModel ? (
+          <LiveReportExplorer
+            model={explorerModel}
+            loading={isLoading}
+            progress={displayProgress}
+          />
+        ) : (
+          <Card className="space-y-3 p-5">
+            <p className="text-sm text-muted-foreground">
+              {REPORT_COPY.progressive.waitingForFlags}
+            </p>
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-4/5" />
+          </Card>
+        )}
       </section>
-
-      <div className="grid gap-4 lg:grid-cols-[1fr_13rem]">
-        <BrowserFrame
-          device="desktop"
-          url={hostname}
-          imageUrl={desktopScreenshotUrl}
-          state={desktopScreenshotUrl ? 'loaded' : 'loading'}
-        />
-        {showMobileFrame ? (
-          <div className="hidden lg:block">
-            <BrowserFrame
-              device="mobile"
-              url={hostname}
-              imageUrl={mobileScreenshotUrl}
-              state={mobileScreenshotUrl ? 'loaded' : 'loading'}
-            />
-          </div>
-        ) : null}
-      </div>
 
       {(showContract || showTimeline) ? (
         <details className="rounded-card bg-card/40 p-5 shadow-card glass-surface">

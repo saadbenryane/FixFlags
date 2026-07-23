@@ -5,7 +5,6 @@ import {
   countFlagsByRubric,
   filterExplorerFlags,
   pageFilterLabel,
-  priorityLabelForIndex,
   resolveRubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
@@ -16,7 +15,6 @@ function flag(
   return {
     title: 'Problem',
     checkId: null,
-    priorityLabel: 'Next',
     rubricLabel: partial.rubric,
     severityLabel: partial.severity,
     impactTag: null,
@@ -35,19 +33,13 @@ function flag(
 }
 
 const FLAGS: ExplorerFlag[] = [
-  flag({ id: '1', rubric: 'MESSAGE', severity: 'CRITICAL', pageUrl: 'https://ex.com/' }),
-  flag({ id: '2', rubric: 'MESSAGE', severity: 'IMPORTANT', pageUrl: 'https://ex.com/pricing' }),
-  flag({ id: '3', rubric: 'EXPERIENCE', severity: 'CRITICAL', pageUrl: 'https://ex.com/' }),
-  flag({ id: '4', rubric: 'REACH', severity: 'POLISH', pageUrl: 'https://ex.com/pricing' }),
+  flag({ id: '1', rubric: 'MESSAGE', severity: 'CRITICAL', impactTag: 'CONVERSION', pageUrl: 'https://ex.com/' }),
+  flag({ id: '2', rubric: 'MESSAGE', severity: 'IMPORTANT', impactTag: 'TRUST', pageUrl: 'https://ex.com/pricing' }),
+  flag({ id: '3', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'ACCESSIBILITY', pageUrl: 'https://ex.com/' }),
+  flag({ id: '4', rubric: 'REACH', severity: 'POLISH', impactTag: 'SEO', pageUrl: 'https://ex.com/pricing' }),
 ]
 
 describe('explorer-filters', () => {
-  it('priorityLabelForIndex returns fix-first language', () => {
-    assert.equal(priorityLabelForIndex(0), 'Top fix')
-    assert.equal(priorityLabelForIndex(1), 'Next')
-    assert.equal(priorityLabelForIndex(2), 'Priority 3')
-  })
-
   it('pageFilterLabel prefers path segment then role', () => {
     assert.equal(pageFilterLabel('https://ex.com/', 'Homepage'), 'Homepage')
     assert.equal(pageFilterLabel('https://ex.com/pricing', 'Pricing'), 'pricing')
@@ -67,14 +59,16 @@ describe('explorer-filters', () => {
     })
   })
 
-  it('filterExplorerFlags combines rubric and page', () => {
+  it('filterExplorerFlags combines rubric, page, severity, and impact', () => {
     const filtered = filterExplorerFlags(FLAGS, {
       rubricFilter: 'MESSAGE',
-      pageFilter: 'https://ex.com/',
+      pageFilter: 'https://ex.com/pricing',
+      severityFilter: 'IMPORTANT',
+      impactFilter: 'TRUST',
     })
     assert.deepEqual(
       filtered.map((f) => f.id),
-      ['1']
+      ['2']
     )
   })
 

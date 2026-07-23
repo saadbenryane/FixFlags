@@ -1,4 +1,4 @@
-import { RUBRIC_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
+import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
   computeRubricScores,
   type RubricScoreContext,
@@ -29,6 +29,7 @@ import {
 } from '@/lib/audit/evidence-highlights'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { buildFixList } from '@/lib/audit/finish-plan'
 
 export type { PipelineStep, PipelineStepState }
 export type { EvidenceHighlight }
@@ -77,16 +78,6 @@ export interface SampleReportDisplay {
   rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
   flags: SampleFlagDisplay[]
-}
-
-function sortFlags(flags: RankableFlag[]): RankableFlag[] {
-  const severityRank = Object.fromEntries(SEVERITY_ORDER.map((s, i) => [s, i]))
-  return [...flags].sort((a, b) => {
-    const sa = severityRank[a.severity] ?? 99
-    const sb = severityRank[b.severity] ?? 99
-    if (sa !== sb) return sa - sb
-    return a.problem.localeCompare(b.problem)
-  })
 }
 
 function gradeFromScore(score: number | null): string | null {
@@ -206,14 +197,22 @@ function mapFlag(
 }
 
 export function buildSampleReportDisplay(
-  audit: LiveSampleAudit,
-  options?: { flagshipOnly?: boolean }
+  audit: LiveSampleAudit
 ): SampleReportDisplay {
   const anchors = resolveSampleAnchors(audit)
-  const sorted = sortFlags(audit.flags)
+  const rankedIds = buildFixList({
+    flags: audit.flags,
+    rubricRows: audit.rubricRows,
+    url: audit.url,
+    promptAccess: 'all',
+  }).items.map((item) => item.id)
+  const flagsById = new Map(audit.flags.map((flag) => [flag.id, flag]))
+  const sorted = rankedIds.flatMap((id) => {
+    const flag = flagsById.get(id)
+    return flag ? [flag] : []
+  })
   const totalFlagCount = sorted.length
-  const selected = options?.flagshipOnly ? pickFlagshipFlags(sorted) : sorted
-  const flags = selected.map((flag, index) => mapFlag(flag, index, anchors))
+  const flags = sorted.map((flag, index) => mapFlag(flag, index, anchors))
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
   const { overall, rubrics } = resolveDisplayScores(audit)
@@ -254,14 +253,4 @@ export function buildSampleReportDisplay(
     }),
     flags,
   }
-}
-
-/** One Message, one Experience, one Reach flag for homepage demo. */
-function pickFlagshipFlags(flags: RankableFlag[]): RankableFlag[] {
-  const picked: RankableFlag[] = []
-  for (const rubric of RUBRIC_ORDER) {
-    const match = flags.find((f) => f.rubric === rubric)
-    if (match) picked.push(match)
-  }
-  return picked.length > 0 ? picked : flags.slice(0, 3)
 }

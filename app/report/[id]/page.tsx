@@ -1,23 +1,20 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
-import { FocusedAuditReport } from '@/components/audit/FocusedAuditReport'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
-import { isAdminUser, getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
+import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
-import { McpFixNudge } from '@/components/audit/McpFixNudge'
-import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefresh'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessAudit } from '@/lib/audit/access'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { displayHostname } from '@/lib/utils/url-helpers'
-import { assembleReportViewModel } from '@/lib/report/report-view-model'
+import { CompletedReportView } from './CompletedReportView'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -246,6 +243,7 @@ export async function loadReportRouteState(params: Props['params'], shareToken?:
       pageUrl: f.pageUrl,
       confidence: f.confidence,
       source: f.source ?? undefined,
+      status: f.status,
     }))
 
     const reportAudit = {
@@ -278,19 +276,6 @@ export async function loadReportRouteState(params: Props['params'], shareToken?:
       actionTimeline: audit.actionTimeline,
     }
 
-    const focusedModel = assembleReportViewModel({
-      auditId: id,
-      audit: reportAudit,
-      isLoggedIn,
-      isOwner,
-      isAnonymous,
-      showPrompts: showDeterministicFixes,
-      demonstratedFlag: sampleFixFlag as typeof flags[number] | null,
-      recheckDiff,
-      compareHref: canAccessCompareView && audit.parentId ? `/compare/${id}` : null,
-      detailsHref: shareToken ? `/share/${shareToken}/details` : undefined,
-    })
-
     return {
       kind: 'completed' as const,
       id,
@@ -316,7 +301,6 @@ export async function loadReportRouteState(params: Props['params'], shareToken?:
       rubricRows,
       flags,
       reportAudit,
-      focusedModel,
       topIssue,
       shareToken,
     }
@@ -334,18 +318,7 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     return <AuditPageClient id={state.id} initialAudit={state.audit} pollStatus session={state.session} />
   }
 
-  return (
-    <AuditShell
-      session={state.session}
-      showAdmin={state.user && state.session
-        ? isAdminUser({ id: state.session.user.id, role: state.user.role })
-        : false}
-    >
-      <FocusedAuditReport model={state.focusedModel} />
-      <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
-      <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
-    </AuditShell>
-  )
+  return <CompletedReportView state={state} />
 }
 
 export default ReportRoute

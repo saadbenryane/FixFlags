@@ -26,7 +26,7 @@ Reports, scoring, MCP, and marketing use **three rubrics only**:
 - **Experience** — usability, a11y, performance, interactions
 - **Reach** — SEO, previews, trust links, analytics
 
-**Decision:** Do not migrate UI to five dimensions until Product Intelligence + Finish Plan thesis is validated. Dimensions guide check design and prioritization; rubrics remain the customer mental model. Recorded in [DECISIONS.md](../DECISIONS.md).
+**Decision:** Do not migrate UI to five dimensions until Product Intelligence + Fix list thesis is validated. Dimensions guide check design and prioritization; rubrics remain the customer mental model. Recorded in [DECISIONS.md](../DECISIONS.md).
 
 ### Mapping (approximate)
 

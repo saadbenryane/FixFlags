@@ -9,7 +9,6 @@ import { displayHostname } from '@/lib/utils/url-helpers'
 
 const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
 const REMEMBER_SECTION = { id: 'report-remember', label: REPORT_COPY.stickyNav.remember } as const
-const PRIORITIES_SECTION = { id: 'report-finish-plan', label: REPORT_COPY.stickyNav.priorities } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: REPORT_COPY.stickyNav.journey } as const
 const FLOW_SECTION = { id: 'report-flow', label: REPORT_COPY.stickyNav.flow } as const
 const TIMELINE_SECTION = { id: 'report-timeline', label: REPORT_COPY.stickyNav.timeline } as const
@@ -25,7 +24,6 @@ interface Props {
   className?: string
   showContract?: boolean
   showRemember?: boolean
-  showPriorities?: boolean
   showJourney?: boolean
   showFlow?: boolean
   showTimeline?: boolean
@@ -53,7 +51,6 @@ export function ReportStickyToolbar({
   className,
   showContract = false,
   showRemember = false,
-  showPriorities = false,
   showJourney = false,
   showFlow = false,
   showTimeline = false,
@@ -71,7 +68,6 @@ export function ReportStickyToolbar({
     const items: NavSection[] = []
     if (showContract) items.push(CONTRACT_SECTION)
     if (showRemember) items.push(REMEMBER_SECTION)
-    if (showPriorities) items.push(PRIORITIES_SECTION)
     if (showJourney) items.push(JOURNEY_SECTION)
     if (showFlow) items.push(FLOW_SECTION)
     if (showTimeline) items.push(TIMELINE_SECTION)
@@ -85,7 +81,6 @@ export function ReportStickyToolbar({
   }, [
     showContract,
     showRemember,
-    showPriorities,
     showJourney,
     showFlow,
     showTimeline,

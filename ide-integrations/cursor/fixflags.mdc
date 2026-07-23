@@ -1,4 +1,4 @@
-description: "FixFlags Product Intelligence — scan AI-built products for Message, Experience, and Reach. Finish Plan + fix prompts."
+description: "FixFlags Product Intelligence — scan AI-built products for Message, Experience, and Reach. Complete ranked Fix list + prompts."
 globs:
   - "**/*.tsx"
   - "**/*.ts"
@@ -22,14 +22,15 @@ Copy this rule into the project as `.cursor/rules/fixflags.mdc`, or keep it unde
 
 | Tool | Use |
 |------|-----|
-| `ff_check_and_plan` | Check a URL and return report + Finish Plan. Pass `waitForCompletion: true` for the completed outcome. |
+| `ff_check_and_plan` | Check a URL and return the report + complete ranked Fix list. Pass `waitForCompletion: true` for the completed outcome. |
 | `ff_get_check_status` | Poll status / progress |
 | `ff_get_report` | Rubric summaries + shareStatus |
 | `ff_get_rubric` | Flags + fix text for one rubric (`MESSAGE` \| `EXPERIENCE` \| `REACH`) |
 | `ff_get_flag` | Full fix prompt for one flag (`tool`: cursor/claude/lovable/bolt/…) |
 | `ff_get_product_context` | Product Contract / Product Intelligence for the report |
-| `ff_get_current_finish_plan` | Top Finish Plan items + plan-mode prompt |
-| `ff_plan_mode_prompt` | Single plan-mode prompt for the Finish Plan |
+| `ff_get_all_fixes` | Every unresolved Flag + fix prompt, ranked by launch impact |
+| `ff_get_current_finish_plan` | Deprecated three-item Quick Plan compatibility tool |
+| `ff_plan_mode_prompt` | Single plan-mode prompt for every ranked fix |
 | `ff_recheck_and_compare` | Re-check same URL (verify fixes) |
 | `ff_compare` | Diff two reports |
 | `ff_list_recent_audits` | Recent audits |
@@ -41,9 +42,9 @@ There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `f
 
 1. User gives a public URL (not localhost).
 2. Call `ff_check_and_plan` with `waitForCompletion: true`.
-3. Present its report and Finish Plan by **Message**, **Experience**, **Reach**.
+3. Present its complete ranked Fix list by **Message**, **Experience**, **Reach**.
 4. Use context, rubric, or flag tools only when the user needs deeper evidence.
-5. Apply the Finish Plan, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
+5. Apply the fixes, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
 
 ## Presenting results
 

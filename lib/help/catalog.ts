@@ -44,18 +44,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a three-item Finish Plan with evidence.',
+        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a complete ranked Fix list with evidence.',
       },
       {
         type: 'p',
-        text: 'Your first teaser does not require an account. It shows all three problem and evidence summaries plus one complete fix. A free account saves the report, reveals the remaining fixes, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
+        text: 'Your first teaser does not require an account. It shows every problem and evidence summary plus exactly one complete fix prompt. A free account saves the report, reveals every available prompt, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
       },
       {
         type: 'ol',
         items: [
           'Paste your live URL (or a public preview URL).',
           'Wait for the scan to finish. You will see progress as it captures and checks.',
-          'Open the Finish Plan. Use View full review when you need every Flag and evidence surface.',
+          'Open the Fix list. Select any Flag to inspect its screenshot, evidence, and available fix prompt.',
         ],
       },
     ],
@@ -75,14 +75,14 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'The Finish Plan contains at most three fixes, each with evidence and an editor-ready prompt. Use View full review for Product context, journeys, the complete Flag explorer, previews, and launch gates.',
+        text: 'The Fix list contains every unresolved Flag, ranked by launch impact. Select a Flag to inspect its evidence, screenshot, and editor-ready prompt. Product context, journeys, previews, and launch gates continue below the workspace.',
       },
       {
         type: 'ul',
         items: [
-          'Start on the Finish Plan and copy one fix into your editor.',
-          'Open the full review to browse Flags by rubric or page.',
-          'Copy one Flag or use Copy Finish Plan for a plan-mode prompt.',
+          'Start at the top of the Fix list and copy one fix into your editor.',
+          'Filter the complete list by rubric, severity, impact, or page.',
+          'Copy one Flag or use Copy all fixes for a plan-mode prompt.',
         ],
       },
     ],

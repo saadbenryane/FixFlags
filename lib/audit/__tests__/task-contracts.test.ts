@@ -102,6 +102,9 @@ describe('task contracts', () => {
 
     expect(outcome.status).toBe('COMPLETED')
     expect(outcome.score).toBe(82)
+    expect(outcome.fixList?.items).toHaveLength(1)
+    expect(outcome.fixList?.totalCount).toBe(1)
+    expect(outcome.fixList?.items[0]?.fixPrompt).toMatch(/Rename the primary CTA/)
     expect(outcome.finishPlan?.items).toHaveLength(1)
     expect(outcome.finishPlan?.items[0]?.fixPrompt).toMatch(/Rename the primary CTA/)
   })
@@ -114,6 +117,8 @@ describe('task contracts', () => {
     })
 
     expect(outcome.diff).toEqual({ fixed: 1, remaining: 0, newIssues: 0, regressed: 0 })
+    expect(outcome.nextFixList?.items).toHaveLength(1)
+    expect(outcome.nextFixList?.totalCount).toBe(1)
     expect(outcome.nextFinishPlan?.items).toHaveLength(1)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,

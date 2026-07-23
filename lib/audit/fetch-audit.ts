@@ -282,9 +282,14 @@ export async function getGatedAuditForRequest(id: string) {
   const sampleFixFlag =
     !showDeterministicFixes && !isLegacyDeterministic
       ? findHighestSeverityFlagWithFix(
-          rankFlagsByPriority(audit.flags, audit.rubrics, 3, productContract).map(
-            ({ flag }) => flag
-          )
+          rankFlagsByPriority(
+            audit.flags.filter(
+              (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
+            ),
+            audit.rubrics,
+            audit.flags.length,
+            productContract
+          ).map(({ flag }) => flag)
         )
       : null
 

@@ -14,14 +14,14 @@ describe('buildReportMcpCommand', () => {
     assert.doesNotMatch(command, /"method":"ff_get_report"/)
   })
 
-  it('tells agents to fetch rubric and flag details before editing', () => {
+  it('tells agents to fetch rubric details and the complete Fix list before editing', () => {
     const command = buildReportMcpCommand('audit-456', 'https://fixflags.test')
 
     assert.match(command, /ff_get_rubric/)
     assert.match(command, /MESSAGE/)
     assert.match(command, /EXPERIENCE/)
     assert.match(command, /REACH/)
-    assert.match(command, /ff_get_flag/)
+    assert.match(command, /ff_get_all_fixes/)
     assert.match(command, /before editing/i)
   })
 })

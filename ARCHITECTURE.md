@@ -213,9 +213,9 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 
 | Layer | Components |
 |-------|------------|
-| Focused page shell | `components/audit/FocusedAuditReport.tsx`, `ReportViewModel`, shared hero/rubric/prompt primitives |
+| Canonical report workspace | `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
 | Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, Contract/Memory, evidence timelines, explorer, previews, gates |
-| Finish Plan contract | `lib/audit/finish-plan.ts`, used by report, export, task outcomes, MCP, CLI response, sample |
+| Fix List contract | `buildFixList()` in `lib/audit/finish-plan.ts`, used by report, API, export, task outcomes, MCP, CLI response, and sample; `buildFinishPlan()` is legacy compatibility |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |

@@ -43,7 +43,7 @@ Understand → Improve → Verify → Remember
 ```
 
 - **Understand** — Reconstruct the Product from every available signal into one coherent understanding.
-- **Improve** — Identify the highest-leverage improvements (the Finish Plan), not every defect.
+- **Improve** — Present every verified unresolved Flag, ranked so the highest-leverage improvements come first.
 - **Verify** — Confirm repository, runtime, journeys, visual, a11y, performance, and intended outcomes. Reality is the final source of truth.
 - **Remember** — Capture verified knowledge so the Product becomes easier to evolve. Knowledge belongs to the Product.
 
@@ -60,7 +60,7 @@ Detail: [product-intelligence.md](./product-intelligence.md), [integrity-engine.
 
 Founding privacy principle: **FixFlags never learns your product. It learns how to understand products.** See [privacy.md](./privacy.md).
 
-## Finish Plan
+## Fix List
 
 The main output answers: **What should we improve next?** Prioritized, scoped, evidence-backed, actionable, verifiable, continuously updated. See [finish-plan.md](./finish-plan.md).
 
@@ -87,7 +87,7 @@ Web, browser observer, GitHub, CLI, MCP/agent integrations, and a lightweight ag
 3. Reconstruct basic Product understanding.
 4. Inspect the real experience.
 5. Identify highest-impact gaps.
-6. Produce a Finish Plan.
+6. Produce a complete ranked Fix List.
 7. Produce fixes / agent-ready instructions.
 8. Re-check.
 9. Record what improved.
@@ -100,7 +100,7 @@ Web, browser observer, GitHub, CLI, MCP/agent integrations, and a lightweight ag
 - Understanding precedes action.
 - Verification precedes confidence.
 - Evidence precedes recommendations.
-- Prioritization matters more than finding every issue.
+- Prioritization guides action without hiding verified issues.
 - Product Intelligence must remain portable.
 - Privacy must be understandable.
 - The system must remain vendor-neutral.

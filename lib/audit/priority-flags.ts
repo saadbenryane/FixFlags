@@ -244,7 +244,7 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
 
 /**
  * Build a structured goal-loop prompt with 3 phases (Research → Plan → Fix).
- * Defaults to the Finish Plan (≤3 highest-leverage issues). Explicit all-prompt
+ * Defaults to the deprecated Quick Plan (up to three highest-leverage issues). Explicit all-prompt
  * exports use buildAllFixPrompts instead of changing this contract.
  */
 export function buildPlanModePrompt(

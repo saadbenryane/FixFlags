@@ -10,7 +10,7 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import {
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildFinishPlan, buildFixList } from '@/lib/audit/finish-plan'
 
 export interface TaskRubricSummary {
   name: string
@@ -37,6 +37,10 @@ export interface TaskFinishPlan {
   planPrompt: string
 }
 
+export interface TaskFixList extends TaskFinishPlan {
+  totalCount: number
+}
+
 export interface CheckAndPlanOutcome {
   reportId: string
   reportUrl: string
@@ -44,6 +48,8 @@ export interface CheckAndPlanOutcome {
   score?: number | null
   verdict?: string | null
   rubrics?: TaskRubricSummary[]
+  fixList?: TaskFixList
+  /** @deprecated Use fixList. */
   finishPlan?: TaskFinishPlan
 }
 
@@ -59,6 +65,7 @@ export interface RecheckAndCompareOutcome {
     regressed: number
   } | null
   nextFinishPlan?: TaskFinishPlan
+  nextFixList?: TaskFixList
 }
 
 interface TaskQueueOptions {
@@ -92,6 +99,7 @@ function toRankableFlag(flag: {
   pageUrl: string | null
   confidence: number | null
   source: string
+  status: string
 }): RankableFlag {
   return {
     id: flag.id,
@@ -113,6 +121,7 @@ function toRankableFlag(flag: {
     pageUrl: flag.pageUrl,
     confidence: flag.confidence,
     source: flag.source,
+    status: flag.status,
   } as RankableFlag
 }
 
@@ -120,6 +129,7 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
+  fixList: TaskFixList
   finishPlan: TaskFinishPlan
 }> {
   const audit = await prisma.audit.findUnique({
@@ -156,14 +166,30 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
 
   const contract = parseProductContract(audit.productContract)
   const flags = audit.flags.map(toRankableFlag)
-  const plan = buildFinishPlan({
+  const fixList = buildFixList({
     flags,
     rubricRows: audit.rubrics,
     url: audit.url,
     contract,
     promptAccess: 'all',
   })
-  const items = plan.items.map((item) => ({
+  const items = fixList.items.map((item) => ({
+    flagId: item.id,
+    checkId: item.checkId ?? null,
+    problem: item.problem,
+    rubric: item.rubricName,
+    severity: item.severity,
+    impactTag: item.impactTag ?? null,
+    fixPrompt: item.prompt,
+  }))
+  const legacyPlan = buildFinishPlan({
+    flags,
+    rubricRows: audit.rubrics,
+    url: audit.url,
+    contract,
+    promptAccess: 'all',
+  })
+  const legacyItems = legacyPlan.items.map((item) => ({
     flagId: item.id,
     checkId: item.checkId ?? null,
     problem: item.problem,
@@ -177,11 +203,18 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
     score: audit.score,
     verdict: audit.verdict,
     rubrics,
-    finishPlan: {
+    fixList: {
       reportId,
       url: audit.url,
       items,
-      planPrompt: plan.copyPrompt ?? '',
+      planPrompt: fixList.copyPrompt ?? '',
+      totalCount: fixList.totalCount,
+    },
+    finishPlan: {
+      reportId,
+      url: audit.url,
+      items: legacyItems,
+      planPrompt: legacyPlan.copyPrompt ?? '',
     },
   }
 }
@@ -190,6 +223,7 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
   nextFinishPlan?: TaskFinishPlan
+  nextFixList?: TaskFixList
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -217,6 +251,7 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
       regressed: diff.regressed.length,
     },
     nextFinishPlan: completed.finishPlan,
+    nextFixList: completed.fixList,
   }
 }
 
@@ -295,5 +330,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
       regressed: diff.regressed.length,
     },
     nextFinishPlan: completed.finishPlan,
+    nextFixList: completed.fixList,
   }
 }

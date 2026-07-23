@@ -23,7 +23,7 @@ import {
 } from '@/lib/audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
 import { buildRepoFindingPayload } from '@/lib/mcp/repo-finding-payload'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildFinishPlan, buildFixList } from '@/lib/audit/finish-plan'
 import { loadCompletedTaskOutcome } from '@/lib/audit/task-contracts'
 
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
@@ -183,7 +183,7 @@ export function registerAllTools(
 
   server.tool(
     'ff_plan_mode_prompt',
-    'Get a single plan-mode Finish Plan prompt for an audit (paste into Cursor/Claude plan mode)',
+    'Get one plan-mode prompt containing every ranked fix for an audit',
     { reportId: z.string() },
     async ({ reportId }) => {
       await assertMcpAccess(user)
@@ -218,7 +218,7 @@ export function registerAllTools(
         pageUrl: f.pageUrl,
         confidence: f.confidence,
       }))
-      const plan = buildFinishPlan({
+      const plan = buildFixList({
         flags,
         url: audit.url,
         contract,
@@ -283,8 +283,35 @@ export function registerAllTools(
   )
 
   server.tool(
+    'ff_get_all_fixes',
+    'Get every unresolved Flag and fix prompt for a completed report, ranked by launch impact',
+    { reportId: z.string() },
+    async ({ reportId }) => {
+      await assertMcpAccess(user)
+      const audit = await prisma.audit.findUnique({
+        where: { id: reportId },
+        select: { id: true, userId: true, isPublic: true, status: true },
+      })
+      if (!audit) throw new Error('Report not found')
+      await assertAuditAccess(audit, user.id)
+      if (audit.status !== 'COMPLETED') {
+        throw new Error(`Report is ${audit.status}, not COMPLETED`)
+      }
+      const outcome = await loadCompletedTaskOutcome(reportId)
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(outcome.fixList ?? null),
+          },
+        ],
+      }
+    }
+  )
+
+  server.tool(
     'ff_get_current_finish_plan',
-    'Get the current Finish Plan (top prioritized improvements) for a completed report',
+    'Deprecated compatibility tool: get the three-item Finish Plan for a completed report',
     { reportId: z.string(), limit: z.number().int().min(1).max(3).optional() },
     async ({ reportId }) => {
       await assertMcpAccess(user)

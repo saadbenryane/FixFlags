@@ -17,6 +17,10 @@ export interface FinishPlan {
   planPrompt?: string
 }
 
+export interface FixList extends FinishPlan {
+  totalCount?: number
+}
+
 export interface CheckResult {
   reportId: string
   reportUrl: string
@@ -30,6 +34,7 @@ export interface CheckResult {
     criticalCount?: number
     importantCount?: number
   }>
+  fixList?: FixList
   finishPlan?: FinishPlan
 }
 
@@ -40,6 +45,7 @@ export interface RecheckResult {
   status: string
   diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
   nextFinishPlan?: FinishPlan
+  nextFixList?: FixList
 }
 
 interface WaitOptions {
@@ -101,6 +107,20 @@ function parseFinishPlan(value: unknown, tool: string): FinishPlan | undefined {
   }
 }
 
+function parseFixList(value: unknown, tool: string): FixList | undefined {
+  if (value === undefined) return undefined
+  const parsed = parseFinishPlan(value, tool)
+  if (!parsed) return undefined
+  const list = record(value, tool)
+  return {
+    ...parsed,
+    totalCount:
+      typeof list.totalCount === 'number' && Number.isFinite(list.totalCount)
+        ? list.totalCount
+        : parsed.items.length,
+  }
+}
+
 function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult {
   const outcome = record(value, tool)
   const reportId = requiredString(outcome.reportId, 'reportId', tool)
@@ -128,6 +148,7 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
     score: optionalNumber(outcome.score, 'score', tool),
     verdict: typeof outcome.verdict === 'string' || outcome.verdict === null ? outcome.verdict : undefined,
     rubrics,
+    fixList: parseFixList(outcome.fixList, tool),
     finishPlan: parseFinishPlan(outcome.finishPlan, tool),
   }
 }
@@ -152,6 +173,7 @@ function parseRecheck(value: unknown, tool: string, apiBase: string, fallbackPar
     reportUrl: typeof outcome.reportUrl === 'string' ? outcome.reportUrl : `${apiBase.replace(/\/$/, '')}/report/${reportId}`,
     status: requiredString(outcome.status, 'status', tool),
     diff: parseDiff(outcome.diff, tool),
+    nextFixList: parseFixList(outcome.nextFixList, tool),
     nextFinishPlan: parseFinishPlan(outcome.nextFinishPlan, tool),
   }
 }
