@@ -196,6 +196,33 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     related: ['why-check-failed', 'first-check'],
   },
   {
+    slug: 'railway-deploy-check',
+    categoryId: 'mcp-and-editors',
+    title: 'Railway deploy check',
+    excerpt: 'Enqueue a Launch Check after each Railway deployment succeeds.',
+    searchTokens: ['railway', 'deploy', 'webhook', 'ci', 'preview', 'release'],
+    body: [
+      {
+        type: 'p',
+        text: 'FixFlags can enqueue a Launch Check when your Railway service deploys successfully. This is the supported post-deploy gate when you host on Railway (no GitHub Action or Vercel webhook required).',
+      },
+      {
+        type: 'ol',
+        items: [
+          'Create a FixFlags API key from Settings → API keys (Pro or Agency).',
+          'Optional: set RAILWAY_WEBHOOK_SECRET on your FixFlags deployment and append webhookSecret to the webhook URL.',
+          'In Railway → Project → Settings → Webhooks, point a successful-deploy event to your FixFlags host with apiKey and url query parameters.',
+          'Use your service public HTTPS domain for url. Railway webhooks do not always include the public URL in the payload.',
+        ],
+      },
+      {
+        type: 'p',
+        text: 'The webhook enqueues a non-blocking critical-path check and returns reportId and reportUrl. For manual checks, run fixflags check with --wait from a Railway release command or shell script.',
+      },
+    ],
+    related: ['public-urls-only', 'mcp-setup', 'first-check'],
+  },
+  {
     slug: 'vs-lighthouse',
     categoryId: 'checks-and-reports',
     title: 'FixFlags vs Lighthouse',

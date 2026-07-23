@@ -43,6 +43,7 @@ interface ExportMenuProps {
   rubrics: ExportRubric[]
   flags: RankableFlag[]
   contract?: import('@/lib/audit/product-contract').ProductContract | null
+  finishPlanPrompt?: string | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
   size?: 'sm' | 'default'
@@ -56,6 +57,7 @@ export function ExportMenu({
   rubrics,
   flags,
   contract = null,
+  finishPlanPrompt,
   canExportSummary = false,
   showFixPrompts = false,
   size = 'sm',
@@ -157,13 +159,15 @@ export function ExportMenu({
                 onClick={() =>
                   openPreview(
                     'Finish Plan for your editor',
+                    finishPlanPrompt ??
                     buildFinishPlan({
                       flags,
                       rubricRows: rubrics,
                       url,
                       contract,
                       promptAccess: 'all',
-                    }).copyPrompt ?? ''
+                    }).copyPrompt ??
+                    ''
                   )
                 }
                 className="gap-2"

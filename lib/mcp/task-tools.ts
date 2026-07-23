@@ -8,6 +8,7 @@ import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimat
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
+import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 
 function taskResult(outcome: object, queue: {
   delayMs: number
@@ -51,6 +52,9 @@ export function registerTaskTools(
     async ({ url, waitForCompletion, mode, scanAccess }) => {
       const freshUser = await assertMcpAccess(user)
       const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
+      if (scanAccess && !canUseEphemeralScanAccess(freshUser)) {
+        throw new Error('Preview scan access requires the Agency plan')
+      }
       const resolvedScanAccess = scanAccess ? parseScanAccessInput(scanAccess) : null
       const [userLimit, hostLimit, workerEstimate] = await Promise.all([
         recordRateLimit({

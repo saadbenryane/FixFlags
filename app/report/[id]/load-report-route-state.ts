@@ -7,6 +7,8 @@ import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { assembleReportViewModel } from '@/lib/report/report-view-model'
+import { buildUnifiedFinishPlan } from '@/lib/audit/load-finish-plan-flags'
+import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
 
 function topIssueFromFlags(
@@ -198,6 +200,21 @@ export async function loadReportRouteState(
       actionTimeline: audit.actionTimeline,
     }
 
+    const contract = parseProductContract(audit.productContract)
+    const promptAccess = showDeterministicFixes ? 'all' : sampleFixFlag ? 'one' : 'none'
+    const finishPlan = await buildUnifiedFinishPlan({
+      userId: audit.userId,
+      auditUrl: audit.url,
+      flags,
+      rubricRows: audit.rubrics.map((rubric) => ({
+        name: rubric.name,
+        grade: rubric.grade ?? null,
+      })),
+      contract,
+      promptAccess,
+      demonstratedFlag: sampleFixFlag as typeof flags[number] | null,
+    })
+
     const focusedModel = assembleReportViewModel({
       auditId: id,
       audit: reportAudit,
@@ -209,6 +226,7 @@ export async function loadReportRouteState(
       recheckDiff,
       compareHref: canAccessCompareView && audit.parentId ? `/compare/${id}` : null,
       detailsHref: shareToken ? `/share/${shareToken}/details` : undefined,
+      finishPlan,
     })
 
     return {
@@ -236,6 +254,7 @@ export async function loadReportRouteState(
       rubricRows,
       flags,
       finishPlanFlags: allFlags,
+      finishPlan,
       reportAudit,
       focusedModel,
       topIssue,

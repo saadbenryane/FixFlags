@@ -7,7 +7,7 @@ export const PARTNERS_COPY = {
   perks: [
     'Referral revenue on paying clients you introduce',
     'Verified Delivery report template for handoffs',
-    'Early access to preview URL scanning and CI gates',
+    'Agency preview scan access and Railway deploy Launch Checks',
   ],
   cta: 'Apply for the expert program',
   email: 'hello@fixflags.com',
@@ -16,8 +16,8 @@ export const PARTNERS_COPY = {
 export function inferBuilderToolFromUrl(url: string): 'lovable' | 'bolt' | null {
   try {
     const host = new URL(url).hostname.toLowerCase()
-    if (host.includes('lovable')) return 'lovable'
-    if (host.includes('bolt')) return 'bolt'
+    if (host.includes('lovable') || host.endsWith('lovable.app')) return 'lovable'
+    if (host.includes('bolt') || host === 'bolt.new' || host.endsWith('.bolt.new')) return 'bolt'
   } catch {
     return null
   }

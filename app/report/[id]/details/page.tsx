@@ -98,6 +98,7 @@ export async function DetailedReportRoute({
       topIssue={state.topIssue}
       flags={finishPlanFlags}
       contract={state.reportAudit.productContract ?? null}
+      finishPlanPrompt={completedState.finishPlan?.copyPrompt ?? null}
       rubrics={state.rubricRows.map((rubric) => ({
         name: rubric.name,
         grade: rubric.grade,
@@ -165,6 +166,7 @@ export async function DetailedReportRoute({
         toolbarActions={toolbarActions}
         backToPlanHref={shareToken ? `/share/${shareToken}` : `/report/${state.id}`}
         showFinishPlan={false}
+        finishPlan={completedState.finishPlan}
       />
       <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
       <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />

@@ -37,8 +37,9 @@ const scopes = {
     test: ['npx', ['vitest', 'run', 'lib/marketing/']],
   },
   mcp: {
-    prefixes: ['lib/mcp/'],
+    prefixes: ['lib/mcp/', 'scripts/mcp-quality-gate.mjs'],
     test: ['npx', ['vitest', 'run', 'lib/mcp/']],
+    gate: ['npm', ['run', 'mcp:quality-gate']],
   },
   components: {
     prefixes: ['components/'],
@@ -313,6 +314,7 @@ export function buildPlan(requestedMode, providedFiles) {
       }
     }
     commands.push(...scopeCommands([...testScopes], 'test'))
+    commands.push(...scopeCommands([...testScopes], 'gate'))
 
     commands.push(command('brand:hex-guard', 'npm', ['run', 'brand:hex-guard']))
     commands.push(command('ui:drift-guard', 'npm', ['run', 'ui:drift-guard']))

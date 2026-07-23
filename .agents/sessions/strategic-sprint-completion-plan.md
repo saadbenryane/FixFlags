@@ -18,12 +18,12 @@ Status: completed in branch `cursor/strategic-sprint-39f0`.
 |-----|-----|
 | Scan access incomplete in pipeline | Journey, flow, critical-path, visual side-by-side |
 | Finish Plan drift | MCP tools, export menu, report state use unified loader |
-| Vercel webhook auth | Replaced with Railway webhook (`apiKey` + `url` query params) |
+| Vercel webhook auth | Replaced with Railway webhook (apiKey + url query params) |
 | GitHub Action outputs | Removed; Railway webhook is the deploy gate |
 | Agency API gate | `canScanRepositories` on scan-access routes |
 | Partners discoverability | Nav footer, sitemap, SEO registry |
 | Help + PRODUCT drift | Preview access + CI documented; contradictory constraints removed |
-| Tests | `scan-access` route + `vercel` webhook route tests |
+| Tests | `scan-access` route + Railway webhook route tests |
 
 ## Verification checklist
 

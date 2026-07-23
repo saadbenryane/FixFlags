@@ -10,26 +10,38 @@ function read(path) {
   return readFileSync(path, 'utf8')
 }
 
-function countToolRegistrations(source) {
-  return (source.match(/server\.tool\(/g) ?? []).length
+function collectRegisteredToolNames(source) {
+  return [...source.matchAll(/server\.tool\(\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+}
+
+function collectCatalogToolNames(source) {
+  return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
 }
 
 function main() {
   const docs = read(DOCS)
-  const registered =
-    countToolRegistrations(read(TOOLS)) + countToolRegistrations(read(TASK_TOOLS))
-  const catalogMatches = docs.match(/name: '([^']+)'/g) ?? []
-  const catalogCount = catalogMatches.length
+  const toolsSource = `${read(TOOLS)}\n${read(TASK_TOOLS)}`
+  const registered = [...new Set(collectRegisteredToolNames(toolsSource))]
+  const catalog = [...new Set(collectCatalogToolNames(docs))]
 
   const errors = []
-  if (registered < 16) {
-    errors.push(`Expected at least 16 registered MCP tools, found ${registered}`)
+  if (registered.length < 16) {
+    errors.push(`Expected at least 16 registered MCP tools, found ${registered.length}`)
   }
-  if (catalogCount < 16) {
-    errors.push(`Expected at least 16 tools in MCP_TOOL_DEFINITIONS, found ${catalogCount}`)
+  if (catalog.length < 16) {
+    errors.push(`Expected at least 16 tools in MCP_TOOL_DEFINITIONS, found ${catalog.length}`)
   }
-  if (Math.abs(registered - catalogCount) > 1) {
-    errors.push(`Registration count (${registered}) diverges from catalog (${catalogCount})`)
+  if (registered.length !== catalog.length) {
+    errors.push(`Registration count (${registered.length}) diverges from catalog (${catalog.length})`)
+  }
+
+  const registeredSet = new Set(registered)
+  const catalogSet = new Set(catalog)
+  for (const name of registered) {
+    if (!catalogSet.has(name)) errors.push(`Registered MCP tool missing from catalog: ${name}`)
+  }
+  for (const name of catalog) {
+    if (!registeredSet.has(name)) errors.push(`Catalog MCP tool missing from registration: ${name}`)
   }
 
   const required = [
@@ -39,7 +51,8 @@ function main() {
     'generate-fix-prompt',
   ]
   for (const name of required) {
-    if (!docs.includes(name)) errors.push(`Missing required MCP tool in catalog: ${name}`)
+    if (!registeredSet.has(name)) errors.push(`Missing required registered MCP tool: ${name}`)
+    if (!catalogSet.has(name)) errors.push(`Missing required MCP tool in catalog: ${name}`)
   }
 
   if (errors.length) {
@@ -48,7 +61,7 @@ function main() {
     process.exit(1)
   }
 
-  console.log(`MCP quality gate passed (${registered} tools registered, ${catalogCount} cataloged).`)
+  console.log(`MCP quality gate passed (${registered.length} tools registered and cataloged).`)
   console.log('Note: migrate to @modelcontextprotocol/server v2 when the stable release ships (2026-07-28 RC).')
 }
 

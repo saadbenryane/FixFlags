@@ -47,6 +47,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/samples', label: 'Sample report', note: 'Full example output' },
       { path: '/pricing', label: 'Pricing', note: 'Free vs Pro plans' },
       { path: '/docs/mcp', label: 'MCP docs', note: 'Cursor / Claude Code integration' },
+      { path: '/partners', label: 'Expert program', note: 'Lovable and Bolt delivery partners' },
       { path: '/help', label: 'Help Center', note: 'Guides, billing, MCP, contact' },
       { path: '/help/mcp', label: 'MCP guide', note: 'Canonical MCP setup' },
     ],

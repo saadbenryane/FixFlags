@@ -204,7 +204,7 @@ export const HERO = {
   headlineAccent: 'Finish',
   headlineAccentLegacy: false,
   subhead:
-    'Paste your URL. Find what AI missed before your users do, then copy fixes back into your editor.',
+    'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Review my site',
   navSignUpCta: 'Try free',
   trySampleCta: 'See a sample review',

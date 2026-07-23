@@ -31,6 +31,8 @@ const PREVIEW_TUNNEL_SUFFIXES = [
   '.trycloudflare.com',
   '.loca.lt',
   '.preview.app',
+  '.up.railway.app',
+  '.railway.app',
 ] as const
 
 export function isKnownPreviewTunnelHost(hostname: string): boolean {
