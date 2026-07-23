@@ -111,8 +111,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Regression suite covers HTML-derivable checks only; screenshot/flow/PageSpeed modules are not yet frozen into fixtures
 - Route contract tests cover the critical path (checks create, api-keys, projects, report status poll, re-check); remaining API routes still lack handler-level tests
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
-- No staging/password-protected site support
-- No localhost or private network checks
+- No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
 - No team workspaces or white-label reports
 - Lovable/Bolt MCP not yet supported
 

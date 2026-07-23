@@ -21,6 +21,7 @@ import {
 import type { PipelineContext, PageRun } from './pipeline/types'
 import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
 import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
+import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
 
 export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
@@ -29,6 +30,7 @@ export async function runAudit(auditId: string): Promise<void> {
     if (audit.status === 'COMPLETED') return
 
     const startedAt = new Date()
+    const scanAccess = await resolveAuditScanAccess(auditId)
     const ctx: PipelineContext = {
       auditId,
       deadline: Date.now() + AUDIT_DEADLINE_MS,
@@ -36,6 +38,7 @@ export async function runAudit(auditId: string): Promise<void> {
       pagespeedCalls: 0,
       usage: { inputTokens: 0, outputTokens: 0, models: [] },
       includeAi: audit.includeAi,
+      scanAccess,
     }
 
     // Always fresh capture, including parented re-checks.

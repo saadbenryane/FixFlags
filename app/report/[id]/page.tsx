@@ -18,6 +18,7 @@ import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { assembleReportViewModel } from '@/lib/report/report-view-model'
+import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -248,6 +249,12 @@ export async function loadReportRouteState(params: Props['params'], shareToken?:
       source: f.source ?? undefined,
     }))
 
+    const repoFlags = await loadRepoFlagsForAudit({
+      userId: audit.userId,
+      auditUrl: audit.url,
+    })
+    const allFlags = [...flags, ...repoFlags]
+
     const reportAudit = {
       pageType: audit.pageType,
       verdict: audit.verdict,
@@ -257,7 +264,7 @@ export async function loadReportRouteState(params: Props['params'], shareToken?:
       screenshotCapture: audit.screenshotCapture,
       rubrics: audit.rubrics,
       rubricRows,
-      flags,
+      flags: allFlags,
       shareStatus: audit.shareStatus,
       launchReadiness: audit.launchReadiness,
       reportCompleteness: audit.reportCompleteness,

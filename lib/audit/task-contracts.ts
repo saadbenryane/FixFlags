@@ -11,6 +11,7 @@ import {
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
 import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
 
 export interface TaskRubricSummary {
   name: string
@@ -155,7 +156,9 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   }))
 
   const contract = parseProductContract(audit.productContract)
-  const flags = audit.flags.map(toRankableFlag)
+  const liveFlags = audit.flags.map(toRankableFlag)
+  const repoFlags = await loadRepoFlagsForAudit({ userId: audit.userId, auditUrl: audit.url })
+  const flags = [...liveFlags, ...repoFlags]
   const plan = buildFinishPlan({
     flags,
     rubricRows: audit.rubrics,
@@ -227,6 +230,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   clientId?: string
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   attribution?: AuditAttribution
+  scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null
 }): Promise<CheckAndPlanOutcome> {
   const { auditId, status: initialStatus } = await createAndEnqueueAudit({
     url: options.url,
@@ -236,6 +240,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     auditMode: options.auditMode ?? 'CRITICAL_PATH',
     delayMs: options.delayMs,
     attribution: options.attribution,
+    scanAccess: options.scanAccess ?? null,
   })
 
   let status: string = initialStatus

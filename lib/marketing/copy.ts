@@ -820,7 +820,7 @@ export const FAQ = [
   {
     question: 'Does it work on staging/password-protected sites?',
     answer:
-      'FixFlags checks publicly accessible URLs only. Localhost, private networks, and password-protected pages are not supported yet.',
+      'Yes for preview URLs you can reach over HTTPS (ngrok, Vercel preview, Cloudflare tunnel). On Agency projects, save HTTP basic auth or a session cookie under Projects → Preview access. Localhost and private networks are still not supported.',
   },
   {
     question: 'We already have a live site. Is this only for pre-launch?',
@@ -920,6 +920,11 @@ export const REPORT_COPY = {
     backToPlan: 'Back to Finish Plan',
     rubricProof: 'Why this plan is credible',
     readinessBody: 'The Finish Plan below is ordered by launch impact.',
+  },
+  lovableBolt: {
+    heroTitle: 'Paste this into Lovable or Bolt',
+    heroBody: 'One click copies a fix prompt tuned for your builder. Ship the change, then re-check here.',
+    defaultToolHint: 'Choose your builder, copy the fix, paste it into your AI editor.',
   },
   sampleFocused: {
     eyebrow: 'Sample Finish Plan',

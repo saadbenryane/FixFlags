@@ -222,6 +222,7 @@ export function fullCommands() {
     command('seo:guard', 'npm', ['run', 'seo:guard']),
     command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
     command('completeness:audit', 'npm', ['run', 'completeness:audit']),
+    command('mcp:quality-gate', 'npm', ['run', 'mcp:quality-gate']),
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
     command('security:audit', 'npm', ['audit', '--audit-level=moderate']),
     command('test:scripts', 'npm', ['run', 'test:scripts']),
