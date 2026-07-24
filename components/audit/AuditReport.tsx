@@ -224,11 +224,6 @@ export function AuditReport({
       {!isSample && (
         <div className="space-y-2">
           <RubricBar rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
-          {triageDegraded ? (
-            <p className="text-xs text-muted-foreground">
-              {REPORT_COPY.triageUnavailable.scoreCaveat}
-            </p>
-          ) : null}
         </div>
       )}
 
@@ -319,9 +314,6 @@ export function AuditReport({
         <section id="report-flags" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div>
             <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
-            <p className="mt-1 text-sm text-muted-foreground text-pretty">
-              {REPORT_COPY.sectionTitles.allFixesHint(unresolvedFlagCount)}
-            </p>
           </div>
           <LiveReportExplorer
             model={explorerModel}

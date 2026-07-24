@@ -469,7 +469,6 @@ export const REPORT_COPY = {
   },
   triageUnavailable: {
     title: 'AI summary unavailable',
-    scoreCaveat: 'Automated check scores. AI summary did not finish.',
     signupCta: 'Sign up to retry',
     retryCta: 'Retry AI summary',
   },
@@ -491,8 +490,6 @@ export const REPORT_COPY = {
   },
   sectionTitles: {
     allFixes: 'All fixes',
-    allFixesHint: (count: number) =>
-      `${count} unresolved ${count === 1 ? 'Flag' : 'Flags'}, ranked by launch impact. Select one to inspect its evidence and fix.`,
     productContract: 'Product contract',
     productContractHeading: 'What this product appears to do',
     journey: 'User journey walk',

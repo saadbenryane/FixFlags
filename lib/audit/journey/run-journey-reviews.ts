@@ -13,6 +13,7 @@ import { discoverJourneyLinks } from './discover'
 import { planJourney, isPlannerProviderConfigured } from './planner'
 import { evaluateJourney } from './evaluator'
 import type { JourneyEvaluation } from './evaluator-schema'
+import { createJourneyAIGuard } from './ai-guard'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft, JourneyStepDraft, JourneyType } from './types'
 
@@ -302,6 +303,7 @@ export async function runJourneyReviewsForAudit(
   const browser = await getAuditBrowser()
   let findingCount = 0
   const remaining = () => Math.max(5_000, options.deadline - Date.now())
+  const aiGuard = createJourneyAIGuard()
 
   for (const journeyType of journeyTypes) {
     if (Date.now() >= options.deadline - 8_000) break
@@ -309,6 +311,10 @@ export async function runJourneyReviewsForAudit(
       let plan = null as Awaited<ReturnType<typeof planJourney>>['plan'] | null
       let plannerUsage = null as Awaited<ReturnType<typeof planJourney>>['usage'] | null
       if (journeyType === 'multi-step-funnel' && isPlannerProviderConfigured()) {
+        const planGuard = aiGuard.canCall(4_000)
+        if (!planGuard.allowed) {
+          logger.info('Skipping journey planner', { reason: planGuard.reason, journeyType })
+        } else {
         try {
           const browserForPlan = await getAuditBrowser()
           const planSession = await (
@@ -362,6 +368,11 @@ export async function runJourneyReviewsForAudit(
             journeyType,
             err: String(err),
           })
+          aiGuard.recordOutcome(0, 0, err)
+        }
+        if (plannerUsage) {
+          aiGuard.recordOutcome(plannerUsage.inputTokens, plannerUsage.outputTokens)
+        }
         }
       }
 
@@ -381,6 +392,10 @@ export async function runJourneyReviewsForAudit(
       findingCount += findings.length
 
       if (journeyType === 'multi-step-funnel' && result.steps.length >= 3) {
+        const evalGuard = aiGuard.canCall(4_000)
+        if (!evalGuard.allowed) {
+          logger.info('Skipping journey evaluator', { reason: evalGuard.reason, journeyType })
+        } else {
         try {
           const evalResult = await evaluateJourney(
             {
@@ -413,8 +428,11 @@ export async function runJourneyReviewsForAudit(
               evaluatorModel: evalResult.usage.model,
             },
           })
+          aiGuard.recordOutcome(evalResult.usage.inputTokens, evalResult.usage.outputTokens)
         } catch (err) {
           logger.warn('Journey evaluator failed', { journeyType, err: String(err) })
+          aiGuard.recordOutcome(0, 0, err)
+        }
         }
       }
     } catch (err) {
