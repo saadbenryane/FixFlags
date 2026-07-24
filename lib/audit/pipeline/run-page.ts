@@ -213,6 +213,12 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       : null
     const productContract = resolveContractForCapture(inferred, projectPi)
 
+    // Honest mid-capture anchor before status flips to CHECKING.
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: { progress: PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE },
+    })
+
     await prisma.audit.update({
       where: { id: ctx.auditId },
       data: {

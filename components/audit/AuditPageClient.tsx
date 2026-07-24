@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useAuditPolling } from '@/hooks/useAuditPolling'
+import { useAuditPolling, type AuditStatusPayload } from '@/hooks/useAuditPolling'
 import { useWorkerIdleDetection } from '@/hooks/useWorkerIdleDetection'
 import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
@@ -31,6 +31,8 @@ interface Props {
   pollStatus?: boolean
   session?: { user: { id: string } } | null
 }
+
+type PartialFlag = NonNullable<AuditStatusPayload['partialFlags']>[number]
 
 function isAuditScreenshot(val: unknown): val is AuditScreenshot {
   return val !== null && typeof val === 'object' && 'device' in val
@@ -64,6 +66,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   const workerIdle = useWorkerIdleDetection(status)
   const [retryLoading, setRetryLoading] = useState(false)
   const refreshedRef = useRef(false)
+  const retainedFlagsRef = useRef<PartialFlag[]>([])
 
   useEffect(() => {
     if (isComplete && !refreshedRef.current) {
@@ -142,6 +145,15 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         )
       : []
 
+    const incomingFlags = statusPayload?.partialFlags
+    if (Array.isArray(incomingFlags) && incomingFlags.length > 0) {
+      retainedFlagsRef.current = incomingFlags
+    }
+    const partialFlags =
+      Array.isArray(incomingFlags) && incomingFlags.length > 0
+        ? incomingFlags
+        : retainedFlagsRef.current
+
     return {
       status,
       progress,
@@ -161,9 +173,8 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
         : typeof raw?.score === 'number'
           ? raw.score
           : null,
-      flagCount: statusPayload?.flagCount ?? 0,
       rubrics,
-      partialFlags: statusPayload?.partialFlags ?? [],
+      partialFlags,
       screenshots,
       screenshotCapture: statusPayload?.screenshotCapture,
       workerIdle,
@@ -233,16 +244,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
     )
   }
 
-  if (inProgress) {
-    return (
-      <AuditShell session={session}>
-        <AuditReportProgressive {...progressiveProps} />
-      </AuditShell>
-    )
-  }
-
-  // COMPLETED: keep the progressive frame until router.refresh() swaps in the
-  // server-rendered AuditReport. Returning null here blanked the payoff moment.
+  // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
     <AuditShell session={session}>
       <AuditReportProgressive {...progressiveProps} />

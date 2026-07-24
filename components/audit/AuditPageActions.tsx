@@ -4,14 +4,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, ArrowLeftRight } from 'lucide-react'
-import { toast } from 'sonner'
 
 import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
 import { ShareDrawer } from '@/components/audit/ShareDrawer'
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
@@ -77,16 +76,15 @@ export function AuditPageActions({
   async function handleRecheck() {
     setRecheckLoading(true)
     try {
-      const res = await fetch(`/api/reports/${auditId}/monitoring`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        trackEvent('recheck_started', { audit_id: auditId })
-        router.push(`/report/${data.reportId}`)
-      } else {
-        toast.error((await parseApiErrorResponse(res)).message)
-      }
-    } catch {
-      toast.error(REPORT_COPY.recheck.error)
+      await startScanWithHandoff(router, {
+        url,
+        endpoint: `/api/reports/${auditId}/monitoring`,
+        body: {},
+        errorFallback: REPORT_COPY.recheck.error,
+        onStarted: () => {
+          trackEvent('recheck_started', { audit_id: auditId })
+        },
+      })
     } finally {
       setRecheckLoading(false)
     }

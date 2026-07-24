@@ -53,7 +53,7 @@ function SignInForm() {
     try {
       const { data, error } = await authClient.signIn.email({ email, password })
       if (error) {
-        toast.error(error.message || 'Sign in failed')
+        toast.error(error.message || AUTH.signIn.error)
         return
       }
       if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
@@ -65,7 +65,7 @@ function SignInForm() {
       // next/checkout navigation (same path OAuth takes).
       router.push(postLoginHref)
     } catch {
-      toast.error('Something went wrong')
+      toast.error(AUTH.signIn.unexpectedError)
     } finally {
       setLoading(null)
     }
@@ -147,16 +147,16 @@ function SignInForm() {
       <FormContainer onSubmit={handleSubmit} className="space-y-5">
         <IconInput
           type="email"
-          label="Email"
+          label={AUTH.signIn.emailLabel}
           icon={<Mail className="h-4 w-4" />}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder={AUTH.signIn.emailPlaceholder}
           autoComplete="username webauthn"
           required
         />
         <PasswordInput
-          label="Password"
+          label={AUTH.signIn.passwordLabel}
           value={password}
           onChange={setPassword}
           showRequirements
@@ -171,10 +171,10 @@ function SignInForm() {
           </Link>
           <span className="inline-flex gap-2">
             <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy
+              {AUTH.signIn.privacyLink}
             </Link>
             <Link href="/terms" className="underline hover:text-foreground">
-              Terms
+              {AUTH.signIn.termsLink}
             </Link>
           </span>
         </div>

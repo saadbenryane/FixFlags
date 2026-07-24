@@ -1,4 +1,3 @@
-import { logger } from '@/lib/logger'
 import { getTriageProviderConfig } from '@/lib/audit/judge-config'
 import {
   anthropic,
@@ -17,7 +16,6 @@ import {
   JOURNEY_EVALUATION_TOOL_OPENAI,
   type JourneyEvaluation,
 } from './evaluator-schema'
-import type { JourneyStepDraft } from './types'
 
 export type EvaluatorUsage = LlmUsage
 

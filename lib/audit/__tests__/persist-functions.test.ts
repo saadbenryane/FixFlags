@@ -393,7 +393,7 @@ describe('mergePrescriptionResults', () => {
 
     expect(mockTx.audit.update).toHaveBeenCalledWith({
       where: { id: 'audit-1' },
-      data: { status: 'FINALIZING', progress: 95 },
+      data: { status: 'FINALIZING', progress: PIPELINE_PROGRESS.FINALIZING_PERSIST },
     })
   })
 

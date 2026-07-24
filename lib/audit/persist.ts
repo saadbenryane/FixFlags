@@ -18,6 +18,7 @@ import {
   statusFromScore,
 } from './scoring'
 import { RUBRIC_ORDER } from './constants'
+import { PIPELINE_PROGRESS } from './progress'
 import { flagFingerprint } from './deduplicate'
 import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
 
@@ -383,7 +384,7 @@ export async function persistTriageResults(
       where: { id: auditId },
       data: {
         status: 'FINALIZING',
-        progress: 95,
+        progress: PIPELINE_PROGRESS.FINALIZING_PERSIST,
         pageJob: triageOutput.pageJob,
         pageType: triageOutput.pageType,
         verdict: triageOutput.verdict,
@@ -453,7 +454,7 @@ export async function mergePrescriptionResults(
 
     await tx.audit.update({
       where: { id: auditId },
-      data: { status: 'FINALIZING', progress: 95 },
+      data: { status: 'FINALIZING', progress: PIPELINE_PROGRESS.FINALIZING_PERSIST },
     })
   })
 }

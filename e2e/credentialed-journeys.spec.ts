@@ -75,7 +75,7 @@ test.describe('credentialed revenue journeys', () => {
     )
   })
 
-  test('MCP authenticate, check, poll, Flag, and re-check', async ({ request }) => {
+  test('MCP authenticate, check, poll, Flag, and re-check', async () => {
     const endpoint = process.env.E2E_MCP_URL ?? `${process.env.E2E_BASE_URL ?? ''}/api/mcp`
     expect(endpoint).toMatch(/\/api\/mcp$/)
     throw new Error(

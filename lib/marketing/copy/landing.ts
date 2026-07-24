@@ -435,7 +435,6 @@ export const REPORT_COPY = {
   progressive: {
     eyebrow: 'Fix list',
     preparingFixList: 'Preparing your fix list…',
-    waitingForFlags: 'Flags will appear here as FixFlags verifies them.',
   },
   recheck: {
     label: 'Re-check',

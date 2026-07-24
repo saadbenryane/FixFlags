@@ -55,14 +55,14 @@ function TwoFactorForm() {
         trustDevice,
       })
       if (error) {
-        toast.error(error.message || 'Invalid backup code')
+        toast.error(error.message || AUTH.twoFactor.invalidBackupCode)
         return
       }
       trackEvent('signed_in', { method: 'backup_code' })
       // Same post-login claim path as email/OAuth.
       router.push(postLoginHref)
     } catch {
-      toast.error('Could not verify backup code')
+      toast.error(AUTH.twoFactor.backupCodeError)
     } finally {
       setLoading(null)
     }

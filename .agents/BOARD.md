@@ -4,8 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| report-chrome-honesty | in_progress | auto | main | AI summary callout honesty + remove redundant ShareStatusBanner; RubricBar flag counts; ShareDrawer warning | components/audit/AuditReport.tsx, RubricBar, ShareDrawer, ShareStatusBanner, lib/audit/triage-unavailable*, lib/marketing/copy, DESIGN.md | Preserve scan-loading-ux and auth WIP | 2026-07-24 |
-| current-product-completion | in_progress | auto | main | Close Builder-Native + Current-Product completion: Fix List API parity, product truth, accuracy adjudication, route/E2E expansion, release gate, deployed dogfood. Preserve concurrent auth WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Designated release database/container/deployed-smoke resources, R2 credentials, and credentialed provider sandboxes | 2026-07-24 |
+| current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---
 
@@ -13,6 +12,8 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| scan-loading-completion | auto | COMPLETED hold flags, re-check handoff, handoff hygiene, honest substeps, progressive parity cleanup | 2026-07-24 |
+| report-chrome-honesty | auto | AI summary callout honesty + remove ShareStatusBanner; RubricBar counts; ShareDrawer warning | 2026-07-24 |
 | scan-loading-ux | auto | Instant scan handoff, honest stage progress, progressive↔completed report parity, progress-ui cleanup | 2026-07-24 |
 | made-with-intelligence | codex-root | Evidence-backed technology detection, normalized audit snapshots, report and progressive UI, re-check diffs, sanitized APIs, eligible public profiles, migration/backfill, tests, and canonical docs | 2026-07-23 |
 | customer-journey-completion | cloud-agent | Phases 1–3 anon evidence/honest Copy/score/nav; merged to main | 2026-07-23 |

@@ -5,6 +5,8 @@ export const PIPELINE_PROGRESS = {
   CHECKING: 40,
   JUDGING: 70,
   FINALIZING: 90,
+  /** Late FINALIZING after persist packaging; still before COMPLETED. */
+  FINALIZING_PERSIST: 95,
   COMPLETED: 100,
 } as const
 

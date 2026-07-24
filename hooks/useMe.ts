@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { AUTH } from '@/lib/marketing/copy'
 
 export interface MeUser {
   id: string
@@ -37,23 +38,6 @@ interface MeState {
 }
 
 let claimToastShown = false
-let pendingMePromise: Promise<MeState> | null = null
-
-async function fetchMeShared(): Promise<MeState> {
-  if (pendingMePromise) return pendingMePromise
-  pendingMePromise = (async () => {
-    try {
-      const res = await fetch('/api/me')
-      if (!res.ok) throw new Error('Could not load your account.')
-      const data = await res.json()
-      return { user: data.user ?? null, isLoading: false, claimedCount: data.claimedCount ?? null, error: null }
-    } catch (error) {
-      return { user: null, isLoading: false, claimedCount: null, error: error instanceof Error ? error.message : 'Could not load your account.' }
-    }
-  })()
-  pendingMePromise.finally(() => { pendingMePromise = null })
-  return pendingMePromise
-}
 
 export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
   const [state, setState] = useState<MeState>({
@@ -62,12 +46,13 @@ export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
     claimedCount: null,
     error: null,
   })
+  const claim = options?.claim ?? false
 
   const refresh = useCallback(async () => {
     try {
       setState((current) => ({ ...current, isLoading: true, error: null }))
-      const res = await fetch(options?.claim ? '/api/me?claim=1' : '/api/me')
-      if (!res.ok) throw new Error('Could not save your report to this account.')
+      const res = await fetch(claim ? '/api/me?claim=1' : '/api/me')
+      if (!res.ok) throw new Error(claim ? AUTH.me.claimError : AUTH.me.loadError)
       const data = await res.json()
       setState({
         user: data.user ?? null,
@@ -77,59 +62,50 @@ export function useMe(options?: { claim?: boolean; showClaimToast?: boolean }) {
       })
       return data
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not load your account.'
+      const message = error instanceof Error ? error.message : AUTH.me.loadError
       setState((s) => ({ ...s, isLoading: false, error: message }))
       return null
     }
-  }, [options?.claim])
+  }, [claim])
+
+  const cancelRef = useRef(false)
 
   useEffect(() => {
-    if (!options?.claim) {
-      fetchMeShared().then((data) => setState(data))
-      return
-    }
+    cancelRef.current = false
 
-    let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/me?claim=1')
-        if (!res.ok) throw new Error('Could not save your report to this account.')
+        const res = await fetch(claim ? '/api/me?claim=1' : '/api/me')
+        if (!res.ok) throw new Error(claim ? AUTH.me.claimError : AUTH.me.loadError)
         const data = await res.json()
-        if (cancelled) return
+        if (cancelRef.current) return
         setState({
           user: data.user ?? null,
           isLoading: false,
           claimedCount: data.claimedCount ?? null,
           error: null,
         })
-        if (
-          options.showClaimToast &&
-          data.claimedCount > 0 &&
-          !claimToastShown
-        ) {
+        if (claim && options?.showClaimToast && data.claimedCount > 0 && !claimToastShown) {
           claimToastShown = true
-          toast.success(
-            `Saved ${data.claimedCount} audit${data.claimedCount !== 1 ? 's' : ''} to your account`
-          )
+          toast.success(AUTH.me.claimSuccess(data.claimedCount))
         }
       } catch (error) {
-        if (!cancelled) {
-          setState((s) => ({
-            ...s,
-            isLoading: false,
-            error: error instanceof Error ? error.message : 'Could not save your report to this account.',
-          }))
-          if (options.showClaimToast) {
-            toast.error('Could not save your scan to this account. Refresh and try again.')
-          }
+        if (cancelRef.current) return
+        setState((s) => ({
+          ...s,
+          isLoading: false,
+          error: error instanceof Error ? error.message : AUTH.me.loadError,
+        }))
+        if (claim && options?.showClaimToast) {
+          toast.error(AUTH.me.claimFailure)
         }
       }
     })()
 
     return () => {
-      cancelled = true
+      cancelRef.current = true
     }
-  }, [options?.claim, options?.showClaimToast, refresh])
+  }, [claim, options?.showClaimToast, refresh])
 
   return { ...state, refresh }
 }

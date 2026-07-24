@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
+import { AUTH } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface PasswordInputProps {
@@ -51,7 +52,7 @@ export function PasswordInput({
           size="icon"
           onClick={() => setVisible((v) => !v)}
           className="absolute right-1 top-2.5 h-8 w-8 text-muted-foreground hover:text-foreground"
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? AUTH.password.hideLabel : AUTH.password.showLabel}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
@@ -59,7 +60,7 @@ export function PasswordInput({
       {showRequirements && (
         <ul className="text-xs text-muted-foreground space-y-1 px-1">
           <li className={cn(hasMinLength && 'text-foreground')}>
-            {hasMinLength ? '✓' : '○'} At least {minLength} characters
+            {hasMinLength ? '✓' : '○'} {AUTH.password.minLength(minLength)}
           </li>
         </ul>
       )}

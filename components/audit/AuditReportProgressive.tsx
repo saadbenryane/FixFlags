@@ -18,6 +18,7 @@ import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
+import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
 import { getProgressPercent, getStagePresentation } from '@/lib/audit/progress-ui'
 import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -36,7 +37,6 @@ interface AuditReportProgressiveProps {
   verdict?: string | null
   score?: number | null
   progress?: number
-  flagCount?: number
   rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
   partialFlags?: Array<{
     id: string
@@ -88,11 +88,13 @@ export function AuditReportProgressive({
   rubrics = [],
   partialFlags = [],
   screenshots = [],
+  screenshotCapture,
   workerIdle = false,
   actionTimeline = [],
   productContract = null,
   technologyProfile,
 }: AuditReportProgressiveProps) {
+  const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
   const stage = useMemo(
     () => getStagePresentation(status, progress),
@@ -123,7 +125,6 @@ export function AuditReportProgressive({
     !workerIdle &&
     !showWorkerWarning
 
-  // Ease the ring toward real progress; do not drive copy from this timer.
   useEffect(() => {
     if (!isLoading) return
     const interval = setInterval(() => setEaseTick((t) => t + 1), 2500)
@@ -132,11 +133,15 @@ export function AuditReportProgressive({
 
   useEffect(() => {
     setDisplayProgress((prev) => {
-      if (targetProgress <= prev) return prev
+      if (targetProgress <= prev) return targetProgress >= 100 ? 100 : prev
       const next = prev + Math.max(1, (targetProgress - prev) * 0.4)
       return Math.min(targetProgress, Math.round(next))
     })
   }, [easeTick, targetProgress])
+
+  useEffect(() => {
+    if (status === 'COMPLETED') setDisplayProgress(100)
+  }, [status])
 
   const rubricsComputed = useMemo(
     () => buildPartialRubricsComputed(rubrics, partialFlags),
@@ -149,6 +154,9 @@ export function AuditReportProgressive({
   })
 
   const userVerdict = displayVerdict(verdict ?? null)
+  const captureUx = resolveScreenshotUx(screenshots, screenshotCapture ?? null)
+  const showCaptureUx =
+    Boolean(screenshotCapture) || screenshots.length > 0 || status === 'COMPLETED'
 
   const explorerModel = useMemo(
     () =>
@@ -166,6 +174,7 @@ export function AuditReportProgressive({
 
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
+  const showSticky = !isFailed
 
   return (
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
@@ -176,11 +185,13 @@ export function AuditReportProgressive({
         screenshots={screenshots}
         scanning={isLoading}
         scanningLabel={isLoading ? stage.scanningLabel : null}
+        screenshotLimited={showCaptureUx && captureUx.limited}
+        screenshotPartial={showCaptureUx && captureUx.partial}
       />
 
       <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
 
-      {isLoading ? (
+      {showSticky ? (
         <ReportStickyToolbar
           showContract={showContract}
           showTimeline={showTimeline}
@@ -189,27 +200,6 @@ export function AuditReportProgressive({
           siteUrl={url || undefined}
           score={score}
         />
-      ) : null}
-
-      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
-        <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-5 w-24" />
-            </div>
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-24 rounded-full" />
-            <Skeleton className="h-8 w-20 rounded-full" />
-            <Skeleton className="h-8 w-28 rounded-full" />
-          </div>
-        </Card>
-      ) : technologyProfile ? (
-        <div id="report-stack">
-          <MadeWithProfile profile={technologyProfile} />
-        </div>
       ) : null}
 
       {userVerdict ? (
@@ -230,13 +220,34 @@ export function AuditReportProgressive({
         </Callout>
       )}
 
+      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
+        <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-24" />
+            </div>
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+            <Skeleton className="h-8 w-28 rounded-full" />
+          </div>
+        </Card>
+      ) : technologyProfile ? (
+        <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
+          <MadeWithProfile profile={technologyProfile} />
+        </div>
+      ) : null}
+
       <section
         id="report-flags"
         className="scroll-mt-[var(--header-offset)] space-y-4"
         aria-busy={isLoading}
       >
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {stage.statusLine}. {stage.detail}
+          {isLoading ? `${stage.statusLine}. ${stage.detail}` : REPORT_COPY.sectionTitles.allFixes}
         </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -248,14 +259,14 @@ export function AuditReportProgressive({
           </div>
           {isLoading ? (
             <p className="font-mono text-xs tabular-nums text-muted-foreground">
-              {displayProgress}% · {stage.statusLine}
+              {stage.statusLine}
             </p>
           ) : null}
         </div>
         <LiveReportExplorer
           model={explorerModel}
           loading={isLoading}
-          progress={displayProgress}
+          progress={isLoading ? displayProgress : undefined}
         />
       </section>
 
@@ -285,7 +296,17 @@ export function AuditReportProgressive({
   )
 }
 
-/** Static shell for route-level loading states. */
-export function AuditReportProgressiveShell() {
-  return <AuditReportProgressive />
+/** Static shell for route-level loading states; prefers active-audit URL for continuity. */
+export function AuditReportProgressiveShell({ url }: { url?: string } = {}) {
+  const [activeUrl, setActiveUrl] = useState(url ?? '')
+
+  useEffect(() => {
+    if (url) {
+      setActiveUrl(url)
+      return
+    }
+    setActiveUrl(getActiveAudit()?.url ?? '')
+  }, [url])
+
+  return <AuditReportProgressive status="QUEUED" url={activeUrl} />
 }

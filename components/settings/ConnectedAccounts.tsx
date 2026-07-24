@@ -21,6 +21,7 @@ export function ConnectedAccounts({
 }: Props) {
   const isGoogle = linkedProviders.includes('google')
   const isGithub = linkedProviders.includes('github')
+  const primaryMethod = isGoogle ? AUTH.connectedAccounts.google : isGithub ? AUTH.connectedAccounts.github : null
 
   const methods = [
     {
@@ -36,7 +37,7 @@ export function ConnectedAccounts({
     {
       label: AUTH.connectedAccounts.password,
       connected: hasPassword,
-      detail: hasPassword ? (emailVerified ? 'Verified' : 'Not verified') : AUTH.connectedAccounts.noPassword,
+      detail: hasPassword ? (emailVerified ? AUTH.connectedAccounts.connected : AUTH.connectedAccounts.notConnected) : AUTH.connectedAccounts.noPassword,
     },
     {
       label: AUTH.connectedAccounts.passkeys,
@@ -64,6 +65,11 @@ export function ConnectedAccounts({
           </li>
         ))}
       </ul>
+      {primaryMethod && !hasPassword && passkeyCount === 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {AUTH.connectedAccounts.signedInVia(primaryMethod)}
+        </p>
+      )}
     </Card>
   )
 }

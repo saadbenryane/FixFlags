@@ -123,7 +123,9 @@ export async function GET(
     const showPartialFlags =
       effectiveStatus === 'CHECKING' ||
       effectiveStatus === 'JUDGING' ||
-      effectiveStatus === 'FINALIZING'
+      effectiveStatus === 'FINALIZING' ||
+      // Keep flags on COMPLETED so the progressive hold frame does not blank before SSR swap.
+      effectiveStatus === 'COMPLETED'
 
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
     const actionTimeline = parseActionTimeline(performanceData)

@@ -114,7 +114,8 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
 - No team workspaces or white-label reports
-- Deployed Lovable/Bolt connector smoke and release credential proof remain open; local MCP setup and API-key auth for those builders are shipped
+- Deployed Lovable/Bolt connector smoke, release credential proof, and production dogfood remain open; local MCP setup and API-key auth for those builders are shipped
+- Full `npm run verify` / `verify:release` still require a quiet tree plus designated RELEASE_* / R2 / smoke resources (see `.agents/handoffs/current-product-completion.md`)
 
 ## Launch gates
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
+import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 
 export async function retryAudit(auditId: string): Promise<{ status: string }> {
   const audit = await prisma.audit.findUnique({
@@ -33,7 +34,7 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
     where: { id: auditId },
     data: {
       status: 'QUEUED',
-      progress: 5,
+      progress: PIPELINE_PROGRESS.QUEUED,
       startedAt: null,
       errorMsg: null,
       failureCode: null,

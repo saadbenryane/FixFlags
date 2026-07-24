@@ -7,11 +7,12 @@
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
 | `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Pass | `npm run doctor` passes locally |
-| `RELEASE_FRESH_DATABASE_URL` + reset flag | Blocked | Not set in `.env.local`; required for `npm run verify:release` |
-| `RELEASE_CONTAINER_ENV_FILE` | Blocked | Production-like container env missing |
-| `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target missing |
-| R2 capture credentials | Blocked | `R2_*` commented out in `.env.local`; Linear full-pipeline capture requires storage |
-| `npm run verify:release` | **Not run** | Blocked on credentials above |
+| `RELEASE_FRESH_DATABASE_URL` + reset flag | Partial | Local disposable DB `fixflags_release` created; `.cache/release/exports.sh` ready. **Prisma migrate reset blocked** until explicit user consent for AI agents. |
+| `RELEASE_CONTAINER_ENV_FILE` | Partial | `.cache/release/container.env` written (gitignored) |
+| `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target still missing |
+| R2 capture credentials | Blocked | `R2_*` not set in `.env.local` |
+| Quiet tree for full verify | Blocked | Concurrent writers keep mutating the working tree; side-effect guard correctly aborts mid-run |
+| `npm run verify:release` | **Not run** | Blocked on consent + smoke + R2 + quiet tree |
 | Credentialed Playwright suite | Scaffolded | `e2e/credentialed-journeys.spec.ts` skips unless `E2E_CREDENTIALED=true` + release DB |
 
 Record command output here when credentials are provisioned.

@@ -3,11 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { displayHostname, parsePageLabel } from '@/lib/utils/url-helpers'
+import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 export interface JourneyPage {
   id: string
@@ -62,23 +61,15 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
     if (!primaryUrl || scanning) return
     setScanning(true)
     try {
-      const res = await fetch('/api/checks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await startScanWithHandoff(router, {
+        url: primaryUrl,
+        body: {
           url: primaryUrl,
           parentId: auditId,
           mode: 'critical_path',
-        }),
+        },
+        errorFallback: 'Could not start the deeper scan. Try again.',
       })
-      if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
-        return
-      }
-      const data = await res.json()
-      router.push(`/report/${data.reportId}`)
-    } catch {
-      toast.error('Could not start the deeper scan. Try again.')
     } finally {
       setScanning(false)
     }

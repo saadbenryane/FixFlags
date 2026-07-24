@@ -59,11 +59,11 @@ export default function ForgotPasswordPage() {
         <FormContainer onSubmit={handleSubmit}>
           <IconInput
             type="email"
-            label="Email"
+            label={AUTH.forgotPassword.emailLabel}
             icon={<Mail className="h-4 w-4" />}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={AUTH.forgotPassword.emailPlaceholder}
             required
           />
           <Button type="submit" className="w-full" disabled={loading}>

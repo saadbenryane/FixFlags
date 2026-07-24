@@ -11,10 +11,10 @@ import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
 import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
 import { discoverJourneyLinks } from './discover'
 import { planJourney, isPlannerProviderConfigured } from './planner'
-import { evaluateJourney, isEvaluatorProviderConfigured } from './evaluator'
+import { evaluateJourney } from './evaluator'
 import type { JourneyEvaluation } from './evaluator-schema'
 import { runJourneyTemplate } from './run-template'
-import type { JourneyFindingDraft, JourneyRunResult, JourneyStepDraft, JourneyType } from './types'
+import type { JourneyFindingDraft, JourneyStepDraft, JourneyType } from './types'
 
 const PAID_JOURNEY_TYPES: JourneyType[] = [
   'first-visit',
@@ -204,6 +204,7 @@ export async function persistJourneyResult(
       plannerInputTokens: result.plannerUsage?.inputTokens ?? 0,
       plannerOutputTokens: result.plannerUsage?.outputTokens ?? 0,
       plannerModel: result.plannerUsage?.model,
+      planJson: result.planJson ?? undefined,
       steps: {
         create: result.steps.map((s) => ({
           stepNumber: s.stepNumber,
@@ -373,6 +374,9 @@ export async function runJourneyReviewsForAudit(
         plan,
         plannerUsage: plannerUsage ?? undefined,
       })
+      if (plan) {
+        result.planJson = JSON.stringify(plan)
+      }
       const findings = await persistJourneyResult(auditId, result)
       findingCount += findings.length
 

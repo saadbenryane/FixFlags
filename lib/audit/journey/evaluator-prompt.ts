@@ -48,6 +48,7 @@ export function buildEvaluatorUserPrompt(input: EvaluatorUserPromptInput): strin
       const evidence: string[] = []
       if (s.screenshotAfterUrl) evidence.push(`screenshot: ${s.screenshotAfterUrl}`)
       if (s.url) evidence.push(`url: ${s.url}`)
+      if (s.elementDescription) evidence.push(`element: ${s.elementDescription}`)
       if (s.accessibilityTree) evidence.push(`a11y tree: ${s.accessibilityTree.slice(0, 800)}`)
       if (s.consoleErrors?.length) evidence.push(`console errors: ${s.consoleErrors.join('; ')}`)
       if (s.networkErrors?.length) evidence.push(`network errors: ${s.networkErrors.join('; ')}`)

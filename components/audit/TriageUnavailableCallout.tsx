@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { Callout } from '@/components/ui/callout'
 import { Button } from '@/components/ui/button'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -55,7 +56,7 @@ export function TriageUnavailableCallout({
           <div className="flex flex-wrap gap-2">
             {showSignup ? (
               <Button asChild size="sm">
-                <Link href={signUpHref}>{REPORT_COPY.triageUnavailable.signupCta}</Link>
+                <Link href={signUpHref as Route}>{REPORT_COPY.triageUnavailable.signupCta}</Link>
               </Button>
             ) : null}
             {showRetry ? (

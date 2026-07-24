@@ -20,14 +20,14 @@ export function PasskeyEnrollPrompt({ onComplete }: Props) {
     try {
       const { error } = await authClient.passkey.addPasskey()
       if (error) {
-        toast.error(error.message || 'Could not create passkey')
+        toast.error(error.message || AUTH.passkeyEnroll.createError)
         setBusy(false)
         return
       }
       toast.success(AUTH.passkeyEnroll.success)
       onComplete()
     } catch {
-      toast.error('Passkey creation was cancelled or failed')
+      toast.error(AUTH.passkeyEnroll.createFailed)
       setBusy(false)
     }
   }

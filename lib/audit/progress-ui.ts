@@ -33,10 +33,20 @@ function resolveSubstepDetail(
   if (status === 'CAPTURING' && progress >= PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE) {
     return substeps.CAPTURE_DONE
   }
-  if (status === 'CHECKING') {
+  if (
+    (status === 'CHECKING' || status === 'JUDGING') &&
+    progress >= PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START &&
+    progress < PIPELINE_PROGRESS.JUDGING
+  ) {
     if (progress >= PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE) return substeps.JOURNEY_DONE
-    if (progress >= PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START) return substeps.JOURNEY_START
-    if (progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE) return substeps.CHECKS_DONE
+    return substeps.JOURNEY_START
+  }
+  if (
+    status === 'CHECKING' &&
+    progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE &&
+    progress < PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START
+  ) {
+    return substeps.CHECKS_DONE
   }
   return null
 }
@@ -80,28 +90,8 @@ export function getStagePresentation(
   }
 }
 
-export function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}m ${secs}s`
-}
-
-/** Format a millisecond offset as a short elapsed label (timeline events). */
 export function formatElapsedMs(ms: number): string {
   const s = Math.floor(ms / 1000)
   if (s < 60) return `${s}s`
   return `${Math.floor(s / 60)}m ${s % 60}s`
-}
-
-export function truncateUrl(url: string, max = 48): string {
-  try {
-    const parsed = new URL(url)
-    const display = parsed.hostname + parsed.pathname
-    if (display.length <= max) return display
-    return display.slice(0, max - 1) + '…'
-  } catch {
-    if (url.length <= max) return url
-    return url.slice(0, max - 1) + '…'
-  }
 }

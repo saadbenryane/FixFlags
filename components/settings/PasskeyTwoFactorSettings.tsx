@@ -43,16 +43,17 @@ export function PasskeyTwoFactorSettings({
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null)
   const [newPasskeyName, setNewPasskeyName] = useState('')
   const [enabled, setEnabled] = useState(twoFactorEnabled)
+  const sec = AUTH.security
 
   const loadPasskeys = useCallback(async () => {
     const { data, error: listError } = await authClient.passkey.listUserPasskeys()
     if (listError) {
-      setError(listError.message || 'Could not load passkeys')
+      setError(listError.message || sec.loadError)
       setPasskeys([])
       return
     }
     setPasskeys((data as PasskeyRow[]) ?? [])
-  }, [])
+  }, [sec.loadError])
 
   useEffect(() => {
     void (async () => {
@@ -73,15 +74,15 @@ export function PasskeyTwoFactorSettings({
         name: newPasskeyName.trim() || undefined,
       })
       if (addError) {
-        setError(addError.message || 'Could not add passkey')
+        setError(addError.message || sec.addError)
         return
       }
       setNewPasskeyName('')
-      toast.success('Passkey added')
+      toast.success(sec.addSuccess)
       await loadPasskeys()
       router.refresh()
     } catch {
-      setError('Passkey registration was cancelled or failed')
+      setError(sec.registrationFailed)
     } finally {
       setBusy(null)
     }
@@ -89,12 +90,12 @@ export function PasskeyTwoFactorSettings({
 
   async function removePasskey(id: string) {
     const ok = await confirm({
-      title: 'Remove this passkey?',
+      title: sec.removeTitle,
       description:
         enabled && passkeys.length <= 1
-          ? 'This is your last passkey. Remove it only if you still have backup codes.'
-          : 'You will not be able to use this passkey to sign in.',
-      confirmLabel: 'Remove passkey',
+          ? sec.removeDescriptionLast
+          : sec.removeDescription,
+      confirmLabel: sec.removeLabel,
       destructive: true,
     })
     if (!ok) return
@@ -103,10 +104,10 @@ export function PasskeyTwoFactorSettings({
     try {
       const { error: deleteError } = await authClient.passkey.deletePasskey({ id })
       if (deleteError) {
-        setError(deleteError.message || 'Could not remove passkey')
+        setError(deleteError.message || sec.removeError)
         return
       }
-      toast.success('Passkey removed')
+      toast.success(sec.removeSuccess)
       await loadPasskeys()
       router.refresh()
     } finally {
@@ -117,7 +118,7 @@ export function PasskeyTwoFactorSettings({
   async function enableTwoFactor(event: React.FormEvent) {
     event.preventDefault()
     if (passkeys.length < 1) {
-      setError('Add a passkey before enabling two-factor authentication')
+      setError(sec.passkeyRequired)
       return
     }
     setBusy('enable')
@@ -127,13 +128,13 @@ export function PasskeyTwoFactorSettings({
         password: password || undefined,
       })
       if (enableError) {
-        setError(enableError.message || 'Could not enable two-factor authentication')
+        setError(enableError.message || sec.enableError)
         return
       }
       setEnabled(true)
       setPassword('')
       setBackupCodes(data?.backupCodes ?? null)
-      toast.success('Passkey two-factor authentication enabled')
+      toast.success(sec.enableSuccess)
       router.refresh()
     } finally {
       setBusy(null)
@@ -143,9 +144,9 @@ export function PasskeyTwoFactorSettings({
   async function disableTwoFactor(event: React.FormEvent) {
     event.preventDefault()
     const ok = await confirm({
-      title: 'Disable two-factor authentication?',
-      description: 'Password-only sign-in will work again without a passkey challenge.',
-      confirmLabel: 'Disable 2FA',
+      title: sec.disableTitle,
+      description: sec.disableDescription,
+      confirmLabel: sec.disableLabel,
       destructive: true,
     })
     if (!ok) return
@@ -156,13 +157,13 @@ export function PasskeyTwoFactorSettings({
         password: password || undefined,
       })
       if (disableError) {
-        setError(disableError.message || 'Could not disable two-factor authentication')
+        setError(disableError.message || sec.disableError)
         return
       }
       setEnabled(false)
       setPassword('')
       setBackupCodes(null)
-      toast.success('Two-factor authentication disabled')
+      toast.success(sec.disableSuccess)
       router.refresh()
     } finally {
       setBusy(null)
@@ -177,12 +178,12 @@ export function PasskeyTwoFactorSettings({
         password: password || undefined,
       })
       if (genError) {
-        setError(genError.message || 'Could not generate backup codes')
+        setError(genError.message || sec.backupCodesError)
         return
       }
       setBackupCodes(data?.backupCodes ?? null)
       setPassword('')
-      toast.success('New backup codes generated')
+      toast.success(sec.backupCodesSuccess)
     } finally {
       setBusy(null)
     }
@@ -191,14 +192,14 @@ export function PasskeyTwoFactorSettings({
   async function copyBackupCodes() {
     if (!backupCodes?.length) return
     await navigator.clipboard.writeText(backupCodes.join('\n'))
-    toast.success(AUTH.security.backupCodesCopied)
+    toast.success(sec.backupCodesCopied)
   }
 
   return (
     <div className="space-y-6">
       {confirmDialog}
       {error && (
-        <Callout variant="danger" title="Security update failed">
+        <Callout variant="danger" title={sec.errorTitle}>
           {error}
         </Callout>
       )}
@@ -206,21 +207,21 @@ export function PasskeyTwoFactorSettings({
       <Card className="border-0 p-5 shadow-card">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-base font-semibold">{AUTH.security.title}</h2>
-            <p className="text-sm text-muted-foreground">{AUTH.security.description}</p>
+            <h2 className="text-base font-semibold">{sec.title}</h2>
+            <p className="text-sm text-muted-foreground">{sec.description}</p>
           </div>
           <Badge variant={enabled ? 'default' : 'secondary'}>
-            {enabled ? AUTH.security.enabledBadge : AUTH.security.disabledBadge}
+            {enabled ? sec.enabledBadge : sec.disabledBadge}
           </Badge>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">{AUTH.security.passkeysTitle}</h3>
+            <h3 className="text-sm font-medium">{sec.passkeysTitle}</h3>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading passkeys…</p>
+              <p className="text-sm text-muted-foreground">{sec.loadingPasskeys}</p>
             ) : passkeys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{AUTH.security.passkeysEmpty}</p>
+              <p className="text-sm text-muted-foreground">{sec.passkeysEmpty}</p>
             ) : (
               <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
                 {passkeys.map((passkey) => (
@@ -231,7 +232,7 @@ export function PasskeyTwoFactorSettings({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{passkeyLabel(passkey)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {passkey.backedUp ? 'Synced' : 'Device'}
+                        {passkey.backedUp ? sec.synced : sec.device}
                         {passkey.deviceType ? ` · ${passkey.deviceType}` : ''}
                       </p>
                     </div>
@@ -241,7 +242,7 @@ export function PasskeyTwoFactorSettings({
                       size="sm"
                       disabled={busy !== null}
                       onClick={() => void removePasskey(passkey.id)}
-                      aria-label={AUTH.security.deletePasskey}
+                      aria-label={sec.deletePasskey}
                     >
                       {busy === `delete-${passkey.id}` ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -259,8 +260,8 @@ export function PasskeyTwoFactorSettings({
             <Input
               value={newPasskeyName}
               onChange={(event) => setNewPasskeyName(event.target.value)}
-              placeholder="Passkey name (optional)"
-              aria-label="Passkey name"
+              placeholder={sec.passkeyNamePlaceholder}
+              aria-label={sec.passkeyNameLabel}
               disabled={busy !== null}
             />
             <Button type="button" onClick={() => void addPasskey()} disabled={busy !== null}>
@@ -269,7 +270,7 @@ export function PasskeyTwoFactorSettings({
               ) : (
                 <Fingerprint className="mr-2 h-4 w-4" />
               )}
-              {AUTH.security.addPasskey}
+              {sec.addPasskey}
             </Button>
           </div>
         </div>
@@ -281,13 +282,13 @@ export function PasskeyTwoFactorSettings({
           className="space-y-4"
         >
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">{AUTH.security.enableTitle}</h3>
-            <p className="text-sm text-muted-foreground">{AUTH.security.enableDescription}</p>
+            <h3 className="text-sm font-medium">{sec.enableTitle}</h3>
+            <p className="text-sm text-muted-foreground">{sec.enableDescription}</p>
           </div>
           {hasPassword ? (
             <div className="space-y-2">
               <label htmlFor="two-factor-password" className="text-sm font-medium">
-                {AUTH.security.passwordLabel}
+                {sec.passwordLabel}
               </label>
               <Input
                 id="two-factor-password"
@@ -300,7 +301,7 @@ export function PasskeyTwoFactorSettings({
               />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">{AUTH.security.passwordlessHint}</p>
+            <p className="text-sm text-muted-foreground">{sec.passwordlessHint}</p>
           )}
           <div className="flex flex-wrap gap-3">
             <Button
@@ -312,7 +313,7 @@ export function PasskeyTwoFactorSettings({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               <KeyRound className="mr-2 h-4 w-4" />
-              {enabled ? AUTH.security.disableCta : AUTH.security.enableCta}
+              {enabled ? sec.disableCta : sec.enableCta}
             </Button>
             {enabled && (
               <Button
@@ -322,7 +323,7 @@ export function PasskeyTwoFactorSettings({
                 onClick={() => void regenerateBackupCodes()}
               >
                 {busy === 'backup' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {AUTH.security.regenerateBackupCodes}
+                {sec.regenerateBackupCodes}
               </Button>
             )}
           </div>
@@ -330,13 +331,13 @@ export function PasskeyTwoFactorSettings({
       </Card>
 
       {backupCodes && backupCodes.length > 0 && (
-        <Callout variant="warning" title={AUTH.security.backupCodesTitle}>
-          <p className="mb-3 text-sm">{AUTH.security.backupCodesBody}</p>
+        <Callout variant="warning" title={sec.backupCodesTitle}>
+          <p className="mb-3 text-sm">{sec.backupCodesBody}</p>
           <pre className="mb-3 overflow-x-auto rounded-md bg-background/60 p-3 font-mono text-xs">
             {backupCodes.join('\n')}
           </pre>
           <Button type="button" size="sm" variant="outline" onClick={() => void copyBackupCodes()}>
-            {AUTH.security.copyBackupCodes}
+            {sec.copyBackupCodes}
           </Button>
         </Callout>
       )}

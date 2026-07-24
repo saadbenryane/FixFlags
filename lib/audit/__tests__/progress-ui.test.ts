@@ -36,10 +36,21 @@ describe('getStagePresentation', () => {
     )
   })
 
-  it('does not leak journey substeps into JUDGING', () => {
+  it('does not leak journey substeps into late JUDGING', () => {
     const presentation = getStagePresentation('JUDGING', PIPELINE_PROGRESS.JUDGING)
     assert.equal(presentation.detail, AUDIT_PROGRESS.stages.find((s) => s.status === 'JUDGING')?.subtitle)
     assert.equal(presentation.scanningLabel, 'AI review')
+  })
+
+  it('surfaces journey substeps while status is JUDGING but progress is still in the journey band', () => {
+    assert.equal(
+      getStagePresentation('JUDGING', PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START).detail,
+      AUDIT_PROGRESS.substeps.JOURNEY_START
+    )
+    assert.equal(
+      getStagePresentation('JUDGING', PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE).detail,
+      AUDIT_PROGRESS.substeps.JOURNEY_DONE
+    )
   })
 
   it('falls back to QUEUED presentation for unknown status', () => {

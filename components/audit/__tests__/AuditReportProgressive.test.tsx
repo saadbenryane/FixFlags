@@ -36,7 +36,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByLabelText(/Score pending/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
-    expect(screen.getByRole('status')).toHaveTextContent(/Step 2 of 5/)
+    expect(screen.getAllByText(/Step 2 of 5/).length).toBeGreaterThan(0)
   })
 
   it('renders product contract when provided', () => {
@@ -73,11 +73,11 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByText('Opened page')).toBeInTheDocument()
   })
 
-  it('keeps the completed frame focused on all fixes', () => {
+  it('keeps the completed frame focused on all fixes with sticky wayfinding', () => {
     render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByRole('heading', { name: 'All fixes' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Flags' })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Report sections' })).toBeInTheDocument()
   })
 
   it('streams every partial flag into the same Fix list as they are found', async () => {
@@ -91,7 +91,6 @@ describe('AuditReportProgressive', () => {
       <AuditReportProgressive
         status="CHECKING"
         url={URL}
-        flagCount={partialFlags.length}
         partialFlags={partialFlags}
       />
     )

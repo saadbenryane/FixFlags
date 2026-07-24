@@ -78,6 +78,8 @@ export interface JourneyRunResult {
   }>
   /** Token usage from the journey planner (if AI planner was used). */
   plannerUsage?: { inputTokens: number; outputTokens: number; model: string } | null
+  /** Serialized AI plan for audit trail and debugging. */
+  planJson?: string | null
 }
 
 export const JOURNEY_MAX_STEPS = 10

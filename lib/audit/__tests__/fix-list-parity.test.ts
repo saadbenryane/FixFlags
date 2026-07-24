@@ -28,7 +28,7 @@ describe('fix list surface parity', () => {
     impactTag: 'CONVERSION',
     problem: 'Primary CTA is vague',
     evidence: 'Button says Continue',
-    whyItMatters: undefined,
+    whyItMatters: 'Vague CTAs reduce conversion',
     fix: 'Name the outcome',
     agentPrompt: 'Rename the primary CTA.',
     cursorPrompt: null,
@@ -84,7 +84,7 @@ describe('fix list surface parity', () => {
 
   it('includes Agency repo Flags that live-only buildFixList omits', async () => {
     const liveOnly = buildFixList({
-      flags: [liveFlag],
+      flags: [{ ...liveFlag, whyItMatters: undefined }],
       rubricRows: [{ name: 'MESSAGE', grade: 'B' }],
       url: 'https://example.com/',
       promptAccess: 'all',

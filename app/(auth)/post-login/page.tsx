@@ -87,7 +87,7 @@ function PostLoginRedirect() {
             ? isLoading
               ? AUTH.reportContext.saving(hostname)
               : AUTH.reportContext.unlocking
-            : 'Signing you in'}
+            : AUTH.postLogin.signingIn}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {isReportContext && !isLoading && claimedCount !== null
@@ -101,7 +101,7 @@ function PostLoginRedirect() {
 
 export default function PostLoginPage() {
   return (
-    <Suspense fallback={<div className="h-20 w-56 animate-pulse rounded-card bg-muted/50" aria-label="Preparing your account" />}>
+    <Suspense fallback={<div className="h-20 w-56 animate-pulse rounded-card bg-muted/50" aria-label={AUTH.postLogin.preparing} />}>
       <PostLoginRedirect />
     </Suspense>
   )

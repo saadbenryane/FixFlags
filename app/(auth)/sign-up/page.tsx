@@ -46,7 +46,7 @@ function SignUpForm() {
     try {
       const { data, error } = await authClient.signUp.email({ name: '', email, password })
       if (error) {
-        toast.error(error.message || 'Sign up failed')
+        toast.error(error.message || AUTH.signUp.error)
         return
       }
       fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
@@ -61,7 +61,7 @@ function SignUpForm() {
       // next/checkout navigation (same path OAuth takes).
       router.push(postLoginHref)
     } catch {
-      toast.error('Something went wrong')
+      toast.error(AUTH.signUp.unexpectedError)
     } finally {
       setLoading(false)
     }
@@ -78,9 +78,7 @@ function SignUpForm() {
     ? planTitle
     : from === 'pricing'
       ? AUTH.signUp.fromPricing
-      : oauth.anyEnabled
-        ? AUTH.signUp.subtitleWithOAuth
-        : AUTH.signUp.subtitle
+      : AUTH.signUp.subtitle
 
   return (
     <AuthCard
@@ -115,7 +113,7 @@ function SignUpForm() {
       )}
       {showPlanSteps && (
         <div className="rounded-card bg-muted/30 p-4 space-y-2">
-          <p className="text-xs font-medium">What happens next</p>
+          <p className="text-xs font-medium">{AUTH.signUp.planStepsTitle}</p>
           <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
             {AUTH.signUp.planSteps.map((step) => (
               <li key={step}>{step}</li>
@@ -126,16 +124,16 @@ function SignUpForm() {
       <FormContainer onSubmit={handleSubmit}>
         <IconInput
           type="email"
-          label="Email"
+          label={AUTH.signUp.emailLabel}
           icon={<Mail className="h-4 w-4" />}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onFocus={() => markSignupStarted('email')}
-          placeholder="you@example.com"
+          placeholder={AUTH.signUp.emailPlaceholder}
           required
         />
         <PasswordInput
-          label="Password"
+          label={AUTH.signUp.passwordLabel}
           value={password}
           onChange={setPassword}
           showRequirements

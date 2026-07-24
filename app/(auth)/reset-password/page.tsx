@@ -70,16 +70,18 @@ function ResetPasswordForm() {
     <AuthCard title={AUTH.resetPassword.title} subtitle={AUTH.resetPassword.subtitle}>
       <FormContainer onSubmit={handleSubmit}>
         <PasswordInput
-          label="New password"
+          label={AUTH.resetPassword.newPasswordLabel}
           value={password}
           onChange={setPassword}
           showRequirements
+          autoComplete="new-password"
         />
         <PasswordInput
-          label="Confirm password"
+          label={AUTH.resetPassword.confirmPasswordLabel}
           value={confirmPassword}
           onChange={setConfirmPassword}
           error={confirmError}
+          autoComplete="new-password"
         />
         <Button type="submit" className="w-full" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

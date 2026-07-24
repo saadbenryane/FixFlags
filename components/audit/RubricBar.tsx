@@ -85,7 +85,7 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
               />
             ) : null}
             {countLabel ? (
-              <span className="hidden text-[11px] text-muted-foreground sm:inline">{countLabel}</span>
+              <span className="hidden text-2xs text-muted-foreground sm:inline">{countLabel}</span>
             ) : null}
           </a>
         )

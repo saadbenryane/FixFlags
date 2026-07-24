@@ -124,7 +124,7 @@ describe('GET /api/reports/[id]/status', () => {
     expect(body.flagCount).toBe(1)
   })
 
-  it('omits partialFlags once the report is COMPLETED', async () => {
+  it('keeps partialFlags on COMPLETED so the progressive hold frame stays populated', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({
       ...baseAudit,
       status: 'COMPLETED',
@@ -133,6 +133,12 @@ describe('GET /api/reports/[id]/status', () => {
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     const body = await res.json()
     expect(body.status).toBe('COMPLETED')
-    expect(body.partialFlags).toBeUndefined()
+    expect(body.partialFlags).toEqual([
+      expect.objectContaining({
+        id: 'f1',
+        checkId: 'h1-generic',
+        source: 'DETERMINISTIC',
+      }),
+    ])
   })
 })

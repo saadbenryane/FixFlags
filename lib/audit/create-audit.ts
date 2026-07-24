@@ -14,6 +14,7 @@ import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
 import type { UsageLimitAction, UsageLimitCode } from '@/lib/audit/check-limit'
+import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import {
   encryptScanAccess,
   decryptScanAccess,
@@ -194,7 +195,7 @@ export async function createAndEnqueueAudit(
     auditMode: options.auditMode ?? ('CRITICAL_PATH' as const),
     ...(options.parentId ? { monitoringMode: options.monitoringMode ?? ('FULL' as const) } : {}),
     status: 'QUEUED' as const,
-    progress: 5,
+    progress: PIPELINE_PROGRESS.QUEUED,
     includeAi,
     journeyReviewIncluded,
     ...(attribution

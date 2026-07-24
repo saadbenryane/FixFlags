@@ -4,6 +4,7 @@ import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
+import { ScanHandoffHost } from '@/components/audit/ScanHandoffHost'
 import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
@@ -86,6 +87,18 @@ export function SiteShell({
     </div>
   )
 
-  if (!supportEnabled) return shell
-  return <SupportProvider>{shell}</SupportProvider>
+  if (!supportEnabled) {
+    return (
+      <>
+        {shell}
+        <ScanHandoffHost />
+      </>
+    )
+  }
+  return (
+    <SupportProvider>
+      {shell}
+      <ScanHandoffHost />
+    </SupportProvider>
+  )
 }

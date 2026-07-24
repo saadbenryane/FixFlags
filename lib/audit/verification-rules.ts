@@ -328,6 +328,18 @@ export const JOURNEY_VERIFICATION_RULES: Record<string, string> = {
   'journey-signup-no-form': JOURNEY_VERIFY,
   'journey-signup-too-many-fields': JOURNEY_VERIFY,
   'journey-contact-not-found': JOURNEY_VERIFY,
+  'journey-funnel-step-failed': JOURNEY_VERIFY,
+  'journey-funnel-loop-detected': JOURNEY_VERIFY,
+  'journey-funnel-timeout': JOURNEY_VERIFY,
+  'journey-funnel-dead-end': JOURNEY_VERIFY,
+  'journey-funnel-friction': JOURNEY_VERIFY,
+  'journey-funnel-confusion': JOURNEY_VERIFY,
+  'journey-funnel-broken-promise': JOURNEY_VERIFY,
+  'journey-funnel-accessibility-barrier': JOURNEY_VERIFY,
+  'journey-funnel-misleading-ux': JOURNEY_VERIFY,
+  'journey-funnel-missing-feedback': JOURNEY_VERIFY,
+  'journey-funnel-unclear-progress': JOURNEY_VERIFY,
+  'journey-funnel-too-many-steps': JOURNEY_VERIFY,
   'corridor-og-title-drift':
     'Align og:title with the page H1/title. Share the URL in a private Slack/iMessage preview and confirm the title matches.',
   'corridor-og-description-drift':

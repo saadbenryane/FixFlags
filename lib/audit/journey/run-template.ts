@@ -33,7 +33,6 @@ import {
   JOURNEY_MAX_STEPS,
   JOURNEY_TIMEOUT_MS,
   JOURNEY_LOOP_THRESHOLD,
-  JOURNEY_STEP_TIMEOUT_MS,
 } from './types'
 import type { JourneyPlan } from './planner-schema'
 
@@ -265,6 +264,14 @@ export async function runJourneyTemplate(
       screenshotBeforeUrl: beforeClick,
       screenshotAfterUrl: afterClick,
       accessibilityTree: a11y2,
+      consoleErrors: session.consoleErrors.map((e) => e.text),
+      networkErrors: session.networkFailures
+        .filter((f) => f.sameOrigin)
+        .map((f) => `${f.method} ${f.status} ${f.url}`),
+      elementRef: clickSelector,
+      elementDescription: `click ${target.text || target.href}`,
+      outcomeMatch: true,
+      outcomeDetail: 'Navigated successfully',
       reasoning: `Navigate to ${target.category} target for ${options.journeyType}`,
     })
 
@@ -564,7 +571,7 @@ export async function runJourneyTemplate(
         `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-before`
       )
 
-      const a11yBefore = await captureAccessibilityTree(page)
+      await captureAccessibilityTree(page)
       let navigated = false
       stepActionDetail = {
         href: target.href,
@@ -681,6 +688,7 @@ export async function runJourneyTemplate(
           .filter((f) => f.sameOrigin)
           .map((f) => `${f.method} ${f.status} ${f.url}`),
         loadTimeMs,
+        elementRef: clickSelector,
         elementDescription: `${stepActionType} ${target.text || target.href}`,
         outcomeMatch,
         outcomeDetail: outcomeMatch
@@ -707,6 +715,8 @@ export async function runJourneyTemplate(
             whyItMatters: 'Loading states that never resolve cause visitors to abandon the funnel.',
             fix: '1. Add loading timeouts with fallback content\n2. Show a skeleton or progress indicator\n3. Ensure the server responds within 3 seconds',
             screenshotUrl: afterShot,
+            accessibilityEvidence: a11yAfter.slice(0, 2000),
+            findingType: 'friction',
           })
         )
       }
@@ -725,6 +735,8 @@ export async function runJourneyTemplate(
             whyItMatters: 'Empty pages in the funnel break the conversion path.',
             fix: '1. Ensure the page renders content on load\n2. Check for JavaScript errors preventing render\n3. Add a fallback message if content fails to load',
             screenshotUrl: afterShot,
+            accessibilityEvidence: a11yAfter.slice(0, 2000),
+            findingType: 'dead-end',
           })
         )
       }
@@ -744,6 +756,8 @@ export async function runJourneyTemplate(
             whyItMatters: 'Visitors lose context when funnel pages do not restate the value proposition.',
             fix: '1. Add a clear H1 that continues the narrative from the previous step\n2. Match the headline to the funnel goal\n3. Keep it under 12 words',
             screenshotUrl: afterShot,
+            accessibilityEvidence: a11yAfter.slice(0, 2000),
+            findingType: 'confusion',
           })
         )
       }
@@ -763,6 +777,8 @@ export async function runJourneyTemplate(
             whyItMatters: 'Funnel pages without a next step cause drop-off.',
             fix: '1. Add a primary CTA matching the funnel stage\n2. For signup flows: show the form or a "Continue" button\n3. For pricing: highlight the recommended plan CTA',
             screenshotUrl: afterShot,
+            accessibilityEvidence: a11yAfter.slice(0, 2000),
+            findingType: 'friction',
           })
         )
       }
@@ -785,6 +801,8 @@ export async function runJourneyTemplate(
             whyItMatters: 'Long funnels have compounding drop-off at each step.',
             fix: '1. Reduce the number of steps in the funnel\n2. Combine steps where possible\n3. Show a progress indicator to set expectations',
             screenshotUrl: afterShot,
+            accessibilityEvidence: a11yAfter.slice(0, 2000),
+            findingType: 'friction',
           })
         )
         break

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { Heading, Muted } from '@/components/ui/typography'
 import { SiteShell } from '@/components/layout/site-shell'
+import { AUTH } from '@/lib/marketing/copy'
 
 export default function AuthError({
   error,
@@ -23,14 +24,14 @@ export default function AuthError({
   return (
     <SiteShell variant="marketing">
       <Container className="flex flex-1 flex-col items-center justify-center py-24 text-center">
-        <Heading as="h1">Could not load this page</Heading>
+        <Heading as="h1">{AUTH.error.title}</Heading>
         <Muted className="mt-2 max-w-md">
-          Something went wrong. Please try again or return to the homepage.
+          {AUTH.error.body}
         </Muted>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={reset}>{AUTH.error.retryCta}</Button>
           <Button asChild variant="outline">
-            <Link href="/">Home</Link>
+            <Link href="/">{AUTH.error.homeCta}</Link>
           </Button>
         </div>
       </Container>
