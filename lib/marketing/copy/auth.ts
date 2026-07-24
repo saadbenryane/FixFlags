@@ -112,7 +112,7 @@ export const AUTH = {
     planStepsTitle: 'What happens next',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Pro, with 25 monthly checks, compare, and MCP from day one',
-      TEAM: 'You\u2019re signing up for Agency, ship client-ready share links and organize across up to 5 projects',
+      TEAM: 'You\u2019re signing up for Agency, publish client-ready share links and organize across up to 5 projects',
     },
     planSteps: [
       'Create your account',

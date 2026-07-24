@@ -137,7 +137,7 @@ export const BLOG_POSTS = [
     title: 'Why AI-built sites still need a final review',
     date: '2026-07-02',
     excerpt:
-      'AI coding tools ship fast, but speed skips the boring checks: dead CTAs, broken previews, missing alt text. Here is why a final review matters before you share the link.',
+      'AI coding tools move fast, but speed skips the boring checks: dead CTAs, broken previews, missing alt text. Here is why a final review matters before you share the link.',
     body: [
       'AI coding tools are very good at producing a page that looks finished. They are much less good at noticing the things that only show up when someone else actually uses the page: a call-to-action that points nowhere, an Open Graph image that never loads, a form input with no label.',
       'None of these are hard to fix. Almost all of them are invisible until a real user, or a QA pass, goes looking.',

@@ -12,7 +12,7 @@ export default function ChangelogPage() {
       <Container className="mx-auto max-w-3xl space-y-12">
         <LandingSectionHeader
           label="Changelog"
-          headline="What shipped recently"
+          headline="What's new recently"
           align="left"
           as="h1"
         />

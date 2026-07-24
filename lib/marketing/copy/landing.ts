@@ -1,7 +1,7 @@
 
 
 export const HERO = {
-  badge: 'Check before you ship.',
+  badge: 'Check before you publish.',
   headline: 'Finish what your AI started.',
   headlineLine1: 'what your',
   headlineLine2: 'AI started.',
@@ -32,7 +32,7 @@ export const DIFFERENTIATION = {
   ],
   bullets: [
     'AI reads screenshots for message, experience, and reach gaps',
-    'Every Flag ships with a fix prompt',
+    'Every Flag comes with a fix prompt',
     'Re-checks prove fixes landed',
   ],
   rows: [
@@ -261,7 +261,7 @@ export const LANDING_PAGE = {
         step: 2,
         title: 'Fix',
         body: 'Copy the fix prompt into Cursor, Claude, Lovable, or Bolt.',
-        preview: 'Paste → ship',
+        preview: 'Paste → publish',
       },
       {
         step: 3,
@@ -317,7 +317,7 @@ export const LANDING_PAGE = {
     ] as const,
   },
   whyAiNeedsFixFlags: {
-    headline: 'AI ships the build. FixFlags checks the first visit.',
+    headline: 'AI builds it. FixFlags checks the first visit.',
     lead: 'AI builds fast. Users judge in seconds.',
     body: 'FixFlags checks what the builder never experiences as a first-time visitor.',
     checks: [
@@ -422,7 +422,7 @@ export const LANDING_PAGE = {
 export const REPORT_COPY = {
   lovableBolt: {
     heroTitle: 'Paste this into Lovable or Bolt',
-    heroBody: 'One click copies a fix prompt tuned for your builder. Ship the change, then re-check here.',
+    heroBody: 'One click copies a fix prompt tuned for your builder. Publish the change, then re-check here.',
     defaultToolHint: 'Choose your builder, copy the fix, paste it into your AI editor.',
   },
   sampleFocused: {
@@ -442,11 +442,11 @@ export const REPORT_COPY = {
   },
   launchGates: {
     title: 'Launch gates',
-    body: 'Five concrete checks from your report evidence. Fix any failed gates before you ship.',
+    body: 'Five concrete checks from your report evidence. Fix any failed gates before you publish.',
   },
   recheckHint: {
     title: 'Next: prove your fixes worked',
-    bodyPrefix: 'Paste the fix prompts into your editor, ship the changes, then select',
+    bodyPrefix: 'Paste the fix prompts into your editor, publish the changes, then select',
     bodySuffix: 'above to see which Flags cleared.',
   },
   sampleCta: {

@@ -67,7 +67,7 @@ export const NURTURE_EMAILS = {
     <li>Page job clear in the hero headline</li>
   </ul>
   <p>${BRAND.name} checks all of this automatically and writes the fix prompt for anything that fails.</p>
-  <p><a href="${SITE_URL}" style="${ctaStyle}">Check before you ship</a></p>
+  <p><a href="${SITE_URL}" style="${ctaStyle}">Check before you publish</a></p>
 `),
   },
 } as const
@@ -92,7 +92,7 @@ export const NEWSLETTER_EMAIL = {
     layout(`
   <p>Thanks for subscribing.</p>
   <p>We send product updates and practical shipping tips. No spam.</p>
-  <p><a href="${SITE_URL}/changelog" style="${ctaStyle}">See what shipped recently</a></p>
+  <p><a href="${SITE_URL}/changelog" style="${ctaStyle}">See what's new recently</a></p>
 `),
 } as const
 

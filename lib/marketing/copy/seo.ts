@@ -1,6 +1,6 @@
 export const SEO = {
   home: {
-    title: 'FixFlags - Check before you ship',
+    title: 'FixFlags - Check before you publish',
     description:
       'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product: message gaps, UX issues, missing metadata. Fix prompts for Cursor, Claude, Lovable, and Bolt. Free check.',
   },
@@ -12,7 +12,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Run FixFlags from the website or through MCP in Cursor, Claude Code, Windsurf, Lovable, and Bolt. Find Flags, apply grounded fixes, and re-check shipped changes.',
+      'Run FixFlags from the website or through MCP in Cursor, Claude Code, Windsurf, Lovable, and Bolt. Find Flags, apply grounded fixes, and re-check published changes.',
   },
   samples: {
     title: 'Sample Report',
@@ -55,7 +55,7 @@ export const SEO = {
   },
   blog: {
     title: 'Blog',
-    description: 'Notes on shipping AI-built products without the embarrassing bugs. QA, launch checklists, and what breaks when you ship fast.',
+    description: 'Notes on shipping AI-built products without the embarrassing bugs. QA, launch checklists, and what breaks when you publish fast.',
   },
   privacy: {
     title: 'Privacy Policy',
