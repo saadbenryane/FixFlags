@@ -22,7 +22,7 @@ export default defineConfig({
         // Keep browser verification isolated from active local development
         // servers that may also be compiling the same workspace.
         command:
-          'FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e npm run build -- --no-lint && FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e PORT=3107 npm run start',
+          'FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e npm run build -- --no-lint && NEXT_DIST_DIR=.next-e2e node scripts/prepare-standalone-runtime.mjs && FIXFLAGS_ALLOW_DEGRADED_LOCAL=true NEXT_PUBLIC_APP_URL=http://127.0.0.1:3107 BETTER_AUTH_URL=http://127.0.0.1:3107 NEXT_DIST_DIR=.next-e2e PORT=3107 npm run start',
         url: baseURL,
         reuseExistingServer: false,
         timeout: 240_000,

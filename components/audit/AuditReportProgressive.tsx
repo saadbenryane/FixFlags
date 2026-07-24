@@ -26,6 +26,8 @@ import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
+import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
+import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -49,6 +51,7 @@ interface AuditReportProgressiveProps {
   workerIdle?: boolean
   actionTimeline?: ActionTimelineEvent[]
   productContract?: ProductContract | null
+  technologyProfile?: TechnologyProfile
 }
 
 function buildPartialRubricsComputed(
@@ -88,6 +91,7 @@ export function AuditReportProgressive({
   workerIdle = false,
   actionTimeline = [],
   productContract = null,
+  technologyProfile,
 }: AuditReportProgressiveProps) {
   const [tick, setTick] = useState(0)
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -171,6 +175,25 @@ export function AuditReportProgressive({
       />
 
       <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
+
+      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
+        <Card className="space-y-3 p-5" aria-label="Reading technology signals">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-24" />
+            </div>
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+            <Skeleton className="h-8 w-28 rounded-full" />
+          </div>
+        </Card>
+      ) : technologyProfile ? (
+        <MadeWithProfile profile={technologyProfile} />
+      ) : null}
 
       {userVerdict ? (
         <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">

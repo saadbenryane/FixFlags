@@ -7,7 +7,16 @@
  * See docs/growth/architecture.md for the full design.
  */
 
-export type GraphTechKind = 'framework' | 'builder' | 'hosting' | 'analytics' | 'cms'
+export type GraphTechKind =
+  | 'framework'
+  | 'builder'
+  | 'hosting'
+  | 'analytics'
+  | 'monitoring'
+  | 'cms'
+  | 'commerce'
+  | 'payments'
+  | 'support'
 
 export interface SiteSnapshot {
   /** Audit URL - normalized, hostname + protocol only. */
@@ -17,7 +26,14 @@ export interface SiteSnapshot {
   /** Page roles as classified by the audit pipeline. */
   pageRoles: Record<string, string>
   /** Detected technologies with confidence in [0, 1]. */
-  detectedTech: Array<{ name: string; kind: GraphTechKind; confidence: number }>
+  detectedTech: Array<{
+    name: string
+    kind: GraphTechKind
+    confidence: number
+    evidence?: Array<{ type: string; label: string }>
+  }>
+  /** Only a complete detector run may mark previously current technologies inactive. */
+  technologyDetectionComplete: boolean
   /** Industry guess, if we have one yet (otherwise null - learned over time). */
   industryGuess: string | null
 }

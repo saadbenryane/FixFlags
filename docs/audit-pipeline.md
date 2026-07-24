@@ -150,10 +150,13 @@ Production scans use **Playwright + Chromium** only (`lib/audit/screenshot.ts`, 
 | CTA flow scan | Primary page desktop session | `runFlowScan`; failures → `skipped` |
 | Slow 3G replay | `pipeline/run-page.ts` | `runSlowReplay` when deadline budget > 30s |
 | Network engagement | Desktop + mobile sessions | Merged `networkFailures`; `journeySafe` on flow capture |
+| Technology profile | Primary desktop session | Up to 300 deduplicated public resources plus allowlisted document headers and runtime markers; no extra navigation, bodies, cookies, queries, or authorization data |
 | Journey templates | `runner.ts` (Pro+) | Inline before finalize; not a separate queue job |
 | Visual evidence | `finalize-from-outcome.ts` | Graceful; must not fail audit |
 
 `lib/audit/deterministic-audit.ts` is an **offline/demo probe** (accuracy scripts, flow demos). It is not the production entry point.
+
+Technology detection is versioned and deterministic in `lib/audit/tech-detect.ts`. Audit-owned normalized observations preserve the exact profile shown on each report. Only a complete latest audit may reconcile the knowledge graph’s current stack; partial captures never infer removals. Re-check stack changes are shown only when parent and child used the same detector version.
 
 ## Page text limits
 

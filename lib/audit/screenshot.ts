@@ -22,6 +22,7 @@ import {
 } from './browser/page-capture'
 import { BrowserLaunchError, isInfrastructureAuditError } from './pipeline-errors'
 import type { NetworkFailureRecord } from './browser/network-monitor'
+import type { TechnologyResourceRecord } from './browser/network-monitor'
 import type { FormProbeResult } from './browser/journey-safety'
 import { createActionTimeline, type ActionTimelineEvent } from './action-timeline'
 
@@ -124,6 +125,9 @@ export interface ScreenshotResult {
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
   networkFailures?: NetworkFailureRecord[]
+  technologyResources?: TechnologyResourceRecord[]
+  technologyResourcesTruncated?: boolean
+  technologyRuntimeMarkers?: string[]
   actionTimeline?: ActionTimelineEvent[]
   formProbe?: FormProbeResult | null
 }
@@ -138,6 +142,24 @@ interface ViewportCapture {
   runtimeHeadMetadata?: RuntimeHeadMetadata | null
   responseHeaders?: Record<string, string> | null
   networkFailures?: NetworkFailureRecord[]
+  technologyResources?: TechnologyResourceRecord[]
+  technologyResourcesTruncated?: boolean
+  technologyRuntimeMarkers?: string[]
+}
+
+const TECHNOLOGY_RUNTIME_MARKERS = [
+  '__NEXT_DATA__',
+  '__NUXT__',
+  '__remixContext',
+  'Shopify',
+  'Sentry',
+  'Intercom',
+] as const
+
+async function readTechnologyRuntimeMarkers(page: Page): Promise<string[]> {
+  return page.evaluate((markers) =>
+    markers.filter((marker) => Object.prototype.hasOwnProperty.call(window, marker))
+  , TECHNOLOGY_RUNTIME_MARKERS)
 }
 
 interface PageLoadSnapshot {
@@ -346,6 +368,8 @@ async function captureDesktopWithFlow(
     disposeNetwork = session.disposeNetwork
     result.responseHeaders = session.responseHeaders
     result.networkFailures = [...session.networkFailures]
+    result.technologyResources = [...session.technologyResources]
+    result.technologyResourcesTruncated = session.technologyResourcesTruncated()
     result.formProbe = session.formProbe
     timeline.push('capture', 'Page loaded', { url: page.url() })
 
@@ -361,7 +385,12 @@ async function captureDesktopWithFlow(
       Date.now() - captureStartedAt,
       initial
     )
+    // Snapshot after the initial page has settled and before the CTA flow so
+    // destination resources cannot contaminate the landing-page stack.
+    result.technologyResources = [...session.technologyResources]
+    result.technologyResourcesTruncated = session.technologyResourcesTruncated()
     result.runtimeHeadMetadata = await readRuntimeHeadMetadata(page)
+    result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
     result.html = await page.content()
 
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
@@ -540,6 +569,9 @@ export async function captureScreenshots(
     runtimeHeadMetadata: desktop.runtimeHeadMetadata ?? null,
     responseHeaders: desktop.responseHeaders ?? null,
     networkFailures: mergedNetworkFailures,
+    technologyResources: desktop.technologyResources ?? [],
+    technologyResourcesTruncated: desktop.technologyResourcesTruncated ?? false,
+    technologyRuntimeMarkers: desktop.technologyRuntimeMarkers ?? [],
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
   }

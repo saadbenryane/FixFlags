@@ -58,6 +58,8 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 Share status appears once (`ShareStatusBanner`). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
+**Made with:** One compact glass disclosure sits before the complete Fix list. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector re-check diff states are explicit. Use Lucide category icons, not remote logos.
+
 **Flags chrome:** Meta row is `SeveritySignal` → Rubric → Impact. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. Evidence screenshots match `devicesForCheck` (issue device only).
 
 **Progressive / loading:** The in-progress report uses the same altitudes as completed (`AuditReportHero` with scanning label, `RubricBar` loading, sticky, Contract → Timeline → Flags). Progress advances with real pipeline stages and partial flags; never fake. On COMPLETED, hold the progressive frame until `router.refresh()` swaps in SSR `AuditReport`.

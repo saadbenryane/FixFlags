@@ -521,6 +521,8 @@ export function ReportExplorer({
     <div
       ref={rootRef}
       tabIndex={-1}
+      role="region"
+      aria-label={`Fix list with ${model.flags.length} flags`}
       className={cn(config.ownShell ? shellClass : className)}
     >
       <div className={cn(variant === 'hero' ? 'bg-muted/10 p-4 sm:p-5' : 'p-4 sm:p-6')}>

@@ -17,7 +17,7 @@ import type { FlagSnapshot, SiteSnapshot } from '@/lib/graph/types'
  *  - audit.url           → Site.rootUrl
  *  - audit.pages[].url   → Page.url + role
  *  - audit.flags[]       → Issue + FixPrompt
- *  - audit.pages[].performanceData.detectedTech → Technology graph
+ *  - audit.technologyObservations → Technology graph
  *  - audit.pages[].performanceData.industryGuess → Site.industryGuess
  *
  * Determinism: identical input → identical graph state. The unique constraint
@@ -29,6 +29,14 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
     where: { id: auditId },
     select: {
       url: true,
+      technologyDetectionStatus: true,
+      technologyObservations: {
+        select: {
+          confidence: true,
+          evidence: true,
+          technology: { select: { name: true, kind: true } },
+        },
+      },
       pages: {
         select: {
           url: true,
@@ -63,10 +71,20 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
 
   const pageUrls = audit.pages.length > 0 ? audit.pages.map((p) => p.url) : [audit.url]
 
-  // Extract tech detection from primary page's performanceData
+  // Industry is still inferred with page metadata. Technologies are audit-owned
+  // normalized observations, not incidental performance JSON.
   const primaryPage = audit.pages[0]
   const perfData = primaryPage?.performanceData as Record<string, unknown> | null
-  const detectedTech = (perfData?.detectedTech as SiteSnapshot['detectedTech']) ?? []
+  const detectedTech: SiteSnapshot['detectedTech'] = audit.technologyObservations.map(
+    (observation) => ({
+      name: observation.technology.name,
+      kind: observation.technology.kind as SiteSnapshot['detectedTech'][number]['kind'],
+      confidence: observation.confidence,
+      evidence: Array.isArray(observation.evidence)
+        ? observation.evidence as SiteSnapshot['detectedTech'][number]['evidence']
+        : [],
+    })
+  )
   const industryGuess = (perfData?.industryGuess as string | null) ?? null
 
   const flags: FlagSnapshot[] = audit.flags.map((f) => ({
@@ -100,6 +118,7 @@ export async function persistAuditGraphSnapshot(auditId: string): Promise<void> 
       pageUrls,
       pageRoles,
       detectedTech,
+      technologyDetectionComplete: audit.technologyDetectionStatus === 'COMPLETE',
       industryGuess,
     },
     flags,

@@ -1,448 +1,508 @@
 /**
- * Technology detection engine.
+ * Evidence-backed technology detection.
  *
- * Inspects page HTML and HTTP response headers to identify frameworks,
- * builders, CMS platforms, hosting providers, and analytics tools.
- * Used by the audit pipeline to populate the knowledge graph's
- * SiteTechnology table, which feeds the /madewith public pages.
- *
- * All detection is pattern-based with confidence scores. Results below
- * MIN_CONFIDENCE (0.7) are filtered out to avoid noisy guesses.
- *
- * See docs/growth/architecture.md for how this feeds the knowledge loop.
+ * Rules inspect already-captured HTML, safe document headers, a bounded
+ * resource inventory, and a small allowlist of runtime markers. No detector
+ * rule performs network I/O and no raw request data is persisted.
  */
+import type { TechnologyResourceRecord } from './browser/network-monitor'
 import type { GraphTechKind } from '@/lib/graph/types'
+
+export const TECHNOLOGY_DETECTOR_VERSION = '2026.07.23.1'
+export const TECHNOLOGY_MIN_CONFIDENCE = 0.8
+
+export type TechnologyEvidenceType = 'html' | 'meta' | 'header' | 'resource' | 'runtime'
+
+export interface TechnologyEvidence {
+  type: TechnologyEvidenceType
+  label: string
+}
 
 export interface DetectedTech {
   name: string
   kind: GraphTechKind
   confidence: number
+  evidence: TechnologyEvidence[]
 }
 
-/**
- * Minimum confidence score for a detection to be included in results.
- * Below this threshold, the signal is too weak to be useful.
- */
-const MIN_CONFIDENCE = 0.7
+type SignalSource = 'html' | 'headers' | 'resources' | 'runtime'
 
-// ---------------------------------------------------------------------------
-// Detection patterns
-// ---------------------------------------------------------------------------
+interface TechnologySignal {
+  source: SignalSource
+  pattern: RegExp
+  weight: number
+  evidence: TechnologyEvidence
+}
 
-interface TechPattern {
+interface TechnologyRule {
   name: string
   kind: GraphTechKind
-  /** HTML patterns to match (lowercased). Any match triggers detection. */
-  html?: RegExp[]
-  /** Response header patterns (lowercased header values). */
-  headers?: RegExp[]
-  /** Meta generator content patterns. */
-  generator?: RegExp[]
-  /** Script src patterns. */
-  scripts?: RegExp[]
-  /** CSS class/id prefix patterns in the HTML. */
-  classes?: RegExp[]
+  signals: TechnologySignal[]
 }
 
-const PATTERNS: TechPattern[] = [
-  // ── Frameworks ──────────────────────────────────────────────────────────
+const SAFE_HEADER_NAMES = new Set([
+  'server',
+  'x-powered-by',
+  'via',
+  'cf-ray',
+  'x-vercel-id',
+  'x-vercel-cache',
+  'x-nf-request-id',
+  'x-render-origin-server',
+  'x-railway-request-id',
+  'x-amz-cf-id',
+  'x-amz-request-id',
+])
+
+function signal(
+  source: SignalSource,
+  pattern: RegExp,
+  weight: number,
+  type: TechnologyEvidenceType,
+  label: string
+): TechnologySignal {
+  return { source, pattern, weight, evidence: { type, label } }
+}
+
+const strongHtml = (
+  pattern: RegExp,
+  label: string,
+  type: TechnologyEvidenceType = 'html'
+) => signal('html', pattern, 0.2, type, label)
+const mediumHtml = (pattern: RegExp, label: string) =>
+  signal('html', pattern, 0.1, 'html', label)
+const strongResource = (pattern: RegExp, label: string) =>
+  signal('resources', pattern, 0.2, 'resource', label)
+const mediumResource = (pattern: RegExp, label: string) =>
+  signal('resources', pattern, 0.1, 'resource', label)
+const strongHeader = (pattern: RegExp, label: string) =>
+  signal('headers', pattern, 0.2, 'header', label)
+const runtime = (pattern: RegExp, label: string) =>
+  signal('runtime', pattern, 0.2, 'runtime', label)
+
+const RULES: TechnologyRule[] = [
   {
     name: 'Next.js',
     kind: 'framework',
-    html: [/_next\/static/, /__next/, /next\.config/],
-    generator: [/next/i],
-    scripts: [/\/_next\//],
+    signals: [
+      strongHtml(/(?:\/_next\/|id=["']__next["']|__next_data__)/i, 'Next.js page markers'),
+      strongResource(/\/_next\/(?:static|image)\//i, 'Next.js assets under /_next/'),
+      runtime(/__NEXT_DATA__/i, 'Next.js runtime marker'),
+    ],
   },
   {
     name: 'React',
     kind: 'framework',
-    html: [/__react/, /data-reactroot/, /react\.production/i],
-    scripts: [/react\.production/, /react\.development/],
-    classes: [/\breact-/],
+    signals: [
+      strongHtml(/(?:data-reactroot|data-reactid|react\.production\.min\.js)/i, 'React DOM marker'),
+      strongResource(/(?:^|\/)react(?:-dom)?(?:\.production)?(?:\.min)?\.js$/i, 'React runtime asset'),
+    ],
   },
   {
     name: 'Vue',
     kind: 'framework',
-    html: [/__vue__/, /data-v-[a-f0-9]/, /vue\.runtime/i],
-    scripts: [/vue\.runtime/, /vue\.min\.js/],
+    signals: [
+      strongHtml(/(?:data-v-app|data-v-[a-f0-9]{6,}|vue\.runtime(?:\.global)?)/i, 'Vue runtime marker'),
+      strongResource(/(?:^|\/)vue(?:\.runtime)?(?:\.global)?(?:\.prod)?(?:\.min)?\.js$/i, 'Vue runtime asset'),
+    ],
   },
   {
     name: 'Nuxt',
     kind: 'framework',
-    html: [/__nuxt/, /_nuxt\//, /nuxt\.config/],
-    scripts: [/_nuxt\//],
+    signals: [
+      strongHtml(/(?:id=["']__nuxt["']|__nuxt__|\/_nuxt\/)/i, 'Nuxt page markers'),
+      strongResource(/\/_nuxt\//i, 'Nuxt assets under /_nuxt/'),
+      runtime(/__NUXT__/i, 'Nuxt runtime marker'),
+    ],
   },
   {
     name: 'Angular',
     kind: 'framework',
-    html: [/ng-version/, /ng-app/, /angular/i],
-    scripts: [/angular\.min\.js/, /polyfills\.js/],
-    classes: [/ng-/],
+    signals: [
+      strongHtml(/(?:\sng-version=["'][^"']+|<app-root(?:\s|>))/i, 'Angular root marker'),
+      mediumResource(/\/(?:main|polyfills)\.[a-f0-9]{8,}\.js$/i, 'Angular-style compiled asset'),
+      mediumHtml(/ng-server-context=["']/i, 'Angular server context'),
+    ],
+  },
+  {
+    name: 'SvelteKit',
+    kind: 'framework',
+    signals: [
+      strongResource(/\/_app\/immutable\//i, 'SvelteKit immutable assets'),
+      strongHtml(/data-sveltekit-(?:preload-data|reload|noscroll|keepfocus)/i, 'SvelteKit navigation marker'),
+    ],
   },
   {
     name: 'Svelte',
     kind: 'framework',
-    html: [/__svelte/, /svelte-[a-z]/],
-    scripts: [/_immutable\/chunks/],
+    signals: [
+      strongHtml(/class=["'][^"']*\bsvelte-[a-z0-9]+\b/i, 'Svelte scoped class'),
+      strongResource(/\/svelte(?:\.min)?\.js$/i, 'Svelte runtime asset'),
+    ],
+  },
+  {
+    name: 'Astro',
+    kind: 'framework',
+    signals: [
+      strongHtml(/<(?:astro-island|astro-slot)(?:\s|>)/i, 'Astro island marker'),
+      strongResource(/\/_astro\//i, 'Astro assets under /_astro/'),
+    ],
   },
   {
     name: 'Gatsby',
     kind: 'framework',
-    html: [/___gatsby/, /gatsby-/],
-    scripts: [/gatsby/],
-    classes: [/___gatsby/],
+    signals: [
+      strongHtml(/id=["']___gatsby["']/i, 'Gatsby root marker'),
+      strongResource(/\/(?:page-data|component---).*(?:\.json|\.js)$/i, 'Gatsby page data asset'),
+    ],
   },
   {
     name: 'Remix',
     kind: 'framework',
-    html: [/__remix/, /remix-run/],
-    scripts: [/__remix/],
+    signals: [
+      strongHtml(/(?:__remixContext|__remixManifest|\/build\/_assets\/)/i, 'Remix page marker'),
+      runtime(/__remixContext/i, 'Remix runtime marker'),
+    ],
   },
-  {
-    name: 'Hugo',
-    kind: 'framework',
-    generator: [/hugo/i],
-  },
-  {
-    name: 'Jekyll',
-    kind: 'framework',
-    generator: [/jekyll/i],
-  },
-
-  // ── Builders ────────────────────────────────────────────────────────────
   {
     name: 'Lovable',
     kind: 'builder',
-    html: [/lovable\.dev/, /gptengineer/, /lovable/i],
+    signals: [
+      strongResource(/(?:^|\.)cdn\.gpteng\.co\//i, 'Lovable deployment asset'),
+      strongHtml(/data-lov-id=["'][^"']+["']/i, 'Lovable element marker'),
+    ],
   },
   {
     name: 'Bolt',
     kind: 'builder',
-    html: [/bolt\.new/, /stackblitz/],
+    signals: [
+      mediumHtml(/<meta[^>]+name=["']generator["'][^>]+content=["'][^"']*bolt(?:\.new)?/i, 'Bolt generator metadata'),
+      mediumResource(/(?:^|\.)stackblitz\.com\/.*bolt/i, 'Bolt StackBlitz asset'),
+    ],
   },
   {
     name: 'v0',
     kind: 'builder',
-    html: [/v0\.dev/, /\bv0\(/],
+    signals: [
+      mediumHtml(/data-v0-(?:id|component)=["']/i, 'v0 component marker'),
+      mediumResource(/(?:^|\.)v0\.(?:app|dev)\//i, 'v0 deployment asset'),
+    ],
   },
   {
-    name: 'Cursor',
+    name: 'Replit',
     kind: 'builder',
-    html: [/cursor\.sh/, /cursor/i],
-  },
-  {
-    name: 'Windsurf',
-    kind: 'builder',
-    html: [/windsurf\.ai/, /windsurf/i],
-  },
-
-  // ── CMS ─────────────────────────────────────────────────────────────────
-  {
-    name: 'WordPress',
-    kind: 'cms',
-    html: [/wp-content/, /wp-includes/, /wordpress/],
-    generator: [/wordpress/i],
-    scripts: [/wp-content/, /wp-includes/],
-    classes: [/wp-/],
-  },
-  {
-    name: 'Shopify',
-    kind: 'cms',
-    html: [/cdn\.shopify\.com/, /shopify\.section/, /shopify-/],
-    scripts: [/cdn\.shopify\.com/],
-  },
-  {
-    name: 'Webflow',
-    kind: 'cms',
-    html: [/webflow\.com/, /wf-cdn/, /wf-/],
-    generator: [/webflow/i],
-    classes: [/w-layout/, /w-[A-Z]/],
-  },
-  {
-    name: 'Squarespace',
-    kind: 'cms',
-    html: [/sqsp/, /squarespace/],
-    classes: [/sqs-/],
+    signals: [
+      strongResource(/(?:^|\.)(?:replit\.app|repl\.co)\//i, 'Replit deployment host'),
+      strongHeader(/(?:^|\s)(?:x-powered-by\s+replit|server\s+replit)/i, 'Replit response header'),
+    ],
   },
   {
     name: 'Framer',
+    kind: 'builder',
+    signals: [
+      strongResource(/(?:^|\.)framerusercontent\.com\//i, 'Framer hosted asset'),
+      strongHtml(/data-framer-(?:name|component-type)=["']/i, 'Framer component marker'),
+    ],
+  },
+  {
+    name: 'Webflow',
+    kind: 'builder',
+    signals: [
+      strongHtml(/<html[^>]+data-wf-(?:page|site)=["']/i, 'Webflow site metadata'),
+      strongResource(/(?:^|\.)website-files\.com\//i, 'Webflow hosted asset'),
+    ],
+  },
+  {
+    name: 'WordPress',
     kind: 'cms',
-    html: [/framer\.com/, /framerusercontent/],
-    scripts: [/framer\.com/],
+    signals: [
+      strongResource(/\/wp-(?:content|includes)\//i, 'WordPress asset path'),
+      strongHtml(/<meta[^>]+name=["']generator["'][^>]+content=["'][^"']*wordpress/i, 'WordPress generator metadata', 'meta'),
+    ],
   },
   {
     name: 'Wix',
     kind: 'cms',
-    html: [/wix\.com/, /parastorage\.com/],
-    classes: [/wix_/],
+    signals: [
+      strongResource(/(?:^|\.)(?:wixstatic\.com|parastorage\.com)\//i, 'Wix hosted asset'),
+      strongHtml(/<meta[^>]+name=["']generator["'][^>]+content=["'][^"']*wix/i, 'Wix generator metadata', 'meta'),
+    ],
+  },
+  {
+    name: 'Squarespace',
+    kind: 'cms',
+    signals: [
+      strongResource(/(?:^|\.)squarespace-cdn\.com\//i, 'Squarespace hosted asset'),
+      strongHtml(/<meta[^>]+name=["']generator["'][^>]+content=["'][^"']*squarespace/i, 'Squarespace generator metadata', 'meta'),
+    ],
   },
   {
     name: 'Ghost',
     kind: 'cms',
-    html: [/ghost\./, /ghost-/],
-    generator: [/ghost/i],
+    signals: [
+      strongHtml(/<meta[^>]+name=["']generator["'][^>]+content=["'][^"']*ghost/i, 'Ghost generator metadata', 'meta'),
+      strongResource(/\/ghost\/(?:api|assets)\//i, 'Ghost asset path'),
+    ],
   },
   {
     name: 'Contentful',
     kind: 'cms',
-    html: [/contentful\.com/, /ctfassets\.net/],
-    scripts: [/contentful/],
+    signals: [strongResource(/(?:^|\.)ctfassets\.net\//i, 'Contentful hosted asset')],
   },
-
-  // ── Hosting ─────────────────────────────────────────────────────────────
+  {
+    name: 'Sanity',
+    kind: 'cms',
+    signals: [
+      strongResource(/(?:^|\.)cdn\.sanity\.io\//i, 'Sanity hosted asset'),
+      strongResource(/(?:^|\.)api\.sanity\.io\//i, 'Sanity content API'),
+    ],
+  },
+  {
+    name: 'Shopify',
+    kind: 'commerce',
+    signals: [
+      strongResource(/(?:^|\.)cdn\.shopify\.com\//i, 'Shopify hosted asset'),
+      runtime(/Shopify/i, 'Shopify runtime marker'),
+      strongHtml(/(?:shopify-section|myshopify\.com)/i, 'Shopify storefront marker'),
+    ],
+  },
   {
     name: 'Vercel',
     kind: 'hosting',
-    headers: [/vercel/i],
-    html: [/vercel\.app/, /vercel\.com/],
+    signals: [
+      strongHeader(/(?:^|\s)x-vercel-(?:id|cache)\s+/i, 'Vercel response header'),
+      strongResource(/(?:^|\.)vercel-insights\.com\//i, 'Vercel Insights resource'),
+    ],
   },
   {
     name: 'Netlify',
     kind: 'hosting',
-    headers: [/netlify/i],
-    html: [/netlify\.app/, /\.netlify/],
+    signals: [strongHeader(/(?:^|\s)x-nf-request-id\s+/i, 'Netlify response header')],
   },
   {
     name: 'Cloudflare',
     kind: 'hosting',
-    headers: [/cf-ray/, /cloudflare/i],
+    signals: [
+      strongHeader(/(?:^|\s)cf-ray\s+/i, 'Cloudflare response header'),
+      strongResource(/(?:^|\.)cloudflareinsights\.com\//i, 'Cloudflare Insights resource'),
+    ],
   },
   {
     name: 'AWS Amplify',
     kind: 'hosting',
-    html: [/amplifyapp\.com/],
+    signals: [
+      strongResource(/(?:^|\.)amplifyapp\.com\//i, 'AWS Amplify deployment host'),
+      mediumHeader(/(?:^|\s)x-amz-cf-id\s+/i, 'AWS edge response header'),
+      mediumHtml(/aws-amplify/i, 'AWS Amplify runtime marker'),
+    ],
+  },
+  {
+    name: 'Firebase Hosting',
+    kind: 'hosting',
+    signals: [
+      strongResource(/(?:^|\.)firebaseapp\.com\//i, 'Firebase deployment host'),
+      strongResource(/\/__\/firebase\/init\.js$/i, 'Firebase Hosting initialization'),
+    ],
+  },
+  {
+    name: 'Render',
+    kind: 'hosting',
+    signals: [strongHeader(/(?:^|\s)x-render-origin-server\s+/i, 'Render response header')],
+  },
+  {
+    name: 'Railway',
+    kind: 'hosting',
+    signals: [strongHeader(/(?:^|\s)x-railway-request-id\s+/i, 'Railway response header')],
   },
   {
     name: 'GitHub Pages',
     kind: 'hosting',
-    html: [/github\.io/],
-    headers: [/github\.com/i],
+    signals: [strongResource(/(?:^|\.)github\.io\//i, 'GitHub Pages host')],
   },
-
-  // ── Analytics ───────────────────────────────────────────────────────────
+  {
+    name: 'Google Tag Manager',
+    kind: 'analytics',
+    signals: [strongResource(/(?:^|\.)googletagmanager\.com\/gtm\.js/i, 'Google Tag Manager script')],
+  },
   {
     name: 'Google Analytics',
     kind: 'analytics',
-    html: [/google-analytics/, /googletagmanager/, /gtag\(/, /ga\.js/, /analytics\.js/],
-    scripts: [/google-analytics/, /googletagmanager/, /gtag/],
+    signals: [
+      strongResource(/(?:^|\.)google-analytics\.com\//i, 'Google Analytics request'),
+      strongResource(/(?:^|\.)googletagmanager\.com\/gtag\/js/i, 'Google Analytics gtag script'),
+    ],
   },
   {
     name: 'Segment',
     kind: 'analytics',
-    html: [/segment\.com\/analytics/, /cdn\.segment\.com/],
-    scripts: [/cdn\.segment\.com/],
+    signals: [strongResource(/(?:^|\.)cdn\.segment\.(?:com|io)\/analytics/i, 'Segment analytics script')],
   },
   {
     name: 'Mixpanel',
     kind: 'analytics',
-    html: [/mixpanel\.com/, /mixpanel/],
-    scripts: [/mixpanel/],
+    signals: [strongResource(/(?:^|\.)mixpanel\.com\//i, 'Mixpanel request')],
   },
   {
     name: 'PostHog',
     kind: 'analytics',
-    html: [/posthog\.com/, /posthog/, /cdn\.posthog\.com/],
-    scripts: [/cdn\.posthog\.com/],
+    signals: [strongResource(/(?:^|\.)(?:posthog\.com|i\.posthog\.com)\//i, 'PostHog request')],
   },
   {
     name: 'Plausible',
     kind: 'analytics',
-    html: [/plausible\.io/],
-    scripts: [/plausible\.io/],
-  },
-  {
-    name: 'Fathom',
-    kind: 'analytics',
-    html: [/fathom\.analytics/, /usefathom\.com/],
-    scripts: [/cdn\.fathom\.com/],
+    signals: [strongResource(/(?:^|\.)plausible\.io\//i, 'Plausible analytics script')],
   },
   {
     name: 'Hotjar',
     kind: 'analytics',
-    html: [/hotjar\.com/, /hotjar/],
-    scripts: [/hotjar/],
-  },
-  {
-    name: 'Amplitude',
-    kind: 'analytics',
-    html: [/amplitude\.com/],
-    scripts: [/amplitude/],
-  },
-  {
-    name: 'Heap',
-    kind: 'analytics',
-    html: [/heapanalytics\.com/, /heap-analytics/],
-    scripts: [/heapanalytics/],
+    signals: [strongResource(/(?:^|\.)hotjar\.com\//i, 'Hotjar request')],
   },
   {
     name: 'FullStory',
     kind: 'analytics',
-    html: [/fullstory\.com/],
-    scripts: [/fullstory/],
+    signals: [strongResource(/(?:^|\.)fullstory\.com\//i, 'FullStory request')],
   },
   {
-    name: 'HubSpot',
-    kind: 'analytics',
-    html: [/hubspot\.com/, /hs-scripts/, /hs-analytics/],
-    scripts: [/hubspot/],
+    name: 'Sentry',
+    kind: 'monitoring',
+    signals: [
+      strongResource(/(?:^|\.)sentry\.io\//i, 'Sentry telemetry request'),
+      runtime(/Sentry/i, 'Sentry runtime marker'),
+    ],
   },
   {
-    name: 'Meta Pixel',
-    kind: 'analytics',
-    html: [/facebook\.net\/en_US\/fbevents/, /fbq\(/],
-    scripts: [/facebook\.net/],
+    name: 'Stripe',
+    kind: 'payments',
+    signals: [strongResource(/(?:^|\.)js\.stripe\.com\//i, 'Stripe payment script')],
   },
   {
-    name: 'Twitter Ads',
-    kind: 'analytics',
-    html: [/static\.ads-twitter\.com/],
-    scripts: [/ads-twitter\.com/],
+    name: 'Paddle',
+    kind: 'payments',
+    signals: [strongResource(/(?:^|\.)paddle\.com\//i, 'Paddle payment resource')],
   },
   {
-    name: 'Bing Ads',
-    kind: 'analytics',
-    html: [/bat\.bing\.com/],
-    scripts: [/bat\.bing\.com/],
+    name: 'Lemon Squeezy',
+    kind: 'payments',
+    signals: [strongResource(/(?:^|\.)lemonsqueezy\.com\//i, 'Lemon Squeezy resource')],
   },
   {
-    name: 'Matomo',
-    kind: 'analytics',
-    html: [/matomo/, /piwik/],
-    scripts: [/matomo/, /piwik/],
+    name: 'Intercom',
+    kind: 'support',
+    signals: [
+      strongResource(/(?:^|\.)intercomcdn\.com\//i, 'Intercom support script'),
+      runtime(/Intercom/i, 'Intercom runtime marker'),
+    ],
+  },
+  {
+    name: 'Crisp',
+    kind: 'support',
+    signals: [strongResource(/(?:^|\.)client\.crisp\.chat\//i, 'Crisp support script')],
   },
 ]
 
-// ---------------------------------------------------------------------------
-// Detection logic
-// ---------------------------------------------------------------------------
-
-function matchesAny(text: string, patterns: RegExp[]): boolean {
-  return patterns.some((p) => p.test(text))
-}
-
 /**
- * Run a single pattern against the HTML and headers.
- * Returns the confidence if detected, 0 otherwise.
+ * Resolve the current registry category without exposing fingerprint rules.
+ * Historical imports use this to reject names that the evidence-backed
+ * detector no longer supports and to normalize legacy category drift.
  */
-function detectPattern(
-  pattern: TechPattern,
-  htmlLower: string,
-  headerStr: string,
-): number {
-  let detected = false
+export function registeredTechnologyKind(name: string): GraphTechKind | null {
+  return RULES.find((rule) => rule.name === name)?.kind ?? null
+}
 
-  if (pattern.html && matchesAny(htmlLower, pattern.html)) detected = true
-  if (pattern.headers && matchesAny(headerStr, pattern.headers)) detected = true
-  if (pattern.generator) {
-    // Extract meta generator content
-    const genMatch = htmlLower.match(/<meta[^>]*name=["']generator["'][^>]*content=["']([^"']+)["']/i)
-    if (genMatch && matchesAny(genMatch[1], pattern.generator)) detected = true
-  }
-  if (pattern.scripts && matchesAny(htmlLower, pattern.scripts)) detected = true
-  if (pattern.classes && matchesAny(htmlLower, pattern.classes)) detected = true
+function mediumHeader(pattern: RegExp, label: string) {
+  return signal('headers', pattern, 0.1, 'header', label)
+}
 
-  if (!detected) return 0
+function sanitizeHeaders(headers: Record<string, string>): string {
+  return Object.entries(headers)
+    .filter(([name]) => SAFE_HEADER_NAMES.has(name.toLowerCase()))
+    .map(([name, value]) => `${name.toLowerCase()} ${String(value).slice(0, 160)}`)
+    .join('\n')
+}
 
-  // Confidence scoring based on signal strength
-  let confidence = 0.7 // base for any match
+function resourceText(resources: TechnologyResourceRecord[]): string {
+  return resources
+    .slice(0, 300)
+    .map((resource) => `${resource.hostname}${resource.pathname}`)
+    .join('\n')
+}
 
-  // HTML structure matches are strongest
-  if (pattern.html && matchesAny(htmlLower, pattern.html)) {
-    confidence = Math.max(confidence, 0.85)
-  }
-
-  // Generator meta tags are very reliable
-  if (pattern.generator) {
-    const genMatch = htmlLower.match(/<meta[^>]*name=["']generator["'][^>]*content=["']([^"']+)["']/i)
-    if (genMatch && matchesAny(genMatch[1], pattern.generator)) {
-      confidence = Math.max(confidence, 0.95)
-    }
-  }
-
-  // Header matches are reliable but less specific
-  if (pattern.headers && matchesAny(headerStr, pattern.headers)) {
-    confidence = Math.max(confidence, 0.8)
-  }
-
-  // Script src matches are strong
-  if (pattern.scripts && matchesAny(htmlLower, pattern.scripts)) {
-    confidence = Math.max(confidence, 0.9)
-  }
-
-  return confidence
+function uniqueEvidence(items: TechnologyEvidence[]): TechnologyEvidence[] {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = `${item.type}:${item.label}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(0, 4)
 }
 
 /**
- * Detect technologies from page HTML and response headers.
- *
- * @param html - Raw HTML string (rendered, post-JS if available)
- * @param responseHeaders - HTTP response headers (lowercased keys optional)
- * @returns Array of detected technologies above MIN_CONFIDENCE, deduplicated
+ * Detect technologies from capture evidence. The legacy two-argument call
+ * remains source-compatible for offline fixtures, while production supplies
+ * resources and runtime markers from the same Playwright navigation.
  */
 export function detectTechnologies(
   html: string,
   responseHeaders: Record<string, string> = {},
+  resources: TechnologyResourceRecord[] = [],
+  runtimeMarkers: string[] = []
 ): DetectedTech[] {
-  const htmlLower = html.toLowerCase()
-  // Include both header keys and values so patterns like /cf-ray/ match the key name
-  const headerStr = Object.entries(responseHeaders)
-    .map(([k, v]) => `${k} ${v}`)
-    .join(' ')
-    .toLowerCase()
-
-  const seen = new Map<string, DetectedTech>()
-
-  for (const pattern of PATTERNS) {
-    const confidence = detectPattern(pattern, htmlLower, headerStr)
-    if (confidence < MIN_CONFIDENCE) continue
-
-    const existing = seen.get(pattern.name)
-    if (!existing || confidence > existing.confidence) {
-      seen.set(pattern.name, {
-        name: pattern.name,
-        kind: pattern.kind,
-        confidence,
-      })
-    }
+  const sources: Record<SignalSource, string> = {
+    html: html.slice(0, 2_000_000),
+    headers: sanitizeHeaders(responseHeaders),
+    resources: resourceText(resources),
+    runtime: runtimeMarkers.slice(0, 32).join('\n'),
   }
 
-  return Array.from(seen.values()).sort((a, b) => b.confidence - a.confidence)
+  const detections: DetectedTech[] = []
+
+  for (const rule of RULES) {
+    let weight = 0
+    const evidence: TechnologyEvidence[] = []
+    for (const candidate of rule.signals) {
+      candidate.pattern.lastIndex = 0
+      if (!candidate.pattern.test(sources[candidate.source])) continue
+      weight += candidate.weight
+      evidence.push(candidate.evidence)
+    }
+
+    const confidence = Math.min(0.99, 0.62 + weight)
+    if (confidence < TECHNOLOGY_MIN_CONFIDENCE) continue
+    detections.push({
+      name: rule.name,
+      kind: rule.kind,
+      confidence: Number(confidence.toFixed(2)),
+      evidence: uniqueEvidence(evidence),
+    })
+  }
+
+  return detections.sort((a, b) =>
+    b.confidence - a.confidence || a.name.localeCompare(b.name)
+  )
 }
 
 /**
  * Infer industry from the URL hostname and page text.
  * Returns a best-guess industry string or null.
- *
- * Uses hostname keywords + page content for classification.
- * Designed to be called once per audit, not per page.
  */
 export function inferIndustry(hostname: string, pageText: string): string | null {
   const h = hostname.toLowerCase()
   const text = (h + ' ' + pageText).toLowerCase()
 
-  // Order matters: more specific patterns first
   const rules: Array<{ pattern: RegExp; industry: string }> = [
-    // E-commerce (check early - "shop" in hostname is very reliable)
     { pattern: /\b(shop|store|buy|cart|product|commerce|checkout|ecommerce)\b/, industry: 'E-commerce' },
-    // SaaS / tech
     { pattern: /\b(saas|app\.|api\.|dev\.|tool|platform|dashboard|software)\b/, industry: 'SaaS' },
-    // Agency / services
     { pattern: /\b(agency|studio|design|consulting|services|creative)\b/, industry: 'Agency' },
-    // Education
     { pattern: /\b(learn|course|education|academy|school|training|university)\b/, industry: 'Education' },
-    // Health
     { pattern: /\b(health|medical|doctor|clinic|wellness|fitness|hospital)\b/, industry: 'Health' },
-    // Finance
     { pattern: /\b(finance|bank|invest|crypto|fintech|payment|insurance)\b/, industry: 'Finance' },
-    // Media / content
     { pattern: /\b(news|media|magazine|journal|podcast|blog)\b/, industry: 'Media' },
-    // Portfolio / personal (check last - broadest match)
     { pattern: /\b(portfolio|personal|resume|cv)\b/, industry: 'Portfolio' },
   ]
 
   for (const { pattern, industry } of rules) {
     if (pattern.test(text)) return industry
   }
-
   return null
 }

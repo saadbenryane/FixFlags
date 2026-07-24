@@ -260,6 +260,11 @@ program
         console.log(`Report: ${result.reportUrl}`)
         if (result.score != null) console.log(`Score: ${result.score}`)
         if (result.verdict) console.log(`Verdict: ${result.verdict}`)
+        if (result.technologyProfile?.technologies.length) {
+          console.log(
+            `Made with: ${result.technologyProfile.technologies.map((technology) => technology.name).join(', ')}`
+          )
+        }
         console.log('')
         const limit = options.limit ? Number.parseInt(options.limit, 10) : undefined
         if (limit != null && (!Number.isInteger(limit) || limit < 1)) {

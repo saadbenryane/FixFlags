@@ -13,6 +13,15 @@ vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
 vi.mock('@/lib/audit/access', () => ({ resolveAuditAccess }))
 vi.mock('@/lib/audit/recover-audit-job', () => ({ recoverAuditJobOnPoll }))
+vi.mock('@/lib/audit/technology-profile', () => ({
+  loadTechnologyProfile: vi.fn().mockResolvedValue({
+    status: 'not_captured',
+    detectorVersion: null,
+    detectedAt: null,
+    technologies: [],
+    insight: null,
+  }),
+}))
 vi.mock('next/headers', () => ({
   headers: async () => new Headers(),
   cookies: async () => ({ get: vi.fn() }),
@@ -104,6 +113,7 @@ describe('GET /api/reports/[id]/status', () => {
       { t: 1000, kind: 'capture', label: 'Opened page' },
     ])
     expect(body.productContract?.purpose).toBe('Ship cleaner sites')
+    expect(body.technologyProfile?.status).toBe('not_captured')
     expect(body.partialFlags).toEqual([
       expect.objectContaining({
         id: 'f1',

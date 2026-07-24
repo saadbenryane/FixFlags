@@ -211,10 +211,18 @@ async function upsertFixPrompts(issueId: string, flag: FlagSnapshot): Promise<vo
  * This populates the graph tables that feed /madewith pages and
  * the topFrameworks display on issue pages.
  */
-async function upsertTechnologies(
+export async function reconcileSiteTechnologies(
   siteId: string,
   detectedTech: SiteSnapshot['detectedTech'],
+  reconcileCurrent: boolean,
 ): Promise<void> {
+  if (reconcileCurrent) {
+    await prisma.siteTechnology.updateMany({
+      where: { siteId, isCurrent: true },
+      data: { isCurrent: false },
+    })
+  }
+
   for (const tech of detectedTech) {
     const technology = await prisma.technology.upsert({
       where: { name: tech.name },
@@ -231,10 +239,12 @@ async function upsertTechnologies(
           siteId,
           technologyId: technology.id,
           confidence: tech.confidence,
+          isCurrent: true,
         },
         update: {
           lastSeenAt: new Date(),
           confidence: { set: tech.confidence },
+          isCurrent: true,
         },
       })
     } catch (err: unknown) {
@@ -259,8 +269,22 @@ export async function persistAuditToGraph(
   const { siteId, pageIds } = await upsertSite(auditId, snapshot)
 
   // Upsert technology detections into the graph tables
-  if (snapshot.detectedTech.length > 0) {
-    await upsertTechnologies(siteId, snapshot.detectedTech)
+  const latestCompletedAudit = await prisma.audit.findFirst({
+    where: { siteId, status: 'COMPLETED' },
+    orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+    select: { id: true },
+  })
+  const ownsCurrentSnapshot = latestCompletedAudit?.id === auditId
+
+  if (
+    ownsCurrentSnapshot &&
+    (snapshot.detectedTech.length > 0 || snapshot.technologyDetectionComplete)
+  ) {
+    await reconcileSiteTechnologies(
+      siteId,
+      snapshot.detectedTech,
+      snapshot.technologyDetectionComplete
+    )
   }
 
   const issueIds: string[] = []

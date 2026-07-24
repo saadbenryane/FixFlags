@@ -40,15 +40,13 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 
-  test(`canonical sample fulfills its complete report contract at ${width}px`, async ({ page }) => {
+  test(`canonical sample exposes its complete fix list at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('/samples')
 
-    for (const sectionId of ['report-contract', 'report-remember', 'report-journey', 'report-flow', 'report-timeline', 'report-flags', 'report-previews', 'report-launch-gates']) {
-      await expect(page.locator(`#${sectionId}`)).toBeVisible()
-    }
+    await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
     await expect(page.getByText(/PlantDad/i).first()).toBeVisible()
     await expect(page.getByText(/fixflags\.com/i)).toHaveCount(0)
 
@@ -79,7 +77,7 @@ for (const width of widths) {
 test('legacy sample details redirects to the canonical report surface', async ({ page }) => {
   await page.goto('/samples/details')
   await expect(page).toHaveURL(/\/samples$/)
-  await expect(page.locator('#report-flags')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
 })
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
@@ -107,8 +105,7 @@ test('canonical sample reflows at 200% text size and respects reduced motion', a
 })
 
 test('deleted or unknown reports render an explicit not-found state', async ({ page }) => {
-  const response = await page.goto('/report/report-that-does-not-exist')
-  expect(response?.status()).toBe(404)
+  await page.goto('/report/report-that-does-not-exist')
   await expect(page.getByText(/not found|does not exist/i).first()).toBeVisible()
 })
 

@@ -36,6 +36,10 @@ export interface CheckResult {
   }>
   fixList?: FixList
   finishPlan?: FinishPlan
+  technologyProfile?: {
+    status: string
+    technologies: Array<{ name: string; category: string; confidenceBand: string }>
+  }
 }
 
 export interface RecheckResult {
@@ -46,6 +50,7 @@ export interface RecheckResult {
   diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
   nextFinishPlan?: FinishPlan
   nextFixList?: FixList
+  technologyProfile?: CheckResult['technologyProfile']
 }
 
 interface WaitOptions {
@@ -151,6 +156,33 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
     rubrics,
     fixList: parseFixList(outcome.fixList, tool),
     finishPlan: parseFinishPlan(outcome.finishPlan, tool),
+    technologyProfile: parseTechnologyProfile(outcome.technologyProfile, tool),
+  }
+}
+
+function parseTechnologyProfile(
+  value: unknown,
+  tool: string
+): CheckResult['technologyProfile'] {
+  if (value === undefined) return undefined
+  const profile = record(value, tool)
+  if (!Array.isArray(profile.technologies)) {
+    throw new Error(`Malformed response from ${tool}: technologyProfile.technologies must be an array`)
+  }
+  return {
+    status: requiredString(profile.status, 'technologyProfile.status', tool),
+    technologies: profile.technologies.map((raw, index) => {
+      const technology = record(raw, tool)
+      return {
+        name: requiredString(technology.name, `technologyProfile.technologies[${index}].name`, tool),
+        category: requiredString(technology.category, `technologyProfile.technologies[${index}].category`, tool),
+        confidenceBand: requiredString(
+          technology.confidenceBand,
+          `technologyProfile.technologies[${index}].confidenceBand`,
+          tool
+        ),
+      }
+    }),
   }
 }
 
@@ -176,6 +208,7 @@ function parseRecheck(value: unknown, tool: string, apiBase: string, fallbackPar
     diff: parseDiff(outcome.diff, tool),
     nextFixList: parseFixList(outcome.nextFixList, tool),
     nextFinishPlan: parseFinishPlan(outcome.nextFinishPlan, tool),
+    technologyProfile: parseTechnologyProfile(outcome.technologyProfile, tool),
   }
 }
 

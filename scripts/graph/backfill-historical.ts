@@ -91,6 +91,7 @@ async function loadFlagSnapshot(auditId: string): Promise<{
       pageUrls,
       pageRoles,
       detectedTech: [],
+      technologyDetectionComplete: false,
       industryGuess: null,
     },
     flags: audit.flags.map((f) => ({

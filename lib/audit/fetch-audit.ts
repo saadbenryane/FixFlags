@@ -28,6 +28,7 @@ import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
+import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -293,6 +294,18 @@ export async function getGatedAuditForRequest(id: string) {
         )
       : null
 
+  const technologyProfile = await loadTechnologyProfile(audit.id, {
+    score: audit.score,
+    rubrics: sanitizedRubrics.map((rubric) => ({
+      name: rubric.name,
+      score: rubric.score,
+    })),
+    flags: reportFlags.map((flag) => ({
+      rubric: flag.rubric,
+      status: flag.status,
+    })),
+  })
+
   return {
     kind: 'ok' as const,
     accessContext,
@@ -320,6 +333,7 @@ export async function getGatedAuditForRequest(id: string) {
       triageAt: audit.triageAt,
       isLegacyDeterministic,
       rubricRows,
+      technologyProfile,
     },
     isPaid,
     isLoggedIn: !!session?.user,

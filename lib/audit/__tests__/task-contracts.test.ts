@@ -23,6 +23,15 @@ vi.mock('@/lib/audit/poll-audit', () => ({
 vi.mock('@/lib/audit/diff-flags', () => ({
   getFlagDiffSummary: mocks.getFlagDiffSummary,
 }))
+vi.mock('@/lib/audit/technology-profile', () => ({
+  loadTechnologyProfile: vi.fn().mockResolvedValue({
+    status: 'complete',
+    detectorVersion: 'test',
+    detectedAt: null,
+    technologies: [],
+    insight: null,
+  }),
+}))
 
 import { checkAndPlan, recheckAndCompare } from '@/lib/audit/task-contracts'
 

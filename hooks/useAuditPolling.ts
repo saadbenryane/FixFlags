@@ -45,6 +45,7 @@ export interface AuditStatusPayload {
   }>
   actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
   productContract?: import('@/lib/audit/product-contract').ProductContract | null
+  technologyProfile?: import('@/lib/audit/technology-profile').TechnologyProfile
 }
 
 interface UseAuditPollingOptions {

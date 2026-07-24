@@ -51,6 +51,13 @@ enum ReportCompleteness {
   UNKNOWN
 }
 
+enum TechnologyDetectionStatus {
+  NOT_CAPTURED
+  COMPLETE
+  PARTIAL
+  UNAVAILABLE
+}
+
 enum AssessmentState {
   ASSESSED
   PARTIAL
@@ -208,27 +215,27 @@ enum SubscriptionLifecycleType {
 }
 
 model User {
-  id                      String             @id @default(cuid())
-  email                   String             @unique
+  id                      String                       @id @default(cuid())
+  email                   String                       @unique
   name                    String?
-  emailVerified           Boolean            @default(false)
+  emailVerified           Boolean                      @default(false)
   image                   String?
-  role                    String             @default("user")
-  plan                    Plan               @default(FREE)
-  auditsUsed              Int                @default(0)
-  auditsLimit             Int                @default(3)
-  stripeCustomerId        String?            @unique
-  stripeSubscriptionId    String?            @unique
+  role                    String                       @default("user")
+  plan                    Plan                         @default(FREE)
+  auditsUsed              Int                          @default(0)
+  auditsLimit             Int                          @default(3)
+  stripeCustomerId        String?                      @unique
+  stripeSubscriptionId    String?                      @unique
   stripePriceId           String?
   stripeCurrentPeriodEnd  DateTime?
-  subscriptionStatus      SubscriptionStatus @default(NONE)
+  subscriptionStatus      SubscriptionStatus           @default(NONE)
   vibecodingLevel         String?
   preferredTools          String[]
   gclid                   String?
   fbclid                  String?
-  twoFactorEnabled        Boolean            @default(false)
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  twoFactorEnabled        Boolean                      @default(false)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
   projects                Project[]
   audits                  Audit[]
   apiKeys                 ApiKey[]
@@ -237,9 +244,9 @@ model User {
   passkeys                Passkey[]
   twoFactors              TwoFactor[]
   emailLogs               EmailLog[]
-  linkedLeads             Lead[]             @relation("LeadLinkedUser")
-  supportSessions         SupportSession[]   @relation("SupportSessionUser")
-  assignedSupportSessions SupportSession[]   @relation("SupportSessionAgent")
+  linkedLeads             Lead[]                       @relation("LeadLinkedUser")
+  supportSessions         SupportSession[]             @relation("SupportSessionUser")
+  assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
   mcpInteractions         McpInteraction[]
   creditPurchases         CreditPurchase[]
   githubConnection        GithubConnection?
@@ -574,21 +581,24 @@ model Audit {
   monitoringAudits Audit[]         @relation("Monitoring")
   recheckTrigger   RecheckTrigger?
 
-  isPublic                   Boolean                 @default(false)
-  skipUsageCount             Boolean                 @default(false)
-  auditMode                  AuditMode               @default(CRITICAL_PATH)
+  isPublic                   Boolean                   @default(false)
+  skipUsageCount             Boolean                   @default(false)
+  auditMode                  AuditMode                 @default(CRITICAL_PATH)
   launchReadiness            Json?
-  launchReadinessState       LaunchReadinessState    @default(UNKNOWN)
-  reportCompleteness         ReportCompleteness      @default(UNKNOWN)
+  launchReadinessState       LaunchReadinessState      @default(UNKNOWN)
+  reportCompleteness         ReportCompleteness        @default(UNKNOWN)
+  technologyDetectionStatus  TechnologyDetectionStatus @default(NOT_CAPTURED)
+  technologyDetectorVersion  String?
+  technologyDetectedAt       DateTime?
   evidenceCoverage           Json?
-  includeAi                  Boolean                 @default(true)
+  includeAi                  Boolean                   @default(true)
   triageAt                   DateTime?
   aiReviewAt                 DateTime?
-  journeyReviewIncluded      Boolean                 @default(false)
+  journeyReviewIncluded      Boolean                   @default(false)
   journeyReviewAt            DateTime?
   watchRegressionCount       Int?
-  watchNotificationStatus    WatchNotificationStatus @default(NOT_APPLICABLE)
-  watchNotificationAttempts  Int                     @default(0)
+  watchNotificationStatus    WatchNotificationStatus   @default(NOT_APPLICABLE)
+  watchNotificationAttempts  Int                       @default(0)
   watchNotificationLastError String?
   watchNotifiedAt            DateTime?
 
@@ -602,14 +612,14 @@ model Audit {
   failureStage    String?
   failureMetadata Json?
 
-  htmlMetadata    Json?
-  performanceData Json?
-  consoleErrors   Json?
-  flowData        Json?
+  htmlMetadata        Json?
+  performanceData     Json?
+  consoleErrors       Json?
+  flowData            Json?
   /**
    * Inferred product intent: purpose, first-value journey, critical outcomes.
    */
-  productContract Json?
+  productContract     Json?
   /**
    * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
    */
@@ -624,14 +634,15 @@ model Audit {
   gclid            String?
   fbclid           String?
 
-  rubrics        ReportRubric[]
-  screenshots    Screenshot[]
-  flags          Flag[]
-  pages          AuditPage[]
-  journeyReviews JourneyReview[]
-  runCost        AuditRunCost?
-  shareLinks     ShareLink[]
-  feedback       AuditFeedback[]
+  rubrics                ReportRubric[]
+  screenshots            Screenshot[]
+  flags                  Flag[]
+  pages                  AuditPage[]
+  journeyReviews         JourneyReview[]
+  runCost                AuditRunCost?
+  shareLinks             ShareLink[]
+  feedback               AuditFeedback[]
+  technologyObservations AuditTechnologyObservation[]
 
   // Knowledge-graph back-references. Nullable + optional so the migration
   // is safe to apply to existing audits; filled by
@@ -1147,12 +1158,30 @@ model Page {
 }
 
 model Technology {
-  id    String           @id @default(cuid())
-  name  String           @unique
-  kind  String
-  sites SiteTechnology[]
+  id           String                       @id @default(cuid())
+  name         String                       @unique
+  kind         String
+  sites        SiteTechnology[]
+  observations AuditTechnologyObservation[]
 
   @@map("graph_technology")
+}
+
+model AuditTechnologyObservation {
+  id              String     @id @default(cuid())
+  auditId         String
+  audit           Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  technologyId    String
+  technology      Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+  confidence      Float
+  evidence        Json
+  detectorVersion String
+  detectedAt      DateTime   @default(now())
+
+  @@unique([auditId, technologyId])
+  @@index([auditId])
+  @@index([technologyId])
+  @@map("audit_technology_observation")
 }
 
 model SiteTechnology {
@@ -1161,12 +1190,14 @@ model SiteTechnology {
   firstSeenAt  DateTime @default(now())
   lastSeenAt   DateTime @default(now())
   confidence   Float    @default(1.0)
+  isCurrent    Boolean  @default(true)
 
   site       Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
   technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
 
   @@id([siteId, technologyId])
   @@index([technologyId])
+  @@index([siteId, isCurrent])
   @@map("graph_site_technology")
 }
 

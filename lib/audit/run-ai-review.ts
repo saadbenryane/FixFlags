@@ -12,6 +12,7 @@ import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import { runPrescriptionWithRetry } from './judge-prescription'
 import { isRetryableJudgeError } from './judge'
 import { enqueueAiReview } from './enqueue-ai-review'
+import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
 export async function runAiReview(auditId: string): Promise<void> {
@@ -20,7 +21,6 @@ export async function runAiReview(auditId: string): Promise<void> {
     include: {
       flags: { orderBy: { position: 'asc' } },
       rubrics: true,
-      pages: { take: 1, orderBy: { url: 'asc' } },
     },
   })
 
@@ -54,14 +54,7 @@ export async function runAiReview(auditId: string): Promise<void> {
   const { desktopBase64, mobileBase64 } = await loadAuditScreenshotBase64(auditId)
   if (!desktopBase64) throw new Error('Desktop screenshot missing for prescription')
 
-  const techStack: string[] = (() => {
-    const page = audit.pages[0]
-    if (!page) return []
-    const perfData = page.performanceData as Record<string, unknown> | null
-    if (!perfData?.detectedTech) return []
-    const techs = perfData.detectedTech as Array<{ name: string; kind: string; confidence: number }>
-    return techs.filter((t) => t.kind === 'framework' || t.kind === 'builder' || t.kind === 'cms' || t.kind === 'hosting').map((t) => t.name)
-  })()
+  const techStack = technologyNamesForPrompt(await loadTechnologyProfile(auditId))
 
   const existingFlags = audit.flags.map((flag) => ({
     flagKey: flagKeyForRow(flag),

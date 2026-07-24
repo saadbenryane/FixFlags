@@ -47,6 +47,8 @@ import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
+import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
+import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 
 interface RubricRow {
   id: string
@@ -91,6 +93,7 @@ interface AuditReportProps {
     verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
     intentionalNotes?: string[]
     knownRisks?: string[]
+    technologyProfile?: TechnologyProfile
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -165,6 +168,7 @@ export function AuditReport({
   )
   const showTimeline = (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = Boolean(audit.previewMeta)
+  const showStack = Boolean(audit.technologyProfile)
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
@@ -235,6 +239,7 @@ export function AuditReport({
             showTimeline={showTimeline}
             showPreviews={showPreviews}
             showLaunch={hasLaunchGates}
+            showStack={showStack}
             showRecheckSection={isLoggedIn && isViewerOwner}
             hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
@@ -292,6 +297,12 @@ export function AuditReport({
           ) : null}
         </>
       )}
+
+      {!isSample && audit.technologyProfile ? (
+        <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
+          <MadeWithProfile profile={audit.technologyProfile} />
+        </div>
+      ) : null}
 
       {explorerModel && unresolvedFlagCount > 0 ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)] space-y-3">

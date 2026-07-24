@@ -78,6 +78,9 @@ vi.mock('@/lib/audit/tech-detect', () => ({
   detectTechnologies: vi.fn(() => []),
   inferIndustry: vi.fn(() => null),
 }))
+vi.mock('@/lib/audit/technology-profile', () => ({
+  persistTechnologyObservations: vi.fn(),
+}))
 vi.mock('@/lib/audit/metadata', () => ({
   parseMetadataFromHtml: vi.fn(() => ({ title: 'Test', pageText: 'hello' })),
   mergeRuntimeHeadMetadata: vi.fn((meta: unknown) => meta),

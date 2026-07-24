@@ -9,7 +9,12 @@ import {
   type FormProbeResult,
   type JourneyRouteGuardOptions,
 } from './journey-safety'
-import { attachNetworkMonitor, type NetworkFailureRecord, type NetworkMonitor } from './network-monitor'
+import {
+  attachNetworkMonitor,
+  type NetworkFailureRecord,
+  type NetworkMonitor,
+  type TechnologyResourceRecord,
+} from './network-monitor'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -27,6 +32,9 @@ export interface AuditPageSession {
   responseHeaders: Record<string, string>
   /** Same-origin / engagement network failures collected during the session. */
   networkFailures: NetworkFailureRecord[]
+  /** Sanitized, bounded initial resource inventory for deterministic technology detection. */
+  technologyResources: TechnologyResourceRecord[]
+  technologyResourcesTruncated: () => boolean
   /** Optional form probe result when journeySafe engagement POST was observed. */
   formProbe: FormProbeResult | null
   disposeNetwork: () => void
@@ -178,6 +186,8 @@ export async function createAuditPage(
     consoleErrors,
     responseHeaders,
     networkFailures: network.failures,
+    technologyResources: network.resources,
+    technologyResourcesTruncated: network.resourcesTruncated,
     formProbe: formProbeState?.result ?? null,
     disposeNetwork: network.dispose,
   }

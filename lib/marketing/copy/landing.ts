@@ -497,6 +497,7 @@ export const REPORT_COPY = {
     timelineCompleted: 'How we checked',
     timelineProgressive: 'What FixFlags is doing',
     timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
+    madeWith: 'Made with',
     previews: 'Share & search previews',
     remember: 'What we proved',
     rememberHint: 'Verified on re-check. Stays with this product across scans.',
@@ -508,6 +509,7 @@ export const REPORT_COPY = {
     flow: 'Flow',
     timeline: 'Timeline',
     flags: 'Fixes',
+    stack: 'Stack',
     previews: 'Previews',
     launch: 'Launch',
   },
@@ -520,6 +522,56 @@ export const REPORT_COPY = {
     noFlagsNice: 'No flags. Nice work.',
   },
   runYourOwnAudit: 'Run your own audit',
+} as const
+
+export const MADE_WITH_COPY = {
+  sectionLabel: 'Technology profile',
+  title: 'Made with',
+  checked: 'Checked',
+  viewEvidence: 'View stack and evidence',
+  verified: 'Verified',
+  strongSignal: 'Strong signal',
+  legacy:
+    'Technology signals were not captured for this audit. Run a re-check to create a verified profile.',
+  unavailable:
+    'Technology signals were unavailable for this scan. The rest of the report is unaffected.',
+  empty: 'No technologies could be verified from the site’s public signals.',
+  partial:
+    'Partial profile. Only signals preserved by the historical capture are shown.',
+  changed: 'Changed since the last re-check',
+  added: 'Added',
+  removed: 'Removed',
+  evidenceChanged: 'Evidence changed',
+  disclaimer:
+    'FixFlags reads public page signals. The report score reflects the site outcome, not the quality of any individual tool.',
+  insightWithRubric: (
+    stack: string,
+    rubric: string,
+    score: number,
+    flagCount: number
+  ) =>
+    `On this ${stack} site, ${rubric} is the lowest-scoring rubric at ${score} with ${flagCount} unresolved ${flagCount === 1 ? 'Flag' : 'Flags'}.`,
+  insightWithScore: (stack: string, score: number) =>
+    `This ${stack} site scored ${score}. The score reflects the site outcome, not the tools themselves.`,
+  insightCount: (count: number) =>
+    `FixFlags verified ${count} public ${count === 1 ? 'technology' : 'technologies'} on this site.`,
+  publicProfileLabel: 'Public technology profile',
+  publicProfileLead:
+    'Public page signals, checked by the same capture that produced this site’s FixFlags report.',
+  latestPublicReport: 'Latest public report',
+  completed: 'Completed',
+  openPublicReport: 'Open the public report',
+  relatedProfiles: 'Related public profiles',
+  ownSitePrompt: 'Check your own site’s stack, score, evidence, and fix list.',
+  checkAgain: 'Check this site again',
+  metaTitle: (hostname: string, technologies: string[]) =>
+    `${hostname} is made with ${technologies.slice(0, 3).join(', ')} | FixFlags`,
+  metaDescription: (hostname: string) =>
+    `Verified public technology signals for ${hostname}, connected to its latest FixFlags score and unresolved Flags.`,
+  reportSummary: (score: number | null, flagCount: number) =>
+    score === null
+      ? `${flagCount} unresolved ${flagCount === 1 ? 'Flag' : 'Flags'}`
+      : `Score ${score} · ${flagCount} ${flagCount === 1 ? 'Flag' : 'Flags'}`,
 } as const
 
 export const EXAMPLES_PAGE = {

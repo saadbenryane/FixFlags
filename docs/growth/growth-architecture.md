@@ -68,14 +68,16 @@ via `persistAuditToGraph()` — fire-and-forget, idempotent, O(flags).
 - Performance data (PageSpeed metrics)
 - HTML metadata (title, description, OG tags, etc.)
 - Flow data (CTA click-through results)
-- Technology detection (framework, builder, CMS, hosting, analytics)
+- Technology detection (framework, builder, CMS/commerce, hosting, analytics/monitoring, payments, support)
 - Industry classification (SaaS, E-commerce, Agency, etc.)
 
 **Tech detection:** Runs during the capture phase via `lib/audit/tech-detect.ts`.
-Inspects rendered HTML + HTTP response headers. Results stored in
-`performanceData.detectedTech` and persisted to `graph_technology` /
-`graph_site_technology` tables. Feeds `/madewith/[hostname]` pages and
-`topFrameworks` on issue pages.
+It inspects rendered HTML, a bounded sanitized resource inventory, allowlisted
+document headers, and known runtime markers from the existing Playwright
+navigation. Results are normalized into audit-owned observations, then the
+latest complete snapshot reconciles `graph_technology` /
+`graph_site_technology`. Explicitly public, currently eligible audits feed
+`/madewith/[hostname]`; current site technology rows feed `topFrameworks`.
 
 ### 1b. Search Console (NOT IMPLEMENTED — blocked on access)
 

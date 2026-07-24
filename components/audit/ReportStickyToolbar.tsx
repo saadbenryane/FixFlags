@@ -13,6 +13,7 @@ const JOURNEY_SECTION = { id: 'report-journey', label: REPORT_COPY.stickyNav.jou
 const FLOW_SECTION = { id: 'report-flow', label: REPORT_COPY.stickyNav.flow } as const
 const TIMELINE_SECTION = { id: 'report-timeline', label: REPORT_COPY.stickyNav.timeline } as const
 const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
+const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
 const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
@@ -29,6 +30,7 @@ interface Props {
   showTimeline?: boolean
   showPreviews?: boolean
   showLaunch?: boolean
+  showStack?: boolean
   showRecheckSection?: boolean
   /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
   hasRecheckDiff?: boolean
@@ -56,6 +58,7 @@ export function ReportStickyToolbar({
   showTimeline = false,
   showPreviews = false,
   showLaunch = false,
+  showStack = false,
   showRecheckSection = true,
   hasRecheckDiff = false,
   siteUrl,
@@ -71,6 +74,7 @@ export function ReportStickyToolbar({
     if (showJourney) items.push(JOURNEY_SECTION)
     if (showFlow) items.push(FLOW_SECTION)
     if (showTimeline) items.push(TIMELINE_SECTION)
+    if (showStack) items.push(STACK_SECTION)
     items.push(FLAGS_SECTION)
     if (showPreviews) items.push(PREVIEWS_SECTION)
     if (showLaunch) items.push(LAUNCH_SECTION)
@@ -86,6 +90,7 @@ export function ReportStickyToolbar({
     showTimeline,
     showPreviews,
     showLaunch,
+    showStack,
     showRecheckSection,
     hasRecheckDiff,
   ])

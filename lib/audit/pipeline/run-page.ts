@@ -28,6 +28,7 @@ import { parseTriageFailure } from './triage-failure'
 import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
+import { persistTechnologyObservations } from '../technology-profile'
 import { inferProductContract } from '../product-contract'
 import { scanAccessToFetchHeaders } from '../scan-access'
 import {
@@ -246,25 +247,55 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   const metadata = metadataFromHtml
 
-  // Technology detection from HTML + response headers (primary page only)
-  const detectedTech = input.primary
-    ? detectTechnologies(
+  // Technology detection is deterministic and uses only evidence already
+  // collected by this capture. It never performs another request.
+  let detectedTech: ReturnType<typeof detectTechnologies> = []
+  if (input.primary) {
+    try {
+      detectedTech = detectTechnologies(
         screenshots.desktopHtml ?? '',
         screenshots.responseHeaders ?? {},
+        screenshots.technologyResources ?? [],
+        screenshots.technologyRuntimeMarkers ?? []
       )
-    : []
+      const technologyStatus = screenshots.technologyResourcesTruncated
+        ? 'PARTIAL'
+        : 'COMPLETE'
+      await persistTechnologyObservations(ctx.auditId, detectedTech, technologyStatus)
+      const categoryCounts = detectedTech.reduce<Record<string, number>>((counts, tech) => {
+        counts[tech.kind] = (counts[tech.kind] ?? 0) + 1
+        return counts
+      }, {})
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'checking',
+        event: 'technology_detection_completed',
+        detail: JSON.stringify({
+          count: detectedTech.length,
+          categories: categoryCounts,
+          status: technologyStatus,
+        }),
+      })
+    } catch (error) {
+      await persistTechnologyObservations(ctx.auditId, [], 'UNAVAILABLE')
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'checking',
+        event: 'technology_detection_failed',
+        error: error instanceof Error ? error.message : 'Technology detection failed',
+      })
+    }
+  }
   const industryGuess = input.primary
     ? inferIndustry(new URL(normalizedUrl).hostname, metadata.pageText ?? '')
     : null
 
-  // Persist tech data in performanceData so it survives to finalize
-  if (input.primary && detectedTech.length > 0) {
+  // Industry remains part of the page snapshot; technology observations have
+  // their own normalized audit-level records.
+  if (input.primary) {
     await prisma.auditPage.update({
       where: { id: page.id },
       data: {
         performanceData: {
-          ...((await prisma.auditPage.findUnique({ where: { id: page.id }, select: { performanceData: true } }))?.performanceData as Record<string, unknown> ?? {}),
-          detectedTech,
+          ...storedPerformance,
           industryGuess,
         } as never,
       },

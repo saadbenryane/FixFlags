@@ -5,7 +5,6 @@
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
 | current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
-| made-with-intelligence | in_progress | codex-root | main | Evidence-backed technology detection, report profile, re-check diff, public profile safeguards, and normalized persistence | lib/audit technology capture, lib/graph technology reads, report/public UI, Prisma technology models, focused tests/docs | Preserve current-product-completion working tree; share canonical report and graph contracts | 2026-07-23 |
 
 ---
 
@@ -13,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| made-with-intelligence | codex-root | Evidence-backed technology detection, normalized audit snapshots, report and progressive UI, re-check diffs, sanitized APIs, eligible public profiles, migration/backfill, tests, and canonical docs | 2026-07-23 |
 | customer-journey-completion | cloud-agent | Phases 1–3 anon evidence/honest Copy/score/nav; merged to main | 2026-07-23 |
 | strategic-sprint | cloud-agent | Preview scan access, Railway deploy gate, Lovable/Bolt partners, unified Finish Plan, MCP quality gate | 2026-07-23 |
 | fix-live-images | cloud-agent | Restore live logo/marketing images; unoptimized public assets + localPatterns guard; merged to main | 2026-07-23 |

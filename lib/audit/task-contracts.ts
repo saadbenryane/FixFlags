@@ -10,6 +10,10 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import {
   buildUnifiedPlanBundle,
 } from '@/lib/audit/load-finish-plan-flags'
+import {
+  loadTechnologyProfile,
+  type TechnologyProfile,
+} from '@/lib/audit/technology-profile'
 
 export interface TaskRubricSummary {
   name: string
@@ -48,6 +52,7 @@ export interface CheckAndPlanOutcome {
   verdict?: string | null
   rubrics?: TaskRubricSummary[]
   fixList?: TaskFixList
+  technologyProfile?: TechnologyProfile
   /** @deprecated Use fixList. */
   finishPlan?: TaskFinishPlan
 }
@@ -65,6 +70,7 @@ export interface RecheckAndCompareOutcome {
   } | null
   nextFinishPlan?: TaskFinishPlan
   nextFixList?: TaskFixList
+  technologyProfile?: TechnologyProfile
 }
 
 interface TaskQueueOptions {
@@ -106,6 +112,7 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
   rubrics: TaskRubricSummary[]
   fixList: TaskFixList
   finishPlan: TaskFinishPlan
+  technologyProfile: TechnologyProfile
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -148,12 +155,26 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
     contract,
     promptAccess: 'all' as const,
   }
-  const { fixList, finishPlan: legacyPlan } = await buildUnifiedPlanBundle(planInput)
+  const [{ fixList, finishPlan: legacyPlan }, technologyProfile] = await Promise.all([
+    buildUnifiedPlanBundle(planInput),
+    loadTechnologyProfile(reportId, {
+      score: audit.score,
+      rubrics: audit.rubrics.map((rubric) => ({
+        name: rubric.name,
+        score: rubric.score,
+      })),
+      flags: audit.flags.map((flag) => ({
+        rubric: flag.rubric,
+        status: flag.status,
+      })),
+    }),
+  ])
 
   return {
     score: audit.score,
     verdict: audit.verdict,
     rubrics,
+    technologyProfile,
     fixList: {
       reportId,
       url: audit.url,
@@ -203,6 +224,7 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
     },
     nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,
+    technologyProfile: completed.technologyProfile,
   }
 }
 
@@ -284,5 +306,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     },
     nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,
+    technologyProfile: completed.technologyProfile,
   }
 }

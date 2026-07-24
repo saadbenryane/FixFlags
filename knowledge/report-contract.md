@@ -14,12 +14,13 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 
 1. Identity, URL, verdict, readiness
 2. Re-check result, when applicable
-3. Complete ranked fix list with screenshot evidence and selected fix detail
-4. Product Contract and verified memory, when present
-5. Journey, flow, and action timeline
-6. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
-7. Owner re-check
-8. At most one contextual signup or upgrade moment
+3. Compact Made with profile from public capture evidence, with re-check changes when comparable
+4. Complete ranked fix list with screenshot evidence and selected fix detail
+5. Product Contract and verified memory, when present
+6. Journey, flow, and action timeline
+7. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
+8. Owner re-check
+9. At most one contextual signup or upgrade moment
 
 Anonymous reports expose every problem and evidence summary and exactly one complete demonstrated prompt. Evidence must be real page evidence, not signup-gate placeholder strings persisted into Flag rows. Other prompt fields are removed before rendering or API serialization. Copy controls must not toast success when no real prompt is available.
 
@@ -27,7 +28,7 @@ Anonymous reports expose every problem and evidence summary and exactly one comp
 
 ## Progressive report
 
-Progressive UI appends every verified Flag to the same ranked explorer used by the completed report. Show honest status, captures, and early findings. Put Contract and Action Timeline inside “How FixFlags is checking.” Keep the frame mounted until the completed server report replaces it.
+Progressive UI appends every verified Flag to the same ranked explorer used by the completed report. Show honest status, captures, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable. Put Contract and Action Timeline inside “How FixFlags is checking.” Keep the frame mounted until the completed server report replaces it.
 
 ## Samples and sharing
 
@@ -41,4 +42,5 @@ Progressive UI appends every verified Flag to the same ranked explorer used by t
 - Interactive report targets are at least 44px and keyboard operable.
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
+- Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
 - Anonymous dogfood: three real evidence summaries, one non-placeholder Copy prompt, remaining prompts gated; see `.agents/sessions/customer-journey-completion-plan.md`.

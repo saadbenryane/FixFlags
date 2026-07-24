@@ -1,7 +1,10 @@
 import type { MetadataRoute } from 'next'
 import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy'
 import { INDEXABLE_ROUTES, LLMS_TXT_PATH } from '@/lib/marketing/seo-routes'
-import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
+import {
+  getIndexableIssueCheckIds,
+  getIndexableMadewithProfiles,
+} from '@/lib/graph/queries'
 
 const baseUrl = SITE_URL.replace(/\/$/, '')
 
@@ -29,13 +32,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Dynamic issue pages from the knowledge graph.
-  const issues = await getIndexableIssueCheckIds()
+  const [issues, technologyProfiles] = await Promise.all([
+    getIndexableIssueCheckIds(),
+    getIndexableMadewithProfiles(),
+  ])
   for (const issue of issues) {
     pages.push({
       url: `${baseUrl}/issues/${issue.checkId}`,
       lastModified: issue.lastSeenAt,
       changeFrequency: 'weekly',
       priority: 0.7,
+    })
+  }
+
+  for (const profile of technologyProfiles) {
+    pages.push({
+      url: `${baseUrl}/madewith/${profile.hostname}`,
+      lastModified: profile.lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.6,
     })
   }
 

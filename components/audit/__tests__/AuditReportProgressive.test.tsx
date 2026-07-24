@@ -103,6 +103,31 @@ describe('AuditReportProgressive', () => {
   it('falls back to a skeleton frame while screenshots are pending', () => {
     const { container } = render(<AuditReportProgressive status="CHECKING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Reading technology signals')).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('replaces the stack skeleton with verified progressive detections', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        url={URL}
+        technologyProfile={{
+          status: 'complete',
+          detectorVersion: 'test',
+          detectedAt: new Date().toISOString(),
+          technologies: [{
+            slug: 'next-js',
+            name: 'Next.js',
+            category: 'framework',
+            confidenceBand: 'verified',
+            evidence: [{ type: 'resource', label: 'Next.js assets under /_next/' }],
+          }],
+          insight: 'FixFlags verified one public technology on this site.',
+        }}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Reading technology signals')).not.toBeInTheDocument()
   })
 })

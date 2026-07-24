@@ -14,6 +14,7 @@ import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -127,6 +128,14 @@ export async function GET(
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
     const actionTimeline = parseActionTimeline(performanceData)
     const contract = parseProductContract(productContract)
+    const technologyProfile = await loadTechnologyProfile(id, {
+      score: audit.score,
+      rubrics: audit.rubrics.map((rubric) => ({
+        name: rubric.name,
+        score: rubric.score,
+      })),
+      flags: audit.flags.map((flag) => ({ rubric: flag.rubric })),
+    })
 
     return NextResponse.json({
       ...rest,
@@ -140,6 +149,7 @@ export async function GET(
       partialFlags: showPartialFlags ? partialFlags : undefined,
       actionTimeline,
       productContract: contract,
+      technologyProfile,
     })
   } catch (err) {
     return handleRouteError(err)

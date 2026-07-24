@@ -95,7 +95,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
-- Technology detection engine + /madewith/[hostname] pages
+- Evidence-backed Made with profiles across reports, re-check diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
 - Project-scoped Product Intelligence persistence
