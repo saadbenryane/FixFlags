@@ -16,12 +16,15 @@ import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { SettingsSkeleton } from '@/components/settings/settings-skeleton'
+import { createApiKey } from '@/lib/api/api-key-client'
+import type { ApiKeyClient } from '@/lib/mcp/builders'
 
 interface ApiKey {
   id: string
   name: string
   prefix: string
   lastFour: string
+  client: ApiKeyClient | null
   lastUsed: string | null
   createdAt: string
 }
@@ -55,28 +58,23 @@ export default function ApiKeysPage() {
   async function createKey() {
     setCreating(true)
     try {
-      const res = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName || 'Default' }),
+      const data = await createApiKey({
+        name: newKeyName || 'Default',
+        client: 'other',
       })
-      if (!res.ok) {
-        toast.error((await parseApiErrorResponse(res)).message)
-        return
-      }
-      const data = await res.json()
       setNewKey(data.key)
       setKeys((prev) => [{
         id: data.id,
         name: data.name,
         prefix: data.prefix,
         lastFour: data.lastFour,
+        client: data.client,
         lastUsed: null,
         createdAt: new Date().toISOString(),
       }, ...prev])
       setNewKeyName('')
-    } catch {
-      toast.error('Could not create the key. Try again.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not create the key. Try again.')
     } finally {
       setCreating(false)
     }
@@ -117,7 +115,7 @@ export default function ApiKeysPage() {
     <div className="space-y-8">
       <PageHeader
         title="API Keys"
-        description={`Use API keys to connect ${BRAND.name} to Claude Code, Cursor, or Windsurf via MCP.`}
+        description={`Use API keys to connect ${BRAND.name} to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code via MCP.`}
       />
 
       {!canUseKeys && (
@@ -181,7 +179,7 @@ export default function ApiKeysPage() {
           {keys.length === 0 ? (
             <EmptyState
               title="No API keys yet"
-              description="Create a key above to connect FixFlags to Claude Code, Cursor, or Windsurf via MCP."
+              description="Create a key above to connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code via MCP."
             />
           ) : (
             keys.map((key) => (
@@ -191,6 +189,11 @@ export default function ApiKeysPage() {
                   <code className="text-xs text-muted-foreground">
                     {key.prefix}…{key.lastFour}
                   </code>
+                  {key.client ? (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {key.client}
+                    </span>
+                  ) : null}
                 </div>
                 {key.lastUsed && (
                   <span className="shrink-0 text-xs text-muted-foreground">
@@ -215,7 +218,7 @@ export default function ApiKeysPage() {
       <div className="text-center text-sm text-muted-foreground">
         See the{' '}
         <TextLink href="/help/mcp">MCP setup guide</TextLink>{' '}
-        to connect your key to Claude Code, Cursor, or Windsurf.
+        to connect your key to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code.
       </div>
       {confirmDialog}
     </div>

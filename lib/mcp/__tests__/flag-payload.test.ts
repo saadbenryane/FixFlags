@@ -27,6 +27,7 @@ describe('buildMcpFlagPayload', () => {
     assert.match(payload.whyItMatters ?? '', /Proof near the CTA/)
     assert.match(payload.fix, /substantiate/)
     assert.match(payload.verificationRule ?? '', /customer count|testimonial|review badge/i)
+    assert.ok(payload.prompt)
     assert.match(payload.prompt, /^No social proof signals/)
     assert.match(payload.prompt, /## Why\nProof near the CTA/)
     assert.match(payload.prompt, /## Evidence\nPage has CTAs/)
@@ -35,7 +36,7 @@ describe('buildMcpFlagPayload', () => {
     assert.doesNotMatch(payload.prompt, /Join 10,000/i)
   })
 
-  it('uses tool-specific prompts when present and falls back to expert prompt otherwise', () => {
+  it('uses tool-specific prompts and reports unavailable builder prompts explicitly', () => {
     const baseFlag = {
       id: 'flag-2',
       checkId: 'mobile-cta-weak-label',
@@ -54,6 +55,8 @@ describe('buildMcpFlagPayload', () => {
       buildMcpFlagPayload(baseFlag, 'cursor').prompt,
       'Find the mobile CTA and rename it to an outcome-specific action.'
     )
-    assert.match(buildMcpFlagPayload(baseFlag, 'bolt').prompt, /^## Why$/m)
+    const unavailable = buildMcpFlagPayload(baseFlag, 'bolt')
+    assert.equal(unavailable.prompt, null)
+    assert.match(unavailable.promptError ?? '', /No validated bolt prompt/)
   })
 })

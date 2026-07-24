@@ -61,6 +61,7 @@ describe('POST /api/api-keys - billing gating enforcement', () => {
       name: 'Test key',
       prefix: 'fk_live_abc',
       lastFour: '1234',
+      client: null,
     })
   })
 
@@ -95,6 +96,41 @@ describe('POST /api/api-keys - billing gating enforcement', () => {
     expect(prismaMock.apiKey.create).toHaveBeenCalledTimes(1)
     const body = await res.json()
     expect(body.key).toBeTruthy()
+  })
+
+  it('records a supported builder client on the key', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
+    prismaMock.apiKey.create.mockResolvedValue({
+      id: 'key-1',
+      name: 'Lovable MCP',
+      prefix: 'fk_live_abc',
+      lastFour: '1234',
+      client: 'lovable',
+    })
+    const request = {
+      json: async () => ({ name: 'Lovable MCP', client: 'lovable' }),
+    } as unknown as NextRequest
+
+    const res = await POST(request)
+
+    expect(res.status).toBe(201)
+    expect(prismaMock.apiKey.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ client: 'lovable' }),
+    })
+    expect((await res.json()).client).toBe('lovable')
+  })
+
+  it('rejects an unsupported builder client', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
+    const request = {
+      json: async () => ({ client: 'unknown-editor' }),
+    } as unknown as NextRequest
+
+    const res = await POST(request)
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe('INVALID_API_KEY_CLIENT')
+    expect(prismaMock.apiKey.create).not.toHaveBeenCalled()
   })
 
   it('treats a revoked (PAST_DUE) paid subscription as free - 402', async () => {

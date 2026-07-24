@@ -76,7 +76,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         Copy
       </Button>
-      <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" asChild>
+      <Button variant="ghost" size="icon" className="h-[44px] w-[44px] shrink-0" asChild>
         <a href={link} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="h-3.5 w-3.5" />
         </a>

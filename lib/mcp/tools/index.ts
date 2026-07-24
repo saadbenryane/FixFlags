@@ -35,5 +35,11 @@ export async function validateApiKey(key: string | null) {
   if (!apiKey || apiKey.revokedAt) return null
   if (!canUseApiKeys(apiKey.user)) return null
   await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsed: new Date() } })
-  return apiKey.user
+  return {
+    user: apiKey.user,
+    apiKey: {
+      id: apiKey.id,
+      client: apiKey.client,
+    },
+  }
 }

@@ -236,7 +236,7 @@ export function ShareDrawer({
             </p>
           </div>
           <SheetClose asChild>
-            <Button variant="ghost" size="icon" className="h-11 w-11">
+            <Button variant="ghost" size="icon" className="h-[44px] w-[44px]">
               <X className="h-4 w-4" />
             </Button>
           </SheetClose>
@@ -418,7 +418,7 @@ export function ShareDrawer({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-11 w-11"
+                                  className="h-[44px] w-[44px]"
                                   onClick={() => handleRevoke(link.id)}
                                   title="Revoke link"
                                 >
@@ -463,7 +463,7 @@ export function ShareDrawer({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-11 w-11 p-0"
+                                className="h-[44px] w-[44px] p-0"
                                 asChild
                               >
                                 <a href={linkUrl} target="_blank" rel="noopener noreferrer">

@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { EditorMark, type EditorMarkName } from '@/components/brand/EditorMarks'
+import {
+  BUILDERS,
+  type PromptToolKey,
+} from '@/lib/mcp/builders'
 import { cn } from '@/lib/utils'
 
-export type PromptToolKey = 'universal' | 'cursor' | 'claude' | 'windsurf' | 'lovable' | 'bolt'
+export type { PromptToolKey } from '@/lib/mcp/builders'
+export { resolveToolPrompt } from '@/lib/mcp/builders'
 
 interface ToolOption {
   key: PromptToolKey
@@ -12,14 +17,20 @@ interface ToolOption {
   editorMark: EditorMarkName | 'other'
 }
 
-const TOOL_OPTIONS: ToolOption[] = [
-  { key: 'universal', label: 'Universal', editorMark: 'other' },
-  { key: 'cursor', label: 'Cursor', editorMark: 'Cursor' },
-  { key: 'claude', label: 'Claude', editorMark: 'Claude Code' },
-  { key: 'windsurf', label: 'Windsurf', editorMark: 'Windsurf' },
-  { key: 'lovable', label: 'Lovable', editorMark: 'Lovable' },
-  { key: 'bolt', label: 'Bolt', editorMark: 'Bolt' },
-]
+const EDITOR_MARKS: Record<PromptToolKey, EditorMarkName | 'other'> = {
+  universal: 'other',
+  cursor: 'Cursor',
+  claude: 'Claude Code',
+  windsurf: 'Windsurf',
+  lovable: 'Lovable',
+  bolt: 'Bolt',
+}
+
+const TOOL_OPTIONS: ToolOption[] = BUILDERS.map((builder) => ({
+  key: builder.key,
+  label: builder.label,
+  editorMark: EDITOR_MARKS[builder.key],
+}))
 
 const STORAGE_KEY = 'ff_preferredEditor'
 
@@ -40,23 +51,6 @@ function storePreference(key: PromptToolKey) {
   } catch {
     // localStorage unavailable
   }
-}
-
-export function resolveToolPrompt(
-  toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>> | undefined,
-  selectedTool: PromptToolKey,
-  fallback: string
-): string {
-  if (!toolPrompts) return fallback
-  const prompt = toolPrompts[selectedTool]
-  if (prompt?.trim()) return prompt.trim()
-  // Fallback chain: universal -> cursor -> first available
-  if (selectedTool !== 'universal' && toolPrompts.universal?.trim()) return toolPrompts.universal.trim()
-  if (toolPrompts.cursor?.trim()) return toolPrompts.cursor.trim()
-  for (const opt of TOOL_OPTIONS) {
-    if (toolPrompts[opt.key]?.trim()) return toolPrompts[opt.key]!.trim()
-  }
-  return fallback
 }
 
 interface PromptToolSelectorProps {

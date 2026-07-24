@@ -6,10 +6,15 @@ import { toast } from 'sonner'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
-import { FIX_ACTION_COPY } from '@/lib/audit/fix-action-copy'
+import { createApiKey } from '@/lib/api/api-key-client'
 import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
 import { SITE_URL } from '@/lib/marketing/copy'
+import {
+  apiKeyClientForTool,
+  getBuilder,
+  isPromptToolKey,
+  type PromptToolKey,
+} from '@/lib/mcp/builders'
 import { cn } from '@/lib/utils'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
@@ -45,20 +50,31 @@ export function PromptActionRow({
   const { user } = useMe()
   const [installing, setInstalling] = useState(false)
 
-  async function connectCursorMcp() {
+  const actionTool: PromptToolKey =
+    tool && isPromptToolKey(tool) && tool !== 'universal' ? tool : 'cursor'
+  const actionBuilder = getBuilder(actionTool)
+
+  async function connectBuilderMcp() {
+    const setupPath = `/dashboard/mcp-setup?builder=${actionBuilder.apiKeyClient ?? actionTool}`
     if (!user) {
-      window.location.href = FIX_ACTION_COPY.cursorMcpAuthRedirect
+      window.location.href = `/sign-in?next=${encodeURIComponent(setupPath)}`
+      return
+    }
+
+    if (actionTool !== 'cursor') {
+      window.location.href = setupPath
       return
     }
 
     setInstalling(true)
     try {
-      const res = await fetch('/api/api-keys', { method: 'PUT' })
-      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
-      const data = await res.json()
+      const data = await createApiKey({
+        name: `${actionBuilder.label} MCP`,
+        client: apiKeyClientForTool(actionTool),
+      })
       window.location.href = buildCursorInstallLink({ baseUrl: SITE_URL, apiKey: data.key })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not connect to Cursor')
+      toast.error(err instanceof Error ? err.message : `Could not connect to ${actionBuilder.label}`)
     } finally {
       setInstalling(false)
     }
@@ -76,15 +92,15 @@ export function PromptActionRow({
               'border border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'
           )}
           disabled={installing}
-          onClick={connectCursorMcp}
-          aria-label={FIX_ACTION_COPY.cursorMcpAriaLabel}
+          onClick={connectBuilderMcp}
+          aria-label={`Connect ${actionBuilder.label} to FixFlags`}
         >
           {installing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           ) : (
             <PlugZap className="h-3.5 w-3.5" aria-hidden />
           )}
-          {FIX_ACTION_COPY.cursorMcpLabel}
+          {`Connect ${actionBuilder.label}`}
         </Button>
       )}
       <PromptCopyButton

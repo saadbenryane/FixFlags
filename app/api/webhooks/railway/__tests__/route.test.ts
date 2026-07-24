@@ -30,7 +30,10 @@ describe('POST /api/webhooks/railway', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     delete process.env.RAILWAY_WEBHOOK_SECRET
-    mockValidateApiKey.mockResolvedValue({ id: 'user-1' })
+    mockValidateApiKey.mockResolvedValue({
+      user: { id: 'user-1' },
+      apiKey: { id: 'api-key-1', client: 'railway' },
+    })
     mockCheckAndPlan.mockResolvedValue({
       reportId: 'audit-1',
       reportUrl: 'https://fixflags.com/report/audit-1',
@@ -69,6 +72,22 @@ describe('POST /api/webhooks/railway', () => {
     const res = await POST(req)
 
     expect(res.status).toBe(400)
+    expect(mockCheckAndPlan).not.toHaveBeenCalled()
+  })
+
+  it('rejects an invalid API key before enqueueing a check', async () => {
+    mockValidateApiKey.mockResolvedValue(null)
+    const req = new NextRequest(
+      'http://localhost/api/webhooks/railway?apiKey=invalid&url=https://my-app.up.railway.app',
+      {
+        method: 'POST',
+        body: JSON.stringify(successPayload()),
+      }
+    )
+
+    const res = await POST(req)
+
+    expect(res.status).toBe(401)
     expect(mockCheckAndPlan).not.toHaveBeenCalled()
   })
 

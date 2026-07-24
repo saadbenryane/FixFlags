@@ -14,6 +14,11 @@ import {
   loadTechnologyProfile,
   type TechnologyProfile,
 } from '@/lib/audit/technology-profile'
+import {
+  resolveToolPrompt,
+  type PromptToolKey,
+} from '@/lib/mcp/builders'
+import type { FlagDiffSummaryItem } from '@/lib/audit/diff-flags'
 
 export interface TaskRubricSummary {
   name: string
@@ -24,12 +29,20 @@ export interface TaskRubricSummary {
 }
 
 export interface TaskFinishPlanItem {
+  rank: number
   flagId: string
   checkId: string | null
   problem: string
   rubric: string
   severity: string
   impactTag: string | null
+  evidence: string
+  rationale: string | null
+  verification: string | null
+  pageUrl: string | null
+  reportUrl: string
+  selectedTool: PromptToolKey
+  selectedPrompt: string | null
   fixPrompt: string | null
 }
 
@@ -55,6 +68,22 @@ export interface CheckAndPlanOutcome {
   technologyProfile?: TechnologyProfile
   /** @deprecated Use fixList. */
   finishPlan?: TaskFinishPlan
+  nextAction?: TaskNextAction
+  error?: TaskOutcomeError
+}
+
+export interface TaskNextAction {
+  type: 'poll'
+  tool: 'ff_get_check_status' | 'ff_get_report'
+  reportId: string
+  retryAfterSeconds: number
+}
+
+export interface TaskOutcomeError {
+  code: 'AUDIT_FAILED' | 'AUDIT_CANCELLED' | 'WAIT_TIMEOUT'
+  message: string
+  recoverable: boolean
+  action: 'retry' | 'poll'
 }
 
 export interface RecheckAndCompareOutcome {
@@ -67,16 +96,25 @@ export interface RecheckAndCompareOutcome {
     remaining: number
     newIssues: number
     regressed: number
+    flags: {
+      cleared: FlagDiffSummaryItem[]
+      remaining: FlagDiffSummaryItem[]
+      new: FlagDiffSummaryItem[]
+      regressed: FlagDiffSummaryItem[]
+    }
   } | null
   nextFinishPlan?: TaskFinishPlan
   nextFixList?: TaskFixList
   technologyProfile?: TechnologyProfile
+  nextAction?: TaskNextAction
+  error?: TaskOutcomeError
 }
 
 interface TaskQueueOptions {
   waitForCompletion?: boolean
   delayMs?: number
   signal?: AbortSignal
+  tool?: PromptToolKey
 }
 
 function reportUrl(reportId: string): string {
@@ -93,20 +131,41 @@ function toTaskItems(
     severity: string
     impactTag?: string | null
     prompt: string | null
-  }>
+    evidence: string
+    whyItMatters?: string | null
+    verificationRule?: string | null
+    pageUrl?: string | null
+    toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>> | null
+  }>,
+  reportId: string,
+  tool: PromptToolKey
 ): TaskFinishPlanItem[] {
-  return items.map((item) => ({
-    flagId: item.id,
-    checkId: item.checkId ?? null,
-    problem: item.problem,
-    rubric: item.rubricName,
-    severity: item.severity,
-    impactTag: item.impactTag ?? null,
-    fixPrompt: item.prompt,
-  }))
+  return items.map((item, index) => {
+    const selectedPrompt = resolveToolPrompt(item.toolPrompts ?? undefined, tool, item.prompt)
+    return {
+      rank: index + 1,
+      flagId: item.id,
+      checkId: item.checkId ?? null,
+      problem: item.problem,
+      rubric: item.rubricName,
+      severity: item.severity,
+      impactTag: item.impactTag ?? null,
+      evidence: item.evidence,
+      rationale: item.whyItMatters ?? null,
+      verification: item.verificationRule ?? null,
+      pageUrl: item.pageUrl ?? null,
+      reportUrl: reportUrl(reportId),
+      selectedTool: tool,
+      selectedPrompt,
+      fixPrompt: selectedPrompt,
+    }
+  })
 }
 
-export async function loadCompletedOutcome(reportId: string): Promise<{
+export async function loadCompletedOutcome(
+  reportId: string,
+  tool: PromptToolKey = 'universal'
+): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
@@ -178,20 +237,23 @@ export async function loadCompletedOutcome(reportId: string): Promise<{
     fixList: {
       reportId,
       url: audit.url,
-      items: toTaskItems(fixList.items),
+      items: toTaskItems(fixList.items, reportId, tool),
       planPrompt: fixList.copyPrompt ?? '',
       totalCount: fixList.totalCount,
     },
     finishPlan: {
       reportId,
       url: audit.url,
-      items: toTaskItems(legacyPlan.items),
+      items: toTaskItems(legacyPlan.items, reportId, tool),
       planPrompt: legacyPlan.copyPrompt ?? '',
     },
   }
 }
 
-export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckAndPlanOutcome & {
+export async function loadCompletedTaskOutcome(
+  reportId: string,
+  tool: PromptToolKey = 'universal'
+): Promise<CheckAndPlanOutcome & {
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
   nextFinishPlan?: TaskFinishPlan
@@ -203,9 +265,32 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
   })
   if (!audit) throw new Error('Report not found')
   if (audit.status !== 'COMPLETED') {
-    return { reportId, reportUrl: reportUrl(reportId), status: audit.status }
+    if (audit.status === 'FAILED') {
+      return {
+        reportId,
+        reportUrl: reportUrl(reportId),
+        status: audit.status,
+        error: {
+          code: 'AUDIT_FAILED',
+          message: 'The check failed before a complete report was produced.',
+          recoverable: true,
+          action: 'retry',
+        },
+      }
+    }
+    return {
+      reportId,
+      reportUrl: reportUrl(reportId),
+      status: audit.status,
+      nextAction: {
+        type: 'poll',
+        tool: 'ff_get_report',
+        reportId,
+        retryAfterSeconds: 3,
+      },
+    }
   }
-  const completed = await loadCompletedOutcome(reportId)
+  const completed = await loadCompletedOutcome(reportId, tool)
   if (!audit.parentId) {
     return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
   }
@@ -221,6 +306,12 @@ export async function loadCompletedTaskOutcome(reportId: string): Promise<CheckA
       remaining: diff.unchanged.length,
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
+      flags: {
+        cleared: diff.fixed,
+        remaining: diff.unchanged,
+        new: diff.newIssues,
+        regressed: diff.regressed,
+      },
     },
     nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,
@@ -249,13 +340,51 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   })
 
   let status: string = initialStatus
+  let timedOut = false
   if (options.waitForCompletion) {
-    status = (await pollAuditUntilDone({ auditId, signal: options.signal })).status
+    const poll = await pollAuditUntilDone({
+      auditId,
+      signal: options.signal,
+      timeoutMs: 50_000,
+    })
+    status = poll.status
+    timedOut = poll.timedOut
   }
 
   const base = { reportId: auditId, reportUrl: reportUrl(auditId), status }
-  if (!options.waitForCompletion || status !== 'COMPLETED') return base
-  return { ...base, ...(await loadCompletedOutcome(auditId)) }
+  if (status === 'FAILED') {
+    return {
+      ...base,
+      error: {
+        code: 'AUDIT_FAILED',
+        message: 'The check failed before a complete report was produced.',
+        recoverable: true,
+        action: 'retry',
+      },
+    }
+  }
+  if (!options.waitForCompletion || status !== 'COMPLETED') {
+    return {
+      ...base,
+      nextAction: {
+        type: 'poll',
+        tool: 'ff_get_check_status',
+        reportId: auditId,
+        retryAfterSeconds: 3,
+      },
+      ...(timedOut
+        ? {
+            error: {
+              code: 'WAIT_TIMEOUT' as const,
+              message: 'The synchronous wait ended before the check completed.',
+              recoverable: true,
+              action: 'poll' as const,
+            },
+          }
+        : {}),
+    }
+  }
+  return { ...base, ...(await loadCompletedOutcome(auditId, options.tool)) }
 }
 
 export async function recheckAndCompare(options: TaskQueueOptions & {
@@ -279,8 +408,15 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
 
   const reportId = started.result.auditId
   let status: string = started.result.status
+  let timedOut = false
   if (options.waitForCompletion) {
-    status = (await pollAuditUntilDone({ auditId: reportId, signal: options.signal })).status
+    const poll = await pollAuditUntilDone({
+      auditId: reportId,
+      signal: options.signal,
+      timeoutMs: 50_000,
+    })
+    status = poll.status
+    timedOut = poll.timedOut
   }
 
   const base = {
@@ -290,10 +426,41 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     status,
     diff: null,
   }
-  if (!options.waitForCompletion || status !== 'COMPLETED') return base
+  if (status === 'FAILED') {
+    return {
+      ...base,
+      error: {
+        code: 'AUDIT_FAILED',
+        message: 'The re-check failed before a comparison was produced.',
+        recoverable: true,
+        action: 'retry',
+      },
+    }
+  }
+  if (!options.waitForCompletion || status !== 'COMPLETED') {
+    return {
+      ...base,
+      nextAction: {
+        type: 'poll',
+        tool: 'ff_get_report',
+        reportId,
+        retryAfterSeconds: 3,
+      },
+      ...(timedOut
+        ? {
+            error: {
+              code: 'WAIT_TIMEOUT' as const,
+              message: 'The synchronous wait ended before the re-check completed.',
+              recoverable: true,
+              action: 'poll' as const,
+            },
+          }
+        : {}),
+    }
+  }
 
   const [completed, diff] = await Promise.all([
-    loadCompletedOutcome(reportId),
+    loadCompletedOutcome(reportId, options.tool),
     getFlagDiffSummary(options.parentReportId, reportId),
   ])
   return {
@@ -303,6 +470,12 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
       remaining: diff.unchanged.length,
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
+      flags: {
+        cleared: diff.fixed,
+        remaining: diff.unchanged,
+        new: diff.newIssues,
+        regressed: diff.regressed,
+      },
     },
     nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,

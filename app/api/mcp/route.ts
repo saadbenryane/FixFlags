@@ -13,26 +13,47 @@ import {
   readJsonResponseBody,
   resolveInteractionAuditId,
 } from '@/lib/mcp/log-interaction'
+import { extractMcpCredential } from '@/lib/mcp/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 async function handleMcpRequest(req: NextRequest): Promise<Response> {
-  const apiKey = req.headers.get('x-api-key')
-  const user = await validateApiKey(apiKey)
-  if (!user) {
+  const credential = extractMcpCredential(req.headers)
+  if (!credential.ok) {
     return Response.json(
       {
         jsonrpc: '2.0',
         error: {
           code: -32001,
-          message: 'Provide a valid x-api-key header. Create one at /settings/api-keys.',
+          message: credential.message,
+          data: { code: credential.code, action: 'provide_api_key' },
         },
         id: null,
       },
-      { status: 401, headers: { 'WWW-Authenticate': 'x-api-key' } }
+      {
+        status: credential.code === 'CONFLICTING_API_KEYS' ? 400 : 401,
+        headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' },
+      }
     )
   }
+
+  const authContext = await validateApiKey(credential.key)
+  if (!authContext) {
+    return Response.json(
+      {
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: 'Provide a valid FixFlags API key. Create one at /settings/api-keys.',
+          data: { code: 'INVALID_API_KEY', action: 'create_api_key' },
+        },
+        id: null,
+      },
+      { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' } }
+    )
+  }
+  const { user, apiKey } = authContext
 
   let requestSummary = { method: 'unknown', tool: null as string | null, auditIdFromParams: null as string | null }
   try {
@@ -79,6 +100,8 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     await logMcpInteraction(
       {
         userId: user.id,
+        apiKeyId: apiKey.id,
+        client: apiKey.client,
         method: requestSummary.method,
         tool: requestSummary.tool,
         success: outcome.success,
@@ -98,6 +121,8 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     await logMcpInteraction(
       {
         userId: user.id,
+        apiKeyId: apiKey.id,
+        client: apiKey.client,
         method: requestSummary.method,
         tool: requestSummary.tool,
         success: false,

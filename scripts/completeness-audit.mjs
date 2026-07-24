@@ -106,7 +106,8 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   for (const file of unifiedFixListConsumers) {
     assert(
       read(root, file).includes('buildUnifiedFixList') ||
-        read(root, file).includes('buildUnifiedPlanBundle'),
+        read(root, file).includes('buildUnifiedPlanBundle') ||
+        read(root, file).includes('loadCompletedTaskOutcome'),
       `Canonical complete Fix List loader missing from ${file}`,
     )
   }

@@ -7,16 +7,19 @@ import { toast } from 'sonner'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import {
   PromptToolSelector,
-  resolveToolPrompt,
   usePreferredTool,
   type PromptToolKey,
 } from '@/components/audit/PromptToolSelector'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
-import { FIX_ACTION_COPY } from '@/lib/audit/fix-action-copy'
+import { createApiKey } from '@/lib/api/api-key-client'
+import { resolveToolPrompt } from '@/lib/mcp/builders'
 import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
 import { SITE_URL } from '@/lib/marketing/copy'
+import {
+  apiKeyClientForTool,
+  getBuilder,
+} from '@/lib/mcp/builders'
 import { cn } from '@/lib/utils'
 
 interface MarkdownPromptBoxProps {
@@ -96,21 +99,33 @@ export function MarkdownPromptBox({
   const resolvedPrompt = showToolSelector
     ? resolveToolPrompt(toolPrompts, preferredTool, prompt)
     : prompt
+  const promptUnavailable = resolvedPrompt == null
+  const displayPrompt = resolvedPrompt ?? ''
 
-  async function connectCursorMcp() {
+  const actionTool = preferredTool !== 'universal' ? preferredTool : 'cursor'
+  const actionBuilder = getBuilder(actionTool)
+
+  async function connectBuilderMcp() {
+    const setupPath = `/dashboard/mcp-setup?builder=${actionBuilder.apiKeyClient ?? actionTool}`
     if (!user) {
-      window.location.href = FIX_ACTION_COPY.cursorMcpAuthRedirect
+      window.location.href = `/sign-in?next=${encodeURIComponent(setupPath)}`
+      return
+    }
+
+    if (actionTool !== 'cursor') {
+      window.location.href = setupPath
       return
     }
 
     setInstalling(true)
     try {
-      const res = await fetch('/api/api-keys', { method: 'PUT' })
-      if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
-      const data = await res.json()
+      const data = await createApiKey({
+        name: `${actionBuilder.label} MCP`,
+        client: apiKeyClientForTool(actionTool),
+      })
       window.location.href = buildCursorInstallLink({ baseUrl: SITE_URL, apiKey: data.key })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not connect to Cursor')
+      toast.error(err instanceof Error ? err.message : `Could not connect to ${actionBuilder.label}`)
     } finally {
       setInstalling(false)
     }
@@ -144,27 +159,35 @@ export function MarkdownPromptBox({
                 size="xs"
                 className="gap-1.5 px-2 text-muted-foreground hover:text-foreground"
                 disabled={installing}
-                onClick={connectCursorMcp}
-                aria-label={FIX_ACTION_COPY.cursorMcpAriaLabel}
+                onClick={connectBuilderMcp}
+                aria-label={`Connect ${actionBuilder.label} to FixFlags`}
               >
                 {installing ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                 ) : (
                   <PlugZap className="h-3.5 w-3.5" aria-hidden />
                 )}
-                <span className="hidden sm:inline">{FIX_ACTION_COPY.cursorMcpLabel}</span>
+                <span className="hidden sm:inline">{`Connect ${actionBuilder.label}`}</span>
               </Button>
             ) : null}
-            <PromptCopyButton
-              prompt={resolvedPrompt}
-              iconOnly
-              tool={showToolSelector ? preferredTool : undefined}
-            />
+            {!promptUnavailable ? (
+              <PromptCopyButton
+                prompt={displayPrompt}
+                iconOnly
+                tool={showToolSelector ? preferredTool : undefined}
+              />
+            ) : null}
           </div>
         </div>
 
         <div className="px-3 py-3 sm:px-4" aria-label="Fix prompt">
-          <ReactMarkdown components={markdownComponents}>{resolvedPrompt}</ReactMarkdown>
+          {promptUnavailable ? (
+            <p className="text-sm text-destructive" role="alert">
+              No validated prompt is available for this builder. Choose another builder.
+            </p>
+          ) : (
+            <ReactMarkdown components={markdownComponents}>{displayPrompt}</ReactMarkdown>
+          )}
         </div>
       </div>
     </div>

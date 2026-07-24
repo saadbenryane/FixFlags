@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = resolveWebhookApiKey(req)
-    const user = await validateApiKey(apiKey)
-    if (!user) {
+    const authContext = await validateApiKey(apiKey)
+    if (!authContext) {
       return apiError(
         'Valid FixFlags API key required. Add ?apiKey=ff_live_... to the Railway webhook URL.',
         401
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     const outcome = await checkAndPlan({
       url: checkUrl,
-      userId: user.id,
+      userId: authContext.user.id,
       auditMode: 'CRITICAL_PATH',
       waitForCompletion: false,
     })

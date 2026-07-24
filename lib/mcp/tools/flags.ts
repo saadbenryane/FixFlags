@@ -10,12 +10,13 @@ import {
   sanitizeRubricForRead,
 } from '../../audit/sanitize-prompts'
 import { buildMcpFlagPayload } from '@/lib/mcp/flag-payload'
-import {
-  buildUnifiedFixList,
-  buildUnifiedPlanBundle,
-} from '../../audit/load-finish-plan-flags'
 import { loadCompletedTaskOutcome } from '../../audit/task-contracts'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
+import {
+  PROMPT_TOOL_KEYS,
+  resolveToolPrompt,
+  type PromptToolKey,
+} from '@/lib/mcp/builders'
 
 export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
@@ -24,9 +25,9 @@ export function registerFlagTools(server: McpServer, user: User) {
     {
       reportId: z.string(),
       rubric: z.enum(RUBRIC_ORDER as unknown as [string, ...string[]]),
-      tool: z.enum(['generic', 'cursor', 'claude', 'windsurf', 'lovable', 'bolt']).optional(),
+      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
     },
-    async ({ reportId, rubric, tool = 'generic' }) => {
+    async ({ reportId, rubric, tool = 'universal' }) => {
       const ownerAudit = await prisma.audit.findUnique({
         where: { id: reportId },
         select: { userId: true, isPublic: true },
@@ -52,8 +53,8 @@ export function registerFlagTools(server: McpServer, user: User) {
       const computed = computeRubricsFromRows(rubricSources)
       const thisRubric = computed.find((r) => r.name === rubric)
 
-      const promptMap: Record<string, string | null | undefined> = {
-        generic: safeRubric.rubricPrompt,
+      const promptMap: Record<PromptToolKey, string | null | undefined> = {
+        universal: safeRubric.rubricPrompt,
         cursor: safeRubric.cursorPrompt,
         claude: safeRubric.claudePrompt,
         windsurf: safeRubric.windsurfPrompt,
@@ -71,7 +72,10 @@ export function registerFlagTools(server: McpServer, user: User) {
               grade: rubricRow.grade,
               score: rubricRow.score,
               summary: safeRubric.summary,
-              prompt: promptMap[tool] ?? safeRubric.rubricPrompt,
+              prompt: resolveToolPrompt(promptMap, tool, safeRubric.rubricPrompt),
+              promptError: resolveToolPrompt(promptMap, tool, safeRubric.rubricPrompt)
+                ? undefined
+                : `No validated ${tool} prompt is available for this rubric.`,
               flagCount: rubricRow.flags.length,
               flags: rubricRow.flags.map((f) => {
                 const safe = sanitizeFlagForRead(f)
@@ -95,9 +99,9 @@ export function registerFlagTools(server: McpServer, user: User) {
     MCP_TOOLS.getFlag.desc,
     {
       flagId: z.string(),
-      tool: z.enum(['generic', 'cursor', 'claude', 'windsurf', 'lovable', 'bolt']).optional(),
+      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
     },
-    async ({ flagId, tool = 'generic' }) => {
+    async ({ flagId, tool = 'universal' }) => {
       const flag = await prisma.flag.findUnique({
         where: { id: flagId },
         include: { audit: { select: { userId: true, isPublic: true } } },
@@ -121,8 +125,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
     MCP_TOOLS.planModePrompt.name,
     MCP_TOOLS.planModePrompt.desc,
-    { reportId: z.string() },
-    async ({ reportId }) => {
+    { reportId: z.string(), tool: z.enum(PROMPT_TOOL_KEYS).optional() },
+    async ({ reportId, tool = 'universal' }) => {
       await assertMcpAccess(user)
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
@@ -133,15 +137,14 @@ export function registerFlagTools(server: McpServer, user: User) {
       if (audit.status !== 'COMPLETED') {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
-      const { parseProductContract } = await import('../../audit/product-contract')
-      const contract = parseProductContract(audit.productContract)
-      const plan = await buildUnifiedFixList({
-        userId: audit.userId,
-        auditUrl: audit.url,
-        flags: audit.flags,
-        contract,
-        promptAccess: 'all',
-      })
+      const outcome = await loadCompletedTaskOutcome(reportId, tool)
+      const items = outcome.fixList?.items ?? []
+      const unavailable = items
+        .filter((item) => !item.selectedPrompt)
+        .map((item) => item.flagId)
+      const selectedPrompts = items
+        .map((item) => item.selectedPrompt)
+        .filter((prompt): prompt is string => Boolean(prompt))
       return {
         content: [
           {
@@ -149,9 +152,15 @@ export function registerFlagTools(server: McpServer, user: User) {
             text: JSON.stringify({
               reportId,
               url: audit.url,
-              prompt: plan.copyPrompt ?? '',
-              flagCount: plan.visiblePromptCount,
-              totalCount: plan.totalCount,
+              tool,
+              prompt: unavailable.length === 0 ? selectedPrompts.join('\n\n') : null,
+              promptError:
+                unavailable.length > 0
+                  ? `No validated ${tool} prompt is available for ${unavailable.length} Flags.`
+                  : undefined,
+              unavailableFlagIds: unavailable,
+              flagCount: selectedPrompts.length,
+              totalCount: items.length,
             }),
           },
         ],
@@ -162,8 +171,8 @@ export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
     MCP_TOOLS.getAllFixes.name,
     MCP_TOOLS.getAllFixes.desc,
-    { reportId: z.string() },
-    async ({ reportId }) => {
+    { reportId: z.string(), tool: z.enum(PROMPT_TOOL_KEYS).optional() },
+    async ({ reportId, tool }) => {
       await assertMcpAccess(user)
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
@@ -174,7 +183,7 @@ export function registerFlagTools(server: McpServer, user: User) {
       if (audit.status !== 'COMPLETED') {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
-      const outcome = await loadCompletedTaskOutcome(reportId)
+      const outcome = await loadCompletedTaskOutcome(reportId, tool)
       return {
         content: [
           {
@@ -231,8 +240,12 @@ export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
     MCP_TOOLS.getCurrentFinishPlan.name,
     MCP_TOOLS.getCurrentFinishPlan.desc,
-    { reportId: z.string(), limit: z.number().int().min(1).max(3).optional() },
-    async ({ reportId, limit }) => {
+    {
+      reportId: z.string(),
+      limit: z.number().int().min(1).max(3).optional(),
+      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+    },
+    async ({ reportId, limit, tool }) => {
       await assertMcpAccess(user)
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
@@ -246,37 +259,20 @@ export function registerFlagTools(server: McpServer, user: User) {
       if (audit.status !== 'COMPLETED') {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
-      const { parseProductContract } = await import('../../audit/product-contract')
-      const contract = parseProductContract(audit.productContract)
-      const { finishPlan: plan, fixList } = await buildUnifiedPlanBundle({
-        userId: audit.userId,
-        auditUrl: audit.url,
-        flags: audit.flags,
-        rubricRows: audit.rubrics,
-        contract,
-        promptAccess: 'all',
-        limit,
-      })
-      const items = plan.items.slice(0, limit ?? plan.items.length)
+      const outcome = await loadCompletedTaskOutcome(reportId, tool)
+      const plan = outcome.finishPlan
+      const items = plan?.items.slice(0, limit ?? plan.items.length) ?? []
       return {
         content: [
           {
             type: 'text' as const,
             text: JSON.stringify({
               reportId,
-              url: audit.url,
-              items: items.map((item) => ({
-                flagId: item.id,
-                checkId: item.checkId,
-                problem: item.problem,
-                rubric: item.rubricName,
-                severity: item.severity,
-                impactTag: item.impactTag,
-                fixPrompt: item.prompt,
-              })),
-              planPrompt: plan.copyPrompt ?? '',
+              url: plan?.url ?? audit.url,
+              items,
+              planPrompt: plan?.planPrompt ?? '',
               selectedCount: items.length,
-              totalCount: fixList.totalCount,
+              totalCount: outcome.fixList?.totalCount ?? items.length,
             }),
           },
         ],

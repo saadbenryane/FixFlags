@@ -139,20 +139,6 @@ function SignInForm() {
       {oauth.anyEnabled && (
         <Muted className="text-center text-xs">{AUTH.signIn.oauthNote}</Muted>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        disabled={loading !== null}
-        onClick={() => void handlePasskeySignIn()}
-      >
-        {loading === 'passkey' ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Fingerprint className="mr-2 h-4 w-4" />
-        )}
-        {AUTH.signIn.passkeyCta}
-      </Button>
       <FormContainer onSubmit={handleSubmit} className="space-y-5">
         <IconInput
           type="email"
@@ -191,6 +177,21 @@ function SignInForm() {
           {loading === 'email' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {AUTH.signIn.cta}
         </Button>
+        <p className="text-center">
+          <button
+            type="button"
+            disabled={loading !== null}
+            onClick={() => void handlePasskeySignIn()}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground disabled:opacity-50"
+          >
+            {loading === 'passkey' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Fingerprint className="h-3.5 w-3.5" />
+            )}
+            {AUTH.signIn.passkeyCta}
+          </button>
+        </p>
         <p className="text-center">
           <Link
             href="/#audit"

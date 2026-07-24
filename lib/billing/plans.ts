@@ -58,7 +58,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
       'Before/after comparisons',
-      'MCP in Cursor or Claude',
+      'MCP in supported builders',
       '25 new URL checks per month',
       'Weekly product watch with regression email',
     ],

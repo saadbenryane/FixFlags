@@ -11,6 +11,8 @@ export interface JsonRpcOutcome {
 
 export interface LogMcpInteractionInput {
   userId: string
+  apiKeyId?: string
+  client?: import('@prisma/client').ApiKeyClient | null
   method: string
   tool: string | null
   success: boolean
@@ -102,6 +104,8 @@ export async function logMcpInteraction(
   input: LogMcpInteractionInput,
   create: (data: {
     userId: string
+    apiKeyId?: string
+    client?: import('@prisma/client').ApiKeyClient | null
     method: string
     tool: string | null
     success: boolean
@@ -114,6 +118,8 @@ export async function logMcpInteraction(
   try {
     await create({
       userId: input.userId,
+      apiKeyId: input.apiKeyId,
+      client: input.client,
       method: input.method,
       tool: input.tool,
       success: input.success,

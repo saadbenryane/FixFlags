@@ -31,6 +31,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-browser/types/**/*.ts",
     ".next-e2e-prod/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
     ".next-verify/types/**/*.ts",

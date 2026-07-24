@@ -2,7 +2,7 @@
 
 ## Status
 
-Local launch verification is green. The release bar is implemented and intentionally blocked until designated external resources are provided. Do not replace those failures with test fallbacks.
+Local launch verification is green on the combined worktree. The release bar is implemented and intentionally blocked until designated external resources are provided. Do not replace those failures with test fallbacks.
 
 The main branch changed concurrently during this work. Commit `da73376` contains the coordinated product, auth, report, readiness, verification, skill, and documentation changes. It accidentally captured `.cache/next-build.lock` while a verification build was active; the current working tree deletes that ephemeral tracked file.
 
@@ -19,28 +19,36 @@ The main branch changed concurrently during this work. Commit `da73376` contains
 - Live PostgreSQL/Redis recovery evaluation covers processing, retry-after-failure, and duplicate-job idempotency. Product Watch unit coverage includes regression-only and idempotent notifications.
 - The detailed PlantDad sample now renders Contract, Remember, Journey, Flow, Timeline, Flags, previews, and launch gates with consistent fixture identity.
 - Shared controls, navigation, report actions, and footer targets meet the 44×44px interaction contract.
-- The report browser contract passes at 375, 768, and 1280px with no overflow or client errors.
+- The report browser contract passes at 375, 768, and 1280px, including 200% zoom/reflow, reduced motion, keyboard-accessible names, redirects, report error states, and no client errors.
+- The production auth shell is request-rendered, which removes the stale static-shell hydration mismatch exposed by the production browser suite.
+- The builder-native MCP path uses typed API-key clients and validated builder prompts. Missing builder-specific prompts remain an explicit typed unavailable state instead of silently relabeling the universal prompt.
+- The Railway deploy webhook consumes the typed API-key authentication context and has handler coverage for valid and invalid keys.
+- The typed 17-tool MCP manifest, modular registration, documentation, complete Fix List task outcomes, and completeness guard are aligned.
 - Repository skills were consolidated and a validator now enforces frontmatter, naming, links, reference depth, stale terms, size, and volatile-fact rules.
 - Canonical Markdown no longer references a nonexistent AGENTS “Project facts” section.
 
 ## Verified
 
-- `npm run verify`: passed, including database checks, 2,044 unit tests (one intentional skip), CLI package verification, production application build, and worker build.
-- `npm run test:e2e`: eight passed, one credentialed queue-backed test skipped.
+- `npm run agent -- verify`: passed all 23 commands, including database checks, 2,293 unit tests (three intentional skips), CLI verification, application build, and worker build. Log: `.agent-runs/2026-07-24T11-01-52-306Z-worker-build.log`.
+- `npm run test:e2e`: 14 passed, one environment-gated queue-backed test skipped.
 - Detailed sample Playwright contract after final PlantDad correction: three passed.
-- `npm run agent -- eval recovery`: passed against local PostgreSQL and Redis.
+- `npm run doctor`: passed environment, PostgreSQL, Redis, Chromium, migrations, and worker readiness.
+- `npm run accuracy:eval` and `npm run agent -- eval accuracy`: passed.
+- `npm run agent -- eval recovery`: passed against local PostgreSQL and Redis. Log: `.agent-runs/2026-07-24T11-02-13-776Z-eval-recovery.log`.
+- `npm run mcp:quality-gate`: passed all 17 typed tools.
 - `npm audit --audit-level=moderate`: zero advisories.
 - `npm run test:scripts`, `npm run lint`, and `git diff --check`: passed after the final release-only additions.
+- `npm run verify:release`: clean install completed with zero advisories, then stopped safely before database mutation because `RELEASE_FRESH_DATABASE_URL` is not configured.
 
 ## Remaining release blockers
 
 1. Local AI configuration is present and `npm run doctor` passes.
 2. Provide `RELEASE_FRESH_DATABASE_URL` for a disposable database whose name includes `release` or `test`, plus `RELEASE_ALLOW_DATABASE_RESET=true`.
 3. Provide `RELEASE_CONTAINER_ENV_FILE` with production-like non-customer resources.
-4. Provide `RELEASE_SMOKE_URL` (and bearer token when required), then run `npm run verify:release`.
-5. Run the remaining credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. Matrix file: `.agents/sessions/credentialed-journey-matrix.md`.
-6. Runtime recovery now exercises the isolated BullMQ queue and the application audit queue with required, non-skippable Redis integration coverage for stale QUEUED and mid-CAPTURING requeues. Lock contention is covered by the atomic scheduler lock test.
-7. Continue behavior-driven dead-code adjudication only when reachability and tests prove a removal safe; do not refactor solely to meet a file-size target.
+4. Provide `RELEASE_SMOKE_URL` (and bearer token when required).
+5. Provide the R2 account, access key, secret, and bucket configuration required by the real capture path. An environment-gated Linear audit correctly entered `FAILED` at CAPTURING with `STORAGE_NOT_CONFIGURED`; it did not report a false success or use a fallback.
+6. Run `npm run verify:release`, then the remaining credentialed journey matrix for anonymous claim, passkeys/2FA/recovery, billing/webhooks, re-check/diff/Remember, protected sharing, Product Watch delivery, GitHub Fix PR, support/admin, MCP, and CLI. Matrix file: `.agents/sessions/credentialed-journey-matrix.md`.
+7. Deploy the exact verified commit and repeat the anonymous, signed-in, billing, protected-share, and re-check dogfood journeys against production.
 
 ## Pipeline truth (2026-07-23)
 

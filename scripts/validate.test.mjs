@@ -101,6 +101,11 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('security:audit'))
     })
 
+    it('keeps the validation harness in the full gate so side effects are guarded', () => {
+      const plan = buildPlan('affected', ['scripts/validate.mjs'])
+      assert.equal(plan.reason, 'shared validation config changed; using full validation')
+    })
+
     it('release mode extends full validation with browser and container checks', () => {
       const labels = buildPlan('release', []).commands.map((command) => command.label)
       assert.ok(labels.includes('test:e2e'))

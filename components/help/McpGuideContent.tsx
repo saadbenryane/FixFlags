@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { Callout } from '@/components/ui/callout'
 
-const CONFIG_EDITORS = ['cursor', 'claudeCode', 'windsurf'] as const
+const CONFIG_EDITORS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt'] as const
 
 const MCP_SECURITY = [
   'Never commit API keys to git, add .env to .gitignore and use env vars or your editor secret store.',
@@ -108,8 +108,8 @@ export function McpGuideContent() {
       <div className="space-y-4">
         <Heading as="h2">Base URL</Heading>
         <Body className="text-sm text-muted-foreground">
-          FixFlags exposes an HTTP MCP endpoint at <code>/api/mcp</code>. Pass your API key in the{' '}
-          <code>x-api-key</code> header.
+          FixFlags exposes an HTTP MCP endpoint at <code>/api/mcp</code>. Use{' '}
+          <code>Authorization: Bearer</code> or the supported <code>x-api-key</code> header.
         </Body>
         <div className="grid gap-3 sm:grid-cols-2">
           <Card className="space-y-1 p-4">

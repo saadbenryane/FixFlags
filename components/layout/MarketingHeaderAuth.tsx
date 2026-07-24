@@ -39,9 +39,12 @@ export function MarketingHeaderAuth({
     if (mode === 'mobileTop') {
       return (
         <Button variant="ink" size="sm" asChild>
-          <Link href="/#audit">
-            {HERO.primaryCta}
-            <ArrowRight className="h-4 w-4" />
+          <Link href="/#audit" aria-label={HERO.primaryCta}>
+            <span className="max-[419px]:hidden">{HERO.primaryCta}</span>
+            <span className="hidden max-[419px]:inline" aria-hidden="true">
+              {HERO.compactPrimaryCta}
+            </span>
+            <ArrowRight className="h-4 w-4 max-[419px]:hidden" />
           </Link>
         </Button>
       )

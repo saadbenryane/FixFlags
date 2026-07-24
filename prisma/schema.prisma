@@ -13,6 +13,16 @@ enum Plan {
   TEAM
 }
 
+enum ApiKeyClient {
+  cursor
+  claudeCode
+  windsurf
+  lovable
+  bolt
+  vscode
+  other
+}
+
 enum CreditPurchaseStatus {
   PENDING
   PAID
@@ -476,18 +486,21 @@ model TwoFactor {
 }
 
 model ApiKey {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  keyHash   String    @unique
-  prefix    String
-  lastFour  String
-  lastUsed  DateTime?
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  client          ApiKeyClient?
+  keyHash         String           @unique
+  prefix          String
+  lastFour        String
+  lastUsed        DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime         @default(now())
+  mcpInteractions McpInteraction[]
 
   @@index([userId])
+  @@index([client])
   @@map("api_keys")
 }
 
@@ -1075,6 +1088,9 @@ model McpInteraction {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeyId   String?
+  apiKey     ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  client     ApiKeyClient?
   method     String   @default("unknown")
   tool       String?
   durationMs Int?
@@ -1085,6 +1101,8 @@ model McpInteraction {
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([client, createdAt])
   @@index([createdAt])
   @@index([method, tool])
   @@index([success, createdAt])

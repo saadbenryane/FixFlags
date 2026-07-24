@@ -1,17 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Globe, type LucideIcon } from 'lucide-react'
-import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
-import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
+import { Globe } from 'lucide-react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
+import {
+  FlagDetailPane,
+  RubricTabs,
+} from '@/components/report/ReportExplorerDetail'
 import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
-import { Button } from '@/components/ui/button'
 import { FilterPill } from '@/components/ui/filter-pill'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
-  RUBRIC_ORDER,
   clampFlagIndex,
   countFlagsByRubric,
   filterExplorerFlags,
@@ -20,7 +20,7 @@ import {
   type RubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
-import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import { impactTagLabel, severityLabel } from '@/lib/utils'
@@ -55,176 +55,6 @@ const VARIANT_CONFIG = {
   },
 } as const
 
-function FlagNavigation({
-  total,
-  onPrevious,
-  onNext,
-}: {
-  total: number
-  onPrevious: () => void
-  onNext: () => void
-}) {
-  return (
-    <div className="flex shrink-0 items-center gap-1">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-11 w-11"
-          onClick={onPrevious}
-          aria-label="Previous flag"
-          disabled={total <= 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-11 w-11"
-          onClick={onNext}
-          aria-label="Next flag"
-          disabled={total <= 1}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-    </div>
-  )
-}
-
-function RubricTabs({
-  rubricFilter,
-  onRubricChange,
-  counts,
-  total,
-}: {
-  rubricFilter: RubricFilter
-  onRubricChange: (value: RubricFilter) => void
-  counts: Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
-  total: number
-}) {
-  const tabs: Array<{ id: RubricFilter; label: string; count: number; icon?: LucideIcon }> = [
-    { id: 'ALL', label: 'All', count: total },
-    ...RUBRIC_ORDER.map((rubric) => ({
-      id: rubric as RubricFilter,
-      label: rubricLabel(rubric),
-      count: counts[rubric],
-      icon: rubricIcon(rubric),
-    })).filter((tab) => tab.count > 0),
-  ]
-
-  return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-label="Filter by rubric">
-      {tabs.map((tab) => (
-        <FilterPill
-          key={tab.id}
-          size="sm"
-          icon={tab.icon}
-          active={rubricFilter === tab.id}
-          onClick={() => onRubricChange(tab.id)}
-        >
-          {tab.label}
-          <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{tab.count}</span>
-        </FilterPill>
-      ))}
-    </div>
-  )
-}
-
-function FlagDetailPane({
-  model,
-  flag,
-  flagCount,
-  onPrevious,
-  onNext,
-  showFeedback,
-  aiLocked,
-  aiEnhancementPending,
-  signUpHref,
-  onSelectFlag,
-  compact = false,
-  demonstratedFlagId,
-  variant = 'live',
-}: {
-  model: ReportExplorerModel
-  flag: ReportExplorerModel['flags'][number]
-  flagCount: number
-  onPrevious: () => void
-  onNext: () => void
-  showFeedback?: boolean
-  aiLocked?: boolean
-  aiEnhancementPending?: boolean
-  signUpHref?: string
-  onSelectFlag: (flagId: string) => void
-  compact?: boolean
-  demonstratedFlagId?: string
-  variant?: 'hero' | 'live'
-}) {
-  const showDesktop = flag.evidenceDevices.includes('desktop')
-  const showMobile = flag.evidenceDevices.includes('mobile')
-  const shareableFlag = isShareableCheck(flag.checkId)
-  const isHero = variant === 'hero'
-
-  return (
-    <div className="min-w-0">
-      <header className="mb-5">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug text-balance sm:text-lg">
-            {flag.title}
-          </h3>
-          <FlagNavigation
-            total={flagCount}
-            onPrevious={onPrevious}
-            onNext={onNext}
-          />
-        </div>
-        <div className="mt-1.5">
-          <FlagMetaPills flag={flag} />
-        </div>
-      </header>
-
-      <div className={cn(isHero && 'space-y-6')}>
-        {!shareableFlag && !isHero && (
-          <ScreenshotWithHighlights
-            host={model.displayHost}
-            desktopScreenshot={model.desktopScreenshot}
-            mobileScreenshot={model.mobileScreenshot}
-            highlights={model.allHighlights}
-            selectedFlagId={flag.id}
-            onPinSelect={onSelectFlag}
-            showDesktop={showDesktop}
-            showMobile={showMobile}
-            className={cn('mb-5', compact && 'lg:mb-0')}
-          />
-        )}
-        {isHero && !shareableFlag && (
-          <ScreenshotWithHighlights
-            host={model.displayHost}
-            desktopScreenshot={model.desktopScreenshot}
-            mobileScreenshot={model.mobileScreenshot}
-            highlights={model.allHighlights}
-            selectedFlagId={flag.id}
-            onPinSelect={onSelectFlag}
-            showDesktop={showDesktop}
-            showMobile={showMobile}
-          />
-        )}
-
-        <div className={cn(isHero && 'pt-2')}>
-          <FlagDetailPanel
-            flag={flag}
-            showFeedback={showFeedback}
-            aiLocked={aiLocked && flag.id !== demonstratedFlagId}
-            aiEnhancementPending={aiEnhancementPending}
-            signUpHref={signUpHref}
-            previewMeta={model.previewMeta}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function ReportExplorer({
   model,
   variant = 'live',
@@ -243,6 +73,7 @@ export function ReportExplorer({
   const config = VARIANT_CONFIG[variant]
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
+  const detailHeadingRef = useRef<HTMLHeadingElement>(null)
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>('ALL')
   const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
@@ -336,7 +167,12 @@ export function ReportExplorer({
       setFlagIndex(idx)
       if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
         requestAnimationFrame(() => {
-          detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          detailRef.current?.scrollIntoView({
+            behavior: reducedMotion ? 'auto' : 'smooth',
+            block: 'start',
+          })
+          detailHeadingRef.current?.focus({ preventScroll: true })
         })
       }
     },
@@ -400,7 +236,7 @@ export function ReportExplorer({
           id="flag-severity-filter"
           value={severityFilter ?? ''}
           onChange={(event) => setSeverityFilter(event.target.value || null)}
-          className="min-h-9 rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <option value="">All severities</option>
           {availableSeverities.map((severity) => (
@@ -412,7 +248,7 @@ export function ReportExplorer({
           id="flag-impact-filter"
           value={impactFilter ?? ''}
           onChange={(event) => setImpactFilter(event.target.value || null)}
-          className="min-h-9 rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <option value="">All impacts</option>
           {availableImpacts.map((impact) => (
@@ -486,6 +322,7 @@ export function ReportExplorer({
         compact={config.compact}
         demonstratedFlagId={demonstratedFlagId}
         variant={variant}
+        headingRef={detailHeadingRef}
       />
     ) : (
       <p className="text-sm text-muted-foreground">
@@ -500,6 +337,9 @@ export function ReportExplorer({
         {listPane}
         <div
           ref={detailRef}
+          id="selected-flag-detail"
+          aria-live="polite"
+          aria-atomic="true"
           className={cn(
             'min-w-0 scroll-mt-24 border-t border-border/30 pt-6',
             'lg:sticky lg:top-[calc(var(--header-offset)+1rem)] lg:max-h-[calc(100vh-var(--header-offset)-2rem)] lg:overflow-y-auto lg:border-t-0 lg:pr-2 lg:pt-0 lg:self-start scrollbar-thin'

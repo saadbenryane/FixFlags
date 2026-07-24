@@ -75,7 +75,7 @@ export function PromptCopyButton({
         size="icon"
         onClick={handleCopy}
         aria-label={copied ? 'Copied' : label}
-        className={cn('h-11 w-11 text-muted-foreground hover:text-foreground', className)}
+        className={cn('h-[44px] w-[44px] text-muted-foreground hover:text-foreground', className)}
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>

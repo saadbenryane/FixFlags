@@ -19,6 +19,8 @@ export interface FinishPlanItem {
   problem: string
   evidence: string
   whyItMatters?: string | null
+  verificationRule?: string | null
+  pageUrl?: string | null
   prompt: string | null
   toolPrompts: {
     universal?: string | null
@@ -108,6 +110,8 @@ function buildRankedFixes(
       problem: flag.problem,
       evidence: flag.evidence ?? '',
       whyItMatters: flag.whyItMatters,
+      verificationRule: flag.verificationRule,
+      pageUrl: flag.pageUrl,
       prompt,
       toolPrompts: prompt
         ? {

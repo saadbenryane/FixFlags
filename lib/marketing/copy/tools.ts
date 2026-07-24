@@ -6,7 +6,7 @@ export const MCP_DOCS = {
     'Your agent can check and fix your site without you copy-pasting URLs. Connect FixFlags to your AI coding tool.',
   quickStart: [
     'Generate an API key in Settings → API Keys (Pro plan)',
-    'Paste the HTTP config into Cursor, Claude Code, or Windsurf',
+    'Add the HTTP config in Cursor, Claude Code, Windsurf, Lovable, or Bolt',
     'Run ff_check_and_plan: use the curl test below to verify your key',
     'Optional: build the local CLI from fixflags-cli/ (`npm run build` then `node bin/fixflags.js`)',
   ],
@@ -20,8 +20,8 @@ export const MCP_DOCS = {
     },
     {
       label: 'Works with',
-      title: 'Cursor, Claude Code, and Windsurf',
-      body: 'Paste the config into your editor, then run checks from your coding workflow.',
+      title: 'Cursor, Claude Code, Windsurf, Lovable, and Bolt',
+      body: 'Add the config or custom connector, then run checks from your building workflow.',
     },
     {
       label: 'Wait time',
@@ -35,7 +35,7 @@ export const MCP_DOCS = {
     },
   ],
   lovableBoltNote:
-    'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
+    'Lovable and Bolt support FixFlags through custom MCP connectors. You can also copy the exact builder prompt from any Flag.',
   tools: [
     { name: 'ff_check_and_plan', desc: 'Check a URL and return the report plus every ranked fix.' },
     { name: 'ff_get_check_status', desc: 'Check if a report is complete.' },
@@ -83,7 +83,7 @@ export const MCP_DOCS = {
     "${BRAND.mcpServerKey}": {
       "url": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "ff_live_your_key_here"
+        "Authorization": "Bearer ff_live_your_key_here"
       }
     }
   }
@@ -94,7 +94,7 @@ export const MCP_DOCS = {
     "${BRAND.mcpServerKey}": {
       "url": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "ff_live_your_key_here"
+        "Authorization": "Bearer ff_live_your_key_here"
       }
     }
   }
@@ -105,7 +105,7 @@ export const MCP_DOCS = {
     "${BRAND.mcpServerKey}": {
       "serverUrl": "${SITE_URL}/api/mcp",
       "headers": {
-        "x-api-key": "ff_live_your_key_here"
+        "Authorization": "Bearer ff_live_your_key_here"
       }
     }
   }
@@ -115,6 +115,8 @@ export const MCP_DOCS = {
     claudeCode: 'Claude Code',
     cursor: 'Cursor',
     windsurf: 'Windsurf',
+    lovable: 'Lovable',
+    bolt: 'Bolt',
   },
 } as const
 

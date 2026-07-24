@@ -254,7 +254,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Pro ($29/mo): before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
+        text: 'Pro ($29/mo): before/after compare, MCP in supported builders, and 25 new URL checks per month.',
       },
       {
         type: 'p',
@@ -361,7 +361,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'mcp-setup',
     categoryId: 'mcp-and-editors',
     title: 'Set up MCP',
-    excerpt: 'Connect FixFlags to Cursor, Claude Code, or Windsurf with an API key.',
+    excerpt: 'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt with an API key.',
     popular: true,
     searchTokens: ['mcp', 'cursor', 'claude code', 'windsurf', 'api'],
     body: [
@@ -373,7 +373,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         type: 'ol',
         items: [
           'Generate an API key in Settings → API Keys (Pro plan).',
-          'Paste the HTTP config into Cursor, Claude Code, or Windsurf, or use one-click install from the MCP docs page.',
+          'Paste the HTTP config into Cursor, Claude Code, or Windsurf, or add the custom HTTP connector in Lovable or Bolt.',
           'Run ff_check_and_plan to verify your key.',
         ],
       },
@@ -392,12 +392,12 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'lovable-bolt-paste',
     categoryId: 'mcp-and-editors',
     title: 'Lovable and Bolt',
-    excerpt: 'No MCP yet. Copy fix prompts from your report and paste them in.',
+    excerpt: 'Connect through custom MCP or copy the exact builder prompt from your report.',
     searchTokens: ['lovable', 'bolt', 'v0', 'paste'],
     body: [
       {
         type: 'p',
-        text: 'Lovable and Bolt do not support MCP yet. Copy fix prompts from your FixFlags report and paste them into those tools.',
+        text: 'Lovable and Bolt support FixFlags through custom MCP connectors. Add the FixFlags HTTP endpoint and authenticate with a FixFlags API key.',
       },
       {
         type: 'p',

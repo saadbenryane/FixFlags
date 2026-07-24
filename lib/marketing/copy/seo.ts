@@ -12,7 +12,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Run FixFlags from the website or through MCP in Cursor, Claude Code, and Windsurf. Find Flags, copy fix prompts, and re-check shipped changes.',
+      'Run FixFlags from the website or through MCP in Cursor, Claude Code, Windsurf, Lovable, and Bolt. Find Flags, apply grounded fixes, and re-check shipped changes.',
   },
   samples: {
     title: 'Sample Report',
@@ -27,7 +27,7 @@ export const SEO = {
   mcp: {
     title: 'MCP Integration',
     description:
-      'Connect FixFlags to Cursor, Claude Code, or Windsurf. Check and fix your site without leaving your editor.',
+      'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt. Check and fix your site inside your builder.',
   },
   faq: {
     title: 'FAQ',

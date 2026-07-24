@@ -3,12 +3,12 @@
 import { PromptActionRow } from '@/components/audit/PromptActionRow'
 import {
   PromptToolSelector,
-  resolveToolPrompt,
   usePreferredTool,
   type PromptToolKey,
 } from '@/components/audit/PromptToolSelector'
 import { TerminalShell } from '@/components/ui/terminal-shell'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
+import { resolveToolPrompt } from '@/lib/mcp/builders'
 import { cn } from '@/lib/utils'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
@@ -94,6 +94,8 @@ export function FixPromptBlock({
   const resolvedPrompt = showToolSelector
     ? resolveToolPrompt(toolPrompts, preferredTool, prompt)
     : prompt
+  const promptUnavailable = resolvedPrompt == null
+  const displayPrompt = resolvedPrompt ?? ''
 
   const shellRadius =
     nested && variant === 'compact' ? 'rounded-[var(--radius-inner)]' : nested ? 'rounded-nested-lg' : 'rounded-card'
@@ -120,10 +122,17 @@ export function FixPromptBlock({
             clamp ? 'overflow-hidden' : 'overflow-visible'
           )}
         >
-          <PromptBody prompt={resolvedPrompt} label={label} rows={rows} clamp={clamp} />
-          <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
+          {promptUnavailable ? (
+            <p className="px-4 py-4 text-xs text-terminal-muted" role="alert">
+              No validated prompt is available for this builder. Choose another builder.
+            </p>
+          ) : (
+            <PromptBody prompt={displayPrompt} label={label} rows={rows} clamp={clamp} />
+          )}
+          {!promptUnavailable ? (
+            <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
             <PromptActionRow
-              prompt={resolvedPrompt}
+              prompt={displayPrompt}
               showCursorAction={showCursorAction}
               compact
               tool={showToolSelector ? preferredTool : undefined}
@@ -133,7 +142,8 @@ export function FixPromptBlock({
               itemPosition={itemPosition}
               nextStep={copyNextStep}
             />
-          </div>
+            </div>
+          ) : null}
         </div>
         {showNextStep ? (
           <p className="text-xs text-muted-foreground">{OUTPUT_LABELS.nextStep}</p>
@@ -151,22 +161,29 @@ export function FixPromptBlock({
       <TerminalShell
         label={label}
         nested={nested}
-        className={clamp ? undefined : 'overflow-visible'}
         headerRight={
-          <PromptActionRow
-            prompt={resolvedPrompt}
-            showCursorAction={showCursorAction}
-            compact
-            tool={showToolSelector ? preferredTool : undefined}
-            auditId={auditId}
-            surface={surface}
-            accessState={accessState}
-            itemPosition={itemPosition}
-            nextStep={copyNextStep}
-          />
+          promptUnavailable ? null : (
+            <PromptActionRow
+              prompt={displayPrompt}
+              showCursorAction={showCursorAction}
+              compact
+              tool={showToolSelector ? preferredTool : undefined}
+              auditId={auditId}
+              surface={surface}
+              accessState={accessState}
+              itemPosition={itemPosition}
+              nextStep={copyNextStep}
+            />
+          )
         }
       >
-        <PromptBody prompt={resolvedPrompt} label={label} rows={rows} clamp={clamp} />
+        {promptUnavailable ? (
+          <p className="px-4 py-4 text-xs text-terminal-muted" role="alert">
+            No validated prompt is available for this builder. Choose another builder.
+          </p>
+        ) : (
+          <PromptBody prompt={displayPrompt} label={label} rows={rows} clamp={clamp} />
+        )}
       </TerminalShell>
       {showNextStep ? (
         <p className="text-xs text-muted-foreground">{OUTPUT_LABELS.nextStep}</p>

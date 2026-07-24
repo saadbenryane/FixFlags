@@ -52,7 +52,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - **Repo signals into Fix list** — Optional repo connect feeds Implementation Integrity into the same prioritized list (entitlement expansion after thesis).
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
 - **Evolution tracking** — Trend quality over time per Product / URL.
-- **MCP polish** — Lovable/Bolt MCP; PI tools refined.
+- **MCP proof and distribution** — deployed Lovable/Bolt connector smokes; PI tools refined.
 - **Knowledge graph Phase 2** — Public issue/benchmark pages (growth graph, not customer PI). See `docs/growth/growth-roadmap.md`.
 
 ## Later

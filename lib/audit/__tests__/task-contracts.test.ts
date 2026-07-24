@@ -116,6 +116,67 @@ describe('task contracts', () => {
     expect(outcome.fixList?.items[0]?.fixPrompt).toMatch(/Rename the primary CTA/)
     expect(outcome.finishPlan?.items).toHaveLength(1)
     expect(outcome.finishPlan?.items[0]?.fixPrompt).toMatch(/Rename the primary CTA/)
+    expect(outcome.fixList?.items[0]).toMatchObject({
+      rank: 1,
+      evidence: 'The button says Continue',
+      verification: 'The CTA names the outcome.',
+      selectedTool: 'universal',
+      reportUrl: expect.stringContaining('/report/report-1'),
+    })
+  })
+
+  it('returns a typed polling action when checks run asynchronously', async () => {
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: 'user-1',
+    })
+
+    expect(outcome.status).toBe('QUEUED')
+    expect(outcome.nextAction).toEqual({
+      type: 'poll',
+      tool: 'ff_get_check_status',
+      reportId: 'report-1',
+      retryAfterSeconds: 3,
+    })
+  })
+
+  it('reports a recoverable timeout below the route runtime', async () => {
+    mocks.pollAuditUntilDone.mockResolvedValueOnce({
+      status: 'CHECKING',
+      timedOut: true,
+    })
+
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: 'user-1',
+      waitForCompletion: true,
+    })
+
+    expect(mocks.pollAuditUntilDone).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 50_000 })
+    )
+    expect(outcome.error).toEqual({
+      code: 'WAIT_TIMEOUT',
+      message: 'The synchronous wait ended before the check completed.',
+      recoverable: true,
+      action: 'poll',
+    })
+    expect(outcome.nextAction?.tool).toBe('ff_get_check_status')
+  })
+
+  it('never substitutes another builder prompt', async () => {
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: 'user-1',
+      waitForCompletion: true,
+      tool: 'bolt',
+    })
+
+    expect(outcome.fixList?.items[0]).toMatchObject({
+      selectedTool: 'bolt',
+      selectedPrompt: null,
+      fixPrompt: null,
+    })
   })
 
   it('returns one complete re-check-to-diff outcome', async () => {
@@ -125,7 +186,18 @@ describe('task contracts', () => {
       waitForCompletion: true,
     })
 
-    expect(outcome.diff).toEqual({ fixed: 1, remaining: 0, newIssues: 0, regressed: 0 })
+    expect(outcome.diff).toEqual({
+      fixed: 1,
+      remaining: 0,
+      newIssues: 0,
+      regressed: 0,
+      flags: {
+        cleared: [{ id: 'fixed' }],
+        remaining: [],
+        new: [],
+        regressed: [],
+      },
+    })
     expect(outcome.nextFixList?.items).toHaveLength(1)
     expect(outcome.nextFixList?.totalCount).toBe(1)
     expect(outcome.nextFinishPlan?.items).toHaveLength(1)

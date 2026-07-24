@@ -60,6 +60,8 @@ function FlagList({
               title={flag.title}
               aria-label={`${categoryLabel}: ${flag.title}`}
               aria-current={selected ? 'true' : undefined}
+              aria-pressed={selected}
+              aria-controls="selected-flag-detail"
               className={cn(
                 'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',

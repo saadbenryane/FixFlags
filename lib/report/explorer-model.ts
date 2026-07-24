@@ -8,7 +8,7 @@ import {
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
-import type { PromptToolKey } from '@/components/audit/PromptToolSelector'
+import type { PromptToolKey } from '@/lib/mcp/builders'
 import {
   buildAllEvidenceHighlights,
   type EvidenceHighlight,

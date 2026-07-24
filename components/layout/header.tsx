@@ -89,11 +89,20 @@ export function Header({
           )}
         >
           <div className="flex min-w-0 items-center gap-3">
-            <Logo
-              variant="lockup"
-              size="md"
-              href={logoHref ?? defaultLogoHref}
-            />
+            <span className="sm:hidden">
+              <Logo
+                variant="lockup"
+                size="sm"
+                href={logoHref ?? defaultLogoHref}
+              />
+            </span>
+            <span className="hidden sm:block">
+              <Logo
+                variant="lockup"
+                size="md"
+                href={logoHref ?? defaultLogoHref}
+              />
+            </span>
             {variant === 'admin' && (
               <span className="hidden rounded-md bg-destructive/10 px-2 py-0.5 text-3xs font-semibold uppercase tracking-label text-destructive sm:inline">
                 Admin
@@ -131,7 +140,7 @@ export function Header({
             </nav>
           ) : null}
 
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex min-w-0 items-center justify-end gap-1">
             <div className="hidden items-center gap-0.5 md:flex">
               {resolvedRight}
             </div>

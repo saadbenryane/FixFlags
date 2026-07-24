@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | in_progress | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Finish Plan, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Reconcile paused handoff and preserve all combined work | 2026-07-22 |
+| current-product-completion | blocked | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Fix List, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Designated release database/container/deployed-smoke resources, R2 credentials, and credentialed provider sandboxes | 2026-07-24 |
 
 ---
 

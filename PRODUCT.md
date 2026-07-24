@@ -114,7 +114,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
 - No team workspaces or white-label reports
-- Lovable/Bolt MCP not yet supported
+- Lovable and Bolt custom MCP connectors with API-key authentication
 
 ## Launch gates
 

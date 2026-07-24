@@ -23,7 +23,7 @@ export function VibecodingProfilePrompt() {
         <div className="min-w-0 flex-1 space-y-2">
           <p className="text-sm font-medium">Set up MCP to run checks from your editor</p>
           <p className="text-xs text-muted-foreground">
-            Connect FixFlags to Cursor, Claude Code, or Windsurf so your agent finds issues and
+            Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt so your agent finds issues and
             applies fixes without copy-pasting URLs.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">

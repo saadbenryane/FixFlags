@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   extractAuditIdFromToolResult,
   extractMcpLogMetadata,
+  logMcpInteraction,
   parseJsonRpcResponseOutcome,
   parseMcpRequestSummary,
   resolveInteractionAuditId,
@@ -111,5 +112,29 @@ describe('resolveInteractionAuditId', () => {
 
   it('falls back to params when result has no id', () => {
     assert.equal(resolveInteractionAuditId('param-id', null), 'param-id')
+  })
+})
+
+describe('logMcpInteraction', () => {
+  it('persists API-key and builder attribution without exposing the secret', async () => {
+    let persisted: Record<string, unknown> | undefined
+    await logMcpInteraction(
+      {
+        userId: 'user-1',
+        apiKeyId: 'key-1',
+        client: 'lovable',
+        method: 'tools/call',
+        tool: 'ff_check_and_plan',
+        success: true,
+        durationMs: 12,
+      },
+      async (data) => {
+        persisted = data
+      }
+    )
+
+    assert.equal(persisted?.apiKeyId, 'key-1')
+    assert.equal(persisted?.client, 'lovable')
+    assert.equal(JSON.stringify(persisted).includes('ff_live_'), false)
   })
 })

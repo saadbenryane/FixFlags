@@ -4,59 +4,63 @@ import { useState } from 'react'
 import { Loader2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
 
 interface Props {
   endpoint: string
   apiKey: string
+  onConnectedChange?: (connected: boolean) => void
 }
 
 type TestState = 'idle' | 'testing' | 'success' | 'error'
 
-export function McpConnectionTest({ endpoint, apiKey }: Props) {
+export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props) {
   const [state, setState] = useState<TestState>('idle')
   const [toolCount, setToolCount] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
 
   async function runTest() {
     setState('testing')
+    onConnectedChange?.(false)
     setErrorMsg('')
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 10000)
+    let client: Client | null = null
     try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 10000)
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/list', id: 'test-1' }),
-        signal: controller.signal,
+      const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
+        requestInit: {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          signal: controller.signal,
+        },
       })
-      clearTimeout(timer)
-
-      if (res.status === 401) {
-        throw new Error('Invalid API key - create a new one and try again')
+      client = new Client({ name: 'fixflags-connection-test', version: '1.0.0' })
+      await client.connect(transport)
+      const { tools } = await client.listTools()
+      const discovered = new Set(tools.map((tool) => tool.name))
+      const missing = MCP_TOOL_DEFINITIONS
+        .map((tool) => tool.name)
+        .filter((name) => !discovered.has(name))
+      if (missing.length > 0) {
+        throw new Error(
+          `Connected, but ${missing.length} FixFlags tools are unavailable. Try again before finishing setup.`
+        )
       }
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        const msg = text
-          ? `Server returned HTTP ${res.status}: ${text.slice(0, 200)}`
-          : `Server returned HTTP ${res.status}`
-        throw new Error(msg)
-      }
-
-      const data = await res.json()
-      if (data.error) {
-        throw new Error(data.error.message || `MCP error code ${data.error.code}`)
-      }
-
-      const tools = data.result?.tools ?? []
       setToolCount(tools.length)
       setState('success')
+      onConnectedChange?.(true)
     } catch (err) {
       setState('error')
+      onConnectedChange?.(false)
       if (err instanceof DOMException && err.name === 'AbortError') {
         setErrorMsg('Connection timed out. Check your endpoint URL.')
       } else {
         setErrorMsg(err instanceof Error ? err.message : 'Connection failed')
       }
+    } finally {
+      clearTimeout(timer)
+      await client?.close().catch(() => undefined)
     }
   }
 
@@ -83,9 +87,7 @@ export function McpConnectionTest({ endpoint, apiKey }: Props) {
       {state === 'success' && (
         <Callout variant="success" title="Connected!" className="text-xs">
           <p>
-            {toolCount > 0
-              ? `Found ${toolCount} tools available.`
-              : 'MCP server responded successfully.'}{' '}
+            {`Found all ${toolCount} FixFlags tools.`}{' '}
             Your editor is ready to run FixFlags checks.
           </p>
         </Callout>

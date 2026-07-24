@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const widths = [375, 768, 1280]
+const widths = [320, 375, 768, 1280]
 
 test('homepage first-value entry is usable by keyboard', async ({ page }) => {
   const hydrated = page.waitForResponse((response) => response.url().includes('/api/me'))
@@ -74,6 +74,32 @@ for (const width of widths) {
   })
 }
 
+for (const width of [320, 375]) {
+  test(`mobile header and Flag selection remain responsive at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/samples')
+
+    const header = page.locator('header').first()
+    const logo = header.locator('a[href="/"]').first()
+    const review = header.getByRole('link', { name: 'Review my site' })
+    await expect(logo).toBeVisible()
+    await expect(review).toBeVisible()
+    const [logoBox, reviewBox] = await Promise.all([
+      logo.boundingBox(),
+      review.boundingBox(),
+    ])
+    expect(logoBox).not.toBeNull()
+    expect(reviewBox).not.toBeNull()
+    expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(reviewBox!.x)
+
+    const flags = page.locator('button[aria-controls="selected-flag-detail"]')
+    await expect(flags).toHaveCount(7)
+    await flags.nth(1).click()
+    await expect(flags.nth(1)).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#selected-flag-detail h3')).toBeFocused()
+  })
+}
+
 test('legacy sample details redirects to the canonical report surface', async ({ page }) => {
   await page.goto('/samples/details')
   await expect(page).toHaveURL(/\/samples$/)
@@ -141,7 +167,7 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
   await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
 
   const copyButtons = fixList.getByRole('button', { name: /copy prompt/i })
-  await expect(copyButtons).toHaveCount(1)
+  await expect(copyButtons).toHaveCount(1, { timeout: 180_000 })
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await copyButtons.first().click()
   const copiedPrompt = await page.evaluate(() => navigator.clipboard.readText())

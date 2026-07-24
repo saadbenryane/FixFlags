@@ -16,7 +16,10 @@ const nextConfig: NextConfig = {
     '/*': ['node_modules/@img/sharp-libvips-*/**/*'],
   },
   poweredByHeader: false,
-  allowedDevOrigins: ['127.0.0.1'],
+  allowedDevOrigins: [
+    '127.0.0.1',
+    ...(process.env.FIXFLAGS_DEV_ORIGIN ? [process.env.FIXFLAGS_DEV_ORIGIN] : []),
+  ],
   turbopack: {
     root: __dirname,
   },

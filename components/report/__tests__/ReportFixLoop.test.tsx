@@ -13,4 +13,28 @@ describe('ReportFixLoop empty / loading states', () => {
     render(<ReportFixLoop flags={[]} loading />)
     expect(screen.getByText(REPORT_COPY.explorer.checkingIssues)).toBeInTheDocument()
   })
+
+  it('exposes selected semantics and the controlled detail relationship', () => {
+    render(
+      <ReportFixLoop
+        variant="panel"
+        selectedFlagId="flag-1"
+        onSelectFlag={() => undefined}
+        flags={[
+          {
+            id: 'flag-1',
+            title: 'Clarify the primary action',
+            rubric: 'MESSAGE',
+            severity: 'IMPORTANT',
+          },
+        ]}
+      />
+    )
+
+    const flag = screen.getByRole('button', {
+      name: /Message: Clarify the primary action/i,
+    })
+    expect(flag).toHaveAttribute('aria-pressed', 'true')
+    expect(flag).toHaveAttribute('aria-controls', 'selected-flag-detail')
+  })
 })

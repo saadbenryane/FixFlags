@@ -9,6 +9,7 @@ import {
 } from '@/lib/security/api-keys'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { isApiKeyClient } from '@/lib/mcp/builders'
 
 export async function GET() {
   try {
@@ -22,6 +23,7 @@ export async function GET() {
         name: true,
         prefix: true,
         lastFour: true,
+        client: true,
         lastUsed: true,
         createdAt: true,
       },
@@ -52,6 +54,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}))
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : 'Default'
+    if (body.client != null && !isApiKeyClient(body.client)) {
+      return apiError('Unsupported API key client', 400, {
+        code: 'INVALID_API_KEY_CLIENT',
+        action: 'choose_supported_client',
+      })
+    }
+    const client = body.client ?? null
 
     const activeCount = await prisma.apiKey.count({
       where: { userId: session.user.id, revokedAt: null },
@@ -68,6 +77,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: session.user.id,
         name: name || 'Default',
+        client,
         keyHash: generated.keyHash,
         prefix: generated.prefix,
         lastFour: generated.lastFour,
@@ -81,6 +91,7 @@ export async function POST(req: NextRequest) {
         key: generated.rawKey,
         prefix: apiKey.prefix,
         lastFour: apiKey.lastFour,
+        client: apiKey.client,
       },
       { status: 201 }
     )

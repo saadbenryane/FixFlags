@@ -17,6 +17,10 @@ import {
 } from '@/lib/audit/viewports'
 import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
+import {
+  highlightCenter,
+  normalizedPercent,
+} from '@/lib/audit/highlight-geometry'
 import { cn } from '@/lib/utils'
 
 interface ScreenshotWithHighlightsProps {
@@ -45,13 +49,6 @@ function useNarrowViewport() {
   }, [])
 
   return narrow
-}
-
-function highlightCenter(highlight: EvidenceHighlight) {
-  return {
-    x: highlight.x + highlight.width / 2,
-    y: highlight.y + highlight.height / 2,
-  }
 }
 
 function EvidencePin({
@@ -213,8 +210,8 @@ function PinOverlay({
       <div
         className="absolute z-[1]"
         style={{
-          left: `${center.x * 100}%`,
-          top: `${center.y * 100}%`,
+          left: normalizedPercent(center.x),
+          top: normalizedPercent(center.y),
           transform: 'translate(-50%, -50%)',
         }}
       >
@@ -367,10 +364,10 @@ function EvidenceRegionGlow({
             )
       )}
       style={{
-        left: `${highlight.x * 100}%`,
-        top: `${highlight.y * 100}%`,
-        width: `${highlight.width * 100}%`,
-        height: `${highlight.height * 100}%`,
+        left: normalizedPercent(highlight.x),
+        top: normalizedPercent(highlight.y),
+        width: normalizedPercent(highlight.width),
+        height: normalizedPercent(highlight.height),
       }}
       aria-hidden={!selected}
     />

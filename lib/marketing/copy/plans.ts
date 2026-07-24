@@ -95,7 +95,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your 3 new URL checks',
-    body: 'Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 25 new URL checks per month, before/after compare, and MCP in Cursor or Claude.',
+    body: 'Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 25 new URL checks per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -126,13 +126,13 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: 'Ship weekly? Automate the loop',
-    body: 'Pro adds 25 new checks per month, before/after compare, and MCP so checks run inside Cursor or Claude.',
+    body: 'Pro adds 25 new checks per month, before/after compare, and MCP so checks run inside your supported builder.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   report_completed: {
     headline: 'Automate the report loop',
-    body: 'Pro adds 25 new checks each month, before/after proof, and MCP in Cursor or Claude.',
+    body: 'Pro adds 25 new checks each month, before/after proof, and MCP in your supported builder.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },

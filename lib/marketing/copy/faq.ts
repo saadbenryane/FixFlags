@@ -52,12 +52,12 @@ export const FAQ = [
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: one teaser scan without an account (evidence and Flags, fix prompts after signup), then 3 new URL checks with full reports on a free account, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in Cursor or Claude, and 25 new URL checks per month.',
+      'Free: one teaser scan without an account (evidence and Flags, fix prompts after signup), then 3 new URL checks with full reports on a free account, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in supported builders, and 25 new URL checks per month.',
   },
   {
     question: 'Do I need Cursor or MCP?',
     answer:
-      'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt work by paste today.',
+      'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt also connect through custom MCP connectors.',
   },
   {
     question: 'Can it check sites built with Lovable/Bolt/v0?',

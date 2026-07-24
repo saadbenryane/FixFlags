@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { createApiKey } from '@/lib/api/api-key-client'
 import { buildCursorInstallLink, buildVscodeInstallLink } from '@/lib/mcp/deeplinks'
 import { SITE_URL } from '@/lib/marketing/copy'
 
@@ -14,10 +14,11 @@ import { SITE_URL } from '@/lib/marketing/copy'
  * clickable link, which would otherwise land in shell/browser history or clipboard
  * managers - same trust boundary as the existing manual copy-paste MCP config flow.
  */
-async function mintMcpKeyAndBuildLink(build: (apiKey: string) => string): Promise<string> {
-  const res = await fetch('/api/api-keys', { method: 'PUT' })
-  if (!res.ok) throw new Error((await parseApiErrorResponse(res)).message)
-  const data = await res.json()
+async function mintMcpKeyAndBuildLink(
+  client: 'cursor' | 'vscode',
+  build: (apiKey: string) => string
+): Promise<string> {
+  const data = await createApiKey({ name: `${client} MCP`, client })
   return build(data.key)
 }
 
@@ -34,7 +35,7 @@ export function McpInstallButtons() {
 
     setLoading(editor)
     try {
-      const link = await mintMcpKeyAndBuildLink((apiKey) =>
+      const link = await mintMcpKeyAndBuildLink(editor, (apiKey) =>
         editor === 'cursor'
           ? buildCursorInstallLink({ baseUrl: SITE_URL, apiKey })
           : buildVscodeInstallLink({ baseUrl: SITE_URL, apiKey })

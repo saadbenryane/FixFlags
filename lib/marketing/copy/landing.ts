@@ -10,6 +10,7 @@ export const HERO = {
   subhead:
     'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
   primaryCta: 'Review my site',
+  compactPrimaryCta: 'Review site',
   trySampleCta: 'See a sample review',
   urlPlaceholder: 'your-site.com',
 } as const
@@ -43,7 +44,7 @@ export const DIFFERENTIATION = {
     { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
     { feature: 'Before/after comparison', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
     { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
-    { feature: 'Runs inside Cursor or Claude', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
+    { feature: 'Runs inside supported builders', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
   comparisonRows: [
     { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
@@ -84,7 +85,7 @@ export const HOW_IT_WORKS_PAGE = {
     eyebrow: 'How FixFlags works',
     headline: 'Check your site from the browser or your coding agent.',
     subhead:
-      'Paste a URL for an instant report. Or connect MCP and let Cursor, Claude Code, or Windsurf find Flags, apply the fixes, and re-check the page.',
+      'Paste a URL for an instant report. Or connect MCP and let Cursor, Claude Code, Windsurf, Lovable, or Bolt find Flags, apply the fixes, and re-check the page.',
     primaryCta: 'Run a browser check',
     secondaryCta: 'Set up MCP',
   },
@@ -104,7 +105,7 @@ export const HOW_IT_WORKS_PAGE = {
     {
       label: 'In your editor',
       title: 'Let your agent call FixFlags with MCP',
-      body: 'Use MCP when you want the fix loop to stay inside Cursor, Claude Code, or Windsurf.',
+      body: 'Use MCP when you want the fix loop to stay inside Cursor, Claude Code, Windsurf, Lovable, or Bolt.',
       bullets: [
         'Check a URL from chat',
         'Fetch the exact flag and fix prompt',

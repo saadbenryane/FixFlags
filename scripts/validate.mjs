@@ -350,6 +350,12 @@ function printPlan(plan) {
 }
 
 function runCommands(commands) {
+  const initialRepositoryState = runGit([
+    'status',
+    '--porcelain=v1',
+    '--untracked-files=all',
+  ])
+
   for (const item of commands) {
     console.log(`\n$ ${[item.executable, ...item.args].join(' ')}`)
     const result = spawnSync(item.executable, item.args, {
@@ -359,6 +365,18 @@ function runCommands(commands) {
     })
     if (result.status !== 0) {
       process.exit(result.status ?? 1)
+    }
+
+    const currentRepositoryState = runGit([
+      'status',
+      '--porcelain=v1',
+      '--untracked-files=all',
+    ])
+    if (currentRepositoryState !== initialRepositoryState) {
+      const changed = runGit(['status', '--short', '--untracked-files=all']).trim()
+      throw new Error(
+        `Validation command "${item.label}" modified project files.\n${changed || 'Repository state changed.'}`
+      )
     }
   }
 }
