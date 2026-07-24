@@ -38,6 +38,7 @@ interface Props {
   compareAuditId?: string | null
   canExportSummary?: boolean
   canSharePublicly?: boolean
+  shareStatus?: string
   showFixPrompts?: boolean
   toolbar?: boolean
 }
@@ -59,6 +60,7 @@ export function AuditPageActions({
   compareAuditId,
   canExportSummary = false,
   canSharePublicly = false,
+  shareStatus,
   showFixPrompts = false,
   toolbar = false,
 }: Props) {
@@ -109,6 +111,7 @@ export function AuditPageActions({
         isPublic={isPublic}
         isAnonymous={isAnonymous}
         canPublicShare={canSharePublicly}
+        shareStatus={shareStatus}
         onPublicChange={setIsPublic}
       />
       <ExportMenu

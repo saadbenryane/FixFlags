@@ -8,14 +8,20 @@ import { parseProductContract, type ProductContract } from '@/lib/audit/product-
 import { parseActionTimeline, type ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
+import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
+import { discoverJourneyLinks } from './discover'
+import { planJourney, isPlannerProviderConfigured } from './planner'
+import { evaluateJourney, isEvaluatorProviderConfigured } from './evaluator'
+import type { JourneyEvaluation } from './evaluator-schema'
 import { runJourneyTemplate } from './run-template'
-import type { JourneyFindingDraft, JourneyType } from './types'
+import type { JourneyFindingDraft, JourneyRunResult, JourneyStepDraft, JourneyType } from './types'
 
 const PAID_JOURNEY_TYPES: JourneyType[] = [
   'first-visit',
   'pricing-evaluation',
   'signup',
   'contact-support',
+  'multi-step-funnel',
 ]
 
 const JOURNEY_BUDGET_MS = 55_000
@@ -75,6 +81,85 @@ function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
   }
 }
 
+function convertEvaluationToFindings(
+  evaluation: JourneyEvaluation,
+  steps: JourneyStepDraft[],
+  startUrl: string
+): JourneyFindingDraft[] {
+  const findings: JourneyFindingDraft[] = []
+
+  for (const fp of evaluation.frictionPoints) {
+    const step = steps.find((s) => s.stepNumber === fp.stepNumber)
+    findings.push({
+      checkId: `journey-funnel-${fp.type}`,
+      stepNumber: fp.stepNumber,
+      url: step?.url ?? startUrl,
+      rubric: fp.rubric,
+      severity: fp.severity,
+      impactTag: fp.impactTag,
+      problem: fp.description,
+      evidence: fp.evidence,
+      whyItMatters:
+        fp.type === 'hesitation'
+          ? 'Hesitation signals indicate uncertainty that causes visitors to abandon.'
+          : fp.type === 'confusion'
+            ? 'Confused visitors cannot find the path forward and leave.'
+            : fp.type === 'too-many-steps'
+              ? 'Long funnels have compounding drop-off at each step.'
+              : fp.type === 'unclear-progress'
+                ? 'Visitors lose context when they cannot tell where they are in the flow.'
+                : 'Missing feedback after actions makes visitors uncertain whether anything happened.',
+      fix: '1. Review this step in the journey\n2. Add clearer visual feedback\n3. Reduce cognitive load at this point',
+      screenshotUrl: step?.screenshotAfterUrl,
+      accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
+      confidence: evaluation.confidence,
+      findingType: 'friction',
+    })
+  }
+
+  for (const bp of evaluation.brokenPromises) {
+    const step = steps.find((s) => s.stepNumber === bp.stepNumber)
+    findings.push({
+      checkId: 'journey-funnel-broken-promise',
+      stepNumber: bp.stepNumber,
+      url: step?.url ?? startUrl,
+      rubric: 'MESSAGE',
+      severity: bp.severity,
+      impactTag: 'TRUST',
+      problem: `Broken promise: expected "${bp.expected}" but got "${bp.actual}"`,
+      evidence: bp.evidence,
+      whyItMatters: 'Broken promises erode trust and cause immediate abandonment.',
+      fix: '1. Align page content with what was promised in the previous step\n2. Ensure headlines, CTAs, and page content tell a consistent story\n3. Remove misleading claims',
+      screenshotUrl: step?.screenshotAfterUrl,
+      accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
+      confidence: evaluation.confidence,
+      findingType: 'broken-promise',
+    })
+  }
+
+  for (const ab of evaluation.accessibilityBarriers) {
+    const step = steps.find((s) => s.stepNumber === ab.stepNumber)
+    findings.push({
+      checkId: 'journey-funnel-accessibility-barrier',
+      stepNumber: ab.stepNumber,
+      url: step?.url ?? startUrl,
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      impactTag: 'ACCESSIBILITY',
+      problem: ab.barrier,
+      evidence: ab.evidence,
+      whyItMatters: 'Accessibility barriers prevent users with disabilities from completing the journey.',
+      fix: '1. Ensure all interactive elements are keyboard-accessible\n2. Add proper ARIA labels and roles\n3. Test with screen readers',
+      screenshotUrl: step?.screenshotAfterUrl,
+      accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
+      confidence: evaluation.confidence,
+      findingType: 'accessibility-barrier',
+    })
+  }
+
+  return findings
+}
+
 export async function persistJourneyResult(
   auditId: string,
   result: Awaited<ReturnType<typeof runJourneyTemplate>>
@@ -111,10 +196,14 @@ export async function persistJourneyResult(
       completedSteps: result.steps.length,
       maxSteps: 10,
       goalAchieved: result.goalAchieved,
+      blockedReason: result.blockedReason,
       abandonedReason: result.abandonedReason,
       startedAt: new Date(Date.now() - result.durationMs),
       completedAt: new Date(),
       durationMs: result.durationMs,
+      plannerInputTokens: result.plannerUsage?.inputTokens ?? 0,
+      plannerOutputTokens: result.plannerUsage?.outputTokens ?? 0,
+      plannerModel: result.plannerUsage?.model,
       steps: {
         create: result.steps.map((s) => ({
           stepNumber: s.stepNumber,
@@ -129,6 +218,10 @@ export async function persistJourneyResult(
           loadTimeMs: s.loadTimeMs,
           confidence: s.confidence ?? 1,
           reasoning: s.reasoning,
+          elementRef: s.elementRef,
+          elementDescription: s.elementDescription,
+          outcomeMatch: s.outcomeMatch,
+          outcomeDetail: s.outcomeDetail,
         })),
       },
       findings: {
@@ -146,6 +239,7 @@ export async function persistJourneyResult(
           accessibilityEvidence: f.accessibilityEvidence,
           confidence: f.confidence ?? 0.85,
           checkId: f.checkId,
+          findingType: f.findingType,
         })),
       },
     },
@@ -211,15 +305,114 @@ export async function runJourneyReviewsForAudit(
   for (const journeyType of journeyTypes) {
     if (Date.now() >= options.deadline - 8_000) break
     try {
+      let plan = null as Awaited<ReturnType<typeof planJourney>>['plan'] | null
+      let plannerUsage = null as Awaited<ReturnType<typeof planJourney>>['usage'] | null
+      if (journeyType === 'multi-step-funnel' && isPlannerProviderConfigured()) {
+        try {
+          const browserForPlan = await getAuditBrowser()
+          const planSession = await (
+            await import('@/lib/audit/browser/page-session')
+          ).createAuditPage(browserForPlan, startUrl, {
+            profile: (await import('@/lib/audit/browser/capture-profile')).DESKTOP_CAPTURE_PROFILE,
+            journeySafe: true,
+            scanAccess: options.scanAccess,
+          })
+          try {
+            const origin = new URL(startUrl).origin
+            const [initialTree, links] = await Promise.all([
+              captureAccessibilityTree(planSession.page),
+              discoverJourneyLinks(planSession.page, origin),
+            ])
+            const planResult = await planJourney(
+              {
+                url: startUrl,
+                contract,
+                initialTree,
+                metadata: {
+                  title: await planSession.page.title(),
+                  description: await planSession.page.evaluate(
+                    () =>
+                      document.querySelector('meta[name="description"]')?.getAttribute('content') ?? ''
+                  ),
+                  h1s: await planSession.page.evaluate(() =>
+                    Array.from(document.querySelectorAll('h1'))
+                      .map((h) => (h.textContent ?? '').trim())
+                      .filter(Boolean)
+                  ),
+                },
+                links,
+              },
+              Math.min(JOURNEY_BUDGET_MS, remaining())
+            )
+            plan = planResult.plan
+            plannerUsage = planResult.usage
+            logger.info('Journey planner succeeded', {
+              journeyType,
+              goal: plan.goal,
+              steps: plan.steps.length,
+              confidence: plan.confidence,
+            })
+          } finally {
+            planSession.disposeNetwork()
+            await planSession.page.context().close().catch(() => {})
+          }
+        } catch (err) {
+          logger.warn('Journey planner failed, falling back to deterministic', {
+            journeyType,
+            err: String(err),
+          })
+        }
+      }
+
       const result = await runJourneyTemplate(browser, {
         auditId,
         startUrl,
         journeyType,
         deadlineMs: Date.now() + Math.min(JOURNEY_BUDGET_MS, remaining()),
         scanAccess: options.scanAccess,
+        plan,
+        plannerUsage: plannerUsage ?? undefined,
       })
       const findings = await persistJourneyResult(auditId, result)
       findingCount += findings.length
+
+      if (journeyType === 'multi-step-funnel' && result.steps.length >= 3) {
+        try {
+          const evalResult = await evaluateJourney(
+            {
+              url: startUrl,
+              journeyType,
+              goalAchieved: result.goalAchieved,
+              steps: result.steps,
+              summary: result.abandonedReason ?? `Completed ${result.steps.length} steps`,
+            },
+            Math.min(JOURNEY_BUDGET_MS, remaining())
+          )
+          const evalFindings = convertEvaluationToFindings(
+            evalResult.evaluation,
+            result.steps,
+            startUrl
+          )
+          if (evalFindings.length > 0) {
+            const persisted = await persistJourneyResult(auditId, {
+              ...result,
+              findings: evalFindings,
+              journeyType,
+            })
+            findingCount += persisted.length
+          }
+          await prisma.journeyReview.updateMany({
+            where: { auditId, journeyType },
+            data: {
+              evaluatorInputTokens: evalResult.usage.inputTokens,
+              evaluatorOutputTokens: evalResult.usage.outputTokens,
+              evaluatorModel: evalResult.usage.model,
+            },
+          })
+        } catch (err) {
+          logger.warn('Journey evaluator failed', { journeyType, err: String(err) })
+        }
+      }
     } catch (err) {
       logger.error('Journey review failed', { journeyType, err })
     }

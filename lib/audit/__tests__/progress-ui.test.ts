@@ -1,35 +1,59 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { getActivityMessage, getScanningLabel } from '@/lib/audit/progress-ui'
+import { getStagePresentation, getProgressPercent } from '@/lib/audit/progress-ui'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 
-describe('getScanningLabel', () => {
-  it('rotates through stage-specific subcategory labels', () => {
-    const a = getScanningLabel('CHECKING', 0)
-    const b = getScanningLabel('CHECKING', 1)
-    assert.notEqual(a, b)
-    // Wraps around deterministically.
-    assert.equal(getScanningLabel('CHECKING', 0), getScanningLabel('CHECKING', 6))
-  })
-
-  it('never reveals a check count or the recipe', () => {
-    for (const status of ['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING']) {
-      for (let tick = 0; tick < 8; tick++) {
-        const label = getScanningLabel(status, tick)
-        assert.doesNotMatch(label, /\d/, `"${label}" should contain no digits`)
-        assert.doesNotMatch(label, /checks?\b/i, `"${label}" should not mention checks`)
-      }
+describe('getStagePresentation', () => {
+  it('maps each pipeline status to a stable stage label', () => {
+    for (const stage of AUDIT_PROGRESS.stages) {
+      const presentation = getStagePresentation(stage.status)
+      assert.equal(presentation.label, stage.label)
+      assert.equal(presentation.scanningLabel, stage.label)
+      assert.equal(presentation.detail, stage.subtitle)
+      assert.match(presentation.statusLine, new RegExp(`Step \\d+ of ${AUDIT_PROGRESS.stages.length}`))
     }
   })
 
-  it('falls back to CHECKING labels for an unknown status', () => {
-    assert.equal(getScanningLabel('SOMETHING_ELSE', 0), getScanningLabel('CHECKING', 0))
+  it('does not rotate copy on a tick — same inputs yield same output', () => {
+    const a = getStagePresentation('CHECKING', 40)
+    const b = getStagePresentation('CHECKING', 40)
+    assert.deepEqual(a, b)
+  })
+
+  it('uses real CHECKING substeps only when progress crosses anchors', () => {
+    assert.equal(
+      getStagePresentation('CHECKING', PIPELINE_PROGRESS.CHECKING).detail,
+      AUDIT_PROGRESS.stages.find((s) => s.status === 'CHECKING')?.subtitle
+    )
+    assert.equal(
+      getStagePresentation('CHECKING', PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE).detail,
+      AUDIT_PROGRESS.substeps.CHECKS_DONE
+    )
+    assert.equal(
+      getStagePresentation('CHECKING', PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START).detail,
+      AUDIT_PROGRESS.substeps.JOURNEY_START
+    )
+  })
+
+  it('does not leak journey substeps into JUDGING', () => {
+    const presentation = getStagePresentation('JUDGING', PIPELINE_PROGRESS.JUDGING)
+    assert.equal(presentation.detail, AUDIT_PROGRESS.stages.find((s) => s.status === 'JUDGING')?.subtitle)
+    assert.equal(presentation.scanningLabel, 'AI review')
+  })
+
+  it('falls back to QUEUED presentation for unknown status', () => {
+    const presentation = getStagePresentation('SOMETHING_ELSE')
+    assert.equal(presentation.label, AUDIT_PROGRESS.stages[0].label)
   })
 })
 
-describe('getActivityMessage', () => {
-  it('returns a non-empty stage activity string', () => {
-    const msg = getActivityMessage('CAPTURING', 0)
-    assert.ok(msg.length > 0)
-    assert.notEqual(getActivityMessage('CAPTURING', 0), getActivityMessage('CAPTURING', 1))
+describe('getProgressPercent', () => {
+  it('prefers explicit progress over stage fallback', () => {
+    assert.equal(getProgressPercent(55, 'CHECKING'), 55)
+  })
+
+  it('uses PIPELINE_PROGRESS when progress is missing', () => {
+    assert.equal(getProgressPercent(null, 'CAPTURING'), PIPELINE_PROGRESS.CAPTURING)
   })
 })

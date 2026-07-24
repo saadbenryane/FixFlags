@@ -1,4 +1,10 @@
-export type RepoFindingPromptTool = 'generic' | 'cursor' | 'claude' | 'windsurf'
+export type RepoFindingPromptTool =
+  | 'generic'
+  | 'cursor'
+  | 'claude'
+  | 'windsurf'
+  | 'lovable'
+  | 'bolt'
 
 export interface RepoFindingFixTaskInput {
   repoFullName: string

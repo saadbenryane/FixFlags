@@ -95,6 +95,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       compareAuditId={compareAuditId}
       canExportSummary={state.entitlements?.canExportSummary ?? false}
       canSharePublicly={state.entitlements?.canSharePublicly ?? false}
+      shareStatus={state.reportAudit.shareStatus}
       showFixPrompts={state.showDeterministicFixes}
       toolbar
     />

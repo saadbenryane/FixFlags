@@ -2,7 +2,7 @@
 
 ## Layout
 
-- `components/audit/` — page-level report layout: hero, toolbar, `RubricBar`, `ShareStatusBanner`, actions, progressive scanning
+- `components/audit/` — page-level report layout: hero, toolbar, `RubricBar`, ShareDrawer readiness warning, actions, progressive scanning
 - `components/report/` — flag interaction: explorer (master-detail), detail panel, fix loop, scoring components
 - `components/ui/` — shared primitives: FilterPill, ScoreDot, ThumbsFeedback, Button, Card, etc.
 
@@ -39,6 +39,7 @@
 ## Do not resurrect
 
 - Severity filter pills ("All severities" / "Critical")
+- `ShareStatusBanner` — deleted; RubricBar owns rubric status; ShareDrawer shows one fix-before-sharing warning
 - `RubricsPanel` — deleted; use `RubricBar` + `ReportExplorer`
 - `TestimonialsSection` / carousel — replaced by `ReportExamplesSection` / sample explorer Flag output
 - Message gaps / Experience friction / Reach misses naming (use Message / Experience / Reach)

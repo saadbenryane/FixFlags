@@ -1,14 +1,5 @@
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
-
-const STATUS_PROGRESS_FALLBACK: Record<string, number> = {
-  QUEUED: 5,
-  CAPTURING: 20,
-  CHECKING: 40,
-  JUDGING: 70,
-  FINALIZING: 90,
-  COMPLETED: 100,
-  FAILED: 0,
-}
+import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 
 export function statusToStageIndex(status: string): number {
   const idx = AUDIT_PROGRESS.stages.findIndex((s) => s.status === status)
@@ -19,7 +10,8 @@ export function statusToStageIndex(status: string): number {
 
 export function getProgressPercent(progress: number | null | undefined, status: string): number {
   if (typeof progress === 'number' && progress > 0) return Math.min(100, progress)
-  return STATUS_PROGRESS_FALLBACK[status] ?? 5
+  const fallback = PIPELINE_PROGRESS[status as keyof typeof PIPELINE_PROGRESS]
+  return typeof fallback === 'number' ? fallback : PIPELINE_PROGRESS.QUEUED
 }
 
 /** Stage-based progress for UI (step N of total). */
@@ -31,37 +23,61 @@ export function getStageProgress(status: string): { current: number; total: numb
   return { current, total, percent }
 }
 
-export function getActivityMessage(status: string, tick: number): string {
-  const messages =
-    AUDIT_PROGRESS.stageActivity[status as keyof typeof AUDIT_PROGRESS.stageActivity] ??
-  AUDIT_PROGRESS.stageActivity.CHECKING
-  return messages[tick % messages.length]
+function resolveSubstepDetail(
+  status: string,
+  progress: number | null | undefined
+): string | null {
+  if (typeof progress !== 'number') return null
+  const { substeps } = AUDIT_PROGRESS
+
+  if (status === 'CAPTURING' && progress >= PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE) {
+    return substeps.CAPTURE_DONE
+  }
+  if (status === 'CHECKING') {
+    if (progress >= PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE) return substeps.JOURNEY_DONE
+    if (progress >= PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START) return substeps.JOURNEY_START
+    if (progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE) return substeps.CHECKS_DONE
+  }
+  return null
+}
+
+export type StagePresentation = {
+  current: number
+  total: number
+  label: string
+  /** Honest detail: real substep when progress crossed an anchor, else stage subtitle. */
+  detail: string
+  /** Hero badge text after "Scanning · ". */
+  scanningLabel: string
+  /** Mono status line: "Step N of 5 · {label}". */
+  statusLine: string
+  percent: number
 }
 
 /**
- * Short, value-framed subcategory labels shown inline next to "Scanning ·".
- * Deliberately reveals no check counts or the exact recipe - just the area of
- * the review currently in focus. Keyed by pipeline stage so it tracks reality.
+ * Single honest stage narrative for progressive UI.
+ * Copy changes only when pipeline status or known progress substeps change — never on a timer.
  */
-const SCAN_PHASE_LABELS: Record<string, string[]> = {
-  QUEUED: ['Starting your review'],
-  CAPTURING: ['Loading your page', 'Capturing desktop & mobile'],
-  CHECKING: [
-    'Analyzing message clarity',
-    'Checking your calls to action',
-    'Reviewing mobile experience',
-    'Measuring load speed',
-    'Checking share previews',
-    'Reviewing trust signals',
-  ],
-  JUDGING: ['Turning issues into flags', 'Prioritizing by launch impact'],
-  FINALIZING: ['Packaging your review'],
-}
+export function getStagePresentation(
+  status: string,
+  progress?: number | null
+): StagePresentation {
+  const { current, total } = getStageProgress(status)
+  const stage =
+    AUDIT_PROGRESS.stages.find((s) => s.status === status) ?? AUDIT_PROGRESS.stages[0]
+  const substep = resolveSubstepDetail(status, progress)
+  const detail = substep ?? stage.subtitle
+  const percent = getProgressPercent(progress, status)
 
-/** Rotating subcategory label for the in-progress "Scanning · …" line. */
-export function getScanningLabel(status: string, tick: number): string {
-  const labels = SCAN_PHASE_LABELS[status] ?? SCAN_PHASE_LABELS.CHECKING
-  return labels[tick % labels.length]
+  return {
+    current,
+    total,
+    label: stage.label,
+    detail,
+    scanningLabel: stage.label,
+    statusLine: AUDIT_PROGRESS.formatStageStep(current, total, stage.label),
+    percent,
+  }
 }
 
 export function formatElapsed(seconds: number): string {

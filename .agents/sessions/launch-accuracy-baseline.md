@@ -58,7 +58,7 @@
 1. Accessible-name parser: hidden subtrees, sr-only labels, card stretch links (`absolute inset-0` + heading).
 2. `messaging-weak-value-prop`: only fires when headline has neither audience nor outcome.
 3. H1 extraction: dedupe responsive duplicates and repeated phrase runs.
-4. Frozen fixtures: `lovable-dev.html`, `bolt-new.html` (live `v0.dev` probe passes; no frozen fixture — HTML-only corpus).
+4. Frozen fixtures: `lovable-dev.html`, `bolt-new.html`, `v0-dev.html`, `linear-app.html`, `replit-com.html` (linear/replit/v0 remain structural until full-pipeline adjudication; replit live probe 403).
 5. `npm run accuracy:eval` CI gate with gold/builder/personal/broken corpus.
 6. Shared corpus: `lib/audit/accuracy-corpus.ts` (single expectation source).
 

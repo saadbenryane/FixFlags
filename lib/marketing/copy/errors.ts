@@ -46,35 +46,21 @@ export const AUDIT_PROGRESS = {
   workerBacklogWarningProd:
     'Still preparing your report. It will continue shortly.',
   stages: [
-    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review...' },
-    { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views...' },
-    { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, Reach...' },
-    { status: 'JUDGING', label: 'AI review', subtitle: 'Prioritizing Flags from evidence...' },
-    { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results...' },
+    { status: 'QUEUED', label: 'Starting check', subtitle: 'Preparing your review…' },
+    { status: 'CAPTURING', label: 'Capturing screenshots', subtitle: 'Desktop and mobile views…' },
+    { status: 'CHECKING', label: 'Running checks', subtitle: 'Message, Experience, and Reach…' },
+    { status: 'JUDGING', label: 'AI review', subtitle: 'Prioritizing Flags from evidence…' },
+    { status: 'FINALIZING', label: 'Preparing review', subtitle: 'Scoring rubrics and packaging results…' },
   ],
-  stageActivity: {
-    QUEUED: ['Preparing your report...', 'Spinning up the pipeline...'],
-    CAPTURING: [
-      'Capturing desktop screenshot...',
-      'Capturing mobile screenshot...',
-      'Testing primary CTA click-through...',
-      'Loading page in browser...',
-    ],
-    CHECKING: [
-      'Reviewing message clarity and CTA copy...',
-      'Checking layout, mobile viewport, and tap targets...',
-      'Scanning share preview tags and metadata...',
-      'Measuring load speed and Core Web Vitals...',
-      'Reviewing trust signals like HTTPS and privacy links...',
-      'Looking for broken interactions and console errors...',
-    ],
-    JUDGING: [
-      'AI is analyzing screenshots and evidence...',
-      'Prioritizing Flags by launch impact...',
-      'Preparing the report for review...',
-    ],
-    FINALIZING: ['Packaging your review...', 'Scoring all 3 rubrics...', 'Almost ready...'],
+  /** Shown only when pipeline progress crosses the matching real substep anchor. */
+  substeps: {
+    CAPTURE_DONE: 'Capture finished. Starting deterministic checks…',
+    CHECKS_DONE: 'Checks finished. Preparing journey review…',
+    JOURNEY_START: 'Walking the primary user journey…',
+    JOURNEY_DONE: 'Journey finished. Starting AI review…',
   },
+  formatStageStep: (current: number, total: number, label: string) =>
+    `Step ${current} of ${total} · ${label}`,
 } as const
 
 export function formatQueueWaitHint(seconds: number): string {

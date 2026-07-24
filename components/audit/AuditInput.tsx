@@ -10,6 +10,7 @@ import { HERO, AUDIT_PROGRESS, OFFER } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { AuditLimitGate } from '@/components/audit/AuditLimitGate'
+import { ScanHandoffOverlay } from '@/components/audit/ScanHandoffOverlay'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -41,6 +42,7 @@ export function AuditInput({
   const { user } = useMe()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
+  const [handoffUrl, setHandoffUrl] = useState<string | null>(null)
   const [urlError, setUrlError] = useState('')
   const [limitGate, setLimitGate] = useState<{
     message: string
@@ -101,6 +103,7 @@ export function AuditInput({
 
     setUrl(normalized)
     setLoading(true)
+    setHandoffUrl(normalized)
     let handedOffToReport = false
     try {
       const params = new URLSearchParams(window.location.search)
@@ -120,6 +123,7 @@ export function AuditInput({
 
       if (!res.ok) {
         const parsed = await parseApiErrorResponse(res)
+        setHandoffUrl(null)
         if (
           res.status === 402 ||
           (res.status === 401 && parsed.code === 'AUTH_REQUIRED')
@@ -158,11 +162,15 @@ export function AuditInput({
         })
       }
       handedOffToReport = true
-      router.push(reportId ? `/report/${reportId}` : '/dashboard')
+      router.replace(reportId ? `/report/${reportId}` : '/dashboard')
     } catch {
+      setHandoffUrl(null)
       toast.error('Something went wrong. Please try again.')
     } finally {
-      if (!handedOffToReport) setLoading(false)
+      if (!handedOffToReport) {
+        setLoading(false)
+        setHandoffUrl(null)
+      }
     }
   }
 
@@ -208,12 +216,19 @@ export function AuditInput({
   const isLanding = variant === 'landing'
   const auditSource = source ?? (isLanding ? 'homepage' : 'dashboard')
   const describedBy = urlError ? errorId : undefined
+  const handoffSession = user
+    ? { user: { id: user.id, email: user.email ?? null } }
+    : null
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
 
   return (
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
+      {handoffUrl ? (
+        <ScanHandoffOverlay url={handoffUrl} session={handoffSession} />
+      ) : null}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
           <InputGroup>

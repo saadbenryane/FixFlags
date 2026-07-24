@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { SITE_URL, SHARE_COPY } from '@/lib/marketing/copy'
+import { shareStatusMessage } from '@/lib/audit/share-status'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
@@ -56,6 +57,7 @@ interface ShareDrawerProps {
   isPublic: boolean
   isAnonymous: boolean
   canPublicShare?: boolean
+  shareStatus?: string
   onPublicChange?: (isPublic: boolean) => void
 }
 
@@ -66,6 +68,7 @@ export function ShareDrawer({
   isPublic: initialIsPublic,
   isAnonymous,
   canPublicShare = false,
+  shareStatus,
   onPublicChange,
 }: ShareDrawerProps) {
   const router = useRouter()
@@ -243,6 +246,10 @@ export function ShareDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {shareStatus === 'fix_before_sharing' ? (
+            <Callout variant="warning" title={shareStatusMessage(shareStatus)} />
+          ) : null}
+
           {!canPublicShare && isOwner && !isAnonymous && !isPublic && (
             <Callout variant="neutral" title={SHARE_COPY.privateTitle}>
               <div className="space-y-3">

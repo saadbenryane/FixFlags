@@ -418,6 +418,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   if (shouldRunTriage && !isTriageProviderConfigured()) {
     // No LLM key: don't transition to JUDGING or attempt a call that can only
     // fail. Matches lib/env.ts intent for keyless deploys.
+    triageFailure = {
+      reason: 'no_provider_keys',
+      message: 'No AI provider keys configured for triage',
+      retryable: false,
+    }
     await logPipelineEvent(ctx.auditId, {
       stage: 'judging',
       event: 'triage_skipped_no_provider',

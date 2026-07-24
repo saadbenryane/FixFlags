@@ -65,7 +65,7 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 ### Pro ($29/mo) — `BUILDER` in schema
 - 25 new URL checks per month
 - Before/after compare
-- MCP integration (Cursor + Claude Code)
+- MCP integration (Cursor, Claude Code, Windsurf, Lovable, Bolt)
 - Credit packs for overflow new checks
 
 ### Agency ($99/mo) — `TEAM` in schema
@@ -97,7 +97,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
 - Evidence-backed Made with profiles across reports, re-check diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
-- MCP integration; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
+- MCP integration for Cursor, Claude Code, Windsurf, Lovable, and Bolt; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
@@ -114,7 +114,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
 - No team workspaces or white-label reports
-- Lovable and Bolt custom MCP connectors with API-key authentication
+- Deployed Lovable/Bolt connector smoke and release credential proof remain open; local MCP setup and API-key auth for those builders are shipped
 
 ## Launch gates
 

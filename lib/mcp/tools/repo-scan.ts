@@ -181,7 +181,7 @@ export function registerRepoScanTools(server: McpServer, user: User) {
     MCP_TOOLS.getRepoFinding.desc,
     {
       findingId: z.string(),
-      tool: z.enum(['generic', 'cursor', 'claude', 'windsurf']).optional(),
+      tool: z.enum(['generic', 'cursor', 'claude', 'windsurf', 'lovable', 'bolt']).optional(),
     },
     async ({ findingId, tool = 'generic' }) => {
       await assertMcpAccess(user)

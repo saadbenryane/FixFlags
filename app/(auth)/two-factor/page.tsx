@@ -26,15 +26,21 @@ function TwoFactorForm() {
     try {
       const { error } = await authClient.signIn.passkey()
       if (error) {
-        toast.error(error.message || 'Passkey verification failed')
+        const msg = error.message ?? ''
+        if (/cancel|notallowed/i.test(msg)) {
+          return
+        }
+        if (/not.?found|no.?credential/i.test(msg)) {
+          toast.error(AUTH.passkeyErrors.twoFactorNotFound)
+        } else {
+          toast.error(AUTH.passkeyErrors.twoFactorCancelled)
+        }
         return
       }
       trackEvent('signed_in', { method: 'passkey_2fa' })
-      // Through /post-login so anonymous audits get claimed before the
-      // next/checkout navigation (same path email/OAuth takes).
       router.push(postLoginHref)
     } catch {
-      toast.error('Passkey verification was cancelled or failed')
+      toast.error(AUTH.passkeyErrors.twoFactorCancelled)
     } finally {
       setLoading(null)
     }

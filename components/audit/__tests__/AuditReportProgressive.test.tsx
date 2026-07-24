@@ -36,7 +36,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByLabelText(/Score pending/i)).toBeInTheDocument()
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
-    expect(screen.getByRole('status')).toHaveTextContent(/complete/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/Step 2 of 5/)
   })
 
   it('renders product contract when provided', () => {
@@ -58,7 +58,7 @@ describe('AuditReportProgressive', () => {
 
   it('hides the action timeline when there are no events', () => {
     render(<AuditReportProgressive status="CAPTURING" url={URL} actionTimeline={[]} />)
-    expect(screen.queryByText('What FixFlags is doing')).not.toBeInTheDocument()
+    expect(screen.queryByText('How FixFlags is checking')).not.toBeInTheDocument()
   })
 
   it('shows the progressive timeline title when events are present', () => {
@@ -69,7 +69,7 @@ describe('AuditReportProgressive', () => {
         actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
       />
     )
-    expect(screen.getByText('What FixFlags is doing')).toBeInTheDocument()
+    expect(screen.getByText('How FixFlags is checking')).toBeInTheDocument()
     expect(screen.getByText('Opened page')).toBeInTheDocument()
   })
 
@@ -100,10 +100,23 @@ describe('AuditReportProgressive', () => {
     }
   })
 
+  it('mounts explorer chrome before the first flag arrives', () => {
+    render(<AuditReportProgressive status="CHECKING" url={URL} />)
+    expect(screen.getAllByText(/Checking for issues|Flags appear here/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Step \d+ of \d+/).length).toBeGreaterThan(0)
+  })
+
+  it('shows an honest stage label instead of rotating activity copy', () => {
+    render(<AuditReportProgressive status="CAPTURING" url={URL} />)
+    expect(screen.getByText(/Scanning · Capturing screenshots/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Desktop and mobile views/).length).toBeGreaterThan(0)
+  })
+
   it('falls back to a skeleton frame while screenshots are pending', () => {
     const { container } = render(<AuditReportProgressive status="CHECKING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getByLabelText('Reading technology signals')).toBeInTheDocument()
+    expect(screen.getByLabelText('Capturing page screenshot')).toBeInTheDocument()
     expect(container.querySelector('img')).toBeNull()
   })
 

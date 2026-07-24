@@ -28,7 +28,7 @@ function ResetPasswordForm() {
     if (!token) return
     setConfirmError('')
     if (password !== confirmPassword) {
-      setConfirmError('Passwords do not match')
+      setConfirmError(AUTH.resetPassword.mismatch)
       return
     }
     setLoading(true)

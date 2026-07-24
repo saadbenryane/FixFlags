@@ -107,6 +107,42 @@ export function isGeneratedPath(file) {
   return generatedPathPatterns.some((pattern) => pattern.test(file))
 }
 
+/** Normalize porcelain status lines and drop generated artifact paths. */
+export function normalizeRepositoryState(porcelain) {
+  return porcelain
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .filter((line) => {
+      const pathPart = line.length >= 3 && line[2] === ' '
+        ? line.slice(3)
+        : line.replace(/^[ MADRCU?!]{1,2}\s+/, '')
+      const filePath = pathPart.includes(' -> ')
+        ? pathPart.split(' -> ').at(-1)
+        : pathPart
+      return filePath ? !isGeneratedPath(filePath) : true
+    })
+    .sort()
+    .join('\n')
+}
+
+export function assertRepositoryUnchanged(initialPorcelain, currentPorcelain, commandLabel) {
+  const before = normalizeRepositoryState(initialPorcelain)
+  const after = normalizeRepositoryState(currentPorcelain)
+  if (before === after) return
+  const beforeSet = new Set(before ? before.split('\n') : [])
+  const afterSet = new Set(after ? after.split('\n') : [])
+  const added = [...afterSet].filter((line) => !beforeSet.has(line))
+  const removed = [...beforeSet].filter((line) => !afterSet.has(line))
+  const details = [
+    ...removed.map((line) => `- ${line}`),
+    ...added.map((line) => `+ ${line}`),
+  ].join('\n')
+  throw new Error(
+    `Validation command "${commandLabel}" modified project files.\n${details || 'Repository state changed.'}`
+  )
+}
+
 function runGit(args, options = {}) {
   const result = spawnSync('git', args, {
     cwd: workspaceRoot,
@@ -372,12 +408,7 @@ function runCommands(commands) {
       '--porcelain=v1',
       '--untracked-files=all',
     ])
-    if (currentRepositoryState !== initialRepositoryState) {
-      const changed = runGit(['status', '--short', '--untracked-files=all']).trim()
-      throw new Error(
-        `Validation command "${item.label}" modified project files.\n${changed || 'Repository state changed.'}`
-      )
-    }
+    assertRepositoryUnchanged(initialRepositoryState, currentRepositoryState, item.label)
   }
 }
 

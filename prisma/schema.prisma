@@ -698,6 +698,7 @@ model JourneyReview {
   evaluatorInputTokens  Int                 @default(0)
   evaluatorOutputTokens Int                 @default(0)
   evaluatorModel        String?
+  planJson              Json?
   steps                 JourneyStep[]
   findings              JourneyFinding[]
   createdAt             DateTime            @default(now())
@@ -725,6 +726,10 @@ model JourneyStep {
   loadTimeMs          Int?
   confidence          Float         @default(1.0)
   reasoning           String?       @db.Text
+  elementRef          String?
+  elementDescription  String?
+  outcomeMatch        Boolean?
+  outcomeDetail       String?       @db.Text
   createdAt           DateTime      @default(now())
 
   @@unique([journeyReviewId, stepNumber])
@@ -751,6 +756,7 @@ model JourneyFinding {
   reproducibility       String        @default("always")
   flagId                String?
   checkId               String?
+  findingType           String?
   createdAt             DateTime      @default(now())
 
   @@index([journeyReviewId])

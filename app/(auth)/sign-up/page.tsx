@@ -139,6 +139,7 @@ function SignUpForm() {
           value={password}
           onChange={setPassword}
           showRequirements
+          autoComplete="new-password"
         />
         <p className="text-center text-xs text-muted-foreground">
           By creating an account, you agree to our{' '}
@@ -155,6 +156,14 @@ function SignUpForm() {
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {AUTH.signUp.cta}
         </Button>
+        <p className="text-center">
+          <Link
+            href="/#audit"
+            className="text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
+          >
+            {AUTH.signUp.tryWithoutAccount}
+          </Link>
+        </p>
       </FormContainer>
     </AuthCard>
   )

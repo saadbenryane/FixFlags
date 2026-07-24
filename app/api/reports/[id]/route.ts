@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
-import { buildFixList } from '@/lib/audit/finish-plan'
+import { buildUnifiedFixList } from '@/lib/audit/load-finish-plan-flags'
 
 export async function GET(
   _req: NextRequest,
@@ -19,13 +19,14 @@ export async function GET(
       return apiError('You do not have access to this report', 403)
     }
 
-    const fixList = buildFixList({
+    const fixList = await buildUnifiedFixList({
+      userId: result.audit.userId,
+      auditUrl: result.audit.url,
       flags: result.audit.flags,
       rubricRows: result.audit.rubrics.map((rubric) => ({
         name: rubric.name,
         grade: rubric.grade ?? null,
       })),
-      url: result.audit.url,
       contract: result.audit.productContract,
       promptAccess: result.showDeterministicFixes
         ? 'all'

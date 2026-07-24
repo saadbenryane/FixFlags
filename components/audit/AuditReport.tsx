@@ -4,13 +4,12 @@ import { type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
-import { ShareStatusBanner } from '@/components/audit/ShareStatusBanner'
-
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
+import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
@@ -18,6 +17,7 @@ import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_VALUE_STRIP } from '@/li
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
+import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import { ReportFeedback } from '@/components/report/ReportFeedback'
@@ -222,11 +222,14 @@ export function AuditReport({
       />
 
       {!isSample && (
-        <ShareStatusBanner shareStatus={audit.shareStatus} rubrics={audit.rubrics} />
-      )}
-
-      {!isSample && (
-        <RubricBar rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
+        <div className="space-y-2">
+          <RubricBar rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
+          {triageDegraded ? (
+            <p className="text-xs text-muted-foreground">
+              {REPORT_COPY.triageUnavailable.scoreCaveat}
+            </p>
+          ) : null}
+        </div>
       )}
 
       {!isSample && (
@@ -267,13 +270,21 @@ export function AuditReport({
                 </Callout>
               )}
 
-              {triageDegraded && (
+              {triageDegraded && auditId ? (
+                <TriageUnavailableCallout
+                  auditId={auditId}
+                  failureCode={failureCode}
+                  isLoggedIn={isLoggedIn}
+                  canRetry={isLoggedIn && isViewerOwner}
+                  signUpHref={signUpHref}
+                />
+              ) : null}
+
+              {triageDegraded && !auditId ? (
                 <Callout variant="warning" title={REPORT_COPY.triageUnavailable.title}>
-                  {failureCode === 'AI_PROVIDER_NOT_CONFIGURED'
-                    ? AUDIT_ERRORS.triageProviderNotConfigured
-                    : (audit.verdict ?? AUDIT_ERRORS.partialReport)}
+                  {triageUnavailableBody(failureCode, isLoggedIn)}
                 </Callout>
-              )}
+              ) : null}
 
               {isPartialReport && !triageDegraded && (
                 <Callout variant="warning" title={REPORT_COPY.partialReport.title}>

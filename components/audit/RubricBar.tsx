@@ -26,6 +26,16 @@ interface Props {
   loading?: boolean
 }
 
+function flagCountLabel(r: RubricComputed): string | null {
+  if (r.criticalCount > 0) {
+    return `${r.criticalCount} critical`
+  }
+  if (r.flagCount > 0) {
+    return `${r.flagCount} ${r.flagCount === 1 ? 'flag' : 'flags'}`
+  }
+  return null
+}
+
 export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
   const scoreByName = new Map(rubricRows.map((row) => [row.name, row.score] as const))
 
@@ -39,6 +49,7 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
         const scoreLabel = score == null ? 'N/A' : String(score)
         const pending = loading && (r?.flagCount ?? 0) === 0 && score == null
         const status = pending ? 'SCANNING' : r?.status
+        const countLabel = !pending && r ? flagCountLabel(r) : null
 
         return (
           <a
@@ -72,6 +83,9 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
                 label={pending ? 'Scanning' : undefined}
                 className="hidden sm:inline-flex"
               />
+            ) : null}
+            {countLabel ? (
+              <span className="hidden text-[11px] text-muted-foreground sm:inline">{countLabel}</span>
             ) : null}
           </a>
         )

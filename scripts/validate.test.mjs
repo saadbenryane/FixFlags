@@ -1,6 +1,11 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildPlan, isGeneratedPath } from './validate.mjs'
+import {
+  assertRepositoryUnchanged,
+  buildPlan,
+  isGeneratedPath,
+  normalizeRepositoryState,
+} from './validate.mjs'
 
 describe('validate.mjs', () => {
   describe('buildPlan', () => {
@@ -152,6 +157,52 @@ describe('validate.mjs', () => {
 
     it('throws for unknown mode', () => {
       assert.throws(() => buildPlan('invalid', ['file.ts']), /Unknown validation mode/)
+    })
+  })
+
+  describe('repository side-effect guard', () => {
+    it('normalizes porcelain state and ignores generated artifact paths', () => {
+      const normalized = normalizeRepositoryState([
+        ' M lib/audit/runner.ts',
+        '?? .next-verify/types/app.ts',
+        '?? coverage/index.html',
+        ' M scripts/validate.mjs',
+      ].join('\n'))
+      assert.equal(
+        normalized,
+        [' M lib/audit/runner.ts', ' M scripts/validate.mjs'].join('\n'),
+      )
+    })
+
+    it('allows identical repository state', () => {
+      assert.doesNotThrow(() => {
+        assertRepositoryUnchanged(
+          ' M lib/audit/runner.ts\n',
+          ' M lib/audit/runner.ts\n',
+          'typecheck',
+        )
+      })
+    })
+
+    it('fails when a validation command edits source files', () => {
+      assert.throws(
+        () => assertRepositoryUnchanged(
+          ' M lib/audit/runner.ts\n',
+          ' M lib/audit/runner.ts\n M scripts/validate.mjs\n',
+          'typecheck',
+        ),
+        /Validation command "typecheck" modified project files/,
+      )
+    })
+
+    it('ignores generated-only changes when comparing repository state', () => {
+      assert.doesNotThrow(() => {
+        assertRepositoryUnchanged(
+          ' M lib/audit/runner.ts\n',
+          ' M lib/audit/runner.ts\n?? .next-verify/types/app.ts\n',
+          'build',
+        )
+      })
     })
   })
 })

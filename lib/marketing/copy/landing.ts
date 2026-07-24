@@ -470,6 +470,9 @@ export const REPORT_COPY = {
   },
   triageUnavailable: {
     title: 'AI summary unavailable',
+    scoreCaveat: 'Automated check scores. AI summary did not finish.',
+    signupCta: 'Sign up to retry',
+    retryCta: 'Retry AI summary',
   },
   partialReport: {
     title: 'Partial report',
@@ -496,7 +499,7 @@ export const REPORT_COPY = {
     journey: 'User journey walk',
     flow: 'CTA flow test',
     timelineCompleted: 'How we checked',
-    timelineProgressive: 'What FixFlags is doing',
+    timelineProgressive: 'How FixFlags is checking',
     timelineEmpty: 'Scan steps will appear as FixFlags checks the page.',
     madeWith: 'Made with',
     previews: 'Share & search previews',

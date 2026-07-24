@@ -19,6 +19,9 @@ import {
   pageHasPrimaryCta,
   countVisibleFormFields,
   pickTargetForJourney,
+  pickNextFunnelTarget,
+  pageHasSubstantiveContent,
+  pageIsLoading,
 } from './discover'
 import type {
   JourneyFindingDraft,
@@ -26,7 +29,13 @@ import type {
   JourneyStepDraft,
   JourneyType,
 } from './types'
-import { JOURNEY_MAX_STEPS, JOURNEY_TIMEOUT_MS } from './types'
+import {
+  JOURNEY_MAX_STEPS,
+  JOURNEY_TIMEOUT_MS,
+  JOURNEY_LOOP_THRESHOLD,
+  JOURNEY_STEP_TIMEOUT_MS,
+} from './types'
+import type { JourneyPlan } from './planner-schema'
 
 async function shot(page: Page, auditId: string, key: string): Promise<string | null> {
   try {
@@ -62,6 +71,10 @@ export async function runJourneyTemplate(
     maxSteps?: number
     deadlineMs?: number
     scanAccess?: ScanAccessConfig | null
+    /** Optional AI-generated plan for multi-step funnel journeys. */
+    plan?: JourneyPlan | null
+    /** Token usage from the planner when an AI plan was used. */
+    plannerUsage?: JourneyRunResult['plannerUsage']
   }
 ): Promise<JourneyRunResult> {
   const started = Date.now()
@@ -410,7 +423,381 @@ export async function runJourneyTemplate(
       }
     }
 
+    if (options.journeyType === 'multi-step-funnel') {
+      return await runMultiStepFunnel()
+    }
+
     return await finalize(goalAchieved ? 'COMPLETED' : findings.length > 0 ? 'COMPLETED' : 'ABANDONED')
+
+  async function runMultiStepFunnel(): Promise<JourneyRunResult> {
+    const visitedUrls = new Set<string>([options.startUrl, page.url()])
+    const urlVisits = new Map<string, number>()
+    urlVisits.set(options.startUrl, 1)
+    urlVisits.set(page.url(), (urlVisits.get(page.url()) ?? 0) + 1)
+    let currentStep = steps.length
+    let funnelGoalAchieved = false
+    const plan = options.plan
+    let planStepIndex = 0
+
+    const goalKeywords = [
+      'signup', 'sign-up', 'register', 'trial', 'get-started', 'get_started',
+      'pricing', 'plans', 'demo', 'contact', 'support', 'checkout',
+      'onboard', 'welcome', 'dashboard', 'account',
+    ]
+
+    while (currentStep < maxSteps && Date.now() < deadline) {
+      const loopCount = urlVisits.get(page.url()) ?? 0
+      if (loopCount >= JOURNEY_LOOP_THRESHOLD) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-loop-detected',
+            stepNumber: currentStep,
+            url: page.url(),
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'FRICTION',
+            problem: 'Visitor gets stuck in a navigation loop',
+            evidence: `Reproduced at step ${currentStep}. URL ${page.url()} visited ${loopCount} times.`,
+            whyItMatters: 'Navigation loops indicate confusing IA or broken routing that traps visitors.',
+            fix: '1. Review navigation structure for circular references\n2. Ensure each page has a clear forward path\n3. Add breadcrumbs or progress indicators for multi-step flows',
+            screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
+          })
+        )
+        break
+      }
+
+      let target: { href: string; text: string; category: string } | null = null
+      let stepActionType = 'click'
+      let stepActionDetail: Record<string, unknown> = {}
+
+      if (plan && planStepIndex < plan.steps.length) {
+        const planStep = plan.steps[planStepIndex]
+        planStepIndex++
+
+        if (planStep.action === 'evaluate') {
+          const a11ySnap = await captureAccessibilityTree(page)
+          const evalShot = await shot(
+            page,
+            options.auditId,
+            `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-evaluate`
+          )
+          steps.push({
+            stepNumber: currentStep + 1,
+            actionType: 'evaluate',
+            actionDetail: { planTarget: planStep.target, expectedResult: planStep.expectedResult },
+            url: page.url(),
+            screenshotAfterUrl: evalShot,
+            accessibilityTree: a11ySnap,
+            reasoning: `AI plan step: ${planStep.target}`,
+          })
+          currentStep++
+          continue
+        }
+
+        if (planStep.action === 'navigate') {
+          const links = await discoverJourneyLinks(page, origin)
+          const matched = links.find(
+            (l) =>
+              l.href.includes(planStep.target) ||
+              planStep.target.toLowerCase().includes(l.text.toLowerCase()) ||
+              l.text.toLowerCase().includes(planStep.target.toLowerCase())
+          )
+          if (matched) {
+            target = matched
+          } else {
+            try {
+              const resolved = new URL(planStep.target, origin).href
+              if (resolved.startsWith(origin)) {
+                target = { href: resolved, text: planStep.target, category: 'planned' }
+              }
+            } catch {
+              // Fall through to deterministic discovery
+            }
+          }
+        } else if (planStep.action === 'click') {
+          const links = await discoverJourneyLinks(page, origin)
+          const matched = links.find(
+            (l) =>
+              l.text.toLowerCase().includes(planStep.target.toLowerCase()) ||
+              planStep.target.toLowerCase().includes(l.text.toLowerCase()) ||
+              l.href.toLowerCase().includes(planStep.target.toLowerCase())
+          )
+          if (matched) {
+            target = matched
+          }
+        }
+      }
+
+      if (!target) {
+        const links = await discoverJourneyLinks(page, origin)
+        target = pickNextFunnelTarget(links, visitedUrls, goalKeywords)
+        if (target) {
+          stepActionDetail = { href: target.href, text: target.text, category: target.category }
+        }
+      }
+
+      if (!target) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-dead-end',
+            stepNumber: currentStep,
+            url: page.url(),
+            rubric: 'EXPERIENCE',
+            severity: 'CRITICAL',
+            impactTag: 'FRICTION',
+            problem: 'Funnel reaches a dead end with no way forward',
+            evidence: `Reproduced at step ${currentStep}. No unvisited same-origin links found on ${page.url()}.`,
+            whyItMatters: 'Dead-end funnels lose visitors who intended to convert.',
+            fix: '1. Add clear next-step CTAs on every funnel page\n2. Ensure navigation includes conversion paths\n3. Add contextual links within page content',
+            screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
+          })
+        )
+        break
+      }
+
+      if (Date.now() > deadline) break
+
+      const stepStart = Date.now()
+      const beforeShot = await shot(
+        page,
+        options.auditId,
+        `journey-funnel-${String(currentStep + 1).padStart(2, '0')}-before`
+      )
+
+      const a11yBefore = await captureAccessibilityTree(page)
+      let navigated = false
+      stepActionDetail = {
+        href: target.href,
+        text: target.text,
+        category: target.category,
+        ...(stepActionDetail as Record<string, unknown>),
+      }
+
+      const clickSelector = await page.evaluate((href) => {
+        const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[]
+        for (let i = 0; i < anchors.length; i++) {
+          const a = anchors[i]
+          try {
+            if (new URL(a.href, location.href).href === href || a.getAttribute('href') === href) {
+              a.setAttribute('data-fixflags-journey-nav', String(i))
+              return `[data-fixflags-journey-nav="${i}"]`
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        return null
+      }, target.href)
+
+      if (clickSelector) {
+        try {
+          await page.click(clickSelector, { timeout: 5_000 })
+          await settleAuditPage(page)
+          navigated = true
+          timeline.push('click', `Funnel step ${currentStep + 1}: click ${target.text || target.href}`, {
+            url: page.url(),
+            screenshot: beforeShot,
+          })
+        } catch {
+          const overlay = await detectOverlayAtPoint(page, clickSelector)
+          if (overlay) {
+            timeline.push('overlay', 'Overlay blocked funnel nav', { url: page.url() })
+            findings.push(
+              finding({
+                checkId: 'overlay-blocks-nav',
+                stepNumber: currentStep + 1,
+                url: page.url(),
+                rubric: 'EXPERIENCE',
+                severity: 'CRITICAL',
+                impactTag: 'CONVERSION',
+                problem: 'Overlay blocks funnel navigation',
+                evidence: `Reproduced at step ${currentStep + 1}. ${formatOverlayEvidence(overlay)} · target "${target.text || target.href}"`,
+                whyItMatters: 'Visitors cannot continue the funnel when navigation is covered.',
+                fix: '1. Ensure modals and sticky ads do not cover primary navigation without a clear dismiss control.\n2. Lower z-index or relocate the overlay so nav stays clickable.\n3. Re-check the click path after the change.',
+                screenshotUrl: beforeShot,
+              })
+            )
+            return await finalize('FAILED')
+          }
+        }
+      }
+
+      if (!navigated) {
+        try {
+          await page.goto(target.href, { waitUntil: 'domcontentloaded', timeout: 15_000 })
+          await settleAuditPage(page)
+          stepActionType = 'navigate'
+          stepActionDetail = { href: target.href, text: target.text, category: target.category }
+          timeline.push('navigate', `Funnel step ${currentStep + 1}: goto ${target.text || target.href}`, {
+            url: page.url(),
+          })
+        } catch (err) {
+          findings.push(
+            finding({
+              checkId: 'journey-funnel-step-failed',
+              stepNumber: currentStep + 1,
+              url: target.href,
+              rubric: 'EXPERIENCE',
+              severity: 'CRITICAL',
+              impactTag: 'CONVERSION',
+              problem: `Funnel navigation to "${target.text || target.href}" failed`,
+              evidence: `Reproduced at step ${currentStep + 1}. ${err instanceof Error ? err.message : String(err)}`,
+              whyItMatters: 'Broken funnel links stop the conversion path mid-journey.',
+              fix: '1. Fix the broken link destination\n2. Re-check status codes for all funnel routes\n3. Add a fallback CTA to a working page',
+              screenshotUrl: beforeShot,
+            })
+          )
+          return await finalize('FAILED')
+        }
+      }
+
+      const currentUrl = page.url()
+      visitedUrls.add(currentUrl)
+      urlVisits.set(currentUrl, (urlVisits.get(currentUrl) ?? 0) + 1)
+      currentStep++
+
+      const loadTimeMs = Date.now() - stepStart
+      const a11yAfter = await captureAccessibilityTree(page)
+      const afterShot = await shot(
+        page,
+        options.auditId,
+        `journey-funnel-${String(currentStep).padStart(2, '0')}-after`
+      )
+
+      const hasContent = await pageHasSubstantiveContent(page)
+      const isLoading = await pageIsLoading(page)
+      const outcomeMatch = hasContent && !isLoading
+
+      steps.push({
+        stepNumber: currentStep,
+        actionType: stepActionType,
+        actionDetail: stepActionDetail,
+        url: currentUrl,
+        screenshotBeforeUrl: beforeShot,
+        screenshotAfterUrl: afterShot,
+        accessibilityTree: a11yAfter,
+        consoleErrors: session.consoleErrors.map((e) => e.text),
+        networkErrors: session.networkFailures
+          .filter((f) => f.sameOrigin)
+          .map((f) => `${f.method} ${f.status} ${f.url}`),
+        loadTimeMs,
+        elementDescription: `${stepActionType} ${target.text || target.href}`,
+        outcomeMatch,
+        outcomeDetail: outcomeMatch
+          ? 'Page loaded with substantive content'
+          : isLoading
+            ? 'Page still loading when evaluated'
+            : 'Page lacks substantive content after navigation',
+        reasoning: plan
+          ? `AI plan step ${planStepIndex}: ${plan.steps[planStepIndex - 1]?.target ?? stepActionType}`
+          : `Funnel step ${currentStep}: ${stepActionType} toward ${target.category}`,
+      })
+
+      if (isLoading) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-timeout',
+            stepNumber: currentStep,
+            url: currentUrl,
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'FRICTION',
+            problem: 'Funnel page is stuck in a loading state',
+            evidence: `Reproduced at step ${currentStep}. Page at ${currentUrl} shows only loading content.`,
+            whyItMatters: 'Loading states that never resolve cause visitors to abandon the funnel.',
+            fix: '1. Add loading timeouts with fallback content\n2. Show a skeleton or progress indicator\n3. Ensure the server responds within 3 seconds',
+            screenshotUrl: afterShot,
+          })
+        )
+      }
+
+      if (!hasContent && !isLoading) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-dead-end',
+            stepNumber: currentStep,
+            url: currentUrl,
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'FRICTION',
+            problem: 'Funnel page appears empty or broken',
+            evidence: `Reproduced at step ${currentStep}. Page at ${currentUrl} lacks substantive content.`,
+            whyItMatters: 'Empty pages in the funnel break the conversion path.',
+            fix: '1. Ensure the page renders content on load\n2. Check for JavaScript errors preventing render\n3. Add a fallback message if content fails to load',
+            screenshotUrl: afterShot,
+          })
+        )
+      }
+
+      const destHeadline = await pageHasClearHeadline(page)
+      if (!destHeadline && currentStep >= 2) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-unclear-progress',
+            stepNumber: currentStep,
+            url: currentUrl,
+            rubric: 'MESSAGE',
+            severity: 'POLISH',
+            impactTag: 'CLARITY',
+            problem: 'Funnel page lacks a clear headline to orient the visitor',
+            evidence: `Reproduced at step ${currentStep}. No H1 found on ${currentUrl}.`,
+            whyItMatters: 'Visitors lose context when funnel pages do not restate the value proposition.',
+            fix: '1. Add a clear H1 that continues the narrative from the previous step\n2. Match the headline to the funnel goal\n3. Keep it under 12 words',
+            screenshotUrl: afterShot,
+          })
+        )
+      }
+
+      const destCta = await pageHasPrimaryCta(page)
+      if (!destCta.found && currentStep >= 2 && currentStep < maxSteps) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-missing-feedback',
+            stepNumber: currentStep,
+            url: currentUrl,
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'CONVERSION',
+            problem: 'Funnel page has no clear next action',
+            evidence: `Reproduced at step ${currentStep}. After navigating to ${currentUrl}, no primary CTA was detected.`,
+            whyItMatters: 'Funnel pages without a next step cause drop-off.',
+            fix: '1. Add a primary CTA matching the funnel stage\n2. For signup flows: show the form or a "Continue" button\n3. For pricing: highlight the recommended plan CTA',
+            screenshotUrl: afterShot,
+          })
+        )
+      }
+
+      if (destCta.found && currentStep >= 2) {
+        funnelGoalAchieved = true
+      }
+
+      if (steps.length >= maxSteps) {
+        findings.push(
+          finding({
+            checkId: 'journey-funnel-too-many-steps',
+            stepNumber: currentStep,
+            url: currentUrl,
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'FRICTION',
+            problem: 'Funnel requires too many steps to complete',
+            evidence: `Reproduced at step ${currentStep}. Journey reached ${maxSteps} steps without a clear resolution.`,
+            whyItMatters: 'Long funnels have compounding drop-off at each step.',
+            fix: '1. Reduce the number of steps in the funnel\n2. Combine steps where possible\n3. Show a progress indicator to set expectations',
+            screenshotUrl: afterShot,
+          })
+        )
+        break
+      }
+    }
+
+    goalAchieved = funnelGoalAchieved
+    const result = await finalize(goalAchieved ? 'COMPLETED' : findings.length > 0 ? 'COMPLETED' : 'ABANDONED')
+    if (options.plannerUsage) {
+      result.plannerUsage = options.plannerUsage
+    }
+    return result
+  }
   } catch (err) {
     logger.error('Journey template failed', err)
     abandonedReason = err instanceof Error ? err.message : String(err)

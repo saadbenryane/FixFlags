@@ -4,7 +4,8 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | blocked | codex-root | main | Full completeness and architecture implementation, including Product ownership, secure sharing, durable watch, Fix List, runtime readiness, CLI/MCP, UI, docs, and skills | app, components, lib, prisma, fixflags-cli, scripts, tests, docs, skills | Designated release database/container/deployed-smoke resources, R2 credentials, and credentialed provider sandboxes | 2026-07-24 |
+| report-chrome-honesty | in_progress | auto | main | AI summary callout honesty + remove redundant ShareStatusBanner; RubricBar flag counts; ShareDrawer warning | components/audit/AuditReport.tsx, RubricBar, ShareDrawer, ShareStatusBanner, lib/audit/triage-unavailable*, lib/marketing/copy, DESIGN.md | Preserve scan-loading-ux and auth WIP | 2026-07-24 |
+| current-product-completion | in_progress | auto | main | Close Builder-Native + Current-Product completion: Fix List API parity, product truth, accuracy adjudication, route/E2E expansion, release gate, deployed dogfood. Preserve concurrent auth WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Designated release database/container/deployed-smoke resources, R2 credentials, and credentialed provider sandboxes | 2026-07-24 |
 
 ---
 
@@ -12,6 +13,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| scan-loading-ux | auto | Instant scan handoff, honest stage progress, progressive↔completed report parity, progress-ui cleanup | 2026-07-24 |
 | made-with-intelligence | codex-root | Evidence-backed technology detection, normalized audit snapshots, report and progressive UI, re-check diffs, sanitized APIs, eligible public profiles, migration/backfill, tests, and canonical docs | 2026-07-23 |
 | customer-journey-completion | cloud-agent | Phases 1–3 anon evidence/honest Copy/score/nav; merged to main | 2026-07-23 |
 | strategic-sprint | cloud-agent | Preview scan access, Railway deploy gate, Lovable/Bolt partners, unified Finish Plan, MCP quality gate | 2026-07-23 |

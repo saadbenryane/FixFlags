@@ -3,6 +3,7 @@ export type JourneyType =
   | 'pricing-evaluation'
   | 'signup'
   | 'contact-support'
+  | 'multi-step-funnel'
 
 export interface JourneyFindingDraft {
   checkId: string
@@ -29,6 +30,8 @@ export interface JourneyFindingDraft {
   screenshotUrl?: string | null
   accessibilityEvidence?: string | null
   confidence?: number
+  /** Classification of the finding for multi-step funnel analysis. */
+  findingType?: 'friction' | 'broken-promise' | 'accessibility-barrier' | 'dead-end' | 'confusion' | null
 }
 
 export interface JourneyStepDraft {
@@ -44,6 +47,14 @@ export interface JourneyStepDraft {
   loadTimeMs?: number | null
   confidence?: number
   reasoning?: string | null
+  /** a11y tree reference for the element acted on (ref attribute). */
+  elementRef?: string | null
+  /** Human-readable description of the element acted on. */
+  elementDescription?: string | null
+  /** Whether the outcome matched the planned expectation. */
+  outcomeMatch?: boolean | null
+  /** Why the outcome matched or didn't. */
+  outcomeDetail?: string | null
 }
 
 export interface JourneyRunResult {
@@ -65,7 +76,13 @@ export interface JourneyRunResult {
     status?: number | string
     screenshot?: string | null
   }>
+  /** Token usage from the journey planner (if AI planner was used). */
+  plannerUsage?: { inputTokens: number; outputTokens: number; model: string } | null
 }
 
 export const JOURNEY_MAX_STEPS = 10
 export const JOURNEY_TIMEOUT_MS = 60_000
+/** Maximum times a URL can appear before the journey detects a loop. */
+export const JOURNEY_LOOP_THRESHOLD = 3
+/** Per-step timeout in milliseconds. */
+export const JOURNEY_STEP_TIMEOUT_MS = 15_000

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'
+import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AUTH } from '@/lib/marketing/copy'
 
@@ -22,18 +23,32 @@ export default async function SettingsPage() {
       emailVerified: true,
       plan: true,
       twoFactorEnabled: true,
-      accounts: { select: { password: true }, where: { password: { not: null } }, take: 1 },
+      accounts: {
+        select: { providerId: true, password: true },
+      },
+      passkeys: { select: { id: true } },
     },
   })
 
   if (!user) notFound()
 
   const planDef = PLAN_DEFINITIONS[user.plan]
-  const hasPassword = user.accounts.length > 0
+  const hasPassword = user.accounts.some((a) => a.password != null)
+  const linkedProviders = user.accounts
+    .map((a) => a.providerId)
+    .filter((p) => p === 'google' || p === 'github')
 
   return (
     <div className="space-y-8">
       <PageHeader title="Settings" description="Account, identity, password, and security" />
+
+      <ConnectedAccounts
+        email={user.email}
+        emailVerified={user.emailVerified}
+        hasPassword={hasPassword}
+        passkeyCount={user.passkeys.length}
+        linkedProviders={linkedProviders}
+      />
 
       <Card className="border-0 shadow-card">
         <CardHeader>

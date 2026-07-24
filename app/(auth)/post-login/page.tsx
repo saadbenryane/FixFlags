@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { CheckCircle2, Loader2 } from 'lucide-react'
@@ -11,19 +11,29 @@ import { useMe } from '@/hooks/useMe'
 import { trackEvent } from '@/lib/analytics/events'
 import { AUTH } from '@/lib/marketing/copy'
 import { useReportAuthContext } from '@/hooks/useReportAuthContext'
+import { PasskeyEnrollPrompt, shouldShowPasskeyEnroll } from '@/components/auth/PasskeyEnrollPrompt'
 
 function PostLoginRedirect() {
   const { navigateAfterAuth, next, plan, from } = useAuthRedirect()
   const { user, isLoading, claimedCount, error, refresh } = useMe({ claim: true, showClaimToast: true })
   const { hostname, reportHref, isReportContext } = useReportAuthContext(next)
   const searchParams = useSearchParams()
-  // signup=1 is only set by better-auth's newUserCallbackURL, i.e. a
-  // first-time OAuth account. Email signups track on the sign-up form.
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
+  const [showPasskeyEnroll, setShowPasskeyEnroll] = useState(false)
+  const passkeyEnrollChecked = useRef(false)
+
+  useEffect(() => {
+    if (isLoading || error || !user || passkeyEnrollChecked.current) return
+    passkeyEnrollChecked.current = true
+    void shouldShowPasskeyEnroll().then((show) => {
+      if (show) setShowPasskeyEnroll(true)
+    })
+  }, [isLoading, error, user])
 
   useEffect(() => {
     if (isLoading || error || !user) return
+    if (showPasskeyEnroll) return
     if (isNewOauthUser && user && !trackedRef.current) {
       trackedRef.current = true
       trackEvent('signed_up', {
@@ -35,7 +45,15 @@ function PostLoginRedirect() {
       })
     }
     void navigateAfterAuth()
-  }, [isLoading, error, isNewOauthUser, user, plan, from, navigateAfterAuth])
+  }, [isLoading, error, isNewOauthUser, user, plan, from, navigateAfterAuth, showPasskeyEnroll])
+
+  if (showPasskeyEnroll) {
+    return (
+      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+        <PasskeyEnrollPrompt onComplete={() => setShowPasskeyEnroll(false)} />
+      </div>
+    )
+  }
 
   if (error) {
     return (

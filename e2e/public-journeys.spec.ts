@@ -135,6 +135,29 @@ test('deleted or unknown reports render an explicit not-found state', async ({ p
   await expect(page.getByText(/not found|does not exist/i).first()).toBeVisible()
 })
 
+test('legacy report details path redirects after access checks', async ({ page }) => {
+  await page.goto('/report/report-that-does-not-exist/details')
+  await expect(page.getByText(/not found|does not exist|access denied/i).first()).toBeVisible()
+})
+
+test('unknown share tokens render an unavailable or not-found state', async ({ page }) => {
+  await page.goto('/share/revoked-or-unknown-share-token')
+  await expect(page.getByText(/not found|does not exist|unavailable/i).first()).toBeVisible()
+})
+
+test('help and MCP setup surfaces render without client errors', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+
+  await page.goto('/help/mcp')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByText(/Lovable|Bolt|Cursor/i).first()).toBeVisible()
+
+  await page.goto('/docs/mcp')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('auth and pricing entry points render without client errors', async ({ page }) => {
   const errors: string[] = []
   const recordError = (error: Error) => {

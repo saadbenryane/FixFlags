@@ -31,7 +31,7 @@ type Props = {
   actions?: ReactNode
   /** Pipeline status while the report is still building. */
   scanning?: boolean
-  /** Live stage label (e.g. from getScanningLabel). Shown beside the Scanning badge. */
+  /** Stage label from getStagePresentation. Shown beside the Scanning badge. */
   scanningLabel?: string | null
 }
 
@@ -53,7 +53,7 @@ export function AuditReportHero({
 }: Props) {
   const isMinimal = variant === 'minimal'
   const hostname = url ? displayHostname(url) : null
-  const firstScreenshot = !scanning ? screenshots?.[0] : screenshots?.[0]
+  const firstScreenshot = screenshots?.[0]
   const firstScreenshotUrl = firstScreenshot
     ? normalizeInternalScreenshotUrl(firstScreenshot.url)
     : null
@@ -90,10 +90,12 @@ export function AuditReportHero({
     )
   }
 
+  const showCapturePlaceholder = scanning && !firstScreenshot
+
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
-        {firstScreenshot && (
+        {(firstScreenshot || showCapturePlaceholder) && (
           <div className="hidden sm:block shrink-0">
             {firstScreenshotUrl && !screenshotFailed ? (
               <Image
@@ -104,6 +106,12 @@ export function AuditReportHero({
                 className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
                 style={{ aspectRatio: '1280 / 900' }}
                 onError={() => setScreenshotFailed(true)}
+              />
+            ) : showCapturePlaceholder ? (
+              <Skeleton
+                className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40"
+                style={{ aspectRatio: '1280 / 900' }}
+                aria-label="Capturing page screenshot"
               />
             ) : (
               <div

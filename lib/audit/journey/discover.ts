@@ -113,10 +113,70 @@ export function pickTargetForJourney(
       null
     )
   }
+  if (type === 'multi-step-funnel') {
+    return (
+      links.find((l) => l.category === 'primary-cta' || /sign.?up|register|trial|get.?started|pricing|demo/i.test(l.href + l.text)) ??
+      links.find((l) => l.category === 'pricing') ??
+      links[0]
+    )
+  }
   // first-visit: prefer pricing then primary CTA then highest score
   return (
     links.find((l) => l.category === 'pricing') ??
     links.find((l) => l.category === 'primary-cta') ??
     links[0]
   )
+}
+
+/**
+ * For multi-step funnel: pick the best next target given the steps already visited.
+ * Avoids revisiting URLs and prefers progression toward conversion goals.
+ */
+export function pickNextFunnelTarget(
+  links: JourneyLinkCandidate[],
+  visitedUrls: Set<string>,
+  goalKeywords: string[]
+): JourneyLinkCandidate | null {
+  const unvisited = links.filter((l) => !visitedUrls.has(l.href))
+  if (unvisited.length === 0) return null
+
+  const goalMatch = unvisited.find((l) =>
+    goalKeywords.some((kw) => new RegExp(kw, 'i').test(l.href + ' ' + l.text))
+  )
+  if (goalMatch) return goalMatch
+
+  return unvisited[0]
+}
+
+/**
+ * Detect whether the current page has meaningful content beyond navigation.
+ * Used to identify dead-end pages (e.g., 404s, blank pages, error pages).
+ */
+export async function pageHasSubstantiveContent(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const body = document.body
+    if (!body) return false
+    const text = (body.innerText ?? '').trim()
+    if (text.length < 50) return false
+    const h1 = document.querySelector('h1')
+    const h2 = document.querySelector('h2')
+    const main = document.querySelector('main, [role="main"], .content, .container')
+    return Boolean(h1 || h2 || main)
+  })
+}
+
+/**
+ * Detect whether the page shows a loading state that might indicate
+ * the journey step is still in progress.
+ */
+export async function pageIsLoading(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const body = document.body
+    if (!body) return false
+    const text = (body.innerText ?? '').trim().toLowerCase()
+    return (
+      text.length < 20 &&
+      (text.includes('loading') || text.includes('spinner') || text.includes('please wait'))
+    )
+  })
 }

@@ -95,22 +95,27 @@ function SignInForm() {
     try {
       const { error } = await authClient.signIn.passkey({ autoFill: false })
       if (error) {
-        toast.error(error.message || 'Passkey sign in failed')
+        const msg = error.message ?? ''
+        if (/cancel|notallowed/i.test(msg)) {
+          return
+        }
+        if (/not.?found|no.?credential/i.test(msg)) {
+          toast.error(AUTH.passkeyErrors.notFound)
+        } else {
+          toast.error(AUTH.passkeyErrors.cancelled)
+        }
         return
       }
       trackEvent('signed_in', { method: 'passkey' })
-      // Same post-login claim path as email/OAuth.
       router.push(postLoginHref)
     } catch {
-      toast.error('Passkey sign in was cancelled or failed')
+      toast.error(AUTH.passkeyErrors.cancelled)
     } finally {
       setLoading(null)
     }
   }
 
-  const subtitle = oauth.anyEnabled
-    ? AUTH.signIn.subtitleWithOAuth
-    : AUTH.signIn.subtitle
+  const subtitle = AUTH.signIn.subtitle
   const isReportContext = Boolean(next?.match(/^\/report\/[^/?#]+$/))
 
   return (

@@ -17,8 +17,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { Callout } from '@/components/ui/callout'
+import { BUILDERS, type ApiKeyClient } from '@/lib/mcp/builders'
 
-const CONFIG_EDITORS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt'] as const
+const CONFIG_EDITORS = BUILDERS
+  .filter((builder) => builder.supportsMcp && builder.apiKeyClient)
+  .map((builder) => builder.apiKeyClient as Exclude<ApiKeyClient, 'vscode' | 'other'>)
 
 const MCP_SECURITY = [
   'Never commit API keys to git, add .env to .gitignore and use env vars or your editor secret store.',

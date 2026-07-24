@@ -19,14 +19,17 @@ export async function POST(
     await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, isPublic: true, status: true },
+      select: { userId: true, isPublic: true, status: true, triageAt: true, failureCode: true },
     })
     if (!audit) return apiError('Report not found', 404)
     if (!canManageAudit(audit, session?.user)) {
       return apiError('You do not have access to this report', 403)
     }
-    if (audit.status !== 'FAILED') {
-      return apiError('Only failed audits can be retried', 400)
+
+    const triageDegraded =
+      audit.status === 'COMPLETED' && !audit.triageAt && Boolean(audit.failureCode)
+    if (audit.status !== 'FAILED' && !triageDegraded) {
+      return apiError('Only failed or AI-degraded reports can be retried', 400)
     }
 
     const result = await retryAudit(id)

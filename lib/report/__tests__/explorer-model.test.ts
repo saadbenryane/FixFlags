@@ -230,13 +230,12 @@ describe('explorer-model', () => {
     )
   })
 
-  it('returns null partial explorer model without flags', () => {
-    assert.equal(
-      buildPartialExplorerModel({
-        url: 'https://example.com',
-        flags: [],
-      }),
-      null
-    )
+  it('returns an empty explorer model without flags so progressive chrome stays mounted', () => {
+    const model = buildPartialExplorerModel({
+      url: 'https://example.com',
+      flags: [],
+    })
+    assert.equal(model.flags.length, 0)
+    assert.equal(model.displayHost, 'example.com')
   })
 })

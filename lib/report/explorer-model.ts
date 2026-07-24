@@ -210,7 +210,7 @@ export interface PartialExplorerFlag {
   source?: string | null
 }
 
-/** Build explorer model from in-progress status payload; null when no flags yet. */
+/** Build explorer model from in-progress status payload (empty flags still return chrome). */
 export function buildPartialExplorerModel(input: {
   url: string
   pageType?: string | null
@@ -219,9 +219,7 @@ export function buildPartialExplorerModel(input: {
   flags: PartialExplorerFlag[]
   screenshots?: AuditScreenshot[]
   rubrics?: Array<{ name: string; score: number | null; grade?: string | null }>
-}): ReportExplorerModel | null {
-  if (input.flags.length === 0) return null
-
+}): ReportExplorerModel {
   const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
     id: flag.id,
     checkId: flag.checkId ?? null,
