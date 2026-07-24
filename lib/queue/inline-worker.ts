@@ -2,8 +2,10 @@ import { startWorker } from './worker'
 import { startRecoveryScheduler } from './recovery-scheduler'
 import { closeBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
+import type { Worker } from 'bullmq'
 
 let started = false
+let previousWorker: Worker | null = null
 
 /**
  * Run an audit worker + recovery scheduler inside the current (web) process, so
@@ -25,7 +27,14 @@ export function startInlineWorkerOnce(): void {
   started = true
 
   try {
+    // Clean up any previous worker from HMR reloads to avoid listener leaks.
+    if (previousWorker) {
+      previousWorker.close().catch(() => {})
+      previousWorker = null
+    }
+
     const worker = startWorker()
+    previousWorker = worker
     startRecoveryScheduler()
     logger.info('Inline worker started')
 

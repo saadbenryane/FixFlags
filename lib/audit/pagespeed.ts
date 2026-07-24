@@ -20,7 +20,7 @@ export interface PageSpeedResult {
   raw: Record<string, unknown>
 }
 
-const PAGESPEED_TIMEOUT_MS = 60_000
+const PAGESPEED_TIMEOUT_MS = 25_000
 const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000
 const FAILED_SENTINEL = '__FAILED__' as const
 
@@ -47,13 +47,16 @@ function isRetryableError(err: unknown): boolean {
 
 async function runPageSpeedWithRetry(
   url: string,
-  strategy: 'desktop' | 'mobile'
+  strategy: 'desktop' | 'mobile',
+  signal?: AbortSignal
 ): Promise<PageSpeedResult> {
-  const maxAttempts = 3
+  const maxAttempts = 2
   let lastError: unknown
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (signal?.aborted) throw new Error('Audit deadline approaching')
+
     try {
-      return await runPageSpeed(url, strategy)
+      return await runPageSpeed(url, strategy, signal)
     } catch (err) {
       lastError = err
       if (!isRetryableError(err) || attempt === maxAttempts) break
@@ -66,7 +69,8 @@ async function runPageSpeedWithRetry(
 
 async function runPageSpeed(
   url: string,
-  strategy: 'desktop' | 'mobile'
+  strategy: 'desktop' | 'mobile',
+  externalSignal?: AbortSignal
 ): Promise<PageSpeedResult> {
   const apiKey = process.env.PAGESPEED_API_KEY
   const apiUrl = new URL('https://www.googleapis.com/pagespeedonline/v5/runPagespeed')
@@ -78,6 +82,14 @@ async function runPageSpeed(
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), PAGESPEED_TIMEOUT_MS)
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort()
+    } else {
+      externalSignal.addEventListener('abort', () => controller.abort(), { once: true })
+    }
+  }
 
   try {
     const res = await fetch(apiUrl.toString(), { signal: controller.signal })
@@ -171,7 +183,7 @@ function formatPageSpeedError(reason: unknown): string {
   return String(reason)
 }
 
-export async function fetchPageSpeedData(url: string): Promise<{
+export async function fetchPageSpeedData(url: string, signal?: AbortSignal): Promise<{
   desktop: PageSpeedResult | null
   mobile: PageSpeedResult | null
   desktopError?: string
@@ -190,7 +202,7 @@ export async function fetchPageSpeedData(url: string): Promise<{
 
   if (!cachedDesktop) {
     promises.push(
-      runPageSpeedWithRetry(url, 'desktop')
+      runPageSpeedWithRetry(url, 'desktop', signal)
         .then((result) => {
           auditCache.set(desktopKey, result, 60 * 60 * 1000)
           return { strategy: 'desktop', result }
@@ -204,7 +216,7 @@ export async function fetchPageSpeedData(url: string): Promise<{
 
   if (!cachedMobile) {
     promises.push(
-      runPageSpeedWithRetry(url, 'mobile')
+      runPageSpeedWithRetry(url, 'mobile', signal)
         .then((result) => {
           auditCache.set(mobileKey, result, 60 * 60 * 1000)
           return { strategy: 'mobile', result }

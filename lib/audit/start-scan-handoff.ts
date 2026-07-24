@@ -81,7 +81,12 @@ export async function startScanWithHandoff(
         queuePosition:
           typeof data.queuePosition === 'number' ? data.queuePosition : undefined,
       })
-      router.replace(`/report/${reportId}`)
+      try {
+        await router.replace(`/report/${reportId}`)
+      } catch {
+        // If client-side navigation fails (e.g. server too slow), fall back to full navigation.
+        window.location.href = `/report/${reportId}`
+      }
       return { ok: true, reportId }
     }
 

@@ -39,6 +39,19 @@ import {
 import { loadProjectIntelligence, mutateProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
 
+/** Create an AbortSignal that fires when the deadline is approaching (≤15s remaining). */
+function createDeadlineSignal(deadline: number): AbortSignal {
+  const controller = new AbortController()
+  const remaining = deadline - Date.now()
+  const triggerMs = Math.max(0, remaining - 15_000)
+  if (triggerMs <= 0) {
+    controller.abort()
+  } else {
+    setTimeout(() => controller.abort(), triggerMs).unref?.()
+  }
+  return controller.signal
+}
+
 interface RunPageInput {
   url: string
   position: number
@@ -80,7 +93,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       runFlow: input.primary && input.position === 0,
       scanAccess: ctx.scanAccess,
     }),
-    fetchPageSpeedData(normalizedUrl),
+    fetchPageSpeedData(normalizedUrl, createDeadlineSignal(ctx.deadline)),
   ])
   screenshots = captured
   pagespeed = speed

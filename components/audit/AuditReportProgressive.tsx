@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from 'react'
 import { Callout } from '@/components/ui/callout'
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,6 +29,24 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
+
+/** Catches crashes in the explorer subtree so the scanning UI stays visible. */
+class ExplorerErrorBoundary extends Component<
+  { children: ReactNode; fallback?: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(JSON.stringify({ level: 'error', event: 'ui.explorer.error', digest: (error as Error & { digest?: string }).digest, component: info.componentStack?.split('\n')[1]?.trim() }))
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? null
+    }
+    return this.props.children
+  }
+}
 
 interface AuditReportProgressiveProps {
   status?: string
@@ -263,11 +281,21 @@ export function AuditReportProgressive({
             </p>
           ) : null}
         </div>
-        <LiveReportExplorer
-          model={explorerModel}
-          loading={isLoading}
-          progress={isLoading ? displayProgress : undefined}
-        />
+        <ExplorerErrorBoundary
+          fallback={
+            <div className="space-y-3 py-4">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          }
+        >
+          <LiveReportExplorer
+            model={explorerModel}
+            loading={isLoading}
+            progress={isLoading ? displayProgress : undefined}
+          />
+        </ExplorerErrorBoundary>
       </section>
 
       {(showContract || showTimeline) ? (

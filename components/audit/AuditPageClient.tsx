@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { Component, useState, useEffect, useRef, useMemo, type ErrorInfo, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuditPolling, type AuditStatusPayload } from '@/hooks/useAuditPolling'
@@ -24,6 +24,33 @@ import {
   auditHostname,
 } from '@/lib/audit/active-audit'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
+import { Heading, Muted } from '@/components/ui/typography'
+
+/** Catches crashes in the progressive report view so the page doesn't go white. */
+class ProgressiveErrorBoundary extends Component<
+  { children: ReactNode; onRetry: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(JSON.stringify({ level: 'error', event: 'ui.progressive.error', digest: (error as Error & { digest?: string }).digest, component: info.componentStack?.split('\n')[1]?.trim() }))
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Container variant="report" className="flex flex-1 flex-col items-center justify-center py-24 text-center">
+          <Heading as="h1">Something went wrong during scanning</Heading>
+          <Muted className="mt-2 max-w-md">The scan encountered an unexpected error. Try again.</Muted>
+          <div className="mt-8">
+            <Button onClick={() => { this.setState({ hasError: false }); this.props.onRetry() }}>Try again</Button>
+          </div>
+        </Container>
+      )
+    }
+    return this.props.children
+  }
+}
 
 interface Props {
   id: string
@@ -247,7 +274,9 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
     <AuditShell session={session}>
-      <AuditReportProgressive {...progressiveProps} />
+      <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
+        <AuditReportProgressive {...progressiveProps} />
+      </ProgressiveErrorBoundary>
     </AuditShell>
   )
 }

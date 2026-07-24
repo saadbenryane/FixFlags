@@ -11,7 +11,7 @@ export const AUDIT_ERRORS = {
   pollErrorTitle: 'Could not load report',
   pollErrorBody: 'Something went wrong while loading this report. Try again in a moment.',
   timeout:
-    'This check took longer than expected and was stopped. Please try again.',
+    'The scan took longer than expected. This can happen with slow-loading sites. Try again, or try a different page on the site.',
   generic:
     "We couldn't complete this check. The site may be unreachable or blocking automated visits.",
   scannerUnavailable:

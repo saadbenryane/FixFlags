@@ -137,6 +137,10 @@ export async function createAuditPage(
     timeout: PAGE_TIMEOUT_MS,
   })
 
+  // Yield the event loop after the heavy page.goto() to let pending I/O
+  // callbacks (e.g. status polling requests) run before we continue.
+  await new Promise<void>((resolve) => setImmediate(resolve))
+
   const responseHeaders: Record<string, string> = {}
   if (response) {
     const rawHeaders = response.headers()

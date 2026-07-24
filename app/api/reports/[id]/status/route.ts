@@ -109,17 +109,6 @@ export async function GET(
       storedCapture
     )
 
-    const flagCount = await prisma.flag.count({ where: { auditId: id } })
-
-    const rubricSources = audit.rubrics.map((r) => ({
-      name: r.name,
-      grade: r.grade,
-      score: r.score,
-      flags: audit.flags.filter((f) => f.rubric === r.name).map((f) => ({ severity: f.severity })),
-    }))
-    const flatFlags = audit.flags.map((f) => ({ severity: f.severity, rubric: f.rubric }))
-    const shareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
-
     const showPartialFlags =
       effectiveStatus === 'CHECKING' ||
       effectiveStatus === 'JUDGING' ||
@@ -127,17 +116,42 @@ export async function GET(
       // Keep flags on COMPLETED so the progressive hold frame does not blank before SSR swap.
       effectiveStatus === 'COMPLETED'
 
+    const isTerminal = effectiveStatus === 'COMPLETED' || effectiveStatus === 'FAILED'
+
+    // Skip heavy computations during scanning to keep the status endpoint fast
+    // and avoid starving the event loop.
+    const flagCount = isTerminal
+      ? await prisma.flag.count({ where: { auditId: id } })
+      : audit.flags.length
+
+    const rubricSources = isTerminal
+      ? audit.rubrics.map((r) => ({
+          name: r.name,
+          grade: r.grade,
+          score: r.score,
+          flags: audit.flags.filter((f) => f.rubric === r.name).map((f) => ({ severity: f.severity })),
+        }))
+      : []
+    const flatFlags = isTerminal
+      ? audit.flags.map((f) => ({ severity: f.severity, rubric: f.rubric }))
+      : []
+    const shareStatus = isTerminal
+      ? computeShareStatusFromRubrics(rubricSources, flatFlags)
+      : 'private'
+
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
-    const actionTimeline = parseActionTimeline(performanceData)
-    const contract = parseProductContract(productContract)
-    const technologyProfile = await loadTechnologyProfile(id, {
-      score: audit.score,
-      rubrics: audit.rubrics.map((rubric) => ({
-        name: rubric.name,
-        score: rubric.score,
-      })),
-      flags: audit.flags.map((flag) => ({ rubric: flag.rubric })),
-    })
+    const actionTimeline = isTerminal ? parseActionTimeline(performanceData) : []
+    const contract = isTerminal ? parseProductContract(productContract) : null
+    const technologyProfile = isTerminal
+      ? await loadTechnologyProfile(id, {
+          score: audit.score,
+          rubrics: audit.rubrics.map((rubric) => ({
+            name: rubric.name,
+            score: rubric.score,
+          })),
+          flags: audit.flags.map((flag) => ({ rubric: flag.rubric })),
+        })
+      : undefined
 
     return NextResponse.json({
       ...rest,
