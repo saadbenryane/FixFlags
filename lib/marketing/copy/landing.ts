@@ -82,45 +82,75 @@ Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`
 
 export const HOW_IT_WORKS_PAGE = {
   hero: {
-    eyebrow: 'How FixFlags works',
-    headline: 'Check your site from the browser or your coding agent.',
+    eyebrow: 'The AI Gap',
+    headline: 'AI can build products. It still can\u2019t tell you if they\u2019re ready.',
+    headlineAccentPeriod: true,
     subhead:
-      'Paste a URL for an instant report. Or connect MCP and let Cursor, Claude Code, Windsurf, Lovable, or Bolt find Flags, apply the fixes, and re-check the page.',
-    primaryCta: 'Run a browser check',
+      'AI gets you 80%. FixFlags gets you to 100%. The final step between a draft and a release.',
+    primaryCta: 'Review my site',
+    primaryHref: '/#audit',
     secondaryCta: 'Set up MCP',
+    secondaryHref: '/help/mcp',
+    annotations: [
+      {
+        id: 'ai-build',
+        title: 'AI Build',
+        percent: '80%',
+        body: 'Draft complete. Not release ready.',
+        tone: 'muted' as const,
+      },
+      {
+        id: 'gap',
+        title: 'The Gap',
+        percent: '',
+        body: 'What AI misses before you ship.',
+        tone: 'muted' as const,
+      },
+      {
+        id: 'fixflags',
+        title: 'FixFlags',
+        percent: '100%',
+        body: 'Release ready. Ship with confidence.',
+        tone: 'brand' as const,
+      },
+    ],
+    features: [
+      {
+        title: 'AI builds fast',
+        body: 'Ship features, pages, and entire products.',
+        icon: 'sparkles' as const,
+      },
+      {
+        title: 'But misses critical signals',
+        body: 'Issues that impact trust, performance, and growth.',
+        icon: 'warning' as const,
+      },
+      {
+        title: 'FixFlags reviews everything',
+        body: 'Message, experience, and reach across every device.',
+        icon: 'shield' as const,
+      },
+      {
+        title: 'You fix with confidence',
+        body: 'Clear findings, exact fixes, no guesswork.',
+        icon: 'check' as const,
+      },
+      {
+        title: 'Then ship, confidently',
+        body: 'Because you know your product is actually ready.',
+        icon: 'rocket' as const,
+      },
+    ],
   },
-  modes: [
-    {
-      label: 'On the site',
-      title: 'Paste a URL and get the report',
-      body: 'Use the web app when you want a fast outside-in review of a live page, preview deploy, or client URL.',
-      bullets: [
-        'Message, Experience, and Reach rubrics',
-        'Desktop and mobile evidence',
-        'Pass / Needs Attention / Blocked status',
-      ],
-      cta: 'Review my site',
-      href: '/#audit',
-    },
-    {
-      label: 'In your editor',
-      title: 'Let your agent call FixFlags with MCP',
-      body: 'Use MCP when you want the fix loop to stay inside Cursor, Claude Code, Windsurf, Lovable, or Bolt.',
-      bullets: [
-        'Check a URL from chat',
-        'Fetch the exact flag and fix prompt',
-        'Re-check after the agent applies changes',
-      ],
-      cta: 'View MCP setup',
-      href: '/docs/mcp',
-    },
-  ],
   reportPreview: {
     label: 'What the report gives you',
     title: 'A fix queue, not a score dump.',
     body: 'Each Flag explains what broke, where we saw it, why it matters, and what to paste into your builder.',
     rubricLine:
       'Message is what the page says. Experience is how it works. Reach is how people find and share it.',
+    sampleLabel: 'Sample Finish Plan',
+    sampleCta: 'Explore a full sample',
+    sampleHref: '/samples',
     flags: [
       {
         rubric: 'Experience',
@@ -144,19 +174,19 @@ export const HOW_IT_WORKS_PAGE = {
   },
   loop: {
     label: 'The operating loop',
-    title: 'Scan, fix, re-check. Repeat when the page changes.',
+    title: 'Flag. Fix. Re-check. Repeat when the page changes.',
     steps: [
       {
-        title: 'Scan the public page',
-        body: 'FixFlags loads the page like a user, captures evidence, and scores Message, Experience, and Reach.',
+        title: 'Flag',
+        body: 'Find issues that matter across Message, Experience, and Reach with evidence you can trust.',
       },
       {
-        title: 'Send the fix to your builder',
-        body: 'Copy the prompt manually or let MCP hand the exact Flag to your coding agent.',
+        title: 'Fix',
+        body: 'Copy the prompt into your builder, or let MCP hand the exact Flag to your coding agent.',
       },
       {
-        title: 'Re-check the shipped change',
-        body: 'Run the same URL again and keep the history in your dashboard.',
+        title: 'Re-check',
+        body: 'Run the same URL again, prove the fix landed, and ship with confidence.',
       },
     ],
   },
@@ -164,6 +194,10 @@ export const HOW_IT_WORKS_PAGE = {
     label: 'MCP workflow',
     title: 'Your agent reads the same report you do.',
     body: 'MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Launch Check and fix prompts land in the editor you already use.',
+    setupCta: 'Set up MCP',
+    setupHref: '/help/mcp',
+    plansCta: 'See plans',
+    plansHref: '/pricing',
     transcript: `User: "Check the landing page and fix the highest-impact issue"
 
 Agent calls: ff_check_and_plan
@@ -173,10 +207,13 @@ Agent calls: ff_recheck_and_compare
 Agent reports: "Experience moved to Pass. One Flag cleared."`,
   },
   finalCta: {
-    headline: 'Start in the browser. Graduate to MCP when the loop is working.',
-    body: 'The same report powers both workflows, so your team can review manually today and automate the fix loop tomorrow.',
+    headline: 'Close the AI gap on a live URL.',
+    body: 'Paste your site, get Flags with evidence and fix prompts, then re-check until it is ready to ship.',
     primaryCta: 'Review my site',
+    primaryHref: '/#audit',
     secondaryCta: 'Connect MCP',
+    secondaryHref: '/help/mcp',
+    tryLabel: 'Try it on a live URL',
   },
 } as const
 

@@ -145,5 +145,33 @@ export function runSecurityHeaderChecks(
   // older browsers); CSP is the modern replacement. Flagging its absence would be
   // a false positive on correctly configured modern sites.
 
+  // Consolidate multiple missing-header findings into a single POLISH finding
+  // so they do not dominate the top-5 on every site that lacks standard headers.
+  const SECURITY_HEADER_IDS = new Set([
+    'security-csp-missing',
+    'security-hsts-missing',
+    'security-hsts-too-short',
+    'security-frame-options-missing',
+    'security-frame-options-too-permissive',
+    'security-content-type-options-missing',
+  ])
+  const headerFindings = findings.filter((f) => SECURITY_HEADER_IDS.has(f.checkId))
+  if (headerFindings.length >= 3) {
+    const names = headerFindings.map((f) => f.problem.replace(/\.$/, '')).join('; ')
+    return [
+      {
+        checkId: 'security-headers-missing',
+        rubric: 'REACH' as const,
+        impactTag: 'TRUST' as const,
+        severity: 'POLISH' as const,
+        problem: `${headerFindings.length} security headers are missing or weak`,
+        evidence: `Missing: ${names}. These headers provide defense-in-depth against common web vulnerabilities.`,
+        fix: 'Add the following HTTP response headers: Content-Security-Policy, Strict-Transport-Security (max-age=31536000), X-Frame-Options: DENY, X-Content-Type-Options: nosniff. Start with restrictive defaults and relax as needed.',
+        confidence: 1.0,
+        source: 'DETERMINISTIC' as const,
+      },
+    ]
+  }
+
   return findings
 }

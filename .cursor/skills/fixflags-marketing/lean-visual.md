@@ -10,8 +10,9 @@ Short surface-specific rules. Full tokens: `fixflags-design-system/SKILL.md`.
 
 ## Controls
 
-- Inputs, selects, textareas: `rounded-full` + glass fill via `components/ui/*` primitives
-- Primary CTAs: brand orange, `rounded-full`
+- Inputs, selects, textareas: control radius (`--radius-control` ~10px) via `components/ui/*` primitives
+- Primary marketing CTAs: brand orange, control radius
+- Product primary CTAs: ink, control radius
 
 ## Typography
 

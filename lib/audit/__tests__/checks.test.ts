@@ -462,7 +462,11 @@ describe('runSecurityHeaderChecks', () => {
   it('flags missing CSP header', () => {
     assert.ok(
       checkIds(
-        runSecurityHeaderChecks('https://example.com', {})
+        runSecurityHeaderChecks('https://example.com', {
+          'strict-transport-security': 'max-age=31536000',
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+        })
       ).includes('security-csp-missing')
     )
   })
@@ -472,6 +476,9 @@ describe('runSecurityHeaderChecks', () => {
       checkIds(
         runSecurityHeaderChecks('https://example.com', {
           'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'",
+          'strict-transport-security': 'max-age=31536000',
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
         })
       ).includes('security-csp-unsafe-inline')
     )
@@ -491,7 +498,11 @@ describe('runSecurityHeaderChecks', () => {
   it('flags missing HSTS on HTTPS', () => {
     assert.ok(
       checkIds(
-        runSecurityHeaderChecks('https://example.com', {})
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+        })
       ).includes('security-hsts-missing')
     )
   })
@@ -500,7 +511,10 @@ describe('runSecurityHeaderChecks', () => {
     assert.ok(
       checkIds(
         runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
           'strict-transport-security': 'max-age=86400',
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
         })
       ).includes('security-hsts-too-short')
     )
@@ -509,7 +523,11 @@ describe('runSecurityHeaderChecks', () => {
   it('flags missing X-Frame-Options when no CSP frame-ancestors', () => {
     assert.ok(
       checkIds(
-        runSecurityHeaderChecks('https://example.com', {})
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000',
+          'x-content-type-options': 'nosniff',
+        })
       ).includes('security-frame-options-missing')
     )
   })
@@ -527,7 +545,10 @@ describe('runSecurityHeaderChecks', () => {
     assert.ok(
       checkIds(
         runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000',
           'x-frame-options': 'ALLOWALL',
+          'x-content-type-options': 'nosniff',
         })
       ).includes('security-frame-options-too-permissive')
     )
@@ -536,7 +557,11 @@ describe('runSecurityHeaderChecks', () => {
   it('flags missing X-Content-Type-Options', () => {
     assert.ok(
       checkIds(
-        runSecurityHeaderChecks('https://example.com', {})
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000',
+          'x-frame-options': 'DENY',
+        })
       ).includes('security-content-type-options-missing')
     )
   })
@@ -544,7 +569,12 @@ describe('runSecurityHeaderChecks', () => {
   it('does not flag the deprecated X-XSS-Protection header', () => {
     assert.ok(
       !checkIds(
-        runSecurityHeaderChecks('https://example.com', {})
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000',
+          'x-frame-options': 'DENY',
+          'x-content-type-options': 'nosniff',
+        })
       ).includes('security-xss-protection-missing')
     )
   })
@@ -560,6 +590,14 @@ describe('runSecurityHeaderChecks', () => {
       }).length,
       0
     )
+  })
+
+  it('consolidates 3+ missing headers into a single finding', () => {
+    const ids = checkIds(runSecurityHeaderChecks('https://example.com', {}))
+    assert.ok(ids.includes('security-headers-missing'))
+    assert.ok(!ids.includes('security-csp-missing'))
+    assert.ok(!ids.includes('security-hsts-missing'))
+    assert.ok(!ids.includes('security-frame-options-missing'))
   })
 
   it('returns no findings when responseHeaders is null', () => {
@@ -1442,7 +1480,11 @@ describe('trigger matrix - one failing signal per checkId', () => {
         images: [{ src: '/hero.png', alt: 'Screenshot' }, { src: 'http://cdn.example.com/img.png', alt: 'Insecure image' }],
       }))),
     'security-csp-missing': () =>
-      checkIds(runSecurityHeaderChecks('https://example.com', {})),
+      checkIds(runSecurityHeaderChecks('https://example.com', {
+        'strict-transport-security': 'max-age=31536000',
+        'x-frame-options': 'DENY',
+        'x-content-type-options': 'nosniff',
+      })),
     'security-csp-unsafe-inline': () =>
       checkIds(
         runSecurityHeaderChecks('https://example.com', {
@@ -1496,6 +1538,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
           'x-xss-protection': '1; mode=block',
         })
       ),
+    'security-headers-missing': () =>
+      checkIds(runSecurityHeaderChecks('https://example.com', {})),
     'visual-radius-inconsistent': () =>
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
     'visual-typography-sprawl': () =>
@@ -1850,15 +1894,15 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'friction-form-too-many-fields': () =>
       checkIds(runConversionFrictionChecks(healthyMeta({ totalFormInputs: 7 }))),
     'friction-no-risk-reversal': () =>
-      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Sign up now for early access', ctaTexts: ['Sign up'], links: [] }))),
+      checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Sign up now for early access. Pricing starts at $9/month.', ctaTexts: ['Sign up'], links: [{ href: '/pricing', text: 'Pricing', rel: null }] }))),
     'friction-no-social-proof': () =>
       checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Get started', links: [], h1s: ['Product'], ctaTexts: ['Get started'] }))),
 
     // trust-psychology
     'trust-no-authority-signals': () =>
-      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a nice product.', links: [] }))),
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a nice product that helps teams build better software faster and more reliably than ever before.', links: [] }))),
     'trust-testimonial-quality': () =>
-      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: '"Everyone loves our product." Contact support@example.com. As seen in TechCrunch.', links: [], ctaTexts: ['Buy'] }))),
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: '<blockquote>Everyone loves our product because it saves us hours every week.</blockquote> Contact support@example.com.', links: [], ctaTexts: ['Buy'] }))),
     'trust-unsupported-claims': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'The best product for everyone.', links: [] }))),
     'trust-no-direct-contact': () =>

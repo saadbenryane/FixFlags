@@ -17,7 +17,7 @@ export function WhyAiNeedsFixFlagsSection() {
         <RevealOnView>
           <div className="mx-auto max-w-2xl space-y-6 text-center">
             <LandingSectionHeader headline={headline} />
-            <p className="font-serif text-xl font-medium tracking-heading text-foreground text-pretty sm:text-2xl">
+            <p className="font-display text-xl font-semibold tracking-heading text-foreground text-pretty sm:text-2xl">
               {lead}
             </p>
             <p className="text-base leading-relaxed text-muted-foreground text-pretty">

@@ -12,7 +12,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Run FixFlags from the website or through MCP in Cursor, Claude Code, Windsurf, Lovable, and Bolt. Find Flags, apply grounded fixes, and re-check published changes.',
+      'AI gets you 80%. FixFlags closes the gap to release ready: Flag, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
   },
   samples: {
     title: 'Sample Report',

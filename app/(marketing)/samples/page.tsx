@@ -26,7 +26,7 @@ export default async function SamplesPage() {
       <Container className="space-y-8">
         <header className="mx-auto max-w-3xl text-center">
           <p className="section-label">{REPORT_COPY.sampleFocused.eyebrow}</p>
-          <h1 className="mt-3 text-balance font-serif text-3xl font-medium tracking-display sm:text-5xl">
+          <h1 className="mt-3 text-balance font-display text-3xl font-semibold tracking-display sm:text-5xl">
             {REPORT_COPY.sampleFocused.title}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-muted-foreground">

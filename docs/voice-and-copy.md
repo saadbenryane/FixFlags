@@ -4,9 +4,9 @@
 
 ## FixFlags adaptation
 
-This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the QA layer for AI-built products.
+This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the release readiness layer for AI-built products.
 
-**Product context:** FixFlags is the QA layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Re-check. The AI built it. FixFlags finishes it.
+**Product context:** FixFlags is the release readiness layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Re-check. The AI built it. FixFlags finishes it.
 
 **What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
 

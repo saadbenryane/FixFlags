@@ -126,8 +126,8 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - `glass-bg` variants: subtle, base, strong, elevated, nav
 
 ### Input
-- Pill shape (`rounded-pill` / `rounded-input`)
-- Border from `--input`
+- Control radius (`--radius-input` / `--radius-control` ~10px)
+- Border from `--input` / `--border`
 - Focus ring from `--ring`
 
 ## Responsive behavior
@@ -174,4 +174,4 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 - `transition: all`
 - Raw hex values except `grade.*`
 - Borders on cards (use shadows)
-- Default gray backgrounds (use warm paper / graphite)
+- Default gray backgrounds (use white canvas / ink)

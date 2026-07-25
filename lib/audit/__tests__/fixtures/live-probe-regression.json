@@ -1,0 +1,184 @@
+{
+  "_description": "Expected findings from live accuracy-probe runs against production sites. Used to detect regressions in check quality across code changes.",
+  "_generated": "2026-07-25",
+  "sites": [
+    {
+      "url": "https://fixflags.com",
+      "expectedFlags": [
+        "form-missing-validation",
+        "cookie-consent-absent",
+        "description-too-long",
+        "friction-trial-commitment-unclear",
+        "messaging-no-audience",
+        "security-csp-unsafe-inline"
+      ],
+      "expectedTop3": [
+        "form-missing-validation",
+        "messaging-no-audience",
+        "description-too-long"
+      ],
+      "knownFalsePositives": [
+        "trust-testimonial-quality",
+        "friction-no-risk-reversal",
+        "trust-no-authority-signals"
+      ],
+      "resolvedFlags": [
+        "trust-testimonial-quality"
+      ],
+      "notes": "trust-testimonial-quality previously fired because generic quotes matched testimonial regex. Fixed by requiring blockquotes or attributed quotes."
+    },
+    {
+      "url": "https://stripe.com",
+      "expectedFlags": [
+        "friction-no-risk-reversal",
+        "measurement-ga-gtm-posthog-missing",
+        "skip-link-missing"
+      ],
+      "expectedTop3": [
+        "skip-link-missing",
+        "measurement-ga-gtm-posthog-missing",
+        "friction-no-risk-reversal"
+      ],
+      "knownFalsePositives": [],
+      "resolvedFlags": [],
+      "notes": "friction-no-risk-reversal fires legitimately: Stripe has a pricing page but signup CTA lacks risk reversal. POLISH severity is appropriate."
+    },
+    {
+      "url": "https://v0.dev",
+      "expectedFlags": [
+        "friction-no-risk-reversal",
+        "measurement-ga-gtm-posthog-missing",
+        "security-csp-unsafe-inline",
+        "skip-link-missing",
+        "trust-no-authority-signals"
+      ],
+      "expectedTop3": [
+        "skip-link-missing",
+        "measurement-ga-gtm-posthog-missing",
+        "trust-no-authority-signals"
+      ],
+      "knownFalsePositives": [],
+      "resolvedFlags": [],
+      "notes": "trust-no-authority-signals fires legitimately on live page. SPA redirect fixture has sparse text but live page has enough content for the check."
+    },
+    {
+      "url": "https://linear.app",
+      "expectedFlags": [
+        "buttons-no-text",
+        "form-inputs-no-label",
+        "links-no-text",
+        "cookie-consent-absent",
+        "friction-no-risk-reversal",
+        "no-structured-data",
+        "security-csp-unsafe-inline",
+        "trust-testimonial-quality"
+      ],
+      "expectedTop3": [
+        "buttons-no-text",
+        "form-inputs-no-label",
+        "links-no-text"
+      ],
+      "knownFalsePositives": [],
+      "resolvedFlags": [],
+      "notes": "trust-testimonial-quality fires legitimately: 3 blockquotes with customer praise but no named attribution."
+    },
+    {
+      "url": "https://bolt.new",
+      "expectedFlags": [
+        "links-no-text",
+        "trust-unsupported-claims",
+        "cookie-consent-absent",
+        "security-headers-missing",
+        "skip-link-missing",
+        "trust-no-authority-signals"
+      ],
+      "expectedTop3": [
+        "links-no-text",
+        "trust-unsupported-claims",
+        "trust-no-authority-signals"
+      ],
+      "knownFalsePositives": [],
+      "resolvedFlags": [
+        "security-csp-missing",
+        "security-hsts-too-short",
+        "security-frame-options-missing",
+        "security-content-type-options-missing"
+      ],
+      "notes": "4 individual security header findings consolidated into security-headers-missing. trust-unsupported-claims fires legitimately for 'the most powerful' claim."
+    },
+    {
+      "url": "https://lovable.dev",
+      "expectedFlags": [
+        "friction-no-social-proof",
+        "measurement-ga-gtm-posthog-missing",
+        "security-frame-options-missing"
+      ],
+      "expectedTop3": [
+        "friction-no-social-proof",
+        "measurement-ga-gtm-posthog-missing",
+        "security-frame-options-missing"
+      ],
+      "knownFalsePositives": [
+        "messaging-weak-value-prop",
+        "links-no-text",
+        "buttons-no-text"
+      ],
+      "resolvedFlags": [],
+      "notes": "Clean result with 3 POLISH flags."
+    },
+    {
+      "url": "https://replit.com",
+      "expectedFlags": [
+        "form-inputs-no-label",
+        "trust-unsupported-claims",
+        "canonical-missing",
+        "cookie-consent-absent",
+        "friction-no-risk-reversal",
+        "friction-trial-commitment-unclear",
+        "h1-multiple",
+        "no-structured-data",
+        "security-content-type-options-missing",
+        "security-csp-missing",
+        "skip-link-missing"
+      ],
+      "expectedTop3": [
+        "form-inputs-no-label",
+        "trust-unsupported-claims",
+        "skip-link-missing"
+      ],
+      "knownFalsePositives": [],
+      "resolvedFlags": [],
+      "notes": "replit.com has many POLISH-level findings but 2 IMPORTANT (form labels, unsupported claims)."
+    }
+  ],
+  "falsePositiveHistory": [
+    {
+      "flag": "trust-testimonial-quality",
+      "site": "fixflags.com",
+      "rootCause": "TESTIMONIAL_PRESENCE_MARKERS regex /\"[^\"]{10,}\"/ matched any quoted text, not just testimonials",
+      "fix": "Replaced generic quote patterns with blockquote detection and attributed-quote patterns",
+      "date": "2026-07-25"
+    },
+    {
+      "flag": "trust-no-authority-signals",
+      "site": "v0.dev",
+      "rootCause": "SPA with sparse initial HTML triggered authority check on empty/minimal text",
+      "fix": "Added bodyText.length >= 100 guard to skip check when page text is too sparse",
+      "date": "2026-07-25"
+    },
+    {
+      "flag": "friction-no-risk-reversal",
+      "site": "fixflags.com",
+      "rootCause": "Check fired on any product page with 'Sign up' CTA regardless of payment context",
+      "fix": "Require payment CTA text or pricing link presence before firing",
+      "date": "2026-07-25"
+    },
+    {
+      "flag": "security-csp-missing + security-hsts-missing + security-frame-options-missing + security-content-type-options-missing",
+      "site": "bolt.new",
+      "rootCause": "4 separate POLISH security header findings dominated top-5",
+      "fix": "Consolidated 3+ missing headers into single security-headers-missing finding",
+      "date": "2026-07-25"
+    }
+  ]
+}

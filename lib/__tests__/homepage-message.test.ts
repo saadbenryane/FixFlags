@@ -269,7 +269,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('why AI and editor integrations sections exist', () => {
-    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /AI ships the build/i)
+    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /AI builds it/i)
     assert.match(LANDING_PAGE.whyAiNeedsFixFlags.lead, /AI builds fast/i)
     assert.ok(LANDING_PAGE.whyAiNeedsFixFlags.checks.length >= 5)
     assert.match(LANDING_PAGE.editorIntegrations.headline, /Cursor|Claude|Lovable/i)

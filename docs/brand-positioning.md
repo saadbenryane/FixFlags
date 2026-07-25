@@ -9,17 +9,17 @@
 
 ## Category
 
-The QA layer for AI-built products. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
+The release readiness layer for AI-built products. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
 
 It is the missing quality layer after Cursor, Claude Code, Lovable, Bolt, Replit, v0, and Codex.
 
 ## One-Liner
 
-FixFlags is the QA layer for AI-built products.
+FixFlags is the release readiness layer for AI-built products.
 
 ## Tagline
 
-The QA layer for AI-built products.
+The release readiness layer for AI-built products.
 
 ## Anchoring / Campaign Line
 

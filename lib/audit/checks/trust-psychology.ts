@@ -23,14 +23,17 @@ const TESTIMONIAL_QUALITY_MARKERS = [
 const TESTIMONIAL_PRESENCE_MARKERS = [
   /\b(testimonial|what\s+customers\s+say|customer\s+story|case\s+stud(y|ies)|reviewed\s+by)\b/i,
   /\b(customer|user|client)\s+(quote|review|feedback)\b/i,
-  /"[^"]{10,}"/i,
-  /[“”][^“”]{10,}[“”]/i,
+  /<blockquote/i,
+  /\b(said|says|told\s+us|shared|wrote|commented)\b[^.]{0,30}\b"[^"]{20,}"/i,
 ]
 
 const DATA_SPECIFICITY = [
   /\d+%\s+(faster|better|lower|higher|reduction|improvement)/i,
   /\d+x\s+(faster|better|more)/i,
   /\d+\s+(minutes?|hours?|days?)\s+(saved|saving|reduced|cut)/i,
+  /\b(supports?|handles?|processes?|manages?)\s+\d+/i,
+  /\b(benchmark|tested|verified|proven|measured|reviewed)\b/i,
+  /\b(feature|capability|function)\s*(s|ies)\b/i,
 ]
 
 function isInternalNavigationHref(href: string, pageHostname: string | null): boolean {
@@ -82,9 +85,10 @@ export function runTrustPsychologyChecks(
   // so flagging "no authority signals" there is a false positive.
   // "No authority signals" only matters on a product/marketing page. OSS
   // pages have authority via stars/maintainers (not captured here); docs and
-  // placeholder pages do not need press badges. Suppress to avoid top-3
-  // false positives.
-  if (productPage && !hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
+  // placeholder pages do not need press badges. Suppress when the page text is
+  // too sparse to evaluate (SPAs, redirects, JS-rendered shells) — the check
+  // would otherwise fire on every SPA that renders authority signals client-side.
+  if (productPage && bodyText.length >= 100 && !hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
     findings.push({
       checkId: 'trust-no-authority-signals',
       rubric: 'MESSAGE',

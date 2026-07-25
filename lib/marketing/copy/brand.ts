@@ -4,7 +4,7 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'Finish what your AI started.',
-  category: 'Release readiness for AI-built products.',
+  category: 'The release readiness layer for AI-built products.',
   oneLiner: 'FixFlags is the release readiness layer for AI-built products.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',

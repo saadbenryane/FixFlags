@@ -93,7 +93,14 @@ export function runConversionFrictionChecks(
   }
 
   const hasRiskReversal = hasGuarantee || bodyText.includes('cancel anytime') || FREE_TRIAL_MARKERS.test(bodyText)
-  if (productPage && ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
+  // Risk reversal only matters when the signup CTA itself implies a financial
+  // commitment. A "Sign up" or "Get started" button on a free product does not
+  // need "cancel anytime" messaging. Payment signals must appear in the CTA
+  // text itself (e.g. "Buy Pro", "Subscribe", "Start free trial") or in a
+  // direct pricing link, not just anywhere on the page.
+  const hasPaymentCta = ctaTexts.some((c) => /\b(buy|subscribe|purchase|upgrade|pro|premium|enterprise|paid|pricing)\b/i.test(c))
+  const hasPaymentLink = hasPricingLinks
+  if (productPage && (hasPaymentCta || hasPaymentLink) && ctaTexts.some((c) => /sign ?up|register|create account/i.test(c)) && !hasRiskReversal) {
     findings.push({
       checkId: 'friction-no-risk-reversal',
       rubric: 'MESSAGE',

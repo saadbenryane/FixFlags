@@ -97,7 +97,7 @@ export function ProductContractCard({
             {REPORT_COPY.sectionTitles.productContract}
             {contract.source === 'user' ? ' · edited' : ' · inferred'}
           </p>
-          <h2 id="product-contract-heading" className="mt-1 font-serif text-lg text-foreground">
+          <h2 id="product-contract-heading" className="mt-1 text-lg font-semibold text-foreground">
             {REPORT_COPY.sectionTitles.productContractHeading}
           </h2>
         </div>

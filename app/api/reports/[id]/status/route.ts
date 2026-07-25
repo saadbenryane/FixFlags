@@ -140,8 +140,10 @@ export async function GET(
       : 'private'
 
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
-    const actionTimeline = isTerminal ? parseActionTimeline(performanceData) : []
-    const contract = isTerminal ? parseProductContract(productContract) : null
+    // Timeline + contract are lightweight JSON parses; stream them during CHECKING
+    // so progressive report chrome stays honest. Technology profile stays terminal-only.
+    const actionTimeline = parseActionTimeline(performanceData)
+    const contract = parseProductContract(productContract)
     const technologyProfile = isTerminal
       ? await loadTechnologyProfile(id, {
           score: audit.score,

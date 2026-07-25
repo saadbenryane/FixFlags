@@ -10,7 +10,7 @@ Extracted into production:
 
 - Logo mark/wordmark SVGs → `public/brand/*.svg` + `lib/design/logo-mark.tsx`
 - Color palette (light + dark) → `lib/design/tokens.css` + `lib/design/brand-spec.ts`
-- Typography → Satoshi (`lib/design/fonts.ts`)
+- Typography → Inter + Inter Tight + JetBrains Mono (`lib/design/fonts.ts`)
 
-Canonical hexes (UI Kit v2.0): Primary `#FF4D1F`, Accent Light `#FF744D`, Ink `#0F1115`,
-Secondary `#687380`, Border `#E5E7EB`, Success `#22C55E`, Warning `#FACC15`, Error `#FF4444`, Info `#3B82F6`.
+Canonical hexes (Brand Sheet 2026-07): Primary `#FF5A00`, Accent Light `#FF7A33`, Ink `#0B0B0D`,
+Stone `#F5F6F7`, Border `#E6E6E8`, Success `#22C55E`, Warning `#FACC15`, Error `#FF4444`, Info `#3B82F6`.

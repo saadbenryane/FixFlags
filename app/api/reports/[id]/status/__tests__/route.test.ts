@@ -113,7 +113,7 @@ describe('GET /api/reports/[id]/status', () => {
       { t: 1000, kind: 'capture', label: 'Opened page' },
     ])
     expect(body.productContract?.purpose).toBe('Ship cleaner sites')
-    expect(body.technologyProfile?.status).toBe('not_captured')
+    expect(body.technologyProfile).toBeUndefined()
     expect(body.partialFlags).toEqual([
       expect.objectContaining({
         id: 'f1',
@@ -133,6 +133,7 @@ describe('GET /api/reports/[id]/status', () => {
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     const body = await res.json()
     expect(body.status).toBe('COMPLETED')
+    expect(body.technologyProfile?.status).toBe('not_captured')
     expect(body.partialFlags).toEqual([
       expect.objectContaining({
         id: 'f1',

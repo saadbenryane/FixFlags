@@ -65,7 +65,8 @@ function reachHardeningDemotion(flag: RankableFlag): number {
     checkId.startsWith('security-hsts-') ||
     checkId.startsWith('security-csp-') ||
     checkId.startsWith('security-content-type-options-') ||
-    checkId.startsWith('security-frame-options-')
+    checkId.startsWith('security-frame-options-') ||
+    checkId === 'security-headers-missing'
   ) {
     return 1
   }

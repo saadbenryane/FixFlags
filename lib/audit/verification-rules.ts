@@ -218,6 +218,8 @@ export const SECURITY_VERIFICATION_RULES = {
     'Change X-Frame-Options to DENY (preferred) or SAMEORIGIN.',
   'security-content-type-options-missing':
     'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
+  'security-headers-missing':
+    'Open DevTools Network tab, reload the page, and verify Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, and X-Content-Type-Options headers are all present.',
 }
 
 /**

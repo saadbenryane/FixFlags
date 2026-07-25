@@ -42,7 +42,7 @@ The gap this review found is not in the principles. It is in principle 8: execut
 
 > "Only well-executed objects can be beautiful."
 
-**For FixFlags:** the aesthetic is already chosen and documented (warm paper, ink, one orange signal, Fraunces/Satoshi/Plex Mono). Beauty here is execution: identical things rendering identically everywhere.
+**For FixFlags:** the aesthetic is already chosen and documented (white canvas, ink, one orange signal, Inter Tight/Inter/JetBrains Mono). Beauty here is execution: identical things rendering identically everywhere.
 
 **Assessment:** strong foundation (zero raw hex in components, tokenized shadows and radii, re-authored dark mode). The drift was micro-typography: dozens of inline `text-[10px]`/`text-[11px]` where `.meta-label`/`.section-label` or a token should be. Fixed in this pass: `--text-2xs`/`--text-3xs` tokens added, usages routed through them, and `ui:drift-guard` now fails on new arbitrary micro sizes.
 
@@ -76,7 +76,7 @@ The gap this review found is not in the principles. It is in principle 8: execut
 
 **For FixFlags:** we separate the durable core from replaceable treatments, so a future refresh swaps surface without churning identity.
 
-- **Durable core (do not churn):** warm paper canvas, near-black ink, one orange signal at ~10%, editorial serif + mono labels, pill controls, the three-rubric structure, the naming system.
+- **Durable core (do not churn):** white canvas, near-black ink, one orange signal at ~10%, Inter Tight display + mono labels, ~10px control radius, the three-rubric structure, the naming system.
 - **Replaceable treatments (fashion-adjacent, may be swapped):** glass blur, ambient peach orbs, gradient CTA treatment.
 
 **Assessment:** glassmorphism is the system's riskiest fashion bet. That is acceptable while it stays a treatment: it lives entirely in tokens and utility classes (`glass-*`, `--glass-shadow`), so retiring it is a token change, not a rewrite.

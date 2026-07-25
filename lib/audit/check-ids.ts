@@ -95,6 +95,7 @@ export const ALL_CHECK_IDS = [
   'security-frame-options-missing',
   'security-frame-options-too-permissive',
   'security-content-type-options-missing',
+  'security-headers-missing',
   // visual-polish.ts
   'visual-radius-inconsistent',
   'visual-typography-sprawl',

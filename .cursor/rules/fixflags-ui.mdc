@@ -22,7 +22,7 @@ Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/3
 
 ## Type
 
-`font-sans` body · `font-serif`/`font-display` (Fraunces) for marketing headlines only · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never serif on dense report UI.
+`font-sans` body · `font-serif`/`font-display` (Inter Tight) for marketing headlines only · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never serif on dense report UI.
 
 ## Layout
 
