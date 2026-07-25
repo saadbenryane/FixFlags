@@ -1,7 +1,7 @@
 import { BRAND, HERO } from '@/lib/marketing/copy'
 import { getBrandPalette, scoreColorHex, type BrandMode } from '@/lib/design/brand-spec'
 import { ogFontFamilies } from '@/lib/design/fonts'
-import { LogoMarkSvg } from '@/lib/design/logo-mark'
+import { LogoMarkSvg, getOfficialLogoMarkDataUrl } from '@/lib/design/logo-mark'
 import { rubricLabel } from '@/lib/utils'
 
 type RubricOgRow = {
@@ -11,10 +11,11 @@ type RubricOgRow = {
 
 function OgLogoRow({ mode }: { mode: BrandMode }) {
   const p = getBrandPalette(mode)
+  const markSrc = getOfficialLogoMarkDataUrl()
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-      <LogoMarkSvg flagColor={p.brand} width={44} height={44} />
+      <LogoMarkSvg src={markSrc} width={44} height={44} />
       <div
         style={{
           fontSize: 30,

@@ -21,11 +21,11 @@ const FEATURE_ICONS = {
   rocket: Rocket,
 } as const
 
-/** Cropped from white mockup (opaque). Do not regenerate or chroma-key. */
+/** Isolated white-bg stack plate. Soft page-white key only — do not regenerate. */
 const STACK = {
   src: '/marketing/visuals/ai-gap-stack.webp',
-  width: 274,
-  height: 394,
+  width: 490,
+  height: 477,
 } as const
 
 function BrandDotEyebrow({ children }: { children: ReactNode }) {
@@ -41,15 +41,11 @@ function AnnotationLeader({ brand }: { brand: boolean }) {
   return (
     <div
       aria-hidden
-      className={cn(
-        'hidden shrink-0 self-center lg:block',
-        'h-px w-8 sm:w-10',
-        brand ? 'opacity-90' : 'opacity-55'
-      )}
+      className={cn('mt-[0.55rem] hidden h-px shrink-0 lg:block', brand ? 'w-11' : 'w-9')}
       style={{
         backgroundImage: brand
-          ? 'repeating-linear-gradient(90deg, hsl(var(--brand)) 0 3px, transparent 3px 6px)'
-          : 'repeating-linear-gradient(90deg, hsl(var(--brand) / 0.55) 0 3px, transparent 3px 6px)',
+          ? 'repeating-linear-gradient(90deg, hsl(var(--brand)) 0 2px, transparent 2px 5px)'
+          : 'repeating-linear-gradient(90deg, hsl(var(--brand) / 0.45) 0 2px, transparent 2px 5px)',
       }}
     />
   )
@@ -59,9 +55,9 @@ function AiGapStack() {
   const annotations = HOW_IT_WORKS_PAGE.hero.annotations
 
   return (
-    <div className="mx-auto grid w-full max-w-lg gap-6 lg:max-w-none lg:grid-cols-[minmax(0,1.15fr)_minmax(12rem,0.85fr)] lg:items-center lg:gap-2">
+    <div className="mx-auto grid w-full max-w-lg grid-cols-1 items-center gap-8 lg:max-w-none lg:grid-cols-[minmax(0,1.15fr)_minmax(11rem,0.7fr)] lg:gap-0 xl:gap-1">
       <div
-        className="relative mx-auto w-full max-w-[22rem] lg:max-w-none"
+        className="relative mx-auto w-full max-w-[24rem] lg:max-w-none"
         style={{ aspectRatio: `${STACK.width} / ${STACK.height}` }}
       >
         <Image
@@ -71,15 +67,16 @@ function AiGapStack() {
           height={STACK.height}
           priority
           unoptimized
-          className="h-full w-full object-contain object-center"
+          className="h-full w-full select-none object-contain object-center"
+          draggable={false}
         />
       </div>
 
-      <ul className="flex flex-col justify-between gap-6 lg:min-h-[16rem] lg:gap-8 lg:py-4">
+      <ul className="flex flex-col gap-5 lg:h-full lg:justify-between lg:gap-0 lg:py-[11%] xl:py-[13%]">
         {annotations.map((item) => {
           const isBrand = item.tone === 'brand'
           return (
-            <li key={item.id} className="flex items-start gap-2">
+            <li key={item.id} className="flex items-start gap-2.5">
               <AnnotationLeader brand={isBrand} />
               <div className="min-w-0">
                 <p
@@ -96,7 +93,9 @@ function AiGapStack() {
                     </span>
                   ) : null}
                 </p>
-                <p className="mt-1 text-sm leading-snug text-muted-foreground">{item.body}</p>
+                <p className="mt-1 max-w-[15rem] text-sm leading-snug text-muted-foreground">
+                  {item.body}
+                </p>
               </div>
             </li>
           )
@@ -112,12 +111,15 @@ export function AiGapHero() {
 
   return (
     <Section spacing="marketing" className="overflow-hidden">
-      <Container variant="wide" className="space-y-10 lg:space-y-14">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12 xl:gap-16">
-          <div className="space-y-5">
+      <Container variant="wide" className="space-y-10 lg:space-y-12">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.22fr)] lg:gap-6 xl:gap-10">
+          <div className="max-w-xl space-y-5 lg:max-w-none">
             <BrandDotEyebrow>{hero.eyebrow}</BrandDotEyebrow>
             <div className="space-y-4">
-              <Heading as="h1" className="max-w-xl text-4xl sm:text-5xl lg:text-[3.25rem]">
+              <Heading
+                as="h1"
+                className="max-w-[18ch] text-[2.25rem] leading-[1.08] sm:text-5xl lg:text-[3.15rem] xl:text-[3.4rem]"
+              >
                 {headlineWithoutPeriod}
                 {hero.headlineAccentPeriod ? (
                   <span className="text-brand" aria-hidden>
@@ -125,7 +127,7 @@ export function AiGapHero() {
                   </span>
                 ) : null}
               </Heading>
-              <p className="max-w-lg text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
+              <p className="max-w-md text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
                 {hero.subhead}
               </p>
             </div>
@@ -134,13 +136,14 @@ export function AiGapHero() {
           <AiGapStack />
         </div>
 
-        <div className="rounded-card bg-muted/70 p-5 shadow-sm sm:p-6 lg:p-7">
-          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5 lg:gap-5">
+        {/* Soft elevation only — no inset ring (mockup feature strip has no hard outline). */}
+        <div className="rounded-card bg-background px-5 py-6 shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_12px_32px_-14px_hsl(240_8%_5%/0.14)] sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6 xl:gap-8">
             {hero.features.map((feature) => {
               const Icon = FEATURE_ICONS[feature.icon]
               return (
                 <li key={feature.title} className="flex flex-col gap-3">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
                     <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   </span>
                   <div className="space-y-1.5">

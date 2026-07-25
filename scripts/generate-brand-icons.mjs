@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates brand-aligned static icons in public/ from the official logo asset.
+ * Generates brand-aligned static icons in public/ from the geometric F mark.
  * Run: node scripts/generate-brand-icons.mjs
  */
 import { writeFileSync } from 'node:fs'
@@ -9,16 +9,11 @@ import sharp from 'sharp'
 
 const ROOT = process.cwd()
 const PUBLIC = join(ROOT, 'public')
-const LOGO_LOCKUP = join(PUBLIC, 'brand/logo-lockup-light.png')
-const FLAG_CROP = { left: 0, top: 0, width: 330, height: 381 }
+const MARK = join(PUBLIC, 'brand/logo-mark.png')
 
 async function markPng(size, scale = 0.9) {
   const maxMarkSize = Math.round(size * scale)
-  const croppedMark = await sharp(LOGO_LOCKUP)
-    .extract(FLAG_CROP)
-    .png()
-    .toBuffer()
-  const mark = await sharp(croppedMark)
+  const mark = await sharp(MARK)
     .trim()
     .resize({
       width: maxMarkSize,
@@ -70,6 +65,7 @@ async function writeFaviconIco() {
 
 async function main() {
   console.log('Generating brand icons...')
+  await writePng(180, 'apple-icon.png', 0.86)
   await writePng(192, 'icon-192.png')
   await writePng(512, 'icon-512.png')
   await writePng(512, 'icon-512-maskable.png', 0.74)

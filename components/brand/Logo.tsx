@@ -4,6 +4,13 @@ import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 
+/** Official mark from brand sheet (clipped raster). Do not regenerate. */
+const MARK = {
+  src: '/brand/logo-mark.png',
+  width: 512,
+  height: 512,
+} as const
+
 const MARK_PX = { sm: 24, md: 28, lg: 32 } as const
 const WORD_CLASS = {
   sm: 'text-base',
@@ -24,7 +31,7 @@ function Mark({ px }: { px: number }) {
   return (
     <span className="relative block shrink-0" style={{ width: px, height: px }}>
       <Image
-        src="/brand/logo-mark.png"
+        src={MARK.src}
         alt=""
         fill
         sizes={`${px}px`}

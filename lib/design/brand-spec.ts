@@ -5,6 +5,7 @@ import { gradeFromScore } from '@/lib/audit/scoring'
 export const BRAND_HEX = {
   primary: '#FF5A00',
   primaryLight: '#FF7A33',
+  primaryDepth: '#C44700',
   background: '#FFFFFF',
   foreground: '#0B0B0D',
   muted: '#F5F6F7',

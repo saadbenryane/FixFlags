@@ -4,7 +4,8 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| brand-refresh-hiw-hero | in_progress | auto | main | Re-implement /how-it-works AI Gap hero to match mockup: clean white stack asset, layout proportions, annotation leaders, feature strip. Do not touch release-verify blockers. | components/marketing/how-it-works, public/marketing/visuals, lib/marketing/copy | None | 2026-07-25 |
+| brand-sheet-align | done | auto | main | Applied brand sheet: geometric F mark (SVG), lockups/icons, UI rule + brand-rules sync. Palette/type already matched. | public/brand, lib/design/logo-mark.tsx, components/brand/Logo.tsx, scripts/generate-brand-icons.mjs, .cursor/rules/fixflags-ui.mdc | None | 2026-07-25 |
+| brand-refresh-hiw-hero | done | auto | main | /how-it-works AI Gap hero re-implemented to match mockup: clean stack asset, layout proportions, annotation leaders, feature strip. | components/marketing/how-it-works, public/marketing/visuals | None | 2026-07-25 |
 | current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---

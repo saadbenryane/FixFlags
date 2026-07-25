@@ -8,7 +8,7 @@ Source: FixFlags brand guidelines. Reference assets in `public/brand/`.
 - **One-liner:** FixFlags is the release readiness layer for AI-built products.
 - **Campaign line:** Finish what your AI started.
 - **Product loop:** Flag → Fix → Re-check.
-- **Mark:** Stylized geometric orange F (folded flag). Icon-left, wordmark-right lockup.
+- **Mark:** Official geometric folded-F from brand sheet raster (`public/brand/logo-mark.png`). Do not regenerate or invent SVG geometry. Icon-left, Inter Tight wordmark-right lockup via `components/brand/Logo.tsx`.
 - **Wordmark:** Inter Tight, title case `FixFlags`, Fix heavier than Flags, tracking ~-0.02em.
 
 ## Color palette

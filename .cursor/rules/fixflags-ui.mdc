@@ -6,7 +6,7 @@ alwaysApply: false
 
 # FixFlags UI
 
-Before editing UI, read `/AGENTS.md`, `.ui-craft/brief.md`, `lib/design/tokens.css`, and `DESIGN.md`.
+Before editing UI, read `/AGENTS.md`, `lib/design/brand-rules.md`, `lib/design/tokens.css`, and `DESIGN.md`.
 
 ## Stack
 
@@ -14,7 +14,7 @@ Tailwind + shadcn. Use semantic tokens (`bg-card`, `text-brand`, `shadow-card`, 
 
 ## Color
 
-60% paper (`background`, mesh canvas) · 30% ink (`foreground`, `primary`) · 10% brand orange (`brand`). One accent per surface. Dark mode: neutral gray canvas + subtle warm orbs (see `tokens.css` `.dark`).
+60% canvas (`background` white / dark ink) · 30% structure (`foreground`, stone `card`/`muted`) · 10% brand orange (`brand`). One accent per surface. Product primary CTAs = ink on light; marketing accent CTAs = `variant="brand"`; dark-mode primary CTAs = orange.
 
 ## Depth
 
@@ -22,7 +22,7 @@ Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/3
 
 ## Type
 
-`font-sans` body · `font-serif`/`font-display` (Inter Tight) for marketing headlines only · `font-mono` + `section-label` for uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never serif on dense report UI.
+`font-sans` (Inter) body · `font-display` / `font-serif` (Inter Tight) for marketing headlines and wordmark · `font-mono` (JetBrains Mono) for scores, grades, uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never display weight on dense report UI.
 
 ## Layout
 
@@ -34,12 +34,16 @@ Read `knowledge/report-contract.md`. `/report/[id]` is the focused three-item Fi
 
 ## Radius
 
-Concentric: inner = outer − padding. Cards/panels: `rounded-card` (~27px from `--radius-card`). Controls: `rounded-full` (pill).
+Concentric: inner = outer − padding. Controls/buttons/inputs: `rounded-[var(--radius-control)]` (~10px). Cards/panels: `rounded-card`. Filter chips / avatars / switches may stay fully round as geometric shapes.
+
+## Mark
+
+Official brand-sheet mark raster only (`/brand/logo-mark.png`). Do not invent SVG geometry or reintroduce the old 3D pennant.
 
 ## Anti-slop
 
-No icon grids, gradient heroes, colored trend pills, `transition: all`, or default blue/Inter stacks. Sentence case. Real product screenshots over illustrations.
+No icon grids, gradient heroes, colored trend pills, `transition: all`, or default blue stacks. Sentence case. Real product screenshots over illustrations.
 
 ## Polish
 
-`active:scale-[0.96]` on buttons · layered shadows · `prefers-reduced-motion` · focus rings on `--ring` · 44×44px min hit targets (`min-h-11 min-w-11`).
+`active:scale-[0.98]` on buttons · layered shadows · `prefers-reduced-motion` · focus rings on `--ring` · 44×44px min hit targets (`min-h-11 min-w-11`).
