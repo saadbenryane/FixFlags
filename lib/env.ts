@@ -36,6 +36,7 @@ const envSchema = z.object({
   BILLING_REQUIRED: z.enum(['true', 'false']).optional(),
   DEV_SIMULATE_BILLING: z.enum(['true', 'false']).optional(),
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: z.enum(['true', 'false']).optional(),
+  FIXFLAGS_PROCESS_ROLE: z.enum(['web', 'worker']).optional(),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
@@ -56,9 +57,6 @@ const envSchema = z.object({
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
   AUDIT_WORKER_CONCURRENCY: z.string().optional(),
-  // Run the audit worker in-process with the web server (default). Set to
-  // 'false' on the web service when running dedicated worker services.
-  INLINE_WORKER: z.enum(['true', 'false']).optional(),
   // Ad-platform conversion tracking (Workstream D). All optional; each feature
   // is gated on presence, mirroring NEXT_PUBLIC_GA_ID.
   NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),

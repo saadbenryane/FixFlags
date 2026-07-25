@@ -2,14 +2,9 @@ import { getAuditQueue } from '@/lib/queue/client'
 
 function parseWorkerConcurrency(): number {
   const raw = process.env.AUDIT_WORKER_CONCURRENCY
-  if (!raw) {
-    // When running as inline worker (default), use lower concurrency to avoid
-    // starving the web server's event loop with concurrent Playwright instances.
-    const isInline = process.env.INLINE_WORKER !== 'false'
-    return isInline ? 2 : 5
-  }
+  if (!raw) return process.env.NODE_ENV === 'production' ? 2 : 1
   const parsed = Number.parseInt(raw, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
 }
 
 export const WORKER_CONCURRENCY = parseWorkerConcurrency()

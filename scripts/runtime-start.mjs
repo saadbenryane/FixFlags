@@ -27,7 +27,14 @@ if (!existsSync(entry)) {
   process.exit(1)
 }
 
-const child = spawn(process.execPath, [entry], { stdio: 'inherit', env: process.env })
+const childEnv = {
+  ...process.env,
+  FIXFLAGS_PROCESS_ROLE: mode,
+  ...(mode === 'worker' && !process.env.AUDIT_WORKER_CONCURRENCY
+    ? { AUDIT_WORKER_CONCURRENCY: '2' }
+    : {}),
+}
+const child = spawn(process.execPath, [entry], { stdio: 'inherit', env: childEnv })
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => child.kill(signal))
 }

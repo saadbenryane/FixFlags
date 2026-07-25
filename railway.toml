@@ -10,17 +10,7 @@ restartPolicyMaxRetries = 3
 
 [deploy.env]
 HOSTNAME = "0.0.0.0"
+FIXFLAGS_PROCESS_ROLE = "web"
 
-# This single web service works on its own: by default it also runs the audit
-# worker in-process (INLINE_WORKER defaults on) and a self-hosted recovery
-# scheduler; no separate worker or external cron is required.
-#
-# To scale scanning independently:
-#   1. Set INLINE_WORKER=false on this web service.
-#   2. Deploy one or more dedicated worker services from railway.worker.toml
-#      (same env: DATABASE_URL, REDIS_URL, and optionally an AI key).
-# Workers all consume the same Redis queue; recovery runs in whichever workers
-# are alive (Redis-lock-guarded), so it scales to any number of workers.
-#
-# On a small single-service instance, keep concurrency modest, e.g.
-# AUDIT_WORKER_CONCURRENCY=2.
+# The web service only serves HTTP and enqueues scans. A separate service using
+# railway.worker.toml is required to process the audit queue.
