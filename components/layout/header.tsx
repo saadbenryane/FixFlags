@@ -8,6 +8,7 @@ import {
   NAV_LINK_ACTIVE,
   NAV_LINK_BASE,
   NAV_LINK_INACTIVE,
+  NAV_LINK_MARKETING,
   NAV_LINK_MOBILE_ACTIVE,
   NAV_LINK_MOBILE_BASE,
 } from '@/lib/site/nav-styles'
@@ -80,7 +81,8 @@ export function Header({
       <Container>
         <div
           className={cn(
-            'grid h-14 items-center gap-3',
+            'grid items-center gap-3',
+            isMarketing ? 'h-[3.75rem] pt-0.5' : 'h-14',
             !showNavigation
               ? 'grid-cols-[1fr_auto]'
               : isMarketing
@@ -89,7 +91,7 @@ export function Header({
                 : 'grid-cols-[auto_1fr_auto]'
           )}
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <div className={cn('flex min-w-0 items-center gap-3', isMarketing && 'translate-y-px')}>
             <span className="sm:hidden">
               <Logo
                 variant="lockup"
@@ -114,15 +116,15 @@ export function Header({
           {showNavigation ? (
             <nav
               className={cn(
-                'items-center gap-0.5',
-                isMarketing ? 'hidden justify-center lg:flex' : 'hidden md:flex'
+                'items-center',
+                isMarketing ? 'hidden justify-center gap-0 lg:flex' : 'hidden gap-0.5 md:flex'
               )}
             >
               {navLinks.map((link) => (
                 <NavLink
                   key={link.href}
                   href={link.href}
-                  className={NAV_LINK_BASE}
+                  className={isMarketing ? NAV_LINK_MARKETING : NAV_LINK_BASE}
                   activeClassName={NAV_LINK_ACTIVE}
                   inactiveClassName={NAV_LINK_INACTIVE}
                 >

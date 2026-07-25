@@ -7,7 +7,7 @@ describe('marketing nav labels', () => {
     assert.deepEqual(
       MARKETING_LINKS.map((link) => [link.label, link.href]),
       [
-        ['How it works', '/how-it-works'],
+        ['Product', '/how-it-works'],
         ['Examples', '/samples'],
         ['Pricing', '/pricing'],
         ['Docs', '/help'],

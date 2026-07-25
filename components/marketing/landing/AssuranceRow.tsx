@@ -17,7 +17,7 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
   return (
     <ul
       className={cn(
-        'flex flex-col gap-2.5 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-0',
+        'flex flex-col gap-2 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-0',
         className
       )}
     >
@@ -26,20 +26,20 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
         return (
           <li
             key={item.id}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] text-muted-foreground sm:gap-2 sm:text-[0.8125rem] lg:text-sm"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] text-foreground/70 sm:gap-2 lg:text-sm"
           >
             {index > 0 ? (
               <span
                 aria-hidden
-                className="mx-2.5 hidden h-3.5 w-px shrink-0 bg-border sm:mx-3 sm:inline-block"
+                className="mx-2.5 hidden h-3.5 w-px shrink-0 bg-border/80 sm:mx-3 sm:inline-block"
               />
             ) : null}
             <Icon
-              className="h-3.5 w-3.5 shrink-0 text-foreground/55"
+              className="h-3.5 w-3.5 shrink-0 self-center text-foreground/60"
               strokeWidth={1.75}
               aria-hidden
             />
-            <span>{item.label}</span>
+            <span className="leading-none">{item.label}</span>
           </li>
         )
       })}

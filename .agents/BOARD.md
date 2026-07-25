@@ -12,7 +12,9 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| hero-design-pass | auto | Hero denser layout, Product nav, illustration/input polish | 2026-07-25 |
 | homepage-conversion-closeout | auto | Product-true homepage sample mock, hero WebP, docs sync, verify | 2026-07-25 |
+| hero-design-match | auto | Homepage hero visual match to mockup composition/glass/input/logos | 2026-07-25 |
 | hero-sample-mockup-match | auto | Homepage hero + sample mock to mockups (interim; honesty closeout follows) | 2026-07-25 |
 | homepage-completeness-pass | auto | Homepage completeness: shared chrome, a11y tabs, mobile workflow, copy cleanup, footer dedupe, visual QA. | 2026-07-25 |
 | homepage-redesign-mockups | auto | Homepage post-hero redesign to mockups | 2026-07-25 |
