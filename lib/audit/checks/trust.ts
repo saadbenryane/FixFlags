@@ -50,7 +50,7 @@ export function runTrustChecks(
     })
   }
 
-  if (meta.hasAnalytics && !meta.hasCookieConsent) {
+  if (meta.hasCookieBasedAnalytics && !meta.hasCookieConsent) {
     findings.push({
       checkId: 'cookie-consent-absent',
       rubric: 'REACH',

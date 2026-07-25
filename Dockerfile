@@ -12,8 +12,7 @@ RUN apt-get update \
 
 # Install deps first (layer cache: only re-runs when lockfile changes).
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --include=dev
+RUN npm ci --include=dev
 
 COPY . .
 

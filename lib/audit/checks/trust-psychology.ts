@@ -141,7 +141,11 @@ export function runTrustPsychologyChecks(
   // "No direct contact" is gated to product/marketing pages. Documentation,
   // articles, placeholder, and OSS pages do not need a sales/support contact
   // path, and flagging them here would dominate the top-3 on every docs page.
-  if (productPage && !hasContactLink && !hasPhone && emailCount === 0) {
+  // hasContactInfo is derived from the full HTML string (including JSON-LD
+  // structured data) and catches contact info that pageText (with scripts
+  // stripped) misses. Without this fallback, structured-data emails like
+  // "saad@saadbenryane.com" produce false positives on personal/portfolio sites.
+  if (productPage && !hasContactLink && !hasPhone && emailCount === 0 && !meta.hasContactInfo) {
     findings.push({
       checkId: 'trust-no-direct-contact',
       rubric: 'REACH',

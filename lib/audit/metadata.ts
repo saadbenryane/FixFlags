@@ -27,6 +27,10 @@ export interface PageMetadata {
   hasStructuredData: boolean
   structuredDataTypes: string[]
   hasAnalytics: boolean
+  /** True when analytics providers that use cookies are detected. Excludes
+   *  cookie-less providers (Cloudflare Web Analytics, Plausible, Fathom, etc.)
+   *  so the cookie-consent-absent check does not fire on privacy-friendly analytics. */
+  hasCookieBasedAnalytics: boolean
   hasCookieConsent: boolean
   hasPrivacyPolicy: boolean
   hasContactInfo: boolean
@@ -321,6 +325,41 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     htmlStr.includes('growthbook')
   )
 
+  // Cookie-less analytics providers that do NOT set cookies and therefore do
+  // not require a cookie consent banner. This list is intentionally narrow:
+  // when in doubt, treat a provider as cookie-based.
+  const hasCookieBasedAnalytics = hasAnalytics && !!(
+    htmlStr.includes('google-analytics') ||
+    htmlStr.includes('googletagmanager') ||
+    htmlStr.includes('gtag(') ||
+    htmlStr.includes('gtag/js') ||
+    htmlStr.includes('segment.com') ||
+    htmlStr.includes('segment.io') ||
+    htmlStr.includes('cdn.segment') ||
+    htmlStr.includes('mixpanel') ||
+    htmlStr.includes('amplitude') ||
+    htmlStr.includes('hotjar') ||
+    htmlStr.includes('hubspot') ||
+    htmlStr.includes('fbq(') ||
+    htmlStr.includes('snaptr.com') ||
+    htmlStr.includes('static.ads-twitter.com') ||
+    htmlStr.includes('bat.bing.com') ||
+    htmlStr.includes('matomo') ||
+    htmlStr.includes('heap-analytics') ||
+    htmlStr.includes('fullstory.com') ||
+    htmlStr.includes('cdn.heapanalytics.com') ||
+    htmlStr.includes('clarity.ms') ||
+    htmlStr.includes('pendo') ||
+    htmlStr.includes('datadog') ||
+    htmlStr.includes('newrelic') ||
+    htmlStr.includes('nr-data.net') ||
+    htmlStr.includes('june.so') ||
+    htmlStr.includes('rudderstack') ||
+    htmlStr.includes('rudderlabs') ||
+    htmlStr.includes('statsig') ||
+    htmlStr.includes('growthbook')
+  )
+
   // Cookie consent
   const hasCookieConsent = !!(
     htmlStr.includes('cookie') &&
@@ -443,6 +482,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
       .map((d: unknown) => (d as Record<string, unknown>)['@type'] as string)
       .filter(Boolean),
     hasAnalytics,
+    hasCookieBasedAnalytics,
     hasCookieConsent,
     hasPrivacyPolicy,
     hasContactInfo,

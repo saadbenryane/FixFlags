@@ -428,7 +428,7 @@ describe('runTrustChecks', () => {
       checkIds(
         runTrustChecks(
           'https://example.com',
-          healthyMeta({ hasAnalytics: true, hasCookieConsent: false }),
+          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false }),
           []
         )
       ).includes('cookie-consent-absent')
@@ -1311,7 +1311,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(
         runTrustChecks(
           'https://example.com',
-          healthyMeta({ hasAnalytics: true, hasCookieConsent: false }),
+          healthyMeta({ hasAnalytics: true, hasCookieBasedAnalytics: true, hasCookieConsent: false }),
           []
         )
       ),

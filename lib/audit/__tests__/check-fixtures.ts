@@ -34,6 +34,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     hasStructuredData: true,
     structuredDataTypes: ['WebSite'],
     hasAnalytics: true,
+    hasCookieBasedAnalytics: true,
     hasCookieConsent: true,
     hasPrivacyPolicy: true,
     hasContactInfo: true,
