@@ -10,6 +10,7 @@ interface RevealOnViewProps {
   delayMs?: number
 }
 
+/** Reveal on scroll; falls back to visible within 300ms so content never stays hidden. */
 export function RevealOnView({ children, className, delayMs = 0 }: RevealOnViewProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -18,23 +19,33 @@ export function RevealOnView({ children, className, delayMs = 0 }: RevealOnViewP
     const node = ref.current
     if (!node) return
 
-    if (!('IntersectionObserver' in window)) {
+    let done = false
+    let observer: IntersectionObserver | null = null
+    const show = () => {
+      if (done) return
+      done = true
       setVisible(true)
-      return
+      observer?.disconnect()
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: '0px 0px -12% 0px', threshold: 0.18 }
-    )
+    const fallbackId = window.setTimeout(show, 300)
 
-    observer.observe(node)
-    return () => observer.disconnect()
+    if (typeof IntersectionObserver === 'undefined') {
+      show()
+    } else {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) show()
+        },
+        { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }
+      )
+      observer.observe(node)
+    }
+
+    return () => {
+      window.clearTimeout(fallbackId)
+      observer?.disconnect()
+    }
   }, [])
 
   return (

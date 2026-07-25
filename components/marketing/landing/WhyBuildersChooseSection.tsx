@@ -5,6 +5,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -18,7 +19,7 @@ const FEATURE_ICONS = {
   refresh: RefreshCw,
 } as const
 
-export function WhyAiNeedsFixFlagsSection() {
+export function WhyBuildersChooseSection() {
   const copy = LANDING_PAGE.whyBuildersChoose
 
   return (
@@ -29,23 +30,13 @@ export function WhyAiNeedsFixFlagsSection() {
     >
       <Container className="space-y-8 sm:space-y-10">
         <RevealOnView>
-          <div className="mx-auto max-w-3xl space-y-3 text-center">
-            <p className="inline-flex items-center justify-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-              {copy.label}
-            </p>
-            <h2 className="font-display text-2xl font-semibold leading-display tracking-display text-balance sm:text-[1.75rem] md:text-[2rem]">
-              {copy.headlineDisplay}
-              {copy.headlineAccentPeriod ? (
-                <span className="text-brand" aria-hidden>
-                  .
-                </span>
-              ) : null}
-            </h2>
-            <p className="mx-auto max-w-xl text-base leading-relaxed text-muted-foreground text-pretty">
-              {copy.subhead}
-            </p>
-          </div>
+          <LandingSectionHeader
+            label={copy.label}
+            brandEyebrow
+            headline={copy.headlineDisplay}
+            accentPeriod={copy.headlineAccentPeriod}
+            subhead={copy.subhead}
+          />
         </RevealOnView>
 
         <RevealOnView>

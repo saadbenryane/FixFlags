@@ -5,7 +5,7 @@ import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFi
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
 import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
-import { WhyAiNeedsFixFlagsSection } from '@/components/marketing/landing/WhyAiNeedsFixFlagsSection'
+import { WhyBuildersChooseSection } from '@/components/marketing/landing/WhyBuildersChooseSection'
 import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -22,7 +22,7 @@ export default async function HomePage() {
       <SampleReportSection audit={sample.audit} />
       <HowItWorksLoopSection sampleHref="/samples" />
       <CheckDimensionsSection />
-      <WhyAiNeedsFixFlagsSection />
+      <WhyBuildersChooseSection />
       <EditorIntegrationsSection />
       <LandingFinalCtaSection />
     </>

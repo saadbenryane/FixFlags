@@ -230,7 +230,7 @@ describe('homepage message guardrails', () => {
     assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
     assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
-    assert.match(LANDING_PAGE.howItWorks.sampleLink, /sample review/i)
+    assert.equal(LANDING_PAGE.howItWorks.sampleLink, LANDING_PAGE.sampleReport.cta)
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
   })
 
@@ -283,6 +283,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('why builders and editor integrations sections exist', () => {
+    assert.ok(!('whyAiNeedsFixFlags' in LANDING_PAGE))
     assert.match(LANDING_PAGE.whyBuildersChoose.headlineDisplay, /more than a score/i)
     assert.equal(LANDING_PAGE.whyBuildersChoose.features.length, 5)
     assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)

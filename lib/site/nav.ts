@@ -21,7 +21,6 @@ export const FOOTER_COLUMNS = {
     { href: '/help/mcp', label: 'MCP guide' },
     { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
-    { href: '/samples', label: 'Sample report' },
     { href: '/blog', label: 'Blog' },
   ],
   company: [

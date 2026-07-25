@@ -1,9 +1,10 @@
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { Lock, ShieldCheck, Zap } from 'lucide-react'
+import { AssuranceRow } from '@/components/marketing/landing/AssuranceRow'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { FINAL_CTA, HERO } from '@/lib/marketing/copy'
+import { FINAL_CTA } from '@/lib/marketing/copy'
 
 const AuditInput = dynamic(
   () => import('@/components/audit/AuditInput').then((m) => m.AuditInput),
@@ -17,12 +18,6 @@ const AuditInput = dynamic(
     ),
   }
 )
-
-const ASSURANCE_ICONS = {
-  shield: ShieldCheck,
-  lock: Lock,
-  zap: Zap,
-} as const
 
 export function LandingFinalCtaSection() {
   return (
@@ -41,19 +36,13 @@ export function LandingFinalCtaSection() {
                   className="h-9 w-9 object-contain"
                 />
               </div>
-              <div className="space-y-2.5">
-                <h2 className="font-display text-2xl font-semibold leading-display tracking-display text-balance sm:text-[1.75rem] md:text-[2rem]">
-                  {FINAL_CTA.headlineDisplay}
-                  {FINAL_CTA.headlineAccentPeriod ? (
-                    <span className="text-brand" aria-hidden>
-                      .
-                    </span>
-                  ) : null}
-                </h2>
-                <p className="max-w-md text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-                  {FINAL_CTA.body}
-                </p>
-              </div>
+              <LandingSectionHeader
+                align="left"
+                headline={FINAL_CTA.headlineDisplay}
+                accentPeriod={FINAL_CTA.headlineAccentPeriod}
+                subhead={FINAL_CTA.body}
+                className="max-w-md space-y-2.5"
+              />
             </div>
 
             <div className="space-y-4">
@@ -63,30 +52,7 @@ export function LandingFinalCtaSection() {
                 ctaPlacement="final"
                 showLandingExtras={false}
               />
-              <ul className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-0">
-                {HERO.assurances.map((item, index) => {
-                  const Icon = ASSURANCE_ICONS[item.icon]
-                  return (
-                    <li
-                      key={item.id}
-                      className="inline-flex items-center gap-2 text-[0.8125rem] text-muted-foreground sm:text-sm"
-                    >
-                      {index > 0 ? (
-                        <span
-                          aria-hidden
-                          className="mx-3 hidden h-3.5 w-px shrink-0 bg-border sm:inline-block"
-                        />
-                      ) : null}
-                      <Icon
-                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
-                      <span>{item.label}</span>
-                    </li>
-                  )
-                })}
-              </ul>
+              <AssuranceRow />
             </div>
           </div>
         </div>

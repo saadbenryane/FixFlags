@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Lock, ShieldCheck, Zap } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { AssuranceRow } from '@/components/marketing/landing/AssuranceRow'
 import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
@@ -9,25 +10,18 @@ import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
 
-/** Official glass hero: black-matte unmated to RGBA so mesh shows through (no white plate / black fringe). */
+/** Official glass hero (RGBA). Cropped transparent padding only — no re-key/resample. */
 const HERO_GLASS = {
-  src: '/marketing/visuals/home-hero-glass.webp',
-  width: 581,
-  height: 546,
-} as const
-
-const ASSURANCE_ICONS = {
-  shield: ShieldCheck,
-  lock: Lock,
-  zap: Zap,
+  src: '/marketing/visuals/home-hero-glass.png',
+  width: 901,
+  height: 790,
 } as const
 
 export function LandingHeroSection() {
   return (
     <Section spacing="marketing" className="overflow-hidden pb-10 sm:pb-12 lg:pb-14">
       <Container variant="wide" className="space-y-12 lg:space-y-14">
-        <div className="grid items-center gap-10 md:gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-6 xl:gap-10">
-          {/* Copy column */}
+        <div className="grid items-center gap-10 md:gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-4 xl:gap-8">
           <div className="order-1 flex max-w-xl flex-col gap-5 sm:gap-6 lg:max-w-[34rem] xl:max-w-[36rem]">
             <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
@@ -63,31 +57,7 @@ export function LandingHeroSection() {
               />
             </div>
 
-            {/* Assurances: stacked on mobile, divided row on sm+ */}
-            <ul className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-0">
-              {HERO.assurances.map((item, index) => {
-                const Icon = ASSURANCE_ICONS[item.icon]
-                return (
-                  <li
-                    key={item.id}
-                    className="inline-flex items-center gap-2 text-[0.8125rem] text-muted-foreground sm:text-sm"
-                  >
-                    {index > 0 ? (
-                      <span
-                        aria-hidden
-                        className="mx-3 hidden h-3.5 w-px shrink-0 bg-border sm:inline-block"
-                      />
-                    ) : null}
-                    <Icon
-                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                    <span>{item.label}</span>
-                  </li>
-                )
-              })}
-            </ul>
+            <AssuranceRow />
 
             <div className="pt-0.5">
               <Button
@@ -105,10 +75,10 @@ export function LandingHeroSection() {
             </div>
           </div>
 
-          {/* Illustration: below copy on mobile, right on desktop */}
-          <div className="order-2 mx-auto w-full max-w-[22rem] sm:max-w-[26rem] lg:mx-0 lg:max-w-none lg:justify-self-end">
+          {/* Illustration: denser after alpha crop; larger optical size, right-weighted on desktop */}
+          <div className="order-2 mx-auto w-full max-w-[24rem] sm:max-w-[28rem] lg:mx-0 lg:max-w-none lg:justify-self-end lg:pl-2 xl:pl-0">
             <div
-              className="relative w-full"
+              className="relative mx-auto w-full lg:mx-0 lg:ml-auto lg:w-[min(100%,36rem)] xl:w-[min(100%,40rem)]"
               style={{ aspectRatio: `${HERO_GLASS.width} / ${HERO_GLASS.height}` }}
             >
               <Image
@@ -118,7 +88,7 @@ export function LandingHeroSection() {
                 height={HERO_GLASS.height}
                 priority
                 unoptimized
-                sizes="(min-width: 1024px) 42vw, (min-width: 640px) 26rem, 22rem"
+                sizes="(min-width: 1280px) 40rem, (min-width: 1024px) 36rem, (min-width: 640px) 28rem, 24rem"
                 className="h-full w-full select-none object-contain object-center lg:object-right"
                 draggable={false}
               />

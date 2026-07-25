@@ -9,6 +9,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -41,23 +42,16 @@ export function EditorIntegrationsSection() {
           <div className="overflow-hidden rounded-card bg-background p-6 shadow-card sm:p-8 lg:p-10">
             <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12">
               <div className="space-y-6">
-                <div className="space-y-3">
-                  <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-                    {copy.label}
-                  </p>
-                  <h2 className="font-display text-2xl font-semibold leading-display tracking-display text-balance sm:text-[1.75rem]">
-                    {copy.headlineDisplay}
-                    {copy.headlineAccentPeriod ? (
-                      <span className="text-brand" aria-hidden>
-                        .
-                      </span>
-                    ) : null}
-                  </h2>
-                  <p className="max-w-md text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-                    {copy.body}
-                  </p>
-                </div>
+                <LandingSectionHeader
+                  align="left"
+                  label={copy.label}
+                  brandEyebrow
+                  headline={copy.headlineDisplay}
+                  accentPeriod={copy.headlineAccentPeriod}
+                  subhead={copy.body}
+                  className="max-w-md"
+                  headlineClassName="sm:text-[1.75rem]"
+                />
 
                 <EditorToolMarks
                   showLabel={false}
@@ -82,9 +76,9 @@ function WorkflowDiagram() {
   return (
     <div
       aria-hidden
-      className="relative mx-auto flex w-full max-w-lg items-center justify-center gap-3 sm:gap-5"
+      className="relative mx-auto flex w-full max-w-lg flex-col items-center gap-5 sm:gap-6 md:flex-row md:items-center md:justify-center md:gap-5"
     >
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
         {inputs.map((item) => {
           const Icon = INPUT_ICONS[item.icon]
           return (
@@ -100,8 +94,8 @@ function WorkflowDiagram() {
       </ul>
 
       <div className="relative flex flex-col items-center">
-        <div className="absolute inset-y-6 -left-3 w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent sm:-left-4" />
-        <div className="absolute inset-y-8 -right-3 w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent sm:-right-4" />
+        <div className="absolute inset-y-6 -left-3 hidden w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent md:block md:-left-4" />
+        <div className="absolute inset-y-8 -right-3 hidden w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent md:block md:-right-4" />
         <div className="relative flex h-28 w-28 items-center justify-center rounded-[1.25rem] bg-gradient-to-b from-muted to-muted/40 shadow-card ring-1 ring-border/50 sm:h-32 sm:w-32">
           <div className="absolute inset-2 rounded-[1rem] bg-background/70 backdrop-blur-[2px]" />
           <Image
@@ -116,7 +110,7 @@ function WorkflowDiagram() {
         <div className="mt-3 h-3 w-24 rounded-sm bg-muted shadow-inner sm:w-28" />
       </div>
 
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
         {outputs.map((item) => {
           const Icon = OUTPUT_ICONS[item.icon]
           return (

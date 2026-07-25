@@ -4,19 +4,18 @@ import {
   ChevronRight,
   Crosshair,
   Lock,
-  MessageSquare,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from 'lucide-react'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { RUBRIC_ICONS } from '@/components/marketing/landing/rubric-icons'
 import {
   SampleSectionCta,
   SampleViewTracker,
 } from '@/components/marketing/landing/SampleFunnelEvents'
 import { Container } from '@/components/ui/container'
-import { Heading } from '@/components/ui/typography'
 import { Section } from '@/components/ui/section'
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
@@ -40,12 +39,6 @@ const HeroProductPreview = dynamic(
     ),
   }
 )
-
-const RUBRIC_ICONS = {
-  message: MessageSquare,
-  experience: Sparkles,
-  reach: Crosshair,
-} as const
 
 const TRUST_ICONS = {
   zap: Zap,
@@ -82,25 +75,17 @@ export function SampleReportSection({ audit, illustrative = false }: SampleRepor
       <Container className="space-y-10 sm:space-y-12">
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.15fr)] lg:gap-12 xl:gap-14">
           <RevealOnView className="space-y-6 sm:space-y-7">
-            <div className="space-y-3.5">
-              <Heading
-                as="h2"
-                className="max-w-[16ch] text-[1.75rem] sm:text-[2rem] md:text-[2.25rem]"
-              >
-                {copy.headlineDisplay}
-                {copy.headlineAccentPeriod ? (
-                  <span className="text-brand" aria-hidden>
-                    .
-                  </span>
-                ) : null}
-              </Heading>
-              <p className="max-w-md text-base leading-relaxed text-muted-foreground text-pretty">
-                {copy.body}
-              </p>
-              {illustrative ? (
-                <p className="section-label">{copy.illustrativeLabel}</p>
-              ) : null}
-            </div>
+            <LandingSectionHeader
+              align="left"
+              headline={copy.headlineDisplay}
+              accentPeriod={copy.headlineAccentPeriod}
+              subhead={copy.body}
+              headlineClassName="max-w-[16ch] text-[1.75rem] sm:text-[2rem] md:text-[2.25rem]"
+              className="max-w-md space-y-3.5"
+            />
+            {illustrative && copy.illustrativeLabel ? (
+              <p className="section-label">{copy.illustrativeLabel}</p>
+            ) : null}
 
             <ul className="divide-y divide-border/60 border-y border-border/60">
               {copy.rubricRows.map((row) => {
@@ -150,14 +135,8 @@ export function SampleReportSection({ audit, illustrative = false }: SampleRepor
               {copy.trustLabel}
             </p>
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:gap-3">
-              <TrustChip
-                icon={ShieldCheck}
-                label={copy.checksLabel(CHECK_ID_COUNT)}
-              />
-              <TrustChip
-                icon={Crosshair}
-                label={copy.issuesLabel(flagCount)}
-              />
+              <TrustChip icon={ShieldCheck} label={copy.checksLabel(CHECK_ID_COUNT)} />
+              <TrustChip icon={Crosshair} label={copy.issuesLabel(flagCount)} />
               {copy.trustChips.map((chip) => {
                 const Icon = TRUST_ICONS[chip.icon]
                 return <TrustChip key={chip.id} icon={Icon} label={chip.label} />

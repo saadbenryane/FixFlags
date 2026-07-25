@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { HowItWorksSampleLink } from '@/components/marketing/landing/SampleFunnelEvents'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
@@ -141,21 +142,13 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
       className="relative scroll-mt-[var(--header-offset)] overflow-hidden"
     >
       <Container className="relative space-y-5 sm:space-y-7">
-        <div className="mx-auto max-w-3xl space-y-3 text-center">
-          <p className="inline-flex items-center justify-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-            {label}
-          </p>
-          <h2 className="font-display text-2xl font-semibold leading-display tracking-display text-balance sm:text-[1.75rem] md:text-[2rem]">
-            {headlineDisplay}
-            {headlineAccentPeriod ? (
-              <span className="text-brand" aria-hidden>
-                .
-              </span>
-            ) : null}
-          </h2>
-          <p className="text-base leading-relaxed text-muted-foreground text-pretty">{subhead}</p>
-        </div>
+        <LandingSectionHeader
+          label={label}
+          brandEyebrow
+          headline={headlineDisplay}
+          accentPeriod={headlineAccentPeriod}
+          subhead={subhead}
+        />
 
         <RevealOnView>
           <div className="overflow-hidden rounded-card glass-surface-elevated shadow-card">

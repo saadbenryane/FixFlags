@@ -23,8 +23,8 @@ Black outlines and white plates make brand art look broken. Users notice immedia
 1. Prefer art already rendered on the destination canvas (white mockup crop) when available.
 2. For black plates on mesh/light pages: flood-fill bg, unmate, despill edges, ship **RGBA** so the backdrop shows through. No dark RGB on partial alpha.
 3. For solid white pages only: opaque bake onto `#FFFFFF` after the same unmate/despill is also fine.
-4. Do not tight-trim into anti-aliased edges. Pad, then crop.
-5. If a true RGBA master exists, preserve its alpha; do not re-key or “improve” edges.
+4. Do not tight-trim into anti-aliased edges. Pad (~24–32px), then lossless crop only (no rescale/re-key). Verify pixel identity vs master extract.
+5. If a true RGBA master exists, preserve its alpha; do not re-key or “improve” edges. Keep the full master under `docs/brand/reference/`.
 
 ## Prevention
 

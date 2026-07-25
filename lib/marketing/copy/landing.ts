@@ -67,9 +67,6 @@ export const DIFFERENTIATION = {
 export const FINAL_CTA = {
   headlineDisplay: 'Ready to see what\u2019s blocking your release?',
   headlineAccentPeriod: true,
-  /** @deprecated Prefer headlineDisplay + accent period. */
-  headline: 'Ready to see what\u2019s blocking your release?',
-  headlineAccent: 'Review my site',
   body: 'Free check. Paste your site or app URL and get your FixFlags report.',
 } as const
 
@@ -270,7 +267,7 @@ export const LANDING_PAGE = {
           { title: 'Hero value is unclear', severity: 'High' },
           { title: 'CTA stays vague', severity: 'Medium' },
           { title: 'Audience never named', severity: 'Medium' },
-          { title: 'Outcome buried below the fold', severity: 'Good' },
+          { title: 'Outcome buried below the fold', severity: 'Medium' },
         ] as const,
       },
       {
@@ -360,7 +357,7 @@ export const LANDING_PAGE = {
     headline: 'Three steps. Then re-check.',
     subhead:
       'Paste a URL. Get Flags. Copy fixes into your editor. Re-check to prove it landed.',
-    sampleLink: 'View full sample review',
+    sampleLink: 'Explore a full report',
     steps: [
       {
         step: 1,
@@ -425,19 +422,6 @@ export const LANDING_PAGE = {
         evidence:
           'Shared links show blank preview cards on Slack, X, and WhatsApp.',
       },
-    ] as const,
-  },
-  whyAiNeedsFixFlags: {
-    /** @deprecated Prefer whyBuildersChoose. Kept for older references. */
-    headline: 'More than a score. Everything you need to ship.',
-    lead: 'FixFlags turns complex quality signals into clear guidance so you can ship product your users love.',
-    body: 'Clear findings, actionable fixes, evidence, and re-check in one loop.',
-    checks: [
-      'Clear findings',
-      'Actionable fixes',
-      'Prioritized by impact',
-      'Evidence you trust',
-      'Re-check and improve',
     ] as const,
   },
   whyBuildersChoose: {
