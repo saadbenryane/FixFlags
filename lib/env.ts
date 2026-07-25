@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { validateAuthEnv } from '@/lib/auth/env'
 import { validateStripeBillingEnv } from '@/lib/billing/config'
+import { logger } from '@/lib/logger'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -161,7 +162,7 @@ export function validateWorkerEnv(): void {
     if (process.env.NODE_ENV === 'production' && !localDegraded) {
       throw new Error(message)
     } else {
-      console.warn(message)
+      logger.warn(message)
     }
   }
   if (!process.env.PAGESPEED_API_KEY) {
@@ -172,7 +173,7 @@ export function validateWorkerEnv(): void {
     if (process.env.NODE_ENV === 'production' && !localDegraded) {
       throw new Error(message)
     } else {
-      console.warn(message)
+      logger.warn(message)
     }
   }
   if (process.env.NODE_ENV === 'production' && !localDegraded) {
@@ -198,7 +199,7 @@ export function validateProductionEnv(): void {
   getEnv()
   validateWorkerEnv()
   if (isExplicitLocalDegradedMode()) {
-    console.warn('[env] Explicit localhost degraded mode enabled; launch readiness remains unavailable.')
+    logger.warn('[env] Explicit localhost degraded mode enabled; launch readiness remains unavailable.')
     return
   }
   validateAuthEnv()

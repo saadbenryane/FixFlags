@@ -70,6 +70,7 @@ COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 8080
 ENV PORT=8080
+ENV HOSTNAME=0.0.0.0
 
 # Run migrations then start the self-contained server without a shell wrapper.
 CMD ["node", "scripts/runtime-start.mjs", "web"]

@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 const WEAK_AUTH_SECRETS = new Set([
   'generate-a-random-32-char-secret',
   'changeme',
@@ -66,21 +68,21 @@ export function validateAuthEnv(): void {
       throw new Error('BETTER_AUTH_URL must use https in production')
     }
   } else if (secret && (secret.length < 32 || WEAK_AUTH_SECRETS.has(secret))) {
-    console.warn(
+    logger.warn(
       '[auth] BETTER_AUTH_SECRET is weak or a placeholder. Generate one with: openssl rand -hex 32'
     )
   }
 
   if (process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_SECRET) {
-    console.warn('[auth] GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is missing - Google SSO disabled')
+    logger.warn('[auth] GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is missing - Google SSO disabled')
   }
   if (process.env.GOOGLE_CLIENT_SECRET && !process.env.GOOGLE_CLIENT_ID) {
-    console.warn('[auth] GOOGLE_CLIENT_SECRET is set but GOOGLE_CLIENT_ID is missing - Google SSO disabled')
+    logger.warn('[auth] GOOGLE_CLIENT_SECRET is set but GOOGLE_CLIENT_ID is missing - Google SSO disabled')
   }
   if (process.env.GITHUB_CLIENT_ID && !process.env.GITHUB_CLIENT_SECRET) {
-    console.warn('[auth] GITHUB_CLIENT_ID is set but GITHUB_CLIENT_SECRET is missing - GitHub SSO disabled')
+    logger.warn('[auth] GITHUB_CLIENT_ID is set but GITHUB_CLIENT_SECRET is missing - GitHub SSO disabled')
   }
   if (process.env.GITHUB_CLIENT_SECRET && !process.env.GITHUB_CLIENT_ID) {
-    console.warn('[auth] GITHUB_CLIENT_SECRET is set but GITHUB_CLIENT_ID is missing - GitHub SSO disabled')
+    logger.warn('[auth] GITHUB_CLIENT_SECRET is set but GITHUB_CLIENT_ID is missing - GitHub SSO disabled')
   }
 }

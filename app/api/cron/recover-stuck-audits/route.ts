@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server'
-import { timingSafeEqual } from 'crypto'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { verifyCronSecret } from '@/lib/api/cron-auth'
 import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
-
-function verifyCronSecret(authHeader: string | null): boolean {
-  const cronSecret = process.env.CRON_SECRET
-  if (!cronSecret || !authHeader) return false
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
-  if (token.length !== cronSecret.length) return false
-  return timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret))
-}
 
 // Optional manual/external trigger. The internal recovery scheduler
 // (lib/queue/recovery-scheduler.ts) runs the same sweep automatically inside

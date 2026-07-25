@@ -8,6 +8,9 @@ healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
+[deploy.env]
+HOSTNAME = "0.0.0.0"
+
 # This single web service works on its own: by default it also runs the audit
 # worker in-process (INLINE_WORKER defaults on) and a self-hosted recovery
 # scheduler; no separate worker or external cron is required.

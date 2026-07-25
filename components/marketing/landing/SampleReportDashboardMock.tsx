@@ -86,7 +86,7 @@ export function SampleReportDashboardMock({
             </p>
             <p className="mt-2 text-xs font-medium text-destructive">Needs attention</p>
             <p className="mt-3 inline-flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" strokeWidth={2} />
+              <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={2} />
               {checksLabel}
             </p>
           </div>
@@ -98,7 +98,7 @@ export function SampleReportDashboardMock({
                 <li key={row.name} className="flex items-center justify-between gap-2 text-xs">
                   <span className="font-medium text-foreground">{row.label}</span>
                   <span className="font-mono tabular-nums text-muted-foreground">
-                    {row.score == null ? '—' : row.score}
+                    {row.score == null ? '--' : row.score}
                   </span>
                 </li>
               ))}

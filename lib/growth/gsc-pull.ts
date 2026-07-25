@@ -2,7 +2,7 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GSC_PROPERTY = 'sc-domain:fixflags.com'
+const GSC_PROPERTY = process.env.GSC_PROPERTY ?? 'sc-domain:fixflags.com'
 
 interface GscRow {
   keys: string[]

@@ -82,30 +82,12 @@ type UnifiedPlanInput = {
   limit?: number
 }
 
-/** Shared ≤3 Finish Plan ranking for compatibility surfaces. */
-export async function buildUnifiedFinishPlan(input: UnifiedPlanInput): Promise<FinishPlan> {
-  return (await buildUnifiedPlanBundle(input)).finishPlan
-}
-
 /** Build canonical and compatibility views from one shared aggregated Flag set. */
 export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
   fixList: FixList
   finishPlan: FinishPlan
 }> {
-  const flags = await loadFinishPlanFlags({
-    userId: input.userId,
-    auditUrl: input.auditUrl,
-    flags: input.flags,
-  })
-  const planInput = {
-    flags,
-    rubricRows: input.rubricRows,
-    url: input.auditUrl,
-    contract: input.contract ?? null,
-    promptAccess: input.promptAccess,
-    demonstratedFlag: input.demonstratedFlag,
-    limit: input.limit,
-  }
+  const planInput = await buildPlanInput(input)
   return {
     fixList: buildFixList(planInput),
     finishPlan: buildFinishPlan(planInput),
@@ -114,5 +96,23 @@ export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
 
 /** Shared complete Fix List ranking including Agency repo findings. */
 export async function buildUnifiedFixList(input: UnifiedPlanInput): Promise<FixList> {
-  return (await buildUnifiedPlanBundle(input)).fixList
+  const planInput = await buildPlanInput(input)
+  return buildFixList(planInput)
+}
+
+async function buildPlanInput(input: UnifiedPlanInput) {
+  const flags = await loadFinishPlanFlags({
+    userId: input.userId,
+    auditUrl: input.auditUrl,
+    flags: input.flags,
+  })
+  return {
+    flags,
+    rubricRows: input.rubricRows,
+    url: input.auditUrl,
+    contract: input.contract ?? null,
+    promptAccess: input.promptAccess,
+    demonstratedFlag: input.demonstratedFlag,
+    limit: input.limit,
+  }
 }

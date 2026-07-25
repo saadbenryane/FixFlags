@@ -8,7 +8,7 @@ import {
   formatRubricForJudgePrompt,
 } from '@/lib/audit/rubric'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
-import { buildTriagePrompt } from '@/lib/prompts/system-prompt'
+import { buildTriageSystemPrompt, buildTriageUserPrompt } from '@/lib/prompts/system-prompt'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { allCheckIdsHaveVerificationRules, verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import { ALL_CHECK_IDS } from '@/lib/audit/check-ids'
@@ -64,23 +64,24 @@ describe('judge rubric constants', () => {
     }
   })
 
-  it('buildTriagePrompt references rubrics and flags', () => {
-    const prompt = buildTriagePrompt(judgeContext)
-    assert.match(prompt, /MESSAGE/)
-    assert.match(prompt, /newFlags/)
-    assert.match(prompt, /FixFlags/)
+  it('buildTriageSystemPrompt + buildTriageUserPrompt references rubrics and flags', () => {
+    const system = buildTriageSystemPrompt()
+    const user = buildTriageUserPrompt(judgeContext)
+    assert.match(system, /MESSAGE/)
+    assert.match(user, /newFlags/)
+    assert.match(system, /FixFlags/)
   })
 
-  it('buildTriagePrompt does not claim screenshots when none were provided', () => {
-    const prompt = buildTriagePrompt(judgeContext)
-    assert.match(prompt, /No screenshots were available/)
-    assert.doesNotMatch(prompt, /You have been given a desktop screenshot/)
+  it('buildTriageUserPrompt does not claim screenshots when none were provided', () => {
+    const user = buildTriageUserPrompt(judgeContext)
+    assert.match(user, /No screenshots were available/)
+    assert.doesNotMatch(user, /You have been given a desktop screenshot/)
   })
 
-  it('buildTriagePrompt requires null scores for incomplete rubric evidence', () => {
-    const prompt = buildTriagePrompt(judgeContext)
-    assert.match(prompt, /PARTIAL or UNKNOWN with score exactly null/)
-    assert.match(prompt, /Do not estimate a numeric score for incomplete evidence/)
+  it('buildTriageSystemPrompt requires null scores for incomplete rubric evidence', () => {
+    const system = buildTriageSystemPrompt()
+    assert.match(system, /PARTIAL or UNKNOWN with score exactly null/)
+    assert.match(system, /Do not estimate a numeric score for incomplete evidence/)
   })
 
   it('aligns grade thresholds with scoring module', () => {

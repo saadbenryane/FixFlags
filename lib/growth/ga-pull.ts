@@ -2,7 +2,7 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GA4_PROPERTY = 'properties/541892062'
+const GA4_PROPERTY = process.env.GA4_PROPERTY_ID ?? 'properties/541892062'
 
 export interface GaPullResult {
   summary: Record<string, number | string>
