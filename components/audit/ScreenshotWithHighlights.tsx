@@ -456,6 +456,7 @@ function ScreenshotPanel({
   size?: { width: number; height: number }
 }) {
   const resolvedImageUrl = normalizeInternalScreenshotUrl(imageUrl)
+  const [imgError, setImgError] = useState(false)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
     : viewportAspectStyle(device)
@@ -481,16 +482,23 @@ function ScreenshotPanel({
       )}
       style={panelStyle}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={resolvedImageUrl}
-        alt={`${device} screenshot of ${host}`}
-        loading="lazy"
-        className={cn(
-          'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',
-          active && 'brightness-[0.92]'
-        )}
-      />
+      {imgError ? (
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+          Screenshot unavailable
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={resolvedImageUrl}
+          alt={`${device} screenshot of ${host}`}
+          loading="lazy"
+          onError={() => setImgError(true)}
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',
+            active && 'brightness-[0.92]'
+          )}
+        />
+      )}
       <div className="pointer-events-none absolute inset-0">
         <RegionLayer highlights={highlights} device={device} selectedFlagId={selectedFlagId} />
       </div>

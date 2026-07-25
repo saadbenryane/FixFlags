@@ -278,15 +278,31 @@ export interface StuckAuditSweepResult {
  * of truth shared by the HTTP endpoint (/api/cron/recover-stuck-audits) and the
  * internal recovery scheduler, so both behave identically.
  */
+async function queryStuckAudits(cutoff: Date, retries = 2): Promise<Array<{ id: string; status: string; startedAt: Date | null }>> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await prisma.audit.findMany({
+        where: {
+          status: { notIn: ['COMPLETED', 'FAILED'] },
+          updatedAt: { lt: cutoff },
+        },
+        select: { id: true, status: true, startedAt: true },
+      })
+    } catch (err) {
+      if (attempt < retries) {
+        const delay = 1_000 * 2 ** attempt
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+      throw err
+    }
+  }
+  return []
+}
+
 export async function runStuckAuditRecoverySweep(): Promise<StuckAuditSweepResult> {
   const cutoff = stuckAuditCutoff(Date.now(), STUCK_AUDIT_MINUTES)
-  const stuckAudits = await prisma.audit.findMany({
-    where: {
-      status: { notIn: ['COMPLETED', 'FAILED'] },
-      updatedAt: { lt: cutoff },
-    },
-    select: { id: true, status: true, startedAt: true },
-  })
+  const stuckAudits = await queryStuckAudits(cutoff)
 
   let requeued = 0
   let failed = 0
