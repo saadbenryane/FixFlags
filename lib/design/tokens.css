@@ -1,55 +1,56 @@
 /**
- * FixFlags design tokens - Final Brand Guideline
+ * FixFlags design tokens - Brand sheet 2026-07
  *
- * Palette: warm-white canvas, soft-stone surfaces, ink structure, orange accent (signal only)
- * Primary: #FF4B00 | Type: Fraunces (serif display) + Satoshi (UI) | Controls: pill | Cards: 27px glass
+ * Palette: white canvas, stone surfaces, ink structure, orange accent (signal only)
+ * Primary: #FF5A00 | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
  */
 
 :root {
-  /* ── Surfaces: warm white canvas, soft stone panels ── */
-  --background: 40 33% 97%;
-  --foreground: 0 0% 3%;
-  --card: 38 22% 91%;
-  --card-foreground: 0 0% 3%;
-  --muted: 38 22% 91%;
-  --muted-foreground: 40 4% 41%;
-  --border: 38 18% 88%;
-  --border-subtle: 40 24% 92%;
+  /* ── Surfaces: white canvas, cool stone panels ── */
+  /* #FFFFFF / #0B0B0D / #F5F6F7 / #E6E6E8 / #61646B */
+  --background: 0 0% 100%;
+  --foreground: 240 8% 5%;
+  --card: 210 14% 97%;
+  --card-foreground: 240 8% 5%;
+  --muted: 210 14% 97%;
+  --muted-foreground: 220 5% 40%;
+  --border: 240 4% 90%;
+  --border-subtle: 210 14% 96%;
 
-  /* ── Brand orange (Flag #FF4B00) ── */
-  --brand: 18 100% 50%;
+  /* ── Brand orange (Flag #FF5A00) ── */
+  --brand: 21 100% 50%;
   --brand-foreground: 0 0% 100%;
-  --brand-hover: 18 100% 62%;
-  --brand-muted: 18 100% 96%;
-  --brand-border: 18 90% 88%;
+  --brand-hover: 21 100% 58%;
+  --brand-muted: 21 100% 96%;
+  --brand-border: 21 90% 88%;
 
-  /* Peach gradient accents (marketing) */
-  --peach-gold: 44 100% 68%;
-  --peach-warm: 24 100% 74%;
-  --peach-coral: 22 100% 64%;
-  --peach-glow: 18 95% 68%;
-  --peach-ember: 8 92% 54%;
-  --peach-muted: 22 100% 96%;
+  /* Quiet orange accents (marketing) — cooler than warm-paper era */
+  --peach-gold: 32 90% 62%;
+  --peach-warm: 24 90% 68%;
+  --peach-coral: 18 95% 58%;
+  --peach-glow: 21 95% 62%;
+  --peach-ember: 14 92% 48%;
+  --peach-muted: 21 100% 97%;
   --gradient-score: linear-gradient(
     105deg,
     hsl(var(--peach-gold)) 0%,
-    hsl(34 100% 66%) 18%,
+    hsl(28 100% 60%) 18%,
     hsl(var(--peach-coral)) 45%,
     hsl(var(--brand)) 75%,
     hsl(var(--peach-ember)) 100%
   );
   --gradient-surface: radial-gradient(
     130% 90% at 50% -20%,
-    hsl(42 40% 98%) 0%,
-    hsl(40 33% 97%) 50%,
-    hsl(38 26% 95%) 100%
+    hsl(0 0% 100%) 0%,
+    hsl(210 14% 98%) 50%,
+    hsl(210 14% 96%) 100%
   );
   --gradient-accent-text: linear-gradient(
     110deg,
-    hsl(38 100% 56%) 0%,
-    hsl(24 98% 58%) 35%,
+    hsl(28 100% 52%) 0%,
+    hsl(24 98% 52%) 35%,
     hsl(var(--brand)) 68%,
-    hsl(6 100% 50%) 100%
+    hsl(14 100% 48%) 100%
   );
   --gradient-score-bar: linear-gradient(
     to right,
@@ -60,41 +61,42 @@
   );
   --gradient-orb-peach: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.1) 0%,
+    hsl(var(--brand) / 0.08) 0%,
     transparent 68%
   );
   --gradient-orb-brand: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.12) 0%,
+    hsl(var(--brand) / 0.1) 0%,
     transparent 70%
   );
   --gradient-orb-warm: radial-gradient(
     circle,
-    hsl(28 90% 60% / 0.07) 0%,
+    hsl(21 90% 55% / 0.06) 0%,
     transparent 70%
   );
   --gradient-orb-coral: radial-gradient(
     circle,
-    hsl(var(--brand) / 0.08) 0%,
+    hsl(var(--brand) / 0.07) 0%,
     transparent 72%
   );
 
-  --primary: 18 100% 50%;
+  /* Product primary = ink; marketing accent CTAs use brand */
+  --primary: 240 8% 5%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 38 22% 91%;
-  --secondary-foreground: 0 0% 3%;
-  --accent: 18 80% 96%;
-  --accent-foreground: 0 0% 3%;
+  --secondary: 210 14% 97%;
+  --secondary-foreground: 240 8% 5%;
+  --accent: 21 80% 96%;
+  --accent-foreground: 240 8% 5%;
 
   /* Links & focus */
   --link: 217 91% 60%;
   --link-hover: 217 91% 52%;
-  --focus-ring: 18 100% 50%;
+  --focus-ring: 21 100% 50%;
   --ring: var(--focus-ring);
 
-  --popover: 42 40% 98%;
-  --popover-foreground: 0 0% 3%;
-  --input: 38 18% 88%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 8% 5%;
+  --input: 240 4% 90%;
   --destructive: 0 100% 63%;
   --destructive-foreground: 0 0% 98%;
   --success: 142 71% 45%;
@@ -104,21 +106,22 @@
   --warning: 48 96% 53%;
   --warning-muted: 48 100% 96%;
   --warning-border: 48 80% 85%;
-  --warning-foreground: 0 0% 3%;
+  --warning-foreground: 240 8% 5%;
   --info: 217 91% 60%;
 
   /* Grade palette */
   --grade-A: 142 71% 45%;
   --grade-B: 84 81% 44%;
-  --grade-C: 18 100% 50%;
+  --grade-C: 21 100% 50%;
   --grade-D: 25 95% 53%;
   --grade-F: 0 100% 63%;
 
-  /* ── Radius (pill controls, 27px glass cards) ── */
+  /* ── Radius (10px controls, soft glass cards) ── */
+  --radius-control: 0.625rem;
   --radius-pill: 9999px;
-  --radius-input: var(--radius-pill);
-  --radius-card: 1.716rem;
-  --radius-inner: 1.144rem;
+  --radius-input: var(--radius-control);
+  --radius-card: 1.5rem;
+  --radius-inner: 1rem;
   --radius-modal: var(--radius-card);
   --radius-outer: var(--radius-card);
   --gap-nested-sm: 0.5rem;
@@ -127,10 +130,9 @@
   --radius-nested-sm: calc(var(--radius-outer) - var(--gap-nested-sm));
   --radius-nested-md: calc(var(--radius-outer) - var(--gap-nested-md));
   --radius-nested-lg: calc(var(--radius-outer) - var(--gap-nested-lg));
-  --radius: var(--radius-pill);
+  --radius: var(--radius-control);
 
-  /* ── Typography (Fraunces serif display + Satoshi UI scale) ── */
-  /* Micro sizes: mono meta/section labels only (see .meta-label/.section-label) */
+  /* ── Typography (Inter Tight display + Inter UI scale) ── */
   --text-3xs: 0.625rem;
   --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
@@ -143,20 +145,20 @@
   --text-4xl: 2.5rem;
   --text-5xl: 3.5rem;
 
-  --leading-display: 1.14;
+  --leading-display: 1.12;
   --leading-heading: 1.25;
   --leading-body: 1.5;
   --leading-relaxed: 1.6;
 
-  --tracking-display: -0.02em;
-  --tracking-heading: -0.01em;
+  --tracking-display: -0.03em;
+  --tracking-heading: -0.02em;
   --tracking-body: 0;
   --tracking-label: 0.08em;
 
-  --shadow-card: inset 0 0 0 1px hsl(38 18% 88% / 0.72), 0 1px 2px hsl(40 9% 18% / 0.04), 0 8px 26px -14px hsl(40 9% 18% / 0.18);
-  --shadow-card-hover: inset 0 0 0 1px hsl(38 18% 84% / 0.84), 0 2px 8px hsl(40 9% 18% / 0.06), 0 18px 36px -18px hsl(40 9% 18% / 0.22);
-  --shadow-raised: 0 16px 44px -24px hsl(40 9% 18% / 0.28);
-  --glass-shadow: inset 0 0 0 1px hsl(38 18% 88% / 0.62), inset 0 1px 0 hsl(42 40% 98% / 0.8), 0 1px 3px hsl(40 9% 18% / 0.05), 0 14px 34px -22px hsl(40 9% 18% / 0.22);
+  --shadow-card: inset 0 0 0 1px hsl(240 4% 90% / 0.9), 0 1px 2px hsl(240 8% 5% / 0.04), 0 8px 26px -14px hsl(240 8% 5% / 0.14);
+  --shadow-card-hover: inset 0 0 0 1px hsl(240 4% 86% / 0.95), 0 2px 8px hsl(240 8% 5% / 0.06), 0 18px 36px -18px hsl(240 8% 5% / 0.18);
+  --shadow-raised: 0 16px 44px -24px hsl(240 8% 5% / 0.22);
+  --glass-shadow: inset 0 0 0 1px hsl(240 4% 90% / 0.8), inset 0 1px 0 hsl(0 0% 100% / 0.85), 0 1px 3px hsl(240 8% 5% / 0.04), 0 14px 34px -22px hsl(240 8% 5% / 0.16);
 
   --motion-fast: 200ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
@@ -172,43 +174,41 @@
   --screenshot-mobile-aspect: 375 / 812;
   --screenshot-mobile-frame-width: 240px;
 
-  --glass-bg-subtle: rgba(250, 248, 244, 0.62);
-  --glass-bg: rgba(250, 248, 244, 0.76);
-  --glass-bg-strong: rgba(250, 248, 244, 0.88);
-  --glass-bg-elevated: rgba(252, 250, 246, 0.94);
-  --glass-bg-nav: rgba(250, 248, 244, 0.5);
-  --glass-border: hsl(38 18% 88%);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.72);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.96);
+  --glass-bg-nav: rgba(255, 255, 255, 0.72);
+  --glass-border: hsl(240 4% 90%);
   --overlay: 0 0% 0%;
-  --overlay-pill-bg: hsl(38 22% 91% / 0.95);
-  --overlay-pill-border: hsl(38 18% 88%);
-  --cover-gradient: linear-gradient(to top, hsl(40 33% 97%) 0%, hsl(40 33% 97% / 0.92) 45%, transparent 90%);
+  --overlay-pill-bg: hsl(210 14% 97% / 0.95);
+  --overlay-pill-border: hsl(240 4% 90%);
+  --cover-gradient: linear-gradient(to top, hsl(0 0% 100%) 0%, hsl(0 0% 100% / 0.92) 45%, transparent 90%);
 
-  --terminal: 38 22% 91%;
-  --terminal-foreground: 0 0% 3%;
-  --terminal-muted: 40 4% 41%;
-  --terminal-border: 38 18% 88%;
+  --terminal: 210 14% 97%;
+  --terminal-foreground: 240 8% 5%;
+  --terminal-muted: 220 5% 40%;
+  --terminal-border: 240 4% 90%;
 }
 
 .dark {
-  /* ── Surfaces: graphite canvas, charcoal panels, glass ── */
-  --background: 0 0% 7%;
-  --foreground: 40 24% 95%;
-  --card: 0 0% 10%;
-  --card-foreground: 40 24% 95%;
-  --muted: 0 0% 12%;
-  --muted-foreground: 40 8% 62%;
-  --border: 0 0% 16%;
-  --border-subtle: 0 0% 11%;
+  /* ── Surfaces: ink canvas, charcoal panels ── */
+  --background: 240 8% 5%;
+  --foreground: 210 14% 97%;
+  --card: 220 7% 12%;
+  --card-foreground: 210 14% 97%;
+  --muted: 220 7% 12%;
+  --muted-foreground: 240 5% 67%;
+  --border: 220 6% 18%;
+  --border-subtle: 220 7% 10%;
 
-  /* ── Brand orange: precise accent only ── */
   --brand: 18 100% 55%;
   --brand-foreground: 0 0% 100%;
   --brand-hover: 18 100% 63%;
-  --brand-muted: 18 30% 12%;
-  --brand-border: 18 35% 24%;
+  --brand-muted: 21 30% 12%;
+  --brand-border: 21 35% 24%;
 
-  /* Warm accents (kept muted for score visuals + accent text only) */
-  --peach-gold: 36 70% 56%;
+  --peach-gold: 32 70% 56%;
   --peach-warm: 20 55% 54%;
   --peach-coral: 16 50% 50%;
   --peach-glow: 16 45% 48%;
@@ -224,9 +224,9 @@
   );
   --gradient-surface: radial-gradient(
     130% 90% at 50% -20%,
-    hsl(0 0% 11%) 0%,
-    hsl(0 0% 8%) 48%,
-    hsl(0 0% 6%) 100%
+    hsl(220 7% 10%) 0%,
+    hsl(240 8% 6%) 48%,
+    hsl(240 8% 4%) 100%
   );
   --gradient-accent-text: linear-gradient(
     110deg,
@@ -254,7 +254,7 @@
   );
   --gradient-orb-warm: radial-gradient(
     circle,
-    hsl(28 60% 50% / 0.07) 0%,
+    hsl(21 60% 50% / 0.07) 0%,
     transparent 70%
   );
   --gradient-orb-coral: radial-gradient(
@@ -263,21 +263,21 @@
     transparent 72%
   );
 
-  --primary: 18 100% 55%;
+  --primary: 21 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 12%;
-  --secondary-foreground: 40 24% 95%;
-  --accent: 0 0% 13%;
-  --accent-foreground: 40 24% 95%;
+  --secondary: 220 7% 12%;
+  --secondary-foreground: 210 14% 97%;
+  --accent: 220 7% 14%;
+  --accent-foreground: 210 14% 97%;
 
   --link: 213 94% 72%;
   --link-hover: 213 94% 80%;
   --focus-ring: 18 100% 55%;
   --ring: var(--focus-ring);
 
-  --popover: 0 0% 10%;
-  --popover-foreground: 40 24% 95%;
-  --input: 0 0% 16%;
+  --popover: 220 7% 12%;
+  --popover-foreground: 210 14% 97%;
+  --input: 220 6% 18%;
   --destructive: 0 84% 62%;
   --destructive-foreground: 0 0% 98%;
   --success: 152 60% 48%;
@@ -285,7 +285,7 @@
   --success-muted: 152 30% 11%;
   --success-border: 152 30% 20%;
   --warning: 38 96% 56%;
-  --warning-foreground: 0 0% 7%;
+  --warning-foreground: 240 8% 5%;
   --warning-muted: 38 40% 12%;
   --warning-border: 38 40% 22%;
   --info: 213 94% 72%;
@@ -303,17 +303,17 @@
 
   --glass-bg-subtle: rgba(255, 255, 255, 0.04);
   --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-bg-strong: rgba(26, 26, 26, 0.78);
-  --glass-bg-elevated: rgba(26, 26, 26, 0.9);
-  --glass-bg-nav: rgba(17, 17, 17, 0.62);
-  --glass-border: hsl(0 0% 16%);
+  --glass-bg-strong: rgba(29, 32, 36, 0.78);
+  --glass-bg-elevated: rgba(29, 32, 36, 0.9);
+  --glass-bg-nav: rgba(11, 11, 13, 0.72);
+  --glass-border: hsl(220 6% 18%);
   --overlay: 0 0% 0%;
-  --overlay-pill-bg: hsl(0 0% 12% / 0.92);
-  --overlay-pill-border: hsl(0 0% 18%);
-  --cover-gradient: linear-gradient(to top, hsl(0 0% 7%) 0%, hsl(0 0% 7% / 0.6) 45%, transparent 90%);
+  --overlay-pill-bg: hsl(220 7% 12% / 0.92);
+  --overlay-pill-border: hsl(220 6% 18%);
+  --cover-gradient: linear-gradient(to top, hsl(240 8% 5%) 0%, hsl(240 8% 5% / 0.6) 45%, transparent 90%);
 
-  --terminal: 0 0% 9%;
-  --terminal-foreground: 40 12% 80%;
-  --terminal-muted: 40 6% 56%;
-  --terminal-border: 0 0% 16%;
+  --terminal: 220 7% 9%;
+  --terminal-foreground: 210 10% 80%;
+  --terminal-muted: 240 5% 56%;
+  --terminal-border: 220 6% 18%;
 }

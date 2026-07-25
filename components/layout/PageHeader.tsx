@@ -8,7 +8,7 @@ interface PageHeaderProps {
   children?: React.ReactNode
 }
 
-/** App/admin page title - Satoshi at app scale (1.625–1.875rem), not marketing hero size */
+/** App/admin page title - Inter at app scale (1.625–1.875rem), not marketing hero size */
 export function PageHeader({ title, description, className, children }: PageHeaderProps) {
   return (
     <div className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>

@@ -1,55 +1,53 @@
-# FixFlags Brand Rules: Final Brand Guideline
+# FixFlags Brand Rules: Brand sheet 2026-07
 
-Source: FixFlags Final Branding Guideline. Reference assets in `public/brand/`.
+Source: FixFlags brand guidelines. Reference assets in `public/brand/`.
 
 ## Identity
 
 - **Name:** FixFlags
-- **One-liner:** FixFlags is the QA layer for AI-built products.
+- **One-liner:** FixFlags is the release readiness layer for AI-built products.
 - **Campaign line:** Finish what your AI started.
 - **Product loop:** Flag → Fix → Re-check.
-- **Mark:** A clean waving flag. A rounded orange flagpole flying a soft wavy pennant to the right. Flat (reduced 3D), optically balanced curves. Icon-left, wordmark-right lockup.
-- **Wordmark:** Editorial serif (Fraunces), title case `FixFlags`, medium weight, tracking ~-0.01em.
+- **Mark:** Stylized geometric orange F (folded flag). Icon-left, wordmark-right lockup.
+- **Wordmark:** Inter Tight, title case `FixFlags`, Fix heavier than Flags, tracking ~-0.02em.
 
-## Color palette (Final Guideline)
+## Color palette
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
-| Flag (primary) | `#FF4B00` | `#FF5C1A` | Flags, CTAs, active states, focus rings. Signal, not decoration |
+| Flag (primary) | `#FF5A00` | `#FF5C1A` | Flags, marketing CTAs, active states, focus rings. Signal, not decoration |
 | Flag hover | tint of primary | tint of primary | Button hover |
-| Background | Warm White `#FAF8F4` | Graphite `#111111` | Page canvas |
-| Foreground | Ink `#080808` | Soft White `#F5F3EF` | Headings, body |
-| Card / panel | Soft Stone `#EEEAE3` | Deep Charcoal `#1A1A1A` | Cards, panels, dividers, glass layers |
-| Muted text | Muted Grey `#6D6A64` | Muted Dark `#A7A29A` | Secondary text |
-| Glass | warm-white translucent | `rgba(255,255,255,0.06)` | Frosted glass surfaces |
-| Border | Stone `#E6E1D8` | `#292929` | Dividers, tables (not cards) |
+| Background | White `#FFFFFF` | Ink `#0B0B0D` | Page canvas |
+| Foreground | Ink `#0B0B0D` | Soft White `#F5F6F7` | Headings, body |
+| Card / panel | Stone `#F5F6F7` | Gray 800 `#1D2024` | Cards, panels, dividers, glass layers |
+| Muted text | Gray 600 `#61646B` | Gray 400 `#A7A8B2` | Secondary text |
+| Glass | white translucent | `rgba(255,255,255,0.06)` | Frosted glass surfaces |
+| Border | Gray 200 `#E6E6E8` | `#2A2C30` | Dividers, tables, control borders |
 | Success | `#22C55E` | `#22C55E` | Grade A, fixed states |
 | Warning | `#FACC15` | `#FACC15` | Warnings |
 | Error | `#FF4444` | `#FF4444` | Destructive, grade F |
 | Info / links | `#3B82F6` | `#3B82F6` | Inline links |
 
-Accent usage: orange is a signal. Use sparingly: flags, primary CTA, issue markers, active states, small highlights, blurred background accents. The overall world is warm white, stone, ink, soft grey, controlled orange. Dark mode reads graphite, glass, quiet, premium. No neon.
+Accent usage: orange is a signal. Use sparingly: flags, marketing CTAs, issue markers, active states. Product primary CTAs use ink on light mode. Dark mode primary CTAs use orange.
 
-## Typography: Fraunces (serif) + Satoshi (sans)
-
-Editorial serif headlines + clean sans UI. This is the signature balance.
+## Typography: Inter Tight (display) + Inter (sans)
 
 | Role | Family | Notes |
 |------|--------|-------|
-| Wordmark | Fraunces | Medium, ~-0.01em |
-| Hero / display headlines | Fraunces | Medium/Semibold, serif |
-| Section titles | Fraunces | Serif, used sparingly for premium effect |
-| Product UI / body / labels | Satoshi | Sans only, for clarity in dense report/table/settings views |
-| Scores / grades / caps labels | IBM Plex Mono | Mono |
+| Wordmark | Inter Tight | Semibold/Bold, ~-0.02em |
+| Hero / display headlines | Inter Tight | Semibold/Bold |
+| Section titles | Inter Tight | Semibold |
+| Product UI / body / labels | Inter | Sans for clarity in dense report/table/settings views |
+| Scores / grades / caps labels | JetBrains Mono | Mono |
 
-Serif for brand voice and marketing headlines; sans for everything functional. Never serif dense product UI.
+Display for brand voice and marketing headlines; Inter for everything functional. Never use display weight in dense product tables.
 
 ## Radius & components
 
-- **Buttons & inputs:** `rounded-full` (pill). Required for all CTAs and form controls.
-- **Input groups:** outer pill + concentric inner pill button with uniform `p-1.5` inset.
-- **Cards & panels:** `rounded-card` (~27px) frosted glass on soft stone. No borders; use `shadow-card` + blur.
-- **Page canvas:** warm-white mesh backdrop (`GlobalMeshBackdrop` in `SiteShell`).
+- **Buttons & inputs:** `rounded-[var(--radius-control)]` (~10px). Required for all CTAs and form controls.
+- **Filter chips / avatars / switches:** may remain fully round as geometric shapes.
+- **Cards & panels:** `rounded-card` (~24px) frosted glass on stone. Prefer shadow over heavy borders.
+- **Page canvas:** quiet mesh backdrop (`GlobalMeshBackdrop` in `SiteShell`).
 - **Nav:** sticky glass header (`glass-surface-elevated`), no bottom border.
 
 Use glass tastefully for premium moments (hero cards, sample reports, overlays, modals, pricing). Use cleaner surfaces for dense reports, tables, technical details, settings.
@@ -58,7 +56,7 @@ Use glass tastefully for premium moments (hero cards, sample reports, overlays, 
 
 The report is the product's main brand asset. Issue card order: severity/score → plain-English flag → why it matters → screenshot evidence → fix prompt → technical detail → re-check status.
 
-Product language: **Flags** (Critical / UX / SEO / Performance / Accessibility / Trust / Resolved). Use "issues" only when clarity demands it.
+Product language: **Flags**. Use "issues" only when clarity demands it. Core loop: Flag → Fix → Re-check.
 
 ## Voice
 
@@ -70,12 +68,11 @@ Calm senior product reviewer. Clear, direct, useful, specific; technical when ne
 |------|---------|
 | `lib/design/tokens.css` | CSS variables (source of truth) |
 | `lib/design/brand-spec.ts` | Hex for OG, email, manifest |
-| `lib/design/fonts.ts` | Fraunces serif + Satoshi local + IBM Plex Mono |
-| `lib/design/logo-mark.tsx` | Waving-flag SVG component |
+| `lib/design/fonts.ts` | Inter Tight display + Inter + JetBrains Mono |
+| `lib/design/logo-mark.tsx` | Flag mark SVG component |
 | `lib/design/og-templates.tsx` | OG + favicon |
-| `public/brand/*.svg` | Logo assets (mark + wordmark) |
-| `public/fonts/Satoshi-*.woff2` | Self-hosted UI font |
+| `public/brand/*` | Logo assets (mark + lockups + wordmarks) |
 
 ## Dark mode
 
-Re-authored, not inverted. Graphite canvas, charcoal panels, glass surfaces. Orange stays the signal. Text is soft white. No neon hacker look.
+Fully re-authored graphite/ink surfaces. Orange remains the precise accent. No neon.

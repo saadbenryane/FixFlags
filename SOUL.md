@@ -113,12 +113,12 @@ Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm,
 | Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
 | Free vs. paid | Free is 3 lifetime audits + unlimited re-checks. Pro unlocks volume and monitoring. Never gate re-checks. |
 | Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
-| Generic vs. distinctive | Prefer distinctive. The orange, the pill controls, the Fraunces — they make FixFlags recognizable, not generic SaaS. |
+| Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display — they make FixFlags recognizable, not generic SaaS. |
 
 ## Distinctive details
 
-- Flag Orange #FF4B00 — the color of attention, not warning
-- Fraunces serif for headlines — editorial confidence, not startup boilerplate
+- Flag Orange #FF5A00 — the color of attention, not warning
+- Inter Tight for headlines — sharp confidence, not startup boilerplate
 - Pill-shaped controls — friendly, approachable, not corporate
 - Glass cards with shadow depth — physical, grounded
 - Letter grades (A-F) — instantly readable, emotionally resonant

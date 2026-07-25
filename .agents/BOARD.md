@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| brand-refresh-hiw-hero | in_progress | auto | main | Brand sheet migration (tokens/fonts/controls) + /how-it-works AI Gap hero + page cleanup. Do not touch release-verify blockers. | lib/design, components/ui, components/marketing, app/(marketing)/how-it-works, lib/marketing/copy, public/marketing, DESIGN.md, brand-rules | None | 2026-07-25 |
 | current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---

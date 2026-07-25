@@ -18,8 +18,8 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 ## Canonical visual language
 
 - Warm-white canvas, soft-stone surfaces, ink structure, Flag orange for CTAs/focus/status, and link blue for links.
-- Fraunces is for marketing/editorial headlines. Satoshi is for functional UI. IBM Plex Mono is for scores, grades, labels, and tabular values.
-- Cards use `rounded-card`, glass surfaces, and `shadow-card`. Controls use pill radius. Nested surfaces use the concentric radius tokens.
+- Inter Tight is for marketing/editorial headlines. Inter is for functional UI. JetBrains Mono is for scores, grades, labels, and tabular values.
+- Cards use `rounded-card`, glass surfaces, and `shadow-card`. Controls use `--radius-control` (~10px). Nested surfaces use the concentric radius tokens.
 - Report layouts use `Container variant="report"`; prose and settings use their existing narrower variants.
 - Every interactive target must expose at least a 44×44px hit area. Use shared `Button`, `FilterPill`, navigation, and report controls.
 

@@ -38,7 +38,7 @@ export function MarketingHeaderAuth({
     // mobileTop: signup CTA only (Log in lives in the sheet on small screens).
     if (mode === 'mobileTop') {
       return (
-        <Button variant="ink" size="sm" asChild>
+        <Button variant="brand" size="sm" asChild>
           <Link href="/#audit" aria-label={HERO.primaryCta}>
             <span className="max-[419px]:hidden">{HERO.primaryCta}</span>
             <span className="hidden max-[419px]:inline" aria-hidden="true">
@@ -59,7 +59,7 @@ export function MarketingHeaderAuth({
           Log in
         </Link>
         <span className="h-4 w-px bg-border/70" aria-hidden />
-        <Button variant="ink" size="sm" asChild>
+        <Button variant="brand" size="sm" asChild>
           <Link href="/#audit">
             {HERO.primaryCta}
             <ArrowRight className="h-4 w-4" />

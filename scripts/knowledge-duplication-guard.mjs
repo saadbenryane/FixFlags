@@ -129,7 +129,7 @@ const RULES = [
     id: 'design-typography',
     description: 'Typography table (canonical: DESIGN.md)',
     canonical: 'DESIGN.md',
-    pattern: /\| Display.*?Fraunces[\s\S]*?\| Score numbers \| IBM Plex Mono/g,
+    pattern: /\| Display.*?Inter Tight[\s\S]*?\| Score numbers \| JetBrains Mono/g,
     allowed: [],
   },
 

@@ -4,8 +4,12 @@ import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 
-const MARK_PX = { sm: 24, md: 30, lg: 38 } as const
-const LOCKUP_PX = { sm: 110, md: 138, lg: 174 } as const
+const MARK_PX = { sm: 24, md: 28, lg: 32 } as const
+const WORD_CLASS = {
+  sm: 'text-base',
+  md: 'text-lg',
+  lg: 'text-xl',
+} as const
 
 type LogoSize = keyof typeof MARK_PX
 
@@ -18,7 +22,7 @@ interface LogoProps {
 
 function Mark({ px }: { px: number }) {
   return (
-    <span className="relative block" style={{ width: px, height: px }}>
+    <span className="relative block shrink-0" style={{ width: px, height: px }}>
       <Image
         src="/brand/logo-mark.png"
         alt=""
@@ -33,36 +37,33 @@ function Mark({ px }: { px: number }) {
   )
 }
 
+function Wordmark({ size }: { size: LogoSize }) {
+  return (
+    <span
+      className={cn(
+        'font-display tracking-heading text-foreground',
+        WORD_CLASS[size]
+      )}
+      aria-hidden
+    >
+      <span className="font-bold">Fix</span>
+      <span className="font-semibold">Flags</span>
+    </span>
+  )
+}
+
 export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoProps) {
-  const showLockup = variant !== 'mark'
-
-  const lockupHeight = Math.round(LOCKUP_PX[size] * (382 / 1360))
-
   const content = (
-    <span className={cn('inline-flex items-center text-foreground', className)}>
-      {showLockup ? (
-        <>
-          <Image
-            src="/brand/logo-lockup-light.png"
-            alt=""
-            width={LOCKUP_PX[size]}
-            height={lockupHeight}
-            priority={size !== 'sm'}
-            unoptimized
-            className="block object-contain dark:hidden"
-          />
-          <Image
-            src="/brand/logo-lockup-dark.png"
-            alt=""
-            width={LOCKUP_PX[size]}
-            height={lockupHeight}
-            priority={size !== 'sm'}
-            unoptimized
-            className="hidden object-contain dark:block"
-          />
-        </>
-      ) : (
+    <span className={cn('inline-flex items-center gap-2 text-foreground', className)}>
+      {variant === 'wordmark' ? (
+        <Wordmark size={size} />
+      ) : variant === 'mark' ? (
         <Mark px={MARK_PX[size]} />
+      ) : (
+        <>
+          <Mark px={MARK_PX[size]} />
+          <Wordmark size={size} />
+        </>
       )}
     </span>
   )

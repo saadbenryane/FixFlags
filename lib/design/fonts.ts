@@ -1,44 +1,37 @@
-import localFont from 'next/font/local'
-import { IBM_Plex_Mono, Fraunces } from 'next/font/google'
-
-export const satoshi = localFont({
-  src: [
-    { path: '../../public/fonts/Satoshi-Regular.woff2', weight: '400', style: 'normal' },
-    { path: '../../public/fonts/Satoshi-Medium.woff2', weight: '500', style: 'normal' },
-    { path: '../../public/fonts/Satoshi-Bold.woff2', weight: '700', style: 'normal' },
-  ],
-  variable: '--font-sans',
-  display: 'swap',
-  preload: true,
-})
+import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google'
 
 /**
- * Fraunces: editorial serif for headlines + wordmark. Free, high-quality
- * stand-in for Canela per the brand guideline. Soft optical setting; used at
- * medium/semibold weights for display type only. UI/body stays on Satoshi.
- * Weights trimmed to what display type actually uses (font-medium / font-semibold).
+ * Inter Tight: display / marketing headlines + wordmark weight.
+ * Inter: product UI and body.
+ * JetBrains Mono: scores, grades, caps labels.
  */
-export const fraunces = Fraunces({
+export const inter = Inter({
   subsets: ['latin'],
-  weight: ['500', '600'],
-  style: ['normal'],
-  variable: '--font-serif',
-  display: 'optional',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
 })
 
-export const ibmPlexMono = IBM_Plex_Mono({
+export const interTight = Inter_Tight({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
+})
+
+export const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-mono',
   display: 'swap',
 })
 
-/** Fraunces serif for display; Satoshi for UI/body; mono for scores/labels */
-export const fontVariables = `${satoshi.variable} ${fraunces.variable} ${ibmPlexMono.variable}`
+/** Inter Tight for display; Inter for UI/body; JetBrains Mono for scores/labels */
+export const fontVariables = `${inter.variable} ${interTight.variable} ${jetbrainsMono.variable}`
 
 export const ogFontFamilies = {
-  display: 'Fraunces, Georgia, serif',
-  serif: 'Fraunces, Georgia, serif',
-  sans: 'Satoshi, system-ui, sans-serif',
-  mono: 'ui-monospace, monospace',
+  display: 'Inter Tight, Inter, system-ui, sans-serif',
+  serif: 'Inter Tight, Inter, system-ui, sans-serif',
+  sans: 'Inter, system-ui, sans-serif',
+  mono: 'JetBrains Mono, ui-monospace, monospace',
 } as const

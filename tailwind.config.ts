@@ -25,8 +25,9 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['var(--font-serif)', 'Georgia', 'ui-serif', 'serif'],
-        display: ['var(--font-serif)', 'Georgia', 'ui-serif', 'serif'],
+        // font-serif kept as alias → Inter Tight so existing Heading classes stay valid
+        serif: ['var(--font-display)', 'var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       fontSize: {

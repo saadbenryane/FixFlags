@@ -4,11 +4,11 @@
 
 ## Design principles
 
-1. **Editorial + technical credibility** — the product looks like a sharp review, not a SaaS dashboard. Fraunces serif, glass cards, shadow depth, mono labels.
+1. **Editorial + technical credibility** — the product looks like a sharp review, not a SaaS dashboard. Inter Tight display, glass cards, shadow depth, mono labels.
 2. **Calm authority** — no gradients competing with content, no animations that distract. Motion serves understanding.
 3. **Physical, not flat** — glass surfaces, layered shadows, concentric radii. Cards feel like they have depth.
-4. **Contained, not sprawling** — three rubrics, not forty categories. Pill-shaped controls, not sharp corners.
-5. **Recognizable, not generic** — Flag Orange, Fraunces headlines, mono labels. Unmistakably FixFlags.
+4. **Contained, not sprawling** — three rubrics, not forty categories. Soft control radius, not sharp corners.
+5. **Recognizable, not generic** — Flag Orange, Inter Tight headlines, mono labels. Unmistakably FixFlags.
 
 These five compress Dieter Rams' ten principles of good design. The standing review of how well the product lives up to them, and the rules it produced (motion policy, status-component altitudes, durable core vs. treatment), lives in `docs/design-rams-review.md`.
 
@@ -25,23 +25,23 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 | Role | Font | Weight | Size |
 |------|------|--------|------|
-| Display (marketing hero only) | Fraunces (var-font-serif) | 600 | text-5xl (3.5rem) |
-| Heading | Fraunces | 600 | text-2xl/3xl/4xl |
-| Body | Satoshi (var-font-sans) | 400 | text-base |
-| Labels (uppercase) | IBM Plex Mono (var-font-mono) | 500 | text-xs |
-| Score numbers | IBM Plex Mono | 600 | tabular-nums |
+| Display (marketing hero only) | Inter Tight (var-font-display) | 600–700 | text-5xl (3.5rem) |
+| Heading | Inter Tight | 600 | text-2xl/3xl/4xl |
+| Body | Inter (var-font-sans) | 400 | text-base |
+| Labels (uppercase) | JetBrains Mono (var-font-mono) | 500 | text-xs |
+| Score numbers | JetBrains Mono | 500–600 | tabular-nums |
 
 - `text-balance` on headings, `text-pretty` on body
 - `tabular-nums` on all numeric scores
-- Satoshi is UI font everywhere; Fraunces reserved for marketing headings and display
+- Inter is UI font everywhere; Inter Tight reserved for marketing headings and display
 
 ## Color system (60/30/10)
 
 | Proportion | Role | Token values |
 |------------|------|--------------|
-| 60% | Background / canvas | `--background` (warm white `#FAF8F4` / dark graphite `#111`) |
-| 30% | Foreground / ink | `--foreground`, `--card`, `--muted` |
-| 10% | Brand orange (signal) | `--brand` (Flag Orange `#FF4B00` / dark `#FF5C1A`) |
+| 60% | Background / canvas | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
+| 30% | Foreground / ink | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
+| 10% | Brand orange (signal) | `--brand` (Flag Orange `#FF5A00` / dark `#FF5C1A`) |
 
 - Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
 - One accent per surface. Do not layer multiple accent colors.
@@ -68,16 +68,16 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## Shapes and radius
 
-- Cards: `border-0 shadow-card glass-surface` + `rounded-card` (~27px / `--radius-card`)
-- Controls: `rounded-full` (9999px pill shape)
+- Cards: `border-0 shadow-card glass-surface` + `rounded-card` (~24px / `--radius-card`)
+- Controls: `rounded-[var(--radius-control)]` (~10px)
 - Concentric radii: inner = outer minus padding (`--radius-nested-md` = `--radius-card` − `--gap-nested-md`)
-- Inputs: `rounded-pill` (pill inputs)
+- Inputs: `--radius-input` (= control radius)
 
 ## Depth
 
 - Shadow-first layering. Cards get `shadow-card` resting and `shadow-card-hover` on interaction.
 - Glass surfaces: `glass-shadow` with subtle border inset.
-- Borders only on inputs and table rows. Cards use shadows, not borders.
+- Borders on inputs, tables, and outlined controls. Cards prefer shadows.
 - Sections separated by `bg-muted/35`, not `border-y`.
 - Floating action offset: `--floating-action-offset` (1.25rem).
 
@@ -112,11 +112,12 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 ## Components
 
 ### Button
-- Pill shape, `rounded-full`
+- Control radius (`--radius-control` ~10px)
 - `active:scale-[0.96]` press effect
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
+- Light mode product primary: ink. Marketing accent CTAs: brand orange (`variant="brand"`).
 
 ### Card (`glass-surface`)
 - `border-0 shadow-card`

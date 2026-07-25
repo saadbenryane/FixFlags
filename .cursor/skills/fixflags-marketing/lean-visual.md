@@ -15,9 +15,9 @@ Short surface-specific rules. Full tokens: `fixflags-design-system/SKILL.md`.
 
 ## Typography
 
-- Marketing headlines: Fraunces (`font-serif` / `font-display`)
-- Functional UI, forms, report tables: Satoshi (`font-sans`)
-- Grades and scores: IBM Plex Mono (`font-mono tabular-nums`)
+- Marketing headlines: Inter Tight (`font-display` / `font-serif` alias)
+- Functional UI, forms, report tables: Inter (`font-sans`)
+- Grades and scores: JetBrains Mono (`font-mono tabular-nums`)
 
 ## Report + marketing polish
 

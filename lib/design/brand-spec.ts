@@ -1,33 +1,43 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 
-// Hex values for non-CSS consumers (OG, email, manifest). Final Brand Guideline.
+// Hex values for non-CSS consumers (OG, email, manifest). Brand sheet 2026-07.
 // Mesh/orb gradients live in lib/design/tokens.css only.
 export const BRAND_HEX = {
-  primary: '#FF4B00',
-  primaryLight: '#FF7A4D',
-  background: '#FAF8F4',
-  foreground: '#080808',
-  muted: '#EEEAE3',
-  mutedForeground: '#6D6A64',
-  border: '#E6E1D8',
+  primary: '#FF5A00',
+  primaryLight: '#FF7A33',
+  background: '#FFFFFF',
+  foreground: '#0B0B0D',
+  muted: '#F5F6F7',
+  mutedForeground: '#61646B',
+  border: '#E6E6E8',
   success: '#22C55E',
   warning: '#FACC15',
   error: '#FF4444',
   info: '#3B82F6',
+  gray200: '#E6E6E8',
+  gray400: '#A7A8B2',
+  gray600: '#61646B',
+  gray800: '#1D2024',
+  stone: '#F5F6F7',
 } as const
 
 export const BRAND_HEX_DARK = {
   primary: '#FF5C1A',
-  primaryLight: '#FF7A4D',
-  background: '#111111',
-  foreground: '#F5F3EF',
-  muted: '#1E1E1E',
-  mutedForeground: '#A7A29A',
-  border: '#292929',
+  primaryLight: '#FF7A33',
+  background: '#0B0B0D',
+  foreground: '#F5F6F7',
+  muted: '#1D2024',
+  mutedForeground: '#A7A8B2',
+  border: '#2A2C30',
   success: '#22C55E',
   warning: '#FACC15',
   error: '#FF4444',
   info: '#3B82F6',
+  gray200: '#2A2C30',
+  gray400: '#61646B',
+  gray600: '#A7A8B2',
+  gray800: '#E6E6E8',
+  stone: '#1D2024',
 } as const
 
 export type GradeLetter = 'A' | 'B' | 'C' | 'D' | 'F'
@@ -50,7 +60,7 @@ export type BrandPalette = {
 export const brandLight: BrandPalette = {
   background: BRAND_HEX.background,
   foreground: BRAND_HEX.foreground,
-  card: BRAND_HEX.background,
+  card: BRAND_HEX.muted,
   muted: BRAND_HEX.muted,
   mutedForeground: BRAND_HEX.mutedForeground,
   brand: BRAND_HEX.primary,
@@ -71,7 +81,7 @@ export const brandLight: BrandPalette = {
 export const brandDark: BrandPalette = {
   background: BRAND_HEX_DARK.background,
   foreground: BRAND_HEX_DARK.foreground,
-  card: BRAND_HEX_DARK.border,
+  card: BRAND_HEX_DARK.muted,
   muted: BRAND_HEX_DARK.muted,
   mutedForeground: BRAND_HEX_DARK.mutedForeground,
   brand: BRAND_HEX_DARK.primary,
