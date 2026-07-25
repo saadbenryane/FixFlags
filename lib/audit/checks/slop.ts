@@ -31,14 +31,23 @@ const AI_BUILDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\[your\s+(brand|company|product|name|logo|text|image|content)\]/i, label: 'bracket-brand placeholder' },
 ]
 
-const TEMPLATE_TOKEN_PATTERN = /\{\{[^}]+\}\}|\$\{[^}]+\}|%[A-Z_]+%/i
+// Detect template tokens that leaked into rendered page text. Short tokens
+// like {{ message }} (Jekyll), ${i} (minified), or %s (printf) are common
+// framework artifacts and not real problems. Require either:
+//   - two words separated by space (e.g. {{ user name }})
+//   - a single word 8+ chars (e.g. {{ company_name }})
+//   - %VAR% with 3+ word-chars
+const TEMPLATE_TOKEN_PATTERN = /\{\{\s*\w+\s+\w+[^}]*\}\}|\{\{\s*\w{8,}\s*\}\}|\$\{\s*\w+\s+\w+[^}]*\}|\$\{\s*\w{8,}\s*\}|%[A-Z][A-Z0-9_]{2,}%/i
 
 const CTA_PATTERN =
   /get started|sign up|signup|start free|try free|book demo|contact|register|join/i
 
 const SOCIAL_PROOF_SLOP_PATTERNS = [
-  { pattern: /trusted by\s+\d[\d,]*\+?\s*(teams|customers|users|companies)?/i, label: 'unverifiable member count' },
-  { pattern: /\b\d[\d,]*\+?\s*(happy|satisfied)\s+customers/i, label: 'unverifiable customer count' },
+  // Require the generic label (teams/customers/users) immediately after the
+  // number to avoid matching truncated real claims like "Trusted by 98% of
+  // Fortune 100 companies" where "of" intervenes between number and label.
+  { pattern: /trusted by\s+\d[\d,]*\+?\s*(?:teams|customers|users|companies)\b/i, label: 'unverifiable member count' },
+  { pattern: /\b\d[\d,]*\+?\s*(?:happy|satisfied)\s+customers\b/i, label: 'unverifiable customer count' },
   { pattern: /\[company name\]/i, label: 'placeholder company name' },
   { pattern: /your logo here/i, label: 'logo placeholder' },
   { pattern: /\blogo\s+\d\b/i, label: 'generic logo placeholder' },

@@ -1,18 +1,27 @@
 
 
 export const HERO = {
-  badge: 'Check before you publish.',
+  badge: 'The release readiness layer',
   headline: 'Finish what your AI started.',
-  headlineLine1: 'what your',
+  /** Full headline without the period; period is rendered in brand orange. */
+  headlineDisplay: 'Finish what your AI started',
+  headlineLine1: 'Finish what your',
   headlineLine2: 'AI started.',
   headlineAccent: 'Finish',
+  headlineAccentPeriod: true,
   headlineAccentLegacy: false,
   subhead:
-    'Paste your URL from Lovable, Bolt, or any stack. Find what AI missed before your users do, then copy fixes back into your editor.',
+    'AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review site',
   trySampleCta: 'See a sample review',
-  urlPlaceholder: 'your-site.com',
+  urlPlaceholder: 'Paste your site or app URL',
+  /** Honest product assurances only. No invented counts or testimonials. */
+  assurances: [
+    { id: 'speed', label: 'Results in under 60 seconds', icon: 'zap' as const },
+    { id: 'teaser', label: 'No sign up required', icon: 'shield' as const },
+    { id: 'private', label: 'Your report is private', icon: 'lock' as const },
+  ],
 } as const
 
 export const DIFFERENTIATION = {
@@ -56,9 +65,12 @@ export const DIFFERENTIATION = {
 } as const
 
 export const FINAL_CTA = {
-  headline: 'Paste your URL.',
-  headlineAccent: 'See what to fix.',
-  body: 'Free check. See what\u2019s broken before you share the link. Sign up when you want the fix prompts and re-check.',
+  headlineDisplay: 'Ready to see what\u2019s blocking your release?',
+  headlineAccentPeriod: true,
+  /** @deprecated Prefer headlineDisplay + accent period. */
+  headline: 'Ready to see what\u2019s blocking your release?',
+  headlineAccent: 'Review my site',
+  body: 'Free check. Paste your site or app URL and get your FixFlags report.',
 } as const
 
 export const MCP_SECTION = {
@@ -219,36 +231,55 @@ Agent reports: "Experience moved to Pass. One Flag cleared."`,
 
 export const LANDING_PAGE = {
   logoCloud: {
-    label: 'Paste fixes into the tools you already use',
+    label: 'Works where you build',
     disclaimer: '',
-    logos: ['Cursor', 'Lovable', 'Bolt', 'Replit', 'Claude Code', 'Codex', 'Windsurf'] as const,
+    logos: ['Lovable', 'Bolt', 'Cursor', 'Replit', 'Claude Code', 'Windsurf', 'Codex'] as const,
   },
   checkDimensions: {
-    label: '',
-    headline: 'What your page says, how it works, and whether it can be found.',
+    label: 'Built to cover what matters',
+    headlineDisplay: 'Every dimension of release readiness',
+    headlineAccentPeriod: true,
+    headline: 'Every dimension of release readiness.',
+    subhead:
+      'FixFlags scans your product across message, experience, and reach so you can fix what counts and ship with confidence.',
+    allChecksTab: 'All checks',
+    topIssuesTitle: 'Top issues',
+    viewAllIssues: 'View all issues',
     exampleFindingLabel: 'Example finding',
     cards: [
       {
         id: 'message',
         title: 'Message',
+        panelTitle: 'Communicate what matters.',
         question: 'Can people understand and care in five seconds?',
+        panelBody:
+          'We analyze clarity, hierarchy, and content quality so your message is instantly clear.',
         icon: 'message',
         tint: 'brand',
         checks: [
-          'Clarity in the first five seconds',
-          'Positioning that names the audience',
-          'Copy and story that make the next step obvious',
-          'CTA and proof that reduce hesitation',
+          'Clarity and value proposition',
+          'Content hierarchy',
+          'Tone of voice',
+          'Readability',
         ] as const,
         proofExample: {
           finding: 'Hero value is unclear',
           evidence: '"Your team deserves better naps"',
         },
+        topIssues: [
+          { title: 'Hero value is unclear', severity: 'High' },
+          { title: 'CTA stays vague', severity: 'Medium' },
+          { title: 'Audience never named', severity: 'Medium' },
+          { title: 'Outcome buried below the fold', severity: 'Good' },
+        ] as const,
       },
       {
         id: 'experience',
         title: 'Experience',
+        panelTitle: 'Make the next step obvious.',
         question: 'Can people use it without friction?',
+        panelBody:
+          'We check mobile layout, flows, accessibility, and trust so visitors can act without friction.',
         icon: 'experience',
         tint: 'success',
         checks: [
@@ -261,11 +292,20 @@ export const LANDING_PAGE = {
           finding: 'Primary CTA below fold at 375px',
           evidence: 'Main action starts at 1,200px on mobile',
         },
+        topIssues: [
+          { title: 'Hidden mobile CTA', severity: 'High' },
+          { title: 'Low contrast text', severity: 'Medium' },
+          { title: 'Tap targets too small', severity: 'Medium' },
+          { title: 'HTTPS enabled', severity: 'Good' },
+        ] as const,
       },
       {
         id: 'reach',
         title: 'Reach',
+        panelTitle: 'Show up when people share and search.',
         question: 'Can people find and share it?',
+        panelBody:
+          'We check metadata, social previews, and indexability so your link still looks like you.',
         icon: 'reach',
         tint: 'info',
         checks: [
@@ -278,11 +318,45 @@ export const LANDING_PAGE = {
           finding: 'Social preview image missing',
           evidence: 'Link previews show blank on Slack and X',
         },
+        topIssues: [
+          { title: 'Missing og:image', severity: 'High' },
+          { title: 'No meta description', severity: 'Medium' },
+          { title: 'Canonical missing', severity: 'Medium' },
+          { title: 'Favicon present', severity: 'Good' },
+        ] as const,
+      },
+    ] as const,
+    values: [
+      {
+        id: 'aligned',
+        title: 'Human-aligned AI',
+        body: 'Trained on real product standards, not guesswork.',
+        icon: 'shield' as const,
+      },
+      {
+        id: 'evidence',
+        title: 'Zero guesswork',
+        body: 'Issues backed by evidence and best practices.',
+        icon: 'target' as const,
+      },
+      {
+        id: 'fixes',
+        title: 'Actionable fixes',
+        body: 'Clear guidance you can paste into your editor.',
+        icon: 'zap' as const,
+      },
+      {
+        id: 'recheck',
+        title: 'Re-check with confidence',
+        body: 'Verify every fix and see which Flags cleared.',
+        icon: 'refresh' as const,
       },
     ] as const,
   },
   howItWorks: {
     label: 'How it works',
+    headlineDisplay: 'Three steps. Then re-check',
+    headlineAccentPeriod: true,
     headline: 'Three steps. Then re-check.',
     subhead:
       'Paste a URL. Get Flags. Copy fixes into your editor. Re-check to prove it landed.',
@@ -354,21 +428,78 @@ export const LANDING_PAGE = {
     ] as const,
   },
   whyAiNeedsFixFlags: {
-    headline: 'AI builds it. FixFlags checks the first visit.',
-    lead: 'AI builds fast. Users judge in seconds.',
-    body: 'FixFlags checks what the builder never experiences as a first-time visitor.',
+    /** @deprecated Prefer whyBuildersChoose. Kept for older references. */
+    headline: 'More than a score. Everything you need to ship.',
+    lead: 'FixFlags turns complex quality signals into clear guidance so you can ship product your users love.',
+    body: 'Clear findings, actionable fixes, evidence, and re-check in one loop.',
     checks: [
-      'First impressions',
-      'Mobile usability',
-      'Sharing previews',
-      'Accessibility',
-      'Trust',
-      'Conversion friction',
+      'Clear findings',
+      'Actionable fixes',
+      'Prioritized by impact',
+      'Evidence you trust',
+      'Re-check and improve',
+    ] as const,
+  },
+  whyBuildersChoose: {
+    label: 'Why builders choose FixFlags',
+    headlineDisplay: 'More than a score. Everything you need to ship',
+    headlineAccentPeriod: true,
+    headline: 'More than a score. Everything you need to ship.',
+    subhead:
+      'FixFlags turns complex quality signals into clear guidance so you can ship product your users love.',
+    features: [
+      {
+        id: 'findings',
+        title: 'Clear findings',
+        body: 'Plain language issues with real impact.',
+        icon: 'sparkles' as const,
+      },
+      {
+        id: 'fixes',
+        title: 'Actionable fixes',
+        body: 'Copy-ready prompts your AI can use.',
+        icon: 'code' as const,
+      },
+      {
+        id: 'priority',
+        title: 'Prioritized by impact',
+        body: 'Focus on what matters most, first.',
+        icon: 'trend' as const,
+      },
+      {
+        id: 'evidence',
+        title: 'Evidence you trust',
+        body: 'Screenshots and context for every issue.',
+        icon: 'shield' as const,
+      },
+      {
+        id: 'recheck',
+        title: 'Re-check and improve',
+        body: 'Verify every fix and watch your score improve.',
+        icon: 'refresh' as const,
+      },
     ] as const,
   },
   editorIntegrations: {
-    headline: 'Cursor, Lovable, Bolt, Replit, and more.',
-    body: 'Each Flag includes a prompt shaped for the editor you already use. Copy it, paste it, fix the issue, then re-check.',
+    label: 'Works where you build',
+    headlineDisplay: 'Seamless in your existing workflow',
+    headlineAccentPeriod: true,
+    headline: 'Seamless in your existing workflow.',
+    body: 'Connect your stack and run audits in seconds. Built for modern builders.',
+    moreComing: 'More integrations coming soon',
+    workflow: {
+      inputs: [
+        { id: 'scan', title: 'Scan', icon: 'target' as const },
+        { id: 'flag', title: 'Flag', icon: 'shield' as const },
+        { id: 'fix', title: 'Fix', icon: 'wrench' as const },
+        { id: 'recheck', title: 'Re-check', icon: 'refresh' as const },
+      ] as const,
+      outputs: [
+        { id: 'fixed', title: 'Issues fixed', icon: 'check' as const },
+        { id: 'score', title: 'Score improved', icon: 'trend' as const },
+        { id: 'ship', title: 'Ship with confidence', icon: 'diamond' as const },
+      ] as const,
+    },
   },
   productEvidence: {
     headline: 'What a review actually catches',
@@ -424,22 +555,58 @@ export const LANDING_PAGE = {
   },
   sampleReport: {
     label: '',
-    headline: 'A review you can paste into your editor.',
-    body: 'Each Flag has evidence, impact, and a fix prompt.',
+    headlineDisplay: 'See exactly what AI misses',
+    headlineAccentPeriod: true,
+    headline: 'See exactly what AI misses.',
+    body: 'Each Flag has evidence, impact, and a fix prompt you can paste into your editor.',
     previewEyebrow: 'Fix list',
     previewTitle: 'Every fix, ranked and ready',
     previewBadge: 'Screenshot evidence included',
-    cta: 'View full sample review',
+    exploreCta: 'Explore a full report',
+    cta: 'Explore a full report',
     ctaWithCount: (flagCount: number) => {
       void flagCount
-      return 'View full sample review'
+      return 'Explore a full report'
     },
     illustrativeLabel: '',
+    rubricRows: [
+      {
+        id: 'message',
+        title: 'Message',
+        body: 'Clarity, positioning, and copy that make the next step obvious.',
+        icon: 'message' as const,
+      },
+      {
+        id: 'experience',
+        title: 'Experience',
+        body: 'Mobile layout, flows, accessibility, and trust friction.',
+        icon: 'experience' as const,
+      },
+      {
+        id: 'reach',
+        title: 'Reach',
+        body: 'Metadata, social previews, and shareability.',
+        icon: 'reach' as const,
+      },
+    ] as const,
+    trustLabel: 'Every report is built on real product signals',
+    issuesLabel: (count: number) => `${count} issues in the sample review`,
+    checksLabel: (count: number) =>
+      `${count} checks across Message, Experience, and Reach`,
+    trustChips: [
+      { id: 'speed', label: 'Results in under 60 seconds', icon: 'zap' as const },
+      { id: 'recheck', label: 'Unlimited re-checks', icon: 'refresh' as const },
+      { id: 'private', label: 'Private by default', icon: 'lock' as const },
+    ] as const,
   },
   footer: {
     tagline:
-      'Reviews for AI-built and live sites. Flags with evidence, and fix prompts you can paste.',
+      'The release readiness layer for AI-built products. We find what blocks your release so you can ship with confidence.',
     madeWith: 'Built for people shipping with AI.',
+    buildersTitle: 'Built for builders',
+    buildersBody: 'FixFlags works where you build. Paste fixes into the editor you already use.',
+    buildersCta: 'See how it works',
+    buildersHref: '/how-it-works',
     newsletter: {
       title: 'Stay in the loop',
       placeholder: 'Enter your email',

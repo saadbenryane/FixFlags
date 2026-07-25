@@ -75,21 +75,22 @@ export function runConversionFrictionChecks(
     })
   }
 
-  const formFields = meta.totalFormInputs ?? 0
-  if (formFields > 0 && (ctaTexts.length > 0 || hasFreeTrial || hasDemo)) {
-    if (formFields > 5) {
-      findings.push({
-        checkId: 'friction-form-too-many-fields',
-        rubric: 'EXPERIENCE',
-        impactTag: 'CONVERSION',
-        severity: 'IMPORTANT',
-        problem: `Conversion form has ${formFields} fields - high friction for first contact`,
-        evidence: `${formFields} form input fields detected on the page. Each additional field reduces conversion rate.`,
-        fix: '1. Reduce the form to the few fields needed for this first step\n2. Collect additional info progressively after conversion\n3. Consider multi-step forms if many fields are truly needed\n4. Test by removing every field that is not strictly necessary for the first interaction',
-        confidence: 0.9,
-        source: 'DETERMINISTIC',
-      })
-    }
+  // Only flag the largest form that contains a conversion CTA (sign up, start
+  // free, etc.). Search bars, cookie forms, and login forms legitimately have
+  // many fields but are not conversion friction.
+  const formFields = meta.maxConversionFormInputs ?? meta.totalFormInputs ?? 0
+  if (formFields > 5) {
+    findings.push({
+      checkId: 'friction-form-too-many-fields',
+      rubric: 'EXPERIENCE',
+      impactTag: 'CONVERSION',
+      severity: 'IMPORTANT',
+      problem: `Conversion form has ${formFields} fields - high friction for first contact`,
+      evidence: `${formFields} form input fields detected in a conversion form. Each additional field reduces conversion rate.`,
+      fix: '1. Reduce the form to the few fields needed for this first step\n2. Collect additional info progressively after conversion\n3. Consider multi-step forms if many fields are truly needed\n4. Test by removing every field that is not strictly necessary for the first interaction',
+      confidence: 0.9,
+      source: 'DETERMINISTIC',
+    })
   }
 
   const hasRiskReversal = hasGuarantee || bodyText.includes('cancel anytime') || FREE_TRIAL_MARKERS.test(bodyText)

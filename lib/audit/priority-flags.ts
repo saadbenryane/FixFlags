@@ -55,6 +55,26 @@ function corridorBoost(flag: RankableFlag): number {
   return 2
 }
 
+// Checks that fire on nearly every site and do not represent high-leverage
+// actionable issues. Demoted in Finish Plan ranking so they don't dominate
+// the top-3 on well-built sites where more specific findings matter more.
+const NOISY_POLISH_CHECKS = new Set([
+  'cookie-consent-absent',
+  'skip-link-missing',
+  'measurement-ga-gtm-posthog-missing',
+  'no-structured-data',
+  'security-csp-missing',
+  'security-frame-options-missing',
+  'security-content-type-options-missing',
+])
+
+function noisyPolishDemotion(flag: RankableFlag): number {
+  if (flag.severity === 'POLISH' && NOISY_POLISH_CHECKS.has(flag.checkId ?? '')) {
+    return 1
+  }
+  return 0
+}
+
 /**
  * Demote Reach hardening headers in Finish Plan ranking only.
  * Keeps severity/status honest while preferring conversion/first-visit Flags in top 3.
@@ -104,6 +124,9 @@ function compareFlagPrioritySignals(
 ): number {
   const demotionDiff = reachHardeningDemotion(a) - reachHardeningDemotion(b)
   if (demotionDiff !== 0) return demotionDiff
+
+  const noisyDiff = noisyPolishDemotion(a) - noisyPolishDemotion(b)
+  if (noisyDiff !== 0) return noisyDiff
 
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff

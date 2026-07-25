@@ -58,7 +58,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://vercel.com',
     tier: 'gold',
     maxImportantFalseBlockers: 0,
-    expectedTop3: ['friction-no-risk-reversal', 'trust-no-authority-signals', 'measurement-ga-gtm-posthog-missing'],
+    expectedTop3: ['friction-no-risk-reversal', 'trust-no-authority-signals', 'description-too-short'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',
@@ -85,7 +85,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://bolt.new',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'cookie-consent-absent'],
+    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'trust-no-authority-signals'],
     knownFalsePositives: ['messaging-weak-value-prop'],
     expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
   },

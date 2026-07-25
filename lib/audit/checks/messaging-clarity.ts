@@ -10,7 +10,7 @@ const JARGON_PATTERNS = [
 ]
 
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
-const OUTCOME_REGEX = /\b(build|builder|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard)\b|\b\d+(?:x|%)\b/i
+const OUTCOME_REGEX = /\b(build|builder|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard|search|browse|explore|read|watch|listen|download|install|run|use|access|open|store|share|connect|communicate|message|chat|call|meet|present|report|visualize|process|handle|deliver|publish|post|upload|import|export|sync|backup|secure|protect|filter|sort|list|view|show|display|compose|draft|edit|review|approve|submit|transfer|migrate)\b|\b\d+(?:x|%)\b/i
 
 export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []

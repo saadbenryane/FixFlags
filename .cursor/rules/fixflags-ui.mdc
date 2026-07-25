@@ -40,6 +40,10 @@ Concentric: inner = outer − padding. Controls/buttons/inputs: `rounded-[var(--
 
 Official brand-sheet mark raster only (`/brand/logo-mark.png`). Do not invent SVG geometry or reintroduce the old 3D pennant.
 
+## Marketing visuals
+
+Never soft-key black-background plates into alpha without unmatting — dark RGB on partial alpha creates a black fringe. On mesh/gradient marketing pages, ship properly unmated RGBA (despill edges; no dark semi-transparent pixels). Opaque bake onto `#FFFFFF` only when the canvas is flat white. Prefer a white-mockup crop when available. Do not re-trim/re-key clean RGBA masters.
+
 ## Anti-slop
 
 No icon grids, gradient heroes, colored trend pills, `transition: all`, or default blue stacks. Sentence case. Real product screenshots over illustrations.

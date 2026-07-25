@@ -62,15 +62,19 @@ export function runVisualHierarchyChecks(
     }
   }
 
-  const aboveFoldTextLength = h1s.concat(h2s).join(' ').split(/\s+/).length
-  if (aboveFoldTextLength > 0 && aboveFoldTextLength > 80) {
+  // Approximate above-fold content: H1 is always visible; only the first 2 H2s
+  // are likely above the fold on a typical page layout. Counting all H2s
+  // over-counts on pages with many content sections below the fold.
+  const aboveFoldHeadings = [h1s[0] ?? '', ...(h2s.slice(0, 2))]
+  const aboveFoldTextLength = aboveFoldHeadings.join(' ').split(/\s+/).filter(Boolean).length
+  if (aboveFoldTextLength > 80) {
     findings.push({
       checkId: 'hierarchy-information-density',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
       problem: 'Above-the-fold content has high information density',
-      evidence: `Headings and subheadings above the fold total ~${aboveFoldTextLength} words. Users scanning the page may miss the key message.`,
+      evidence: `Headings above the fold total ~${aboveFoldTextLength} words. Users scanning the page may miss the key message.`,
       fix: '1. Lead with ONE clear headline and ONE supporting subhead\n2. Move secondary messages below the fold or into visual cards\n3. Use whitespace to separate key value propositions\n4. Apply the 3-second test: can a visitor understand the value in 3 seconds?',
       confidence: 0.7,
       source: 'DETERMINISTIC',

@@ -2,6 +2,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { Instagram } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
+import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { NavLink } from '@/components/layout/nav-link'
@@ -15,7 +16,8 @@ import {
 } from '@/lib/site/nav-styles'
 
 export function Footer() {
-  const { tagline, madeWith, social } = LANDING_PAGE.footer
+  const { tagline, madeWith, buildersTitle, buildersBody, buildersCta, buildersHref, social } =
+    LANDING_PAGE.footer
 
   return (
     <footer className="glass-surface border-0">
@@ -24,6 +26,25 @@ export function Footer() {
           <div className="space-y-5">
             <Logo variant="lockup" size="md" href="/" />
             <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{tagline}</p>
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {buildersTitle}
+              </p>
+              <p className="max-w-sm text-sm leading-relaxed text-muted-foreground text-pretty">
+                {buildersBody}
+              </p>
+              <EditorToolMarks
+                compact
+                showLabel={false}
+                className="[&_ul]:gap-2 [&_li]:rounded-[var(--radius-control)] [&_li]:border [&_li]:border-border/50 [&_li]:px-2.5 [&_li]:py-1.5 [&_li]:text-xs [&_li]:font-medium [&_svg]:h-3.5 [&_svg]:w-3.5"
+              />
+              <Link
+                href={buildersHref as Route}
+                className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:text-brand-hover"
+              >
+                {buildersCta}
+              </Link>
+            </div>
             <div className="flex items-center gap-3">
               {social.instagram ? (
                 <FooterSocialLink href={social.instagram} label="Instagram">
@@ -40,7 +61,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border/30 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} {BRAND.name}</p>
+          <p>
+            © {new Date().getFullYear()} {BRAND.name}
+          </p>
           <p>{madeWith}</p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <FooterThemeToggle />

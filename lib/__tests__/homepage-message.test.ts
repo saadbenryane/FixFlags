@@ -68,6 +68,7 @@ const PRICING_STRINGS = [
 
 const ABOVE_FOLD_COPY = [
   HERO.headline,
+  HERO.headlineDisplay,
   HERO.headlineLine1,
   HERO.headlineLine2,
   HERO.subhead,
@@ -83,12 +84,10 @@ const ABOVE_FOLD_COPY = [
 
 describe('homepage message guardrails', () => {
   it('hero headline names the finish-the-loop moment after AI builds', () => {
-    assert.match(HERO.badge, /check/i)
-    assert.match(HERO.headlineAccent, /finish/i)
-    assert.equal(
-      HERO.headline,
-      `${HERO.headlineAccent} ${HERO.headlineLine1} ${HERO.headlineLine2}`,
-    )
+    assert.match(HERO.badge, /release readiness/i)
+    assert.match(HERO.headlineDisplay, /finish what your ai started/i)
+    assert.equal(HERO.headline, `${HERO.headlineDisplay}.`)
+    assert.equal(HERO.headlineAccentPeriod, true)
   })
 
   it('above-fold copy avoids internal "7 areas" taxonomy', () => {
@@ -97,12 +96,24 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('hero subhead explains input, analysis, and fix output', () => {
-    assert.match(HERO.subhead, /paste your url/i)
-    assert.match(HERO.subhead, /ai missed|flags/i)
-    assert.match(HERO.subhead, /copy fixes/i)
+  it('hero subhead names Message, Experience, and Reach without repeating the headline', () => {
+    assert.match(HERO.subhead, /message/i)
+    assert.match(HERO.subhead, /experience/i)
+    assert.match(HERO.subhead, /reach/i)
+    assert.match(HERO.subhead, /ship with confidence/i)
     assert.ok(HERO.subhead.split(/\s+/).length <= 40)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
+  })
+
+  it('hero assurances are product-true and skip invented social proof', () => {
+    assert.ok(HERO.assurances.length >= 3)
+    for (const item of HERO.assurances) {
+      assert.ok(!/\d{2,},\d{3}/.test(item.label), `Invented count: ${item.label}`)
+      assert.ok(!/builders? reviewed/i.test(item.label), `Fake social proof: ${item.label}`)
+    }
+    assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /no sign up/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
   })
 
   it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
@@ -192,8 +203,8 @@ describe('homepage message guardrails', () => {
   it('primary CTA uses visitor-facing check language', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
-    assert.match(FINAL_CTA.headlineAccent, /fix/i)
-    assert.ok(!/flag it/i.test(FINAL_CTA.headlineAccent))
+    assert.match(FINAL_CTA.headlineDisplay, /blocking your release/i)
+    assert.equal(FINAL_CTA.headlineAccentPeriod, true)
   })
 
   it('DIFFERENTIATION has at most 3 bullets and 5 comparison rows', () => {
@@ -238,12 +249,15 @@ describe('homepage message guardrails', () => {
 
   it('dimension cards have checklists and proof examples', () => {
     assert.equal(LANDING_PAGE.checkDimensions.cards.length, 3)
+    assert.equal(LANDING_PAGE.checkDimensions.values.length, 4)
     for (const card of LANDING_PAGE.checkDimensions.cards) {
       assert.ok('checks' in card)
       assert.ok(card.checks.length >= 4)
       assert.ok('proofExample' in card)
       assert.ok(card.proofExample.finding.length > 0)
       assert.ok(card.proofExample.evidence.length > 0)
+      assert.ok(card.topIssues.length >= 3)
+      assert.ok(card.panelTitle.length > 0)
     }
   })
 
@@ -268,20 +282,21 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('why AI and editor integrations sections exist', () => {
-    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.headline, /AI builds it/i)
-    assert.match(LANDING_PAGE.whyAiNeedsFixFlags.lead, /AI builds fast/i)
-    assert.ok(LANDING_PAGE.whyAiNeedsFixFlags.checks.length >= 5)
-    assert.match(LANDING_PAGE.editorIntegrations.headline, /Cursor|Claude|Lovable/i)
+  it('why builders and editor integrations sections exist', () => {
+    assert.match(LANDING_PAGE.whyBuildersChoose.headlineDisplay, /more than a score/i)
+    assert.equal(LANDING_PAGE.whyBuildersChoose.features.length, 5)
+    assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
+    assert.match(LANDING_PAGE.editorIntegrations.label, /works where you build/i)
   })
 
   it('sample report section links to the full sample review', () => {
-    assert.equal(LANDING_PAGE.sampleReport.cta, 'View full sample review')
-    assert.equal(LANDING_PAGE.sampleReport.ctaWithCount(7), 'View full sample review')
+    assert.equal(LANDING_PAGE.sampleReport.cta, 'Explore a full report')
+    assert.equal(LANDING_PAGE.sampleReport.ctaWithCount(7), 'Explore a full report')
+    assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /exactly what ai misses/i)
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headline, /what your page says/i)
+    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /release readiness/i)
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']
@@ -289,15 +304,15 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
     assert.match(LANDING_PAGE.sampleReport.body, /fix prompt/i)
-    assert.match(LANDING_PAGE.logoCloud.label, /tools you already use/i)
+    assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
-      'Cursor',
       'Lovable',
       'Bolt',
+      'Cursor',
       'Replit',
       'Claude Code',
-      'Codex',
       'Windsurf',
+      'Codex',
     ])
     assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)
     assert.deepEqual(

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowRight, Link2, Loader2 } from 'lucide-react'
 import { HERO, AUDIT_PROGRESS, OFFER } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
@@ -25,6 +25,7 @@ export function AuditInput({
   initialUrl = '',
   autoStart = false,
   ctaPlacement,
+  showLandingExtras = true,
 }: {
   variant?: 'default' | 'landing'
   /** Audit attribution source sent to POST /api/checks (defaults from variant). */
@@ -35,6 +36,8 @@ export function AuditInput({
   autoStart?: boolean
   /** Distinguishes hero vs final CTA on the landing page for funnel attribution. */
   ctaPlacement?: 'hero' | 'final'
+  /** Landing-only offer line + sample CTA. Hero hides these to match mockup spacing. */
+  showLandingExtras?: boolean
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
@@ -162,45 +165,53 @@ export function AuditInput({
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
 
   return (
-    <div className={cn('flex w-full flex-col gap-3', isLanding ? 'max-w-2xl mx-auto' : 'max-w-2xl')}>
+    <div className={cn('flex w-full flex-col gap-3', isLanding ? 'w-full' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <InputGroup>
+          <InputGroup className="gap-1.5 p-1.5 sm:items-stretch sm:gap-0 sm:p-1">
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>
-            <InputGroupInput
-              id={inputId}
-              name="url"
-              type="text"
-              inputMode="url"
-              autoComplete="url"
-              placeholder={HERO.urlPlaceholder}
-              value={url}
-              onFocus={() => {
-                if (resolvedPlacement === 'hero' || resolvedPlacement === 'final') {
-                  trackEvent('audit_intent', {
-                    cta_placement: resolvedPlacement,
-                    from: resolvedPlacement,
-                  })
-                }
-              }}
-              onChange={(e) => {
-                setUrl(e.target.value)
-                setUrlError('')
-              }}
-              disabled={busy}
-              aria-invalid={Boolean(urlError)}
-              aria-describedby={describedBy}
-            />
+            <div className="flex min-w-0 flex-1 items-center">
+              <span
+                className="inline-flex shrink-0 items-center self-center pl-2.5 text-muted-foreground/70 sm:pl-3"
+                aria-hidden
+              >
+                <Link2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </span>
+              <InputGroupInput
+                id={inputId}
+                name="url"
+                type="text"
+                inputMode="url"
+                autoComplete="url"
+                placeholder={HERO.urlPlaceholder}
+                value={url}
+                onFocus={() => {
+                  if (resolvedPlacement === 'hero' || resolvedPlacement === 'final') {
+                    trackEvent('audit_intent', {
+                      cta_placement: resolvedPlacement,
+                      from: resolvedPlacement,
+                    })
+                  }
+                }}
+                onChange={(e) => {
+                  setUrl(e.target.value)
+                  setUrlError('')
+                }}
+                disabled={busy}
+                aria-invalid={Boolean(urlError)}
+                aria-describedby={describedBy}
+                className="h-11 min-h-11 flex-1 pl-2 pr-2 text-[0.9375rem] sm:h-12 sm:min-h-12 sm:pl-2.5 sm:text-base"
+              />
+            </div>
             <Button
               type="submit"
-              variant="default"
+              variant="brand"
               size="lg"
               disabled={busy}
               className={cn(
-                fieldHeightClass,
-                'w-full shrink-0 gap-2 px-5 text-base font-semibold sm:w-auto sm:min-w-[10.5rem] sm:px-6'
+                'h-11 min-h-11 w-full shrink-0 gap-1.5 px-4 text-sm font-semibold sm:h-12 sm:min-h-12 sm:w-auto sm:min-w-[9.75rem] sm:gap-2 sm:px-5 sm:text-base'
               )}
             >
               {busy ? (
@@ -211,7 +222,7 @@ export function AuditInput({
               ) : (
                 <>
                   {HERO.primaryCta}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </>
               )}
             </Button>
@@ -268,25 +279,27 @@ export function AuditInput({
         )}
       </form>
 
-      {isLanding && (
-        <p className="text-center text-2xs leading-relaxed text-muted-foreground/90">
+      {isLanding && showLandingExtras ? (
+        <p className="text-2xs leading-relaxed text-muted-foreground/90">
           {OFFER.short}
         </p>
-      )}
+      ) : null}
 
-      <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={busy}
-          onClick={isLanding ? handleLandingTrySample : handleTrySample}
-          className="px-0 text-sm text-muted-foreground hover:text-foreground"
-        >
-          {HERO.trySampleCta}
-          <ArrowRight className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      </div>
+      {showLandingExtras || !isLanding ? (
+        <div className="flex flex-col gap-1 items-start">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={isLanding ? handleLandingTrySample : handleTrySample}
+            className="px-0 text-sm text-muted-foreground hover:text-foreground"
+          >
+            {HERO.trySampleCta}
+            <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

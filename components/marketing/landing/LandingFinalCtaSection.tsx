@@ -1,8 +1,9 @@
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
+import { Lock, ShieldCheck, Zap } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { BrandIllustration } from '@/components/marketing/landing/BrandIllustration'
-import { FINAL_CTA } from '@/lib/marketing/copy'
+import { FINAL_CTA, HERO } from '@/lib/marketing/copy'
 
 const AuditInput = dynamic(
   () => import('@/components/audit/AuditInput').then((m) => m.AuditInput),
@@ -17,35 +18,75 @@ const AuditInput = dynamic(
   }
 )
 
+const ASSURANCE_ICONS = {
+  shield: ShieldCheck,
+  lock: Lock,
+  zap: Zap,
+} as const
+
 export function LandingFinalCtaSection() {
   return (
     <Section spacing="marketing" className="pb-7 sm:pb-8">
       <Container>
-        <div className="relative overflow-hidden rounded-card p-8 glass-surface-strong shadow-card sm:p-12 lg:p-16">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 -top-28 h-72 bg-[radial-gradient(ellipse_60%_55%_at_72%_35%,hsl(var(--brand)/0.18),transparent_68%)] blur-[80px]"
-          />
-          <BrandIllustration
-            sizes="(min-width: 1024px) 260px, 0px"
-            className="absolute -bottom-28 -right-8 hidden h-96 w-72 opacity-50 [mask-image:radial-gradient(ellipse_68%_72%_at_52%_55%,black_30%,transparent_78%)] lg:block dark:hidden xl:right-2"
-            imageClassName="scale-110 object-[50%_58%]"
-          />
-          <div className="relative z-10 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-            <div className="space-y-6">
-              <h2 className="font-display text-4xl font-semibold leading-display tracking-display text-balance text-foreground sm:text-5xl">
-                {FINAL_CTA.headline}{' '}
-                <span className="text-brand">
-                  {FINAL_CTA.headlineAccent}
-                </span>
-              </h2>
-              <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-                {FINAL_CTA.body}
-              </p>
+        <div className="rounded-card border border-border/50 bg-background p-6 shadow-card sm:p-8 lg:p-10">
+          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12">
+            <div className="flex items-start gap-4 sm:gap-5">
+              <div className="relative hidden h-16 w-16 shrink-0 items-center justify-center rounded-[1rem] bg-muted/60 shadow-sm sm:flex">
+                <Image
+                  src="/brand/logo-mark.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="h-9 w-9 object-contain"
+                />
+              </div>
+              <div className="space-y-2.5">
+                <h2 className="font-display text-2xl font-semibold leading-display tracking-display text-balance sm:text-[1.75rem] md:text-[2rem]">
+                  {FINAL_CTA.headlineDisplay}
+                  {FINAL_CTA.headlineAccentPeriod ? (
+                    <span className="text-brand" aria-hidden>
+                      .
+                    </span>
+                  ) : null}
+                </h2>
+                <p className="max-w-md text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+                  {FINAL_CTA.body}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-5">
-              <AuditInput variant="landing" idSuffix="-final-cta" ctaPlacement="final" />
+            <div className="space-y-4">
+              <AuditInput
+                variant="landing"
+                idSuffix="-final-cta"
+                ctaPlacement="final"
+                showLandingExtras={false}
+              />
+              <ul className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-0">
+                {HERO.assurances.map((item, index) => {
+                  const Icon = ASSURANCE_ICONS[item.icon]
+                  return (
+                    <li
+                      key={item.id}
+                      className="inline-flex items-center gap-2 text-[0.8125rem] text-muted-foreground sm:text-sm"
+                    >
+                      {index > 0 ? (
+                        <span
+                          aria-hidden
+                          className="mx-3 hidden h-3.5 w-px shrink-0 bg-border sm:inline-block"
+                        />
+                      ) : null}
+                      <Icon
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                      <span>{item.label}</span>
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           </div>
         </div>

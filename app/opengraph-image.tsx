@@ -3,7 +3,7 @@ import { BRAND, HERO } from '@/lib/marketing/copy'
 import { BRAND_HEX } from '@/lib/design/brand-spec'
 
 export const runtime = 'edge'
-export const alt = `${BRAND.name} - ${HERO.headlineLine2}`
+export const alt = `${BRAND.name} - ${HERO.headlineDisplay}`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -42,7 +42,7 @@ export default function Image() {
             fontFamily: 'system-ui',
           }}
         >
-          <span>{`${HERO.headlineLine1} ${HERO.headlineLine2}`}</span>
+          <span>{HERO.headline}</span>
         </div>
       </div>
     ),

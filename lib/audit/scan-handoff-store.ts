@@ -33,8 +33,10 @@ function getSnapshot(): ScanHandoffState {
   return state
 }
 
+const SERVER_SNAPSHOT: ScanHandoffState = { url: null, limitGate: null }
+
 function getServerSnapshot(): ScanHandoffState {
-  return { url: null, limitGate: null }
+  return SERVER_SNAPSHOT
 }
 
 /** Open progressive chrome immediately while a create/re-check request runs. */

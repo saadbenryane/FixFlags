@@ -53,6 +53,7 @@ function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata {
     elementIds: ['features', 'pricing', 'faq'],
     formInputsMissingValidation: 0,
     totalFormInputs: 0,
+    maxConversionFormInputs: 0,
     ...overrides,
   }
 }

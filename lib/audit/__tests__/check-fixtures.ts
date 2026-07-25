@@ -46,6 +46,7 @@ export function healthyMeta(overrides: Partial<PageMetadata> = {}): PageMetadata
     elementIds: ['main-content', 'features'],
     formInputsMissingValidation: 0,
     totalFormInputs: 1,
+    maxConversionFormInputs: 1,
     ...overrides,
   }
 }

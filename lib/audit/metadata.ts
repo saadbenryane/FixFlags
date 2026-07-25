@@ -46,6 +46,10 @@ export interface PageMetadata {
   formInputsMissingValidation: number
   /** Total number of form input/textarea/select elements. */
   totalFormInputs: number
+  /** Largest number of input fields in any single form that contains a
+   *  conversion CTA (sign up, start free, etc.). Excludes search, login, and
+   *  utility forms so the friction check only fires on real conversion flows. */
+  maxConversionFormInputs: number
 }
 
 export type RuntimeHeadMetadata = Partial<
@@ -215,14 +219,28 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   // Form field validation attributes
   let formInputsMissingValidation = 0
   let totalFormInputs = 0
+  let maxConversionFormInputs = 0
   const formInputSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]), textarea, select'
   const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([type="email"]):not([type="url"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
+  const CONVERSION_CTA_RE = /\b(sign\s*up|start\s*free|get\s*started|try\s*free|book\s*demo|register|join|subscribe|buy|purchase)\b/i
   const formElements = $('form')
   if (formElements.length > 0) {
     formElements.each((_, form) => {
+      let formFieldCount = 0
       $(form).find(formInputSelectors).each(() => {
         totalFormInputs++
+        formFieldCount++
       })
+      // Check if this form contains a conversion CTA (button text, link, or
+      // submit value). Only these forms represent real conversion friction.
+      const formText = $(form).text()
+      const hasCta = CONVERSION_CTA_RE.test(formText) ||
+        $(form).find('button, [type="submit"], a').toArray().some((el) =>
+          CONVERSION_CTA_RE.test($(el).text())
+        )
+      if (hasCta && formFieldCount > maxConversionFormInputs) {
+        maxConversionFormInputs = formFieldCount
+      }
       $(form).find(formValidationSelectors).each((_, field) => {
         const el = $(field)
         const hasPattern = el.attr('pattern') !== undefined
@@ -484,6 +502,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     elementIds,
     formInputsMissingValidation,
     totalFormInputs,
+    maxConversionFormInputs,
   }
 }
 
