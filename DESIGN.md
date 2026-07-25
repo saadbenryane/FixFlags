@@ -136,7 +136,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 - Default container max-width: 1280px (`max-w-5xl` / report `max-w-6xl`)
 - Marketing hero / feature sections: `--container-max-marketing` (88rem) via `Container variant="marketing"`
-- Marketing header height: `--header-height-marketing` (3.75rem); app header: `--header-height` (3.5rem); `--header-offset` (6.5rem) for `scroll-mt`
+- Marketing header height: `--header-height-marketing` (4.75rem); app header: `--header-height` (3.5rem); `--header-offset` (6.5rem) for `scroll-mt`
 - Section tinting: Use `Section tint="subtle"` for consistent `bg-muted/20` background on alternating sections
 - Padding: 1.25rem (default), 1.5rem (sm), 2rem (lg)
 - Screenshots: 1280x900 desktop, 375x812 mobile aspect ratios

@@ -21,7 +21,10 @@ export function Footer() {
 
   return (
     <footer className="glass-surface border-0">
-      <Container className="space-y-8 py-10 sm:space-y-12 sm:py-12 lg:py-14">
+      <Container
+        variant="marketing"
+        className="space-y-8 px-4 py-10 sm:space-y-12 sm:px-6 sm:py-12 lg:px-12 lg:py-14"
+      >
         <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))_1.4fr] lg:gap-8">
           <div className="space-y-5">
             <Logo variant="lockup" size="md" href="/" />

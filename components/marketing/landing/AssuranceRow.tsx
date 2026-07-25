@@ -26,7 +26,7 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
         return (
           <li
             key={item.id}
-            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/80 sm:gap-2 lg:text-sm"
+            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/80 sm:gap-2 lg:text-[0.6875rem]"
           >
             {index > 0 ? (
               <span
@@ -35,7 +35,7 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
               />
             ) : null}
             <Icon
-              className="h-4 w-4 shrink-0 self-center text-foreground/65"
+              className="h-4 w-4 shrink-0 self-center text-foreground/65 lg:h-3.5 lg:w-3.5"
               strokeWidth={1.75}
               aria-hidden
             />

@@ -54,11 +54,11 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
     >
       <SampleViewTracker placement="homepage" />
       <Container
-        className="space-y-12 sm:space-y-14 lg:space-y-16"
+        className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12"
         variant="marketing"
       >
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-8 xl:gap-10">
-          <RevealOnView className="flex flex-col gap-8 sm:gap-9 lg:pt-1">
+          <RevealOnView className="flex flex-col gap-6 sm:gap-7 lg:pt-1">
             <LandingSectionHeader
               align="left"
               label={copy.label}
@@ -70,7 +70,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
               className="max-w-md space-y-4 sm:space-y-5"
             />
 
-            <ul className="flex flex-col gap-2.5">
+            <ul className="flex flex-col gap-2">
               {copy.rubricRows.map((row) => {
                 const Icon = RUBRIC_ICONS[row.icon]
                 const count = preview.rubricCounts[row.id as keyof typeof preview.rubricCounts] ?? 0
@@ -79,14 +79,14 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                     <Link
                       href="/samples"
                       className={cn(
-                        'group flex min-h-[3.5rem] items-center gap-3.5 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-4 py-3 sm:min-h-16 sm:gap-4 sm:px-5 sm:py-3.5',
+                        'group flex min-h-[3.5rem] items-center gap-3 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-4 py-2.5 sm:gap-3.5 sm:px-4',
                         'shadow-glass-subtle',
                         'transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out',
                         'hover:border-border/65 hover:bg-background hover:shadow-glass',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
                       )}
                     >
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
+                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
                         <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
@@ -115,10 +115,11 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <SampleSectionCta flagCount={flagCount} />
           </RevealOnView>
 
-          <div className="relative min-w-0">
+          <div className="relative min-w-0 lg:aspect-[1.34/1]">
             <SampleReportDashboardMock
               preview={preview}
               checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
+              className="lg:absolute lg:left-0 lg:top-0 lg:w-[133.333%] lg:origin-top-left lg:scale-75"
             />
           </div>
         </div>

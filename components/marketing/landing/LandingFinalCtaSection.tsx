@@ -26,7 +26,7 @@ export function LandingFinalCtaSection() {
       spacing="marketing"
       className="scroll-mt-[var(--header-offset)]"
     >
-      <Container>
+      <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
         <div className="rounded-card border border-border/50 bg-background p-6 shadow-card sm:p-8 lg:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12">
             <div className="flex items-start gap-4 sm:gap-5">

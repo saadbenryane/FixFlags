@@ -78,7 +78,10 @@ export function Header({
         className
       )}
     >
-      <Container>
+      <Container
+        variant={isMarketing ? 'marketing' : 'default'}
+        className={isMarketing ? 'px-4 sm:px-6 lg:px-12' : undefined}
+      >
         <div
           className={cn(
             'grid items-center gap-3',

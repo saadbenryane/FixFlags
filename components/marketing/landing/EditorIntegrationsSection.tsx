@@ -38,7 +38,7 @@ export function EditorIntegrationsSection() {
       id="integrations"
       className="scroll-mt-[var(--header-offset)]"
     >
-      <Container>
+      <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
         <RevealOnView>
           <div className="overflow-hidden rounded-card bg-background p-6 shadow-card sm:p-8 lg:p-10">
             <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12">
