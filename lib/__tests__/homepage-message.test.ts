@@ -175,7 +175,7 @@ describe('homepage message guardrails', () => {
       assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
       assert.doesNotMatch(line, /\bre-?scan\b/i)
     }
-    assert.equal(LANDING_PAGE.howItWorks.steps.at(-1)?.title, 'Re-check')
+    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /re-check/i)
   })
 
   it('pricing keeps re-checks free and sells actual paid value', () => {
@@ -236,17 +236,20 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
   })
 
-  it('flag step avoids unverifiable flag counts in preview', () => {
-    const flag = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Flag')
-    assert.ok(flag)
-    assert.ok(!/\b\d+\b/.test(flag!.preview))
-  })
-
-  it('re-check step avoids synthetic score delta in preview', () => {
-    const recheck = LANDING_PAGE.howItWorks.steps.find((s) => s.title === 'Re-check')
-    assert.ok(recheck)
-    assert.ok(!recheck!.preview.includes('+32%'))
-    assert.ok(!recheck!.preview.toLowerCase().includes('score improved'))
+  it('how it works steps match glass mockup titles and keep product-true rubrics', () => {
+    assert.deepEqual(
+      LANDING_PAGE.howItWorks.steps.map((s) => s.title),
+      ['Start your audit', 'We run a complete audit', 'Get fixes. Ship.']
+    )
+    const scan = LANDING_PAGE.howItWorks.steps[1]!
+    assert.match(scan.body, /150\+ checks/i)
+    assert.match(scan.body, /Message, Experience, and Reach/i)
+    assert.doesNotMatch(scan.body, /performance, accessibility, SEO/i)
+    for (const step of LANDING_PAGE.howItWorks.steps) {
+      assert.ok(step.image.startsWith('/marketing/visuals/how-it-works-step-'))
+      assert.ok(step.imageWidth > 0)
+      assert.ok(step.imageHeight > 0)
+    }
   })
 
   it('dimension cards have checklists and proof examples', () => {

@@ -1,0 +1,456 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "FixFlags" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - navigation [ref=e14]:
+          - link "Product" [ref=e15] [cursor=pointer]:
+            - /url: /how-it-works
+          - link "Examples" [ref=e17] [cursor=pointer]:
+            - /url: /samples
+          - link "Pricing" [ref=e19] [cursor=pointer]:
+            - /url: /pricing
+          - link "Docs" [ref=e21] [cursor=pointer]:
+            - /url: /help
+        - generic [ref=e25]:
+          - link "Log in" [ref=e26] [cursor=pointer]:
+            - /url: /sign-in
+          - link "Review my site" [ref=e28] [cursor=pointer]:
+            - /url: /#audit
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - generic [ref=e33]:
+          - paragraph [ref=e34]: The release readiness layer
+          - generic [ref=e36]:
+            - heading "Finish what your AI started" [level=1] [ref=e37]: Finish what your AI started.
+            - paragraph [ref=e38]: AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.
+          - generic [ref=e42]:
+            - generic [ref=e43]: Website URL
+            - textbox "Website URL" [ref=e49]:
+              - /placeholder: Paste your site or app URL
+            - button "Review my site" [ref=e50] [cursor=pointer]
+          - list [ref=e51]:
+            - listitem [ref=e52]:
+              - generic [ref=e55]: Results in under 60 seconds
+            - listitem [ref=e56]:
+              - generic [ref=e61]: No sign up required
+            - listitem [ref=e62]:
+              - generic [ref=e67]: Your report is private
+          - paragraph [ref=e69]:
+            - generic [ref=e72]: Trusted by builders shipping with AI
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: Works where you build
+            - list [ref=e75]:
+              - listitem [ref=e76]: Lovable
+              - listitem [ref=e79]: Bolt
+              - listitem [ref=e82]: Cursor
+              - listitem [ref=e85]: Replit
+              - listitem [ref=e88]: Claude Code
+              - listitem [ref=e92]: Windsurf
+              - listitem [ref=e97]: Codex
+        - link "Scroll to discover" [ref=e103] [cursor=pointer]:
+          - /url: "#sample-review"
+      - generic [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - paragraph [ref=e111]: Sample report
+              - heading "See exactly what AI misses" [level=2] [ref=e113]: See exactly what AI misses.
+              - paragraph [ref=e114]: FixFlags scans your live product the way your users experience it and turns issues into clear, actionable fixes.
+            - list [ref=e115]:
+              - listitem [ref=e116]:
+                - link "Message Clarity, hierarchy, and content quality. 1 issue" [ref=e117] [cursor=pointer]:
+                  - /url: /samples
+                  - generic [ref=e121]:
+                    - generic [ref=e122]: Message
+                    - generic [ref=e123]: Clarity, hierarchy, and content quality.
+                  - generic [ref=e124]: 1 issue
+              - listitem [ref=e128]:
+                - link "Experience Usability, flows, and interface quality. 3 issues" [ref=e129] [cursor=pointer]:
+                  - /url: /samples
+                  - generic [ref=e133]:
+                    - generic [ref=e134]: Experience
+                    - generic [ref=e135]: Usability, flows, and interface quality.
+                  - generic [ref=e136]: 3 issues
+              - listitem [ref=e140]:
+                - link "Reach SEO, performance, and technical health. 3 issues" [ref=e141] [cursor=pointer]:
+                  - /url: /samples
+                  - generic [ref=e148]:
+                    - generic [ref=e149]: Reach
+                    - generic [ref=e150]: SEO, performance, and technical health.
+                  - generic [ref=e151]: 3 issues
+            - link "Explore a full report" [ref=e156] [cursor=pointer]:
+              - /url: /samples
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - generic [ref=e162]:
+                - paragraph [ref=e163]: plantdad-demo.app
+                - paragraph [ref=e164]: Sample Finish Plan · Jun 10, 2026
+              - generic [ref=e165]:
+                - generic [ref=e166]: Share report
+                - generic [ref=e167]: Re-check
+            - generic [ref=e173]:
+              - generic [ref=e175]:
+                - img [ref=e176]:
+                  - generic [ref=e180]: "70"
+                - generic [ref=e182]:
+                  - paragraph [ref=e183]: Release readiness
+                  - paragraph [ref=e184]: 70/100
+              - generic [ref=e185]:
+                - paragraph [ref=e186]: High impact issues
+                - paragraph [ref=e187]: "7"
+                - paragraph [ref=e188]: Needs attention
+                - paragraph [ref=e189]: Checked 168+ points
+              - generic [ref=e193]:
+                - paragraph [ref=e194]: By rubric
+                - list [ref=e195]:
+                  - listitem [ref=e196]:
+                    - generic [ref=e197]:
+                      - generic [ref=e198]: Message
+                      - generic [ref=e199]: "82"
+                  - listitem [ref=e202]:
+                    - generic [ref=e203]:
+                      - generic [ref=e204]: Experience
+                      - generic [ref=e205]: "62"
+                  - listitem [ref=e208]:
+                    - generic [ref=e209]:
+                      - generic [ref=e210]: Reach
+                      - generic [ref=e211]: "65"
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]: All issues 7
+                  - generic [ref=e218]: Message 1
+                  - generic [ref=e219]: Experience 3
+                  - generic [ref=e220]: Reach 3
+                - list [ref=e221]:
+                  - listitem [ref=e222]:
+                    - generic [ref=e226]: Primary CTA is hidden below the fold on mobile
+                    - generic [ref=e227]: Critical
+                    - generic [ref=e228]: Experience
+                  - listitem [ref=e229]:
+                    - generic [ref=e233]: Hero headline repeats the product category instead of the outcome
+                    - generic [ref=e234]: Important
+                    - generic [ref=e235]: Message
+                  - listitem [ref=e236]:
+                    - generic [ref=e240]: Navigation menu consumes 35% of viewport height on mobile
+                    - generic [ref=e241]: Important
+                    - generic [ref=e242]: Experience
+                  - listitem [ref=e243]:
+                    - generic [ref=e247]: Missing og:image, link previews show blank cards
+                    - generic [ref=e248]: Important
+                    - generic [ref=e249]: Reach
+                  - listitem [ref=e250]:
+                    - generic [ref=e254]: No meta description on the page
+                    - generic [ref=e255]: Important
+                    - generic [ref=e256]: Reach
+                - paragraph [ref=e257]: View all 7 issues →
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - paragraph [ref=e260]: Primary CTA is hidden below the fold on mobile
+                  - generic [ref=e261]: Critical Flag
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - paragraph [ref=e264]: Why it matters
+                    - paragraph [ref=e266]: At 375x812, the primary CTA starts below the first screen, so mobile visitors may never see how to sign up.
+                  - generic [ref=e267]:
+                    - paragraph [ref=e268]: Impact
+                    - generic [ref=e269]: Conversion
+                  - generic [ref=e272]:
+                    - paragraph [ref=e273]: Fix prompt
+                    - generic [ref=e274]:
+                      - generic [ref=e275]: "Primary CTA is hidden below the fold on mobile ## Why At 375x812, the primary CTA starts below the first screen, so mobile visitors may never see how to sign…"
+                      - generic [ref=e276]: Copy prompt
+        - generic [ref=e281]:
+          - paragraph [ref=e282]: Every report is built on real product signals
+          - list [ref=e283]:
+            - listitem [ref=e284]:
+              - generic [ref=e289]:
+                - generic [ref=e290]: 168+
+                - generic [ref=e291]: checks performed
+            - listitem [ref=e292]:
+              - generic [ref=e296]:
+                - generic [ref=e297]: "7"
+                - generic [ref=e298]: issues found
+            - listitem [ref=e299]:
+              - generic [ref=e303]:
+                - generic [ref=e304]: <60s
+                - generic [ref=e305]: typical scan time
+            - listitem [ref=e306]:
+              - generic [ref=e313]:
+                - generic [ref=e314]: Unlimited
+                - generic [ref=e315]: re-checks
+            - listitem [ref=e316]:
+              - generic [ref=e321]:
+                - generic [ref=e322]: Private
+                - generic [ref=e323]: only you can see
+            - listitem [ref=e324]:
+              - generic [ref=e331]:
+                - generic [ref=e332]: No signup
+                - generic [ref=e333]: for your first check
+      - generic [ref=e335]:
+        - generic [ref=e336]:
+          - paragraph [ref=e337]: How it works
+          - heading "Three steps to ship with confidence" [level=2] [ref=e339]: Three steps to ship with confidence.
+          - paragraph [ref=e340]: FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish with confidence.
+        - generic [ref=e342]:
+          - article [ref=e344]:
+            - paragraph [ref=e345]: "01"
+            - heading "Start your audit" [level=3] [ref=e346]
+            - paragraph [ref=e347]: Enter your product URL and run the audit.
+          - article [ref=e350]:
+            - paragraph [ref=e351]: "02"
+            - heading "We run a complete audit" [level=3] [ref=e352]
+            - paragraph [ref=e353]: We scan 150+ checks across Message, Experience, and Reach.
+          - article [ref=e356]:
+            - paragraph [ref=e357]: "03"
+            - heading "Get fixes. Ship." [level=3] [ref=e358]
+            - paragraph [ref=e359]: Apply the fixes with our prompts, then re-check to confirm you’re ready.
+        - link "Explore a full report" [ref=e362] [cursor=pointer]:
+          - /url: /samples
+      - generic [ref=e366]:
+        - generic [ref=e367]:
+          - paragraph [ref=e368]: Built to cover what matters
+          - heading "Every dimension of release readiness" [level=2] [ref=e370]: Every dimension of release readiness.
+          - paragraph [ref=e371]: FixFlags scans your product across message, experience, and reach so you can fix what counts and ship with confidence.
+        - tablist "Release readiness dimensions" [ref=e372]:
+          - tab "Message" [selected] [ref=e373] [cursor=pointer]
+          - tab "Experience" [ref=e376] [cursor=pointer]
+          - tab "Reach" [ref=e379] [cursor=pointer]
+          - tab "All checks" [ref=e385] [cursor=pointer]
+        - tabpanel "Message" [ref=e392]:
+          - generic [ref=e393]:
+            - generic [ref=e394]:
+              - paragraph [ref=e399]: Message
+              - heading "Communicate what matters." [level=3] [ref=e400]
+              - paragraph [ref=e401]: We analyze clarity, hierarchy, and content quality to make sure your message is instantly clear and on-brand.
+              - list [ref=e402]:
+                - listitem [ref=e403]:
+                  - generic [ref=e407]: Clarity & value proposition
+                - listitem [ref=e408]:
+                  - generic [ref=e412]: Content hierarchy
+                - listitem [ref=e413]:
+                  - generic [ref=e417]: Tone of voice
+                - listitem [ref=e418]:
+                  - generic [ref=e422]: Readability
+            - generic [ref=e425]:
+              - generic [ref=e426]: F
+              - generic [ref=e442]: ×
+            - generic [ref=e471]:
+              - generic [ref=e472]:
+                - heading "Top issues" [level=4] [ref=e473]
+                - generic [ref=e474]: "4"
+              - list [ref=e475]:
+                - listitem [ref=e476]:
+                  - generic [ref=e481]:
+                    - generic [ref=e482]:
+                      - paragraph [ref=e483]: Hero value is unclear
+                      - generic [ref=e484]: High
+                    - paragraph [ref=e485]: Primary headline does not state the outcome.
+                    - link "/message" [ref=e486] [cursor=pointer]:
+                      - /url: /issues
+                - listitem [ref=e489]:
+                  - generic [ref=e494]:
+                    - generic [ref=e495]:
+                      - paragraph [ref=e496]: CTA stays vague
+                      - generic [ref=e497]: Medium
+                    - paragraph [ref=e498]: Button copy does not name the next step.
+                    - link "/message" [ref=e499] [cursor=pointer]:
+                      - /url: /issues
+                - listitem [ref=e502]:
+                  - generic [ref=e507]:
+                    - generic [ref=e508]:
+                      - paragraph [ref=e509]: Audience never named
+                      - generic [ref=e510]: Medium
+                    - paragraph [ref=e511]: Who this is for stays implicit above the fold.
+                    - link "/message" [ref=e512] [cursor=pointer]:
+                      - /url: /issues
+                - listitem [ref=e515]:
+                  - generic [ref=e520]:
+                    - generic [ref=e521]:
+                      - paragraph [ref=e522]: Outcome buried below the fold
+                      - generic [ref=e523]: Medium
+                    - paragraph [ref=e524]: The result users care about appears too late.
+                    - link "/message" [ref=e525] [cursor=pointer]:
+                      - /url: /issues
+              - link "View all issues" [ref=e528] [cursor=pointer]:
+                - /url: /issues
+        - list [ref=e531]:
+          - listitem [ref=e532]:
+            - generic [ref=e540]:
+              - paragraph [ref=e541]: Human-aligned AI
+              - paragraph [ref=e542]: Trained on real product standards, not guesswork.
+          - listitem [ref=e543]:
+            - generic [ref=e550]:
+              - paragraph [ref=e551]: Zero guesswork
+              - paragraph [ref=e552]: Issues backed by evidence and best practices.
+          - listitem [ref=e553]:
+            - generic [ref=e560]:
+              - paragraph [ref=e561]: Actionable fixes
+              - paragraph [ref=e562]: Clear guidance you can implement instantly.
+          - listitem [ref=e563]:
+            - generic [ref=e573]:
+              - paragraph [ref=e574]: Re-check with confidence
+              - paragraph [ref=e575]: Verify every fix and watch your score improve.
+      - generic [ref=e577]:
+        - generic [ref=e579]:
+          - paragraph [ref=e580]: Why builders choose FixFlags
+          - heading "More than a score. Everything you need to ship" [level=2] [ref=e582]: More than a score. Everything you need to ship.
+          - paragraph [ref=e583]: FixFlags turns complex quality signals into clear guidance so you can ship product your users love.
+        - list [ref=e585]:
+          - listitem [ref=e586]:
+            - paragraph [ref=e590]: Clear findings
+            - paragraph [ref=e591]: Plain language issues with real impact.
+          - listitem [ref=e592]:
+            - paragraph [ref=e598]: Actionable fixes
+            - paragraph [ref=e599]: Copy-ready prompts your AI can use.
+          - listitem [ref=e600]:
+            - paragraph [ref=e605]: Prioritized by impact
+            - paragraph [ref=e606]: Focus on what matters most, first.
+          - listitem [ref=e607]:
+            - paragraph [ref=e612]: Evidence you trust
+            - paragraph [ref=e613]: Screenshots and context for every issue.
+          - listitem [ref=e614]:
+            - paragraph [ref=e621]: Re-check and improve
+            - paragraph [ref=e622]: Verify every fix and watch your score improve.
+      - generic [ref=e627]:
+        - generic [ref=e628]:
+          - generic [ref=e629]:
+            - paragraph [ref=e630]: Works where you build
+            - heading "Seamless in your existing workflow" [level=2] [ref=e632]: Seamless in your existing workflow.
+            - paragraph [ref=e633]: Connect your stack and run audits in seconds. Built for modern builders.
+          - list [ref=e635]:
+            - listitem [ref=e636]: Lovable
+            - listitem [ref=e639]: Bolt
+            - listitem [ref=e642]: Cursor
+            - listitem [ref=e645]: Replit
+            - listitem [ref=e648]: Claude Code
+            - listitem [ref=e652]: Windsurf
+            - listitem [ref=e657]: Codex
+          - paragraph [ref=e661]: More integrations coming soon
+        - generic [ref=e662]:
+          - list [ref=e663]:
+            - listitem [ref=e664]: Scan
+            - listitem [ref=e667]: Flag
+            - listitem [ref=e671]: Fix
+            - listitem [ref=e674]: Re-check
+          - list [ref=e686]:
+            - listitem [ref=e687]:
+              - generic [ref=e690]: Issues fixed
+            - listitem [ref=e692]:
+              - generic [ref=e696]: Score improved
+            - listitem [ref=e698]:
+              - generic [ref=e702]: Ship with confidence
+      - generic [ref=e707]:
+        - generic [ref=e710]:
+          - heading "Ready to see what’s blocking your release" [level=2] [ref=e711]: Ready to see what’s blocking your release.
+          - paragraph [ref=e712]: Free check. Paste your site or app URL and get your FixFlags report.
+        - generic [ref=e713]:
+          - generic [ref=e716]:
+            - generic [ref=e717]: Website URL
+            - textbox "Website URL" [ref=e723]:
+              - /placeholder: Paste your site or app URL
+            - button "Review my site" [ref=e724] [cursor=pointer]
+          - list [ref=e725]:
+            - listitem [ref=e726]:
+              - generic [ref=e729]: Results in under 60 seconds
+            - listitem [ref=e730]:
+              - generic [ref=e735]: No sign up required
+            - listitem [ref=e736]:
+              - generic [ref=e741]: Your report is private
+    - contentinfo [ref=e742]:
+      - generic [ref=e743]:
+        - generic [ref=e744]:
+          - generic [ref=e745]:
+            - link "FixFlags" [ref=e746] [cursor=pointer]:
+              - /url: /
+            - paragraph [ref=e750]: The release readiness layer for AI-built products. We find what blocks your release so you can ship with confidence.
+            - generic [ref=e751]:
+              - paragraph [ref=e752]: Built for builders
+              - paragraph [ref=e753]: FixFlags works where you build. Paste fixes into the editor you already use.
+              - list [ref=e755]:
+                - listitem [ref=e756]: Lovable
+                - listitem [ref=e759]: Bolt
+                - listitem [ref=e762]: Cursor
+                - listitem [ref=e765]: Replit
+                - listitem [ref=e768]: Claude Code
+                - listitem [ref=e772]: Windsurf
+                - listitem [ref=e777]: Codex
+              - link "See how it works" [ref=e781] [cursor=pointer]:
+                - /url: /how-it-works
+          - generic [ref=e782]:
+            - paragraph [ref=e783]: Product
+            - list [ref=e784]:
+              - listitem [ref=e785]:
+                - link "How it works" [ref=e786] [cursor=pointer]:
+                  - /url: /how-it-works
+              - listitem [ref=e787]:
+                - link "Sample report" [ref=e788] [cursor=pointer]:
+                  - /url: /samples
+              - listitem [ref=e789]:
+                - link "Pricing" [ref=e790] [cursor=pointer]:
+                  - /url: /pricing
+              - listitem [ref=e791]:
+                - link "Changelog" [ref=e792] [cursor=pointer]:
+                  - /url: /changelog
+          - generic [ref=e793]:
+            - paragraph [ref=e794]: Resources
+            - list [ref=e795]:
+              - listitem [ref=e796]:
+                - link "Website Roast" [ref=e797] [cursor=pointer]:
+                  - /url: /roast
+              - listitem [ref=e798]:
+                - link "Help Center" [ref=e799] [cursor=pointer]:
+                  - /url: /help
+              - listitem [ref=e800]:
+                - link "MCP guide" [ref=e801] [cursor=pointer]:
+                  - /url: /help/mcp
+              - listitem [ref=e802]:
+                - link "Examples" [ref=e803] [cursor=pointer]:
+                  - /url: /examples
+              - listitem [ref=e804]:
+                - link "FAQ" [ref=e805] [cursor=pointer]:
+                  - /url: /faq
+              - listitem [ref=e806]:
+                - link "Blog" [ref=e807] [cursor=pointer]:
+                  - /url: /blog
+          - generic [ref=e808]:
+            - paragraph [ref=e809]: Company
+            - list [ref=e810]:
+              - listitem [ref=e811]:
+                - link "Expert program" [ref=e812] [cursor=pointer]:
+                  - /url: /partners
+              - listitem [ref=e813]:
+                - link "Careers" [ref=e814] [cursor=pointer]:
+                  - /url: mailto:hello@fixflags.com?subject=Careers
+              - listitem [ref=e815]:
+                - link "Contact" [ref=e816] [cursor=pointer]:
+                  - /url: mailto:hello@fixflags.com
+              - listitem [ref=e817]:
+                - link "Privacy Policy" [ref=e818] [cursor=pointer]:
+                  - /url: /privacy
+          - generic [ref=e819]:
+            - paragraph [ref=e820]: Stay in the loop
+            - paragraph [ref=e821]: Product updates and shipping tips. No spam.
+            - generic [ref=e822]:
+              - generic [ref=e823]:
+                - generic [ref=e824]: Email address
+                - textbox "Email address" [ref=e825]:
+                  - /placeholder: Enter your email
+              - button "Subscribe" [ref=e826] [cursor=pointer]
+        - generic [ref=e827]:
+          - paragraph [ref=e828]: © 2026 FixFlags
+          - paragraph [ref=e829]: Built for people shipping with AI.
+          - generic [ref=e830]:
+            - button "Toggle theme" [ref=e831] [cursor=pointer]
+            - generic [ref=e832]: ·
+            - link "Privacy" [ref=e834] [cursor=pointer]:
+              - /url: /privacy
+            - generic [ref=e835]:
+              - generic [ref=e836]: ·
+              - link "Terms" [ref=e837] [cursor=pointer]:
+                - /url: /terms
+  - region "Notifications alt+T"

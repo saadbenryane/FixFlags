@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| check-dimensions-visuals | active | auto | main | Finish check-dimensions section: clip mockup visuals with clean RGBA, match layout | CheckDimensionsSection, public/marketing/visuals, landing copy | Hi-res transparent masters from user (swap-ready) | 2026-07-26 |
+| homepage-reference-polish | active | codex-root | main | Bring homepage hero and non-conflicting supporting sections to supplied references while preserving canonical product truth and routes | LandingHeroSection, HeroProductPreview, SampleReportSection, WhyBuildersChooseSection, EditorIntegrationsSection, LandingFinalCtaSection, shared marketing chrome/styles | Preserve active home-how-it-works-glass ownership and all existing WIP | 2026-07-26 |
 | current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---
@@ -13,6 +13,8 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| home-how-it-works-glass | auto | Homepage how-it-works glass three-step section + interim clips | 2026-07-26 |
+| check-dimensions-visuals | auto | Check-dimensions section UI to mockup; CSS scene/pedestals (no JPEG soft-key fringe); swap-ready for hi-res RGBA | 2026-07-26 |
 | hero-complete-closeout | auto | Homepage hero complete closeout: glass pad, marketing container, hero logos variant, dead HERO keys | 2026-07-25 |
 | sample-report-mock-redesign | auto | Product-true sample report dashboard mock redesign | 2026-07-25 |
 | sample-report-hero-polish | auto | Sample report section visual polish to reference | 2026-07-25 |

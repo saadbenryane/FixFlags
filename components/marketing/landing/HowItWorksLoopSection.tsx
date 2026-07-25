@@ -9,121 +9,57 @@ import { cn } from '@/lib/utils'
 
 type LoopStep = (typeof LANDING_PAGE.howItWorks.steps)[number]
 
-const LOOP_PANORAMA = {
-  light: '/marketing/visuals/loop-light.webp',
-  dark: '/marketing/visuals/loop-dark.webp',
-  width: 1600,
-  height: 686,
-} as const
-
-/**
- * Subject-centered square tiles (~12–14KB each) for mobile.
- * Pre-cropped so each step is framed without sliding a wide panorama.
- */
-const LOOP_TILES = [
-  {
-    light: '/marketing/visuals/loop-01-light.webp',
-    dark: '/marketing/visuals/loop-01-dark.webp',
-  },
-  {
-    light: '/marketing/visuals/loop-02-light.webp',
-    dark: '/marketing/visuals/loop-02-dark.webp',
-  },
-  {
-    light: '/marketing/visuals/loop-03-light.webp',
-    dark: '/marketing/visuals/loop-03-dark.webp',
-  },
-] as const
-
-const TILE_SIZES = '90vw'
-const PANORAMA_SIZES = '(min-width: 1024px) 1024px, 100vw'
-
-function LoopPanorama() {
+function StepArrow({ className }: { className?: string }) {
   return (
-    <div
-      className="relative overflow-hidden"
-      style={{ aspectRatio: `${LOOP_PANORAMA.width} / ${LOOP_PANORAMA.height}` }}
+    <svg
+      aria-hidden
+      viewBox="0 0 48 16"
+      fill="none"
+      className={cn('h-3.5 w-10 text-brand', className)}
     >
-      <Image
-        src={LOOP_PANORAMA.light}
-        alt=""
-        fill
-        sizes={PANORAMA_SIZES}
-        loading="lazy"
-        unoptimized
-        className="object-cover object-center dark:hidden"
+      <path
+        d="M2 8h38"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeDasharray="2.5 3.5"
       />
-      <Image
-        src={LOOP_PANORAMA.dark}
-        alt=""
-        fill
-        sizes={PANORAMA_SIZES}
-        loading="lazy"
-        unoptimized
-        className="hidden object-cover object-center dark:block"
+      <path
+        d="M36 3.5 43.5 8 36 12.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-background/25 to-transparent"
-      />
-    </div>
+    </svg>
   )
 }
 
-function LoopThirdScene({ index, className }: { index: number; className?: string }) {
-  const tile = LOOP_TILES[Math.min(Math.max(index, 0), LOOP_TILES.length - 1)]!
-
+function StepCard({ step }: { step: LoopStep }) {
   return (
-    <div
-      className={cn(
-        'relative aspect-square overflow-hidden rounded-nested-md bg-muted/35 shadow-glass',
-        className,
-      )}
-    >
-      <Image
-        src={tile.light}
-        alt=""
-        fill
-        sizes={TILE_SIZES}
-        loading="lazy"
-        unoptimized
-        className="object-cover object-center dark:hidden"
-      />
-      <Image
-        src={tile.dark}
-        alt=""
-        fill
-        sizes={TILE_SIZES}
-        loading="lazy"
-        unoptimized
-        className="hidden object-cover object-center dark:block"
-      />
-    </div>
-  )
-}
-
-function StepCopy({ step, index }: { step: LoopStep; index: number }) {
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3">
-        <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand font-mono text-xs font-bold tabular-nums text-brand-foreground shadow-sm">
-          {String(step.step).padStart(2, '0')}
-        </span>
-        <h3 className="text-base font-semibold">{step.title}</h3>
+    <article className="flex min-w-0 flex-col">
+      <p className="font-mono text-sm font-semibold tabular-nums text-brand">
+        {String(step.step).padStart(2, '0')}
+      </p>
+      <h3 className="mt-2 text-lg font-semibold tracking-heading text-foreground sm:text-xl">
+        {step.title}
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty sm:text-[0.9375rem]">
+        {step.body}
+      </p>
+      <div className="relative mt-6 flex flex-1 items-end justify-center sm:mt-8">
+        <Image
+          src={step.image}
+          alt=""
+          width={step.imageWidth}
+          height={step.imageHeight}
+          sizes="(min-width: 1024px) 280px, (min-width: 768px) 30vw, 80vw"
+          loading="lazy"
+          unoptimized
+          className="h-auto w-full max-w-[17.5rem] object-contain drop-shadow-sm"
+        />
       </div>
-
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>
-
-      <div className="mt-4 flex min-h-9 items-center gap-2 rounded-full bg-muted/55 px-3 py-2">
-        {index === 0 ? <span className="h-2 w-2 rounded-full bg-success" aria-hidden /> : null}
-        {'previewBadge' in step && step.previewBadge ? (
-          <span className="rounded-full bg-brand/12 px-2 py-0.5 text-2xs font-bold text-brand">
-            {step.previewBadge}
-          </span>
-        ) : null}
-        <span className="truncate font-mono text-xs text-foreground/80">{step.preview}</span>
-      </div>
-    </div>
+    </article>
   )
 }
 
@@ -141,7 +77,7 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
       id="how-it-works"
       className="relative scroll-mt-[var(--header-offset)] overflow-hidden"
     >
-      <Container className="relative space-y-5 sm:space-y-7">
+      <Container className="relative space-y-8 sm:space-y-10">
         <LandingSectionHeader
           label={label}
           brandEyebrow
@@ -151,33 +87,20 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
         />
 
         <RevealOnView>
-          <div className="overflow-hidden rounded-card glass-surface-elevated shadow-card">
-            <div className="hidden md:block">
-              <LoopPanorama />
-
-              <div className="relative grid grid-cols-3 gap-0 px-3 pb-5 pt-4 lg:px-5 lg:pb-6">
-                <div
-                  aria-hidden
-                  className="absolute left-[14%] right-[14%] top-11 h-px bg-gradient-to-r from-brand/15 via-brand/55 to-brand/15"
-                />
-                {steps.map((step, index) => (
-                  <article key={step.title} className="min-w-0 px-3 lg:px-4">
-                    <StepCopy step={step} index={index} />
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-px bg-border/45 md:hidden">
-              {steps.map((step, index) => (
-                <article key={step.title} className="bg-background/85 p-5 sm:p-6">
-                  <LoopThirdScene index={index} />
-                  <div className="mt-5">
-                    <StepCopy step={step} index={index} />
+          <div className="grid gap-10 sm:gap-12 md:grid-cols-3 md:gap-6 lg:gap-8">
+            {steps.map((step, index) => (
+              <div key={step.title} className="relative min-w-0">
+                <StepCard step={step} />
+                {index < steps.length - 1 ? (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-3 top-[58%] hidden -translate-y-1/2 md:block lg:-right-4"
+                  >
+                    <StepArrow />
                   </div>
-                </article>
-              ))}
-            </div>
+                ) : null}
+              </div>
+            ))}
           </div>
         </RevealOnView>
 

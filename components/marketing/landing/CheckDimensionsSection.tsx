@@ -1,16 +1,19 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Crosshair,
+  Info,
+  LayoutGrid,
   RefreshCw,
   ShieldCheck,
   Zap,
 } from 'lucide-react'
+import { CheckDimensionsScene } from '@/components/marketing/landing/CheckDimensionsScene'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { RUBRIC_ICONS } from '@/components/marketing/landing/rubric-icons'
@@ -29,25 +32,43 @@ const VALUE_ICONS = {
   refresh: RefreshCw,
 } as const
 
-const RUBRICS_TILES: Record<DimensionId, { light: string; dark: string }> = {
-  message: {
-    light: '/marketing/visuals/rubrics-01-light.webp',
-    dark: '/marketing/visuals/rubrics-01-dark.webp',
-  },
-  experience: {
-    light: '/marketing/visuals/rubrics-02-light.webp',
-    dark: '/marketing/visuals/rubrics-02-dark.webp',
-  },
-  reach: {
-    light: '/marketing/visuals/rubrics-03-light.webp',
-    dark: '/marketing/visuals/rubrics-03-dark.webp',
-  },
-}
-
 const SEVERITY_TONE: Record<string, string> = {
   High: 'bg-destructive/10 text-destructive',
   Medium: 'bg-brand/10 text-brand',
   Good: 'bg-success/10 text-success',
+}
+
+function SeverityIcon({ severity }: { severity: string }) {
+  if (severity === 'High') {
+    return <AlertTriangle className="h-3.5 w-3.5 text-destructive" strokeWidth={2} aria-hidden />
+  }
+  if (severity === 'Good') {
+    return <CheckCircle2 className="h-3.5 w-3.5 text-success" strokeWidth={2} aria-hidden />
+  }
+  return <Info className="h-3.5 w-3.5 text-brand" strokeWidth={2} aria-hidden />
+}
+
+function ValuePedestal({
+  icon: Icon,
+}: {
+  icon: (typeof VALUE_ICONS)[keyof typeof VALUE_ICONS]
+}) {
+  return (
+    <span className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center">
+      {/* Soft pedestal shadow — CSS only, no white-fringe raster */}
+      <span
+        aria-hidden
+        className="absolute bottom-0.5 h-3 w-10 rounded-full bg-foreground/10 blur-[6px]"
+      />
+      <span
+        aria-hidden
+        className="absolute bottom-1 h-2.5 w-9 rounded-full bg-background shadow-[0_1px_2px_hsl(240_8%_5%/0.08),inset_0_1px_0_hsl(0_0%_100%/0.9)]"
+      />
+      <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-[0_6px_16px_-8px_hsl(240_8%_5%/0.28),inset_0_1px_0_hsl(0_0%_100%/0.95)]">
+        <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+      </span>
+    </span>
+  )
 }
 
 export function CheckDimensionsSection() {
@@ -154,16 +175,13 @@ export function CheckDimensionsSection() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
           >
+            <LayoutGrid className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {copy.allChecksTab}
           </button>
         </div>
 
         <RevealOnView>
-          <div
-            role="tabpanel"
-            id={panelId}
-            aria-labelledby={tabButtonId(tab)}
-          >
+          <div role="tabpanel" id={panelId} aria-labelledby={tabButtonId(tab)}>
             {tab === 'all' ? (
               <div className="grid gap-4 md:grid-cols-3">
                 {copy.cards.map((card) => {
@@ -173,7 +191,7 @@ export function CheckDimensionsSection() {
                       key={card.id}
                       className="rounded-card bg-background/80 p-5 shadow-card sm:p-6"
                     >
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
+                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-background text-brand shadow-card">
                         <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       </div>
                       <h3 className="mt-4 text-base font-semibold">{card.title}</h3>
@@ -199,15 +217,22 @@ export function CheckDimensionsSection() {
                 })}
               </div>
             ) : activeCard ? (
-              <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.1fr)_minmax(0,0.85fr)] lg:gap-6 xl:gap-10">
+              <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)_minmax(0,0.9fr)] lg:gap-6 xl:gap-10">
                 <div className="space-y-4">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
-                    {(() => {
-                      const Icon = RUBRIC_ICONS[activeCard.icon as keyof typeof RUBRIC_ICONS]
-                      return <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                    })()}
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
+                      {(() => {
+                        const Icon = RUBRIC_ICONS[activeCard.icon as keyof typeof RUBRIC_ICONS]
+                        return <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      })()}
+                    </span>
+                    <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand">
+                      {activeCard.label}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-semibold tracking-heading">{activeCard.panelTitle}</h3>
+                  <h3 className="text-xl font-semibold tracking-heading sm:text-[1.35rem]">
+                    {activeCard.panelTitle}
+                  </h3>
                   <p className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
                     {activeCard.panelBody}
                   </p>
@@ -224,57 +249,61 @@ export function CheckDimensionsSection() {
                   </ul>
                 </div>
 
-                <div className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-card bg-muted/35 shadow-glass lg:max-w-none">
-                  <Image
-                    src={RUBRICS_TILES[activeCard.id].light}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 360px, 90vw"
-                    loading="lazy"
-                    unoptimized
-                    className="object-cover object-center dark:hidden"
-                  />
-                  <Image
-                    src={RUBRICS_TILES[activeCard.id].dark}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 360px, 90vw"
-                    loading="lazy"
-                    unoptimized
-                    className="hidden object-cover object-center dark:block"
-                  />
-                </div>
+                <CheckDimensionsScene
+                  active={activeCard.id}
+                  className="order-first lg:order-none"
+                />
 
                 <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-semibold">{copy.topIssuesTitle}</h4>
-                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand/10 px-2 text-xs font-semibold tabular-nums text-brand">
+                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold tabular-nums text-foreground">
                       {activeCard.topIssues.length}
                     </span>
                   </div>
-                  <ul className="mt-4 space-y-3">
+                  <ul className="mt-4 space-y-0">
                     {activeCard.topIssues.map((issue) => (
                       <li
                         key={issue.title}
-                        className="flex items-center justify-between gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0"
+                        className="border-b border-border/50 py-3 first:pt-0 last:border-0 last:pb-0"
                       >
-                        <span className="text-sm font-medium text-foreground text-pretty">
-                          {issue.title}
-                        </span>
-                        <span
-                          className={cn(
-                            'shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold',
-                            SEVERITY_TONE[issue.severity] ?? 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {issue.severity}
-                        </span>
+                        <div className="flex items-start gap-2.5">
+                          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                            <SeverityIcon severity={issue.severity} />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-foreground text-pretty">
+                                {issue.title}
+                              </p>
+                              <span
+                                className={cn(
+                                  'shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold',
+                                  SEVERITY_TONE[issue.severity] ??
+                                    'bg-muted text-muted-foreground'
+                                )}
+                              >
+                                {issue.severity}
+                              </span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-muted-foreground text-pretty">
+                              {issue.body}
+                            </p>
+                            <Link
+                              href={issue.categoryHref}
+                              className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                            >
+                              /{issue.category}
+                              <ArrowRight className="h-3 w-3" aria-hidden />
+                            </Link>
+                          </div>
+                        </div>
                       </li>
                     ))}
                   </ul>
                   <Link
-                    href="/samples"
-                    className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-hover"
+                    href={copy.viewAllIssuesHref}
+                    className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
                   >
                     {copy.viewAllIssues}
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -285,18 +314,27 @@ export function CheckDimensionsSection() {
           </div>
         </RevealOnView>
 
-        <ul className="grid gap-6 border-t border-border/50 pt-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-          {copy.values.map((item) => {
+        <ul className="grid gap-0 overflow-hidden rounded-card bg-background/70 shadow-card sm:grid-cols-2 lg:grid-cols-4">
+          {copy.values.map((item, index) => {
             const Icon = VALUE_ICONS[item.icon]
             return (
-              <li key={item.id} className="space-y-2.5 text-center sm:text-left lg:text-center">
-                <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] bg-background text-brand shadow-card sm:mx-0 lg:mx-auto">
-                  <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                </span>
-                <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-                  {item.body}
-                </p>
+              <li
+                key={item.id}
+                className={cn(
+                  'flex items-start gap-3.5 px-5 py-5 sm:px-5 sm:py-6',
+                  index > 0 && 'border-t border-border/50 sm:border-t-0',
+                  index % 2 === 1 && 'sm:border-l sm:border-border/50',
+                  index > 0 && 'lg:border-l lg:border-border/50',
+                  index >= 2 && 'sm:border-t sm:border-border/50 lg:border-t-0'
+                )}
+              >
+                <ValuePedestal icon={Icon} />
+                <div className="min-w-0 space-y-1 pt-0.5">
+                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                    {item.body}
+                  </p>
+                </div>
               </li>
             )
           })}
