@@ -84,7 +84,8 @@ export function Header({
             !showNavigation
               ? 'grid-cols-[1fr_auto]'
               : isMarketing
-                ? 'grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr]'
+                ? // Desktop center nav needs lg+: at md (768) Pricing/Log in collide.
+                  'grid-cols-[auto_1fr_auto] lg:grid-cols-[1fr_auto_1fr]'
                 : 'grid-cols-[auto_1fr_auto]'
           )}
         >
@@ -114,7 +115,7 @@ export function Header({
             <nav
               className={cn(
                 'items-center gap-0.5',
-                isMarketing ? 'hidden justify-center md:flex' : 'hidden md:flex'
+                isMarketing ? 'hidden justify-center lg:flex' : 'hidden md:flex'
               )}
             >
               {navLinks.map((link) => (
@@ -141,12 +142,22 @@ export function Header({
           ) : null}
 
           <div className="flex min-w-0 items-center justify-end gap-1">
-            <div className="hidden items-center gap-0.5 md:flex">
+            <div
+              className={cn(
+                'hidden items-center gap-0.5',
+                isMarketing ? 'lg:flex' : 'md:flex'
+              )}
+            >
               {resolvedRight}
             </div>
 
             {showNavigation ? (
-              <div className="flex items-center gap-1 md:hidden">
+              <div
+                className={cn(
+                  'flex items-center gap-1',
+                  isMarketing ? 'lg:hidden' : 'md:hidden'
+                )}
+              >
                 {isMarketing && <MarketingHeaderAuth mode="mobileTop" />}
                 <Sheet open={open} onOpenChange={setOpen}>
                   <SheetTrigger asChild>

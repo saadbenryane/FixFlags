@@ -4,17 +4,6 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| homepage-completeness-pass | in_progress | auto | main | Homepage completeness: shared chrome, a11y tabs, mobile workflow, copy cleanup, footer dedupe, visual QA. | components/marketing/landing, footer, lib/marketing/copy/landing.ts, lib/site/nav.ts | None | 2026-07-25 |
-| homepage-redesign-mockups | done | auto | main | Homepage post-hero redesign to mockups: sample, loop polish, dimensions tabs, why, works, final CTA, footer. Product-true claims only. | components/marketing/landing, components/layout/footer, lib/marketing/copy/landing.ts, lib/site/nav.ts | None | 2026-07-25 |
-| hero-glass-crop-position | done | auto | main | Lossless crop excess alpha on hero glass PNG; tune LandingHeroSection positioning. | public/marketing/visuals/home-hero-glass.png, LandingHeroSection | None | 2026-07-25 |
-| hero-glass-master-as-is | done | auto | main | Ship user transparent glass master unaltered as homepage hero PNG. | public/marketing/visuals/home-hero-glass.png, LandingHeroSection | None | 2026-07-25 |
-| hero-glass-fringe-fix | done | auto | main | Fix white-plate + black outline on home hero: RGBA unmate/despill so mesh shows through. | public/marketing/visuals/home-hero-glass.webp, LandingHeroSection, docs/brand/reference, learnings | None | 2026-07-25 |
-| hero-glass-user-art | done | auto | main | Replace homepage hero with user-provided glass plate; bake to white WebP (no fringe). | public/marketing/visuals/home-hero-glass.webp, LandingHeroSection, docs/brand/reference | None | 2026-07-25 |
-| hero-glass-no-fringe | done | auto | main | Kill black fringe on home hero glass: bake black-plate art to white canvas (no dark alpha edges). Encode learning. | public/marketing/visuals/home-hero-glass.webp, LandingHeroSection, .agents/learnings, fixflags-ui rule | None | 2026-07-25 |
-| homepage-hero-polish | done | auto | main | Homepage hero polish: official glass illustration, desktop spacing/icon sizing, mobile input+stack. No fake social proof. | components/marketing/landing, components/audit/AuditInput.tsx, public/marketing/visuals, lib/marketing/copy/landing.ts | None | 2026-07-25 |
-| homepage-hero-refresh | done | auto | main | Homepage hero redesigned to mockup: two-column, clipped glass art, HERO copy, assurances (no fake social proof). | components/marketing/landing, components/audit/AuditInput.tsx, lib/marketing/copy/landing.ts, public/marketing/visuals | None | 2026-07-25 |
-| brand-sheet-align | done | auto | main | Applied brand sheet: geometric F mark (SVG), lockups/icons, UI rule + brand-rules sync. Palette/type already matched. | public/brand, lib/design/logo-mark.tsx, components/brand/Logo.tsx, scripts/generate-brand-icons.mjs, .cursor/rules/fixflags-ui.mdc | None | 2026-07-25 |
-| brand-refresh-hiw-hero | done | auto | main | /how-it-works AI Gap hero re-implemented to match mockup: clean stack asset, layout proportions, annotation leaders, feature strip. | components/marketing/how-it-works, public/marketing/visuals | None | 2026-07-25 |
 | current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---
@@ -23,6 +12,20 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| homepage-conversion-closeout | auto | Product-true homepage sample mock, hero WebP, docs sync, verify | 2026-07-25 |
+| hero-sample-mockup-match | auto | Homepage hero + sample mock to mockups (interim; honesty closeout follows) | 2026-07-25 |
+| homepage-completeness-pass | auto | Homepage completeness: shared chrome, a11y tabs, mobile workflow, copy cleanup, footer dedupe, visual QA. | 2026-07-25 |
+| homepage-redesign-mockups | auto | Homepage post-hero redesign to mockups | 2026-07-25 |
+| hero-glass-crop-position | auto | Lossless crop excess alpha on hero glass PNG | 2026-07-25 |
+| hero-glass-master-as-is | auto | Ship user transparent glass master as homepage hero PNG | 2026-07-25 |
+| hero-glass-fringe-fix | auto | Fix white-plate + black outline on home hero glass | 2026-07-25 |
+| hero-glass-user-art | auto | Replace homepage hero with user glass plate | 2026-07-25 |
+| hero-glass-no-fringe | auto | Kill black fringe on home hero glass | 2026-07-25 |
+| homepage-hero-polish | auto | Homepage hero polish | 2026-07-25 |
+| homepage-hero-refresh | auto | Homepage hero redesigned to mockup | 2026-07-25 |
+| brand-sheet-align | auto | Applied brand sheet mark/lockups | 2026-07-25 |
+| brand-refresh-hiw-hero | auto | /how-it-works AI Gap hero mockup match | 2026-07-25 |
+| hero-mockup-match | auto | Homepage hero composition aligned to mockup | 2026-07-25 |
 | scan-loading-completion | auto | COMPLETED hold flags, re-check handoff, handoff hygiene, honest substeps, progressive parity cleanup | 2026-07-24 |
 | report-chrome-honesty | auto | AI summary callout honesty + remove ShareStatusBanner; RubricBar counts; ShareDrawer warning | 2026-07-24 |
 | scan-loading-ux | auto | Instant scan handoff, honest stage progress, progressive↔completed report parity, progress-ui cleanup | 2026-07-24 |

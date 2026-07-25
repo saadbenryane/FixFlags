@@ -220,7 +220,7 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 | Deploy CI gate | `app/api/webhooks/railway/route.ts` (`?apiKey=` + `?url=`); see `docs/railway-deploy-check.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
-| Sample explorer | `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer` |
+| Sample explorer | `/samples`: `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`. Homepage sample section: `SampleReportDashboardMock` fed by `buildSampleDashboardPreview` (product-true stylized chrome, not the live explorer). |
 | Flag detail | `FlagDetailPanel` with access-redacted prompt state and visual evidence via `flag.visualUrl` |
 
 ### Capture stack

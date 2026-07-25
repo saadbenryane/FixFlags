@@ -21,7 +21,11 @@ const AuditInput = dynamic(
 
 export function LandingFinalCtaSection() {
   return (
-    <Section spacing="marketing" className="pb-7 sm:pb-8">
+    <Section
+      id="final-cta"
+      spacing="marketing"
+      className="scroll-mt-[var(--header-offset)] pb-7 sm:pb-8"
+    >
       <Container>
         <div className="rounded-card border border-border/50 bg-background p-6 shadow-card sm:p-8 lg:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12">

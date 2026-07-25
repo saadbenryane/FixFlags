@@ -7,6 +7,14 @@ These are **design references only** — not served at runtime. Production asset
 - `brand-sheet-2026-07.png` — full brand guidelines (logo, palette, type, UI, dark mode)
 - `logo-lockup-on-ink.png` — mark + wordmark on ink (source lockup)
 
+## Homepage mockups (2026-07)
+
+- `homepage-hero-mockup.png` / `homepage-hero-mockup-v2.png` — hero composition reference
+- `homepage-sample-report-mockup.png` — sample report section reference
+- `home-hero-glass-source.png` / `home-hero-glass-png-master.png` — glass illustration masters (not runtime)
+
+Runtime hero glass: `public/marketing/visuals/home-hero-glass.webp` (RGBA).
+
 ## Production mapping
 
 | Reference | Production |

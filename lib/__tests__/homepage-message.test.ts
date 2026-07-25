@@ -114,6 +114,9 @@ describe('homepage message guardrails', () => {
     assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /no sign up/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
+    assert.match(HERO.trustLine, /builders shipping with ai/i)
+    assert.ok(!/\d{2,},\d{3}/.test(HERO.trustLine), `Invented count in trust line: ${HERO.trustLine}`)
+    assert.match(HERO.scrollHint, /scroll to discover/i)
   })
 
   it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
@@ -203,7 +206,8 @@ describe('homepage message guardrails', () => {
   it('primary CTA uses visitor-facing check language', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
-    assert.match(FINAL_CTA.headlineDisplay, /blocking your release/i)
+    assert.match(FINAL_CTA.headlineDisplay, /blocking your release$/i)
+    assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))
     assert.equal(FINAL_CTA.headlineAccentPeriod, true)
   })
 
@@ -294,6 +298,15 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.sampleReport.cta, 'Explore a full report')
     assert.equal(LANDING_PAGE.sampleReport.ctaWithCount(7), 'Explore a full report')
     assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /exactly what ai misses/i)
+    assert.match(LANDING_PAGE.sampleReport.label, /sample report/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /live product/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /actionable fixes/i)
+    assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
+    assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 4)
+    for (const metric of LANDING_PAGE.sampleReport.trustMetrics) {
+      assert.ok(!/\d{2,},\d{3}/.test(metric.value), `Invented count: ${metric.value}`)
+      assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
+    }
   })
 
   it('landing page exposes three-rubric check story', () => {
@@ -304,7 +317,7 @@ describe('homepage message guardrails', () => {
     )
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /fix prompt/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /actionable fixes/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Lovable',

@@ -22,6 +22,9 @@ export const HERO = {
     { id: 'teaser', label: 'No sign up required', icon: 'shield' as const },
     { id: 'private', label: 'Your report is private', icon: 'lock' as const },
   ],
+  /** Product-true trust line only. No invented member counts or stock avatars. */
+  trustLine: 'Trusted by builders shipping with AI',
+  scrollHint: 'Scroll to discover',
 } as const
 
 export const DIFFERENTIATION = {
@@ -65,7 +68,7 @@ export const DIFFERENTIATION = {
 } as const
 
 export const FINAL_CTA = {
-  headlineDisplay: 'Ready to see what\u2019s blocking your release?',
+  headlineDisplay: 'Ready to see what\u2019s blocking your release',
   headlineAccentPeriod: true,
   body: 'Free check. Paste your site or app URL and get your FixFlags report.',
 } as const
@@ -538,11 +541,11 @@ export const LANDING_PAGE = {
     }>,
   },
   sampleReport: {
-    label: '',
+    label: 'Sample report',
     headlineDisplay: 'See exactly what AI misses',
     headlineAccentPeriod: true,
     headline: 'See exactly what AI misses.',
-    body: 'Each Flag has evidence, impact, and a fix prompt you can paste into your editor.',
+    body: 'FixFlags scans your live product the way your users experience it and turns issues into clear, actionable fixes.',
     previewEyebrow: 'Fix list',
     previewTitle: 'Every fix, ranked and ready',
     previewBadge: 'Screenshot evidence included',
@@ -552,24 +555,23 @@ export const LANDING_PAGE = {
       void flagCount
       return 'Explore a full report'
     },
-    illustrativeLabel: '',
     rubricRows: [
       {
         id: 'message',
         title: 'Message',
-        body: 'Clarity, positioning, and copy that make the next step obvious.',
+        body: 'Clarity, hierarchy, and content quality.',
         icon: 'message' as const,
       },
       {
         id: 'experience',
         title: 'Experience',
-        body: 'Mobile layout, flows, accessibility, and trust friction.',
+        body: 'Usability, flows, and interface quality.',
         icon: 'experience' as const,
       },
       {
         id: 'reach',
         title: 'Reach',
-        body: 'Metadata, social previews, and shareability.',
+        body: 'SEO, performance, and technical health.',
         icon: 'reach' as const,
       },
     ] as const,
@@ -577,10 +579,20 @@ export const LANDING_PAGE = {
     issuesLabel: (count: number) => `${count} issues in the sample review`,
     checksLabel: (count: number) =>
       `${count} checks across Message, Experience, and Reach`,
-    trustChips: [
-      { id: 'speed', label: 'Results in under 60 seconds', icon: 'zap' as const },
-      { id: 'recheck', label: 'Unlimited re-checks', icon: 'refresh' as const },
-      { id: 'private', label: 'Private by default', icon: 'lock' as const },
+    checksShortLabel: (count: number) => `Checked ${count}+ points`,
+    checksMetric: (count: number) => ({
+      value: `${count}+`,
+      label: 'checks performed',
+    }),
+    issuesMetric: (count: number) => ({
+      value: String(count),
+      label: 'issues found',
+    }),
+    trustMetrics: [
+      { id: 'speed', value: '<60s', label: 'typical scan time', icon: 'zap' as const },
+      { id: 'recheck', value: 'Unlimited', label: 're-checks', icon: 'refresh' as const },
+      { id: 'private', value: 'Private', label: 'only you can see', icon: 'lock' as const },
+      { id: 'teaser', value: 'No signup', label: 'for your first check', icon: 'users' as const },
     ] as const,
   },
   footer: {
