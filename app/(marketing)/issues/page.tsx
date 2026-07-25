@@ -34,9 +34,9 @@ export default async function IssuesIndexPage() {
       : []
 
   const rubricColor = (rubric: string) => {
-    if (rubric === 'MESSAGE') return 'bg-blue-100 text-blue-800 border-blue-200'
-    if (rubric === 'EXPERIENCE') return 'bg-amber-100 text-amber-800 border-amber-200'
-    return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    if (rubric === 'MESSAGE') return 'bg-brand-muted text-brand border-brand-border'
+    if (rubric === 'EXPERIENCE') return 'bg-warning-muted text-warning-foreground border-warning-border'
+    return 'bg-success-muted text-success border-success-border'
   }
 
   return (

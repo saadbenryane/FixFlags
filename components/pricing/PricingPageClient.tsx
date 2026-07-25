@@ -61,7 +61,7 @@ export function PricingPageClient() {
                 <CardDescription>{plan.persona}</CardDescription>
                 <p className="pt-3 text-sm font-medium leading-snug text-pretty">{plan.outcome}</p>
                 <div className="flex items-end gap-1 pt-3">
-                  <span className="font-mono text-4xl font-semibold tabular-nums tracking-tight">
+                   <span className="font-mono text-4xl font-semibold tabular-nums tracking-display">
                     {plan.price}
                   </span>
                   <span className="pb-1 text-sm text-muted-foreground">{plan.period}</span>

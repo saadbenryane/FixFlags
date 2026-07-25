@@ -102,6 +102,9 @@
   --success-muted: 142 76% 96%;
   --success-border: 142 52% 85%;
   --warning: 48 96% 53%;
+  --warning-foreground: 38 80% 25%;
+  --warning-muted: 48 100% 96%;
+  --warning-border: 48 80% 85%;
   --warning-foreground: 0 0% 3%;
   --info: 217 91% 60%;
 
@@ -284,6 +287,8 @@
   --success-border: 152 30% 20%;
   --warning: 38 96% 56%;
   --warning-foreground: 0 0% 7%;
+  --warning-muted: 38 40% 12%;
+  --warning-border: 38 40% 22%;
   --info: 213 94% 72%;
 
   --grade-A: 152 60% 48%;

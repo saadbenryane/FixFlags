@@ -3,7 +3,6 @@ import { access } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { PrismaClient } from '@prisma/client'
 import IORedis from 'ioredis'
-import { chromium } from 'playwright'
 
 const results = []
 const check = async (name, run) => {
@@ -47,6 +46,7 @@ await check('Redis', async () => {
 })
 
 await check('Chromium', async () => {
+  const { chromium } = await import('playwright')
   const executable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
   await access(executable)
   return executable

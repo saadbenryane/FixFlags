@@ -69,10 +69,10 @@ export default async function IssuePage({ params }: Props) {
 
   const rubricBadgeColor =
     data.rubric === 'MESSAGE'
-      ? 'bg-blue-100 text-blue-800 border-blue-200'
+      ? 'bg-brand-muted text-brand border-brand-border'
       : data.rubric === 'EXPERIENCE'
-        ? 'bg-amber-100 text-amber-800 border-amber-200'
-        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+        ? 'bg-warning-muted text-warning-foreground border-warning-border'
+        : 'bg-success-muted text-success border-success-border'
 
   return (
     <>

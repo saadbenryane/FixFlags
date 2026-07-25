@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Heading } from '@/components/ui/typography'
 import { TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -77,7 +78,7 @@ export function PlaceholderDetectorClient() {
     <>
       <div className="space-y-4 text-center">
         <Badge variant="secondary" className="mx-auto w-fit">{copy.badge}</Badge>
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{copy.heading}</h1>
+        <Heading as="h1" className="text-3xl md:text-4xl">{copy.heading}</Heading>
         <p className="text-base leading-relaxed text-muted-foreground">{copy.subhead}</p>
       </div>
 

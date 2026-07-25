@@ -126,7 +126,7 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
         ) : (
           <span
             className={cn(
-              'font-mono font-bold tabular-nums leading-none tracking-tight text-foreground',
+              'font-mono font-bold tabular-nums leading-none tracking-display text-foreground',
               scoreText
             )}
           >

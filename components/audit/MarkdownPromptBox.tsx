@@ -33,12 +33,12 @@ interface MarkdownPromptBoxProps {
 
 const markdownComponents = {
   h1: ({ children }: { children?: ReactNode }) => (
-    <h3 className="mt-4 mb-1.5 text-sm font-semibold tracking-tight text-foreground first:mt-0">
+    <h3 className="mt-4 mb-1.5 text-sm font-semibold tracking-heading text-foreground first:mt-0">
       {children}
     </h3>
   ),
   h2: ({ children }: { children?: ReactNode }) => (
-    <h3 className="mt-4 mb-1.5 text-sm font-semibold tracking-tight text-foreground first:mt-0">
+    <h3 className="mt-4 mb-1.5 text-sm font-semibold tracking-heading text-foreground first:mt-0">
       {children}
     </h3>
   ),

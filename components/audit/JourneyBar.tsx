@@ -93,10 +93,9 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_2px_currentColor]',
+                    'h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_0_2px_currentColor] text-background',
                     dotColor(page)
                   )}
-                  style={{ color: 'hsl(var(--background))' }}
                   aria-hidden
                 />
                 <span className="text-sm font-medium text-foreground">

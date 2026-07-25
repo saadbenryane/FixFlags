@@ -7,7 +7,7 @@
   },
   "scripts": {
     "predev": "node scripts/kill-port.mjs && npm run doctor",
-    "dev": "next dev",
+    "dev": "NODE_ENV=development next dev",
     "dev:all": "concurrently -n web,worker -c blue,green \"npm run dev\" \"npm run worker\"",
     "dev:full": "npm run dev:all",
     "doctor": "DOTENV_CONFIG_PATH=.env.local node scripts/doctor.mjs",

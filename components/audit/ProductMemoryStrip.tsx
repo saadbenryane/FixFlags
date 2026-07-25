@@ -47,7 +47,7 @@ export function ProductMemoryStrip({
       <div>
         <h2
           id="report-remember-heading"
-          className="text-lg font-semibold tracking-tight text-foreground"
+          className="text-lg font-semibold tracking-heading text-foreground"
         >
           {REPORT_COPY.sectionTitles.remember}
         </h2>

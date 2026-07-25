@@ -36,29 +36,31 @@ function Mark({ px }: { px: number }) {
 export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoProps) {
   const showLockup = variant !== 'mark'
 
+  const lockupHeight = Math.round(LOCKUP_PX[size] * (382 / 1360))
+
   const content = (
     <span className={cn('inline-flex items-center text-foreground', className)}>
       {showLockup ? (
-        <span className="relative block" style={{ width: LOCKUP_PX[size], aspectRatio: '1360 / 382' }}>
+        <>
           <Image
             src="/brand/logo-lockup-light.png"
             alt=""
-            fill
+            width={LOCKUP_PX[size]}
+            height={lockupHeight}
             priority={size !== 'sm'}
-            sizes={`${LOCKUP_PX[size]}px`}
             unoptimized
-            className="object-contain dark:hidden"
+            className="block object-contain dark:hidden"
           />
           <Image
             src="/brand/logo-lockup-dark.png"
             alt=""
-            fill
+            width={LOCKUP_PX[size]}
+            height={lockupHeight}
             priority={size !== 'sm'}
-            sizes={`${LOCKUP_PX[size]}px`}
             unoptimized
             className="hidden object-contain dark:block"
           />
-        </span>
+        </>
       ) : (
         <Mark px={MARK_PX[size]} />
       )}

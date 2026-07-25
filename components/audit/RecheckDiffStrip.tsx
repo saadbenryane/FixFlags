@@ -43,7 +43,7 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
         <div>
           <h2
             id="recheck-results-heading"
-            className="text-lg font-semibold tracking-tight text-foreground"
+            className="text-lg font-semibold tracking-heading text-foreground"
           >
             {fixed.length > 0
               ? RECHECK_DIFF_COPY.celebrationTitle(fixed.length)

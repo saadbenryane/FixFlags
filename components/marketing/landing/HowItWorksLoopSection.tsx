@@ -109,7 +109,7 @@ function StepCopy({ step, index }: { step: LoopStep; index: number }) {
         <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand font-mono text-xs font-bold tabular-nums text-brand-foreground shadow-sm">
           {String(step.step).padStart(2, '0')}
         </span>
-        <h3 className="text-base font-bold">{step.title}</h3>
+        <h3 className="text-base font-semibold">{step.title}</h3>
       </div>
 
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground text-pretty">{step.body}</p>

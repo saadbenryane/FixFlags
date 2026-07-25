@@ -127,7 +127,7 @@ export function CheckDimensionsSection() {
                       <p className="meta-label text-muted-foreground/65">
                         {String(index + 1).padStart(2, '0')}
                       </p>
-                      <h3 className={cn('mt-2 text-xl font-bold tracking-heading', tint)}>
+                      <h3 className={cn('mt-2 text-xl font-semibold tracking-heading', tint)}>
                         {dimension.title}
                       </h3>
                       <p className="mt-2 text-lg font-semibold leading-snug text-balance">

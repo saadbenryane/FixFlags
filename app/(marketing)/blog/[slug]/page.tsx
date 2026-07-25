@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
+import { Heading } from '@/components/ui/typography'
 import { BLOG_POSTS, BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 
@@ -66,7 +67,7 @@ export default async function BlogPostPage({ params }: Props) {
           >
             {post.date}
           </time>
-          <h1 className="text-3xl font-semibold text-balance">{post.title}</h1>
+          <Heading as="h1" className="text-3xl">{post.title}</Heading>
         </div>
         <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
           {post.body.map((paragraph, i) => (
