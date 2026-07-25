@@ -2,7 +2,7 @@ import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
   computeRubricScores,
   type RubricScoreContext,
-} from '@/lib/audit/checks/rubric'
+} from '@/lib/audit/checks/rubric-scoring'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import { calculateOverallScore, gradeFromScore as productionGradeFromScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
