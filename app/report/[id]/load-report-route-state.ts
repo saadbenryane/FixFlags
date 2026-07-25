@@ -1,5 +1,8 @@
 import { notFound } from 'next/navigation'
-import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
+import {
+  getGatedAuditForRequest,
+  getProgressiveAuditForRequest,
+} from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
@@ -19,6 +22,25 @@ export async function loadReportRouteState(
   shareToken?: string
 ) {
   const { id } = await params
+  const progressive = await getProgressiveAuditForRequest(id)
+
+  if (progressive.kind === 'not_found') {
+    notFound()
+  }
+
+  if (progressive.kind === 'forbidden') {
+    return { kind: 'forbidden' as const }
+  }
+
+  if (progressive.kind === 'progressive') {
+    return {
+      kind: 'progressive' as const,
+      id,
+      audit: progressive.audit,
+      session: progressive.session,
+    }
+  }
+
   const result = await getGatedAuditForRequest(id)
 
   if (result.kind === 'not_found') {
@@ -238,6 +260,8 @@ export async function loadReportRouteState(
       shareToken,
     }
   }
-
+  // The lightweight read observed COMPLETED. If the row changed underneath the
+  // completed loader, render its latest state rather than assembling a partial
+  // completed report.
   return { kind: 'progressive' as const, id, audit, session }
 }

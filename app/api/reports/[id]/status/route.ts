@@ -15,6 +15,7 @@ import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
+import { progressiveAuditSelect } from '@/lib/audit/fetch-audit'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -31,42 +32,7 @@ export async function GET(
 
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: {
-        id: true,
-        status: true,
-        progress: true,
-        score: true,
-        pageType: true,
-        verdict: true,
-        errorMsg: true,
-        failureCode: true,
-        pipelineVersion: true,
-        reportCompleteness: true,
-        startedAt: true,
-        completedAt: true,
-        updatedAt: true,
-        createdAt: true,
-        url: true,
-        userId: true,
-        isPublic: true,
-        parentId: true,
-        aiReviewAt: true,
-        triageAt: true,
-        includeAi: true,
-        performanceData: true,
-        productContract: true,
-        screenshots: {
-          select: { device: true, url: true, width: true, height: true },
-        },
-        rubrics: {
-          select: { name: true, grade: true, score: true, status: true },
-          orderBy: { name: 'asc' },
-        },
-        flags: {
-          select: { id: true, severity: true, problem: true, rubric: true, checkId: true, source: true },
-          orderBy: { position: 'asc' },
-        },
-      },
+      select: progressiveAuditSelect,
     })
 
     if (!audit) {

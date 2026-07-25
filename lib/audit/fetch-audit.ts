@@ -104,6 +104,51 @@ export const auditFullInclude = {
   },
 } as const
 
+/** Lightweight report projection shared by SSR handoff and status polling. */
+export const progressiveAuditSelect = {
+  id: true,
+  status: true,
+  progress: true,
+  score: true,
+  pageType: true,
+  verdict: true,
+  errorMsg: true,
+  failureCode: true,
+  pipelineVersion: true,
+  reportCompleteness: true,
+  startedAt: true,
+  completedAt: true,
+  updatedAt: true,
+  createdAt: true,
+  url: true,
+  userId: true,
+  isPublic: true,
+  parentId: true,
+  aiReviewAt: true,
+  triageAt: true,
+  includeAi: true,
+  performanceData: true,
+  productContract: true,
+  screenshots: {
+    select: { device: true, url: true, width: true, height: true },
+  },
+  rubrics: {
+    select: { name: true, grade: true, score: true, status: true },
+    orderBy: { name: 'asc' as const },
+  },
+  flags: {
+    select: {
+      id: true,
+      severity: true,
+      problem: true,
+      rubric: true,
+      checkId: true,
+      source: true,
+    },
+    orderBy: { position: 'asc' as const },
+  },
+} as const
+
 async function fetchAuditRow(id: string) {
   return prisma.audit.findUnique({
     where: { id },
@@ -129,6 +174,51 @@ export async function resolveIsPaidForAudit(
 ): Promise<boolean> {
   const tier = await resolveReportTierForAudit(audit)
   return tier === 'paid'
+}
+
+/**
+ * Resolve access and the minimum state needed to render an unfinished report.
+ * Completed reports deliberately return only an access envelope; callers then
+ * opt into the heavier completed-report graph.
+ */
+export async function getProgressiveAuditForRequest(id: string) {
+  const [session, audit] = await Promise.all([
+    resolveSessionUser(),
+    prisma.audit.findUnique({
+      where: { id },
+      select: progressiveAuditSelect,
+    }),
+  ])
+
+  if (!audit) return { kind: 'not_found' as const }
+
+  const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+  const accessContext = await resolveAuditAccess(audit, session?.user, shareGrant)
+  if (accessContext === 'denied') return { kind: 'forbidden' as const }
+
+  if (audit.status === 'COMPLETED') {
+    return { kind: 'completed' as const }
+  }
+
+  const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)
+  const screenshotCapture = deriveScreenshotCaptureStatus(
+    audit.status,
+    audit.screenshots,
+    storedCapture
+  )
+  const { performanceData, productContract, ...publicAudit } = audit
+
+  return {
+    kind: 'progressive' as const,
+    accessContext,
+    session,
+    audit: {
+      ...publicAudit,
+      screenshotCapture,
+      actionTimeline: parseActionTimeline(performanceData),
+      productContract: parseProductContract(productContract),
+    },
+  }
 }
 
 export async function getGatedAuditForRequest(id: string) {

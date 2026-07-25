@@ -203,7 +203,9 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       rubrics,
       partialFlags,
       screenshots,
-      screenshotCapture: statusPayload?.screenshotCapture,
+      screenshotCapture:
+        statusPayload?.screenshotCapture ??
+        (raw?.screenshotCapture as AuditStatusPayload['screenshotCapture']),
       workerIdle,
       actionTimeline: statusPayload?.actionTimeline ?? [],
       productContract: statusPayload?.productContract ?? null,

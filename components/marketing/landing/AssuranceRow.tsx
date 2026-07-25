@@ -26,12 +26,12 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
         return (
           <li
             key={item.id}
-            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/80 sm:gap-2 lg:text-[0.6875rem]"
+            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/80 sm:gap-2 lg:text-[0.625rem]"
           >
             {index > 0 ? (
               <span
                 aria-hidden
-                className="mx-2 hidden h-4 w-px shrink-0 bg-border/80 sm:mx-2.5 sm:inline-block"
+                className="mx-2 hidden h-4 w-px shrink-0 bg-border/80 sm:mx-2.5 sm:inline-block lg:mx-1.5"
               />
             ) : null}
             <Icon

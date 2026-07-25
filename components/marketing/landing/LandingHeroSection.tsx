@@ -47,7 +47,7 @@ export function LandingHeroSection() {
                   </span>
                 ) : null}
               </Heading>
-              <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground/95 text-pretty sm:max-w-xl sm:text-base lg:max-w-[34rem] lg:text-[1.0625rem] lg:leading-relaxed">
+              <p className="max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground/95 text-pretty sm:max-w-xl sm:text-base lg:max-w-[34rem] lg:text-base lg:leading-relaxed">
                 {HERO.subhead}
               </p>
             </div>
