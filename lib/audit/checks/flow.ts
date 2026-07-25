@@ -4,7 +4,7 @@ import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { runFlowUXChecks } from './flow-ux'
 import { runOverlayBlockerChecks } from './overlay'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
 
 const FLOW_CHECK_DESCRIPTORS = [
@@ -70,7 +70,6 @@ for (const descriptor of FLOW_CHECK_DESCRIPTORS) {
     severity: descriptor.severity,
     tags: [...descriptor.tags],
     requiresBrowser: true,
-    evaluate: () => null,
   })
 }
 

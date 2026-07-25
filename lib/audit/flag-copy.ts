@@ -79,7 +79,6 @@ const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'scroll-ghost-sections',
   'slow-3g-blank-screen',
   'slow-3g-cta-delayed',
-  'form-inputs-zoom-mobile',
 ])
 
 const GENERIC_WHY_PATTERN =
@@ -143,8 +142,6 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Sparse navigation gives evaluators no way to inspect pricing, docs, proof, or support before committing.',
   'hierarchy-competing-actions':
     'Competing primary actions create choice paralysis; a clear visual order helps users understand the intended next step.',
-  'hierarchy-too-many-fonts':
-    'Too many typefaces make the page feel inconsistent and harder to scan, reducing perceived product polish.',
   'hierarchy-no-sections':
     'Without section headings, users cannot skim the page for features, pricing, proof, or answers.',
   'hierarchy-no-headline':
@@ -157,8 +154,6 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'A hard-to-reach mobile CTA adds physical friction right when a user is ready to act.',
   'mobile-cta-weak-label':
     'Vague mobile CTA labels make users uncertain about what tapping will do, which lowers intent.',
-  'mobile-stuck-loading':
-    'Persistent loading UI on a phone feels broken quickly because the user has less screen space and less patience.',
   'mobile-no-viewport':
     'Without a mobile viewport tag, phones render a desktop layout with tiny text and hard-to-tap controls.',
   'mobile-load-delay-content':
@@ -339,8 +334,6 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Invisible sections after scroll make the page feel empty and unfinished.',
   'flow-form-slow-feedback':
     'Delayed validation feels broken even when errors eventually appear.',
-  'form-inputs-zoom-mobile':
-    'iOS Safari zooms the viewport when inputs are too small, breaking the form experience.',
   'flow-cta-destination-no-trust':
     'Signup pages without privacy or contact links feel sketchy at the moment of conversion.',
   'slow-3g-blank-screen':

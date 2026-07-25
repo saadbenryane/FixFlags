@@ -17,7 +17,6 @@ for (const descriptor of OVERLAY_CHECK_DESCRIPTORS) {
     severity: descriptor.severity,
     tags: ['requiresBrowser', 'overlay'],
     requiresBrowser: true,
-    evaluate: () => null,
   })
 }
 

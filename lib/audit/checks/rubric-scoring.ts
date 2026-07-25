@@ -1,4 +1,4 @@
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 import type { PageSpeedResult } from '../pagespeed'
 import { BLOCKED_RUBRIC_SCORE_CEILING } from '@/lib/audit/rubric'
 

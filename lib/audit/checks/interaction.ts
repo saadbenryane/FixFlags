@@ -1,5 +1,5 @@
 import type { CaptureMetrics } from '../capture-metrics'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runInteractionChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
   if (metrics == null) return []
@@ -54,24 +54,6 @@ export function runInteractionChecks(metrics: CaptureMetrics | null): Determinis
       evidence: `CSS animations on ${label} still run when the browser requests reduced motion.`,
       fix: '1. Wrap CSS animations in @media (prefers-reduced-motion: no-preference)\n2. Or add motion-reduce:animate-none (Tailwind utility)\n3. Apply to infinite loops, hero fades, and any decorative motion',
       confidence: 0.85,
-      source: 'DETERMINISTIC',
-    })
-  }
-
-  if (metrics.inputsBelow16px.length > 0) {
-    const sample = metrics.inputsBelow16px
-      .slice(0, 3)
-      .map((i) => `${i.selector} (${i.fontSize}px)`)
-      .join('; ')
-    findings.push({
-      checkId: 'form-inputs-zoom-mobile',
-      rubric: 'EXPERIENCE',
-      impactTag: 'ACCESSIBILITY',
-      severity: 'IMPORTANT',
-      problem: `${metrics.inputsBelow16px.length} form input${metrics.inputsBelow16px.length > 1 ? 's' : ''} trigger iOS zoom on focus`,
-      evidence: `Mobile inputs below 16px font-size: ${sample}`,
-      fix: '1. Set font-size to at least 16px on all form inputs and textareas\n2. Apply to both <input> and <textarea> elements\n3. Test on iOS Safari to confirm the viewport no longer zooms on focus',
-      confidence: 0.95,
       source: 'DETERMINISTIC',
     })
   }

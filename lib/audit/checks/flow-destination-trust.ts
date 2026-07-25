@@ -1,5 +1,5 @@
 import type { FlowScanResult } from '../flow/run-flow-scan'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runDestinationTrustChecks(result: FlowScanResult): DeterministicFlag[] {
   const trust = result.destinationTrust

@@ -1,6 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runAccessibilityChecks(
   meta: PageMetadata,

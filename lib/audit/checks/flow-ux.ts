@@ -1,5 +1,5 @@
 import type { FlowScanResult } from '../flow/run-flow-scan'
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runFlowUXChecks(flowScan: FlowScanResult | null): DeterministicFlag[] {
   if (!flowScan) return []

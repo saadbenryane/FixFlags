@@ -26,6 +26,7 @@ import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { filterToolingPathFlags } from '../tooling-path-filter'
 import { detectPagePurpose } from '../page-purpose'
+import { suppressOverlappingFlags } from '../suppression'
 
 export type { DeterministicFlag } from '../flag-types'
 
@@ -104,37 +105,6 @@ const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<D
   }
 }
 
-export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric'
-export type { RubricScoreContext } from './rubric'
-
-/** Drop broader Flags when a more specific sibling checkId is present. */
-export function suppressOverlappingFlags(flags: DeterministicFlag[]): DeterministicFlag[] {
-  // Suppression graph: [broader_flag, specific_flag] pairs.
-  // When both flags are present, the broader one is suppressed.
-  const SUPPRESSIONS: Array<[string, string]> = [
-    ['no-contact-info', 'trust-no-direct-contact'],
-    ['hierarchy-competing-actions', 'competing-ctas'],
-    // Same uniqueFontFamilies>4 signal: keep design-token check, drop hierarchy duplicate
-    ['hierarchy-too-many-fonts', 'visual-typography-sprawl'],
-    ['mobile-input-zoom', 'form-inputs-zoom-mobile'],
-    ['mobile-stuck-loading', 'loading-indicator-stuck'],
-    ['mobile-load-delay-content', 'loading-state-slow'],
-    ['heading-hierarchy-missing', 'hierarchy-no-sections'],
-    ['flow-cta-unclickable', 'overlay-blocks-cta'],
-    ['flow-pricing-nav-broken', 'overlay-blocks-nav'],
-    ['flow-form-no-validation', 'overlay-blocks-form'],
-    // Prefer the post-click CTA stuck probe over destination-UX twin
-    ['flow-destination-stuck-loading', 'flow-cta-stuck-loading'],
-    // Trust twin: social-proof gap is the actionable sibling; drop authority echo
-    ['trust-no-authority-signals', 'friction-no-social-proof'],
-    // Headline too short already covers thin H1; drop audience twin
-    ['messaging-no-audience', 'messaging-headline-too-short'],
-  ]
-  const ids = new Set(flags.map((flag) => flag.checkId))
-  return flags.filter((flag) => {
-    for (const [broader, specific] of SUPPRESSIONS) {
-      if (flag.checkId === broader && ids.has(specific)) return false
-    }
-    return true
-  })
-}
+export { SCAN_STEP_FAILURE_PENALTY, computeRubricScores } from './rubric-scoring'
+export type { RubricScoreContext } from './rubric-scoring'
+export { suppressOverlappingFlags } from '../suppression'

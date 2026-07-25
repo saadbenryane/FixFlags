@@ -274,7 +274,6 @@ function enrichOverlayContext(
       ctx.region = { x: 0.3, y: 0.65, width: 0.4, height: 0.06 }
       ctx.label = 'Thumb zone issue'
       break
-    case 'form-inputs-zoom-mobile':
     case 'mobile-input-zoom':
       ctx.label = 'iOS zoom triggers'
       break

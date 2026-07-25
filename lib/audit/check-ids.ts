@@ -70,7 +70,6 @@ export const ALL_CHECK_IDS = [
   'loading-indicator-stuck',
   'loading-state-slow',
   'motion-ignores-reduced-preference',
-  'form-inputs-zoom-mobile',
   // cta-focus.ts
   'competing-ctas',
   // slop.ts
@@ -119,7 +118,6 @@ export const ALL_CHECK_IDS = [
   'trust-no-internal-links',
   // visual-hierarchy.ts
   'hierarchy-competing-actions',
-  'hierarchy-too-many-fonts',
   'hierarchy-no-sections',
   'hierarchy-no-headline',
   'hierarchy-information-density',
@@ -127,7 +125,6 @@ export const ALL_CHECK_IDS = [
   'mobile-input-zoom',
   'mobile-cta-thumb-zone',
   'mobile-cta-weak-label',
-  'mobile-stuck-loading',
   'mobile-load-delay-content',
   // flow.ts
   'flow-no-cta-found',

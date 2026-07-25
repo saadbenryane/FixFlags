@@ -1,7 +1,7 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import type { CaptureMetrics } from '../capture-metrics'
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runVisualHierarchyChecks(
   meta: PageMetadata,
@@ -27,19 +27,6 @@ export function runVisualHierarchyChecks(
       })
     }
 
-    if (captureMetrics.uniqueFontFamilies > 4) {
-      findings.push({
-        checkId: 'hierarchy-too-many-fonts',
-        rubric: 'EXPERIENCE',
-        impactTag: 'TRUST',
-        severity: 'POLISH',
-        problem: `${captureMetrics.uniqueFontFamilies} font families reduce visual cohesion`,
-        evidence: `Page uses ${captureMetrics.uniqueFontFamilies} distinct font families: ${captureMetrics.fontFamilySample?.join(', ') ?? 'N/A'}. Multiple fonts fragment the visual hierarchy.`,
-        fix: '1. Use exactly 2 font families: one for headings (display/serif) and one for body (sans-serif)\n2. Use font weight and size for hierarchy instead of font changes\n3. Remove font imports from third-party widgets that don\'t match the design system\n4. Define a type scale with 4-6 sizes rather than ad-hoc font usage',
-        confidence: 0.85,
-        source: 'DETERMINISTIC',
-      })
-    }
   }
 
   const totalHeadings = h1s.length + h2s.length

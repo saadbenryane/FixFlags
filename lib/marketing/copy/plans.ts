@@ -1,5 +1,78 @@
-import { getMarketingPlans, proUpgradeCta } from '@/lib/billing/plans'
 import { OFFER } from './brand'
+
+/**
+ * Marketing plan display data. Defined here (not in lib/billing/plans) so the
+ * copy barrel does not pull @prisma/client into 150+ client component bundles.
+ * The billing module remains the source of truth for limits, pricing logic,
+ * and Stripe price IDs.
+ */
+const PRO_PRICE = '$29'
+const PRO_PERIOD = '/mo'
+
+function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
+  return `${prefix} - ${PRO_PRICE}${PRO_PERIOD}`
+}
+
+export const PLANS = [
+  {
+    name: 'Free',
+    plan: 'FREE' as const,
+    price: '$0',
+    period: '',
+    persona: 'Try before launch',
+    outcome: 'See everything on one page',
+    audits: '3 new URL checks',
+    features: [
+      '3 new URL checks with full reports and fix prompts',
+      'Unlimited re-checks on reports you own',
+      'Upgrade anytime for more new checks',
+    ],
+    cta: 'Start free',
+    href: '/sign-up?from=pricing',
+    highlight: false,
+    accountModel: 'Single account. No seats or shared workspace.',
+  },
+  {
+    name: 'Pro',
+    plan: 'BUILDER' as const,
+    price: PRO_PRICE,
+    period: PRO_PERIOD,
+    persona: 'Solo builders shipping weekly',
+    outcome: 'Prove every fix, audit from your editor',
+    audits: '25 / month',
+    features: [
+      'Before/after comparisons',
+      'MCP in supported builders',
+      '25 new URL checks per month',
+      'Weekly product watch with regression email',
+    ],
+    cta: 'Start Pro',
+    href: '/sign-up?plan=BUILDER',
+    highlight: true,
+    accountModel: 'Single account. No seats or shared workspace.',
+  },
+  {
+    name: 'Agency',
+    plan: 'TEAM' as const,
+    price: '$99',
+    period: '/mo',
+    persona: 'Freelancers, agencies, and client-driven teams',
+    outcome: 'Send polished client reports with one link',
+    audits: '100 / month',
+    features: [
+      'Everything in Pro',
+      'Client-ready public share links',
+      'Up to 5 projects',
+      'GitHub repository scans',
+      'Draft Fix PRs from repo findings (secrets auto-patch when possible)',
+      'Daily product watch with regression email',
+    ],
+    cta: 'Start Agency',
+    href: '/sign-up?plan=TEAM',
+    highlight: false,
+    accountModel: 'Single account. No seats or shared workspace.',
+  },
+] as const
 
 export const PRICING_FAQ = [
   {
@@ -71,8 +144,6 @@ export const PRICING = {
   allPlansInclude:
     'Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.',
 } as const
-
-export const PLANS = getMarketingPlans()
 
 export const UPSELLS = {
   anon: {

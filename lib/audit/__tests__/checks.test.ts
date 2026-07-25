@@ -858,29 +858,6 @@ describe('runAllChecks', () => {
       ['trust-no-direct-contact']
     )
   })
-
-  it('suppresses hierarchy-too-many-fonts when visual-typography-sprawl is present', async () => {
-    restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
-    const { flags } = await runAllChecks(
-      'https://example.com',
-      healthyMeta({
-        h1s: ['Product'],
-        h2s: ['Feature A'],
-        pageText: 'Product page body text for hierarchy checks.',
-      }),
-      healthyDesktopPs(),
-      healthyMobilePs(),
-      [],
-      undefined,
-      healthyCaptureMetrics({
-        uniqueFontFamilies: 6,
-        fontFamilySample: ['Inter', 'Roboto', 'Georgia', 'Arial', 'Helvetica', 'Times'],
-      })
-    )
-    const ids = checkIds(flags)
-    assert.ok(ids.includes('visual-typography-sprawl'))
-    assert.ok(!ids.includes('hierarchy-too-many-fonts'))
-  })
 })
 
 describe('runSecurityHeaderChecks', () => {
@@ -1400,12 +1377,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           })
         )
       ),
-      'form-inputs-zoom-mobile': () =>
-      checkIds(
-        runInteractionChecks(healthyCaptureMetrics({
-          inputsBelow16px: [{ selector: '#email', fontSize: 14 }],
-        }))
-      ),
     'competing-ctas': () =>
       checkIds(
         runCtaFocusChecks(
@@ -1903,13 +1874,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
           healthyCaptureMetrics({ competingPrimaryCtaCount: 2, competingPrimaryCtaLabels: ['Get started', 'Book a demo'] })
         )
       ),
-    'hierarchy-too-many-fonts': () =>
-      checkIds(
-        runVisualHierarchyChecks(
-          healthyMeta({ h1s: ['Product'], h2s: ['Feature A'], pageText: '' }),
-          healthyCaptureMetrics({ uniqueFontFamilies: 5, fontFamilySample: ['Arial', 'Helvetica', 'Georgia', 'Times', 'Courier'] })
-        )
-      ),
     'hierarchy-no-sections': () =>
       checkIds(runVisualHierarchyChecks(healthyMeta({ h1s: ['Product'], h2s: [], pageText: '' }), null)),
     'hierarchy-no-headline': () =>
@@ -1951,13 +1915,6 @@ describe('trigger matrix - one failing signal per checkId', () => {
         runMobileUXQualityChecks(
           healthyMeta({}),
           healthyCaptureMetrics({ mobilePrimaryCtaText: 'Learn more', mobilePrimaryCtaTopPx: 300 })
-        )
-      ),
-    'mobile-stuck-loading': () =>
-      checkIds(
-        runMobileUXQualityChecks(
-          healthyMeta({}),
-          healthyCaptureMetrics({ stuckLoadingIndicator: true, stuckLoadingLabel: 'skeleton' })
         )
       ),
     'mobile-load-delay-content': () =>

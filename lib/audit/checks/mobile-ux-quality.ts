@@ -1,6 +1,6 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { PageMetadata } from '../metadata'
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runMobileUXQualityChecks(
   meta: PageMetadata,
@@ -79,23 +79,6 @@ export function runMobileUXQualityChecks(
         })
       }
     }
-  }
-
-  if (captureMetrics.stuckLoadingIndicator) {
-    const label = captureMetrics.stuckLoadingLabel
-      ? `"${captureMetrics.stuckLoadingLabel}"`
-      : 'loading UI'
-    findings.push({
-      checkId: 'mobile-stuck-loading',
-      rubric: 'EXPERIENCE',
-      impactTag: 'CONVERSION',
-      severity: 'IMPORTANT',
-      problem: 'Loading UI remains visible on mobile after page is ready',
-      evidence: `${label} visible at capture time. On mobile, persistent loading states are especially frustrating because users can't see the content they came for.`,
-      fix: '1. Hide all loading states once the network request completes\n2. Use transition: opacity to fade out skeletons smoothly\n3. Make sure loading states timeout after max 5 seconds\n4. Show actual content progressively rather than blocking with full-page spinners\n5. Test on slow 3G to verify loading states clear properly',
-      confidence: 0.9,
-      source: 'DETERMINISTIC',
-    })
   }
 
   if (captureMetrics.loadExperience?.loadingClearedMs != null && captureMetrics.loadExperience.loadingClearedMs > 4000) {

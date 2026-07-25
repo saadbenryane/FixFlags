@@ -1,6 +1,7 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
+import { normalizeHeadingText } from './utils'
 
 const WEAK_VALUE_WORDS = /\b(solution|platform|tool|app|software|product|company|business)\b/i
 
@@ -10,22 +11,6 @@ const JARGON_PATTERNS = [
 
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
 const OUTCOME_REGEX = /\b(build|builder|ship|launch|convert|grow|save|reduce|increase|automate|manage|track|measure|find|fix|audit|test|improve|create|book|sell|close|support|schedule|plan|organi[sz]e|collaborate|deploy|monitor|analy[sz]e|design|write|send|email|pay|scale|streamline|simplify|accelerate|generate|discover|learn|hire|invoice|onboard)\b|\b\d+(?:x|%)\b/i
-
-function normalizeHeadingText(text: string): string {
-  const collapsed = text.replace(/\s+/g, ' ').trim()
-  if (collapsed.length < 24) return collapsed
-  const compact = collapsed.replace(/\s+/g, '')
-  for (let parts = 2; parts <= 4; parts++) {
-    const chunkLen = Math.floor(compact.length / parts)
-    if (chunkLen < 12) continue
-    const chunk = compact.slice(0, chunkLen)
-    if (chunk.repeat(parts) === compact) {
-      const spaced = collapsed.slice(0, Math.floor(collapsed.length / parts)).trim()
-      return spaced || collapsed
-    }
-  }
-  return collapsed
-}
 
 export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []

@@ -1,4 +1,4 @@
-import { prisma } from '../db'
+import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { runWithContext } from '@/lib/logger/context'
 import { PIPELINE_PROGRESS } from './progress'

@@ -1,6 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 
 const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [

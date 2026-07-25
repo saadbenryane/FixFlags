@@ -24,7 +24,6 @@ for (const d of DESCRIPTORS) {
     severity: d.severity,
     tags: ['corridor', 'og'],
     requiresBrowser: false,
-    evaluate: () => null,
   })
 }
 

@@ -1,5 +1,5 @@
 import { PageSpeedResult } from '../pagespeed'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runMobileChecks(mobile: PageSpeedResult | null): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []

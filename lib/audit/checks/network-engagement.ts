@@ -39,7 +39,6 @@ for (const descriptor of NETWORK_CHECK_DESCRIPTORS) {
     severity: descriptor.severity,
     tags: [...descriptor.tags],
     requiresBrowser: true,
-    evaluate: () => null,
   })
 }
 

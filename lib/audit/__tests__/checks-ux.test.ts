@@ -399,14 +399,12 @@ describe('new check IDs registered in ALL_CHECK_IDS', () => {
     'trust-no-direct-contact',
     'trust-no-internal-links',
     'hierarchy-competing-actions',
-    'hierarchy-too-many-fonts',
     'hierarchy-no-sections',
     'hierarchy-no-headline',
     'hierarchy-information-density',
     'mobile-input-zoom',
     'mobile-cta-thumb-zone',
     'mobile-cta-weak-label',
-    'mobile-stuck-loading',
     'mobile-load-delay-content',
   ]
 

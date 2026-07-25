@@ -1,5 +1,9 @@
-export { cn } from '@/lib/cn'
-export { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
 
 export function gradeColor(grade: string): string {
   const map: Record<string, string> = {

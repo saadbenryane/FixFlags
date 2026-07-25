@@ -1,5 +1,5 @@
 import type { CaptureMetrics } from '../capture-metrics'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 /** Three or more equally-weighted primary CTAs above the fold dilute focus. */
 const COMPETING_CTA_THRESHOLD = 3

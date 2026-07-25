@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getStripe } from '@/lib/stripe'
-import { getCreditPack, getCredPackStripePriceId, CREDIT_PACKS } from '@/lib/billing/credits'
+import { getCreditPack, getCreditPackStripePriceId, CREDIT_PACKS } from '@/lib/billing/credits'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const pack = getCreditPack(parsed.data.packId)
     if (!pack) return apiError('Credit pack not found', 400, { code: 'INVALID_PACK' })
 
-    const priceId = getCredPackStripePriceId(pack.id)
+    const priceId = getCreditPackStripePriceId(pack.id)
     if (!priceId) return apiError('Credit packs are not configured', 503, { code: 'BILLING_NOT_CONFIGURED' })
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })

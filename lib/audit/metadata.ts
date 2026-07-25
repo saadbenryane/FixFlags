@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio'
 import { safeFetchHtml } from './url'
 import { MAX_RAW_TEXT, MAX_STORED_TEXT } from './page-text-limits'
+import { normalizeHeadingText } from './checks/utils'
 
 export interface PageMetadata {
   title: string | null
@@ -415,18 +416,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   $('h1').each((_, el) => {
     const text = $(el).text().replace(/\s+/g, ' ').trim()
     if (!text) return
-    const normalized = text.length >= 24 ? (() => {
-      const compact = text.replace(/\s+/g, '')
-      for (let parts = 2; parts <= 4; parts++) {
-        const chunkLen = Math.floor(compact.length / parts)
-        if (chunkLen < 12) continue
-        const chunk = compact.slice(0, chunkLen)
-        if (chunk.repeat(parts) === compact) {
-          return text.slice(0, Math.floor(text.length / parts)).trim() || text
-        }
-      }
-      return text
-    })() : text
+    const normalized = normalizeHeadingText(text)
     // Responsive layouts often duplicate the same H1 for mobile/desktop.
     if (!h1s.some((existing) => existing === normalized || existing.includes(normalized) || normalized.includes(existing))) {
       h1s.push(normalized)

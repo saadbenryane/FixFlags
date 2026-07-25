@@ -1,5 +1,5 @@
 import { PageMetadata } from '../metadata'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 const MAX_LINK_CHECKS = 8
 const FETCH_TIMEOUT_MS = 4000

@@ -21,7 +21,7 @@ export function getCreditPack(packId: string): CreditPack | undefined {
   return CREDIT_PACKS.find((p) => p.id === packId)
 }
 
-export function getCredPackStripePriceId(packId: string): string | undefined {
+export function getCreditPackStripePriceId(packId: string): string | undefined {
   const pack = getCreditPack(packId)
   return pack?.stripePriceId
 }

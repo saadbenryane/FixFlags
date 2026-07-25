@@ -1,5 +1,5 @@
 import type { PageMetadata } from '../metadata'
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runSecurityBasicsChecks(url: string, meta: PageMetadata): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []

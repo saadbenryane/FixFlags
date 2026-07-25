@@ -35,6 +35,7 @@ import {
   persistTriageResults,
   mergePrescriptionResults,
 } from '@/lib/audit/persist'
+import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import type { RubricName } from '@prisma/client'
 
 function makeDet(overrides: Partial<DeterministicFlag> & Pick<DeterministicFlag, 'checkId'>): DeterministicFlag {

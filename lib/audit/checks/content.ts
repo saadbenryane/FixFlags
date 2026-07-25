@@ -1,6 +1,6 @@
 import { PageMetadata } from '../metadata'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runContentChecks(
   meta: PageMetadata,

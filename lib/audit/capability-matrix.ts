@@ -106,7 +106,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: [
       'hierarchy-competing-actions',
-      'hierarchy-too-many-fonts',
       'hierarchy-no-sections',
       'hierarchy-no-headline',
       'hierarchy-information-density',
@@ -124,7 +123,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'mobile-input-zoom',
       'mobile-cta-thumb-zone',
       'mobile-cta-weak-label',
-      'mobile-stuck-loading',
       'mobile-load-delay-content',
     ],
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
@@ -607,16 +605,6 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     status: 'live',
     checkIds: ['scroll-ghost-sections'],
     verify: 'npm run demo:audit:flow',
-  },
-  {
-    id: 'experience-mobile-input-zoom',
-    dimension: 'EXPERIENCE',
-    category: 'accessibility',
-    label: 'Mobile form input font-size (iOS zoom)',
-    tool: 'browser-capture',
-    status: 'live',
-    checkIds: ['form-inputs-zoom-mobile'],
-    verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
   },
   {
     id: 'experience-slow-replay',

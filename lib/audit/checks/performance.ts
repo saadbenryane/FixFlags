@@ -1,5 +1,5 @@
 import { PageSpeedResult } from '../pagespeed'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runPerformanceChecks(
   desktop: PageSpeedResult | null,

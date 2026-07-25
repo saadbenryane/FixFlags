@@ -1,5 +1,5 @@
 import type { CaptureMetrics } from '../capture-metrics'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 /** Primary CTA should appear within the first ~85% of the mobile viewport without scrolling. */
 const MOBILE_FOLD_RATIO = 0.85

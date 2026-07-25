@@ -1,5 +1,5 @@
 import type { SlowReplayResult } from '../flow/slow-replay-probe'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runSlowReplayChecks(result: SlowReplayResult | null): DeterministicFlag[] {
   if (!result) return []

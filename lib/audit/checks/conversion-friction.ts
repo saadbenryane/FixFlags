@@ -1,7 +1,8 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
 import { type PagePurposeResult, isProductPage } from '../page-purpose'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
+import { hasLogoWall } from './utils'
 
 const FREE_TRIAL_MARKERS = /(free trial|try free|start free|no credit card|no cc|free plan|get started free|14.day trial|7.day trial|30.day trial)/i
 
@@ -19,18 +20,6 @@ const GUARANTEE_MARKERS = /(money.back|guarantee|satisfied guaranteed|refund|ris
 // proof" flags on sites like Stripe and Vercel.
 const SOCIAL_MARKERS =
   /(github\s+stars|\d[\d,.]*\+?\s*(users|customers|teams|stars|downloads|companies|businesses|developers|creators|brands|sites|websites|members)|rated\s+\d|\d(\.\d)?\s*(\/\s*5|out of 5|stars)|g2\b|capterra|trustpilot|product hunt|reviewed\s+by|reviews?\b|case stud(y|ies)|customer stor(y|ies)|testimonial|trusted by|backed by|as seen (in|on)|loved by|powering|join (thousands|millions|over|\d)|our (customers|clients|users)|wall of love)/i
-
-// A customer/partner logo wall is social proof even with no matching text. Treat
-// several brand-name-like image alts as a logo wall.
-function hasLogoWall(images: Array<{ alt: string | null }>): boolean {
-  const brandLike = images.filter((img) => {
-    const alt = (img.alt ?? '').trim()
-    if (/logo/i.test(alt)) return true
-    // 1-3 capitalized words, brand-length (e.g. "Notion", "Y Combinator")
-    return /^[A-Z][A-Za-z0-9.&' ]{1,24}$/.test(alt) && alt.split(/\s+/).length <= 3 && alt.length >= 2
-  }).length
-  return brandLike >= 4
-}
 
 export function runConversionFrictionChecks(
   meta: PageMetadata,

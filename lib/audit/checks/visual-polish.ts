@@ -1,5 +1,5 @@
 import type { CaptureMetrics } from '../capture-metrics'
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export function runVisualPolishChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
   if (metrics == null) return []

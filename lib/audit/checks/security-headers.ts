@@ -1,4 +1,4 @@
-import type { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 function parseMaxAge(value: string): number | null {
   const match = value.match(/max-age\s*=\s*(\d+)/i)

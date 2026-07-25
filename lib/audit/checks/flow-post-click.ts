@@ -1,5 +1,5 @@
 import type { PostClickMetrics } from '../flow/post-click-probes'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 const BLANK_DESTINATION_MS = 3_000
 const STUCK_LOADING_MS = 2_000

@@ -1,5 +1,5 @@
 import { PageMetadata } from '../metadata'
-import { DeterministicFlag } from './index'
+import type { DeterministicFlag } from '../flag-types'
 
 export async function runSeoChecks(
   url: string,

@@ -57,8 +57,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'inp-poor': 'PageSpeed Insights mobile INP should be 200ms or lower.',
   'images-missing-alt':
     'DevTools Elements, every informational img has a non-empty alt attribute.',
-  'images-empty-alt':
-    'Review decorative vs informational images; only decorative images use alt="".',
   'form-inputs-no-label':
     'Every visible input has an associated label or aria-label.',
   'buttons-no-text':
@@ -79,8 +77,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'h1-multiple': 'DevTools Elements, confirm only one H1; secondary headings should be H2/H3.',
   'no-structured-data':
     'View page source for script type="application/ld+json" or validate in Rich Results Test.',
-  'external-links-unsafe':
-    'External target=_blank links include rel="noopener noreferrer".',
   'sitemap-missing': 'Open /sitemap.xml; it should return 200 with valid XML.',
   'robots-txt-missing': 'Open /robots.txt; it should return 200.',
   'broken-internal-links':
@@ -172,8 +168,6 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Scroll the page; sections should become visible when they enter the viewport.',
   'flow-form-slow-feedback':
     'Submit an empty form; validation feedback should appear within 1 second.',
-  'form-inputs-zoom-mobile':
-    'At 375px width, form inputs should use at least 16px font-size to avoid iOS zoom.',
   'flow-cta-destination-no-trust':
     'The CTA destination should include privacy policy and contact information.',
   'slow-3g-blank-screen':
@@ -224,8 +218,6 @@ export const SECURITY_VERIFICATION_RULES = {
     'Change X-Frame-Options to DENY (preferred) or SAMEORIGIN.',
   'security-content-type-options-missing':
     'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
-  'security-xss-protection-missing':
-    'Open DevTools Network tab, check for X-XSS-Protection header (deprecated but defense-in-depth).',
 }
 
 /**
@@ -280,8 +272,6 @@ export const TRUST_PSYCHOLOGY_VERIFICATION_RULES: Record<string, string> = {
 export const VISUAL_HIERARCHY_VERIFICATION_RULES: Record<string, string> = {
   'hierarchy-competing-actions':
     'Make one CTA dominant (filled, larger). Demote others to ghost/outline styling. Remove non-essential CTAs from above the fold.',
-  'hierarchy-too-many-fonts':
-    'Consolidate to 2 font families max. Use weight and size for hierarchy, not font changes.',
   'hierarchy-no-sections':
     'Add H2 section headings to break content into scannable sections with descriptive labels.',
   'hierarchy-no-headline':
@@ -297,10 +287,6 @@ export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
     'Move CTA lower in the viewport or add sticky bottom positioning. One-hand test on a 6.7" phone.',
   'mobile-cta-weak-label':
     'Replace vague CTA text with outcome-specific action text (e.g. "Start free trial" not "Click here").',
-  'mobile-stuck-loading':
-    'Test on slow 3G. Confirm all loading states clear within 5 seconds and content is visible.',
-  'mobile-no-viewport':
-    'Add <meta name="viewport" content="width=device-width, initial-scale=1"> to the <head>. Verify mobile rendering at 375px.',
   'mobile-load-delay-content':
     'Test on 3G. Confirm meaningful content renders within 2 seconds. Server-render hero content.',
 }

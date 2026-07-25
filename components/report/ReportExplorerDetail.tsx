@@ -13,7 +13,8 @@ import { FilterPill } from '@/components/ui/filter-pill'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import type { RubricFilter } from '@/lib/report/explorer-filters'
-import { cn, rubricIcon, rubricLabel } from '@/lib/utils'
+import { cn, rubricLabel } from '@/lib/utils'
+import { rubricIcon } from '@/lib/rubric-icons'
 
 export function RubricTabs({
   rubricFilter,

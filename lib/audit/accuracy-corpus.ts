@@ -103,9 +103,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://saadbenryane.com',
     tier: 'personal',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['no-cta-detected', 'trust-no-direct-contact', 'messaging-no-audience'],
+    expectedTop3: ['no-cta-detected', 'messaging-no-audience', 'no-privacy-policy'],
     knownFalsePositives: ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent'],
-    expectedPresent: ['no-cta-detected', 'trust-no-direct-contact', 'skip-link-missing'],
+    expectedPresent: ['no-cta-detected', 'skip-link-missing', 'no-privacy-policy'],
   },
   {
     file: 'broken-page.html',
