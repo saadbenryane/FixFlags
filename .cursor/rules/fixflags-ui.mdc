@@ -42,7 +42,11 @@ Official brand-sheet mark raster only (`/brand/logo-mark.png`). Do not invent SV
 
 ## Marketing visuals
 
-Never soft-key black-background plates into alpha without unmatting — dark RGB on partial alpha creates a black fringe. On mesh/gradient marketing pages, ship properly unmated RGBA (despill edges; no dark semi-transparent pixels). Opaque bake onto `#FFFFFF` only when the canvas is flat white. Prefer a white-mockup crop when available. Do not re-trim/re-key clean RGBA masters.
+Never soft-key black-background plates into alpha without unmatting — dark RGB on partial alpha creates a black fringe. On mesh/gradient marketing pages, ship properly unmated RGBA (despill edges; no dark semi-transparent pixels). Opaque bake onto `#FFFFFF` only when the canvas is flat white.
+
+Prefer a true RGBA PNG saved into `docs/brand/reference/` or `public/marketing/visuals/` (chat uploads often flatten to JPEG-on-black). If a true RGBA master exists, preserve its alpha; only despill dark underside/rim fringe — do not redraw text glyphs.
+
+Homepage hero glass (`home-hero-glass.webp`) is landscape (~1.49). Size to the right column width with `object-contain` / `object-right`. Do not height-scale so wide that it overlaps the left copy column. Hero container may go ~92rem; grid is copy column (`34–36rem`) + `1fr` illustration.
 
 ## Anti-slop
 

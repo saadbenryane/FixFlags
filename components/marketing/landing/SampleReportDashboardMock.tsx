@@ -49,29 +49,30 @@ export function SampleReportDashboardMock({
     <div
       aria-hidden
       className={cn(
-        'relative rounded-card bg-background shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_24px_56px_-24px_hsl(240_8%_5%/0.28)]',
+        'relative overflow-hidden rounded-card border border-border/30 bg-background',
+        'shadow-[0_2px_4px_hsl(240_8%_5%/0.03),0_24px_48px_-18px_hsl(240_8%_5%/0.18),0_56px_112px_-40px_hsl(240_8%_5%/0.22)]',
         className
       )}
     >
-      <div className="min-h-[30rem] sm:min-h-[34rem]">
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/40 px-4 py-3.5 sm:px-5">
+      <div className="min-h-[32rem] sm:min-h-[36rem]">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border/30 px-5 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{host}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Sample Finish Plan</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 items-center rounded-full border border-border/70 bg-background px-3 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex h-8 items-center rounded-[var(--radius-control)] border border-border/55 bg-background px-3 text-xs font-medium text-muted-foreground">
               Share report
             </span>
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-background px-3 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/55 bg-background px-3 text-xs font-medium text-muted-foreground">
               <RefreshCw className="h-3 w-3" strokeWidth={2} />
               Re-check
             </span>
           </div>
         </header>
 
-        <div className="grid gap-3 border-b border-border/40 p-4 sm:grid-cols-3 sm:gap-3 sm:p-5">
-          <div className="flex items-center gap-3 rounded-[var(--radius-inner)] bg-muted/40 px-3 py-3">
+        <div className="grid gap-3.5 border-b border-border/30 p-5 sm:grid-cols-3 sm:gap-4 sm:p-6">
+          <div className="flex items-center gap-3.5 rounded-[var(--radius-inner)] bg-muted/35 px-4 py-4">
             <ScoreRingGauge score={score} size="sm" />
             <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground">Release readiness</p>
@@ -79,21 +80,21 @@ export function SampleReportDashboardMock({
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-inner)] bg-muted/40 px-4 py-3">
+          <div className="rounded-[var(--radius-inner)] bg-muted/35 px-4 py-4">
             <p className="text-xs font-medium text-muted-foreground">High impact issues</p>
-            <p className="mt-1 font-mono text-3xl font-semibold tabular-nums leading-none text-foreground">
+            <p className="mt-1.5 font-mono text-3xl font-semibold tabular-nums leading-none text-foreground">
               {flagCount}
             </p>
-            <p className="mt-2 text-xs font-medium text-destructive">Needs attention</p>
+            <p className="mt-2.5 text-xs font-medium text-destructive">Needs attention</p>
             <p className="mt-3 inline-flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
               <CheckCircle2 className="h-3 w-3 text-success" strokeWidth={2} />
               {checksLabel}
             </p>
           </div>
 
-          <div className="rounded-[var(--radius-inner)] bg-muted/40 px-4 py-3">
+          <div className="rounded-[var(--radius-inner)] bg-muted/35 px-4 py-4">
             <p className="text-xs font-medium text-muted-foreground">By rubric</p>
-            <ul className="mt-2.5 space-y-2">
+            <ul className="mt-3 space-y-2.5">
               {rubricScores.map((row) => (
                 <li key={row.name} className="flex items-center justify-between gap-2 text-xs">
                   <span className="font-medium text-foreground">{row.label}</span>
@@ -106,22 +107,22 @@ export function SampleReportDashboardMock({
           </div>
         </div>
 
-        <div className="relative grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,17.5rem)] lg:gap-5">
+        <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,18.5rem)] lg:gap-6">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 pb-3">
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-border/30 pb-3.5">
               <TabChip active label={`All issues ${flagCount}`} />
               <TabChip label={`Message ${rubricCounts.message}`} />
               <TabChip label={`Experience ${rubricCounts.experience}`} />
               <TabChip label={`Reach ${rubricCounts.reach}`} />
             </div>
 
-            <ul className="mt-3 divide-y divide-border/40">
+            <ul className="mt-3.5 divide-y divide-border/30">
               {issues.map((issue, index) => (
                 <li
                   key={issue.id}
                   className={cn(
-                    'flex items-center gap-2.5 px-2 py-2.5',
-                    index === 0 && 'rounded-[var(--radius-control)] bg-destructive/[0.06]'
+                    'flex items-center gap-2.5 px-2.5 py-3',
+                    index === 0 && 'rounded-[var(--radius-control)] bg-destructive/[0.05]'
                   )}
                 >
                   {severityIcon(issue.severity)}
@@ -142,26 +143,26 @@ export function SampleReportDashboardMock({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs font-medium text-muted-foreground">
+            <p className="mt-4 text-xs font-medium text-muted-foreground">
               View all {flagCount} issues →
             </p>
           </div>
 
           {selected ? (
-            <div className="rounded-card border border-border/50 bg-background p-4 shadow-[0_18px_40px_-24px_hsl(240_8%_5%/0.35)] sm:p-5">
+            <div className="rounded-[var(--radius-inner)] border border-border/40 bg-background p-5 shadow-[0_18px_44px_-28px_hsl(240_8%_5%/0.28)] sm:p-5">
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-snug text-foreground">{selected.title}</p>
-                <span className="mt-1.5 inline-flex rounded-full bg-destructive/10 px-2 py-0.5 text-[0.625rem] font-semibold text-destructive">
+                <span className="mt-2 inline-flex rounded-full bg-destructive/10 px-2 py-0.5 text-[0.625rem] font-semibold text-destructive">
                   {selected.severityLabel}
                 </span>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-5 space-y-4">
                 <div>
                   <p className="text-[0.6875rem] font-semibold uppercase tracking-label text-muted-foreground">
                     Why it matters
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty">
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground text-pretty">
                     {selected.why}
                   </p>
                 </div>
@@ -171,7 +172,7 @@ export function SampleReportDashboardMock({
                     <p className="text-[0.6875rem] font-semibold uppercase tracking-label text-muted-foreground">
                       Impact
                     </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {selected.impactLabels.map((label) => (
                         <span
                           key={label}
@@ -188,10 +189,10 @@ export function SampleReportDashboardMock({
                   <p className="text-[0.6875rem] font-semibold uppercase tracking-label text-muted-foreground">
                     Fix prompt
                   </p>
-                  <div className="mt-1.5 line-clamp-4 rounded-[var(--radius-control)] bg-muted/60 px-3 py-2.5 text-[0.6875rem] leading-relaxed text-foreground/80">
+                  <div className="mt-2 line-clamp-4 rounded-[var(--radius-control)] bg-muted/55 px-3.5 py-3 text-[0.6875rem] leading-relaxed text-foreground/80">
                     {selected.fixPrompt || 'Open the sample report to copy the full fix prompt.'}
                   </div>
-                  <span className="mt-2.5 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full bg-foreground text-xs font-semibold text-background">
+                  <span className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-foreground text-xs font-semibold text-background">
                     <Copy className="h-3.5 w-3.5" strokeWidth={2} />
                     Copy prompt
                   </span>

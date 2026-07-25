@@ -49,10 +49,10 @@ export function SampleSectionCta({ flagCount }: { flagCount?: number }) {
       <Link
         href="/samples"
         onClick={() => trackEvent('clicked_sample_cta', { placement: 'sample_section' })}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border/80 bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted/50"
+        className="inline-flex min-h-12 items-center gap-2.5 rounded-[var(--radius-control)] border border-border/60 bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_8px_20px_-12px_hsl(240_8%_5%/0.14)] transition-[background-color,border-color,box-shadow] duration-200 hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         {label}
-        <ArrowUpRight className="h-4 w-4" aria-hidden />
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       </Link>
     </div>
   )

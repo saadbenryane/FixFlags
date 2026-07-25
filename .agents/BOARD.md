@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| sample-report-hero-polish | in_progress | auto | main | Sample report section: mockup weight, hierarchy, cards, CTA, glass stats, section width | components/marketing/landing/SampleReport*, SampleFunnelEvents | none | 2026-07-25 |
 | current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
 
 ---
@@ -12,6 +13,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| hero-finalize-sizing | auto | Finalize homepage hero glass sizing/layout; design skill + learning | 2026-07-25 |
 | hero-radius-layout | auto | Homepage hero radii, icons, layout rhythm to mockup; product-true trust | 2026-07-25 |
 | hero-design-pass | auto | Hero denser layout, Product nav, illustration/input polish | 2026-07-25 |
 | homepage-conversion-closeout | auto | Product-true homepage sample mock, hero WebP, docs sync, verify | 2026-07-25 |

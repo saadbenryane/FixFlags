@@ -49,8 +49,19 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - Pre-compressed brand/marketing assets use `unoptimized` so an allowlist regression cannot blank the live logo (see learning `next-image-local-patterns-blank-assets.md`).
 - `npm run image:local-patterns-guard` must stay green.
 
+## Homepage hero glass
+
+- Runtime: `public/marketing/visuals/home-hero-glass.webp` (RGBA). True master: `docs/brand/reference/home-hero-glass-rgba-master.png`.
+- Prefer a file saved directly into the repo. Cursor chat uploads often flatten transparent PNGs to JPEG-on-black.
+- If only a black plate exists: flood-fill bg → soft outer edge → **preserve interior RGB** (never global-unmate text) → despill dark-on-partial-alpha → pad ~24px. Metric: `darkSemiTransparent` (lum&lt;50, 8&lt;alpha&lt;240) must be 0.
+- If a true RGBA master exists: preserve alpha; only despill dark underside/rim fringe. Do not redraw glyphs.
+- Current plate is landscape (~1.49). Size it to the **right column width** (`object-contain` / `object-right`). Do not height-lead in a way that overflows into the copy column.
+- Hero layout: wide container (~92rem), grid `minmax(0,34–36rem) + 1fr`, `items-center`, soft orange ambient glow, soft drop-shadow only (no hard black outline).
+- Product-true trust only: no invented builder counts or stock avatars on the hero.
+
 ## Avoid
 
 - Decorative gradients, excessive borders, arbitrary radii, tiny icon buttons, duplicate report chrome, or serif text in dense product UI.
 - Hardcoded report labels or marketing claims outside `lib/marketing/copy.ts`.
 - Per-page fixes for a defect shared by buttons, cards, status, navigation, or report primitives.
+- Re-keying a clean RGBA master “to improve” edges, or inventing social-proof counts to match a mockup.

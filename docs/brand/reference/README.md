@@ -11,7 +11,8 @@ These are **design references only** — not served at runtime. Production asset
 
 - `homepage-hero-mockup.png` / `homepage-hero-mockup-v2.png` — hero composition reference
 - `homepage-sample-report-mockup.png` — sample report section reference
-- `home-hero-glass-source.png` / `home-hero-glass-png-master.png` — glass illustration masters (not runtime)
+- `home-hero-glass-rgba-master.png` — true RGBA export (preferred). `home-hero-glass-png-master.png` is the runtime-cropped/despilled plate.
+- Do not rely on chat image uploads for hero art; they often flatten to JPEG-on-black.
 
 Runtime hero glass: `public/marketing/visuals/home-hero-glass.webp` (RGBA).
 

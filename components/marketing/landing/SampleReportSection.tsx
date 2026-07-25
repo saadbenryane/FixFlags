@@ -24,6 +24,7 @@ import { buildSampleDashboardPreview } from '@/lib/marketing/sample-dashboard-pr
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { cn } from '@/lib/utils'
 
 const TRUST_ICONS = {
   zap: Zap,
@@ -51,21 +52,25 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
       className="scroll-mt-[var(--header-offset)] bg-muted/25"
     >
       <SampleViewTracker placement="homepage" />
-      <Container className="space-y-10 sm:space-y-12" variant="wide">
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-10 xl:gap-12">
-          <RevealOnView className="space-y-6 sm:space-y-7">
+      <Container
+        className="max-w-[94rem] space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-8 xl:px-10"
+        variant="wide"
+      >
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-8 xl:gap-10">
+          <RevealOnView className="flex flex-col gap-8 sm:gap-9 lg:pt-1">
             <LandingSectionHeader
               align="left"
               label={copy.label}
               brandEyebrow
+              labelClassName="text-muted-foreground"
               headline={copy.headlineDisplay}
               accentPeriod={copy.headlineAccentPeriod}
               subhead={copy.body}
-              headlineClassName="max-w-[16ch] text-[1.75rem] sm:text-[2rem] md:text-[2.25rem]"
-              className="max-w-md space-y-3.5"
+              headlineClassName="max-w-[15ch] text-[1.875rem] leading-[1.12] sm:text-[2.25rem] md:text-[2.5rem] lg:text-[2.625rem]"
+              className="max-w-md space-y-4 sm:space-y-5"
             />
 
-            <ul className="divide-y divide-border/60 border-y border-border/60">
+            <ul className="flex flex-col gap-2.5">
               {copy.rubricRows.map((row) => {
                 const Icon = RUBRIC_ICONS[row.icon]
                 const count = preview.rubricCounts[row.id as keyof typeof preview.rubricCounts] ?? 0
@@ -73,7 +78,13 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                   <li key={row.id}>
                     <Link
                       href="/samples"
-                      className="group flex items-center gap-3 py-3.5 transition-colors hover:bg-background/40 sm:gap-4"
+                      className={cn(
+                        'group flex min-h-[3.5rem] items-center gap-3.5 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-4 py-3 sm:min-h-16 sm:gap-4 sm:px-5 sm:py-3.5',
+                        'shadow-[0_1px_2px_hsl(240_8%_5%/0.025),0_6px_16px_-12px_hsl(240_8%_5%/0.1)]',
+                        'transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out',
+                        'hover:border-border/65 hover:bg-background hover:shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_10px_24px_-14px_hsl(240_8%_5%/0.14)]',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+                      )}
                     >
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
                         <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -82,14 +93,16 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                         <span className="block text-sm font-semibold text-foreground">
                           {row.title}
                         </span>
-                        <span className="mt-0.5 block text-sm text-muted-foreground text-pretty">
+                        <span className="mt-0.5 block text-[0.8125rem] leading-snug text-muted-foreground text-pretty">
                           {row.body}
                         </span>
                       </span>
-                      <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-brand">
-                        {count} {count === 1 ? 'issue' : 'issues'}
+                      <span className="inline-flex shrink-0 items-center gap-2 pl-1">
+                        <span className="text-[0.6875rem] font-medium tabular-nums text-brand/70">
+                          {count} {count === 1 ? 'issue' : 'issues'}
+                        </span>
                         <ChevronRight
-                          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                          className="h-4 w-4 text-muted-foreground/70 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-foreground"
                           aria-hidden
                         />
                       </span>
@@ -102,20 +115,25 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <SampleSectionCta flagCount={flagCount} />
           </RevealOnView>
 
-          <div className="relative">
+          <div className="relative min-w-0">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-4 rounded-[calc(var(--radius-card)+1rem)] bg-[radial-gradient(ellipse_at_50%_40%,hsl(240_8%_5%/0.12),transparent_68%)] blur-3xl sm:-inset-6 sm:blur-[40px]"
+            />
             <SampleReportDashboardMock
               preview={preview}
               checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
+              className="relative"
             />
           </div>
         </div>
 
         <RevealOnView>
-          <div className="rounded-card bg-muted/55 px-5 py-6 sm:px-8 sm:py-7">
+          <div className="space-y-5 sm:space-y-6">
             <p className="text-center font-mono text-[0.6875rem] font-medium uppercase tracking-label text-muted-foreground">
               {copy.trustLabel}
             </p>
-            <ul className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 xl:gap-3">
+            <ul className="grid grid-cols-1 gap-5 overflow-hidden rounded-[1.75rem] glass-surface-elevated px-5 py-7 sm:grid-cols-2 sm:gap-6 sm:px-7 sm:py-8 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-9 xl:px-5">
               <TrustMetric
                 icon={ShieldCheck}
                 value={copy.checksMetric(CHECK_ID_COUNT).value}
@@ -125,6 +143,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                 icon={Crosshair}
                 value={copy.issuesMetric(flagCount).value}
                 label={copy.issuesMetric(flagCount).label}
+                divider
               />
               {copy.trustMetrics.map((metric) => {
                 const Icon = TRUST_ICONS[metric.icon]
@@ -134,6 +153,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                     icon={Icon}
                     value={metric.value}
                     label={metric.label}
+                    divider
                   />
                 )
               })}
@@ -149,19 +169,30 @@ function TrustMetric({
   icon: Icon,
   value,
   label,
+  divider = false,
 }: {
   icon: typeof ShieldCheck
   value: string
   label: string
+  divider?: boolean
 }) {
   return (
-    <li className="flex items-start gap-2.5 text-left sm:flex-col sm:items-center sm:text-center">
-      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
+    <li
+      className={cn(
+        'flex items-start gap-3 text-left sm:flex-col sm:items-center sm:px-2 sm:text-center lg:px-4 lg:py-1 xl:px-5',
+        divider && 'lg:border-l lg:border-border/45'
+      )}
+    >
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
         <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-semibold tabular-nums text-foreground">{value}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground text-pretty">{label}</span>
+        <span className="block text-[0.9375rem] font-semibold leading-tight tabular-nums text-foreground sm:text-base">
+          {value}
+        </span>
+        <span className="mt-1 block text-xs leading-snug text-muted-foreground text-pretty">
+          {label}
+        </span>
       </span>
     </li>
   )

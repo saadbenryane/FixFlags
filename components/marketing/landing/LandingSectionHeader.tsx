@@ -11,6 +11,8 @@ interface LandingSectionHeaderProps {
   showLabel?: boolean
   /** Brand orange-dot mono eyebrow (homepage marketing). Default false keeps blog/faq section-label. */
   brandEyebrow?: boolean
+  /** Override brand eyebrow text color/classes when needed. */
+  labelClassName?: string
   /** Render a brand-colored period after the headline. */
   accentPeriod?: boolean
   /** Use "h1" when this header is the page's top-level heading (e.g. /faq). */
@@ -26,6 +28,7 @@ export function LandingSectionHeader({
   align = 'center',
   showLabel = Boolean(label),
   brandEyebrow = false,
+  labelClassName,
   accentPeriod = false,
   as = 'h2',
   headlineClassName,
@@ -43,7 +46,8 @@ export function LandingSectionHeader({
           <p
             className={cn(
               'inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs',
-              align === 'center' && 'justify-center'
+              align === 'center' && 'justify-center',
+              labelClassName
             )}
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
@@ -71,7 +75,7 @@ export function LandingSectionHeader({
       {subhead ? (
         <p
           className={cn(
-            'text-base leading-relaxed text-muted-foreground text-pretty',
+            'text-base leading-relaxed text-muted-foreground text-pretty sm:text-[1.0625rem] sm:leading-relaxed',
             align === 'center' && 'mx-auto max-w-2xl'
           )}
         >

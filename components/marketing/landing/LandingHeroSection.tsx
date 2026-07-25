@@ -8,31 +8,37 @@ import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
 import { HERO } from '@/lib/marketing/copy'
 
-/** Official glass hero (RGBA WebP). */
+/**
+ * Official glass hero (RGBA WebP from true transparent master).
+ * Landscape plate (~1.49) — size by height on desktop so it matches left-column weight.
+ */
 const HERO_GLASS = {
   src: '/marketing/visuals/home-hero-glass.webp',
-  width: 853,
-  height: 747,
+  width: 1524,
+  height: 1024,
 } as const
 
 export function LandingHeroSection() {
   return (
     <Section
       spacing="compact"
-      className="relative flex min-h-0 flex-col overflow-x-clip pb-5 pt-3 sm:pb-6 sm:pt-4 lg:pb-7 lg:pt-5"
+      className="relative flex min-h-0 flex-col overflow-x-clip pb-5 pt-3 sm:pb-6 sm:pt-4 lg:pb-8 lg:pt-6"
     >
-      <Container variant="wide" className="flex flex-col xl:max-w-[80rem]">
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-x-4 xl:gap-x-6">
-          <div className="order-1 flex max-w-xl flex-col gap-3.5 sm:gap-4 lg:max-w-[34rem] lg:pt-2 xl:max-w-[36rem] xl:pt-3">
+      <Container
+        variant="wide"
+        className="flex w-full max-w-[92rem] flex-col px-4 sm:px-6 xl:px-8"
+      >
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:items-center lg:gap-x-6 xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] xl:gap-x-8">
+          <div className="order-1 flex max-w-xl flex-col gap-3.5 sm:gap-4 lg:max-w-none lg:pt-1">
             <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-brand sm:text-xs">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
               {HERO.badge}
             </p>
 
-            <div className="space-y-4 sm:space-y-[1.125rem]">
+            <div className="space-y-4 sm:space-y-5">
               <Heading
                 as="h1"
-                className="max-w-[14ch] text-[2.75rem] font-bold leading-[1.08] tracking-display sm:text-[3.125rem] sm:leading-[1.08] lg:text-[3.625rem] xl:text-[3.875rem]"
+                className="max-w-[14ch] text-[2.75rem] font-bold leading-[1.08] tracking-display [text-rendering:geometricPrecision] sm:text-[3.125rem] sm:leading-[1.08] lg:text-[3.625rem] xl:text-[3.875rem]"
               >
                 {HERO.headlineDisplay}
                 {HERO.headlineAccentPeriod ? (
@@ -60,7 +66,7 @@ export function LandingHeroSection() {
 
             <AssuranceRow />
 
-            {/* Product-true trust band — horizontal layout matches mockup; no invented counts */}
+            {/* Product-true trust band — no invented counts or avatars */}
             <div className="flex items-center gap-3 pt-0.5">
               <p className="inline-flex items-center gap-2 text-sm text-foreground/80">
                 <Zap className="h-4 w-4 shrink-0 text-brand" strokeWidth={2} aria-hidden />
@@ -75,13 +81,14 @@ export function LandingHeroSection() {
             />
           </div>
 
-          <div className="order-2 relative mx-auto w-full max-w-[24rem] sm:max-w-[28rem] lg:mx-0 lg:-mt-2 lg:flex lg:max-w-none lg:items-start lg:justify-self-end xl:-mt-3">
+          <div className="order-2 relative mx-auto flex w-full max-w-[28rem] justify-center sm:max-w-[32rem] lg:mx-0 lg:max-w-none lg:justify-end lg:justify-self-stretch">
             <div
               aria-hidden
-              className="pointer-events-none absolute left-[10%] top-[8%] h-[72%] w-[78%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(var(--brand)/0.28),transparent_68%)] blur-[68px]"
+              className="pointer-events-none absolute left-[8%] top-[6%] h-[78%] w-[82%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(var(--brand)/0.3),transparent_70%)] blur-[72px]"
             />
+            {/* Fill the right column; landscape plate scales with column width (not height-led overflow). */}
             <div
-              className="relative mx-auto w-full lg:ml-auto lg:w-[min(108%,46rem)] xl:w-[min(110%,50rem)]"
+              className="relative w-full lg:ml-auto lg:w-full lg:max-w-[52rem] xl:max-w-[56rem]"
               style={{ aspectRatio: `${HERO_GLASS.width} / ${HERO_GLASS.height}` }}
             >
               <Image
@@ -91,8 +98,8 @@ export function LandingHeroSection() {
                 height={HERO_GLASS.height}
                 priority
                 unoptimized
-                sizes="(min-width: 1280px) 50rem, (min-width: 1024px) 46rem, (min-width: 640px) 28rem, 24rem"
-                className="h-full w-full select-none object-contain object-center drop-shadow-[0_24px_48px_-12px_hsl(240_8%_5%/0.12)] lg:object-right"
+                sizes="(min-width: 1280px) 56rem, (min-width: 1024px) 52rem, (min-width: 640px) 32rem, 28rem"
+                className="h-full w-full select-none object-contain object-center drop-shadow-[0_28px_56px_-18px_hsl(240_8%_5%/0.14)] lg:object-right"
                 draggable={false}
               />
             </div>
@@ -101,7 +108,7 @@ export function LandingHeroSection() {
 
         <a
           href="#sample-review"
-          className="mx-auto mt-4 flex w-fit flex-col items-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-5"
+          className="mx-auto mt-5 flex w-fit flex-col items-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-6"
         >
           {HERO.scrollHint}
           <ChevronDown className="h-3.5 w-3.5 animate-bounce motion-reduce:animate-none" aria-hidden />
