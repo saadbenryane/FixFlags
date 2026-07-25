@@ -12,6 +12,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| hero-radius-layout | auto | Homepage hero radii, icons, layout rhythm to mockup; product-true trust | 2026-07-25 |
 | hero-design-pass | auto | Hero denser layout, Product nav, illustration/input polish | 2026-07-25 |
 | homepage-conversion-closeout | auto | Product-true homepage sample mock, hero WebP, docs sync, verify | 2026-07-25 |
 | hero-design-match | auto | Homepage hero visual match to mockup composition/glass/input/logos | 2026-07-25 |

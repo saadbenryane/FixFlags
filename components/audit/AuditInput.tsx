@@ -168,7 +168,7 @@ export function AuditInput({
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'w-full' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <InputGroup className="gap-1.5 rounded-[1.35rem] border-border/35 bg-background p-1.5 shadow-[0_2px_4px_hsl(240_8%_5%/0.04),0_16px_40px_-16px_hsl(240_8%_5%/0.18)] sm:flex-row sm:items-center sm:gap-1 sm:p-[0.4rem] sm:pr-[0.4rem]">
+          <InputGroup className="gap-1.5 rounded-[var(--radius-inner)] border-border/35 bg-background p-1.5 shadow-[0_2px_4px_hsl(240_8%_5%/0.04),0_16px_40px_-16px_hsl(240_8%_5%/0.18)] sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>
@@ -177,7 +177,7 @@ export function AuditInput({
                 className="inline-flex shrink-0 items-center self-center pl-3.5 text-muted-foreground/80 sm:pl-4"
                 aria-hidden
               >
-                <Link2 className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} />
+                <Link2 className="h-5 w-5" strokeWidth={1.75} />
               </span>
               <InputGroupInput
                 id={inputId}
@@ -202,7 +202,7 @@ export function AuditInput({
                 disabled={busy}
                 aria-invalid={Boolean(urlError)}
                 aria-describedby={describedBy}
-                className="h-12 min-h-12 flex-1 pl-2.5 pr-2 text-[0.9375rem] placeholder:text-muted-foreground/75 sm:h-[3.25rem] sm:min-h-[3.25rem] sm:pl-2.5 sm:text-base sm:placeholder:text-muted-foreground/70"
+                className="h-12 min-h-12 flex-1 pl-2.5 pr-2 text-[0.9375rem] placeholder:text-muted-foreground/70 sm:h-[3.25rem] sm:min-h-[3.25rem] sm:pl-2.5 sm:text-base"
               />
             </div>
             <Button
@@ -211,18 +211,18 @@ export function AuditInput({
               size="lg"
               disabled={busy}
               className={cn(
-                'h-12 min-h-12 w-full shrink-0 gap-1.5 rounded-[calc(1.35rem-5px)] px-5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[11.5rem] sm:gap-2 sm:px-6 sm:text-base'
+                'h-12 min-h-12 w-full shrink-0 gap-1.5 rounded-[var(--radius-control)] px-5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[11.5rem] sm:gap-2 sm:px-6 sm:text-base'
               )}
             >
               {busy ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   {AUDIT_PROGRESS.submitLoading}
                 </>
               ) : (
                 <>
                   {HERO.primaryCta}
-                  <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <ArrowRight />
                 </>
               )}
             </Button>
