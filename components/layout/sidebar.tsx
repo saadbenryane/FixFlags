@@ -120,7 +120,7 @@ function SidebarFooter() {
 export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
   return (
     <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 md:z-navbar border-r border-border/60 glass-surface-strong">
-      <div className="flex h-14 items-center px-4 border-b border-border/40 shrink-0">
+      <div className="flex h-[var(--header-height)] items-center px-4 border-b border-border/40 shrink-0">
         <Logo variant="lockup" size="md" href="/dashboard" />
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-4">
@@ -145,7 +145,7 @@ export function MobileSidebar({ showAdmin }: { showAdmin?: boolean }) {
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
-        <div className="flex h-14 items-center px-4 border-b border-border/40 shrink-0">
+      <div className="flex h-[var(--header-height)] items-center px-4 border-b border-border/40 shrink-0">
           <Logo variant="lockup" size="md" href="/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-4">

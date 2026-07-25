@@ -23,8 +23,8 @@ Black fringes and undersized glass make the hero feel broken next to mockups. Ov
 ## Correct approach
 
 1. Save true RGBA under `docs/brand/reference/home-hero-glass-rgba-master.png`.
-2. Despill only dark-on-partial / underside rim; ship `home-hero-glass.webp`.
-3. Layout: `max-w-[92rem]`, `grid-cols-[minmax(0,34–36rem)_minmax(0,1fr)]`, `items-center`, glass `w-full` in the right column, `object-right`.
+2. Despill only dark-on-partial / underside rim; lossless crop with ~24px transparent pad; ship `home-hero-glass.webp` (runtime dims tracked in `LandingHeroSection` — currently 1528×1024).
+3. Layout: `Container variant="marketing"` (`--container-max-marketing` 92rem), `grid-cols-[minmax(0,34–36rem)_minmax(0,1fr)]`, `items-center`, glass `w-full` / `xl:max-w-[58rem]` in the right column, `object-right`.
 4. Verify at 1440: gap ≥16px, no overlap, glass height ≈ left column (±15%).
 
 ## Prevention

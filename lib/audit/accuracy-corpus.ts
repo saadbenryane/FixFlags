@@ -44,7 +44,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://nextjs.org',
     tier: 'gold',
     maxImportantFalseBlockers: 0,
-    expectedTop3: ['messaging-no-audience', 'measurement-ga-gtm-posthog-missing', 'canonical-missing'],
+    expectedTop3: ['canonical-missing', 'measurement-ga-gtm-posthog-missing', 'no-structured-data'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',
@@ -73,12 +73,12 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     tier: 'builder',
     maxImportantFalseBlockers: 0,
     expectedTop3: [
-      'friction-no-social-proof',
+      'trust-no-authority-signals',
       'measurement-ga-gtm-posthog-missing',
       'no-structured-data',
     ],
     knownFalsePositives: ['messaging-weak-value-prop', 'links-no-text', 'buttons-no-text'],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'friction-no-social-proof'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'trust-no-authority-signals'],
   },
   {
     file: 'bolt-new.html',

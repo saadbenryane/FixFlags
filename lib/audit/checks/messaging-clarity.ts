@@ -62,7 +62,12 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
   // visitor gets. A strong outcome-driven headline ("grow your revenue") does not
   // also need to name an audience, so requiring both signals to be absent stops
   // this from firing on the majority of well-written headlines.
-  if (h1 && !hasAudience && !hasOutcome) {
+  // Also skip when the headline is a clear product category statement (e.g.
+  // "The React Framework for the Web", "AI App Builder"), these communicate
+  // what the product IS, which is sufficient even without an explicit audience.
+  const PRODUCT_CATEGORY_PATTERN = /^the\s+\w[\w\s]*\s+for\s+/i
+  const isProductCategory = PRODUCT_CATEGORY_PATTERN.test(h1)
+  if (h1 && !hasAudience && !hasOutcome && !isProductCategory) {
     findings.push({
       checkId: 'messaging-no-audience',
       rubric: 'MESSAGE',

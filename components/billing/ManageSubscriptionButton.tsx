@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { trackEvent } from '@/lib/analytics/events'
 
 export function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false)
@@ -19,6 +20,7 @@ export function ManageSubscriptionButton() {
       }
       const data = await res.json()
       if (data.url) {
+        trackEvent('managed_subscription')
         window.location.href = data.url
       } else {
         toast.error('The billing portal did not return a destination.')

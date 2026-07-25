@@ -66,7 +66,7 @@ export type StagePresentation = {
 
 /**
  * Single honest stage narrative for progressive UI.
- * Copy changes only when pipeline status or known progress substeps change — never on a timer.
+ * Copy changes only when pipeline status or known progress substeps change, never on a timer.
  */
 export function getStagePresentation(
   status: string,

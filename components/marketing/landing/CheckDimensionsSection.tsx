@@ -88,8 +88,9 @@ export function CheckDimensionsSection() {
   return (
     <Section
       spacing="marketing"
+      tint="subtle"
       id="what-it-checks"
-      className="scroll-mt-[var(--header-offset)] bg-muted/20"
+      className="scroll-mt-[var(--header-offset)]"
     >
       <Container className="space-y-8 sm:space-y-10">
         <LandingSectionHeader

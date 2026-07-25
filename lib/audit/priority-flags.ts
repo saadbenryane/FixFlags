@@ -66,6 +66,8 @@ const NOISY_POLISH_CHECKS = new Set([
   'security-csp-missing',
   'security-frame-options-missing',
   'security-content-type-options-missing',
+  'security-headers-missing',
+  'no-privacy-policy',
 ])
 
 function noisyPolishDemotion(flag: RankableFlag): number {

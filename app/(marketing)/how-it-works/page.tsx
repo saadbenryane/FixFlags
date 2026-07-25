@@ -9,6 +9,7 @@ import {
 import { AuditInput } from '@/components/audit/AuditInput'
 import { AiGapHero } from '@/components/marketing/how-it-works/AiGapHero'
 import { TerminalBlock } from '@/components/marketing/TerminalBlock'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -27,6 +28,7 @@ export default function HowItWorksPage() {
 
   return (
     <>
+      <MarketingPageViewTracker page="/how-it-works" />
       <AiGapHero />
 
       <Section spacing="marketing">

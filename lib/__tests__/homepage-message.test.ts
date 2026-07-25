@@ -69,8 +69,6 @@ const PRICING_STRINGS = [
 const ABOVE_FOLD_COPY = [
   HERO.headline,
   HERO.headlineDisplay,
-  HERO.headlineLine1,
-  HERO.headlineLine2,
   HERO.subhead,
   HOW_IT_WORKS_PAGE.hero.subhead,
   ...LANDING_PAGE.howItWorks.steps.map((s) => s.body),
@@ -307,6 +305,9 @@ describe('homepage message guardrails', () => {
       assert.ok(!/\d{2,},\d{3}/.test(metric.value), `Invented count: ${metric.value}`)
       assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
     }
+    assert.equal(LANDING_PAGE.sampleReport.mock.copyPrompt, 'Copy prompt')
+    assert.equal(LANDING_PAGE.sampleReport.mock.recheck, 'Re-check')
+    assert.ok(!/apply fix/i.test(JSON.stringify(LANDING_PAGE.sampleReport.mock)))
   })
 
   it('landing page exposes three-rubric check story', () => {

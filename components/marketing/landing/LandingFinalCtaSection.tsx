@@ -24,7 +24,7 @@ export function LandingFinalCtaSection() {
     <Section
       id="final-cta"
       spacing="marketing"
-      className="scroll-mt-[var(--header-offset)] pb-7 sm:pb-8"
+      className="scroll-mt-[var(--header-offset)]"
     >
       <Container>
         <div className="rounded-card border border-border/50 bg-background p-6 shadow-card sm:p-8 lg:p-10">

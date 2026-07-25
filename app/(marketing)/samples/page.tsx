@@ -1,5 +1,6 @@
 import { HeroProductPreview } from '@/components/marketing/landing/HeroProductPreview'
 import { DevSampleMetaLogger } from '@/components/marketing/DevSampleMetaLogger'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
@@ -16,6 +17,7 @@ export default async function SamplesPage() {
 
   return (
     <Section spacing="report">
+      <MarketingPageViewTracker page="/samples" />
       <DevSampleMetaLogger
         source={sample.source}
         completedAt={sample.completedAt}

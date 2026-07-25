@@ -177,6 +177,7 @@ describe('runConversionFrictionChecks', () => {
       checkIds(runConversionFrictionChecks(healthyMeta({
         ctaTexts: ['Get started'],
         totalFormInputs: 8,
+        maxConversionFormInputs: 8,
         pageText: 'Sign up for a free trial.',
       }))).includes('friction-form-too-many-fields')
     )
@@ -227,7 +228,7 @@ describe('runTrustPsychologyChecks', () => {
     assert.ok(
       checkIds(runTrustPsychologyChecks(healthyMeta({
         ctaTexts: ['Get started'],
-        pageText: 'Sign up today. Build better software.',
+        pageText: 'Sign up today. Build better software with our platform. We help engineering teams ship faster and more reliably than ever before. Get started now.',
       }))).includes('trust-no-authority-signals')
     )
   })

@@ -10,6 +10,7 @@ const cardVariants = cva(
         default: '',
         solid: 'bg-card backdrop-blur-none shadow-card',
         strong: 'glass-surface-elevated shadow-card',
+        subtle: 'shadow-card',
       },
       interactive: {
         true: 'hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',

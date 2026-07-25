@@ -82,7 +82,7 @@ export function Header({
         <div
           className={cn(
             'grid items-center gap-3',
-            isMarketing ? 'h-[3.75rem] pt-0.5' : 'h-14',
+            isMarketing ? 'h-[var(--header-height-marketing)] pt-0.5' : 'h-[var(--header-height)]',
             !showNavigation
               ? 'grid-cols-[1fr_auto]'
               : isMarketing

@@ -26,7 +26,7 @@ export function AssuranceRow({ className }: AssuranceRowProps) {
         return (
           <li
             key={item.id}
-            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/75 sm:gap-2 lg:text-sm"
+            className="inline-flex items-center gap-2 whitespace-nowrap text-[0.8125rem] text-foreground/80 sm:gap-2 lg:text-sm"
           >
             {index > 0 ? (
               <span

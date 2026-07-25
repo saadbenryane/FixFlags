@@ -161,6 +161,10 @@ const config: Config = {
         'card-hover': 'var(--shadow-card-hover)',
         raised: 'var(--shadow-raised)',
         glass: 'var(--glass-shadow)',
+        'glass-subtle': 'var(--shadow-glass-subtle)',
+        'glass-deep': 'var(--shadow-glass-deep)',
+        'glass-hero': 'var(--shadow-glass-hero)',
+        'drop-hero': 'var(--shadow-drop-hero)',
         'filter-pill': '0 0 12px 0 rgb(0 0 0 / 0.06)',
       },
       zIndex: {

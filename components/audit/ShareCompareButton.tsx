@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { SITE_URL } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
   auditId: string
@@ -40,6 +41,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
       const data = await res.json()
       const url = `${SITE_URL}/compare/${auditId}?share=${data.token}`
       setLink(url)
+      trackEvent('share_link_created', { audit_id: auditId, kind: 'compare' })
     } catch {
       toast.error('Could not create share link')
     } finally {

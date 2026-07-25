@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
 import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Surface } from '@/components/ui/surface'
@@ -28,6 +29,7 @@ export function PricingPageClient() {
 
   return (
     <Section spacing="marketing" className="relative">
+      <MarketingPageViewTracker page="/pricing" />
       <Container className="space-y-8 sm:space-y-11">
         <div className="mx-auto max-w-3xl text-center">
           <Heading as="h1" className="text-balance">

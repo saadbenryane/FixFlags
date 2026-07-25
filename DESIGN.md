@@ -106,8 +106,10 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 | `--space-card` | 1.25rem | Card padding |
 | `--space-section-inner` | 2.125rem | Section internal spacing |
 | `--space-section-y` | 2.75rem | Section vertical margins |
+| `--space-block` | 2rem | Block-level spacing within sections |
 | `--header-offset` | 6.5rem | Top offset for page content below fixed header |
 | `--gap-nested-sm/md/lg` | 0.5/0.75/1rem | Nested element gaps |
+| `--container-max-marketing` | 88rem | Wider container for marketing hero/feature sections |
 
 ## Components
 
@@ -132,7 +134,10 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## Responsive behavior
 
-- Container max-width: 1280px
+- Default container max-width: 1280px (`max-w-5xl` / report `max-w-6xl`)
+- Marketing hero / feature sections: `--container-max-marketing` (88rem) via `Container variant="marketing"`
+- Marketing header height: `--header-height-marketing` (3.75rem); app header: `--header-height` (3.5rem); `--header-offset` (6.5rem) for `scroll-mt`
+- Section tinting: Use `Section tint="subtle"` for consistent `bg-muted/20` background on alternating sections
 - Padding: 1.25rem (default), 1.5rem (sm), 2rem (lg)
 - Screenshots: 1280x900 desktop, 375x812 mobile aspect ratios
 - Mobile frame width in UI: 240px

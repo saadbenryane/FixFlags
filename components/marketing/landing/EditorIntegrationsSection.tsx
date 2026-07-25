@@ -34,8 +34,9 @@ export function EditorIntegrationsSection() {
   return (
     <Section
       spacing="marketing"
+      tint="subtle"
       id="integrations"
-      className="scroll-mt-[var(--header-offset)] bg-muted/25"
+      className="scroll-mt-[var(--header-offset)]"
     >
       <Container>
         <RevealOnView>
@@ -49,8 +50,8 @@ export function EditorIntegrationsSection() {
                   headline={copy.headlineDisplay}
                   accentPeriod={copy.headlineAccentPeriod}
                   subhead={copy.body}
+                  size="sm"
                   className="max-w-md"
-                  headlineClassName="sm:text-[1.75rem]"
                 />
 
                 <EditorToolMarks

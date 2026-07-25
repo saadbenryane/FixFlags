@@ -28,7 +28,7 @@ export function RevealOnView({ children, className, delayMs = 0 }: RevealOnViewP
       observer?.disconnect()
     }
 
-    const fallbackId = window.setTimeout(show, 300)
+    const fallbackId = window.setTimeout(show, 200)
 
     if (typeof IntersectionObserver === 'undefined') {
       show()

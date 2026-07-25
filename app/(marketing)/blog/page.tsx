@@ -10,7 +10,7 @@ export const metadata = buildPageMetadata('blog', '/blog')
 export default function BlogPage() {
   return (
     <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
-      <Container className="mx-auto max-w-3xl space-y-12">
+      <Container className="mx-auto max-w-3xl space-y-8 sm:space-y-10 lg:space-y-12">
         <LandingSectionHeader
           label={BLOG_INDEX.label}
           headline={BLOG_INDEX.headline}

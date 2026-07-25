@@ -9,6 +9,8 @@ const AUTHORITY_MARKERS = [
   /\b(partnered with|in partnership with)\b/i,
   /\b(certified|certification|soc2|soc\s+2|iso\s+27001|hipaa|gdpr compliant)\b/i,
   /\b(backed by|supported by|funded by|invested by)\b/i,
+  /\b(trusted by|loved by|powering|used by)\b/i,
+  /\b(in numbers|by the numbers|our customers|our users|our clients|our community)\b/i,
 ]
 
 const MEDIA_NAMES = [
@@ -86,7 +88,7 @@ export function runTrustPsychologyChecks(
   // "No authority signals" only matters on a product/marketing page. OSS
   // pages have authority via stars/maintainers (not captured here); docs and
   // placeholder pages do not need press badges. Suppress when the page text is
-  // too sparse to evaluate (SPAs, redirects, JS-rendered shells) — the check
+  // too sparse to evaluate (SPAs, redirects, JS-rendered shells), the check
   // would otherwise fire on every SPA that renders authority signals client-side.
   if (productPage && bodyText.length >= 100 && !hasAuthorityRef && !hasMediaName && !hasTestimonialLikeContent && !hasCustomerLogos && ctaTexts.length > 0) {
     findings.push({

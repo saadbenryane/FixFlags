@@ -5,11 +5,7 @@ export const HERO = {
   headline: 'Finish what your AI started.',
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: 'Finish what your AI started',
-  headlineLine1: 'Finish what your',
-  headlineLine2: 'AI started.',
-  headlineAccent: 'Finish',
   headlineAccentPeriod: true,
-  headlineAccentLegacy: false,
   subhead:
     'AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.',
   primaryCta: 'Review my site',
@@ -594,6 +590,27 @@ export const LANDING_PAGE = {
       { id: 'private', value: 'Private', label: 'only you can see', icon: 'lock' as const },
       { id: 'teaser', value: 'No signup', label: 'for your first check', icon: 'users' as const },
     ] as const,
+    /** Decorative homepage dashboard chrome. Product-true labels only. */
+    mock: {
+      sampleFinishPlan: 'Sample Finish Plan',
+      share: 'Share report',
+      recheck: 'Re-check',
+      releaseReadiness: 'Release readiness',
+      scoreDenom: '/100',
+      highImpact: 'High impact issues',
+      needsAttention: 'Needs attention',
+      byRubric: 'By rubric',
+      allIssues: (count: number) => `All issues ${count}`,
+      messageTab: (count: number) => `Message ${count}`,
+      experienceTab: (count: number) => `Experience ${count}`,
+      reachTab: (count: number) => `Reach ${count}`,
+      whyItMatters: 'Why it matters',
+      impact: 'Impact',
+      fixPrompt: 'Fix prompt',
+      copyPrompt: 'Copy prompt',
+      viewAll: (count: number) => `View all ${count} issues →`,
+      fixPromptFallback: 'Open the sample report to copy the full fix prompt.',
+    },
   },
   footer: {
     tagline:

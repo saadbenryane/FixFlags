@@ -246,6 +246,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'security-frame-options-missing',
       'security-frame-options-too-permissive',
       'security-content-type-options-missing',
+      'security-headers-missing',
     ],
     verify: 'npm run test:unit -- lib/audit/__tests__/checks.test.ts',
     notes: 'Reads raw HTTP response headers captured during page navigation, not PageMetadata.',

@@ -10,6 +10,8 @@ import {
   serializeClickIds,
 } from '@/lib/analytics/click-ids'
 
+const gaId = process.env.NEXT_PUBLIC_GA_ID
+
 /**
  * Capture ad click ids (gclid/fbclid) from the landing URL into a first-party
  * cookie so the server-side signup hook can attribute the account to the click,
@@ -38,20 +40,23 @@ export function ConversionScripts() {
   const pixelId = getMetaPixelId()
   useCaptureClickIds()
 
+  const gtagId = gaId || adsId
+
   return (
     <>
-      {adsId ? (
+      {gtagId ? (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${adsId}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${gtagId}`}
             strategy="lazyOnload"
           />
-          <Script id="google-ads-init" strategy="lazyOnload">
+          <Script id="gtag-init" strategy="lazyOnload">
             {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${adsId}');
+              gtag('config', '${gtagId}');
+              ${adsId && adsId !== gaId ? `gtag('config', '${adsId}');` : ''}
             `}
           </Script>
         </>

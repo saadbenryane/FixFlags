@@ -48,9 +48,9 @@ export interface CircuitBreakerState {
   openedAt: number | null
   /** Whether the circuit is currently open (blocking calls). */
   isOpen(): boolean
-  /** Record a successful call — resets the failure counter. */
+  /** Record a successful call, resets the failure counter. */
   recordSuccess(): void
-  /** Record a failed call — may open the circuit. */
+  /** Record a failed call, may open the circuit. */
   recordFailure(): void
 }
 
@@ -69,7 +69,7 @@ export function createCircuitBreaker(
     isOpen() {
       if (openedAt === null) return false
       if (Date.now() - openedAt >= cooldownMs) {
-        // Cooldown expired — allow a trial call (half-open).
+        // Cooldown expired, allow a trial call (half-open).
         return false
       }
       return true

@@ -1,6 +1,8 @@
 import { Heading } from '@/components/ui/typography'
 import { cn } from '@/lib/utils'
 
+type HeaderSize = 'sm' | 'md' | 'lg'
+
 interface LandingSectionHeaderProps {
   label?: string
   /** Full headline text without trailing period when accentPeriod is true. */
@@ -11,13 +13,18 @@ interface LandingSectionHeaderProps {
   showLabel?: boolean
   /** Brand orange-dot mono eyebrow (homepage marketing). Default false keeps blog/faq section-label. */
   brandEyebrow?: boolean
-  /** Override brand eyebrow text color/classes when needed. */
-  labelClassName?: string
   /** Render a brand-colored period after the headline. */
   accentPeriod?: boolean
   /** Use "h1" when this header is the page's top-level heading (e.g. /faq). */
   as?: 'h1' | 'h2'
-  headlineClassName?: string
+  /** Headline size: sm (sub-sections), md (default landing sections), lg (page titles). */
+  size?: HeaderSize
+}
+
+const sizeClasses: Record<HeaderSize, string> = {
+  sm: 'text-[1.75rem] sm:text-[2rem]',
+  md: 'text-2xl font-semibold leading-display tracking-display sm:text-[1.75rem] md:text-[2rem]',
+  lg: 'text-2xl font-semibold leading-display tracking-display sm:text-[2rem] md:text-[2.5rem]',
 }
 
 export function LandingSectionHeader({
@@ -28,10 +35,9 @@ export function LandingSectionHeader({
   align = 'center',
   showLabel = Boolean(label),
   brandEyebrow = false,
-  labelClassName,
   accentPeriod = false,
   as = 'h2',
-  headlineClassName,
+  size = 'md',
 }: LandingSectionHeaderProps) {
   return (
     <div
@@ -46,8 +52,7 @@ export function LandingSectionHeader({
           <p
             className={cn(
               'inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs',
-              align === 'center' && 'justify-center',
-              labelClassName
+              align === 'center' && 'justify-center'
             )}
           >
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
@@ -59,11 +64,7 @@ export function LandingSectionHeader({
       ) : null}
       <Heading
         as={as}
-        className={cn(
-          as === 'h2' &&
-            'font-display text-2xl font-semibold leading-display tracking-display sm:text-[1.75rem] md:text-[2rem]',
-          headlineClassName
-        )}
+        className={cn(as === 'h2' && sizeClasses[size])}
       >
         {headline}
         {accentPeriod ? (

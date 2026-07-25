@@ -28,4 +28,4 @@ Black outlines and white plates make brand art look broken. Users notice immedia
 
 ## Prevention
 
-Encoded in `.cursor/rules/fixflags-ui.mdc` (Mark / marketing visuals) and this learning.
+Encoded in `.cursor/rules/fixflags-ui.mdc` (Mark / marketing visuals), `.cursor/skills/fixflags-design-system/SKILL.md` (Homepage hero glass), learning `homepage-hero-glass-rgba-sizing.md`, and this learning.

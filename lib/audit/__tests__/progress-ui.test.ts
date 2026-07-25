@@ -15,7 +15,7 @@ describe('getStagePresentation', () => {
     }
   })
 
-  it('does not rotate copy on a tick — same inputs yield same output', () => {
+  it('does not rotate copy on a tick, same inputs yield same output', () => {
     const a = getStagePresentation('CHECKING', 40)
     const b = getStagePresentation('CHECKING', 40)
     assert.deepEqual(a, b)

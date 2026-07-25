@@ -42,6 +42,9 @@ type FunnelEvent =
   | 'audits_claimed'
   | 'product_contract_saved'
   | 'remember_shown'
+  | 'managed_subscription'
+  | 'share_link_created'
+  | 'marketing_page_view'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -122,6 +125,14 @@ type EventParams = {
   audits_claimed: { claimed_count: number }
   product_contract_saved: { audit_id?: string }
   remember_shown: { audit_id?: string; learning_count?: number }
+  managed_subscription: { action?: string }
+  share_link_created: { audit_id?: string; kind?: 'share' | 'compare' }
+  marketing_page_view: {
+    page: string
+    utm_source?: string
+    utm_campaign?: string
+    device?: string
+  }
 }
 
 function deviceClass(): string | undefined {
@@ -178,6 +189,14 @@ export function trackEvent<T extends FunnelEvent>(
 export function trackLandingView() {
   trackEvent('landing_view', {
     path: typeof window !== 'undefined' ? window.location.pathname : undefined,
+    device: deviceClass(),
+    ...utmParams(),
+  })
+}
+
+export function trackMarketingPageView(page: string) {
+  trackEvent('marketing_page_view', {
+    page,
     device: deviceClass(),
     ...utmParams(),
   })

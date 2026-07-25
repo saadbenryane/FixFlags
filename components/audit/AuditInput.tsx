@@ -168,7 +168,7 @@ export function AuditInput({
     <div className={cn('flex w-full flex-col gap-3', isLanding ? 'w-full' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
-          <InputGroup className="gap-1.5 rounded-[var(--radius-inner)] border-border/35 bg-background p-1.5 shadow-[0_2px_4px_hsl(240_8%_5%/0.04),0_16px_40px_-16px_hsl(240_8%_5%/0.18)] sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
+          <InputGroup className="gap-1.5 rounded-[var(--radius-inner)] border-border/35 bg-background p-1.5 shadow-glass-deep sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
             <label htmlFor={inputId} className="sr-only">
               Website URL
             </label>

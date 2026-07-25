@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { GoogleAnalytics } from '@next/third-parties/google'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import '@/lib/design/tokens.css'
 import './globals.css'
@@ -52,8 +51,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const gaId = process.env.NEXT_PUBLIC_GA_ID
-
   return (
     <html lang="en" suppressHydrationWarning>
       {/* Fonts are self-hosted via next/font - no Google Fonts preconnect. */}
@@ -69,7 +66,6 @@ export default function RootLayout({
           </a>
           {children}
         </Providers>
-        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         <ConversionScripts />
       </body>
     </html>

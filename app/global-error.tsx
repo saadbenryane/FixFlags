@@ -6,13 +6,22 @@ import { Button } from '@/components/ui/button'
 import { PageTitle } from '@/components/ui/typography'
 
 export default function GlobalError({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   error,
   reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      boundary: 'global',
+      message: error.message,
+      digest: error.digest,
+      stack: error.stack,
+    })
+  )
+
   return (
     <html lang="en">
       <body

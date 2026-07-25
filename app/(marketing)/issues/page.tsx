@@ -42,7 +42,7 @@ export default async function IssuesIndexPage() {
   return (
     <Section spacing="marketing">
       <Container variant="default">
-        <div className="space-y-10">
+        <div className="space-y-8 sm:space-y-10">
           <div className="text-center space-y-3">
             <Heading as="h1" className="text-3xl sm:text-4xl font-bold">
               Issue Library

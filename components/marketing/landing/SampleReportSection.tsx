@@ -48,13 +48,14 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
   return (
     <Section
       spacing="marketing"
+      tint="subtle"
       id="sample-review"
-      className="scroll-mt-[var(--header-offset)] bg-muted/25"
+      className="scroll-mt-[var(--header-offset)]"
     >
       <SampleViewTracker placement="homepage" />
       <Container
-        className="max-w-[94rem] space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-8 xl:px-10"
-        variant="wide"
+        className="space-y-12 sm:space-y-14 lg:space-y-16"
+        variant="marketing"
       >
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-8 xl:gap-10">
           <RevealOnView className="flex flex-col gap-8 sm:gap-9 lg:pt-1">
@@ -62,11 +63,10 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
               align="left"
               label={copy.label}
               brandEyebrow
-              labelClassName="text-muted-foreground"
               headline={copy.headlineDisplay}
               accentPeriod={copy.headlineAccentPeriod}
               subhead={copy.body}
-              headlineClassName="max-w-[15ch] text-[1.875rem] leading-[1.12] sm:text-[2.25rem] md:text-[2.5rem] lg:text-[2.625rem]"
+              size="lg"
               className="max-w-md space-y-4 sm:space-y-5"
             />
 
@@ -80,9 +80,9 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                       href="/samples"
                       className={cn(
                         'group flex min-h-[3.5rem] items-center gap-3.5 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-4 py-3 sm:min-h-16 sm:gap-4 sm:px-5 sm:py-3.5',
-                        'shadow-[0_1px_2px_hsl(240_8%_5%/0.025),0_6px_16px_-12px_hsl(240_8%_5%/0.1)]',
+                        'shadow-glass-subtle',
                         'transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out',
-                        'hover:border-border/65 hover:bg-background hover:shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_10px_24px_-14px_hsl(240_8%_5%/0.14)]',
+                        'hover:border-border/65 hover:bg-background hover:shadow-glass',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
                       )}
                     >
@@ -116,14 +116,9 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           </RevealOnView>
 
           <div className="relative min-w-0">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-4 rounded-[calc(var(--radius-card)+1rem)] bg-[radial-gradient(ellipse_at_50%_40%,hsl(240_8%_5%/0.12),transparent_68%)] blur-3xl sm:-inset-6 sm:blur-[40px]"
-            />
             <SampleReportDashboardMock
               preview={preview}
               checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
-              className="relative"
             />
           </div>
         </div>

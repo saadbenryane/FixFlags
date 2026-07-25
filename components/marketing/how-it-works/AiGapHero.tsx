@@ -21,7 +21,7 @@ const FEATURE_ICONS = {
   rocket: Rocket,
 } as const
 
-/** Isolated white-bg stack plate. Soft page-white key only — do not regenerate. */
+/** Isolated white-bg stack plate. Soft page-white key only, do not regenerate. */
 const STACK = {
   src: '/marketing/visuals/ai-gap-stack.webp',
   width: 490,
@@ -136,8 +136,8 @@ export function AiGapHero() {
           <AiGapStack />
         </div>
 
-        {/* Soft elevation only — no inset ring (mockup feature strip has no hard outline). */}
-        <div className="rounded-card bg-background px-5 py-6 shadow-[0_1px_2px_hsl(240_8%_5%/0.04),0_12px_32px_-14px_hsl(240_8%_5%/0.14)] sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+        {/* Soft elevation only, no inset ring (mockup feature strip has no hard outline). */}
+        <div className="rounded-card bg-background px-5 py-6 shadow-glass-subtle sm:px-6 sm:py-7 lg:px-8 lg:py-8">
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6 xl:gap-8">
             {hero.features.map((feature) => {
               const Icon = FEATURE_ICONS[feature.icon]

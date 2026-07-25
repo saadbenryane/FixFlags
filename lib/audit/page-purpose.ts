@@ -134,6 +134,24 @@ export function detectPagePurpose(
     }
   }
 
+  // 5. Personal / portfolio / advisory page: personal pronouns in the headline,
+  //    case-study or portfolio sections, and the absence of commercial signals
+  //    indicate a personal site that legitimately lacks conversion CTAs.
+  const h1Text = (meta.h1s ?? [])[0] ?? ''
+  const titleText = meta.title ?? ''
+  const headlineAndTitle = `${h1Text} ${titleText}`.toLowerCase()
+  const hasPersonalPronouns = /\b(i'm|i am|my\s+(?:work|story|journey|portfolio|approach)|from vision|case stud)\b/i.test(headlineAndTitle)
+  const hasPortfolioSections = /\b(case stud|portfolio|selected work|journal|blog)\b/i.test(pageText.slice(0, 2000))
+  const hasNoCommercialIntent = !hasCommercialSignal && ctaCount === 0
+  if (hasPersonalPronouns && hasPortfolioSections && hasNoCommercialIntent) {
+    return {
+      purpose: 'article',
+      reasons: [
+        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialSignal})`,
+      ],
+    }
+  }
+
   return {
     purpose: 'marketing',
     reasons: ['default marketing; no strong non-marketing signal'],

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { trackEvent } from '@/lib/analytics/events'
 import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgrade-moments'
 
 interface Props {
@@ -26,6 +27,7 @@ export function UpgradeButton({ context, plan = 'BUILDER' }: Props) {
       })
       const data = await res.json().catch(() => ({}))
       if (data.url && (res.ok || res.status === 409)) {
+        trackEvent('started_checkout', { plan, is_logged_in: true })
         if (res.status === 409) {
           toast.message('Opening billing portal', {
             description: 'Change or cancel your plan there.',

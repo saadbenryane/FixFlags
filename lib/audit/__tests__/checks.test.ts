@@ -1892,7 +1892,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'friction-trial-commitment-unclear': () =>
       checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Start your free trial today', links: [] }))),
     'friction-form-too-many-fields': () =>
-      checkIds(runConversionFrictionChecks(healthyMeta({ totalFormInputs: 7 }))),
+      checkIds(runConversionFrictionChecks(healthyMeta({ totalFormInputs: 7, maxConversionFormInputs: 7 }))),
     'friction-no-risk-reversal': () =>
       checkIds(runConversionFrictionChecks(healthyMeta({ pageText: 'Sign up now for early access. Pricing starts at $9/month.', ctaTexts: ['Sign up'], links: [{ href: '/pricing', text: 'Pricing', rel: null }] }))),
     'friction-no-social-proof': () =>
@@ -1904,7 +1904,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'trust-testimonial-quality': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: '<blockquote>Everyone loves our product because it saves us hours every week.</blockquote> Contact support@example.com.', links: [], ctaTexts: ['Buy'] }))),
     'trust-unsupported-claims': () =>
-      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'The best product for everyone.', links: [] }))),
+      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'The best product for everyone. We are the fastest solution on the market today.', links: [] }))),
     'trust-no-direct-contact': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a product.', hasContactInfo: false, links: [] }))),
     'trust-no-internal-links': () =>
@@ -1926,10 +1926,10 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(
         runVisualHierarchyChecks(
           healthyMeta({
-            h1s: ['Product title here for testing the information density check across headings'],
+            h1s: ['Product title here for testing the information density check across headings and content sections thoroughly with many descriptive words across the entire page content area'],
             h2s: [
-              'Subheading one with many words to push the total count above the threshold of eighty words total across all of these headings',
-              'Subheading two adds even more words so the total goes well beyond the eighty word limit for this particular test scenario',
+              'Subheading one with many words to push the total count above the threshold of eighty words total across all of these headings and sections and content areas',
+              'Subheading two adds even more words so the total goes well beyond the eighty word limit for this particular test scenario and use case across the entire page layout',
               'Subheading three continues adding textual content for the information density calculation to be thorough and realistic',
               'Subheading four keeps padding the word count so the aggregate comfortably clears the eighty word boundary with margin',
             ],

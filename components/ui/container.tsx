@@ -17,6 +17,8 @@ const containerVariants = cva('container mx-auto w-full', {
       content: 'max-w-3xl',
       /** Admin tables and dashboards */
       wide: 'max-w-6xl',
+      /** Marketing hero and feature sections -- wider than default for visual weight */
+      marketing: 'max-w-[var(--container-max-marketing)]',
     },
   },
   defaultVariants: {

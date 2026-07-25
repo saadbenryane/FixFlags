@@ -9,7 +9,7 @@ export const metadata = buildPageMetadata('changelog', '/changelog')
 export default function ChangelogPage() {
   return (
     <Section spacing="marketing" className="scroll-mt-[var(--header-offset)]">
-      <Container className="mx-auto max-w-3xl space-y-12">
+      <Container className="mx-auto max-w-3xl space-y-8 sm:space-y-10 lg:space-y-12">
         <LandingSectionHeader
           label="Changelog"
           headline="What's new recently"

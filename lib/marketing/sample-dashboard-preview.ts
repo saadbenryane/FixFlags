@@ -17,6 +17,8 @@ export interface SampleDashboardSelectedPreview {
   title: string
   why: string
   fixPrompt: string
+  hasFixPrompt: boolean
+  severity: string
   severityLabel: string
   impactLabels: string[]
 }
@@ -30,6 +32,8 @@ export interface SampleDashboardRubricScore {
 export interface SampleDashboardPreview {
   host: string
   score: number | null
+  /** Formatted sample completion date when available (e.g. "Jun 10, 2026"). */
+  checkedAtLabel: string | null
   flagCount: number
   rubricCounts: {
     message: number
@@ -45,6 +49,17 @@ function truncateFixPrompt(text: string, max = SAMPLE_FIX_PROMPT_MAX): string {
   const trimmed = text.trim()
   if (trimmed.length <= max) return trimmed
   return `${trimmed.slice(0, Math.max(0, max - 1)).trimEnd()}…`
+}
+
+function formatCheckedAtLabel(completedAt: Date | null): string | null {
+  if (!completedAt) return null
+  const date = completedAt instanceof Date ? completedAt : new Date(completedAt)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 function issueFromFlag(flag: SampleFlagDisplay): SampleDashboardIssuePreview {
@@ -64,6 +79,8 @@ function selectedFromFlag(flag: SampleFlagDisplay): SampleDashboardSelectedPrevi
     title: flag.title,
     why: flag.whyItMatters,
     fixPrompt: truncateFixPrompt(fixSource),
+    hasFixPrompt: fixSource.trim().length > 0,
+    severity: flag.severity,
     severityLabel: severityLabel(flag.severity),
     impactLabels: impact ? [impact] : [],
   }
@@ -80,7 +97,7 @@ function rubricLabel(name: string): string {
 
 /**
  * Pure homepage sample dashboard view-model.
- * Never invents Flags, scores, or fake trends — only projects sample report data.
+ * Never invents Flags, scores, or fake trends, only projects sample report data.
  */
 export function buildSampleDashboardPreview(
   report: SampleReportDisplay,
@@ -107,6 +124,7 @@ export function buildSampleDashboardPreview(
   return {
     host: report.displayHost,
     score: report.score,
+    checkedAtLabel: formatCheckedAtLabel(report.completedAt),
     flagCount: report.flagCount,
     rubricCounts,
     rubricScores,

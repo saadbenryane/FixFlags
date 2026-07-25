@@ -46,7 +46,7 @@ Never soft-key black-background plates into alpha without unmatting — dark RGB
 
 Prefer a true RGBA PNG saved into `docs/brand/reference/` or `public/marketing/visuals/` (chat uploads often flatten to JPEG-on-black). If a true RGBA master exists, preserve its alpha; only despill dark underside/rim fringe — do not redraw text glyphs.
 
-Homepage hero glass (`home-hero-glass.webp`) is landscape (~1.49). Size to the right column width with `object-contain` / `object-right`. Do not height-scale so wide that it overlaps the left copy column. Hero container may go ~92rem; grid is copy column (`34–36rem`) + `1fr` illustration.
+Homepage hero glass (`home-hero-glass.webp`) is landscape (~1.49). Size to the right column width with `object-contain` / `object-right`. Do not height-scale so wide that it overlaps the left copy column. Use `Container variant="marketing"` (`--container-max-marketing` 92rem); grid is copy column (`34–36rem`) + `1fr` illustration. Logo strip: `EditorToolMarks variant="hero"`.
 
 ## Anti-slop
 

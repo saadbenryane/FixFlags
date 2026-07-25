@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { trackEvent } from '@/lib/analytics/events'
 
 interface Props {
   packId: string
@@ -35,6 +36,7 @@ export function CreditPackButton({ packId, label, price, popular }: Props) {
       }
       const data = await res.json()
       if (data.url) {
+        trackEvent('started_checkout', { plan: packId, is_logged_in: true })
         window.location.href = data.url
       } else {
         toast.error('Checkout did not return a destination.')

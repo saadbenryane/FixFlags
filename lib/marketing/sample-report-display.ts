@@ -71,6 +71,8 @@ export interface SampleReportDisplay {
   score: number | null
   grade: string | null
   verdict: string | null
+  /** Sample audit completion time when available. */
+  completedAt: Date | null
   flagCount: number
   desktopScreenshot: string | null
   mobileScreenshot: string | null
@@ -239,6 +241,7 @@ export function buildSampleReportDisplay(
     score: overall,
     grade: gradeFromScore(overall),
     verdict: displayVerdict(audit.verdict),
+    completedAt: audit.completedAt,
     flagCount: totalFlagCount,
     desktopScreenshot: desktop?.url ?? null,
     mobileScreenshot: mobile?.url ?? null,

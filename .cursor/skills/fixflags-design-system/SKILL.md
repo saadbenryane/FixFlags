@@ -56,8 +56,9 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - If only a black plate exists: flood-fill bg → soft outer edge → **preserve interior RGB** (never global-unmate text) → despill dark-on-partial-alpha → pad ~24px. Metric: `darkSemiTransparent` (lum&lt;50, 8&lt;alpha&lt;240) must be 0.
 - If a true RGBA master exists: preserve alpha; only despill dark underside/rim fringe. Do not redraw glyphs.
 - Current plate is landscape (~1.49). Size it to the **right column width** (`object-contain` / `object-right`). Do not height-lead in a way that overflows into the copy column.
-- Hero layout: wide container (~92rem), grid `minmax(0,34–36rem) + 1fr`, `items-center`, soft orange ambient glow, soft drop-shadow only (no hard black outline).
+- Hero layout: `Container variant="marketing"` (`--container-max-marketing` 92rem), grid `minmax(0,34–36rem) + 1fr`, `items-center`, soft orange ambient glow, soft drop-shadow only (no hard black outline).
 - Product-true trust only: no invented builder counts or stock avatars on the hero.
+- Logo strip: `EditorToolMarks variant="hero"` (not ad-hoc `[&_…]` override soup).
 
 ## Avoid
 
