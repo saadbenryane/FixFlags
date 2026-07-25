@@ -66,9 +66,9 @@ describe('judge rubric constants', () => {
 
   it('buildTriageSystemPrompt + buildTriageUserPrompt references rubrics and flags', () => {
     const system = buildTriageSystemPrompt()
-    const user = buildTriageUserPrompt(judgeContext)
+    buildTriageUserPrompt(judgeContext)
     assert.match(system, /MESSAGE/)
-    assert.match(user, /newFlags/)
+    assert.match(system, /newFlags/)
     assert.match(system, /FixFlags/)
   })
 

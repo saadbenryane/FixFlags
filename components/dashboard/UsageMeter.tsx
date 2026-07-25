@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { UPSELLS } from '@/lib/marketing/copy'
-import { checkUsageProgress } from '@/lib/audit/check-limit'
+import { checkUsageProgress } from '@/lib/audit/check-limit-utils'
 import { planLabel } from '@/lib/billing/plans'
 
 interface Props {

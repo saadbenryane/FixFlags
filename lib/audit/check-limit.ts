@@ -3,50 +3,28 @@ import {
   hasUnlimitedScans,
   isAdminUser,
   isDevUnlimitedScans,
-  isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 
-/** AUTH_REQUIRED means the anonymous teaser has already been used. */
-export type UsageLimitCode = 'AUTH_REQUIRED' | 'TOKEN_LIMIT' | 'UPGRADE_REQUIRED'
-export type UsageLimitAction = 'signup' | 'upgrade' | 'buy_credits'
+import {
+  isUnlimitedScanLimit,
+  isAtCheckLimit,
+  limitErrorCodeForPlan,
+} from './check-limit-utils'
+
+export type { UsageLimitCode, UsageLimitAction } from './check-limit-utils'
+export {
+  isUnlimitedScanLimit,
+  isAtCheckLimit,
+  checkUsageProgress,
+  limitErrorCodeForPlan,
+  UNLIMITED_SCAN_LIMIT,
+} from './check-limit-utils'
 
 export interface UsageLimitResult {
   allowed: boolean
   error?: string
-  code?: UsageLimitCode
-  action?: UsageLimitAction
-}
-
-/** Matches create-audit enforcement: used + pending counts against limit. */
-export function isAtCheckLimit(
-  used: number,
-  pending: number,
-  limit: number | null
-): boolean {
-  if (limit === null || limit === Infinity || isUnlimitedScanLimit(limit)) {
-    return false
-  }
-  return used + pending >= limit
-}
-
-export function checkUsageProgress(
-  used: number,
-  pending: number,
-  limit: number | null
-): { atLimit: boolean; pct: number; reserved: number } {
-  if (limit === null || limit === Infinity || isUnlimitedScanLimit(limit)) {
-    return { atLimit: false, pct: 0, reserved: used + pending }
-  }
-  const reserved = used + pending
-  return {
-    atLimit: reserved >= limit,
-    pct: Math.min(100, Math.round((reserved / limit) * 100)),
-    reserved,
-  }
-}
-
-export function limitErrorCodeForPlan(plan: string): UsageLimitCode {
-  return plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT'
+  code?: import('./check-limit-utils').UsageLimitCode
+  action?: import('./check-limit-utils').UsageLimitAction
 }
 
 /** Mirrors create-audit transaction limit check for tests and client UI. */
