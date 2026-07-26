@@ -20,10 +20,8 @@ interface SiteShellProps {
   showHeaderNavigation?: boolean
   showSupport?: boolean
   /**
-   * Backdrop intensity. Defaults from variant (marketing gets the animated
-   * 'full' mesh, app/admin the static 'minimal' grid). Work surfaces that
-   * render with the marketing header (e.g. anonymous report views) must pass
-   * 'minimal': ambient motion is a marketing-landing signature only.
+   * Backdrop intensity. Marketing uses its quiet page canvas; app/admin use a
+   * static minimal grid. Anonymous work surfaces also pass `minimal`.
    */
   backdrop?: 'full' | 'minimal' | 'off'
 }

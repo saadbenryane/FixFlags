@@ -90,14 +90,9 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s)
 - List/accordion: `accordion-down/up` (0.2s)
 - No `transition: all`. Be specific about what animates.
-- Peach orbs: gentle drift (22-30s cycle), breathe (14s cycle).
-- **Ambient motion is a marketing-landing signature only.** App, report,
-  dashboard, and admin surfaces idle at zero running animations — motion there
-  communicates state (progress, expansion, feedback) or does not exist.
-  `SiteShell` enforces this via its `backdrop` prop; surfaces that use the
-  marketing header for anonymous visitors (report/compare views) pass
-  `backdrop="minimal"`. All ambient loops are `motion-safe:` gated. See
-  `docs/design-rams-review.md` (principles 5 and 9).
+- Marketing uses a quiet static canvas with restrained section tints.
+- App, report, dashboard, and admin surfaces idle at zero running animations.
+  Motion communicates state, expansion, or feedback.
 
 ## Spacing
 
@@ -105,7 +100,10 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 |-------|-------|----------|
 | `--space-card` | 1.25rem | Card padding |
 | `--space-section-inner` | 2.125rem | Section internal spacing |
-| `--space-section-y` | 2.75rem | Section vertical margins |
+| `--space-section-y` | 2.75rem | Legacy compact section rhythm |
+| `--space-section-default` | clamp(3rem, 5vw, 4.5rem) | General page sections |
+| `--space-section-marketing` | clamp(4rem, 7vw, 7rem) | Marketing narrative sections |
+| `--space-hero-start/end` | clamp(2rem–4.5rem) / clamp(3rem–6rem) | Responsive homepage hero breathing room |
 | `--space-block` | 2rem | Block-level spacing within sections |
 | `--header-offset` | 6.5rem | Top offset for page content below fixed header |
 | `--gap-nested-sm/md/lg` | 0.5/0.75/1rem | Nested element gaps |
@@ -171,7 +169,7 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 
 ## What to avoid
 
-- Grid/dot backgrounds behind hero (marketing `GlobalMeshBackdrop intensity="full"` is glow only; grid is app/admin `minimal` only)
+- Grid/dot backgrounds or decorative glow behind the hero
 - Rotated cards with blur halos
 - Traffic-light window chrome (unless showing real product UI)
 - Staggered translate-y on grid items for fake depth

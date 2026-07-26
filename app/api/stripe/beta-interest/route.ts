@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { BRAND_HEX } from '@/lib/design/brand-spec'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const FROM_EMAIL =
@@ -49,8 +50,8 @@ export async function POST(req: NextRequest) {
         <p>Someone is interested in upgrading to <strong>${planLabel}</strong>.</p>
         <p>Email: <a href="mailto:${email}">${email}</a>${name ? `<br />Name: ${name}` : ''}</p>
         <p>Plan requested: ${planLabel}</p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-        <p style="font-size: 13px; color: #6b7280;">
+        <hr style="border: none; border-top: 1px solid ${BRAND_HEX.border}; margin: 16px 0;" />
+        <p style="font-size: 13px; color: ${BRAND_HEX.mutedForeground};">
           <a href="${SITE_URL}/admin/users">Open admin users</a> to grant access.
         </p>
       `,

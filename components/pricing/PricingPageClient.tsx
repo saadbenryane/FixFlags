@@ -52,11 +52,11 @@ export function PricingPageClient() {
   const isLoggedIn = !!user;
 
   return (
-    <Section spacing="tight" className="relative overflow-hidden">
+    <Section spacing="default" className="relative overflow-hidden">
       <MarketingPageViewTracker page="/pricing" />
       <Container
         variant="marketing"
-        className="space-y-10 px-4 sm:space-y-12 sm:px-6 lg:px-12"
+        className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12"
       >
         <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-10">
           <div className="max-w-3xl">
@@ -95,10 +95,6 @@ export function PricingPageClient() {
           </div>
 
           <div className="relative mx-auto hidden w-full max-w-[29rem] lg:block">
-            <div
-              aria-hidden
-              className="absolute inset-x-[12%] bottom-[8%] h-24 rounded-full bg-brand/15 blur-3xl"
-            />
             <Image
               src="/marketing/visuals/pricing-glass-mark.webp"
               alt=""

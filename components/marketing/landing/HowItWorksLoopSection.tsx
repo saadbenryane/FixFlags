@@ -59,7 +59,10 @@ export function HowItWorksLoopSection({
       id="how-it-works"
       className="relative scroll-mt-[var(--header-offset)] overflow-hidden"
     >
-      <Container className="relative space-y-8 sm:space-y-10">
+      <Container
+        variant="marketing"
+        className="relative space-y-10 px-4 sm:space-y-12 sm:px-6 lg:space-y-14 lg:px-12"
+      >
         <LandingSectionHeader
           label={label}
           brandEyebrow

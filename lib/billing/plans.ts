@@ -92,24 +92,6 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     cta: 'Start Studio',
     href: '/sign-up?plan=TEAM',
   },
-  STUDIO: {
-    plan: 'STUDIO',
-    name: 'Studio Add-on',
-    label: 'Studio Add-on',
-    price: '$0',
-    period: '',
-    persona: 'Additional journeys',
-    outcome: 'Buy journey packs when you need more',
-    auditLimit: 0,
-    auditLimitKind: 'monthly',
-    auditLimitLabel: 'Add-on journeys',
-    features: [
-      'Additional journeys beyond your plan limit',
-    ],
-    highlight: false,
-    cta: 'Contact us',
-    href: 'mailto:hello@fixflags.com?subject=FixFlags%20Studio%20Add-on',
-  },
 }
 
 export const PLAN_LIMITS: Record<Plan, { audits: number; label: string; price: string }> =

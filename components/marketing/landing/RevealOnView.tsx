@@ -10,41 +10,38 @@ interface RevealOnViewProps {
   delayMs?: number
 }
 
-/** Reveal on scroll; falls back to visible within 300ms so content never stays hidden. */
+/**
+ * Progressive reveal: server-rendered content is visible by default. Once the
+ * browser supports observation, only below-fold content waits to animate.
+ */
 export function RevealOnView({ children, className, delayMs = 0 }: RevealOnViewProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
+  const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     const node = ref.current
-    if (!node) return
+    if (
+      !node ||
+      typeof IntersectionObserver === 'undefined' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) return
 
-    let done = false
-    let observer: IntersectionObserver | null = null
-    const show = () => {
-      if (done) return
-      done = true
-      setVisible(true)
-      observer?.disconnect()
-    }
+    const rect = node.getBoundingClientRect()
+    if (rect.top < window.innerHeight * 0.92) return
 
-    const fallbackId = window.setTimeout(show, 200)
-
-    if (typeof IntersectionObserver === 'undefined') {
-      show()
-    } else {
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry?.isIntersecting) show()
-        },
-        { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }
-      )
-      observer.observe(node)
-    }
+    setVisible(false)
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setVisible(true)
+        observer.disconnect()
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }
+    )
+    observer.observe(node)
 
     return () => {
-      window.clearTimeout(fallbackId)
-      observer?.disconnect()
+      observer.disconnect()
     }
   }, [])
 

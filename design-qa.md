@@ -7,11 +7,11 @@
   - Pricing: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/2/21F9F6AE-4D42-4160-9AB4-34B304E70BA2_1_105_c.jpeg`
   - Dashboard: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/4/42CBF027-EE45-4E56-A80D-ACDAA60CC43C_1_105_c.jpeg`
 - Browser-rendered implementation:
-  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/home-desktop-final.png`
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/hero-no-glow-final-1086x732.png`
   - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/pricing-desktop-final-clean.png`
   - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/dashboard-desktop-final.png`
 - Local routes: `/`, `/pricing`, `/dashboard`
-- Desktop CSS viewport: `1280 × 900`, device density `1`
+- Desktop CSS viewports: `1086 × 732` for the exact homepage reference comparison and `1280 × 900` for the full launch-page pass, device density `1`
 - Mobile CSS viewport: `390 × 844`, device density `1`
 - Source pixels:
   - Homepage: `1086 × 732`
@@ -24,7 +24,7 @@
 
 ## Evidence
 
-- Full-view homepage comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/home-reference-vs-implementation.png`
+- Exact-size homepage hero comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/hero-reference-vs-no-glow-final.png`
 - Focused pricing hero and plan comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/pricing-reference-vs-implementation.png`
 - Full-view dashboard comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/dashboard-reference-vs-implementation.png`
 - Mobile evidence:
@@ -68,13 +68,26 @@ Fixes:
 - Captured all three routes at `390 × 844`.
 - Confirmed no remaining P0/P1/P2 differences.
 
+### Pass 3: homepage hero fidelity
+
+- [P2] The homepage illustration had an added orange radial glow that was not present in the supplied design.
+- [P2] The illustration scale and placement drifted from the source when compared at its native `1086 × 732` viewport.
+
+Fixes:
+
+- Removed the artificial radial glow behind the illustration.
+- Matched the supplied illustration crop at `600 × 565`, aligned its top and right edges to the source, and corrected the hero's desktop vertical rhythm.
+- Matched the source eyebrow and supporting sentence while keeping current authenticated navigation and product-true social proof.
+- Re-captured desktop at the exact source viewport and mobile at `390 × 844`.
+- The post-fix side-by-side comparison shows no remaining actionable P0/P1/P2 hero differences.
+
 ## Interaction and runtime checks
 
 - Mobile navigation opened and closed successfully.
 - Pricing FAQ expanded successfully and exposed its answer region.
 - Homepage, pricing, and dashboard routes loaded in the in-app browser.
 - Browser console: zero runtime errors. Development-only React DevTools and Fast Refresh messages were present.
-- TypeScript, targeted ESLint, UI drift guard, and local-image guard passed.
+- Targeted ESLint, UI drift guard, and local-image guard passed. TypeScript passed during the initial design implementation; the current full typecheck is blocked by an unrelated Stripe test configuration mismatch.
 - The repository-wide verification command is blocked by pre-existing Prisma drift: the local database is missing the unrelated `STUDIO` enum migration.
 - The brand hex guard is blocked by an unrelated existing hex value in `app/api/stripe/beta-interest/route.ts`.
 

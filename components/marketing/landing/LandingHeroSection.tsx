@@ -22,7 +22,7 @@ export function LandingHeroSection() {
   return (
     <Section
       spacing="hero"
-      className="relative flex min-h-0 flex-col overflow-x-clip pt-9 sm:pt-11 lg:pt-16"
+      className="relative flex min-h-0 flex-col overflow-x-clip"
     >
       <Container
         variant="marketing"
@@ -38,7 +38,7 @@ export function LandingHeroSection() {
               {HERO.badge}
             </p>
 
-            <div className="space-y-5 sm:space-y-6 lg:space-y-4">
+            <div className="space-y-5 sm:space-y-6 lg:mt-2.5 lg:space-y-4">
               <Heading
                 as="h1"
                 className="max-w-[14ch] text-[2.75rem] font-bold leading-[1.08] tracking-display [text-rendering:geometricPrecision] sm:text-[3.125rem] sm:leading-[1.08] lg:text-[4rem] lg:leading-none xl:text-[4.125rem]"
@@ -83,7 +83,11 @@ export function LandingHeroSection() {
               </p>
             </div>
 
-            <EditorToolMarks variant="hero" showLabel className="mt-1" />
+            <EditorToolMarks
+              variant="hero"
+              showLabel
+              className="mt-1 lg:mt-8"
+            />
           </div>
 
           <div className="order-2 relative mx-auto flex w-full max-w-[28rem] justify-center sm:max-w-[32rem] lg:mx-0 lg:block lg:h-[32rem] lg:max-w-none lg:justify-self-stretch">
@@ -110,7 +114,7 @@ export function LandingHeroSection() {
 
         <a
           href="#sample-review"
-          className="mx-auto mt-7 flex w-fit flex-col items-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-10"
+          className="mx-auto mt-8 flex min-h-11 w-fit flex-col items-center justify-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-10 lg:mt-8"
         >
           {HERO.scrollHint}
           <ChevronDown

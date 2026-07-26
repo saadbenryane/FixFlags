@@ -296,10 +296,7 @@ export function CheckDimensionsSection() {
                   </ul>
                 </div>
 
-                <CheckDimensionsScene
-                  active={activeCard.id}
-                  className="order-first lg:order-none"
-                />
+                <CheckDimensionsScene className="order-first lg:order-none" />
 
                 <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
                   <div className="flex items-center justify-between gap-3">

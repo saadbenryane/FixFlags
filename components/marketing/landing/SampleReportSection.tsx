@@ -49,12 +49,11 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
     <Section
       spacing="marketing"
       tint="subtle"
-      id="sample-review"
-      className="scroll-mt-[var(--header-offset)]"
     >
       <SampleViewTracker placement="homepage" />
       <Container
-        className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12"
+        id="sample-review"
+        className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] space-y-14 px-4 sm:space-y-16 sm:px-6 lg:space-y-20 lg:px-12"
         variant="marketing"
       >
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-8 xl:gap-10">

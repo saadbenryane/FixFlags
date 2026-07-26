@@ -175,7 +175,11 @@
   --space-card: 1.25rem;
   --space-section-y: 2.75rem;
   --space-block: 2rem;
-  --container-max-marketing: 92rem;
+  --space-section-default: clamp(3rem, 5vw, 4.5rem);
+  --space-section-marketing: clamp(4rem, 7vw, 7rem);
+  --space-hero-start: clamp(2rem, 4.5vw, 4.5rem);
+  --space-hero-end: clamp(3rem, 6vw, 6rem);
+  --container-max-marketing: 88rem;
 
   --screenshot-desktop-aspect: 1280 / 900;
   --screenshot-mobile-aspect: 375 / 812;
