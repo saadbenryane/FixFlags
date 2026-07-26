@@ -6,10 +6,14 @@
 - Gap between adoption of AI coding and adoption of AI testing tools
 - FixFlags targets the trust gap in AI-generated output
 - Market moving fast: Lovable reportedly surpassed $500M ARR (June 2026), Cursor reportedly passed $2B annualized revenue (early 2026)
-- Stack Overflow 2025: 46% of developers actively distrusted AI accuracy, 33% trusted it, ~3% high trust. Experienced developers especially cautious.
+- Stack Overflow 2025: 51% of professional developers use AI tools daily, while trust in AI accuracy fell to 29%. 46% of developers actively distrusted AI accuracy, 33% trusted it, ~3% high trust. Experienced developers especially cautious.
+- DORA describes AI as an amplifier that strengthens both good and bad software-delivery systems, and has connected greater AI adoption with lower delivery stability when teams increase output without improving their controls.
 - Sonar research: verification gap. Developers use AI-generated code while many find it expensive or time-consuming to validate thoroughly.
 - Low trust does not automatically produce careful review. The bottleneck is shifting from generation to verification.
 - The scarce resource is not code. It is the ability to make a credible claim that the resulting product works.
+- Creation tools are already adding browser testing (Lovable can navigate apps, Replit Agent tests in browsers, Cursor agents control browsers), making autonomous QA agent a crowded, commodity category.
+- Generic website audits are expected to be free (HubSpot Website Grader analyzed 2M+ URLs, Cloudflare uses free URL-scanning for agent readiness), validating free URL input as distribution but making generic scores difficult to monetize.
+- Synthetic agents are not real customers: they expose objective failures but cannot predict human motivation, emotion, purchasing intent or behavioral variation (Nielsen Norman Group recommends desk-research aid, not substitute).
 
 ## Category Status
 

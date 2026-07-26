@@ -151,7 +151,7 @@ export default async function OperatingPlanPage() {
                 <span className="w-28 text-sm text-muted-foreground shrink-0">{r.label}</span>
                 <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-brand rounded-full transition-all"
+                    className="h-full bg-brand rounded-full transition-[width]"
                     style={{ width: `${Math.max(pct(r.value, totalReadinessAudits), r.value > 0 ? 1 : 0)}%` }}
                   />
                 </div>

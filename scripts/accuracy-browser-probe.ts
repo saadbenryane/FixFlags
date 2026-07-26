@@ -12,8 +12,8 @@ import { ACCURACY_BROWSER_TARGETS } from '@/lib/audit/accuracy-browser-corpus'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { measureMobileLayout } from '@/lib/audit/capture-metrics'
-import { runLayoutChecks } from '@/lib/audit/checks/layout'
-import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
+import { runAllChecks } from '@/lib/audit/checks'
+import { parseMetadataFromHtml } from '@/lib/audit/metadata'
 import { closeBrowser, getAuditBrowser } from '@/lib/audit/screenshot'
 
 const args = process.argv.slice(2)
@@ -44,10 +44,20 @@ async function main() {
       })
       try {
         const metrics = await measureMobileLayout(session.page)
-        const flags = [
-          ...runLayoutChecks(metrics),
-          ...runVisualPolishChecks(metrics),
-        ]
+        const metadata = parseMetadataFromHtml(
+          await session.page.content(),
+          session.page.url()
+        )
+        const { flags } = await runAllChecks(
+          session.page.url(),
+          metadata,
+          null,
+          null,
+          session.consoleErrors,
+          undefined,
+          metrics,
+          session.responseHeaders
+        )
         const checkIds = flags.map((flag) => flag.checkId)
         const result = {
           url: target.url,
@@ -86,6 +96,7 @@ async function main() {
           )
         }
       } finally {
+        session.disposeNetwork()
         await session.page.context().close()
       }
     }

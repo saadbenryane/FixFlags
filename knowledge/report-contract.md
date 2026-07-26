@@ -22,6 +22,8 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 8. Owner re-check
 9. At most one contextual signup or upgrade moment
 
+**Report header copy:** "Fix these before you share it" with blocker count and checked scope. Not a score.
+
 Anonymous reports expose every problem and evidence summary and exactly one complete demonstrated prompt. Evidence must be real page evidence, not signup-gate placeholder strings persisted into Flag rows. Other prompt fields are removed before rendering or API serialization. Copy controls must not toast success when no real prompt is available.
 
 `/report/[id]/details` redirects to `/report/[id]`. Shared and sample detail URLs likewise redirect to their canonical report surfaces.

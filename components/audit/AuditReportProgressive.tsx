@@ -1,6 +1,6 @@
 'use client'
 
-import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from 'react'
+import { Component, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react'
 import { Callout } from '@/components/ui/callout'
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -180,19 +180,35 @@ export function AuditReportProgressive({
     screenshotCapture ?? null
   )
 
-  const explorerModel = useMemo(
-    () =>
-      buildPartialExplorerModel({
-        url,
-        pageType,
-        score,
-        verdict,
-        flags: partialFlags,
-        screenshots,
-        rubrics,
-      }),
-    [url, pageType, score, verdict, partialFlags, screenshots, rubrics]
-  )
+  const prevFlagsRef = useRef(partialFlags)
+  const prevScreenshotsRef = useRef(screenshots)
+  const prevRubricsRef = useRef(rubrics)
+  const prevModelRef = useRef<ReturnType<typeof buildPartialExplorerModel> | null>(null)
+
+  const explorerModel = useMemo(() => {
+    if (
+      prevModelRef.current &&
+      partialFlags === prevFlagsRef.current &&
+      screenshots === prevScreenshotsRef.current &&
+      rubrics === prevRubricsRef.current
+    ) {
+      return prevModelRef.current
+    }
+    prevFlagsRef.current = partialFlags
+    prevScreenshotsRef.current = screenshots
+    prevRubricsRef.current = rubrics
+    const model = buildPartialExplorerModel({
+      url,
+      pageType,
+      score,
+      verdict,
+      flags: partialFlags,
+      screenshots,
+      rubrics,
+    })
+    prevModelRef.current = model
+    return model
+  }, [url, pageType, score, verdict, partialFlags, screenshots, rubrics])
 
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
@@ -340,7 +356,7 @@ export function AuditReportProgressiveShell() {
     >
       <div className="space-y-3" role="status" aria-live="polite">
         <p className="section-label">Finish Plan</p>
-        <h1 className="font-display text-2xl font-semibold text-foreground text-balance">
+        <h1 className="text-2xl font-semibold text-foreground text-balance">
           Loading report…
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">

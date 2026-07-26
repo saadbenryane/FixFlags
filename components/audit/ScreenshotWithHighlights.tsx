@@ -3,7 +3,7 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -491,6 +491,8 @@ function ScreenshotPanel({
         <img
           src={resolvedImageUrl}
           alt={`${device} screenshot of ${host}`}
+          width={1440}
+          height={900}
           loading="lazy"
           onError={() => setImgError(true)}
           className={cn(
@@ -531,44 +533,17 @@ export function ScreenshotWithHighlights({
   const showDesktopPanel = showDesktop && Boolean(desktopScreenshot)
   const showMobilePanel = showMobile && Boolean(mobileScreenshot)
 
-  const desktopPanelRef = useRef<HTMLDivElement>(null)
-  const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(null)
-
-  const measureDesktopPanel = useCallback(() => {
-    const el = desktopPanelRef.current
-    if (!el) return
-    const height = el.getBoundingClientRect().height
-    if (height > 0) {
-      setDesktopPanelHeight(height)
-    }
-  }, [])
-
   const sideBySide = showDesktopPanel && showMobilePanel
 
-  useLayoutEffect(() => {
-    if (!sideBySide) return
-    measureDesktopPanel()
-    const el = desktopPanelRef.current
-    if (!el) return
-    const ro = new ResizeObserver(measureDesktopPanel)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [sideBySide, desktopScreenshot, measureDesktopPanel])
-
-  useEffect(() => {
-    if (!sideBySide || !desktopScreenshot) return
-    const img = desktopPanelRef.current?.querySelector('img')
-    if (!img) return
-    const onLoad = () => measureDesktopPanel()
-    img.addEventListener('load', onLoad)
-    if (img.complete) onLoad()
-    return () => img.removeEventListener('load', onLoad)
-  }, [sideBySide, desktopScreenshot, measureDesktopPanel])
-
-  const mobilePanelSize =
-    desktopPanelHeight != null
-      ? mobileViewportSizeForHeight(Math.min(desktopPanelHeight, MOBILE_VIEWPORT.height))
-      : null
+  // Use a fixed mobile panel height derived from the desktop viewport's native
+  // height scaled to fit the side-by-side layout. This avoids the ResizeObserver
+  // feedback loop where measuring the desktop panel → setting state → mobile
+  // width changes → desktop width shrinks → desktop height changes → observer fires.
+  const mobilePanelSize = useMemo(() => {
+    if (!sideBySide) return null
+    const targetHeight = Math.round(MOBILE_VIEWPORT.height * 0.55)
+    return mobileViewportSizeForHeight(targetHeight)
+  }, [sideBySide])
 
   if (!showDesktopPanel && !showMobilePanel) return null
 
@@ -618,7 +593,6 @@ export function ScreenshotWithHighlights({
             highlights={highlights}
             selectedFlagId={selectedFlagId}
             onPinSelect={onPinSelect}
-            containerRef={desktopPanelRef}
             useMobileTooltip
           />
         </div>

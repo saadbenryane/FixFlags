@@ -45,6 +45,8 @@ function SocialPreview({ preview }: Props) {
           <img
             src={preview.ogImage}
             alt=""
+            width={1200}
+            height={630}
             loading="lazy"
             className="aspect-[1.91/1] w-full bg-muted object-cover"
           />

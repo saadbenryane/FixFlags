@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | in_progress | codex-root | main | Truthful scan states, one continuous loading experience, and a unified dashboard/report workspace; retain completed release work and record external release-fixture blockers separately. | app, components, lib, e2e, docs, .agents | None for local implementation; deployed release proof still requires operator-provided fixtures | 2026-07-26 |
+| current-product-completion | blocked | codex-root | main | Local product completion is implemented and fully verified; only credentialed deployed release proof remains. | app, components, lib, e2e, docs, .agents | Operator-provided release URL, disposable database/reset consent, sandbox users, mailbox assertion, GitHub fixture, and container environment | 2026-07-26 |
 
 ---
 

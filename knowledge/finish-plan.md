@@ -1,6 +1,6 @@
 # Fix List and Quick Plan
 
-**Canonical home for the complete Fix List and legacy Quick Plan artifact.** Vision: [vision.md](./vision.md). Ranking implementation: `lib/audit/priority-flags.ts`.
+**Canonical home for the complete Fix List and legacy Quick Plan artifact.** Vision: [vision.md](./vision.md). Ranking implementation: `lib/audit/priority-flags.ts`. Evidence rules: [evidence-rules.md](./evidence-rules.md).
 
 ## Definition
 
@@ -17,7 +17,34 @@ The Fix List contains every unresolved Flag. It is prioritized, scoped, evidence
 | `buildPlanModePrompt` | Agent export of the complete Fix List (plan-before-edit) |
 | Product Contract / PI | Context that biases ranking and journey selection |
 
-Basic users should feel: **Let’s finish your app.** Advanced users and agents get evidence, dependencies, verification, and implementation context inside fix prompts / MCP.
+Basic users should feel: **Let's finish your app.** Advanced users and agents get evidence, dependencies, verification, and implementation context inside fix prompts / MCP.
+
+## Report header
+
+The report header leads with outcomes, not a score:
+
+> Fix these before you share it
+> 1 blocker found in the paths we tested
+> Checked: 14 routes, 51 links and actions, Desktop and mobile, 3 important journeys
+
+## Flag order
+
+1. **Confirmed blockers** — Failures that prevent a defined goal
+2. **Observed friction** — The task completed, but an observable problem increased effort or uncertainty
+3. **Suggestions** — Heuristic improvements that may strengthen clarity or polish
+
+## Flag anatomy
+
+Every Flag contains:
+- **What happened** — A factual description
+- **Evidence** — Replay, screenshot, request, error or page state
+- **Why it matters** — The goal or system requirement affected
+- **Confidence** — Confirmed, observed or suggested
+- **Fix** — The smallest useful change
+- **Scope** — What should remain unchanged
+- **Verify** — The exact condition FixFlags will test again
+
+Full anatomy and examples: [evidence-rules.md](./evidence-rules.md).
 
 ## Quality bar
 

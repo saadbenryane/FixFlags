@@ -39,15 +39,17 @@ Every product has an intended identity and an actual current state. The distance
 ## Core loop
 
 ```
-Understand → Improve → Verify → Remember
+Check → Fix → Verify → Watch
 ```
 
-- **Understand** — Reconstruct the Product from every available signal into one coherent understanding.
-- **Improve** — Present every verified unresolved Flag, ranked so the highest-leverage improvements come first.
-- **Verify** — Confirm repository, runtime, journeys, visual, a11y, performance, and intended outcomes. Reality is the final source of truth.
-- **Remember** — Capture verified knowledge so the Product becomes easier to evolve. Knowledge belongs to the Product.
+- **Check** — Test the public surface of the product. Find the routes, links, actions, and journeys. Run deterministic checks and AI review.
+- **Fix** — Show exactly what happened, provide evidence, and send a bounded fix into the customer's builder.
+- **Verify** — Run the same test again. Confirm the repair worked. Before-and-after comparison.
+- **Watch** — Attach to deployments, important journeys and previously verified fixes. Detect regressions.
 
-The shipped wedge expresses this as **Flag → Fix → Re-check**. See [PRODUCT.md](../PRODUCT.md) for what ships today.
+The unit of value is a verified fix. See [PRODUCT.md](../PRODUCT.md) for what ships today.
+
+The deeper vision loop remains **Understand → Improve → Verify → Remember**. See [product-system.md](./product-system.md) for the three connected products.
 
 ## Product Intelligence vs Integrity Engine
 
@@ -70,15 +72,17 @@ The Integrity Engine evaluates across five dimensions (Product, Experience, Desi
 
 ## System layers (target)
 
-1. **Local runtime** — Inspect repo, portable PI files, CLI, MCP, hooks, CI; standalone value without full upload.
+1. **Local runtime** — Inspect repo, portable PI files, CLI, hooks, CI; standalone value without full upload.
 2. **Product Intelligence Protocol** — Vendor-neutral read/contribute API for humans, agents, and tools.
 3. **FixFlags Intelligence Network** — Cloud compounding intelligence, prioritization, verification depth, collaboration.
 
-Shipped today is primarily the cloud observer (browser scanner) plus MCP. Architecture target: [ARCHITECTURE.md](../ARCHITECTURE.md).
+Shipped today is primarily the cloud observer (browser scanner) plus MCP. Architecture target: [ARCHITECTURE.md](../ARCHITECTURE.md). Technical architecture spec: [technical-architecture-spec.md](./technical-architecture-spec.md).
 
 ## Interfaces
 
 Web, browser observer, GitHub, CLI, MCP/agent integrations, and a lightweight agent skill all connect to the same Product Intelligence. Depth varies by user (basic AI builder vs advanced team).
+
+Detail: [technical-architecture-spec.md](./technical-architecture-spec.md).
 
 ## Initial wedge (near-term)
 
@@ -92,6 +96,8 @@ Web, browser observer, GitHub, CLI, MCP/agent integrations, and a lightweight ag
 8. Re-check.
 9. Record what improved.
 10. Keep Product Intelligence current.
+
+The core loop is now **Check → Fix → Verify → Watch**. See [product-system.md](./product-system.md) for the three connected products.
 
 ## Product principles
 
@@ -109,20 +115,47 @@ Web, browser observer, GitHub, CLI, MCP/agent integrations, and a lightweight ag
 - Every session should leave the Product easier to evolve.
 - Avoid complexity without proven user value.
 - Improve products; do not merely produce reports.
+- Show what happened — every important conclusion must point to an observable moment.
+- Test a job, not a fictional persona — the task matters more than an invented identity.
+- Never hide uncertainty — say "Could not verify" when it cannot prove success or failure.
+- Critical means confirmed — a finding cannot be critical because a language model dislikes something.
+- Outside-in first — test the product that customers can actually access.
+- Fix and verify in the same loop — a recommendation without a re-check is incomplete.
+- Earn the right to run continuously — do not ask for GitHub, deployment or credential access before demonstrating value on a public URL.
+- Make scope visible — the user must know exactly what was and was not checked.
+
+Detail: [evidence-rules.md](./evidence-rules.md).
 
 ## Non-goals
 
 Not a general coding agent, IDE, chatbot, PM tool, backlog generator, static docs generator, one-time website audit, code linter with product branding, autonomous product executive, or a system that requires surrendering ownership of product knowledge.
 
+Not an AI website audit, autonomous QA agent, synthetic user platform, or test-generation tool. The independent system between the AI builder and the live product.
+
 ## Moat
 
-Not a prompt, model, scanner, MCP integration, or Markdown files alone. The moat is persistent Product Intelligence, verified history, cross-tool continuity, proprietary quality reasoning, evidence-backed evaluation, learned prioritization, remediation outcomes, cross-product pattern intelligence, trust, workflow adoption, integrations, benchmarks, and a growing observational dataset about how AI-built products evolve.
+Not a prompt, model, scanner, MCP integration, or Markdown files alone.
+
+### Near-term moat
+Strong brand, better report design, higher finding precision, evidence-first trust, fast fix and verify loop, cross-builder independence, excellent distribution through free checks, agency workflow.
+
+### Medium-term moat
+Persistent product and journey memory, saved success assertions, verified history across deployments, change-to-journey mapping, builder and deployment integrations, evaluation benchmark, customer-specific standards.
+
+### Long-term moat: The verified outcome graph
+Product pattern → journey → observed problem → accepted fix → deployed change → verified result.
+
+Detail: [growth.md](./growth.md#defensibility).
 
 Builders generate software. FixFlags preserves and improves the Product.
 
 ## Related
 
 - Principles: [foundations.md](./foundations.md)
+- Three products: [product-system.md](./product-system.md)
+- User journey: [user-journey.md](./user-journey.md)
+- Evidence rules: [evidence-rules.md](./evidence-rules.md)
+- Growth: [growth.md](./growth.md)
 - Shipped truth: [PRODUCT.md](../PRODUCT.md)
 - Near-term work: [execution.md](./execution.md)
 - Business direction: [strategy.md](./strategy.md)

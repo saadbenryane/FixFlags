@@ -7,6 +7,7 @@ test('every API route is represented by a valid generated contract', () => {
   assert.ok(contracts.length > 0)
   assert.deepEqual(validateRouteContracts(contracts), [])
   assert.equal(new Set(contracts.map(({ file }) => file)).size, contracts.length)
+  assert.ok(contracts.every(({ evidence }) => evidence.length > 0))
 })
 
 test('readiness is public and dependency-aware', () => {
@@ -34,4 +35,19 @@ test('secret and webhook boundaries declare validation and retry contracts', () 
   assert.ok(secret.every(({ cases }) => cases.includes('secret-validation')))
   assert.ok(webhooks.every(({ cases }) => cases.includes('signature-validation')))
   assert.ok(webhooks.every(({ cases }) => cases.includes('idempotent-retry')))
+})
+
+test('high-risk routes point to handler or credentialed journey evidence', () => {
+  const highRisk = collectRouteContracts().filter(({ file }) =>
+    /auth|github|reports|stripe|support|cron|health|tools|screenshots|repo-scans/.test(file)
+  )
+  assert.ok(highRisk.length > 0)
+  for (const contract of highRisk) {
+    assert.ok(
+      contract.evidence.some(({ kind }) =>
+        ['handler-test', 'journey-e2e', 'boundary-e2e'].includes(kind)
+      ),
+      contract.file
+    )
+  }
 })

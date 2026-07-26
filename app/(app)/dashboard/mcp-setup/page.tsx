@@ -191,7 +191,7 @@ export default function McpSetupWizard() {
               <Link href="/dashboard">Skip</Link>
             </Button>
             <Button size="sm" onClick={handleNext} disabled={savingProfile || !vibecodingLevel || !editor}>
-              {savingProfile ? 'Saving...' : 'Continue'}
+              {savingProfile ? 'Saving…' : 'Continue'}
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
           </div>
@@ -216,7 +216,7 @@ export default function McpSetupWizard() {
           {!newKey ? (
             <>
               <Button onClick={createApiKey} disabled={creatingKey} size="lg" className="w-full">
-                {creatingKey ? 'Creating...' : 'Create API Key'}
+                {creatingKey ? 'Creating…' : 'Create API Key'}
               </Button>
               {keyError && (
                 <p className="text-xs text-destructive text-center">{keyError}</p>

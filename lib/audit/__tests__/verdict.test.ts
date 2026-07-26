@@ -5,6 +5,7 @@ import {
   DETERMINISTIC_SCAN_VERDICT,
   displayVerdict,
   isSystemVerdict,
+  resolveReportVerdict,
 } from '@/lib/audit/verdict'
 
 describe('verdict helpers', () => {
@@ -27,5 +28,15 @@ describe('verdict helpers', () => {
   it('returns null for empty verdict', () => {
     assert.equal(isSystemVerdict(null), false)
     assert.equal(displayVerdict(null), null)
+  })
+
+  it('anchors a contradictory AI verdict to the highest-ranked Flag', () => {
+    assert.equal(
+      resolveReportVerdict('Messaging is the main issue.', {
+        problem: 'The page stays blank on slow 3G',
+        whyItMatters: 'Visitors cannot reach the primary action',
+      }),
+      'Fix The page stays blank on slow 3G. Visitors cannot reach the primary action.'
+    )
   })
 })

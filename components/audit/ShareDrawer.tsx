@@ -400,7 +400,7 @@ export function ShareDrawer({
                         disabled={creating}
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        {creating ? 'Creating...' : 'Create share link'}
+                        {creating ? 'Creating…' : 'Create share link'}
                       </Button>
                     </Card>
                   </div>

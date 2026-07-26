@@ -7,6 +7,12 @@ import process from 'node:process'
 
 const cacheDirectory = path.join(process.cwd(), '.cache')
 const lockFile = path.join(cacheDirectory, 'next-build.lock')
+const requestedDistDirectory = process.argv[2] ?? process.env.NEXT_DIST_DIR ?? '.next-verify'
+const allowedDistDirectories = new Set(['.next-verify', '.next-e2e'])
+if (!allowedDistDirectories.has(requestedDistDirectory)) {
+  throw new Error(`Unsupported isolated build directory: ${requestedDistDirectory}`)
+}
+const buildArguments = process.argv.slice(3)
 const waitBuffer = new Int32Array(new SharedArrayBuffer(4))
 mkdirSync(cacheDirectory, { recursive: true })
 
@@ -32,9 +38,21 @@ while (lockFd == null) {
 }
 
 try {
-  const result = spawnSync('npm', ['run', 'build'], {
+  const incrementalState = path.join(
+    process.cwd(),
+    requestedDistDirectory,
+    'cache',
+    '.tsbuildinfo'
+  )
+  try {
+    unlinkSync(incrementalState)
+  } catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error
+  }
+
+  const result = spawnSync('npm', ['run', 'build', ...(buildArguments.length > 0 ? ['--', ...buildArguments] : [])], {
     cwd: process.cwd(),
-    env: { ...process.env, NEXT_DIST_DIR: '.next-verify' },
+    env: { ...process.env, NEXT_DIST_DIR: requestedDistDirectory },
     stdio: 'inherit',
   })
   process.exitCode = result.status ?? 1

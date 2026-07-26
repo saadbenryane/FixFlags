@@ -62,13 +62,25 @@ The browser scanner is one **observer** inside the engine, not the whole product
 
 | Class | Meaning |
 |-------|---------|
-| Reproduced | FixFlags directly encountered the failure |
+| **Confirmed** | A reproducible, observable condition (broken link, failed request, form does not submit, journey assertion fails) |
+| **Observed** | A measurable interaction issue (repeated attempts required, empty state without guidance, no immediate feedback) |
+| **Suggested** | A judgment-based recommendation (headline may be too broad, trust evidence may appear too late) |
 | Detected | Objective rule failed |
-| Observed | Product-quality concern identified |
 | Likely cause | Inferred implementation explanation (use sparingly) |
 | Repository confirmed | Validated against code (repo scan path) |
 
 Severity = consequence. Certainty = evidence. Keep them separate.
+
+### Severity levels
+
+- **Blocker** — Must be confirmed and must prevent an agreed goal
+- **High** — Must be confirmed or strongly observed and directly affect an important path
+- **Medium** — Affects clarity, effort, trust or discoverability without blocking the task
+- **Polish** — A lower-impact suggestion
+
+**Rule:** An LLM-only opinion can never receive Blocker severity.
+
+Full evidence rules, severity definitions, and Flag anatomy: [evidence-rules.md](./evidence-rules.md).
 
 ## Security signal discipline
 

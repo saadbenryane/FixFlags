@@ -6,45 +6,68 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
-import { auditHostname, clearActiveAudit } from '@/lib/audit/active-audit'
+import { auditHostname } from '@/lib/audit/active-audit'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
+const POLL_DELAYS_MS = [2_000, 4_000, 8_000, 15_000] as const
+
 export function ActiveAuditBanner() {
-  const { active } = useActiveAudit()
+  const { active, dismiss } = useActiveAudit()
   const pathname = usePathname()
   const [stillRunning, setStillRunning] = useState(true)
 
   useEffect(() => {
-    if (!active) return
+    if (!active) {
+      setStillRunning(false)
+      return
+    }
     if (pathname === `/report/${active.auditId}`) {
       setStillRunning(false)
       return
     }
+    setStillRunning(true)
+    const activeAudit = active
     let cancelled = false
-    fetch(`/api/reports/${active.auditId}/status`)
-      .then(async (res) => {
+    let attempt = 0
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let controller: AbortController | undefined
+
+    async function poll() {
+      controller = new AbortController()
+      try {
+        const response = await fetch(`/api/reports/${activeAudit.auditId}/status`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        })
         if (cancelled) return
-        if (!res.ok) {
-          // Status endpoint gone or unauthorized: clear stuck banner.
-          clearActiveAudit(active.auditId)
+        if ([401, 403, 404, 410].includes(response.status)) {
+          dismiss(activeAudit.auditId)
           setStillRunning(false)
           return
         }
-        const data = (await res.json()) as { status?: string }
-        if (data.status === 'COMPLETED' || data.status === 'FAILED') {
-          clearActiveAudit(active.auditId)
-          setStillRunning(false)
+        if (response.ok) {
+          const data = await response.json() as { status?: string }
+          if (data.status && TERMINAL_STATUSES.has(data.status)) {
+            dismiss(activeAudit.auditId)
+            setStillRunning(false)
+            return
+          }
         }
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return
-        clearActiveAudit(active.auditId)
-        setStillRunning(false)
-      })
+      }
+      const delay = POLL_DELAYS_MS[Math.min(attempt, POLL_DELAYS_MS.length - 1)]
+      attempt += 1
+      timeout = setTimeout(poll, delay)
+    }
+    void poll()
     return () => {
       cancelled = true
+      controller?.abort()
+      if (timeout) clearTimeout(timeout)
     }
-  }, [active, pathname])
+  }, [active, dismiss, pathname])
 
   if (!active || !stillRunning) return null
 

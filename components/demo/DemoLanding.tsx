@@ -122,7 +122,12 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
               </div>
               <div className={heroImageClass}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- demo fixture uses plain img for audit realism */}
-                <img src={fixture.heroImageSrc} alt={fixture.heroImageAlt} />
+                <img
+                  src={fixture.heroImageSrc}
+                  alt={fixture.heroImageAlt}
+                  width={1600}
+                  height={900}
+                />
               </div>
             </div>
           </div>

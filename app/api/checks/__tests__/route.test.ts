@@ -35,15 +35,14 @@ vi.mock('@/lib/queue/estimate', () => ({
   getWorkerQueueEstimate: vi.fn().mockResolvedValue({ waitingJobs: 0, queued: false }),
   computeEnqueueDelay: vi.fn().mockReturnValue({
     delayMs: 0,
-    estimatedWaitSeconds: 0,
-    queuePosition: 0,
-    scheduledStartAt: null,
     queued: false,
     queueReason: undefined,
     queue: {
       state: 'starting',
       jobsAhead: 0,
-      estimatedStartSeconds: 0,
+      estimatedWaitSeconds: 0,
+      scheduledStartAt: null,
+      workerAvailable: true,
     },
   }),
 }))
@@ -183,7 +182,9 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(body.queue).toEqual({
       state: 'starting',
       jobsAhead: 0,
-      estimatedStartSeconds: 0,
+      estimatedWaitSeconds: 0,
+      scheduledStartAt: null,
+      workerAvailable: true,
     })
     expect(checkAndPlan).toHaveBeenCalledTimes(1)
     expect(checkAndPlan.mock.calls[0][0].clientId).toBe('test-client')

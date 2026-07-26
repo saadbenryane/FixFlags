@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReportExplorer } from '@/components/report/ReportExplorer'
+import { MeProvider } from '@/hooks/useMe'
 import type {
   ExplorerFlag,
   ReportExplorerModel,
@@ -59,13 +60,23 @@ const model: ReportExplorerModel = {
   previewMeta: null,
 }
 
+afterEach(() => {
+  window.history.replaceState({}, '', '/')
+})
+
 describe('ReportExplorer anonymous teaser', () => {
   it('selects the one visible prompt even when the progressive frame started elsewhere', async () => {
     const { rerender } = render(
-      <ReportExplorer model={{ ...model, flags: [locked] }} aiLocked loading />
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={{ ...model, flags: [locked] }} aiLocked loading />
+      </MeProvider>
     )
 
-    rerender(<ReportExplorer model={model} aiLocked />)
+    rerender(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} aiLocked />
+      </MeProvider>
+    )
 
     await waitFor(() => {
       expect(
@@ -74,5 +85,37 @@ describe('ReportExplorer anonymous teaser', () => {
     })
     expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
     expect(screen.queryByText(/Create a free account to get the fix prompt/i)).not.toBeInTheDocument()
+  })
+
+  it('restores a valid selected Flag from the URL', async () => {
+    window.history.replaceState({}, '', '/report/a1?flag=locked&rubric=EXPERIENCE')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} aiLocked />
+      </MeProvider>
+    )
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Experience · Conversion: Locked first flag' })
+      ).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(window.location.search).toContain('flag=locked')
+    expect(window.location.search).toContain('rubric=EXPERIENCE')
+  })
+
+  it('normalizes a stale selected Flag to the first ranked visible Flag', async () => {
+    window.history.replaceState({}, '', '/report/a1?flag=deleted')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} aiLocked />
+      </MeProvider>
+    )
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Experience · Conversion: Locked first flag' })
+      ).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(window.location.search).toContain('flag=locked')
+    expect(window.location.search).not.toContain('deleted')
   })
 })

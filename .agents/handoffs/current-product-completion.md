@@ -6,6 +6,14 @@ Local current-product implementation and verification completed on 2026-07-26. R
 
 ## Completed in this closeout pass
 
+- Report truth now uses consolidated Fix identities across the report route, rubric counts, task contracts, MCP, and explorer state; raw route occurrences remain evidence only.
+- The report route uses a neutral loading shell until a real status exists, completed SSR reports do not flash a scan stage, active audits poll with bounded backoff, and terminal/inaccessible/deleted audits clear across same-tab and cross-tab state.
+- `GET /api/me` is read-only, anonymous claim moved to idempotent `POST /api/me/claim`, and one shared `MeProvider` owns client identity state.
+- Verdicts are reconciled to the highest-ranked unresolved Fix and PageSpeed coverage distinguishes complete, partial, and unavailable evidence.
+- The report explorer persists `flag`, `rubric`, `severity`, `impact`, and `page` in the URL and deterministically recovers from stale selections.
+- Live accuracy tooling is consolidated on rendered evidence. The 375 × 812 dogfood probe measured “Book a call” at 394px and produced no `cta-below-fold-mobile`, `no-cta-detected`, or `skip-link-missing` false positive.
+- Verification and E2E builds share the isolated build runner and delete only their dedicated incremental TypeScript state; the real BullMQ missing-job contract is asserted.
+- Every generated API contract records executable handler, credentialed journey, or deployed boundary evidence.
 - Dedicated web/worker lifecycle, browser prewarming, per-replica Redis heartbeat aggregation, terminal job guarantees, and production-like Postgres/Redis/web/worker container smoke.
 - Real credentialed Playwright journeys replaced all deliberate throws for anonymous claim/re-check, WebAuthn/2FA recovery, Stripe, protected sharing, Product Watch, GitHub Fix PR, MCP, and packaged CLI workflows.
 - Release preflight now fails before setup unless every disposable fixture and explicit database-reset consent are present.
@@ -26,7 +34,9 @@ Local current-product implementation and verification completed on 2026-07-26. R
 
 ## Verified
 
-- `npm run agent -- verify --full`: 23-command gate passed on 2026-07-26.
+- `npm run agent -- verify --full`: 24-command gate passed on 2026-07-26, including the production web build, worker build, CLI, accuracy corpus, migrations/drift, skill validation, dependency audit, and container build.
+- Focused UI, accuracy, recovery, auth, billing, security, prompts, and CLI evaluations passed.
+- Direct browser checks passed at 320/375 mobile widths: seven visible sample Fixes were seven unique issues, selected Flag state survived refresh, and no horizontal overflow was present.
 - Vitest: 184 files passed, 2,420 tests passed; one file and two tests skipped by their declared environments.
 - Dependency audit: zero moderate-or-higher vulnerabilities.
 - Accuracy: 11 HTML gate fixtures, 2 gold fixtures, zero failures.

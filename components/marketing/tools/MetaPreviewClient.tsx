@@ -63,6 +63,8 @@ function SocialPreview({ result }: { result: MetaPreviewResult }) {
           <img
             src={result.ogImage!}
             alt="Social preview"
+            width={1200}
+            height={630}
             className="h-full w-full object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none'

@@ -88,7 +88,7 @@ runIntegration('application audit queue recovery', () => {
     })
 
     expect(result).toBe('force_failed')
-    expect(await queueRef.current!.getJob(auditId)).toBeNull()
+    expect(await queueRef.current!.getJob(auditId)).toBeUndefined()
     expect(prismaMock.audit.update).toHaveBeenCalledWith({
       where: { id: auditId },
       data: expect.objectContaining({

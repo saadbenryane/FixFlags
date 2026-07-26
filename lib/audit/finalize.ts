@@ -33,24 +33,6 @@ type FinalizeBaseInput = {
   }
 }
 
-/** Fire-and-forget side effects shared by all finalize paths. */
-async function runPostFinalizeHooks(
-  auditId: string,
-  audit: { userId: string | null },
-  incrementUsage: boolean,
-  contextLabel: string
-): Promise<void> {
-  if (incrementUsage && audit.userId) {
-    await incrementUsageOnCompleteForAudit(auditId, audit.userId)
-  }
-  await upsertLeadFromAudit(auditId).catch((err) => {
-    logger.error(`Lead upsert failed after ${contextLabel} finalize`, err)
-  })
-  await persistAuditGraphSnapshot(auditId).catch((err) => {
-    logger.error(`Knowledge-graph persist failed after ${contextLabel} finalize`, err)
-  })
-}
-
 /** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */
 export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<void> {
   const audit = await prisma.audit.findUnique({

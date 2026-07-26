@@ -78,6 +78,21 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     {
       refreshInterval: (latest) => pollIntervalMs(latest as AuditStatusPayload | undefined),
       revalidateOnFocus: false,
+      compare: (a: AuditStatusPayload | undefined, b: AuditStatusPayload | undefined) => {
+        if (a === b) return true
+        if (!a || !b) return false
+        return (
+          a.status === b.status &&
+          a.progress === b.progress &&
+          a.score === b.score &&
+          a.pageType === b.pageType &&
+          a.verdict === b.verdict &&
+          a.flagCount === b.flagCount &&
+          a.screenshotCapture?.desktop === b.screenshotCapture?.desktop &&
+          a.screenshotCapture?.mobile === b.screenshotCapture?.mobile &&
+          a.technologyProfile?.status === b.technologyProfile?.status
+        )
+      },
     }
   )
 

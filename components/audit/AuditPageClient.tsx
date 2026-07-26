@@ -211,7 +211,12 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       productContract: statusPayload?.productContract ?? null,
       technologyProfile: statusPayload?.technologyProfile,
     }
-  }, [status, progress, statusPayload, initialAudit, workerIdle])
+  }, [status, progress, statusPayload?.partialFlags,
+      statusPayload?.screenshots, statusPayload?.rubrics, statusPayload?.actionTimeline,
+      statusPayload?.productContract, statusPayload?.technologyProfile,
+      statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
+      statusPayload?.verdict, statusPayload?.score,
+      initialAudit, workerIdle])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)

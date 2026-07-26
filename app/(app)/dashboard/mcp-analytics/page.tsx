@@ -120,7 +120,7 @@ export default async function McpAnalyticsPage() {
                     </div>
                     <div className="h-2 w-full rounded-full bg-muted/40">
                       <div
-                        className="h-full rounded-full bg-brand transition-all"
+                        className="h-full rounded-full bg-brand transition-[width]"
                         style={{ width: `${t.pct}%` }}
                       />
                     </div>

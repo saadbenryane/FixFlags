@@ -66,7 +66,6 @@ export function ReportExplorer({
   signUpHref,
   pages = [],
   loading = false,
-  progress,
   auditId,
   demonstratedFlagId,
 }: ReportExplorerProps) {
@@ -81,29 +80,103 @@ export function ReportExplorer({
   const visibleDemonstratedFlagId =
     demonstratedFlagId ??
     (aiLocked ? model.flags.find((flag) => flag.hasFixPrompt)?.id : undefined)
-  const [flagIndex, setFlagIndex] = useState(() =>
-    initialExplorerFlagIndex(model.flags, initialFlagIndex, visibleDemonstratedFlagId)
+  const initialIndex = initialExplorerFlagIndex(
+    model.flags,
+    initialFlagIndex,
+    visibleDemonstratedFlagId
+  )
+  const [selectedFlagId, setSelectedFlagId] = useState<string | null>(
+    model.flags[initialIndex]?.id ?? null
   )
   const firstFindingTracked = useRef(false)
   const demonstratedSelectionApplied = useRef(false)
+  const urlStateLoaded = useRef(false)
+
+  const writeExplorerUrl = useCallback((state: {
+    flag: string | null
+    rubric: RubricFilter
+    severity: string | null
+    impact: string | null
+    page: string | null
+  }) => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    const values = {
+      flag: state.flag,
+      rubric: state.rubric === 'ALL' ? null : state.rubric,
+      severity: state.severity,
+      impact: state.impact,
+      page: state.page,
+    }
+    for (const [key, value] of Object.entries(values)) {
+      if (value) url.searchParams.set(key, value)
+      else url.searchParams.delete(key)
+    }
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [])
 
   useEffect(() => {
-    if (!visibleDemonstratedFlagId || demonstratedSelectionApplied.current) return
-    const demonstratedIndex = model.flags.findIndex(
-      (flag) => flag.id === visibleDemonstratedFlagId
+    if (urlStateLoaded.current || typeof window === 'undefined') return
+    urlStateLoaded.current = true
+    const params = new URLSearchParams(window.location.search)
+    const requestedRubric = params.get('rubric')
+    const nextRubric: RubricFilter =
+      requestedRubric === 'MESSAGE' ||
+      requestedRubric === 'EXPERIENCE' ||
+      requestedRubric === 'REACH'
+        ? requestedRubric
+        : 'ALL'
+    const requestedSeverity = params.get('severity')
+    const nextSeverity = SEVERITY_ORDER.includes(
+      requestedSeverity as (typeof SEVERITY_ORDER)[number]
+    ) ? requestedSeverity : null
+    const requestedImpact = params.get('impact')
+    const nextImpact = IMPACT_TAG_ORDER.includes(
+      requestedImpact as (typeof IMPACT_TAG_ORDER)[number]
+    ) ? requestedImpact : null
+    const requestedPage = params.get('page')
+    const nextPage = requestedPage && pages.some((page) => page.url === requestedPage)
+      ? requestedPage
+      : null
+    const visible = filterExplorerFlags(model.flags, {
+      rubricFilter: nextRubric,
+      pageFilter: nextPage,
+      severityFilter: nextSeverity,
+      impactFilter: nextImpact,
+    })
+    const requestedFlag = params.get('flag')
+    const requestedVisibleFlag = visible.find((flag) => flag.id === requestedFlag)
+    const nextFlag =
+      requestedVisibleFlag?.id ??
+      (requestedFlag
+        ? visible[0]?.id
+        : visible.find((flag) => flag.id === visibleDemonstratedFlagId)?.id) ??
+      visible[0]?.id ??
+      null
+    demonstratedSelectionApplied.current = Boolean(
+      requestedFlag || visible.some((flag) => flag.id === visibleDemonstratedFlagId)
     )
-    if (demonstratedIndex < 0) return
-    demonstratedSelectionApplied.current = true
-    setFlagIndex(demonstratedIndex)
-  }, [visibleDemonstratedFlagId, model.flags])
+    setRubricFilter(nextRubric)
+    setSeverityFilter(nextSeverity)
+    setImpactFilter(nextImpact)
+    setPageFilter(nextPage)
+    setSelectedFlagId(nextFlag)
+    writeExplorerUrl({
+      flag: nextFlag,
+      rubric: nextRubric,
+      severity: nextSeverity,
+      impact: nextImpact,
+      page: nextPage,
+    })
+  }, [model.flags, pages, visibleDemonstratedFlagId, writeExplorerUrl])
 
   useEffect(() => {
     if (firstFindingTracked.current || variant !== 'live' || model.flags.length === 0) return
     if (
       visibleDemonstratedFlagId &&
-      model.flags[flagIndex]?.id !== visibleDemonstratedFlagId
+      selectedFlagId !== visibleDemonstratedFlagId
     ) return
-    const flag = model.flags[flagIndex]
+    const flag = model.flags.find((candidate) => candidate.id === selectedFlagId)
     if (!flag) return
     firstFindingTracked.current = true
     trackEvent('first_finding_viewed', {
@@ -111,7 +184,7 @@ export function ReportExplorer({
       check_id: flag.checkId ?? undefined,
       severity: flag.severity,
     })
-  }, [variant, model.flags, auditId, flagIndex, visibleDemonstratedFlagId])
+  }, [variant, model.flags, auditId, selectedFlagId, visibleDemonstratedFlagId])
 
   const rubricCounts = useMemo(
     () =>
@@ -131,6 +204,31 @@ export function ReportExplorer({
     }
   }, [effectiveRubricFilter, rubricFilter])
 
+  useEffect(() => {
+    if (
+      demonstratedSelectionApplied.current ||
+      !visibleDemonstratedFlagId ||
+      !model.flags.some((flag) => flag.id === visibleDemonstratedFlagId)
+    ) return
+    demonstratedSelectionApplied.current = true
+    setSelectedFlagId(visibleDemonstratedFlagId)
+    writeExplorerUrl({
+      flag: visibleDemonstratedFlagId,
+      rubric: effectiveRubricFilter,
+      severity: severityFilter,
+      impact: impactFilter,
+      page: pageFilter,
+    })
+  }, [
+    effectiveRubricFilter,
+    impactFilter,
+    model.flags,
+    pageFilter,
+    severityFilter,
+    visibleDemonstratedFlagId,
+    writeExplorerUrl,
+  ])
+
   const filteredFlags = useMemo(
     () =>
       filterExplorerFlags(model.flags, {
@@ -143,16 +241,8 @@ export function ReportExplorer({
   )
 
   const flagCount = filteredFlags.length
-  const safeFlagIndex = clampFlagIndex(flagIndex, flagCount)
-
-  useEffect(() => {
-    setFlagIndex(0)
-  }, [effectiveRubricFilter, pageFilter, severityFilter, impactFilter])
-
-  useEffect(() => {
-    setFlagIndex((current) => clampFlagIndex(current, filteredFlags.length))
-  }, [filteredFlags.length, model.flags])
-
+  const selectedIndex = filteredFlags.findIndex((flag) => flag.id === selectedFlagId)
+  const safeFlagIndex = clampFlagIndex(selectedIndex, flagCount)
   const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
   const pageScopedFlags = filterExplorerFlags(model.flags, {
     rubricFilter: effectiveRubricFilter,
@@ -170,19 +260,43 @@ export function ReportExplorer({
 
   const showPrevious = useCallback(() => {
     if (flagCount <= 1) return
-    setFlagIndex((i) => (i - 1 + flagCount) % flagCount)
-  }, [flagCount])
+    const next = filteredFlags[(safeFlagIndex - 1 + flagCount) % flagCount]
+    if (!next) return
+    setSelectedFlagId(next.id)
+    writeExplorerUrl({
+      flag: next.id,
+      rubric: effectiveRubricFilter,
+      severity: severityFilter,
+      impact: impactFilter,
+      page: pageFilter,
+    })
+  }, [effectiveRubricFilter, filteredFlags, flagCount, impactFilter, pageFilter, safeFlagIndex, severityFilter, writeExplorerUrl])
 
   const showNext = useCallback(() => {
     if (flagCount <= 1) return
-    setFlagIndex((i) => (i + 1) % flagCount)
-  }, [flagCount])
+    const next = filteredFlags[(safeFlagIndex + 1) % flagCount]
+    if (!next) return
+    setSelectedFlagId(next.id)
+    writeExplorerUrl({
+      flag: next.id,
+      rubric: effectiveRubricFilter,
+      severity: severityFilter,
+      impact: impactFilter,
+      page: pageFilter,
+    })
+  }, [effectiveRubricFilter, filteredFlags, flagCount, impactFilter, pageFilter, safeFlagIndex, severityFilter, writeExplorerUrl])
 
   const goToFlag = useCallback(
     (flagId: string) => {
-      const idx = filteredFlags.findIndex((f) => f.id === flagId)
-      if (idx < 0) return
-      setFlagIndex(idx)
+      if (!filteredFlags.some((flag) => flag.id === flagId)) return
+      setSelectedFlagId(flagId)
+      writeExplorerUrl({
+        flag: flagId,
+        rubric: effectiveRubricFilter,
+        severity: severityFilter,
+        impact: impactFilter,
+        page: pageFilter,
+      })
       if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
         requestAnimationFrame(() => {
           const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -194,8 +308,33 @@ export function ReportExplorer({
         })
       }
     },
-    [filteredFlags]
+    [effectiveRubricFilter, filteredFlags, impactFilter, pageFilter, severityFilter, writeExplorerUrl]
   )
+
+  const applyFilters = useCallback((next: {
+    rubric?: RubricFilter
+    severity?: string | null
+    impact?: string | null
+    page?: string | null
+  }) => {
+    const rubric = next.rubric ?? effectiveRubricFilter
+    const severity = next.severity === undefined ? severityFilter : next.severity
+    const impact = next.impact === undefined ? impactFilter : next.impact
+    const page = next.page === undefined ? pageFilter : next.page
+    const visible = filterExplorerFlags(model.flags, {
+      rubricFilter: rubric,
+      pageFilter: page,
+      severityFilter: severity,
+      impactFilter: impact,
+    })
+    const flag = visible[0]?.id ?? null
+    if (next.rubric !== undefined) setRubricFilter(next.rubric)
+    if (next.severity !== undefined) setSeverityFilter(next.severity)
+    if (next.impact !== undefined) setImpactFilter(next.impact)
+    if (next.page !== undefined) setPageFilter(next.page)
+    setSelectedFlagId(flag)
+    writeExplorerUrl({ flag, rubric, severity, impact, page })
+  }, [effectiveRubricFilter, impactFilter, model.flags, pageFilter, severityFilter, writeExplorerUrl])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -218,21 +357,25 @@ export function ReportExplorer({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [showNext, showPrevious])
 
-  const fixLoopFlags: FixLoopFlagItem[] = filteredFlags.map((f) => ({
-    id: f.id,
-    title: f.title,
-    rubric: f.rubric,
-    impactTag: f.impactTag,
-    severity: f.severity,
-    hasFixPrompt: f.hasFixPrompt,
-  }))
+  const fixLoopFlags: FixLoopFlagItem[] = useMemo(
+    () =>
+      filteredFlags.map((f) => ({
+        id: f.id,
+        title: f.title,
+        rubric: f.rubric,
+        impactTag: f.impactTag,
+        severity: f.severity,
+        hasFixPrompt: f.hasFixPrompt,
+      })),
+    [filteredFlags]
+  )
 
   const scoreHeader = (
     <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         <RubricTabs
           rubricFilter={effectiveRubricFilter}
-          onRubricChange={setRubricFilter}
+          onRubricChange={(rubric) => applyFilters({ rubric })}
           counts={rubricCounts}
           total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
         />
@@ -247,7 +390,7 @@ export function ReportExplorer({
         <select
           id="flag-severity-filter"
           value={severityFilter ?? ''}
-          onChange={(event) => setSeverityFilter(event.target.value || null)}
+          onChange={(event) => applyFilters({ severity: event.target.value || null })}
           className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <option value="">All severities</option>
@@ -259,7 +402,7 @@ export function ReportExplorer({
         <select
           id="flag-impact-filter"
           value={impactFilter ?? ''}
-          onChange={(event) => setImpactFilter(event.target.value || null)}
+          onChange={(event) => applyFilters({ impact: event.target.value || null })}
           className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <option value="">All impacts</option>
@@ -274,7 +417,7 @@ export function ReportExplorer({
             size="sm"
             icon={Globe}
             active={pageFilter === null}
-            onClick={() => setPageFilter(null)}
+            onClick={() => applyFilters({ page: null })}
           >
             {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
           </FilterPill>
@@ -287,7 +430,7 @@ export function ReportExplorer({
                 size="sm"
                 key={page.url}
                 active={pageFilter === page.url}
-                onClick={() => setPageFilter(pageFilter === page.url ? null : page.url)}
+                onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
               >
                 {label} ({count})
               </FilterPill>

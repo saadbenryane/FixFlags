@@ -238,6 +238,16 @@ export function formatUsd(amount: number | Prisma.Decimal): string {
   return `$${value.toFixed(2)}`
 }
 
+export async function sumEstimatedCost(
+  where?: Prisma.AuditRunCostWhereInput
+): Promise<number> {
+  const result = await prisma.auditRunCost.aggregate({
+    where,
+    _sum: { estimatedCostUsd: true },
+  })
+  return result._sum.estimatedCostUsd?.toNumber() ?? 0
+}
+
 /** Sum estimated run cost for completed audits on a domain. */
 export async function sumEstimatedCostForDomain(normalizedDomain: string): Promise<number> {
   const result = await prisma.auditRunCost.aggregate({
@@ -346,4 +356,33 @@ export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subs
   }
 
   return result
+}
+
+export async function getCostOutliers(
+  days: number = 7
+): Promise<Array<{
+  auditId: string
+  domain: string
+  model: string | null
+  estimatedCostUsd: number
+  inputTokens: number
+  outputTokens: number
+}>> {
+  const since = new Date(Date.now() - days * 86_400_000)
+  const costs = await prisma.auditRunCost.findMany({
+    where: { createdAt: { gte: since } },
+    orderBy: { estimatedCostUsd: 'desc' },
+    take: 10,
+    include: {
+      audit: { select: { url: true, normalizedDomain: true } },
+    },
+  })
+  return costs.map((cost) => ({
+    auditId: cost.auditId,
+    domain: cost.audit.normalizedDomain ?? cost.audit.url,
+    model: cost.llmModel,
+    estimatedCostUsd: cost.estimatedCostUsd.toNumber(),
+    inputTokens: cost.llmInputTokens,
+    outputTokens: cost.llmOutputTokens,
+  }))
 }

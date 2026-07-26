@@ -33,7 +33,7 @@ describe('GET /api/reports/[id]', () => {
       url: 'https://example.com/',
       isPublic: false,
       flags: [{ id: 'flag-1', status: 'OPEN' }],
-      rubrics: [{ name: 'MESSAGE', grade: 'B' }],
+      rubrics: [{ name: 'MESSAGE', grade: 'B', flags: [{ id: 'occurrence-1' }] }],
       productContract: null,
     }
     getGatedAuditForRequest.mockResolvedValue({
@@ -43,7 +43,7 @@ describe('GET /api/reports/[id]', () => {
       sampleFixFlag: null,
     })
     buildUnifiedFixList.mockResolvedValue({
-      items: [{ id: 'flag-1' }],
+      items: [{ id: 'flag-1', rubricName: 'MESSAGE', severity: 'IMPORTANT' }],
       totalCount: 1,
       visiblePromptCount: 1,
     })
@@ -65,5 +65,12 @@ describe('GET /api/reports/[id]', () => {
     })
     expect(body.fixList.totalCount).toBe(1)
     expect(body.id).toBe('report-1')
+    expect(body.flags).toBeUndefined()
+    expect(body.rubrics[0]).toMatchObject({
+      flagCount: 1,
+      criticalCount: 0,
+      importantCount: 1,
+    })
+    expect(body.rubrics[0].flags).toBeUndefined()
   })
 })

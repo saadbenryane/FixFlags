@@ -25,6 +25,8 @@ The product should feel like a senior teammate who has seen dozens of launches a
 
 It should never feel: judging, pedantic, corporate, or like a compliance audit.
 
+The user should think: "I did not notice that." Not: "This generated a lot of recommendations."
+
 ## Personality and character
 
 Sharp senior reviewer who has shipped messy launches. Not a consultant selling a methodology. Not a tool listing problems without solutions.
@@ -36,7 +38,7 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 ## Product principles
 
-1. **Understand → Improve → Verify → Remember** — the Product Intelligence loop. Wedge UX: Flag → Fix → Re-check. Every feature serves this or it does not ship. See [knowledge/vision.md](./knowledge/vision.md).
+1. **Check → Fix → Verify → Watch** — the core product loop. Every feature serves this or it does not ship. See [knowledge/product-system.md](./knowledge/product-system.md).
 2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
 3. **Finish Plan before backlog** — few highest-leverage improvements beat a long inventory.
 4. **Fix prompts are the delivery** — actionable paste-ready repairs for the builder's agent.
@@ -44,10 +46,20 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 6. **Distribution before premature depth** — more users matter more than more checks; expand with demand.
 7. **Calm before loud** — trust through accuracy, not marketing volume.
 8. **Human before technical** — flags describe user impact, not HTML violations.
+9. **Show what happened** — every important conclusion must point to an observable moment.
+10. **Test a job, not a fictional persona** — the task matters more than an invented identity.
+11. **Never hide uncertainty** — say "Could not verify" when it cannot prove success or failure.
+12. **Critical means confirmed** — a finding cannot be critical because a language model dislikes something.
+13. **Outside-in first** — test the product that customers can actually access.
+14. **Fix and verify in the same loop** — a recommendation without a re-check is incomplete.
+15. **Earn the right to run continuously** — do not ask for GitHub access before demonstrating value on a public URL.
+16. **Make scope visible** — the user must know exactly what was and was not checked.
 
 ## Brand promise
 
 FixFlags helps you finish AI-built products. Not perfect, not enterprise-grade — better than shipping without independent judgment. Paste your URL, see what a sharp reviewer would notice, get the Finish Plan and fix text, re-check, and keep Product Intelligence current.
+
+**The unit of value is a verified fix.**
 
 ## Voice and tone
 
@@ -80,6 +92,12 @@ Priority order: Clear before clever · Calm before loud · Specific before impre
 - "Game-changing insights"
 - "World-class analysis"
 - "We found 47 issues" (sounds exhausting; bundle by severity)
+- "Release readiness layer"
+- "AI gets you 80%. FixFlags gets you to 100%."
+- "Complete audit"
+- "Every dimension of release readiness"
+- "Trained on real product standards" (until substantiated)
+- "Your users will…" (when only an AI agent was tested)
 - Any sentence containing an em dash
 
 ### Naming preferences
@@ -111,7 +129,7 @@ Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm,
 | Simplicity vs. power | Default to simple. Add depth behind accordions and drill-downs. |
 | Warmth vs. precision | Prefer precision. Warmth comes from clarity, not friendliness. |
 | Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
-| Free vs. paid | Free is 3 lifetime audits + unlimited re-checks. Pro unlocks volume and monitoring. Never gate re-checks. |
+| Free vs. paid | Free is Quick Check + 3 lifetime URL checks + unlimited re-checks. Finish Check is $49 one-time. Pro unlocks volume and monitoring. Never gate re-checks. |
 | Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
 | Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display — they make FixFlags recognizable, not generic SaaS. |
 

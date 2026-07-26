@@ -26,8 +26,7 @@ Read [`AGENTS.md`](../../../AGENTS.md) first. Accuracy expectations are product 
 
 ```bash
 npm run accuracy:eval                              # offline gate (CI)
-npm run accuracy:browser                           # curated rendered-browser geometry gate
-npm run accuracy:probe -- https://stripe.com ...   # live HTML adjudication
+npm run accuracy:probe -- https://stripe.com ...   # rendered live adjudication
 npm run accuracy:capture-fixtures                  # refresh lovable + bolt HTML
 npm run demo:audit:offline                         # demo v1 repair proof
 npm run agent -- context accuracy
@@ -36,7 +35,7 @@ npm run agent -- eval accuracy
 
 ## Fix workflow (no hacks)
 
-1. Reproduce: `accuracy:probe` or fixture HTML
+1. Reproduce with `accuracy:probe` for live sites or a frozen fixture for offline checks
 2. Fix in owning check under `lib/audit/checks/`
 3. Update suppression in `lib/audit/suppress-overlapping.ts` if duplicate flags
 4. Update expectations in `lib/audit/accuracy-corpus.ts` only when adjudicated correct
@@ -47,7 +46,7 @@ npm run agent -- eval accuracy
 
 - **Gold (stripe, vercel, nextjs):** 0 false CRITICAL/IMPORTANT on HTML fixtures
 - **Builder (lovable, bolt):** top-3 must be actionable; bolt allows ≤2 IMPORTANT (`trust-unsupported-claims`, `links-no-text`)
-- **HTML-only vs browser:** SSR sites (e.g. linear.app) may show a11y artifacts on HTML probe — validate on full Playwright before changing checks
+- **HTML-only vs browser:** Never adjudicate missing UI, visibility, geometry, or accessibility bypasses from raw response HTML. Client-rendered sites can contain real CTAs and skip links only after hydration.
 - **Do not** remove checks that fire on correct practice
 - **Do not** add URL-specific logic in production to satisfy fixtures
 
@@ -56,8 +55,7 @@ npm run agent -- eval accuracy
 | Layer | Covers | Does not cover |
 |-------|--------|----------------|
 | HTML fixtures + `accuracy:eval` | Metadata, a11y names, messaging, trust heuristics | Flow paths, overlay clicks, PageSpeed live |
-| `accuracy-probe` | Live HTML fetch checks | Browser render, network timeline |
-| `accuracy:browser` | Rendered CTA geometry, candidate semantics, visual metrics | PageSpeed and full pipeline persistence |
+| `accuracy:probe` / `accuracy:browser` | Hydrated DOM checks, rendered CTA geometry, candidate semantics, visual metrics | PageSpeed and full pipeline persistence |
 | `dogfood-audit.ts --include-ai` | Full prod pipeline | Not in CI without creds |
 | `non-html-regression.json` | PageSpeed, overlay, network, flow check IDs | Live capture refresh |
 

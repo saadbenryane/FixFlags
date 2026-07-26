@@ -38,7 +38,7 @@ export default defineConfig({
         // Keep browser verification isolated from active local development
         // servers that may also be compiling the same workspace.
         command:
-          'npm run build -- --no-lint && npm run worker:build && node scripts/prepare-standalone-runtime.mjs && concurrently -k -n web,worker "node scripts/runtime-start.mjs web" "node scripts/runtime-start.mjs worker"',
+          'node scripts/next-build.mjs .next-e2e --no-lint && npm run worker:build && node scripts/prepare-standalone-runtime.mjs && concurrently -k -n web,worker "node scripts/runtime-start.mjs web" "node scripts/runtime-start.mjs worker"',
         env: localRuntimeEnv,
         url: baseURL,
         reuseExistingServer: false,

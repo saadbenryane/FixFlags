@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { prisma } from '../../db'
 import { User } from '@prisma/client'
 import { RUBRIC_ORDER, type RubricName } from '../../audit/constants'
-import { computeRubricsFromRows } from '../../audit/rubric'
 import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
 import {
   sanitizeFlagForRead,
@@ -42,16 +41,11 @@ export function registerFlagTools(server: McpServer, user: User) {
       if (!rubricRow) throw new Error(`Rubric ${rubric} not found for report ${reportId}`)
 
       const safeRubric = sanitizeRubricForRead(rubricRow)
-      const rubricSources = [
-        {
-          name: rubricRow.name,
-          grade: rubricRow.grade,
-          score: rubricRow.score,
-          flags: rubricRow.flags.map((f) => ({ severity: f.severity })),
-        },
-      ]
-      const computed = computeRubricsFromRows(rubricSources)
-      const thisRubric = computed.find((r) => r.name === rubric)
+      const outcome = await loadCompletedTaskOutcome(reportId, tool)
+      const thisRubric = outcome.rubrics?.find((item) => item.name === rubric)
+      const rubricFlags = (outcome.fixList?.items ?? []).filter(
+        (flag) => flag.rubric === rubric
+      )
 
       const promptMap: Record<PromptToolKey, string | null | undefined> = {
         universal: safeRubric.rubricPrompt,
@@ -76,17 +70,14 @@ export function registerFlagTools(server: McpServer, user: User) {
               promptError: resolveToolPrompt(promptMap, tool, safeRubric.rubricPrompt)
                 ? undefined
                 : `No validated ${tool} prompt is available for this rubric.`,
-              flagCount: rubricRow.flags.length,
-              flags: rubricRow.flags.map((f) => {
-                const safe = sanitizeFlagForRead(f)
-                return {
-                  id: safe.id,
-                  severity: safe.severity,
-                  problem: safe.problem,
-                  evidence: safe.evidence,
-                  fix: safe.fix,
-                }
-              }),
+              flagCount: rubricFlags.length,
+              flags: rubricFlags.map((flag) => ({
+                id: flag.flagId,
+                severity: flag.severity,
+                problem: flag.problem,
+                evidence: flag.evidence,
+                fix: flag.selectedPrompt,
+              })),
             }),
           },
         ],

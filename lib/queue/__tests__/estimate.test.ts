@@ -15,6 +15,7 @@ describe('queue estimates', () => {
       jobsAhead: 0,
       estimatedWaitSeconds: 0,
       availableCapacity: 2,
+      workerAvailable: true,
     })
   })
 
@@ -65,7 +66,8 @@ describe('queue estimates', () => {
       })
     ).toMatchObject({
       queued: true,
-      estimatedWaitSeconds: 0,
+      estimatedWaitSeconds: null,
+      workerAvailable: false,
     })
   })
 
@@ -81,14 +83,13 @@ describe('queue estimates', () => {
       delayMs: 45_000,
       queued: true,
       queueReason: 'rate_limit',
-      estimatedWaitSeconds: 45,
-      queuePosition: 0,
       queue: {
         state: 'rate_limited',
         jobsAhead: 0,
-        estimatedStartSeconds: 45,
+        estimatedWaitSeconds: 45,
+        workerAvailable: true,
       },
     })
-    expect(result.queue.scheduledStartAt).toBe(result.scheduledStartAt)
+    expect(result.queue.scheduledStartAt).not.toBeNull()
   })
 })

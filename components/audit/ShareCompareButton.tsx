@@ -61,7 +61,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
     return (
       <Button variant="outline" size="sm" className="gap-2" onClick={handleCreate} disabled={loading}>
         <Share2 className="h-4 w-4" />
-        {loading ? 'Creating...' : label}
+        {loading ? 'Creating…' : label}
       </Button>
     )
   }

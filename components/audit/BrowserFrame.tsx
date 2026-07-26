@@ -99,6 +99,8 @@ export function BrowserFrame({
           <img
             src={resolvedImageUrl}
             alt={alt}
+            width={1440}
+            height={900}
             loading="lazy"
             className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in-up"
           />

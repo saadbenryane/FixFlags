@@ -55,6 +55,12 @@ Longer historical research notes (confirmed / refined / rejected) remain below f
 - Pre-launch is a strong emotional entry point
 - Independent re-checking differs from code generation
 - Basic builders and developers need progressive depth, not separate products
+- AI development is growing faster than trust (Stack Overflow 2025: 51% daily AI use, 29% trust in accuracy)
+- DORA connects greater AI adoption with lower delivery stability when teams increase output without improving controls
+- Creation tools are already adding browser testing (Lovable, Replit Agent, Cursor agents), making "AI agent that clicks through your app" not a durable advantage
+- Generic website audits are expected to be free (HubSpot Website Grader, Cloudflare URL scanning), validating free URL input as distribution
+- Synthetic agents are not real customers; they expose objective failures but cannot reliably predict human motivation or behavioral variation (Nielsen Norman Group)
+- Browser agents remain unreliable on long or ambiguous tasks (strongest 2026 system: 44.5% on long-horizon tasks)
 
 ### Refined
 
@@ -62,10 +68,16 @@ Longer historical research notes (confirmed / refined / rejected) remain below f
 - Report should lead with the ranked Fix list and journey evidence, not a score
 - Product intent must be captured before deep judgment
 - Security cannot be a simple readiness dimension
+- A recurring product requires a recurring trigger: "We changed the product. Did we break something important?"
+- The most credible recurring buyers are freelancers shipping client work, small agencies delivering several products, and small product teams deploying frequently
 
 ### Rejected
 
-- More checks automatically create more value
+- **"The browser agent is the moat"** — Browser automation is becoming a commodity and is increasingly embedded in AI builders
+- **"More findings create more value"** — More findings often produce more noise, work and distrust. Three undeniable findings are more valuable than fifty speculative observations
+- **"A score creates confidence"** — Only when the score is calibrated and meaningful. Journey outcomes and evidence should lead; scores should be secondary or removed until validated against real outcomes
+- **"Indie builders alone create a durable business"** — Unproven. Solo builders are ideal for distribution but price-sensitive and may only need the product around a launch
+- **"Collecting reports automatically creates a moat"** — The valuable data loop is: pattern found → customer accepted it → change made → same task passed afterward. Only verified outcomes compound into proprietary judgment
 - A mega-prompt is the core product
 - A URL audit can reliably identify source files
 - The same AI system should implement and certify the result

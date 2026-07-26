@@ -60,7 +60,7 @@ export function RubricScoreBar({
       </div>
       <div className={cn('overflow-hidden rounded-full bg-muted/50', compact ? 'mt-1 h-0.5' : 'mt-1.5 h-1')}>
         <div
-          className="h-full rounded-full motion-safe:transition-all motion-safe:duration-500"
+          className="h-full rounded-full motion-safe:transition-[width] motion-safe:duration-500"
           style={{
             width: `${barWidth}%`,
             backgroundColor: score != null ? scoreToScanColor(score) : undefined,

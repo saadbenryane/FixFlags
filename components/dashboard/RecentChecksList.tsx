@@ -204,7 +204,7 @@ export function RecentChecksList({
             {loading ? (
               <>
                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                Loading...
+                Loading…
               </>
             ) : (
               'Load more'

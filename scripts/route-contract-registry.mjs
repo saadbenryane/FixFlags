@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -45,13 +45,76 @@ function casesFor(boundary, methods, file) {
   return [...cases]
 }
 
+function collectExecutableEvidence(root, file) {
+  const evidence = []
+  const routeDirectory = path.dirname(path.join(root, file))
+  const siblingTest = path.join(routeDirectory, '__tests__', 'route.test.ts')
+  if (existsSync(siblingTest)) {
+    evidence.push({
+      kind: 'handler-test',
+      file: path.relative(root, siblingTest),
+    })
+  }
+
+  const moduleReference = `@/${file.replace(/\.ts$/, '')}`
+  for (const testFile of walkTests(path.join(root, 'app', 'api'))) {
+    if (testFile === siblingTest) continue
+    if (readFileSync(testFile, 'utf8').includes(moduleReference)) {
+      evidence.push({
+        kind: 'handler-test',
+        file: path.relative(root, testFile),
+      })
+    }
+  }
+
+  const routePath = `/${file}`
+    .replace(/^\/app/, '')
+    .replace(/\/route\.ts$/, '')
+  const stablePrefix = routePath.split('/[')[0]
+  const e2eDirectory = path.join(root, 'e2e')
+  if (existsSync(e2eDirectory)) {
+    for (const testFile of walkTests(e2eDirectory)) {
+      if (readFileSync(testFile, 'utf8').includes(stablePrefix)) {
+        evidence.push({
+          kind: 'journey-e2e',
+          file: path.relative(root, testFile),
+        })
+      }
+    }
+  }
+
+  // Release verification executes every discovered method against the deployed
+  // boundary, so no generated contract can exist only as an inventory row.
+  evidence.push({
+    kind: 'boundary-e2e',
+    file: 'scripts/route-boundary-smoke.mjs',
+  })
+  return evidence
+}
+
+function walkTests(directory, files = []) {
+  if (!existsSync(directory)) return files
+  for (const entry of readdirSync(directory)) {
+    const absolute = path.join(directory, entry)
+    if (statSync(absolute).isDirectory()) walkTests(absolute, files)
+    else if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry)) files.push(absolute)
+  }
+  return files
+}
+
 export function collectRouteContracts(root = process.cwd()) {
   return walk(path.join(root, 'app/api')).sort().map((absolute) => {
     const file = path.relative(root, absolute)
     const source = readFileSync(absolute, 'utf8')
     const methods = [...source.matchAll(HTTP_METHOD)].map((match) => match[1] || match[2])
     const boundary = boundaryFor(file)
-    return { file, methods: [...new Set(methods)], boundary, cases: casesFor(boundary, methods, file) }
+    return {
+      file,
+      methods: [...new Set(methods)],
+      boundary,
+      cases: casesFor(boundary, methods, file),
+      evidence: collectExecutableEvidence(root, file),
+    }
   })
 }
 
@@ -63,6 +126,9 @@ export function validateRouteContracts(contracts) {
     if (!contract.cases.includes('dependency-failure')) errors.push(`${contract.file}: missing dependency-failure case`)
     if (contract.boundary !== 'public' && !contract.cases.includes('unauthenticated')) {
       errors.push(`${contract.file}: protected boundary missing unauthenticated case`)
+    }
+    if (!contract.evidence?.some(({ kind }) => kind.endsWith('test') || kind.endsWith('e2e'))) {
+      errors.push(`${contract.file}: missing executable handler or E2E evidence`)
     }
   }
   return errors

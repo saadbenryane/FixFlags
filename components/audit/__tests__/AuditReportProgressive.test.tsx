@@ -12,13 +12,15 @@ const URL = 'https://example.com'
 
 afterEach(() => {
   sessionStorage.clear()
+  localStorage.clear()
 })
 
 describe('AuditReportProgressive', () => {
-  it('uses a non-canonical section id for the route loading shell', () => {
-    const { container } = render(<AuditReportProgressiveShell url={URL} />)
-    expect(container.querySelector('#report-flags-loading')).not.toBeNull()
-    expect(container.querySelector('#report-flags')).toBeNull()
+  it('uses a neutral route shell until the real audit state is known', () => {
+    render(<AuditReportProgressiveShell />)
+    expect(screen.getByRole('heading', { name: 'Loading report…' })).toBeInTheDocument()
+    expect(screen.queryByText(/Starting check/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Queued/i)).not.toBeInTheDocument()
   })
 
   it('warns when the worker is idle instead of pretending to progress', () => {
@@ -28,14 +30,34 @@ describe('AuditReportProgressive', () => {
   })
 
   it('shows the real queue-wait estimate while queued', () => {
-    setActiveAudit({ auditId: 'a1', url: URL, estimatedWaitSeconds: 90 })
+    setActiveAudit({
+      auditId: 'a1',
+      url: URL,
+      queue: {
+        state: 'waiting',
+        jobsAhead: 2,
+        estimatedWaitSeconds: 90,
+        scheduledStartAt: null,
+        workerAvailable: true,
+      },
+    })
     render(<AuditReportProgressive status="QUEUED" url={URL} />)
     expect(screen.getByText('Queued')).toBeInTheDocument()
     expect(screen.getByText(formatQueueWaitHint(90))).toBeInTheDocument()
   })
 
   it('suppresses the queue hint for short waits', () => {
-    setActiveAudit({ auditId: 'a1', url: URL, estimatedWaitSeconds: 3 })
+    setActiveAudit({
+      auditId: 'a1',
+      url: URL,
+      queue: {
+        state: 'waiting',
+        jobsAhead: 0,
+        estimatedWaitSeconds: 3,
+        scheduledStartAt: null,
+        workerAvailable: true,
+      },
+    })
     render(<AuditReportProgressive status="QUEUED" url={URL} />)
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })

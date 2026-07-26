@@ -76,6 +76,8 @@ export function JourneyReviewTimeline({ reviews }: Props) {
                         <img
                           src={normalizeInternalScreenshotUrl(step.screenshotAfterUrl) ?? step.screenshotAfterUrl}
                           alt=""
+                          width={1280}
+                          height={720}
                           className="aspect-video w-full rounded-md bg-muted object-cover"
                         />
                       ) : (

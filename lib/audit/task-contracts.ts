@@ -188,23 +188,6 @@ export async function loadCompletedOutcome(
     throw new Error(`Report is ${audit.status}, not COMPLETED`)
   }
 
-  const rubricSources = audit.rubrics.map((rubric) => ({
-    name: rubric.name,
-    grade: rubric.grade,
-    score: rubric.score,
-    flags: rubric.flags.map((flag) => ({ severity: flag.severity })),
-  }))
-  const rubrics = computeRubricsFromRows(
-    rubricSources,
-    audit.flags.map((flag) => ({ severity: flag.severity, rubric: flag.rubric }))
-  ).map((rubric) => ({
-    name: rubric.name,
-    status: rubric.status,
-    flagCount: rubric.flagCount,
-    criticalCount: rubric.criticalCount,
-    importantCount: rubric.importantCount,
-  }))
-
   const contract = parseProductContract(audit.productContract)
   const planInput = {
     userId: audit.userId,
@@ -228,6 +211,27 @@ export async function loadCompletedOutcome(
       })),
     }),
   ])
+  const rubricSources = audit.rubrics.map((rubric) => ({
+    name: rubric.name,
+    grade: rubric.grade,
+    score: rubric.score,
+    flags: fixList.items
+      .filter((flag) => flag.rubricName === rubric.name)
+      .map((flag) => ({ severity: flag.severity })),
+  }))
+  const rubrics = computeRubricsFromRows(
+    rubricSources,
+    fixList.items.map((flag) => ({
+      severity: flag.severity,
+      rubric: flag.rubricName,
+    }))
+  ).map((rubric) => ({
+    name: rubric.name,
+    status: rubric.status,
+    flagCount: rubric.flagCount,
+    criticalCount: rubric.criticalCount,
+    importantCount: rubric.importantCount,
+  }))
 
   return {
     score: audit.score,

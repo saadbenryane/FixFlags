@@ -36,7 +36,7 @@
     "demo:audit": "tsx scripts/demo-fixture-audit.ts",
     "demo:audit:offline": "tsx scripts/demo-fixture-audit.ts --offline",
     "accuracy:eval": "tsx scripts/accuracy-eval.ts",
-    "accuracy:probe": "tsx scripts/accuracy-probe.ts",
+    "accuracy:probe": "npm run accuracy:browser --",
     "accuracy:browser": "tsx scripts/accuracy-browser-probe.ts",
     "accuracy:capture-fixtures": "tsx scripts/capture-accuracy-fixtures.ts",
     "accuracy:generate-rubrics-tiles": "node scripts/generate-rubrics-tiles.mjs",

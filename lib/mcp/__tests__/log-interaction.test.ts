@@ -89,8 +89,13 @@ describe('extractMcpLogMetadata', () => {
               text: JSON.stringify({
                 queued: true,
                 queueReason: 'backlog',
-                estimatedWaitSeconds: 30,
-                queuePosition: 2,
+                queue: {
+                  state: 'waiting',
+                  estimatedWaitSeconds: 30,
+                  jobsAhead: 2,
+                  scheduledStartAt: null,
+                  workerAvailable: true,
+                },
               }),
             },
           ],

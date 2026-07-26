@@ -2,6 +2,21 @@
 
 **Canonical home for business model direction.** Live shipped pricing: [PRODUCT.md](../PRODUCT.md) and `lib/billing/plans.ts`. Vision: [vision.md](./vision.md).
 
+## Pricing (new — product/journey model)
+
+The new model sells products and journeys, not URL-check credits.
+
+| Product | Price | What it includes |
+|---------|-------|-----------------|
+| **Quick Check** (Free) | $0 | One active product, three public Quick Checks per month, one complete Flag before signup, three complete Flags with free account, fix prompts, one saved re-check, private report |
+| **Finish Check** (one-time) | $49 | One product, three important journeys, desktop and mobile, public or staging environment, test-account support, complete replay and evidence, full Finish Plan, builder-ready fixes, unlimited re-checks for seven days |
+| **Pro** (monthly) | $39/mo | One active product, five saved journeys, deployment-triggered checks, before-and-after history, GitHub integration, CLI and MCP, confirmed regression alerts, included monthly journey allowance, additional usage available |
+| **Studio** (monthly) | $129/mo | Up to ten active products, twenty-five saved journeys, client-ready reports, team access, project templates, GitHub and deployment integrations, branded exports, more included runs, priority support |
+
+**Pricing rule:** Do not sell "credits" in the primary interface. Customers should understand products, journeys, checks after deploy, and re-checks. Technical usage can exist behind fair limits.
+
+Adjacent tools currently range from low-cost browser access around $19 monthly, website-feedback products from roughly $39 monthly, AI testing products from $69 to $125 monthly and higher. The proposed FixFlags range is plausible but must be validated through actual purchases.
+
 ## Pricing (current — shipped)
 
 | Tier | Plan enum | Price | New URL checks | Key hook |
@@ -10,7 +25,7 @@
 | Pro | `BUILDER` | $29/mo | 25/mo | Compare, MCP / API keys, Journey Review |
 | Agency | `TEAM` | $99/mo | 100/mo | Share links, projects, GitHub repo scans |
 
-Display name **Agency** maps to `TEAM`. Do not use “Max” in docs.
+Display name **Agency** maps to `TEAM`. Do not use "Max" in docs.
 
 Re-checks are free and unlimited. Credit packs are paid overflow for new URL checks.
 
@@ -37,6 +52,14 @@ Additional revenue (later): expert review, benchmarks, certification, agency too
 ## Unit economics
 
 Browser automation, screenshots, models, and storage create variable cost. Strict anon limits. Usage allowances on paid plans. Persistent PI should reduce repeated tokens and re-exploration.
+
+## Cost targets
+
+- Quick Check: below $0.25
+- Finish Check: below $3
+- Normal Watch run with no issue: below $0.50
+- Deep authenticated check: below $5
+- Gross margin: above 80% across paid usage
 
 ## Targets
 

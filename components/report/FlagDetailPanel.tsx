@@ -44,6 +44,8 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
           <img
             src={preview.ogImage!}
             alt=""
+            width={1200}
+            height={630}
             loading="lazy"
             className="aspect-[1.91/1] w-full bg-muted object-cover"
           />
@@ -115,6 +117,8 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
         <img
           src={flag.visualUrl}
           alt=""
+          width={1440}
+          height={900}
           className="w-full rounded-[var(--radius-inner)] border border-border/40"
         />
       ) : null}

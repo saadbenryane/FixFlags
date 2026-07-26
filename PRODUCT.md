@@ -4,14 +4,17 @@
 
 **Canonical sources:**
 - Product vision and strategy: `knowledge/product.md`, `knowledge/strategy.md`
-- Pricing tiers and philosophy: `knowledge/strategy.md` → Pricing (Current)
-- Core loop (philosophy): `knowledge/execution.md` → Core Product Loop
+- Three products: `knowledge/product-system.md`
+- Pricing tiers and philosophy: `knowledge/strategy.md` → Pricing
+- Core loop (philosophy): `knowledge/vision.md` → Core loop
 - Rubrics (philosophy): `knowledge/product.md` → Report Hierarchy
 - North star (aspirational): `knowledge/vision.md`
 
 ## One-liner
 
 FixFlags is the independent Product Intelligence System for AI-built software. Finish what your AI started.
+
+**Core loop:** Check → Fix → Verify → Watch.
 
 This file is **shipped truth only**.
 
@@ -21,33 +24,96 @@ This file is **shipped truth only**.
 - **Agencies and studios** — building AI-assisted sites for clients. Need shareable reports and repo scanning.
 - **Later:** Product teams using AI coding internally (once team accounts, continuous verification, and CI/CD land).
 
+### Acquisition user: The AI builder preparing to share something real
+
+They built with Lovable, Cursor, Replit, Bolt, Claude Code, Codex, Windsurf, v0 or a combination of tools. They may be a solo founder, product manager building an MVP, designer who now ships code, developer building a side product, or freelancer preparing a client handoff.
+
+Their thought: "It works for me. What did I miss?"
+
+They arrive through Product Hunt, social media, search, builder communities or a shared FixFlags result.
+
+### One-time buyer: The builder approaching a launch, handoff or campaign
+
+They are about to launch on Product Hunt, share publicly, start outreach, spend on acquisition, deliver work to a client, or invite the first real users.
+
+They buy a Finish Check.
+
+### Primary recurring buyer: The freelancer or small agency shipping repeatedly
+
+Their money problem: manual review reduces margins, handoff problems damage trust, client-reported bugs create unplanned work, each project is built slightly differently, they need consistent evidence across projects.
+
+They buy Studio.
+
+### Secondary recurring buyer: The small product team shipping weekly
+
+They need to know whether a deployment broke signup, checkout, onboarding, the core action, or an important client workflow.
+
+They buy Watch through Pro or Team plans.
+
+### Not the initial customer
+
+FixFlags will not initially serve: enterprise QA departments, native mobile applications, complete test-suite replacement, regulated compliance certification, deep penetration testing, large internal enterprise systems, products requiring real-money transactions in tests, teams expecting guaranteed conversion improvement.
+
 ## Problem
 
-AI coding tools ship fast. Products look done before they are actually ready. Issues on the page cost signups: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, conversion friction.
+AI makes a product look finished before it has been properly checked. The builder can see that the screen exists and that the happy path worked once. They do not know:
 
-Existing tools (Lighthouse, PageSpeed) find technical problems but do not tell you how to fix them or give prompts your AI can use.
+- Whether the important path still works on mobile
+- Whether links and actions lead where they promise
+- Whether the product explains what to do next
+- Whether authentication, forms and recovery states work
+- Whether a recent change reopened an old problem
+- Whether a fix actually landed in production
+- Which issue matters most before showing the product to people
+
+The economic pain is not abstract "quality." It is:
+
+- Wasted launch attention
+- Paid traffic sent into a blocked experience
+- Client complaints after handoff
+- Unpaid rework
+- Delayed launches caused by uncertainty
+- Regressions introduced by rapid AI changes
+- Time spent manually rechecking the same paths
+
+FixFlags reduces that uncertainty with observable evidence.
 
 ## Promise
 
-Paste your site. We reconstruct a basic Product understanding (Product Contract), review the live experience, produce a ranked Fix list with prompts your builder can use, and re-check after you ship.
+Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Re-check after you ship. Watch after every deploy.
 
 ## Core loop
 
-**Wedge expression:** Flag → Fix → Re-check.
+**Core loop:** Check → Fix → Verify → Watch.
 
 **Vision loop:** Understand → Improve → Verify → Remember ([knowledge/vision.md](./knowledge/vision.md)).
 
-1. User pastes a URL.
-2. Deterministic checks + AI review run on the page; Product Contract is inferred.
-3. User lands in one report workspace with every unresolved Flag ranked by launch impact.
-4. User pastes fix prompts into their AI editor.
-5. User ships fixes.
-6. User re-checks the same URL (free, unlimited).
-7. User sees before/after comparison and cleared Flags. Verified learnings persist on Project Product Intelligence when a Project is linked (surfaced on the report when present).
+**The unit of value is a verified fix.**
 
-Steps 4–7 are the differentiator. Re-check is the habit.
+1. User pastes a URL.
+2. Quick Check runs: deterministic checks + AI review on the page.
+3. User sees real evidence: "The signup button gives no visible response on mobile."
+4. User creates an account to save all Flags and fix prompts.
+5. User pastes fix prompts into their AI editor.
+6. User ships fixes.
+7. User re-checks the same URL (free, unlimited).
+8. User sees before/after comparison and cleared Flags.
+9. User upgrades to Finish Check for authenticated journey testing.
+10. User enables Watch for deployment-triggered regression detection.
+
+Steps 4-10 are the differentiator. Re-check is the habit.
 
 ## What we ship
+
+### Three products
+
+| Product | Promise | Price |
+|---------|---------|-------|
+| **Quick Check** | See what you missed | Free |
+| **Finish Check** | Test what customers came to do | $49 one-time |
+| **Watch** | Know when an important path breaks | $39/mo (Pro) |
+
+Detail: `knowledge/product-system.md`.
 
 ### Anonymous teaser (no account)
 - 1 free teaser scan: scores, rubrics, every prioritized problem/evidence summary (real page evidence, not signup placeholders), and exactly one complete demonstrated fix prompt
@@ -62,21 +128,37 @@ Steps 4–7 are the differentiator. Re-check is the habit.
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
 - Re-checks (free and unlimited on owned reports)
 
-### Pro ($29/mo) — `BUILDER` in schema
-- 25 new URL checks per month
-- Before/after compare
-- MCP integration (Cursor, Claude Code, Windsurf, Lovable, Bolt)
-- Credit packs for overflow new checks
+### Finish Check ($49 one-time)
+- One product, three important journeys
+- Desktop and mobile
+- Public or staging environment
+- Test-account support
+- Complete replay and evidence
+- Full Finish Plan
+- Builder-ready fixes
+- Unlimited re-checks for seven days
 
-### Agency ($99/mo) — `TEAM` in schema
-- 100 new URL checks per month
-- Share links and exports
-- 5 projects
-- GitHub repo scanning with optional Fix PR creation (Agency): secrets, dependency hygiene, dangerous patterns. Draft PR carries the fix prompt for your agent; mechanical auto-patch applies only to exposed secrets in `.env*` files when policy allows.
-- Credit packs for overflow new checks
+### Pro ($39/mo) — `BUILDER` in schema
+- One active product
+- Five saved journeys
+- Deployment-triggered checks
+- Before-and-after history
+- GitHub integration
+- CLI and MCP
+- Confirmed regression alerts
+- Included monthly journey allowance
+- Additional usage available
 
-### High Volume (custom)
-- 500+ audits
+### Studio ($129/mo)
+- Up to ten active products
+- Twenty-five saved journeys
+- Client-ready reports
+- Team access
+- Project templates
+- GitHub and deployment integrations
+- Branded exports
+- More included runs
+- Priority support
 
 ## Rubrics
 
@@ -86,7 +168,26 @@ Three dimensions, no more:
 - **Experience:** Layout, mobile usability, accessibility basics, Core Web Vitals, broken interactions
 - **Reach:** SEO metadata, share previews, privacy/contact links, analytics setup
 
-Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
+Each rubric: Pass / Needs Attention / Blocked, flags with fix prompts.
+
+**Journey outcomes and evidence lead. Scores are secondary or removed until validated against real outcomes.**
+
+## Evidence classes
+
+- **Confirmed:** A reproducible, observable condition (broken link, failed request, form does not submit, journey assertion fails)
+- **Observed:** A measurable interaction issue (repeated attempts required, empty state without guidance, no immediate feedback)
+- **Suggested:** A judgment-based recommendation (headline may be too broad, trust evidence may appear too late)
+
+## Severity levels
+
+- **Blocker:** Must be confirmed and must prevent an agreed goal
+- **High:** Must be confirmed or strongly observed and directly affect an important path
+- **Medium:** Affects clarity, effort, trust or discoverability without blocking the task
+- **Polish:** A lower-impact suggestion
+
+**Rule:** An LLM-only opinion can never receive Blocker severity.
+
+Full evidence rules: `knowledge/evidence-rules.md`.
 
 ## Current capabilities (verified)
 
@@ -104,9 +205,19 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
-- **Live progressive report:** after URL submit, `/report/{id}` keeps the final Fix list layout in place and appends Flags as they arrive; Contract and timeline evidence stay behind “How FixFlags is checking”
+- **Live progressive report:** after URL submit, `/report/{id}` keeps the final Fix list layout in place and appends Flags as they arrive; Contract and timeline evidence stay behind "How FixFlags is checking"
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
 - **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
+
+## Evaluation system
+
+FixFlags must evaluate itself more rigorously than it evaluates customers.
+
+- Seeded benchmark with at least 100 controlled web products containing known problems
+- Measures: detection recall, precision, severity accuracy, goal-completion accuracy, reproduction success, fix usefulness, re-check accuracy, cost per useful Flag, cost per verified fix
+- Critical Flag policy: failure must reproduce, success assertion must be explicit, evidence must be saved, finding must survive deterministic review, run must not contain known infrastructure failure
+- Human calibration: regularly sample confirmed/dismissed Flags, suggestions, failed journeys
+- No composite score at launch: do not lead with a 0-100 score until stable, interpretable and correlated with validated outcomes
 
 ## Limitations and technical debt
 
@@ -119,6 +230,18 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Full `npm run verify` / `verify:release` still require a quiet tree plus designated RELEASE_* / R2 / smoke resources (see `.agents/handoffs/current-product-completion.md`)
 
 ## Launch gates
+
+Do not launch broadly until:
+- The public check regularly produces a useful result
+- The first evidence appears quickly
+- Critical findings are highly precise
+- One journey can be replayed reliably
+- The fix prompt is specific enough to apply
+- The re-check can prove a real before-and-after change
+- The report is visually shareable
+- Privacy and scope are obvious
+- The paid Finish Check can be purchased without a sales call
+- At least ten people have already paid
 
 Five concrete checks from report evidence. Fix before shipping:
 
@@ -136,16 +259,18 @@ Five concrete checks from report evidence. Fix before shipping:
 - **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.
 - Do **not** market priority or dedicated support. High-volume is custom pricing via email only.
 
-## Constraints
-
-- **Core loop above all.** Every feature must serve Flag → Fix → Re-check.
-- **Every feature must serve the core loop.** If it does not fit Flag → Fix → Re-check, it does not ship.
-- **Re-checks are never gated.** A user who re-checks is a user who sees value.
-- **Localhost and private networks are not supported.** Agency projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
-- **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Launch Checks after deploy. See `docs/railway-deploy-check.md`.
-
 ## Unresolved questions
 
 - Does Agency Fix PR creation close enough sales, or do buyers still want white-label share branding?
 - Will free users convert to Pro before exhausting their 3 lifetime AI reports?
-- What re-check cadence builds the strongest Flag → Fix → Re-check habit?
+- What re-check cadence builds the strongest Check → Fix → Verify → Watch habit?
+- Does the $49 Finish Check price point optimize for conversion against $29 and $79 variants?
+- Will 20% of Finish Check customers activate Watch for ongoing monitoring?
+
+## Constraints
+
+- **Core loop above all.** Every feature must serve Check → Fix → Verify → Watch.
+- **Every feature must serve the core loop.** If it does not fit Check → Fix → Verify → Watch, it does not ship.
+- **Re-checks are never gated.** A user who re-checks is a user who sees value.
+- **Localhost and private networks are not supported.** Agency projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
+- **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Launch Checks after deploy. See `docs/railway-deploy-check.md`.

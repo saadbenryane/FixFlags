@@ -16,9 +16,9 @@ Do not launch as “AI website auditing with N checks.” Long-term category is 
 
 ## Core loop (wedge expression)
 
-Paste link → understand Product (Contract) → ranked Fix List → copy fix → publish → re-check → remember → (optional) watch.
+Paste link → Check → Fix → Verify → Watch.
 
-Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision.md).
+Maps to Check → Fix → Verify → Watch. See [vision.md](./vision.md).
 
 ## Now (ordered)
 
@@ -55,6 +55,22 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 - Chasing every Scout feature
 - CodeRabbit partnership as GTM
 - Scout-style conversational QA on the audit path
+- Native mobile testing
+- Enterprise test management
+- A full analytics suite
+- Session recording infrastructure
+- Security certification
+- Penetration testing
+- A large persona library
+- Multi-agent swarms
+- Automated production payments
+- Automated destructive actions
+- Arbitrary product-quality scores
+- A roadmap-writing AI product manager
+- An AI coding environment
+- A standalone source-code scanner
+- Hundreds of integrations
+- A public roast database without customer consent
 
 ## Thesis validation signals
 
@@ -68,4 +84,15 @@ Maps to Understand → Improve → Verify → Remember. See [vision.md](./vision
 
 ## Weekly focus
 
-Protect Flag → Fix → Re-check → Remember. Prefer Fix List quality and watch habit over more check modules or growth graph pages.
+Protect Check → Fix → Verify → Watch. Prefer Fix List quality and watch habit over more check modules or growth graph pages.
+
+## Priority tiers (from PRD)
+
+| Priority | Product | Must include |
+|----------|---------|-------------|
+| P0 | Conversion-ready Quick Check | Public URL submission, route discovery, link and action checks, desktop and mobile, console and network capture, metadata/a11y/performance checks, evidence-backed Flags, confidence levels, scope and coverage, one full result before signup, account creation, fix prompt, re-check, private report, payment for Finish Check |
+| P1 | Goal-based Finish Check | Product-purpose confirmation, goal selection, journey policy, explicit success assertions, bounded agent runner, replay, complete evidence, three journeys, mobile and desktop, seven-day re-checking, before-and-after verification |
+| P2 | Authenticated journeys | Encrypted test credentials, reusable isolated auth state, test inbox, safe data reset, role support, credential revocation, detailed audit log |
+| P3 | Watch | GitHub connection, deployment trigger, change mapping, saved journeys, affected-journey selection, regression detection, alerts, history |
+| P4 | Agency workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
+| P5 | Real-user evidence | Sentry connector, PostHog connector, FullStory connector, evidence correlation, clear separation between simulated/observed/real-user evidence |

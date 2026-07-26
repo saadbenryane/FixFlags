@@ -95,7 +95,7 @@ export const contexts = {
 export const evals = {
   orientation: ['node', ['scripts/project-agent.mjs', '--json']],
   docs: ['npm', ['run', 'knowledge:duplication-guard']],
-  ui: ['npx', ['playwright', 'test', '--grep', 'detailed sample fulfills']],
+  ui: ['npx', ['playwright', 'test', '--grep', 'canonical sample']],
   audit: ['npm', ['run', 'demo:audit:offline']],
   accuracy: ['npm', ['run', 'accuracy:eval']],
   prompts: ['npx', ['vitest', 'run', 'lib/prompts/']],

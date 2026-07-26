@@ -20,7 +20,10 @@
   *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
-  *Signal:* Phases 1–3 of customer-journey-completion-plan.md accepted on production dogfood.
+  *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
+
+- **New pricing model** — Replace URL-check credits with product/journey model. Quick Check (free), Finish Check ($49 one-time), Pro ($39/mo), Studio ($129/mo). See `knowledge/strategy.md`.
+  *Signal:* Finish Check purchasable without sales call; Watch triggers on deployments.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
