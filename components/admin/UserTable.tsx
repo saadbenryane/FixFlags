@@ -2,8 +2,14 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import {
+  AdminTable,
+  AdminTableCell,
+  AdminTableHead,
+  AdminTableHeaderCell,
+  AdminTableRow,
+} from '@/components/admin/AdminTable'
 
 interface User {
   id: string
@@ -49,48 +55,37 @@ export function UserTable({ users }: { users: User[] }) {
     }
   }
 
-  if (users.length === 0) {
-    return (
-      <div className="rounded-card p-8 text-center text-sm text-muted-foreground glass-surface shadow-card">
-        No users yet.
-      </div>
-    )
-  }
-
   return (
-    <Card className="overflow-hidden border-0 p-0 shadow-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th className="text-left px-4 py-3 font-medium">Email</th>
-            <th className="text-left px-4 py-3 font-medium">Plan</th>
-            <th className="text-left px-4 py-3 font-medium">Tokens</th>
-            <th className="text-left px-4 py-3 font-medium">Est. cost</th>
-            <th className="text-left px-4 py-3 font-medium">Joined</th>
-            <th className="px-4 py-3" />
-          </tr>
-        </thead>
+    <AdminTable isEmpty={users.length === 0} emptyMessage="No users yet.">
+      <AdminTableHead>
+        <AdminTableHeaderCell>Email</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Plan</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Checks</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Est. cost</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Joined</AdminTableHeaderCell>
+        <AdminTableHeaderCell />
+      </AdminTableHead>
         <tbody>
           {users.map((user, i) => (
-            <tr key={user.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/20')}>
-              <td className="px-4 py-3">
+            <AdminTableRow key={user.id} index={i}>
+              <AdminTableCell>
                 <div className="font-medium truncate max-w-[200px]">{user.email}</div>
                 {user.name && <div className="text-xs text-muted-foreground">{user.name}</div>}
                 {user.role === 'admin' && (
                   <Badge className="text-xs mt-1" variant="destructive">Admin</Badge>
                 )}
-              </td>
-              <td className="px-4 py-3">
+              </AdminTableCell>
+              <AdminTableCell>
                 <Badge className={cn('text-xs', planColors[user.plan] ?? '')}>{user.plan}</Badge>
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground">
                 {user.auditsUsed} / {formatLimit(user.auditsLimit)}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground">{user.totalCostLabel}</td>
-              <td className="px-4 py-3 text-muted-foreground text-xs">
+              </AdminTableCell>
+              <AdminTableCell className="text-muted-foreground">{user.totalCostLabel}</AdminTableCell>
+              <AdminTableCell className="text-xs text-muted-foreground">
                 {new Date(user.createdAt).toLocaleDateString()}
-              </td>
-              <td className="px-4 py-3">
+              </AdminTableCell>
+              <AdminTableCell>
                 {user.role !== 'admin' && (
                   <select
                     disabled={updating === user.id}
@@ -104,11 +99,10 @@ export function UserTable({ users }: { users: User[] }) {
                     ))}
                   </select>
                 )}
-              </td>
-            </tr>
+              </AdminTableCell>
+            </AdminTableRow>
           ))}
         </tbody>
-      </table>
-    </Card>
+    </AdminTable>
   )
 }

@@ -29,6 +29,8 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
+import { BrowserFrame } from '@/components/audit/BrowserFrame'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -214,7 +216,7 @@ export function AuditReportProgressive({
   const showTimeline = actionTimeline.length > 0
   const showSticky = !isFailed
   return (
-    <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
+    <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-6">
       <AuditReportHero
         url={url}
         pageType={pageType}
@@ -236,6 +238,12 @@ export function AuditReportProgressive({
           {formatQueueWaitHint(queueWaitSeconds)}
         </Callout>
       )}
+
+      <ProgressiveCapturePair
+        url={url}
+        screenshots={screenshots}
+        captureStatus={screenshotCapture}
+      />
 
       <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
 
@@ -346,24 +354,32 @@ export function AuditReportProgressive({
 }
 
 /** Neutral route shell used before the server has returned an actual audit state. */
-export function AuditReportProgressiveShell() {
+export function AuditReportProgressiveShell({
+  url = '',
+  launchPending = false,
+}: {
+  url?: string
+  launchPending?: boolean
+} = {}) {
   return (
     <Container
       variant="report"
-      className="space-y-6 py-6 sm:space-y-8 sm:py-8"
+      className="space-y-5 py-5 sm:space-y-6 sm:py-6"
       aria-busy="true"
       aria-label="Loading report"
     >
       <div className="space-y-3" role="status" aria-live="polite">
         <p className="section-label">Finish Plan</p>
         <h1 className="text-2xl font-semibold text-foreground text-balance">
-          Loading report…
+          {url ? displayHostname(url) : 'Loading report…'}
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          Retrieving the latest saved report state.
+          {launchPending
+            ? 'Opening your report while the check is created.'
+            : 'Retrieving the latest saved report state.'}
         </p>
       </div>
-      <Skeleton className="h-32 w-full rounded-card" />
+      <ProgressiveCapturePair url={url} screenshots={[]} />
       <div className="flex flex-wrap gap-3">
         {RUBRIC_ORDER.map((name) => (
           <Skeleton key={name} className="h-11 w-36 rounded-full" />
@@ -371,5 +387,57 @@ export function AuditReportProgressiveShell() {
       </div>
       <Skeleton className="h-72 w-full rounded-card" />
     </Container>
+  )
+}
+
+function ProgressiveCapturePair({
+  url,
+  screenshots,
+  captureStatus,
+}: {
+  url: string
+  screenshots: AuditScreenshot[]
+  captureStatus?: ScreenshotCaptureStatus
+}) {
+  const hostname = url ? displayHostname(url) : undefined
+  const desktop = screenshots.find((shot) => shot.device === 'DESKTOP')?.url ?? null
+  const mobile = screenshots.find((shot) => shot.device === 'MOBILE')?.url ?? null
+  const desktopState = desktop
+    ? 'loaded'
+    : captureStatus?.desktop === 'failed'
+      ? 'failed'
+      : 'loading'
+  const mobileState = mobile
+    ? 'loaded'
+    : captureStatus?.mobile === 'failed'
+      ? 'failed'
+      : 'loading'
+
+  return (
+    <section
+      className="rounded-card bg-card/55 p-3 shadow-card glass-surface sm:p-4"
+      aria-label="Desktop and mobile captures"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div>
+          <p className="text-sm font-medium text-foreground">Page captures</p>
+          <p className="text-xs text-muted-foreground">Desktop and mobile views resolve independently.</p>
+        </div>
+      </div>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(6.5rem,10rem)] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)] sm:gap-4">
+        <BrowserFrame
+          device="desktop"
+          url={hostname}
+          imageUrl={desktop}
+          state={desktopState}
+        />
+        <BrowserFrame
+          device="mobile"
+          url={hostname}
+          imageUrl={mobile}
+          state={mobileState}
+        />
+      </div>
+    </section>
   )
 }

@@ -5,10 +5,11 @@ import { authClient } from '@/lib/auth-client'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
 /** Redirect authenticated users away from sign-in / sign-up. */
-export function useRedirectIfAuthenticated() {
+export function useRedirectIfAuthenticated(options?: { disabled?: boolean }) {
   const { navigateAfterAuth } = useAuthRedirect()
 
   useEffect(() => {
+    if (options?.disabled) return
     void (async () => {
       try {
         const { data } = await authClient.getSession()
@@ -24,5 +25,5 @@ export function useRedirectIfAuthenticated() {
         }
       }
     })()
-  }, [navigateAfterAuth])
+  }, [navigateAfterAuth, options?.disabled])
 }

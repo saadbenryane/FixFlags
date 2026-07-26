@@ -25,6 +25,7 @@ import {
 } from '@/lib/audit/active-audit'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
+import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -57,6 +58,7 @@ interface Props {
   initialAudit?: Record<string, unknown> | null
   pollStatus?: boolean
   session?: { user: { id: string } } | null
+  requireAuthGate?: boolean
 }
 
 type PartialFlag = NonNullable<AuditStatusPayload['partialFlags']>[number]
@@ -74,7 +76,13 @@ function mergeScreenshots(
   return []
 }
 
-export function AuditPageClient({ id, initialAudit, pollStatus = true, session }: Props) {
+export function AuditPageClient({
+  id,
+  initialAudit,
+  pollStatus = true,
+  session,
+  requireAuthGate = false,
+}: Props) {
   const router = useRouter()
   const {
     audit,
@@ -281,9 +289,15 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
   // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
     <AuditShell session={session}>
-      <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
-        <AuditReportProgressive {...progressiveProps} />
-      </ProgressiveErrorBoundary>
+      <div
+        className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
+        aria-hidden={requireAuthGate || undefined}
+      >
+        <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
+          <AuditReportProgressive {...progressiveProps} />
+        </ProgressiveErrorBoundary>
+      </div>
+      <ReportAuthGate auditId={id} required={requireAuthGate} />
     </AuditShell>
   )
 }

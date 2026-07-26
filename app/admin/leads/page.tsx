@@ -2,14 +2,19 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { LeadStatus, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatUsd } from '@/lib/billing/costs'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TextLink } from '@/components/ui/text-link'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import {
+  AdminTable,
+  AdminTableCell,
+  AdminTableHead,
+  AdminTableHeaderCell,
+  AdminTableRow,
+} from '@/components/admin/AdminTable'
 
 const STATUS_FILTERS: Array<{ label: string; value?: LeadStatus }> = [
   { label: 'All' },
@@ -75,64 +80,55 @@ export default async function AdminLeadsPage({
         })}
       </div>
 
-      {leads.length === 0 ? (
-        <Card variant="solid">
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            No leads yet. They appear when audits complete.
-          </div>
-        </Card>
-      ) : (
-        <Card variant="solid" className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium">Domain</th>
-                <th className="text-left px-4 py-3 font-medium">Scans</th>
-                <th className="text-left px-4 py-3 font-medium">Total cost</th>
-                <th className="text-left px-4 py-3 font-medium">Avg / scan</th>
-                <th className="text-left px-4 py-3 font-medium">Score</th>
-                <th className="text-left px-4 py-3 font-medium">Status</th>
-                <th className="text-left px-4 py-3 font-medium">User</th>
-                <th className="text-left px-4 py-3 font-medium">Last seen</th>
-              </tr>
-            </thead>
+      <AdminTable
+        isEmpty={leads.length === 0}
+        emptyMessage="No leads yet. They appear when checks complete."
+      >
+        <AdminTableHead>
+          <AdminTableHeaderCell>Domain</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Checks</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Total cost</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Avg / check</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Score</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Status</AdminTableHeaderCell>
+          <AdminTableHeaderCell>User</AdminTableHeaderCell>
+          <AdminTableHeaderCell>Last seen</AdminTableHeaderCell>
+        </AdminTableHead>
             <tbody>
               {leads.map((lead, i) => (
-                <tr key={lead.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/20')}>
-                  <td className="px-4 py-3">
+                <AdminTableRow key={lead.id} index={i}>
+                  <AdminTableCell>
                     <TextLink href={`/admin/leads/${encodeURIComponent(lead.normalizedDomain)}`}>
                       {lead.normalizedDomain}
                     </TextLink>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{lead.scanCount}</td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                  </AdminTableCell>
+                  <AdminTableCell className="tabular-nums">{lead.scanCount}</AdminTableCell>
+                  <AdminTableCell className="tabular-nums text-muted-foreground">
                     {formatUsd(lead.totalCostUsd)}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                  </AdminTableCell>
+                  <AdminTableCell className="tabular-nums text-muted-foreground">
                     {lead.scanCount > 0
                       ? formatUsd(lead.totalCostUsd.toNumber() / lead.scanCount)
                       : '–'}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                  </AdminTableCell>
+                  <AdminTableCell className="tabular-nums text-muted-foreground">
                     {lead.latestScore ?? '–'}
-                  </td>
-                  <td className="px-4 py-3">
+                  </AdminTableCell>
+                  <AdminTableCell>
                     <Badge variant="outline" className="text-xs">
                       {lead.status}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                  </AdminTableCell>
+                  <AdminTableCell className="text-xs text-muted-foreground">
                     {lead.linkedUser?.email ?? '–'}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                  </AdminTableCell>
+                  <AdminTableCell className="text-xs text-muted-foreground">
                     {new Date(lead.lastSeenAt).toLocaleString()}
-                  </td>
-                </tr>
+                  </AdminTableCell>
+                </AdminTableRow>
               ))}
             </tbody>
-          </table>
-        </Card>
-      )}
+      </AdminTable>
     </Container>
   )
 }

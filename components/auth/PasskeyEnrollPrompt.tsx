@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Fingerprint, Loader2 } from 'lucide-react'
+import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'

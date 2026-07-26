@@ -1,4 +1,18 @@
 export const AUTH = {
+  reportGate: {
+    title: 'Your site review is underway',
+    subtitle: 'Create a free account while FixFlags checks the site.',
+    valueTitle: 'Three complete checks included',
+    valueBody: 'Get every Flag, every fix prompt, and unlimited re-checks for the reports you own.',
+    emailSignup: 'Sign up with email',
+    emailSignin: 'Sign in with email',
+    backToOptions: 'Back to sign-in options',
+    preparingOptions: 'Preparing sign-in options',
+    backHome: 'Back to home',
+    exit: 'Leave this report',
+    saving: 'Saving your report',
+    savingBody: 'Your account is ready. We are attaching this review and preparing the fix prompts.',
+  },
   reportContext: {
     title: (hostname: string) => `Save ${hostname}`,
     loadingTitle: 'Save this report',

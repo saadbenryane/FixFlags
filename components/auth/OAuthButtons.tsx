@@ -15,9 +15,18 @@ interface Props {
   github?: boolean
   disabled?: boolean
   from?: string
+  mode?: 'signup' | 'signin'
 }
 
-export function OAuthButtons({ callbackURL, newUserCallbackURL, google, github, disabled, from }: Props) {
+export function OAuthButtons({
+  callbackURL,
+  newUserCallbackURL,
+  google,
+  github,
+  disabled,
+  from,
+  mode = 'signup',
+}: Props) {
   const [loading, setLoading] = useState<string | null>(null)
   const showGoogle = !!google
   const showGithub = !!github
@@ -27,7 +36,9 @@ export function OAuthButtons({ callbackURL, newUserCallbackURL, google, github, 
   }
 
   async function handleOAuth(provider: 'google' | 'github') {
-    trackEvent('signup_started', { method: provider, from })
+    if (mode === 'signup') {
+      trackEvent('signup_started', { method: provider, from })
+    }
     setLoading(provider)
     try {
       const { error } = await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL })

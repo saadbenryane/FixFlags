@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Zap } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'

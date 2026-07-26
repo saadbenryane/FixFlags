@@ -11,6 +11,7 @@ import {
   type ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
 import type { loadReportRouteState } from './load-report-route-state'
+import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
@@ -104,6 +105,8 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       toolbar
     />
   )
+  const requireAuthGate =
+    state.isAnonymous && !state.isMarketingSample && !state.shareToken
 
   return (
     <AuditShell
@@ -114,44 +117,50 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           : false
       }
     >
-      <AuditReport
-        audit={state.reportAudit}
-        auditId={state.id}
-        viewerIsPaid={state.viewerIsPaid}
-        viewerPlan={state.user?.plan ?? 'FREE'}
-        isLoggedIn={state.isLoggedIn}
-        isViewerOwner={state.isOwner}
-        variant={state.isMarketingSample ? 'sample' : 'default'}
-        showMonitoringHint={state.isLoggedIn && state.isOwner}
-        projectId={state.audit.projectId}
-        canWatchProduct={state.entitlements?.canWatchProduct ?? false}
-        canDailyWatch={(state.user?.plan ?? 'FREE') === 'TEAM'}
-        watchInterval={
-          state.audit.watchInterval === 'weekly' || state.audit.watchInterval === 'daily'
-            ? state.audit.watchInterval
-            : null
-        }
-        atAuditLimit={state.atAuditLimit}
-        capturePresentation={capturePresentation}
-        showPrescription={state.showPrescription}
-        showDeterministicFixes={state.showDeterministicFixes}
-        aiReviewPending={state.aiReviewPending}
-        triageDegraded={state.triageDegraded}
-        prescriptionFailed={state.prescriptionFailed}
-        failureCode={state.audit.failureCode ?? null}
-        pages={journeyPages}
-        journeyReviews={journeyReviews}
-        recheckDiff={state.recheckDiff}
-        sampleFixFlag={state.sampleFixFlag}
-        compareHref={
-          state.canAccessCompareView && state.audit.parentId
-            ? `/compare/${state.id}`
-            : null
-        }
-        toolbarActions={toolbarActions}
-      />
-      <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
-      <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
+      <div
+        className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
+        aria-hidden={requireAuthGate || undefined}
+      >
+        <AuditReport
+          audit={state.reportAudit}
+          auditId={state.id}
+          viewerIsPaid={state.viewerIsPaid}
+          viewerPlan={state.user?.plan ?? 'FREE'}
+          isLoggedIn={state.isLoggedIn}
+          isViewerOwner={state.isOwner}
+          variant={state.isMarketingSample ? 'sample' : 'default'}
+          showMonitoringHint={state.isLoggedIn && state.isOwner}
+          projectId={state.audit.projectId}
+          canWatchProduct={state.entitlements?.canWatchProduct ?? false}
+          canDailyWatch={(state.user?.plan ?? 'FREE') === 'TEAM'}
+          watchInterval={
+            state.audit.watchInterval === 'weekly' || state.audit.watchInterval === 'daily'
+              ? state.audit.watchInterval
+              : null
+          }
+          atAuditLimit={state.atAuditLimit}
+          capturePresentation={capturePresentation}
+          showPrescription={state.showPrescription}
+          showDeterministicFixes={state.showDeterministicFixes}
+          aiReviewPending={state.aiReviewPending}
+          triageDegraded={state.triageDegraded}
+          prescriptionFailed={state.prescriptionFailed}
+          failureCode={state.audit.failureCode ?? null}
+          pages={journeyPages}
+          journeyReviews={journeyReviews}
+          recheckDiff={state.recheckDiff}
+          sampleFixFlag={state.sampleFixFlag}
+          compareHref={
+            state.canAccessCompareView && state.audit.parentId
+              ? `/compare/${state.id}`
+              : null
+          }
+          toolbarActions={toolbarActions}
+        />
+        <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
+        <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
+      </div>
+      <ReportAuthGate auditId={state.id} required={Boolean(requireAuthGate)} />
     </AuditShell>
   )
 }

@@ -76,7 +76,20 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     return <AuditShell session={null}><ReportAccessDeniedStatus /></AuditShell>
   }
   if (state.kind === 'progressive') {
-    return <AuditPageClient id={state.id} initialAudit={state.audit} pollStatus session={state.session} />
+    const requireAuthGate =
+      !state.session &&
+      !shareToken &&
+      state.audit.userId === null &&
+      state.audit.isPublic !== true
+    return (
+      <AuditPageClient
+        id={state.id}
+        initialAudit={state.audit}
+        pollStatus
+        session={state.session}
+        requireAuthGate={requireAuthGate}
+      />
+    )
   }
 
   return <CompletedReportView state={state} />

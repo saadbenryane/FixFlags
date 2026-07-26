@@ -70,8 +70,11 @@ export async function startScanWithHandoff(
         auditId: reportId,
         url: options.url,
         queue,
-      })
-      window.location.assign(`/report/${reportId}`)
+      }, { notify: false })
+      // Foreground checks move directly into the report. Suppressing the
+      // storage event prevents the global background-check banner from
+      // flashing on the page we are leaving.
+      window.location.replace(`/report/${reportId}`)
       return { ok: true, reportId }
     }
 

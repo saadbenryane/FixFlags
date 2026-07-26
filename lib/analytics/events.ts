@@ -123,6 +123,8 @@ type EventParams = {
   report_signup_cta_clicked: {
     from: 'value_strip' | 'sample_fix' | 'limit_gate'
   }
+  report_auth_gate_viewed: { audit_id?: string }
+  report_auth_gate_completed: { audit_id?: string }
   audits_claimed: { claimed_count: number }
   product_contract_saved: { audit_id?: string }
   remember_shown: { audit_id?: string; learning_count?: number }

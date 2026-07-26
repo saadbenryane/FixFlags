@@ -63,6 +63,36 @@ function pollIntervalMs(latest: AuditStatusPayload | undefined): number {
   return 3500
 }
 
+function progressivePayloadFingerprint(value: AuditStatusPayload): string {
+  return JSON.stringify({
+    status: value.status,
+    progress: value.progress,
+    score: value.score,
+    pageType: value.pageType,
+    verdict: value.verdict,
+    flagCount: value.flagCount,
+    screenshotCapture: value.screenshotCapture,
+    screenshots: value.screenshots?.map((shot) => [shot.device, shot.url]),
+    rubrics: value.rubrics?.map((rubric) => [
+      rubric.name,
+      rubric.grade,
+      rubric.score,
+      rubric.status,
+    ]),
+    partialFlags: value.partialFlags?.map((flag) => [
+      flag.id,
+      flag.severity,
+      flag.problem,
+      flag.rubric,
+      flag.checkId,
+      flag.source,
+    ]),
+    actionTimeline: value.actionTimeline,
+    productContract: value.productContract,
+    technologyProfile: value.technologyProfile,
+  })
+}
+
 /**
  * Poll lightweight `/status` until terminal. Full report HTML comes from
  * `router.refresh()` in AuditPageClient — avoid a duplicate `/api/reports/[id]` fetch.
@@ -81,17 +111,7 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
       compare: (a: AuditStatusPayload | undefined, b: AuditStatusPayload | undefined) => {
         if (a === b) return true
         if (!a || !b) return false
-        return (
-          a.status === b.status &&
-          a.progress === b.progress &&
-          a.score === b.score &&
-          a.pageType === b.pageType &&
-          a.verdict === b.verdict &&
-          a.flagCount === b.flagCount &&
-          a.screenshotCapture?.desktop === b.screenshotCapture?.desktop &&
-          a.screenshotCapture?.mobile === b.screenshotCapture?.mobile &&
-          a.technologyProfile?.status === b.technologyProfile?.status
-        )
+        return progressivePayloadFingerprint(a) === progressivePayloadFingerprint(b)
       },
     }
   )

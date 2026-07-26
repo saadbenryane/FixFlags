@@ -13,11 +13,14 @@ export interface ActiveAuditSnapshot {
   queue?: QueueStatus
 }
 
-export function setActiveAudit(snapshot: ActiveAuditSnapshot): void {
+export function setActiveAudit(
+  snapshot: ActiveAuditSnapshot,
+  options?: { notify?: boolean }
+): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
   sessionStorage.removeItem(STORAGE_KEY)
-  notifyActiveAuditChange()
+  if (options?.notify !== false) notifyActiveAuditChange()
 }
 
 export function getActiveAudit(): ActiveAuditSnapshot | null {

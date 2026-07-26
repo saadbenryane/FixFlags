@@ -26,6 +26,8 @@ describe('Button', () => {
     const link = screen.getByRole('link', { name: 'Opening dashboard' })
     expect(link).toHaveAttribute('href', '/dashboard')
     expect(link).toHaveAttribute('aria-busy', 'true')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(link).toHaveAttribute('tabindex', '-1')
     expect(link.querySelector('svg')).toHaveClass('animate-spin')
   })
 

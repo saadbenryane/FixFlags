@@ -58,17 +58,32 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     loading = false,
     loadingLabel,
+    onClick,
+    tabIndex,
     ...props
   }, ref) => {
     const Comp = asChild ? Slot : "button"
     const content = loading && loadingLabel ? loadingLabel : children
+    const isDisabled = Boolean(disabled || loading)
+
+    function handleClick(event: React.MouseEvent<HTMLElement>) {
+      if (isDisabled) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+      onClick?.(event as React.MouseEvent<HTMLButtonElement>)
+    }
 
     return (
       <Comp
         className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
-        disabled={disabled || loading}
+        disabled={asChild ? undefined : isDisabled}
+        aria-disabled={asChild && isDisabled ? true : undefined}
         aria-busy={loading || undefined}
+        tabIndex={asChild && isDisabled ? -1 : tabIndex}
+        onClick={handleClick}
         {...props}
       >
         {loading && <Loader2 className="animate-spin" aria-hidden />}
