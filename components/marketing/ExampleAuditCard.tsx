@@ -44,7 +44,7 @@ export function ExampleAuditCard({ audit }: Props) {
   )
 
   return (
-    <Card id={audit.id} className="scroll-mt-[var(--header-offset)] border-0 shadow-card">
+    <Card id={audit.id} variant="subtle" className="scroll-mt-[var(--header-offset)]">
       <CardHeader className="pb-0">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-2">

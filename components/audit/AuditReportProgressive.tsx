@@ -18,7 +18,7 @@ import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import { resolveScreenshotUx } from '@/lib/audit/screenshot-types'
+import { resolveScreenshotPresentation } from '@/lib/audit/screenshot-types'
 import { getProgressPercent, getStagePresentation } from '@/lib/audit/progress-ui'
 import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -29,6 +29,7 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
+import { ReportWorkspaceSummary } from '@/components/report/ReportWorkspaceSummary'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -174,9 +175,11 @@ export function AuditReportProgressive({
   })
 
   const userVerdict = displayVerdict(verdict ?? null)
-  const captureUx = resolveScreenshotUx(screenshots, screenshotCapture ?? null)
-  const showCaptureUx =
-    Boolean(screenshotCapture) || screenshots.length > 0 || status === 'COMPLETED'
+  const capturePresentation = resolveScreenshotPresentation(
+    status,
+    screenshots,
+    screenshotCapture ?? null
+  )
 
   const explorerModel = useMemo(
     () =>
@@ -195,6 +198,9 @@ export function AuditReportProgressive({
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
   const showSticky = !isFailed
+  const highImpactCount = partialFlags.filter(
+    (flag) => flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT'
+  ).length
 
   return (
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
@@ -205,8 +211,15 @@ export function AuditReportProgressive({
         screenshots={screenshots}
         scanning={isLoading}
         scanningLabel={isLoading ? stage.scanningLabel : null}
-        screenshotLimited={showCaptureUx && captureUx.limited}
-        screenshotPartial={showCaptureUx && captureUx.partial}
+        capturePresentation={capturePresentation}
+      />
+
+      <ReportWorkspaceSummary
+        score={score}
+        highImpactCount={highImpactCount}
+        rubricScores={rubricRowsForBar}
+        loading={isLoading}
+        progress={displayProgress}
       />
 
       <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
@@ -257,7 +270,7 @@ export function AuditReportProgressive({
         </Card>
       ) : technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
-          <MadeWithProfile profile={technologyProfile} />
+          <MadeWithProfile profile={technologyProfile} compact />
         </div>
       ) : null}
 

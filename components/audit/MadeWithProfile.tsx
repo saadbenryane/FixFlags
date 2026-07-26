@@ -59,9 +59,11 @@ function stateCopy(profile: TechnologyProfile): string | null {
 export function MadeWithProfile({
   profile,
   className,
+  compact = false,
 }: {
   profile: TechnologyProfile
   className?: string
+  compact?: boolean
 }) {
   const groups = groupTechnologies(profile.technologies)
   const summary = profile.technologies.slice(0, 4)
@@ -73,11 +75,11 @@ export function MadeWithProfile({
       aria-labelledby="made-with-title"
     >
       <Card className="overflow-hidden p-0">
-        <div className="flex flex-col gap-4 p-5 sm:p-6">
+        <div className={cn('flex flex-col', compact ? 'gap-3 p-4' : 'gap-4 p-5 sm:p-6')}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="section-label mb-2">{MADE_WITH_COPY.sectionLabel}</p>
-              <SectionTitle id="made-with-title">
+              <SectionTitle id="made-with-title" className={cn(compact && 'text-base')}>
                 {MADE_WITH_COPY.title}
               </SectionTitle>
             </div>
@@ -113,7 +115,7 @@ export function MadeWithProfile({
             </div>
           ) : null}
 
-          {profile.insight ? (
+          {profile.insight && !compact ? (
             <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground text-pretty">
               {profile.insight}
             </p>

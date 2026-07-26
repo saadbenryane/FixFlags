@@ -18,7 +18,11 @@ import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCar
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { displayVerdict } from '@/lib/audit/verdict'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
-import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import type {
+  AuditScreenshot,
+  CapturePresentation,
+  ScreenshotCaptureStatus,
+} from '@/lib/audit/screenshot-types'
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import { ReportFeedback } from '@/components/report/ReportFeedback'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
@@ -49,6 +53,7 @@ import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
+import { ReportWorkspaceSummary } from '@/components/report/ReportWorkspaceSummary'
 
 interface RubricRow {
   id: string
@@ -107,8 +112,7 @@ interface AuditReportProps {
   canDailyWatch?: boolean
   watchInterval?: 'weekly' | 'daily' | null
   atAuditLimit?: boolean
-  screenshotLimited?: boolean
-  screenshotPartial?: boolean
+  capturePresentation?: CapturePresentation
   showPrescription?: boolean
   showDeterministicFixes?: boolean
   aiReviewPending?: boolean
@@ -138,8 +142,7 @@ export function AuditReport({
   canDailyWatch = false,
   watchInterval = null,
   atAuditLimit = false,
-  screenshotLimited = false,
-  screenshotPartial = false,
+  capturePresentation = { state: 'complete' },
   showPrescription = true,
   showDeterministicFixes = true,
   aiReviewPending = false,
@@ -197,6 +200,9 @@ export function AuditReport({
         })
       : null
   const unresolvedFlagCount = explorerModel?.flagCount ?? 0
+  const highImpactCount = audit.flags.filter(
+    (flag) => flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT'
+  ).length
 
   const isPartialReport = audit.reportCompleteness === 'PARTIAL'
   const showStatusCallouts =
@@ -214,17 +220,20 @@ export function AuditReport({
         pageType={audit.pageType}
         url={audit.url}
         screenshots={audit.screenshots}
-        screenshotLimited={screenshotLimited}
-        screenshotPartial={screenshotPartial}
+        capturePresentation={capturePresentation}
         pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
         startedAt={audit.startedAt}
         completedAt={audit.completedAt}
+        actions={toolbarActions ?? actions}
       />
 
       {!isSample && (
-        <div className="space-y-2">
-          <RubricBar rubrics={audit.rubrics} rubricRows={audit.rubricRows} />
-        </div>
+        <ReportWorkspaceSummary
+          score={audit.score}
+          highImpactCount={highImpactCount}
+          rubricScores={audit.rubricRows}
+          recheckDiff={recheckDiff}
+        />
       )}
 
       {!isSample && (
@@ -242,7 +251,7 @@ export function AuditReport({
             hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
             score={audit.score}
-            actions={toolbarActions ?? actions}
+            actions={undefined}
           />
 
           {userVerdict ? (
@@ -306,7 +315,7 @@ export function AuditReport({
 
       {!isSample && audit.technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
-          <MadeWithProfile profile={audit.technologyProfile} />
+          <MadeWithProfile profile={audit.technologyProfile} compact />
         </div>
       ) : null}
 

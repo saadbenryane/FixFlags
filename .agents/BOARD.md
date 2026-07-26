@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | blocked | codex-root | main | Local current-product implementation, executable journey proof, design consistency, topology smoke, and full verification are complete. Release acceptance remains open. | app, components, lib, prisma, scripts, e2e, docs, package manifests, .agents | Operator-provided release URL, disposable DB consent, R2, Stripe, email, GitHub, WebAuthn, and release-user sandbox fixtures | 2026-07-26 |
+| current-product-completion | in_progress | codex-root | main | Truthful scan states, one continuous loading experience, and a unified dashboard/report workspace; retain completed release work and record external release-fixture blockers separately. | app, components, lib, e2e, docs, .agents | None for local implementation; deployed release proof still requires operator-provided fixtures | 2026-07-26 |
 
 ---
 

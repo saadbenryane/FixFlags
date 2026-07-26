@@ -14,7 +14,6 @@ import {
   startScanWithHandoff,
   trackStartedAudit,
 } from '@/lib/audit/start-scan-handoff'
-import { useScanHandoffState } from '@/lib/audit/scan-handoff-store'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -43,7 +42,6 @@ export function AuditInput({
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
   const { user } = useMe()
-  const handoff = useScanHandoffState()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
@@ -113,7 +111,6 @@ export function AuditInput({
         gclid: params.get('gclid') ?? undefined,
         fbclid: params.get('fbclid') ?? undefined,
       },
-      limitFrom: resolvedPlacement,
       onStarted: (data) => {
         const isLoggedIn =
           typeof data.isLoggedIn === 'boolean' ? data.isLoggedIn : Boolean(user)
@@ -126,7 +123,10 @@ export function AuditInput({
         })
       },
     })
-    if (!result.ok) setLoading(false)
+    if (!result.ok) {
+      setUrlError(result.message)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -164,7 +164,7 @@ export function AuditInput({
   }
 
   const describedBy = urlError ? errorId : undefined
-  const busy = loading || Boolean(handoff.url)
+  const busy = loading
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'

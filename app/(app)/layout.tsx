@@ -1,12 +1,10 @@
-import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
 import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
-import { prisma } from '@/lib/db'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { SiteShell } from '@/components/layout/site-shell'
 import { BRAND } from '@/lib/marketing/copy'
+import { getAppViewer } from '@/lib/auth/app-viewer'
 
 export const metadata: Metadata = {
   title: BRAND.name,
@@ -16,19 +14,11 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session?.user) {
+  const viewer = await getAppViewer()
+  if (!viewer) {
     redirect(signInUrl(await getRequestedPath('/dashboard')))
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true, id: true },
-  })
-  if (!user) {
-    redirect(signInUrl(await getRequestedPath('/dashboard')))
-  }
-  const showAdmin = isAdminUser(user)
+  const showAdmin = isAdminUser(viewer.user)
 
   return (
     <SiteShell

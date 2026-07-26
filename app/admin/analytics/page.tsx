@@ -151,7 +151,7 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Anonymous wedge (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser starts</CardTitle>
             </CardHeader>
@@ -159,7 +159,7 @@ export default async function AdminAnalyticsPage() {
               <StatValue>{anonAuditsMonth.toLocaleString()}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser completes</CardTitle>
             </CardHeader>
@@ -168,7 +168,7 @@ export default async function AdminAnalyticsPage() {
               <span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Signed-in audit starts</CardTitle>
             </CardHeader>
@@ -176,7 +176,7 @@ export default async function AdminAnalyticsPage() {
               <StatValue>{loggedInAuditsMonth.toLocaleString()}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Unlinked leads (domains)</CardTitle>
             </CardHeader>
@@ -207,7 +207,7 @@ export default async function AdminAnalyticsPage() {
             { label: 'Accounts with a completed audit', value: usersWithCompletedAudits },
             { label: 'Paid accounts', value: paidUsers },
           ].map((item) => (
-            <Card key={item.label} className="border-0 shadow-card">
+            <Card key={item.label} variant="subtle">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-muted-foreground">{item.label}</CardTitle>
               </CardHeader>
@@ -222,7 +222,7 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Revenue (current)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">MRR</CardTitle>
             </CardHeader>
@@ -230,7 +230,7 @@ export default async function AdminAnalyticsPage() {
               <StatValue>${mrr.toLocaleString()}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Active paying customers</CardTitle>
             </CardHeader>
@@ -238,7 +238,7 @@ export default async function AdminAnalyticsPage() {
               <StatValue>{paidUserCount.toLocaleString()}</StatValue>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">New + expansion MRR (30d)</CardTitle>
             </CardHeader>
@@ -247,7 +247,7 @@ export default async function AdminAnalyticsPage() {
               <span className="text-xs text-muted-foreground">${newMrr} new · ${expansionMrr} expansion</span>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Churn (30d)</CardTitle>
             </CardHeader>
@@ -297,7 +297,7 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Product (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Avg audit duration</CardTitle>
             </CardHeader>
@@ -308,7 +308,7 @@ export default async function AdminAnalyticsPage() {
               <span className="text-xs text-muted-foreground">Target: under 30s</span>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs text-muted-foreground font-medium">Completed audits</CardTitle>
             </CardHeader>

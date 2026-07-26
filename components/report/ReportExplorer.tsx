@@ -7,7 +7,6 @@ import {
   FlagDetailPane,
   RubricTabs,
 } from '@/components/report/ReportExplorerDetail'
-import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { FilterPill } from '@/components/ui/filter-pill'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -230,12 +229,6 @@ export function ReportExplorer({
 
   const scoreHeader = (
     <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
-      <ScoreRingGauge
-        score={model.score}
-        size="sm"
-        loading={loading && model.score == null}
-        progress={progress}
-      />
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         <RubricTabs
           rubricFilter={effectiveRubricFilter}

@@ -13,21 +13,23 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useMe } from '@/hooks/useMe'
 import { getMcpEndpoint } from '@/lib/mcp/docs-content'
 import { SITE_URL } from '@/lib/marketing/copy'
 
 interface Props {
   mcpAudits?: number
   webAudits?: number
+  canUseMcp: boolean
+  primaryTool?: string
 }
 
-export function McpDashboardCard({ mcpAudits = 0, webAudits = 0 }: Props) {
-  const { user } = useMe()
+export function McpDashboardCard({
+  mcpAudits = 0,
+  webAudits = 0,
+  canUseMcp,
+  primaryTool,
+}: Props) {
   const [copied, setCopied] = useState(false)
-  const canUseMcp = user?.entitlements?.canUseMcp ?? false
-
-  const primaryTool = user?.preferredTools?.[0]
   const configLines = primaryTool
     ? `"mcpServers": { "fixflags": { "url": "${getMcpEndpoint(SITE_URL)}", "headers": { "x-api-key": "ff_live_..." } } }`
     : null

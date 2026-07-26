@@ -90,10 +90,11 @@ export async function POST(req: NextRequest) {
       hostLimit.exceeded ? hostLimit.retryAfterSeconds : 0
     )
 
-    const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } = computeEnqueueDelay(
+    const queueInfo = computeEnqueueDelay(
       rateLimitRetryAfter,
       workerEstimate
     )
+    const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } = queueInfo
 
     const referer = req.headers.get('referer')
     const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
@@ -153,9 +154,9 @@ export async function POST(req: NextRequest) {
         estimatedWaitSeconds,
         queuePosition,
         scheduledStartAt,
-        queued: delayMs > 0 || workerEstimate.waitingJobs > 0,
-        queueReason:
-          delayMs > 0 ? ('rate_limit' as const) : workerEstimate.waitingJobs > 0 ? ('backlog' as const) : undefined,
+        queued: queueInfo.queued,
+        queueReason: queueInfo.queueReason,
+        queue: queueInfo.queue,
       },
       {
         status: 201,

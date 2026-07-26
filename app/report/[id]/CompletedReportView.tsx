@@ -6,7 +6,7 @@ import { AuditShell } from '@/components/layout/audit-shell'
 import { isAdminUser } from '@/lib/auth/permissions'
 import {
   normalizeInternalScreenshotUrl,
-  resolveScreenshotUx,
+  resolveScreenshotPresentation,
   type AuditScreenshot,
   type ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
@@ -62,7 +62,11 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
   }))
   const screenshots = parseScreenshots(state.audit.screenshots)
   const captureStatus = parseCaptureStatus(state.audit)
-  const { limited, partial } = resolveScreenshotUx(screenshots, captureStatus)
+  const capturePresentation = resolveScreenshotPresentation(
+    state.audit.status,
+    screenshots,
+    captureStatus
+  )
   const compareAuditId = state.canAccessCompareView
     ? state.audit.parentId
       ? state.id
@@ -128,8 +132,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
             : null
         }
         atAuditLimit={state.atAuditLimit}
-        screenshotLimited={limited}
-        screenshotPartial={partial}
+        capturePresentation={capturePresentation}
         showPrescription={state.showPrescription}
         showDeterministicFixes={state.showDeterministicFixes}
         aiReviewPending={state.aiReviewPending}

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Callout } from '@/components/ui/callout'
@@ -26,44 +26,18 @@ interface ProjectRow {
 
 interface Props {
   plan: Plan
+  initialProjects: ProjectRow[]
 }
 
-export function ProjectsPanel({ plan }: Props) {
+export function ProjectsPanel({ plan, initialProjects }: Props) {
   const limit = projectLimitForPlan(plan)
   const { confirm, confirmDialog } = useConfirm()
-  const [projects, setProjects] = useState<ProjectRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [projects, setProjects] = useState<ProjectRow[]>(initialProjects)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [loadError, setLoadError] = useState('')
   const [formError, setFormError] = useState('')
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
-
-  async function loadProjects() {
-    setLoading(true)
-    setLoadError('')
-    try {
-      const res = await fetch('/api/projects')
-      if (!res.ok) {
-        const error = await parseApiErrorResponse(res)
-        throw new Error(error.message)
-      }
-      setProjects(await res.json())
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Could not load projects')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (limit > 0) {
-      loadProjects()
-    } else {
-      setLoading(false)
-    }
-  }, [limit])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -80,9 +54,13 @@ export function ProjectsPanel({ plan }: Props) {
         setFormError(error.message)
         return
       }
+      const project = (await res.json()) as { id: string; name: string; url: string }
+      setProjects((current) => [
+        { id: project.id, name: project.name, url: project.url, auditCount: 0 },
+        ...current.filter((item) => item.id !== project.id),
+      ])
       setName('')
       setUrl('')
-      await loadProjects()
       toast.success('Project created')
     } catch {
       setFormError('Could not create the project. Check your connection and try again.')
@@ -107,7 +85,7 @@ export function ProjectsPanel({ plan }: Props) {
         toast.error(error.message)
         return
       }
-      await loadProjects()
+      setProjects((current) => current.filter((item) => item.id !== project.id))
       toast.success('Project deleted')
     } catch {
       toast.error('Could not delete the project. Try again.')
@@ -149,19 +127,7 @@ export function ProjectsPanel({ plan }: Props) {
         </div>
       </div>
 
-      {loading ? (
-        <div role="status" className="flex min-h-24 items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading projects…
-        </div>
-      ) : loadError ? (
-        <Callout variant="danger" title="Could not load projects">
-          <p>{loadError}</p>
-          <Button type="button" size="sm" variant="outline" className="mt-3" onClick={loadProjects}>
-            Try again
-          </Button>
-        </Callout>
-      ) : projects.length === 0 ? (
+      {projects.length === 0 ? (
         <EmptyState
           title="No projects yet"
           description="Create one to group audits for the same site."

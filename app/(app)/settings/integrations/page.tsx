@@ -212,7 +212,7 @@ function IntegrationsPageContent() {
       />
 
       {!canScan && (
-        <Card className="border-0 shadow-card bg-brand/5">
+        <Card variant="subtle" className="bg-brand/5">
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">Codebase scanning is an Agency plan feature.</p>
             <p className="text-sm text-muted-foreground">
@@ -227,7 +227,7 @@ function IntegrationsPageContent() {
       )}
 
       {canScan && !connected && (
-        <Card className="border-0 shadow-card">
+        <Card variant="subtle">
           <CardHeader>
             <CardTitle className="text-base">Connect GitHub</CardTitle>
             <CardDescription>
@@ -249,7 +249,7 @@ function IntegrationsPageContent() {
 
       {canScan && connected && (
         <>
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">GitHub connected</CardTitle>
@@ -268,7 +268,7 @@ function IntegrationsPageContent() {
             </CardHeader>
           </Card>
 
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader>
               <CardTitle className="text-base">Allow-listed repositories</CardTitle>
               <CardDescription>
@@ -307,7 +307,7 @@ function IntegrationsPageContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-card">
+          <Card variant="subtle">
             <CardHeader>
               <CardTitle className="text-base">Scan a repository</CardTitle>
               <CardDescription>
@@ -347,7 +347,7 @@ function IntegrationsPageContent() {
           </Card>
 
           {recentScans.length > 0 && (
-            <Card className="border-0 shadow-card">
+            <Card variant="subtle">
               <CardHeader>
                 <CardTitle className="text-base">Recent scans</CardTitle>
                 <CardDescription>Your latest codebase scans.</CardDescription>

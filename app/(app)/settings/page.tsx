@@ -50,7 +50,7 @@ export default async function SettingsPage() {
         linkedProviders={linkedProviders}
       />
 
-      <Card className="border-0 shadow-card">
+      <Card variant="subtle">
         <CardHeader>
           <CardTitle className="text-base">Account</CardTitle>
           <CardDescription>Profile, identity, password, and account lifecycle</CardDescription>
@@ -68,7 +68,7 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-card">
+      <Card variant="subtle">
         <CardHeader>
           <CardTitle className="text-base">{AUTH.security.title}</CardTitle>
           <CardDescription>{AUTH.security.description}</CardDescription>

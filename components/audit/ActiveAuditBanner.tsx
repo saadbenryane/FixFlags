@@ -6,21 +6,13 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Container } from '@/components/ui/container'
 import { useActiveAudit } from '@/hooks/useActiveAudit'
-import { auditHostname, clearActiveAudit, isScanHandoffOpen } from '@/lib/audit/active-audit'
+import { auditHostname, clearActiveAudit } from '@/lib/audit/active-audit'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 
 export function ActiveAuditBanner() {
   const { active } = useActiveAudit()
   const pathname = usePathname()
   const [stillRunning, setStillRunning] = useState(true)
-  const [handoffOpen, setHandoffOpen] = useState(false)
-
-  useEffect(() => {
-    const sync = () => setHandoffOpen(isScanHandoffOpen())
-    sync()
-    window.addEventListener('ff:scan-handoff', sync)
-    return () => window.removeEventListener('ff:scan-handoff', sync)
-  }, [])
 
   useEffect(() => {
     if (!active) return
@@ -54,7 +46,7 @@ export function ActiveAuditBanner() {
     }
   }, [active, pathname])
 
-  if (!active || !stillRunning || handoffOpen) return null
+  if (!active || !stillRunning) return null
 
   const hostname = auditHostname(active.url)
 

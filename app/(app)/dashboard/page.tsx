@@ -1,13 +1,10 @@
 import { Suspense } from 'react'
-import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
 import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
-import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
@@ -23,6 +20,9 @@ import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnl
 import { planLabel } from '@/lib/billing/plans'
 import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isAtCheckLimit } from '@/lib/audit/usage'
+import { getAppViewer } from '@/lib/auth/app-viewer'
+import { getEntitlements } from '@/lib/auth/entitlements'
+import { projectLimitForPlan } from '@/lib/billing/plans'
 
 type DashboardSearchParams = {
   url?: string | string[]
@@ -35,86 +35,104 @@ export default async function DashboardPage({
 }) {
   const params = searchParams ? await searchParams : {}
   const initialAuditUrl = typeof params.url === 'string' ? params.url : ''
-  const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) redirect('/sign-in')
-  const userId = session.user.id
-
-  const user = await prisma.user.findUnique({ where: { id: userId } })
+  const viewer = await getAppViewer()
+  if (!viewer) redirect('/sign-in')
+  const { user } = viewer
+  const userId = user.id
 
   const PAGE_SIZE = 20
-  const auditBatch = await prisma.audit.findMany({
-    where: { userId, parentId: null },
-    include: {
-      rubrics: {
-        select: {
-          name: true,
-          grade: true,
-          score: true,
-          flags: { select: { severity: true } },
+  const projectLimit = projectLimitForPlan(user.plan)
+  const [auditBatch, pending, auditCounts, projects] = await Promise.all([
+    prisma.audit.findMany({
+      where: { userId, parentId: null },
+      select: {
+        id: true,
+        url: true,
+        status: true,
+        score: true,
+        createdAt: true,
+        rubrics: {
+          select: {
+            name: true,
+            grade: true,
+            score: true,
+            flags: { select: { severity: true } },
+          },
+        },
+        monitoringAudits: {
+          where: { status: 'COMPLETED' },
+          select: { id: true, score: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
         },
       },
-      monitoringAudits: {
-        where: { status: 'COMPLETED' },
-        select: { id: true, score: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: PAGE_SIZE + 1,
-  })
+      orderBy: { createdAt: 'desc' },
+      take: PAGE_SIZE + 1,
+    }),
+    getPendingCheckCount(userId),
+    prisma.audit.groupBy({
+      by: ['source'],
+      where: { userId },
+      _count: true,
+    }),
+    projectLimit > 0
+      ? prisma.project.findMany({
+          where: { userId, isManaged: true },
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            _count: { select: { audits: true } },
+          },
+        })
+      : Promise.resolve([]),
+  ])
   const initialHasMore = auditBatch.length > PAGE_SIZE
   const audits = initialHasMore ? auditBatch.slice(0, PAGE_SIZE) : auditBatch
 
   const completedAudits = audits.filter((audit) => audit.status === 'COMPLETED')
 
-  const used = user?.auditsUsed ?? 0
-  const isUnlimited = isDevUnlimitedScans() || (user ? isUnlimitedScanLimit(getEffectiveScanLimit(user)) : false)
-  const effectiveLimit = isUnlimited ? null : (user ? getEffectiveScanLimit(user) : 3)
-  const pending = user ? await getPendingCheckCount(user.id) : 0
+  const used = user.auditsUsed
+  const isUnlimited = isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
+  const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
   // A revoked subscription (payment failure, cancellation) leaves the user effectively on the
   // free tier even though `plan` hasn't been resynced yet - treat them the same as FREE here so
   // the upgrade nudges aren't hidden from someone who actually needs to see them.
   const isEffectivelyFree =
-    user?.plan === 'FREE' || (user ? hasRevokedSubscriptionStatus(user.subscriptionStatus) : true)
+    user.plan === 'FREE' || hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const atAuditLimit =
     isEffectivelyFree &&
     !isUnlimited &&
     effectiveLimit !== null &&
     isAtCheckLimit(used, pending, effectiveLimit)
 
-  const canCompare = user
-    ? canAccessPaidFeatures({ id: userId, role: user.role, plan: user.plan, subscriptionStatus: user.subscriptionStatus })
-    : false
+  const entitlements = getEntitlements(user)
+  const canCompare = canAccessPaidFeatures(user)
 
   const totalCritical = completedAudits.reduce(
     (sum, a) => sum + a.rubrics.reduce((s, r) => s + r.flags.filter((f) => f.severity === 'CRITICAL').length, 0),
     0
   )
-  const scores = completedAudits.map((a) => a.score).filter((s): s is number => s !== null)
-  const bestScore = scores.length > 0 ? Math.max(...scores) : null
-  const worstScore = scores.length > 0 ? Math.min(...scores) : null
-
-  const auditCounts = await prisma.audit.groupBy({
-    by: ['source'],
-    where: { userId },
-    _count: true,
-  })
   const mcpAudits = auditCounts.find((a) => a.source === 'MCP')?._count ?? 0
   const webAudits = auditCounts.find((a) => a.source !== 'MCP')?._count ?? 0
 
   return (
-    <Container variant="report" className="py-6 space-y-6">
-      <Suspense fallback={<div className="h-10 w-full animate-pulse rounded-card bg-muted/40" aria-label="Loading account status" />}>
+    <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-7">
+      <Suspense fallback={null}>
         <DashboardCheckoutToast />
       </Suspense>
-      <ClaimAnonymousAudits />
 
-      <div className="flex items-center justify-between">
-        <PageHeader title="Dashboard" />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <PageHeader title="Dashboard" />
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review what changed, copy the right fix, then Re-check.
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           {!isEffectivelyFree && (
             <Badge variant="outline" className="text-success border-success/30 bg-success/5 text-xs gap-1.5">
-              {planLabel(user?.plan ?? 'FREE')}
+              {planLabel(user.plan)}
             </Badge>
           )}
           {isEffectivelyFree && !isUnlimited && <UpgradeButton context="free_default" />}
@@ -122,7 +140,7 @@ export default async function DashboardPage({
       </div>
 
       {/* Main action first: the dashboard starts with the product loop. */}
-      <Surface variant="nested" className="sm:p-6">
+      <Surface variant="nested" className="shadow-card sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <SectionTitle>Review a URL</SectionTitle>
           {completedAudits.length > 0 && (
@@ -151,10 +169,15 @@ export default async function DashboardPage({
           used={used}
           limit={isUnlimited ? null : effectiveLimit}
           pending={pending}
-          plan={user?.plan ?? 'FREE'}
+        plan={user.plan}
         />
         {audits.length > 0 ? (
-          <McpDashboardCard mcpAudits={mcpAudits} webAudits={webAudits} />
+          <McpDashboardCard
+            mcpAudits={mcpAudits}
+            webAudits={webAudits}
+            canUseMcp={entitlements.canUseMcp}
+            primaryTool={user.preferredTools[0]}
+          />
         ) : null}
       </div>
 
@@ -166,10 +189,16 @@ export default async function DashboardPage({
             audits={audits}
             initialHasMore={initialHasMore}
             canCompare={canCompare}
-            bestScore={bestScore}
-            worstScore={worstScore}
           />
-          <ProjectsPanel plan={user?.plan ?? 'FREE'} />
+          <ProjectsPanel
+            plan={user.plan}
+            initialProjects={projects.map((project) => ({
+              id: project.id,
+              name: project.name,
+              url: project.url,
+              auditCount: project._count.audits,
+            }))}
+          />
         </div>
       )}
     </Container>

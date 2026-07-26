@@ -4,32 +4,57 @@ import {
   deriveScreenshotCaptureStatus,
   normalizeInternalScreenshotUrl,
   parseScreenshotCaptureStatus,
-  resolveScreenshotUx,
+  resolveScreenshotPresentation,
 } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
-describe('resolveScreenshotUx', () => {
-  it('marks limited when desktop screenshot missing', () => {
-    const ux = resolveScreenshotUx([], { desktop: 'failed', mobile: 'failed' })
-    assert.equal(ux.limited, true)
-    assert.equal(ux.partial, false)
+describe('resolveScreenshotPresentation', () => {
+  it('keeps missing captures neutral while capture is pending', () => {
+    assert.deepEqual(
+      resolveScreenshotPresentation('CAPTURING', [], {
+        desktop: 'pending',
+        mobile: 'pending',
+      }),
+      { state: 'pending' }
+    )
   })
 
-  it('marks partial when desktop ok but mobile failed', () => {
-    const ux = resolveScreenshotUx(
-      [{ device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 }],
-      { desktop: 'ok', mobile: 'failed' }
+  it('marks unavailable only after capture has failed', () => {
+    assert.deepEqual(
+      resolveScreenshotPresentation('CHECKING', [], {
+        desktop: 'failed',
+        mobile: 'failed',
+      }),
+      {
+        state: 'unavailable',
+        failureCode: 'SCREENSHOT_CAPTURE_FAILED',
+      }
     )
-    assert.equal(ux.limited, false)
-    assert.equal(ux.partial, true)
   })
 
-  it('does not mark partial when mobile still pending', () => {
-    const ux = resolveScreenshotUx(
-      [{ device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 }],
-      { desktop: 'ok', mobile: 'pending' }
+  it('marks partial only after mobile explicitly failed', () => {
+    assert.deepEqual(
+      resolveScreenshotPresentation(
+        'CHECKING',
+        [{ device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 }],
+        { desktop: 'ok', mobile: 'failed' }
+      ),
+      { state: 'partial', failedDevices: ['MOBILE'] }
     )
-    assert.equal(ux.partial, false)
+  })
+
+  it('reports complete when both devices have evidence', () => {
+    assert.deepEqual(
+      resolveScreenshotPresentation(
+        'COMPLETED',
+        [
+          { device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 },
+          { device: 'MOBILE', url: '/m.webp', width: 375, height: 812 },
+        ],
+        null
+      ),
+      { state: 'complete' }
+    )
   })
 })
 

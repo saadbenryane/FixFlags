@@ -69,7 +69,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
       )}
 
       {isComplete && findings.length === 0 && (
-        <Card className="border-0 shadow-card">
+        <Card variant="subtle">
           <div className="flex items-center gap-3 px-4 py-6">
             <ShieldCheck className="h-6 w-6 shrink-0 text-success" />
             <div className="space-y-0.5">
@@ -90,7 +90,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
             {counts.important > 0 && <span className="text-warning">{counts.important} important</span>}
             {counts.polish > 0 && <span>{counts.polish} polish</span>}
           </div>
-          <Card className="overflow-hidden border-0 shadow-card">
+          <Card variant="subtle" className="overflow-hidden">
             {findings.map((finding) => (
               <RepoFindingCard
                 key={finding.id}
@@ -105,7 +105,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
       )}
 
       {inProgress && findings.length === 0 && (
-        <Card className="border-0 shadow-card">
+        <Card variant="subtle">
           <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-brand" />
             Analyzing the codebase. Findings will appear here as soon as the scan completes.

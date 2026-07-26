@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -61,7 +62,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
     if (!primaryUrl || scanning) return
     setScanning(true)
     try {
-      await startScanWithHandoff(router, {
+      const result = await startScanWithHandoff(router, {
         url: primaryUrl,
         body: {
           url: primaryUrl,
@@ -70,6 +71,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
         },
         errorFallback: 'Could not start the deeper scan. Try again.',
       })
+      if (!result.ok) toast.error(result.message)
     } finally {
       setScanning(false)
     }

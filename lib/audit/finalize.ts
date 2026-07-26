@@ -11,7 +11,7 @@ import { triageFailureCode } from '@/lib/audit/pipeline/triage-failure'
 import { DETERMINISTIC_SCAN_VERDICT } from '@/lib/audit/verdict'
 import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
 
-interface FinalizeAuditInput {
+type FinalizeBaseInput = {
   auditId: string
   durationMs: number
   pagespeedCalls: number
@@ -33,30 +33,26 @@ interface FinalizeAuditInput {
   }
 }
 
-interface FinalizeTriageInput {
-  auditId: string
-  durationMs: number
-  pagespeedCalls: number
-  usage: {
-    inputTokens: number
-    outputTokens: number
-    model: string
-    cacheReadTokens?: number
-    cacheWriteTokens?: number
+/** Fire-and-forget side effects shared by all finalize paths. */
+async function runPostFinalizeHooks(
+  auditId: string,
+  audit: { userId: string | null },
+  incrementUsage: boolean,
+  contextLabel: string
+): Promise<void> {
+  if (incrementUsage && audit.userId) {
+    await incrementUsageOnCompleteForAudit(auditId, audit.userId)
   }
-  evidence: {
-    desktopScreenshot: boolean
-    mobileScreenshot: boolean
-    metadata: boolean
-    aiAssessment: boolean
-    desktopPageSpeed: boolean
-    mobilePageSpeed: boolean
-    flowScan?: boolean
-  }
+  await upsertLeadFromAudit(auditId).catch((err) => {
+    logger.error(`Lead upsert failed after ${contextLabel} finalize`, err)
+  })
+  await persistAuditGraphSnapshot(auditId).catch((err) => {
+    logger.error(`Knowledge-graph persist failed after ${contextLabel} finalize`, err)
+  })
 }
 
 /** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */
-export async function finalizeTriageAudit(input: FinalizeTriageInput): Promise<void> {
+export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: input.auditId },
     select: {
@@ -236,7 +232,7 @@ export async function finalizeTriageDegraded(
   })
 }
 
-export async function finalizeAudit(input: FinalizeAuditInput): Promise<void> {
+export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
   const audit = await prisma.audit.findUnique({
     where: { id: input.auditId },
     select: {

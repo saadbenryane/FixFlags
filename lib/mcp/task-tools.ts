@@ -57,8 +57,15 @@ function taskResult(outcome: object, queue: {
   estimatedWaitSeconds: number
   queuePosition: number
   scheduledStartAt: string | null
+  queued: boolean
+  queueReason?: 'rate_limit' | 'backlog'
+  queue: {
+    state: 'starting' | 'waiting' | 'rate_limited'
+    jobsAhead: number
+    estimatedStartSeconds: number
+    scheduledStartAt?: string
+  }
   rateLimitRetryAfter: number
-  waitingJobs: number
 }) {
   return {
     content: [{
@@ -69,9 +76,9 @@ function taskResult(outcome: object, queue: {
         rateLimitRetryAfter: queue.rateLimitRetryAfter,
         queuePosition: queue.queuePosition,
         scheduledStartAt: queue.scheduledStartAt,
-        queued: queue.delayMs > 0 || queue.waitingJobs > 0,
-        queueReason:
-          queue.delayMs > 0 ? 'rate_limit' : queue.waitingJobs > 0 ? 'backlog' : undefined,
+        queued: queue.queued,
+        queueReason: queue.queueReason,
+        queue: queue.queue,
       }),
     }],
   }
@@ -131,7 +138,6 @@ export function registerTaskTools(
       return taskResult(outcome, {
         ...queue,
         rateLimitRetryAfter,
-        waitingJobs: workerEstimate.waitingJobs,
       })
       } catch (error) {
         return taskError(error)
@@ -169,7 +175,6 @@ export function registerTaskTools(
       return taskResult(outcome, {
         ...queue,
         rateLimitRetryAfter,
-        waitingJobs: workerEstimate.waitingJobs,
       })
       } catch (error) {
         return taskError(error)

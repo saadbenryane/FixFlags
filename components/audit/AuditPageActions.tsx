@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -76,7 +77,7 @@ export function AuditPageActions({
   async function handleRecheck() {
     setRecheckLoading(true)
     try {
-      await startScanWithHandoff(router, {
+      const result = await startScanWithHandoff(router, {
         url,
         endpoint: `/api/reports/${auditId}/monitoring`,
         body: {},
@@ -85,6 +86,7 @@ export function AuditPageActions({
           trackEvent('recheck_started', { audit_id: auditId })
         },
       })
+      if (!result.ok) toast.error(result.message)
     } finally {
       setRecheckLoading(false)
     }

@@ -4,7 +4,6 @@ import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
 import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
-import { ScanHandoffHost } from '@/components/audit/ScanHandoffHost'
 import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
@@ -54,7 +53,7 @@ export function SiteShell({
         {hasSidebar ? (
           <div className="flex flex-1">
             <DesktopSidebar showAdmin={showAdmin} />
-            <div className="flex flex-1 flex-col min-w-0 md:pl-60">
+            <div className="flex min-w-0 flex-1 flex-col md:pl-16">
               <div className="sticky top-0 z-navbar flex h-14 items-center gap-3 border-b border-border/40 px-4 glass-nav md:hidden">
                 <MobileSidebar showAdmin={showAdmin} />
                 <Logo variant="wordmark" size="sm" href="/dashboard" />
@@ -88,17 +87,11 @@ export function SiteShell({
   )
 
   if (!supportEnabled) {
-    return (
-      <>
-        {shell}
-        <ScanHandoffHost />
-      </>
-    )
+    return shell
   }
   return (
     <SupportProvider>
       {shell}
-      <ScanHandoffHost />
     </SupportProvider>
   )
 }

@@ -135,7 +135,7 @@ export function McpGuideContent() {
         <Body className="text-sm text-muted-foreground">{MCP_DOCS.lovableBoltNote}</Body>
 
         {CONFIG_EDITORS.map((tool) => (
-          <Card key={tool} className="overflow-hidden border-0 shadow-card">
+          <Card key={tool} variant="subtle" className="overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{MCP_DOCS.configLabels[tool]}</CardTitle>
             </CardHeader>

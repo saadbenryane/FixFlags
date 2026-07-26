@@ -32,12 +32,19 @@ vi.mock('@/lib/security/rate-limit', () => ({
   },
 }))
 vi.mock('@/lib/queue/estimate', () => ({
-  getWorkerQueueEstimate: vi.fn().mockResolvedValue({ waitingJobs: 0 }),
+  getWorkerQueueEstimate: vi.fn().mockResolvedValue({ waitingJobs: 0, queued: false }),
   computeEnqueueDelay: vi.fn().mockReturnValue({
     delayMs: 0,
     estimatedWaitSeconds: 0,
     queuePosition: 0,
     scheduledStartAt: null,
+    queued: false,
+    queueReason: undefined,
+    queue: {
+      state: 'starting',
+      jobsAhead: 0,
+      estimatedStartSeconds: 0,
+    },
   }),
 }))
 
@@ -172,6 +179,12 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.reportId).toBe('audit-1')
+    expect(body.queued).toBe(false)
+    expect(body.queue).toEqual({
+      state: 'starting',
+      jobsAhead: 0,
+      estimatedStartSeconds: 0,
+    })
     expect(checkAndPlan).toHaveBeenCalledTimes(1)
     expect(checkAndPlan.mock.calls[0][0].clientId).toBe('test-client')
   })

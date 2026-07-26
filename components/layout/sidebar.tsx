@@ -26,6 +26,12 @@ import { AvatarMenu } from '@/components/layout/AvatarMenu'
 import { useMe } from '@/hooks/useMe'
 import { isNavActive } from '@/lib/site/nav-active'
 import { planLabel } from '@/lib/billing/plans'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface SidebarItem {
   href: string
@@ -48,7 +54,15 @@ const SECONDARY_ITEMS: SidebarItem[] = [
 
 const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }
 
-function SidebarNav({ onNav, showAdmin }: { onNav?: () => void; showAdmin?: boolean }) {
+function SidebarNav({
+  onNav,
+  showAdmin,
+  compact = false,
+}: {
+  onNav?: () => void
+  showAdmin?: boolean
+  compact?: boolean
+}) {
   const pathname = usePathname()
 
   function handleClick(href: string) {
@@ -63,22 +77,30 @@ function SidebarNav({ onNav, showAdmin }: { onNav?: () => void; showAdmin?: bool
   function renderItem(item: SidebarItem) {
     const active = isNavActive(pathname, item.href)
     const Icon = item.icon
-    return (
+    const link = (
       <Link
         key={item.href}
         href={item.href as Route}
         onClick={() => handleClick(item.href)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150',
+          'flex min-h-11 items-center rounded-[var(--radius-control)] text-sm font-medium transition-colors duration-150',
+          compact ? 'justify-center px-2' : 'gap-3 px-3 py-2',
           active
             ? 'bg-accent text-foreground'
             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        {item.label}
+        <Icon className={cn('shrink-0', compact ? 'h-5 w-5' : 'h-4 w-4')} />
+        <span className={cn(compact && 'sr-only')}>{item.label}</span>
       </Link>
+    )
+    if (!compact) return link
+    return (
+      <Tooltip key={item.href}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">{item.label}</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -91,26 +113,35 @@ function SidebarNav({ onNav, showAdmin }: { onNav?: () => void; showAdmin?: bool
   )
 }
 
-function SidebarFooter() {
+function SidebarFooter({ compact = false }: { compact?: boolean }) {
   const { user } = useMe()
 
   return (
-    <div className="shrink-0 border-t border-border/60 px-4 py-3">
+    <div className={cn('shrink-0 border-t border-border/60 py-3', compact ? 'px-2' : 'px-4')}>
       {user && (
-        <div className="flex items-center gap-3">
-          <AvatarMenu user={user} />
-          <div className="min-w-0 flex-1">
+        <div className={cn('flex items-center', compact ? 'justify-center' : 'gap-3')}>
+          {compact ? (
+            <Tooltip>
+              <TooltipTrigger asChild><span><AvatarMenu user={user} /></span></TooltipTrigger>
+              <TooltipContent side="right">
+                {user.name ?? user.email} · {planLabel(user.plan)}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <AvatarMenu user={user} />
+          )}
+          {!compact && <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">
               {user.name ?? user.email}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {planLabel(user.plan)} plan
             </p>
-          </div>
+          </div>}
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between">
-        <SignOutButton />
+      <div className={cn('mt-3 flex items-center', compact ? 'flex-col gap-1' : 'justify-between')}>
+        {!compact && <SignOutButton />}
         <ThemeToggle />
       </div>
     </div>
@@ -119,15 +150,17 @@ function SidebarFooter() {
 
 export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
   return (
-    <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 md:z-navbar border-r border-border/60 glass-surface-strong">
-      <div className="flex h-[var(--header-height)] items-center px-4 border-b border-border/40 shrink-0">
-        <Logo variant="lockup" size="md" href="/dashboard" />
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 py-4">
-        <SidebarNav showAdmin={showAdmin} />
-      </div>
-      <SidebarFooter />
-    </aside>
+    <TooltipProvider delayDuration={150}>
+      <aside className="fixed inset-y-0 z-navbar hidden w-16 flex-col border-r border-border/50 glass-surface-strong md:flex">
+        <div className="flex h-[var(--header-height)] shrink-0 items-center justify-center border-b border-border/40">
+          <Logo variant="mark" size="sm" href="/dashboard" />
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 py-3">
+          <SidebarNav showAdmin={showAdmin} compact />
+        </div>
+        <SidebarFooter compact />
+      </aside>
+    </TooltipProvider>
   )
 }
 

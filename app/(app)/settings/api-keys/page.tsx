@@ -119,7 +119,7 @@ export default function ApiKeysPage() {
       />
 
       {!canUseKeys && (
-        <Card className="border-0 shadow-card bg-brand/5">
+        <Card variant="subtle" className="bg-brand/5">
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
             <p className="text-sm text-muted-foreground">
@@ -149,7 +149,7 @@ export default function ApiKeysPage() {
       )}
 
       {canUseKeys && (
-        <Card className="border-0 shadow-card">
+        <Card variant="subtle">
           <CardHeader>
             <CardTitle className="text-base">Create new key</CardTitle>
             <CardDescription>Give it a name to remember where it&apos;s used</CardDescription>

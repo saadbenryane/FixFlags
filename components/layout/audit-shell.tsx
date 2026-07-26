@@ -1,5 +1,4 @@
 import { SiteShell } from '@/components/layout/site-shell'
-import { ClaimAnonymousAudits } from '@/components/dashboard/ClaimAnonymousAudits'
 import { MarketingHeaderAuth } from '@/components/layout/MarketingHeaderAuth'
 import { Container } from '@/components/ui/container'
 
@@ -20,7 +19,6 @@ export function AuditShell({ children, actions, session, showAdmin = false }: Au
       showAdmin={showAdmin}
       backdrop="minimal"
     >
-      {session && <ClaimAnonymousAudits />}
       {actions && (
         <div className="bg-muted/20">
           <Container variant="report" className="flex flex-wrap items-center justify-start gap-2 py-3 sm:justify-end">

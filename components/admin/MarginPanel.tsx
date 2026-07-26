@@ -31,7 +31,7 @@ export async function MarginPanel() {
           const healthy = margin >= 70 || plan === 'FREE'
 
           return (
-            <Card key={plan} className={`border-0 shadow-card ${!healthy ? 'ring-2 ring-destructive/50' : ''}`}>
+            <Card key={plan} variant="subtle" className={`${!healthy ? 'ring-2 ring-destructive/50' : ''}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">{PLAN_LABELS[plan]}</CardTitle>
               </CardHeader>

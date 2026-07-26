@@ -8,7 +8,7 @@ import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { ScoreDisplay } from '@/components/audit/ScoreDisplay'
 import { ScoreSparkline } from '@/components/audit/ScoreSparkline'
 import { SectionTitle } from '@/components/ui/typography'
-import { ExternalLink, ArrowLeftRight, Check, X, AlertTriangle, Loader2 } from 'lucide-react'
+import { ArrowRight, ArrowLeftRight, Check, X, AlertTriangle, Loader2 } from 'lucide-react'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { rubricLabel } from '@/lib/utils'
@@ -37,24 +37,17 @@ interface RecentChecksListProps {
   audits: AuditItem[]
   initialHasMore: boolean
   canCompare: boolean
-  bestScore: number | null
-  worstScore: number | null
 }
 
 export function RecentChecksList({
   audits: initialAudits,
   initialHasMore,
   canCompare,
-  bestScore,
-  worstScore,
 }: RecentChecksListProps) {
   const [audits, setAudits] = useState(initialAudits)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [loadError, setLoadError] = useState(false)
-
-  const completedAudits = audits.filter((a) => a.status === 'COMPLETED')
-  const scores = completedAudits.map((a) => a.score).filter((s): s is number => s !== null)
 
   const loadMore = async () => {
     if (loading || !hasMore) return
@@ -76,22 +69,9 @@ export function RecentChecksList({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between gap-4">
         <SectionTitle>Recent checks</SectionTitle>
-        {scores.length > 0 && (
-          <div className="flex gap-3 text-xs text-muted-foreground">
-            {bestScore !== null && (
-              <span className="tabular-nums">
-                Best: <span className="font-medium text-foreground">{bestScore}</span>
-              </span>
-            )}
-            {worstScore !== null && (
-              <span className="tabular-nums">
-                Worst: <span className="font-medium text-foreground">{worstScore}</span>
-              </span>
-            )}
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground">Open a report to continue fixing.</p>
       </div>
       {audits.map((audit) => {
         const isCompleted = audit.status === 'COMPLETED'
@@ -205,7 +185,10 @@ export function RecentChecksList({
                       )}
                     </div>
                   )}
-                  <ExternalLink className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+                  <span className="hidden items-center gap-1 text-xs font-medium text-foreground sm:inline-flex">
+                    {isCompleted ? 'Open fixes' : 'Open report'}
+                    <ArrowRight className="h-3.5 w-3.5 text-brand transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </span>
                 </div>
               </CardContent>
             </Card>

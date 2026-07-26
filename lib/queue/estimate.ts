@@ -1,4 +1,5 @@
 import { getAuditQueue } from '@/lib/queue/client'
+import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 
 function parseWorkerConcurrency(): number {
   const raw = process.env.AUDIT_WORKER_CONCURRENCY
@@ -14,23 +15,60 @@ export interface QueueEstimate {
   activeJobs: number
   waitingJobs: number
   delayedJobs: number
+  workerCapacity: number
+  availableCapacity: number
+  jobsAhead: number
+  queued: boolean
   estimatedWaitSeconds: number
+}
+
+export function estimateQueueState(input: {
+  activeJobs: number
+  waitingJobs: number
+  delayedJobs?: number
+  workerCapacity: number
+}): QueueEstimate {
+  const activeJobs = Math.max(0, input.activeJobs)
+  const waitingJobs = Math.max(0, input.waitingJobs)
+  const delayedJobs = Math.max(0, input.delayedJobs ?? 0)
+  const workerCapacity = Math.max(0, input.workerCapacity)
+  const availableCapacity = Math.max(0, workerCapacity - activeJobs)
+  const queued = workerCapacity === 0 || waitingJobs >= availableCapacity
+  const jobsAhead = queued ? activeJobs + waitingJobs : 0
+  const estimatedWaitSeconds =
+    queued && workerCapacity > 0
+      ? Math.ceil((waitingJobs + 1) / workerCapacity) * AVG_JOB_DURATION_SECONDS
+      : 0
+
+  return {
+    activeJobs,
+    waitingJobs,
+    delayedJobs,
+    workerCapacity,
+    availableCapacity,
+    jobsAhead,
+    queued,
+    estimatedWaitSeconds,
+  }
 }
 
 export async function getWorkerQueueEstimate(): Promise<QueueEstimate> {
   const queue = getAuditQueue()
-  const [activeJobs, waitingJobs, delayedJobs] = await Promise.all([
+  const [activeJobs, waitingJobs, delayedJobs, heartbeat] = await Promise.all([
     queue.getActiveCount(),
     queue.getWaitingCount(),
     queue.getDelayedCount(),
+    readWorkerHeartbeat(),
   ])
-  const totalAhead = activeJobs + waitingJobs + delayedJobs
-  const estimatedWaitSeconds = Math.max(
-    15,
-    Math.ceil(totalAhead / WORKER_CONCURRENCY) * AVG_JOB_DURATION_SECONDS
-  )
-
-  return { activeJobs, waitingJobs, delayedJobs, estimatedWaitSeconds }
+  return estimateQueueState({
+    activeJobs,
+    waitingJobs,
+    delayedJobs,
+    workerCapacity:
+      heartbeat.alive && heartbeat.browserOk
+        ? heartbeat.configuredConcurrency
+        : 0,
+  })
 }
 
 export interface AuditQueueInfo {
@@ -96,15 +134,44 @@ export async function getAuditQueueInfo(auditId: string): Promise<AuditQueueInfo
 export function computeEnqueueDelay(
   rateLimitRetryAfterSeconds: number,
   workerEstimate: QueueEstimate
-): { delayMs: number; estimatedWaitSeconds: number; queuePosition: number; scheduledStartAt: string | null } {
+): {
+  delayMs: number
+  estimatedWaitSeconds: number
+  queuePosition: number
+  scheduledStartAt: string | null
+  queued: boolean
+  queueReason?: 'rate_limit' | 'backlog'
+  queue: {
+    state: 'starting' | 'waiting' | 'rate_limited'
+    jobsAhead: number
+    estimatedStartSeconds: number
+    scheduledStartAt?: string
+  }
+} {
   const workerWait = workerEstimate.estimatedWaitSeconds
   const rateWait = rateLimitRetryAfterSeconds
   const estimatedWaitSeconds = Math.max(rateWait, workerWait)
   const delayMs = rateWait > 0 ? rateWait * 1000 : 0
-  const queuePosition =
-    workerEstimate.waitingJobs + workerEstimate.delayedJobs + workerEstimate.activeJobs + 1
+  const queued = rateWait > 0 || workerEstimate.queued
+  const queuePosition = queued ? workerEstimate.jobsAhead : 0
   const scheduledStartAt =
     delayMs > 0 ? new Date(Date.now() + delayMs).toISOString() : null
+  const state =
+    rateWait > 0 ? 'rate_limited' : workerEstimate.queued ? 'waiting' : 'starting'
 
-  return { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt }
+  return {
+    delayMs,
+    estimatedWaitSeconds,
+    queuePosition,
+    scheduledStartAt,
+    queued,
+    queueReason:
+      rateWait > 0 ? 'rate_limit' : workerEstimate.queued ? 'backlog' : undefined,
+    queue: {
+      state,
+      jobsAhead: queuePosition,
+      estimatedStartSeconds: estimatedWaitSeconds,
+      ...(scheduledStartAt ? { scheduledStartAt } : {}),
+    },
+  }
 }

@@ -11,6 +11,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import {
   normalizeInternalScreenshotUrl,
   type AuditScreenshot,
+  type CapturePresentation,
 } from '@/lib/audit/screenshot-types'
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -22,8 +23,7 @@ type Props = {
   pageType?: string | null
   url: string
   screenshots?: AuditScreenshot[]
-  screenshotLimited?: boolean
-  screenshotPartial?: boolean
+  capturePresentation?: CapturePresentation
   pageSpeedPartial?: boolean
   durationMs?: number | null
   startedAt?: string | Date | null
@@ -41,8 +41,7 @@ export function AuditReportHero({
   pageType,
   url,
   screenshots,
-  screenshotLimited = false,
-  screenshotPartial = false,
+  capturePresentation = { state: 'complete' },
   pageSpeedPartial = false,
   durationMs,
   startedAt,
@@ -176,14 +175,16 @@ export function AuditReportHero({
         </p>
       )}
 
-      {(screenshotLimited || screenshotPartial || pageSpeedPartial) && (
+      {(capturePresentation.state === 'unavailable' ||
+        capturePresentation.state === 'partial' ||
+        pageSpeedPartial) && (
         <div className="space-y-2">
-          {screenshotLimited ? (
+          {capturePresentation.state === 'unavailable' ? (
             <Callout variant="warning" title={REPORT_COPY.captureLimited.title}>
               {REPORT_COPY.captureLimited.body}
             </Callout>
           ) : null}
-          {!screenshotLimited && screenshotPartial ? (
+          {capturePresentation.state === 'partial' ? (
             <Callout variant="warning" title={REPORT_COPY.capturePartial.title}>
               {REPORT_COPY.capturePartial.body}
             </Callout>
