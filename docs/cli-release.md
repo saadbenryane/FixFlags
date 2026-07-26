@@ -35,10 +35,11 @@ The bootstrap version exists only to establish package ownership. Do not point
 After the one-time claim and trusted-publisher setup:
 
 1. Confirm `npm run agent -- verify --full` passes on the release commit.
-2. Push the protected tag matching the package version:
+2. Push the version tag matching the package version:
    `fixflags-cli-v0.2.0-beta.1`.
 3. The workflow tests Node 22 on macOS, Linux, and Windows, checks package
-   contents, clean-installs the tarball, publishes with OIDC provenance, and
+   contents, clean-installs the tarball, publishes with OIDC trusted publishing,
+   and
    verifies the exact version in the registry.
 4. Confirm `/api/cli/release` returns `"available": true`.
 5. Install from npm and run the FixFlags dogfood journey:
@@ -53,3 +54,8 @@ fixflags recheck <original-report-id> --wait --diff
 
 Promote `beta` to `latest` only after CLI and MCP report IDs, consolidated Flag
 identities, counts, ranking, and Re-check diffs match the web report.
+
+The QewOS repository stays private. npm trusted publishing supports private
+GitHub repositories, but npm provenance attestations require a public source
+repository. The public npm package therefore uses short-lived OIDC credentials
+without claiming provenance.

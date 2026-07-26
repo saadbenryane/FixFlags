@@ -34,7 +34,7 @@ jobs:
         run: node scripts/verify-cli-package.mjs
 
   publish:
-    name: Publish with provenance
+    name: Publish with trusted publishing
     needs: verify
     runs-on: ubuntu-latest
     environment: npm
@@ -59,11 +59,11 @@ jobs:
           test "${GITHUB_REF_NAME}" = "${EXPECTED}"
       - name: Publish beta
         if: contains(github.ref_name, '-')
-        run: npm publish --tag beta --provenance --access public
+        run: npm publish --tag beta --access public
         working-directory: fixflags-cli
       - name: Publish stable
         if: ${{ !contains(github.ref_name, '-') }}
-        run: npm publish --tag latest --provenance --access public
+        run: npm publish --tag latest --access public
         working-directory: fixflags-cli
       - name: Verify registry availability
         run: node scripts/verify-cli-registry.mjs --version "$(node -p "require('./fixflags-cli/package.json').version")"

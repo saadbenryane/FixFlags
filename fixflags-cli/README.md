@@ -6,7 +6,9 @@ Product Intelligence for AI-built products. A thin, task-shaped client over the 
 
 Version `0.2.0-beta.1` is release-ready. The website only presents it as
 installable after that exact version is verified on npm. Publishing is performed
-from a protected version tag through npm trusted publishing with provenance.
+from a version tag through npm trusted publishing. The QewOS source
+repository stays private, so npm provenance attestations are intentionally not
+generated.
 
 ## Setup
 
