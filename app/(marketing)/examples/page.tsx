@@ -53,7 +53,15 @@ export default async function ExamplesPage({
           <LighthouseNote className="text-sm text-muted-foreground" />
         </div>
 
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <div
+              className="h-11 w-full animate-pulse rounded-control bg-muted/45 sm:w-96"
+              role="status"
+              aria-label="Loading example filters"
+            />
+          }
+        >
           <ExamplesFilterBar activeTag={tag} />
         </Suspense>
 

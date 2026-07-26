@@ -74,7 +74,13 @@ export default async function BillingPage() {
 
   return (
     <Container variant="narrow" className="space-y-8 py-8">
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <span className="sr-only" role="status">
+            Checking credit purchase status
+          </span>
+        }
+      >
         <BillingCreditsToast />
       </Suspense>
       <PageHeader title="Billing" description="Manage your plan and subscription" />

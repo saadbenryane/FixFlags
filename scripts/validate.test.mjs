@@ -82,6 +82,16 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('test:queue'))
     })
 
+    it('affected mode runs the standalone worker tests for worker changes', () => {
+      const plan = buildPlan('affected', ['worker/index.ts'])
+      const workerTest = plan.commands.find((command) => command.label === 'test:worker')
+      assert.deepEqual(workerTest, {
+        label: 'test:worker',
+        executable: 'npx',
+        args: ['vitest', 'run', 'worker/'],
+      })
+    })
+
     it('full mode runs all checks', () => {
       const plan = buildPlan('full', ['lib/audit/runner.ts'])
       const labels = plan.commands.map((c) => c.label)

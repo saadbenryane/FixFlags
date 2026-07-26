@@ -61,7 +61,12 @@ function Wordmark({ size }: { size: LogoSize }) {
 
 export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoProps) {
   const content = (
-    <span className={cn('inline-flex items-center gap-2 text-foreground', className)}>
+    <span
+      className={cn(
+        'inline-flex min-w-max items-center gap-2 overflow-visible whitespace-nowrap text-foreground',
+        className
+      )}
+    >
       {variant === 'wordmark' ? (
         <Wordmark size={size} />
       ) : variant === 'mark' ? (
@@ -80,7 +85,7 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
       <a
         href={href}
         aria-label={BRAND.name}
-        className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        className="inline-flex min-h-[44px] min-w-max shrink-0 items-center justify-center overflow-visible rounded-sm px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         {content}
       </a>

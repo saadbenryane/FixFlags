@@ -21,7 +21,7 @@ export default defineConfig({
           globals: false,
           environment: 'node',
           env,
-          include: ['lib/**/*.test.ts', 'app/api/**/*.test.ts'],
+          include: ['lib/**/*.test.ts', 'app/api/**/*.test.ts', 'worker/**/*.test.ts'],
           exclude: ['node_modules', '.next'],
           testTimeout: 30_000,
         },

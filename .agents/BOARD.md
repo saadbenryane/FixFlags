@@ -4,7 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: local implementation and full verification pass; release proof remains blocked on disposable database reset consent and external service credentials. Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent plus `RELEASE_FRESH_DATABASE_URL`; `RELEASE_SMOKE_URL`; R2; email/Product Watch credentials | 2026-07-26 |
+| current-product-completion | in_progress | codex-root | main | Complete local current-product implementation, executable journey proof, design consistency, topology smoke, and full verification. Preserve landed homepage and scan-freeze work. | app, components, lib, prisma, scripts, e2e, docs, package manifests, .agents | External deployed release proof still requires operator-provided release URL, disposable DB consent, R2, Stripe, email, and GitHub sandbox credentials | 2026-07-26 |
 
 ---
 

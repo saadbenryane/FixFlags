@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthCardSkeleton } from '@/components/auth/AuthCardSkeleton'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { trackEvent } from '@/lib/analytics/events'
 
@@ -140,7 +141,7 @@ function TwoFactorForm() {
 
 export default function TwoFactorPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AuthCardSkeleton />}>
       <TwoFactorForm />
     </Suspense>
   )

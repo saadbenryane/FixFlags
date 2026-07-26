@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthCardSkeleton } from '@/components/auth/AuthCardSkeleton'
 import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
@@ -213,7 +214,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AuthCardSkeleton />}>
       <SignInForm />
     </Suspense>
   )

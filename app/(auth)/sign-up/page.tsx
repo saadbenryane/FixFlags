@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy'
 import { AuthCard } from '@/components/auth/AuthCard'
+import { AuthCardSkeleton } from '@/components/auth/AuthCardSkeleton'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { PasswordInput } from '@/components/auth/PasswordInput'
@@ -169,7 +170,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AuthCardSkeleton />}>
       <SignUpForm />
     </Suspense>
   )
