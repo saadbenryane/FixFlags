@@ -37,3 +37,17 @@ This is the money moment of the wedge (triage free → account for prompts). Bro
 - `app/(app)/dashboard/page.tsx`
 - `lib/marketing/copy.ts`
 - `.agents/sessions/2026-07-17-ship-ready-core-loop-auto.md`
+
+## 2026-07-26 follow-up: claim during an active runner
+
+An audit runner reads `includeAi` when it starts. A claim during CAPTURING,
+CHECKING, or FINALIZING can therefore update ownership after that in-memory
+value is already stale. The claim path must persist `includeAi: true` for an
+eligible in-flight audit, and triage finalization must re-read the persisted
+entitlement before enqueueing prescription. A second status read after the
+claim update closes the completion race. Stable `ai-review-${auditId}` queue
+job IDs keep both enqueue paths idempotent.
+
+Prevention is encoded in `lib/audit/claim-anonymous.ts`,
+`lib/audit/pipeline/finalize-from-outcome.ts`, and
+`lib/audit/__tests__/claim-anonymous.test.ts`.

@@ -23,7 +23,7 @@ describe('AuditInput report-first handoff', () => {
     startScanWithHandoff.mockReturnValue(new Promise(() => {}))
     render(
       <MeProvider initialUser={null}>
-        <AuditInput variant="landing" />
+        <AuditInput variant="landing" idSuffix="-report-handoff" />
       </MeProvider>
     )
 
@@ -44,7 +44,7 @@ describe('AuditInput report-first handoff', () => {
     })
     render(
       <MeProvider initialUser={null}>
-        <AuditInput variant="landing" />
+        <AuditInput variant="landing" idSuffix="-report-error" />
       </MeProvider>
     )
 

@@ -110,7 +110,7 @@ describe('homepage message guardrails', () => {
       assert.ok(!/builders? reviewed/i.test(item.label), `Fake social proof: ${item.label}`)
     }
     assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
-    assert.ok(HERO.assurances.some((a) => /no sign up/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /3 checks included free/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
     assert.match(HERO.trustLine, /builders shipping with ai/i)
     assert.ok(!/\d{2,},\d{3}/.test(HERO.trustLine), `Invented count in trust line: ${HERO.trustLine}`)
