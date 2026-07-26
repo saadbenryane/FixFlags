@@ -122,7 +122,9 @@ test('manual token login never places the secret in argv and supports whoami and
   assert.doesNotMatch(login.stdout + login.stderr, /ff_live_manual_test/)
 
   const configPath = join(configDir, 'config.json')
-  assert.equal(statSync(configPath).mode & 0o777, 0o600)
+  if (process.platform !== 'win32') {
+    assert.equal(statSync(configPath).mode & 0o777, 0o600)
+  }
 
   const whoami = await runCli(['whoami'], options)
   assert.equal(whoami.code, 0, whoami.stderr)
