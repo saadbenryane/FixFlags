@@ -18,7 +18,6 @@ const PAID_PLANS = Object.values(PLAN_DEFINITIONS)
 
 const schema = z.object({
   plan: z.enum(PAID_PLANS as [string, ...string[]]),
-  type: z.enum(['subscription', 'one_time']).optional().default('subscription'),
 })
 
 export async function POST(req: NextRequest) {
@@ -49,7 +48,6 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return apiError('Select a valid plan', 400, { code: 'INVALID_PLAN' })
 
     const plan = parsed.data.plan as Plan
-    const checkoutType = parsed.data.type
     const priceId = PLAN_DEFINITIONS[plan]?.stripePriceId
     if (!priceId) {
       return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
@@ -64,7 +62,7 @@ export async function POST(req: NextRequest) {
       user?.plan !== 'FREE' &&
       !hasRevokedSubscriptionStatus(user?.subscriptionStatus ?? '')
 
-    if (hasActiveSubscription && user?.stripeCustomerId && checkoutType === 'subscription') {
+    if (hasActiveSubscription && user?.stripeCustomerId) {
       const portalSession = await getStripe().billingPortal.sessions.create({
         customer: user.stripeCustomerId,
         return_url: `${appUrl}/billing`,
@@ -77,30 +75,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 }
       )
-    }
-
-    if (checkoutType === 'one_time') {
-      const checkoutSession = await getStripe().checkout.sessions.create({
-        mode: 'payment',
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        customer: user?.stripeCustomerId ?? undefined,
-        customer_email: user?.stripeCustomerId ? undefined : session.user.email,
-        billing_address_collection: 'required',
-        automatic_tax: { enabled: true },
-        customer_update: user?.stripeCustomerId
-          ? { address: 'auto', name: 'auto' }
-          : undefined,
-        success_url: `${appUrl}/dashboard?purchased=1&plan=${plan}`,
-        cancel_url: `${appUrl}/pricing`,
-        metadata: {
-          userId: session.user.id,
-          plan,
-          type: 'one_time',
-        },
-      })
-
-      return NextResponse.json({ url: checkoutSession.url })
     }
 
     const checkoutSession = await getStripe().checkout.sessions.create({

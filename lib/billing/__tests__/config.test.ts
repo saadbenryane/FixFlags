@@ -12,7 +12,6 @@ const SAMPLE: Record<(typeof STRIPE_ALL_ENV_KEYS)[number], string> = {
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_BUILDER_PRICE_ID: 'price_builder',
   STRIPE_TEAM_PRICE_ID: 'price_team',
-  STRIPE_FINISH_CHECK_PRICE_ID: 'price_finish_check',
   STRIPE_CREDIT_PACK_10_ID: 'price_10',
   STRIPE_CREDIT_PACK_25_ID: 'price_25',
   STRIPE_CREDIT_PACK_50_ID: 'price_50',

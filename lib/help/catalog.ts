@@ -246,7 +246,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     title: 'Free vs Pro',
     excerpt: 'What you get on Free, Pro, and Studio.',
     popular: true,
-    searchTokens: ['pricing', 'upgrade', 'agency', 'plan'],
+    searchTokens: ['pricing', 'upgrade', 'studio', 'plan'],
     body: [
       {
         type: 'p',
@@ -254,18 +254,18 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Pro ($29/mo): before/after compare, MCP in supported builders, and 25 new URL checks per month.',
+        text: 'Pro ($39/mo): before/after compare, MCP in supported builders, and 5 journeys per month.',
       },
       {
         type: 'p',
-        text: 'Studio ($129/mo): 25 new URL checks per month, share links for client reports, and everything in Pro.',
+        text: 'Studio ($129/mo): 25 journeys per month, share links for client reports, and everything in Pro.',
       },
       {
         type: 'p',
-        text: 'You can start free and upgrade anytime. Paid plans can buy credit packs for extra new checks when you hit the monthly cap.',
+        text: 'You can start free and upgrade anytime. Paid plans include more journeys per month as you scale.',
       },
     ],
-    related: ['what-counts-as-a-check', 'credits', 'cancel-or-manage'],
+    related: ['what-counts-as-a-check', 'cancel-or-manage'],
   },
   {
     slug: 'what-counts-as-a-check',
@@ -283,7 +283,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         text: 'Re-checking the same report does not use another credit. Failed scans that never produce a report do not use a credit.',
       },
     ],
-    related: ['rechecks-are-free', 'credits', 'free-vs-pro'],
+    related: ['rechecks-are-free', 'free-vs-pro'],
   },
   {
     slug: 'rechecks-are-free',
@@ -307,16 +307,16 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'credits',
     categoryId: 'billing-and-plans',
     title: 'Credit packs',
-    excerpt: 'Overflow for paid plans when you need extra new URL checks.',
+    excerpt: 'Credit packs are no longer available for purchase. Existing credits remain active.',
     searchTokens: ['credit pack', 'buy credits', 'overflow'],
     body: [
       {
         type: 'p',
-        text: 'Paid plans can buy credit packs for extra new URL checks when you hit the monthly cap. Credits are overflow, not a replacement for your plan allowance.',
+        text: 'Credit packs are no longer available for purchase. If you have existing credits, they remain active and never expire.',
       },
       {
         type: 'p',
-        text: 'Buy packs from Billing. Credits appear after Stripe confirms payment. Re-checks never consume credits.',
+        text: 'Re-checks never consume credits.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'payment-past-due'],

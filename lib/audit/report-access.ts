@@ -44,9 +44,6 @@ export function canViewAiViaAgencyPublicShare(
   return ownerCanSharePublicly
 }
 
-/** @deprecated Use canViewAiViaAgencyPublicShare */
-export const canViewAiViaMaxPublicShare = canViewAiViaAgencyPublicShare
-
 export async function canViewPrescriptionContentForAudit(
   audit: AiAccessAudit,
   viewer: { id: string } | null | undefined

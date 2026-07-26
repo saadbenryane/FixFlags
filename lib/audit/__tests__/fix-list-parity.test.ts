@@ -82,7 +82,7 @@ describe('fix list surface parity', () => {
     assert.equal(apiFixList.items[1]?.id, 'live-1')
   })
 
-  it('includes Agency repo Flags that live-only buildFixList omits', async () => {
+  it('includes Studio repo Flags that live-only buildFixList omits', async () => {
     const liveOnly = buildFixList({
       flags: [{ ...liveFlag, whyItMatters: undefined }],
       rubricRows: [{ name: 'MESSAGE', grade: 'B' }],

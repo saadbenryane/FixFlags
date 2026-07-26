@@ -13,7 +13,7 @@ export function MarketingShell({ children, footer = 'default', focused = false }
       variant="marketing"
       headerRight={focused ? null : <MarketingHeaderAuth />}
       showHeaderNavigation={!focused}
-      showSupport={!focused}
+      showSupport={false}
       backdrop={focused ? 'minimal' : 'full'}
       showFooter={footer !== 'none'}
       footer={footer === 'minimal' ? 'minimal' : 'default'}

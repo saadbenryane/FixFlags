@@ -1,4 +1,4 @@
-import { OFFER } from './brand'
+import { OFFER } from "./brand";
 
 /**
  * Marketing plan display data. Defined here (not in lib/billing/plans) so the
@@ -6,208 +6,209 @@ import { OFFER } from './brand'
  * The billing module remains the source of truth for limits, pricing logic,
  * and Stripe price IDs.
  */
-const PRO_PRICE = '$39'
-const PRO_PERIOD = '/mo'
+const PRO_PRICE = "$39";
+const PRO_PERIOD = "/mo";
 
-function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
-  return `${prefix} - ${PRO_PRICE}${PRO_PERIOD}`
+function proUpgradeCta(prefix = "Upgrade to Pro"): string {
+  return `${prefix} - ${PRO_PRICE}${PRO_PERIOD}`;
 }
 
 export const PLANS = [
   {
-    name: 'Free',
-    plan: 'FREE' as const,
-    price: '$0',
-    period: '',
-    persona: 'Try before launch',
-    outcome: 'See everything on one page',
-    audits: '3 new URL checks',
+    name: "Free",
+    plan: "FREE" as const,
+    price: "$0",
+    period: "",
+    persona: "Try before launch",
+    outcome: "See everything on one page",
+    audits: "3 new URL checks",
     features: [
-      '3 new URL checks with full reports and fix prompts',
-      'Unlimited re-checks on reports you own',
-      'Upgrade anytime for more new checks',
+      "3 new URL checks with full reports and fix prompts",
+      "Unlimited re-checks on reports you own",
+      "Upgrade anytime for more new checks",
     ],
-    cta: 'Start free',
-    href: '/sign-up?from=pricing',
+    cta: "Start free",
+    href: "/sign-up?from=pricing",
     highlight: false,
-    accountModel: 'Single account. No seats or shared workspace.',
+    accountModel: "Single account. No seats or shared workspace.",
   },
   {
-    name: 'Pro',
-    plan: 'BUILDER' as const,
+    name: "Pro",
+    plan: "BUILDER" as const,
     price: PRO_PRICE,
     period: PRO_PERIOD,
-    persona: 'Solo builders shipping weekly',
-    outcome: 'Finish what your AI started, every week',
-    audits: '5 journeys / month',
+    persona: "Solo builders shipping weekly",
+    outcome: "Finish what your AI started, every week",
+    audits: "5 journeys / month",
     features: [
-      '5 journeys per month (check → fix → re-check cycles)',
-      'Before/after comparisons',
-      'MCP in supported builders',
-      'Weekly product watch with regression email',
+      "5 journeys per month (check → fix → re-check cycles)",
+      "Before/after comparisons",
+      "MCP in supported builders",
+      "Weekly product watch with regression email",
     ],
-    cta: 'Start Pro',
-    href: '/sign-up?plan=BUILDER',
+    cta: "Start Pro",
+    href: "/sign-up?plan=BUILDER",
     highlight: true,
-    accountModel: 'Single account. No seats or shared workspace.',
+    accountModel: "Single account. No seats or shared workspace.",
   },
   {
-    name: 'Studio',
-    plan: 'TEAM' as const,
-    price: '$129',
-    period: '/mo',
-    persona: 'Agencies and multi-site teams',
-    outcome: 'Finish many products, not just one',
-    audits: '25 journeys / month',
+    name: "Studio",
+    plan: "TEAM" as const,
+    price: "$129",
+    period: "/mo",
+    persona: "Agencies and multi-site teams",
+    outcome: "Finish many products, not just one",
+    audits: "25 journeys / month",
     features: [
-      'Everything in Pro',
-      '25 journeys per month',
-      'Up to 5 projects',
-      'Client-ready public share links',
-      'GitHub repository scans',
-      'Draft Fix PRs from repo findings (secrets auto-patch when possible)',
-      'Daily product watch with regression email',
+      "Everything in Pro",
+      "25 journeys per month",
+      "Up to 5 projects",
+      "Client-ready public share links",
+      "GitHub repository scans",
+      "Draft Fix PRs from repo findings (secrets auto-patch when possible)",
+      "Daily product watch with regression email",
     ],
-    cta: 'Start Studio',
-    href: '/sign-up?plan=TEAM',
+    cta: "Start Studio",
+    href: "/sign-up?plan=TEAM",
     highlight: false,
-    accountModel: 'Single account. No seats or shared workspace.',
+    accountModel: "Single account. No seats or shared workspace.",
   },
-] as const
+] as const;
 
 export const PRICING_FAQ = [
   {
-    question: 'Can I start free and upgrade later?',
-    answer: `Yes. ${OFFER.line} Free accounts include 3 new URL checks. Upgrade for more new checks, compare, and MCP.`,
+    question: "Can I start free and upgrade later?",
+    answer: `Yes. ${OFFER.line} Free accounts include 3 checks. Upgrade for more journeys, compare, and MCP.`,
   },
   {
-    question: 'What counts as a scan?',
+    question: "What counts as a scan?",
     answer:
-      'A new URL check counts toward your plan limit. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit. Paid plans can buy credit packs for extra new checks.',
+      "A new URL check counts toward your plan limit. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit.",
   },
   {
-    question: 'Is each page a separate scan?',
+    question: "Is each page a separate scan?",
     answer:
-      'Yes. Each new URL you submit is a separate check. Re-checking the same report does not use another credit.',
+      "Yes. Each new URL you submit is a separate check. Re-checking the same report does not use another credit.",
   },
   {
-    question: 'Do re-checks consume credits?',
+    question: "Do re-checks consume credits?",
     answer:
-      'No. Re-checks on reports you own are free and unlimited on every plan.',
+      "No. Re-checks on reports you own are free and unlimited on every plan.",
   },
   {
-    question: 'Are reports public or private?',
+    question: "Are reports public or private?",
     answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private audit.`,
   },
   {
-    question: 'Are screenshots stored?',
+    question: "Are screenshots stored?",
     answer:
-      'Yes. We store screenshots and page evidence needed to show Flags and re-check diffs. See the Privacy Policy for retention details.',
+      "Yes. We store screenshots and page evidence needed to show Flags and re-check diffs. See the Privacy Policy for retention details.",
   },
   {
-    question: 'How long are reports saved?',
+    question: "How long are reports saved?",
     answer:
-      'Reports saved to your account stay in your history while the account is active. Anonymous reports you never save may be removed after a retention window.',
+      "Reports saved to your account stay in your history while the account is active. Anonymous reports you never save may be removed after a retention window.",
   },
   {
-    question: 'Can I cancel anytime?',
+    question: "Can I cancel anytime?",
     answer:
-      'Yes. Cancel from billing settings and keep access through the end of the current billing period.',
+      "Yes. Cancel from billing settings and keep access through the end of the current billing period.",
   },
   {
-    question: 'What happens when I hit my check limit?',
+    question: "What happens when I hit my check limit?",
     answer:
-      'New URL checks pause until you upgrade or (on paid plans) buy a credit pack. Free accounts get 3 new URL checks total (not monthly). Paid plans reset each billing cycle. Re-checks on owned reports stay free.',
+      "Checks pause until you upgrade. Free accounts get 3 checks total (not monthly). Paid plans reset each billing cycle. Re-checks on owned reports stay free.",
   },
   {
-    question: 'What are credit packs?',
+    question: "Do I need Pro for MCP?",
     answer:
-      'Paid subscribers can buy +10, +25, or +50 extra new URL checks ($15 / $30 / $50) from Billing. Credits never expire and do not change your plan tier.',
+      "Yes for MCP API access. You do not need MCP to use fix prompts. Generate an API key in Settings after upgrading.",
   },
   {
-    question: 'Do I need Pro for MCP?',
+    question: "What\u2019s included in every plan?",
     answer:
-      'Yes for MCP API access. You do not need MCP to use fix prompts. Generate an API key in Settings after upgrading.',
+      "Every plan includes Flags with evidence, fix prompts after you create an account, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.",
   },
-  {
-    question: 'What\u2019s included in every plan?',
-    answer:
-      'Every plan includes Flags with evidence, fix prompts after you create an account, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.',
-  },
-] as const
+] as const;
 
 export const PRICING = {
-  headline: 'Start free. Upgrade when you\u2019re checking often.',
+  label: "Simple pricing",
+  headline: "Start free. Upgrade when you\u2019re checking often.",
   subhead: `${OFFER.line} Upgrade for more new checks, before/after compare, and MCP.`,
-  trustBadge: 'Unlimited re-checks on every plan',
-  upgradeSteps: 'Create account → Stripe checkout → Dashboard',
-  upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
+  trustBadge: "Unlimited re-checks on every plan",
+  assurances: [
+    "Results in under 60 seconds",
+    "No credit card for Free",
+    "Your reports stay private",
+  ] as const,
+  upgradeSteps: "Create account → Stripe checkout → Dashboard",
+  upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
   allPlansInclude:
-    'Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.',
-} as const
+    "Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.",
+} as const;
 
 export const UPSELLS = {
   anon: {
-    headline: 'Save this report and run more checks',
-    body: 'Create a free account for fix prompts, re-check after fixes, and 3 new URL checks. Your teaser scan saves to your history.',
-    primaryCta: 'Create free account',
-    secondaryCta: 'See paid plans',
+    headline: "Save this report and run more checks",
+    body: "Create a free account for fix prompts, re-check after fixes, and 3 new URL checks. Your teaser scan saves to your history.",
+    primaryCta: "Create free account",
+    secondaryCta: "See paid plans",
   },
   signedInAiPending: {
-    headline: 'Fix prompts on the way',
-    body: 'Evidence and fix steps are below. Enhanced prompts for your editor usually finish within a minute.',
+    headline: "Fix prompts on the way",
+    body: "Evidence and fix steps are below. Enhanced prompts for your editor usually finish within a minute.",
   },
   signedInAiDegraded: {
-    headline: 'Fix steps are below',
-    body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.',
+    headline: "Fix steps are below",
+    body: "AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.",
   },
-  atLimit: 'New URL check limit reached. Upgrade to continue',
-} as const
+  atLimit: "Check limit reached. Upgrade to continue",
+} as const;
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your 3 new URL checks',
-    body: 'Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 25 new URL checks per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.',
+    headline: "You\u2019ve used your 3 free checks",
+    body: "Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 5 journeys per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.",
     cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
+    plan: "BUILDER" as const,
   },
   compare_improved: {
     headline: (scoreDelta: number) => {
-      void scoreDelta
-      return 'Fixes verified'
+      void scoreDelta;
+      return "Fixes verified";
     },
-    body: 'Keep the loop in your editor with MCP and 25 new checks each month.',
-    cta: proUpgradeCta('Start Pro'),
-    plan: 'BUILDER' as const,
+    body: "Keep the loop in your editor with MCP and 5 journeys each month.",
+    cta: proUpgradeCta("Start Pro"),
+    plan: "BUILDER" as const,
   },
   compare_flat: {
-    headline: 'Still Flags after your re-check',
-    body: 'Use MCP so your agent can close what remains without copy-pasting URLs.',
+    headline: "Still Flags after your re-check",
+    body: "Use MCP so your agent can close what remains without copy-pasting URLs.",
     cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
+    plan: "BUILDER" as const,
   },
   share_public: {
-    headline: 'Share reports with clients',
-    body: 'Studio includes public share links with OG previews and a Check My Site CTA for viewers.',
-    cta: 'Upgrade to Studio',
-    plan: 'TEAM' as const,
+    headline: "Share reports with clients",
+    body: "Studio includes public share links with OG previews and a Check My Site CTA for viewers.",
+    cta: "Upgrade to Studio",
+    plan: "TEAM" as const,
   },
   export_locked: {
-    headline: 'Proof exports are on Studio',
-    body: 'Studio includes client-ready summaries with rubrics and top Flags.',
-    cta: 'Upgrade to Studio',
-    plan: 'TEAM' as const,
+    headline: "Proof exports are on Studio",
+    body: "Studio includes client-ready summaries with rubrics and top Flags.",
+    cta: "Upgrade to Studio",
+    plan: "TEAM" as const,
   },
   free_default: {
-    headline: 'Ship weekly? Automate the loop',
-    body: 'Pro adds 25 new checks per month, before/after compare, and MCP so checks run inside your supported builder.',
+    headline: "Ship weekly? Automate the loop",
+    body: "Pro adds 5 journeys per month, before/after compare, and MCP so checks run inside your supported builder.",
     cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
+    plan: "BUILDER" as const,
   },
   report_completed: {
-    headline: 'Automate the report loop',
-    body: 'Pro adds 25 new checks each month, before/after proof, and MCP in your supported builder.',
+    headline: "Automate the report loop",
+    body: "Pro adds 5 journeys each month, before/after proof, and MCP in your supported builder.",
     cta: proUpgradeCta(),
-    plan: 'BUILDER' as const,
+    plan: "BUILDER" as const,
   },
-} as const
+} as const;

@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| launch-design-implementation | completed | codex-root | main | Implement supplied launch references across homepage, pricing, and dashboard with responsive visual QA | components/marketing/landing, components/pricing, components/dashboard, app/(app)/dashboard, shared UI only where required | Implemented and browser-verified at desktop and mobile sizes; repository-wide verification remains blocked by unrelated pre-existing database drift | 2026-07-26 |
 | cli-customer-onboarding | blocked | codex-root | main | Publish-ready CLI, safe browser/token auth, customer skill, editor init, unified onboarding, and release verification | fixflags-cli, app/api/cli, app/cli, public/.well-known/skills, prisma, .github/workflows, CLI/MCP docs | Operator must rotate the exposed key, claim npm package with 2FA, configure trusted publishing, and push the protected release tag | 2026-07-26 |
 | current-product-completion | blocked | codex-root | main | Local product completion is implemented and fully verified; only credentialed deployed release proof remains. | app, components, lib, e2e, docs, .agents | Operator-provided release URL, disposable database/reset consent, sandbox users, mailbox assertion, GitHub fixture, and container environment | 2026-07-26 |
 

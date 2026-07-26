@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 
 describe('canUseEphemeralScanAccess', () => {
-  it('requires an authenticated Agency user', () => {
+  it('requires an authenticated Studio user', () => {
     expect(canUseEphemeralScanAccess(null)).toBe(false)
     expect(
       canUseEphemeralScanAccess({

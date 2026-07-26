@@ -49,7 +49,7 @@ export function canSharePublicly(
   return user.plan === 'TEAM'
 }
 
-/** Proof export (copy summary) - Agency plan only. */
+/** Proof export (copy summary) - Studio plan only. */
 export function canExportSummary(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
@@ -62,14 +62,14 @@ export function canUseApiKeys(
   return canAccessPaidFeatures(user)
 }
 
-/** Codebase (GitHub repo) scanning - Agency plan only, same tier as public sharing. */
+/** Codebase (GitHub repo) scanning - Studio plan only, same tier as public sharing. */
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   return canSharePublicly(user)
 }
 
-/** Authenticated Pro/Agency can enable Project product watch (recurring verify). */
+/** Authenticated Pro/Studio can enable Project product watch (recurring verify). */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {

@@ -27,7 +27,7 @@ export type AuditAccessContext =
   | 'owner'
   | 'anonymous_teaser'
   | 'marketing_sample'
-  | 'agency_public'
+  | 'studio_public'
   | 'share_grant'
   | 'denied'
 
@@ -45,7 +45,7 @@ export async function resolveAuditAccess(
       where: { id: audit.userId },
       select: { id: true, role: true, plan: true, subscriptionStatus: true },
     })
-    if (owner && canSharePublicly(owner)) return 'agency_public'
+    if (owner && canSharePublicly(owner)) return 'studio_public'
   }
 
   const claims = verifyShareGrant(shareGrantValue)

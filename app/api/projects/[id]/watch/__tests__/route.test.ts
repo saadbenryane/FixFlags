@@ -108,7 +108,7 @@ describe('/api/projects/[id]/watch', () => {
     expect(denied.status).toBe(402)
   })
 
-  it('requires Agency for daily watch and validates interval', async () => {
+  it('requires Studio for daily watch and validates interval', async () => {
     const daily = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',

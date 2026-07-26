@@ -1,45 +1,19 @@
-import Image from 'next/image'
-import { Container } from '@/components/ui/container'
-import { Section } from '@/components/ui/section'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
-import { HowItWorksSampleLink } from '@/components/marketing/landing/SampleFunnelEvents'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
-import { cn } from '@/lib/utils'
+import Image from "next/image";
+import { ArrowRight } from "lucide-react";
+import { Container } from "@/components/ui/container";
+import { Section } from "@/components/ui/section";
+import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
+import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
+import { HowItWorksSampleLink } from "@/components/marketing/landing/SampleFunnelEvents";
+import { LANDING_PAGE } from "@/lib/marketing/copy";
 
-type LoopStep = (typeof LANDING_PAGE.howItWorks.steps)[number]
-
-function StepArrow({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 48 16"
-      fill="none"
-      className={cn('h-3.5 w-10 text-brand', className)}
-    >
-      <path
-        d="M2 8h38"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeDasharray="2.5 3.5"
-      />
-      <path
-        d="M36 3.5 43.5 8 36 12.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+type LoopStep = (typeof LANDING_PAGE.howItWorks.steps)[number];
 
 function StepCard({ step }: { step: LoopStep }) {
   return (
     <article className="flex min-w-0 flex-col">
       <p className="font-mono text-sm font-semibold tabular-nums text-brand">
-        {String(step.step).padStart(2, '0')}
+        {String(step.step).padStart(2, "0")}
       </p>
       <h3 className="mt-2 text-lg font-semibold tracking-heading text-foreground sm:text-xl">
         {step.title}
@@ -60,16 +34,24 @@ function StepCard({ step }: { step: LoopStep }) {
         />
       </div>
     </article>
-  )
+  );
 }
 
 interface HowItWorksLoopSectionProps {
-  sampleHref?: string
+  sampleHref?: string;
 }
 
-export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoopSectionProps) {
-  const { label, headlineDisplay, headlineAccentPeriod, subhead, sampleLink, steps } =
-    LANDING_PAGE.howItWorks
+export function HowItWorksLoopSection({
+  sampleHref = "/samples",
+}: HowItWorksLoopSectionProps) {
+  const {
+    label,
+    headlineDisplay,
+    headlineAccentPeriod,
+    subhead,
+    sampleLink,
+    steps,
+  } = LANDING_PAGE.howItWorks;
 
   return (
     <Section
@@ -96,7 +78,10 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
                     aria-hidden
                     className="pointer-events-none absolute -right-3 top-[58%] hidden -translate-y-1/2 md:block lg:-right-4"
                   >
-                    <StepArrow />
+                    <ArrowRight
+                      className="h-5 w-5 text-foreground/65"
+                      strokeWidth={1.5}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -109,5 +94,5 @@ export function HowItWorksLoopSection({ sampleHref = '/samples' }: HowItWorksLoo
         </div>
       </Container>
     </Section>
-  )
+  );
 }

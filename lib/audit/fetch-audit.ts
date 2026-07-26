@@ -188,7 +188,7 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit)
-  const sharedFullAccess = accessContext === 'share_grant' || accessContext === 'agency_public'
+  const sharedFullAccess = accessContext === 'share_grant' || accessContext === 'studio_public'
   const showPrescription = sharedFullAccess
     ? Boolean(audit.aiReviewAt)
     : await canViewPrescriptionContentForAudit(

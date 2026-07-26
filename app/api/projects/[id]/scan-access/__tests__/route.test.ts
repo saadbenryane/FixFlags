@@ -54,7 +54,7 @@ describe('/api/projects/[id]/scan-access', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 402 for non-Agency users', async () => {
+  it('returns 402 for non-Studio users', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser('BUILDER'))
     const res = await GET({} as NextRequest, { params })
     expect(res.status).toBe(402)
@@ -62,7 +62,7 @@ describe('/api/projects/[id]/scan-access', () => {
     expect(body.code).toBe('UPGRADE_REQUIRED')
   })
 
-  it('returns redacted summary for Agency owners', async () => {
+  it('returns redacted summary for Studio owners', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser('TEAM'))
     const res = await GET({} as NextRequest, { params })
     expect(res.status).toBe(200)
@@ -71,7 +71,7 @@ describe('/api/projects/[id]/scan-access', () => {
     expect(body.summary?.label).toBe('Staging')
   })
 
-  it('persists scan access for Agency owners', async () => {
+  it('persists scan access for Studio owners', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser('TEAM'))
     const req = {
       json: async () => ({

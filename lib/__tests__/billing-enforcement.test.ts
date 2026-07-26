@@ -100,12 +100,12 @@ describe('scanLimitForPlan', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 
-  it('returns 25 for BUILDER', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 25)
+  it('returns 5 for BUILDER', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 5)
   })
 
-  it('returns 100 for TEAM', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 100)
+  it('returns 25 for TEAM', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 25)
   })
 })
 
@@ -125,7 +125,7 @@ describe('projectLimitForPlan', () => {
 describe('proUpgradeCta', () => {
   it('includes the Pro price in the default CTA', () => {
     const cta = proUpgradeCta()
-    assert.ok(cta.includes('$29'))
+    assert.ok(cta.includes('$39'))
     assert.ok(cta.includes('/mo'))
   })
 

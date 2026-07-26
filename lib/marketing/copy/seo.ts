@@ -7,12 +7,12 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with the full report, 3 AI checks, and unlimited re-checks. Pro adds 25 new checks per month, compare, and MCP.',
+      'Start free with the full report, 3 AI checks, and unlimited re-checks. Pro adds 5 journeys per month, compare, and MCP.',
   },
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'FixFlags closes the AI gap to release ready: Check, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
+      'FixFlags closes the AI gap from prompt to product: Check, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
   },
   samples: {
     title: 'Sample Report',

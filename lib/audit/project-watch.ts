@@ -54,7 +54,7 @@ export async function setProjectWatch(input: {
   })
   if (!project) return { ok: false, error: 'Project not found' }
   if (!project.isManaged && input.interval) {
-    return { ok: false, error: 'Promote this Product to an Agency Project first' }
+    return { ok: false, error: 'Promote this Product to a Studio Project first' }
   }
 
   const user = await prisma.user.findUnique({
@@ -63,10 +63,10 @@ export async function setProjectWatch(input: {
   })
   if (!user) return { ok: false, error: 'User not found' }
   if (input.interval && !canAccessProductWatch(user)) {
-    return { ok: false, error: 'Product watch requires Pro or Agency' }
+    return { ok: false, error: 'Product watch requires Pro or Studio' }
   }
   if (input.interval === 'daily' && !canSharePublicly(user)) {
-    return { ok: false, error: 'Daily watch requires Agency' }
+    return { ok: false, error: 'Daily watch requires Studio' }
   }
   if (input.interval) {
     const readiness = productWatchReadiness()

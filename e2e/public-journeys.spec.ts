@@ -173,8 +173,8 @@ test('auth and pricing entry points render without client errors', async ({ page
   const pricingPage = await page.context().newPage()
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
-  await expect(pricingPage.getByText('$29')).toBeVisible()
-  await expect(pricingPage.getByText('$99')).toBeVisible()
+  await expect(pricingPage.getByText('$39')).toBeVisible()
+  await expect(pricingPage.getByText('$129')).toBeVisible()
   expect(errors).toEqual([])
 })
 

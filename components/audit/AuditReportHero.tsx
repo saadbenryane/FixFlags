@@ -140,10 +140,10 @@ export function AuditReportHero({
                   className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
                   aria-label={
                     score != null
-                      ? `Overall score ${score} out of 100`
+                      ? `Overall status: ${score} out of 100`
                       : scanning
-                        ? 'Score pending'
-                        : 'Overall score unavailable'
+                        ? 'Status pending'
+                        : 'Overall status unavailable'
                   }
                 />
                 {badgeLabel ? (

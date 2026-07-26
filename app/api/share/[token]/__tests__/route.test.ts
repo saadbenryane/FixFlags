@@ -83,7 +83,7 @@ describe('/api/share/[token]', () => {
     expect(prismaMock.shareLink.updateMany).not.toHaveBeenCalled()
   })
 
-  it('invalidates links when the owner loses Agency entitlement', async () => {
+  it('invalidates links when the owner loses Studio entitlement', async () => {
     canSharePublicly.mockReturnValue(false)
     const response = (await GET(new NextRequest('http://localhost/api/share/token-1'), {
       params: Promise.resolve({ token: 'token-1' }),

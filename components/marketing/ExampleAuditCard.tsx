@@ -18,7 +18,7 @@ const TAG_LABELS: Record<string, string> = {
   'best-practices': 'Best practices benchmark',
   marketing: 'Marketing site example',
   'content-heavy': 'Content-heavy page',
-  'agency-ready': 'Studio-ready',
+  'studio-ready': 'Studio-ready',
 }
 
 interface Props {

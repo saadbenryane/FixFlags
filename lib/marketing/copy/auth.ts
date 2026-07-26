@@ -258,7 +258,7 @@ export const SHARE_COPY = {
   privateLinkCta: 'Copy private link',
   privateLinkCopied: 'Private link copied',
   privateLinkCopiedDetail: 'This link only works for you while signed in.',
-  agencyCta: 'Studio',
+  studioCta: 'Studio',
   access: {
     openingTitle: 'Opening shared report',
     openingBody: 'Checking that this link is still available.',

@@ -199,7 +199,7 @@ export function ShareDrawer({
         const content = getUpgradeMomentContent('share_public')
         toast.error(content.headline, {
           description: content.body,
-          action: { label: 'See Agency', onClick: () => router.push('/pricing') },
+          action: { label: 'See Studio', onClick: () => router.push('/pricing') },
         })
         return
       }
@@ -267,7 +267,7 @@ export function ShareDrawer({
                     {SHARE_COPY.privateLinkCta}
                   </Button>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href="/pricing">{SHARE_COPY.agencyCta}</Link>
+                    <Link href="/pricing">{SHARE_COPY.studioCta}</Link>
                   </Button>
                 </div>
               </div>

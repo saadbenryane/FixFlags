@@ -20,7 +20,7 @@ const VALID_TAGS: ExampleTagId[] = [
   'best-practices',
   'marketing',
   'content-heavy',
-  'agency-ready',
+  'studio-ready',
 ]
 
 function filterAudits(tag: ExampleTagId) {

@@ -1,67 +1,86 @@
-# Homepage reference QA
+# Launch design QA
 
 ## Comparison target
 
 - Source visual truth:
-  - `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/0/0920A529-3F80-40D3-A860-98C7D4478ADE_1_105_c.jpeg`
-  - `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/7/7C295C7C-75A8-406B-92E5-90002BE7CCCA_1_105_c.jpeg`
-  - The remaining supplied 1086 × 724 references for dimensions, value, workflow, CTA, and footer art direction.
+  - Homepage: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/0/0920A529-3F80-40D3-A860-98C7D4478ADE_1_105_c.jpeg`
+  - Pricing: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/2/21F9F6AE-4D42-4160-9AB4-34B304E70BA2_1_105_c.jpeg`
+  - Dashboard: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/4/42CBF027-EE45-4E56-A80D-ACDAA60CC43C_1_105_c.jpeg`
 - Browser-rendered implementation:
-  - `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-hero-final-clean-1086x724.png`
-  - `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-sample-final-1086x724.png`
-  - `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-mobile-hero-375x812.png`
-- Side-by-side evidence:
-  - `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-hero-comparison-1086x724.png`
-  - `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-sample-comparison-1086x724.png`
-- Desktop viewport: 1086 × 724 CSS px, device scale factor 1.
-- Mobile viewport: 375 × 812 CSS px, device scale factor 1.
-- State: logged out, light theme, homepage at rest. The sample comparison includes the sticky marketing header because it is part of the real homepage route.
-- Density normalization: source and desktop implementation are both 1086 × 724, so no resampling was required.
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/home-desktop-final.png`
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/pricing-desktop-final-clean.png`
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/dashboard-desktop-final.png`
+- Local routes: `/`, `/pricing`, `/dashboard`
+- Desktop CSS viewport: `1280 × 900`, device density `1`
+- Mobile CSS viewport: `390 × 844`, device density `1`
+- Source pixels:
+  - Homepage: `1086 × 732`
+  - Pricing: `724 × 1086`; the top `724 × 510` region was normalized to the implementation's `1280 × 900` aspect ratio for the focused hero-and-plans comparison
+  - Dashboard: `1086 × 732`
+- State:
+  - Light theme
+  - Authenticated marketing header and populated dashboard
+  - Current pricing content and entitlements were retained even where the reference used older plan names, limits, or prices
+
+## Evidence
+
+- Full-view homepage comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/home-reference-vs-implementation.png`
+- Focused pricing hero and plan comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/pricing-reference-vs-implementation.png`
+- Full-view dashboard comparison: `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/dashboard-reference-vs-implementation.png`
+- Mobile evidence:
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/home-mobile-final.png`
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/pricing-mobile-final.png`
+  - `/Users/saadbenryane/.codex/visualizations/2026/07/26/019f9e61-2bff-77b1-a87e-7fc40e8a0ae6/fixflags-launch-implementation/dashboard-mobile-final.png`
 
 ## Findings
 
-No actionable P0, P1, or P2 differences remain.
-
-The implementation now matches the source’s major composition: wide transparent header, left-aligned two-line outcome headline, orange URL action, product-truth assurance row, large physical glass report object, dense sample-report split, divided value features, contained integration workflow, and compact CTA-to-footer handoff.
-
-Accepted intentional differences:
-
-- Navigation keeps the canonical four destinations. It does not add a duplicate “How it works” destination beside “Product.”
-- Trust content does not reproduce the reference’s unsupported avatar row, builder count, manual-review percentage, or other invented proof.
-- Report values, issue labels, and rubric counts come from the shipped sample model rather than the illustrative values in the reference.
-- The development capture includes the existing support control. It is not part of the recreated visual content.
-
-## Required fidelity surfaces
-
-- Fonts and typography: Inter Tight display and Inter UI preserve the reference hierarchy, optical weight, two-line hero wrap, compact mono eyebrows, and readable small report text. No truncation affects primary marketing copy.
-- Spacing and layout rhythm: the header, hero copy, URL action, assurance line, editor marks, glass object, sample split, feature dividers, integration card, CTA, and footer align to the reference’s contained 1086px composition. Desktop and 375px mobile show no horizontal overflow.
-- Colors and visual tokens: the warm white canvas, ink text, restrained stone surfaces, soft glass shadows, and single orange signal use canonical tokens. Contrast remains legible in the tested light state.
-- Image quality and asset fidelity: the supplied RGBA hero master was tightly cropped to its visible alpha bounds and rendered as a real WebP asset. It has no white fringe, black halo, stretching, or CSS-drawn replacement.
-- Copy and content: headings and labels follow the references where they agree with product truth. Claims, counts, navigation, Message/Experience/Reach terminology, and Re-check language remain canonical.
-
-## Focused evidence
-
-- Hero: exact-size side-by-side comparison confirms matching header height, copy baseline, CTA width, assurance placement, illustration scale, and fold position.
-- Sample report: exact-size side-by-side comparison confirms the same left narrative/right product-proof hierarchy and report density. The live route’s sticky header and honest sample values are intentional.
-- Supporting sections: browser captures verify the five divided benefits, contained workflow card, final CTA, and footer use the same visual system. Further crops were not needed because their critical type, spacing, icon, and card treatments are clearly readable in the viewport captures.
+- No actionable P0, P1, or P2 visual differences remain.
+- Fonts and typography: display weight, compact tracking, monospaced eyebrow labels, hierarchy, and wrapping match the reference language. Longer current pricing copy intentionally produces different headline and card wrapping.
+- Spacing and layout rhythm: the desktop hero splits, card tracks, gutters, radii, borders, and shadows match the reference proportions. Mobile layouts collapse cleanly without horizontal overflow or hidden persistent controls.
+- Colors and visual tokens: existing FixFlags background, ink, orange brand, border, muted, destructive, and success tokens reproduce the source palette without adding isolated color values.
+- Image quality and asset fidelity: the homepage uses a clean crop of the supplied launch artwork. The pricing pedestal visual matches the supplied art direction and is masked into the page background without a visible rectangular edge.
+- Copy and content: current canonical plan names, prices, limits, product terms, and real dashboard data were preserved. Unsupported builder counts, testimonials, and other reference-only claims were not introduced.
+- Icons and controls use the existing project icon system. Primary navigation, mobile navigation, URL input, pricing actions, FAQ accordion, report links, and dashboard actions remain real controls.
+- The supplied references do not define mobile layouts. The `390 × 844` captures were therefore evaluated as responsive adaptations of the same hierarchy rather than pixel-identical targets.
 
 ## Comparison history
 
-1. Initial desktop comparison found three P2 issues: the header was constrained too narrowly, the hero began too high, and transparent padding made the glass object appear undersized.
-2. The marketing container and header rhythm were widened, the hero fold was rebalanced, and the source image alpha bounds were measured and cropped into a dedicated asset.
-3. The sample report was densified to preserve the source’s wide dashboard proportion, feature dividers were added, and supporting cards were aligned to the wider marketing container.
-4. Post-fix desktop and mobile captures show the P2 issues resolved. A clean browser tab reports no console warnings or errors.
+### Pass 1
 
-## Interaction and responsive checks
+- [P1] The pricing hero was too tall and pushed the plan grid too far below the fold.
+- [P2] The generated pricing image had a visible rectangular background edge.
+- [P2] The existing homepage hero artwork contained visibly garbled microcopy.
+- [P2] A one-point dashboard history rendered as an unhelpful isolated chart mark.
+- [P2] The floating support control covered card actions on both marketing and app surfaces.
 
-- Empty hero submission shows `Enter a URL like https://yoursite.com`.
-- The mobile menu opens and exposes Product → `/how-it-works` and Log in.
-- `/`, `/how-it-works`, `/samples`, `/pricing`, `/help`, `/sign-in`, `/privacy`, and `/terms` returned HTTP 200 locally.
-- The 375 × 812 hero keeps the headline, explanation, URL action, assurances, trust line, and editor marks readable without horizontal overflow.
-- Clean-load browser console: no errors or warnings.
+Fixes:
+
+- Reduced pricing hero type and artwork scale, tightened the grid, and widened the headline measure.
+- Added a soft image mask so the product render blends into the canvas.
+- Replaced the garbled homepage hero asset with a clean crop of the supplied reference artwork.
+- Changed the chart to an explicit progress empty state until a re-check exists.
+- Removed the floating support control from launch marketing and app shells; app help remains available in navigation.
+
+### Pass 2
+
+- Re-captured all three desktop routes at `1280 × 900`.
+- Rebuilt normalized same-input comparisons for the homepage, pricing hero/plans, and dashboard.
+- Captured all three routes at `390 × 844`.
+- Confirmed no remaining P0/P1/P2 differences.
+
+## Interaction and runtime checks
+
+- Mobile navigation opened and closed successfully.
+- Pricing FAQ expanded successfully and exposed its answer region.
+- Homepage, pricing, and dashboard routes loaded in the in-app browser.
+- Browser console: zero runtime errors. Development-only React DevTools and Fast Refresh messages were present.
+- TypeScript, targeted ESLint, UI drift guard, and local-image guard passed.
+- The repository-wide verification command is blocked by pre-existing Prisma drift: the local database is missing the unrelated `STUDIO` enum migration.
+- The brand hex guard is blocked by an unrelated existing hex value in `app/api/stripe/beta-interest/route.ts`.
 
 ## Follow-up polish
 
-- P3: the live support control slightly changes the clean-room screenshot composition, but it is an existing product surface and not a homepage fidelity defect.
+- P3: once a second completed score exists, review the real dashboard sparkline density with production history data.
+- P3: review the final authenticated versus logged-out marketing header capture in the deployed environment.
 
 final result: passed

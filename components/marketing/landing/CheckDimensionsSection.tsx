@@ -1,7 +1,13 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
+import Link from "next/link";
+import {
+  useCallback,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -12,50 +18,64 @@ import {
   RefreshCw,
   ShieldCheck,
   Zap,
-} from 'lucide-react'
-import { CheckDimensionsScene } from '@/components/marketing/landing/CheckDimensionsScene'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
-import { RUBRIC_ICONS } from '@/components/marketing/landing/rubric-icons'
-import { Container } from '@/components/ui/container'
-import { Section } from '@/components/ui/section'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
-import { cn } from '@/lib/utils'
+} from "lucide-react";
+import { CheckDimensionsScene } from "@/components/marketing/landing/CheckDimensionsScene";
+import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
+import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
+import { RUBRIC_ICONS } from "@/components/marketing/landing/rubric-icons";
+import { Container } from "@/components/ui/container";
+import { Section } from "@/components/ui/section";
+import { LANDING_PAGE } from "@/lib/marketing/copy";
+import { cn } from "@/lib/utils";
 
-type DimensionId = (typeof LANDING_PAGE.checkDimensions.cards)[number]['id']
-type TabId = DimensionId | 'all'
+type DimensionId = (typeof LANDING_PAGE.checkDimensions.cards)[number]["id"];
+type TabId = DimensionId | "all";
 
 const VALUE_ICONS = {
   shield: ShieldCheck,
   target: Crosshair,
   zap: Zap,
   refresh: RefreshCw,
-} as const
+} as const;
 
 const SEVERITY_TONE: Record<string, string> = {
-  High: 'bg-destructive/10 text-destructive',
-  Medium: 'bg-brand/10 text-brand',
-  Good: 'bg-success/10 text-success',
-}
+  High: "bg-destructive/10 text-destructive",
+  Medium: "bg-brand/10 text-brand",
+  Good: "bg-success/10 text-success",
+};
 
 function SeverityIcon({ severity }: { severity: string }) {
-  if (severity === 'High') {
-    return <AlertTriangle className="h-3.5 w-3.5 text-destructive" strokeWidth={2} aria-hidden />
+  if (severity === "High") {
+    return (
+      <AlertTriangle
+        className="h-3.5 w-3.5 text-destructive"
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
   }
-  if (severity === 'Good') {
-    return <CheckCircle2 className="h-3.5 w-3.5 text-success" strokeWidth={2} aria-hidden />
+  if (severity === "Good") {
+    return (
+      <CheckCircle2
+        className="h-3.5 w-3.5 text-success"
+        strokeWidth={2}
+        aria-hidden
+      />
+    );
   }
-  return <Info className="h-3.5 w-3.5 text-brand" strokeWidth={2} aria-hidden />
+  return (
+    <Info className="h-3.5 w-3.5 text-brand" strokeWidth={2} aria-hidden />
+  );
 }
 
 function ValuePedestal({
   icon: Icon,
 }: {
-  icon: (typeof VALUE_ICONS)[keyof typeof VALUE_ICONS]
+  icon: (typeof VALUE_ICONS)[keyof typeof VALUE_ICONS];
 }) {
   return (
     <span className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center">
-          {/* Soft pedestal shadow using CSS only, with no white-fringe raster */}
+      {/* Soft pedestal shadow using CSS only, with no white-fringe raster */}
       <span
         aria-hidden
         className="absolute bottom-0.5 h-3 w-10 rounded-full bg-foreground/10 blur-[6px]"
@@ -68,43 +88,48 @@ function ValuePedestal({
         <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
       </span>
     </span>
-  )
+  );
 }
 
 export function CheckDimensionsSection() {
-  const copy = LANDING_PAGE.checkDimensions
-  const baseId = useId()
-  const tabIds: TabId[] = [...copy.cards.map((c) => c.id), 'all']
-  const [tab, setTab] = useState<TabId>('message')
-  const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({})
+  const copy = LANDING_PAGE.checkDimensions;
+  const baseId = useId();
+  const tabIds: TabId[] = [...copy.cards.map((c) => c.id), "all"];
+  const [tab, setTab] = useState<TabId>("message");
+  const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
 
   const activeCard =
-    tab === 'all' ? null : (copy.cards.find((card) => card.id === tab) ?? copy.cards[0]!)
+    tab === "all"
+      ? null
+      : (copy.cards.find((card) => card.id === tab) ?? copy.cards[0]!);
 
   const selectTab = useCallback((next: TabId) => {
-    setTab(next)
-    tabRefs.current[next]?.focus()
-  }, [])
+    setTab(next);
+    tabRefs.current[next]?.focus();
+  }, []);
 
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, current: TabId) => {
-    const index = tabIds.indexOf(current)
-    if (index < 0) return
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      event.preventDefault()
-      const delta = event.key === 'ArrowRight' ? 1 : -1
-      const next = tabIds[(index + delta + tabIds.length) % tabIds.length]!
-      selectTab(next)
-    } else if (event.key === 'Home') {
-      event.preventDefault()
-      selectTab(tabIds[0]!)
-    } else if (event.key === 'End') {
-      event.preventDefault()
-      selectTab(tabIds[tabIds.length - 1]!)
+  const onTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    current: TabId,
+  ) => {
+    const index = tabIds.indexOf(current);
+    if (index < 0) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      const delta = event.key === "ArrowRight" ? 1 : -1;
+      const next = tabIds[(index + delta + tabIds.length) % tabIds.length]!;
+      selectTab(next);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      selectTab(tabIds[0]!);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      selectTab(tabIds[tabIds.length - 1]!);
     }
-  }
+  };
 
-  const panelId = `${baseId}-panel`
-  const tabButtonId = (id: TabId) => `${baseId}-tab-${id}`
+  const panelId = `${baseId}-panel`;
+  const tabButtonId = (id: TabId) => `${baseId}-tab-${id}`;
 
   return (
     <Section
@@ -113,7 +138,10 @@ export function CheckDimensionsSection() {
       id="what-it-checks"
       className="scroll-mt-[var(--header-offset)]"
     >
-      <Container className="space-y-8 sm:space-y-10">
+      <Container
+        variant="marketing"
+        className="space-y-7 px-4 sm:space-y-8 sm:px-6 lg:px-12"
+      >
         <LandingSectionHeader
           label={copy.label}
           brandEyebrow
@@ -128,13 +156,13 @@ export function CheckDimensionsSection() {
           className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
         >
           {copy.cards.map((card) => {
-            const Icon = RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS]
-            const selected = tab === card.id
+            const Icon = RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS];
+            const selected = tab === card.id;
             return (
               <button
                 key={card.id}
                 ref={(el) => {
-                  tabRefs.current[card.id] = el
+                  tabRefs.current[card.id] = el;
                 }}
                 type="button"
                 role="tab"
@@ -145,34 +173,34 @@ export function CheckDimensionsSection() {
                 onClick={() => setTab(card.id)}
                 onKeyDown={(e) => onTabKeyDown(e, card.id)}
                 className={cn(
-                  'inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4',
+                  "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
                   selected
-                    ? 'border-brand text-brand'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    ? "border-brand text-brand"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 {card.title}
               </button>
-            )
+            );
           })}
           <button
             ref={(el) => {
-              tabRefs.current.all = el
+              tabRefs.current.all = el;
             }}
             type="button"
             role="tab"
-            id={tabButtonId('all')}
-            aria-selected={tab === 'all'}
+            id={tabButtonId("all")}
+            aria-selected={tab === "all"}
             aria-controls={panelId}
-            tabIndex={tab === 'all' ? 0 : -1}
-            onClick={() => setTab('all')}
-            onKeyDown={(e) => onTabKeyDown(e, 'all')}
+            tabIndex={tab === "all" ? 0 : -1}
+            onClick={() => setTab("all")}
+            onKeyDown={(e) => onTabKeyDown(e, "all")}
             className={cn(
-              'inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4',
-              tab === 'all'
-                ? 'border-brand text-brand'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+              "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+              tab === "all"
+                ? "border-brand text-brand"
+                : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             <LayoutGrid className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -182,19 +210,26 @@ export function CheckDimensionsSection() {
 
         <RevealOnView>
           <div role="tabpanel" id={panelId} aria-labelledby={tabButtonId(tab)}>
-            {tab === 'all' ? (
+            {tab === "all" ? (
               <div className="grid gap-4 md:grid-cols-3">
                 {copy.cards.map((card) => {
-                  const Icon = RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS]
+                  const Icon =
+                    RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS];
                   return (
                     <article
                       key={card.id}
                       className="rounded-card bg-background/80 p-5 shadow-card sm:p-6"
                     >
                       <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-background text-brand shadow-card">
-                        <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                        <Icon
+                          className="h-4 w-4"
+                          strokeWidth={1.75}
+                          aria-hidden
+                        />
                       </div>
-                      <h3 className="mt-4 text-base font-semibold">{card.title}</h3>
+                      <h3 className="mt-4 text-base font-semibold">
+                        {card.title}
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty">
                         {card.question}
                       </p>
@@ -213,17 +248,26 @@ export function CheckDimensionsSection() {
                         ))}
                       </ul>
                     </article>
-                  )
+                  );
                 })}
               </div>
             ) : activeCard ? (
-              <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)_minmax(0,0.9fr)] lg:gap-6 xl:gap-10">
+              <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.2fr)_minmax(0,0.88fr)] lg:gap-7 xl:gap-9">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
                       {(() => {
-                        const Icon = RUBRIC_ICONS[activeCard.icon as keyof typeof RUBRIC_ICONS]
-                        return <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                        const Icon =
+                          RUBRIC_ICONS[
+                            activeCard.icon as keyof typeof RUBRIC_ICONS
+                          ];
+                        return (
+                          <Icon
+                            className="h-4 w-4"
+                            strokeWidth={1.75}
+                            aria-hidden
+                          />
+                        );
                       })()}
                     </span>
                     <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand">
@@ -238,7 +282,10 @@ export function CheckDimensionsSection() {
                   </p>
                   <ul className="space-y-2.5 pt-1">
                     {activeCard.checks.map((check) => (
-                      <li key={check} className="flex items-start gap-2.5 text-sm text-foreground">
+                      <li
+                        key={check}
+                        className="flex items-start gap-2.5 text-sm text-foreground"
+                      >
                         <CheckCircle2
                           className="mt-0.5 h-4 w-4 shrink-0 text-brand"
                           aria-hidden
@@ -256,7 +303,9 @@ export function CheckDimensionsSection() {
 
                 <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
                   <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold">{copy.topIssuesTitle}</h4>
+                    <h4 className="text-sm font-semibold">
+                      {copy.topIssuesTitle}
+                    </h4>
                     <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold tabular-nums text-foreground">
                       {activeCard.topIssues.length}
                     </span>
@@ -278,9 +327,9 @@ export function CheckDimensionsSection() {
                               </p>
                               <span
                                 className={cn(
-                                  'shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold',
+                                  "shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold",
                                   SEVERITY_TONE[issue.severity] ??
-                                    'bg-muted text-muted-foreground'
+                                    "bg-muted text-muted-foreground",
                                 )}
                               >
                                 {issue.severity}
@@ -316,30 +365,32 @@ export function CheckDimensionsSection() {
 
         <ul className="grid gap-0 overflow-hidden rounded-card bg-background/70 shadow-card sm:grid-cols-2 lg:grid-cols-4">
           {copy.values.map((item, index) => {
-            const Icon = VALUE_ICONS[item.icon]
+            const Icon = VALUE_ICONS[item.icon];
             return (
               <li
                 key={item.id}
                 className={cn(
-                  'flex items-start gap-3.5 px-5 py-5 sm:px-5 sm:py-6',
-                  index > 0 && 'border-t border-border/50 sm:border-t-0',
-                  index % 2 === 1 && 'sm:border-l sm:border-border/50',
-                  index > 0 && 'lg:border-l lg:border-border/50',
-                  index >= 2 && 'sm:border-t sm:border-border/50 lg:border-t-0'
+                  "flex items-start gap-3.5 px-5 py-4 sm:px-5 sm:py-5",
+                  index > 0 && "border-t border-border/50 sm:border-t-0",
+                  index % 2 === 1 && "sm:border-l sm:border-border/50",
+                  index > 0 && "lg:border-l lg:border-border/50",
+                  index >= 2 && "sm:border-t sm:border-border/50 lg:border-t-0",
                 )}
               >
                 <ValuePedestal icon={Icon} />
                 <div className="min-w-0 space-y-1 pt-0.5">
-                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {item.title}
+                  </p>
                   <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
                     {item.body}
                   </p>
                 </div>
               </li>
-            )
+            );
           })}
         </ul>
       </Container>
     </Section>
-  )
+  );
 }

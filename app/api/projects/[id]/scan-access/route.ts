@@ -17,7 +17,7 @@ const bodySchema = z.object({
   scanAccess: scanAccessInputSchema.nullable().optional(),
 })
 
-async function assertAgencyProjectOwner(projectId: string, userId: string) {
+async function assertStudioProjectOwner(projectId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
     select: { id: true, scanAccessEncrypted: true },
@@ -43,7 +43,7 @@ export async function GET(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertAgencyProjectOwner(id, session.user.id)
+    const access = await assertStudioProjectOwner(id, session.user.id)
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {
@@ -72,7 +72,7 @@ export async function PUT(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertAgencyProjectOwner(id, session.user.id)
+    const access = await assertStudioProjectOwner(id, session.user.id)
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {
@@ -115,7 +115,7 @@ export async function DELETE(
     if (!session?.user) return apiError('Sign in required', 401)
 
     const { id } = await params
-    const access = await assertAgencyProjectOwner(id, session.user.id)
+    const access = await assertStudioProjectOwner(id, session.user.id)
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {

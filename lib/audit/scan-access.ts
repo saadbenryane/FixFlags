@@ -18,7 +18,7 @@ export const scanAccessInputSchema = z.object({
   httpBasic: httpBasicSchema.optional(),
   cookies: z.array(cookieSchema).max(20).optional(),
   headers: z.record(z.string(), z.string()).optional(),
-  /** User note for agency handoff (never sent to target site). */
+  /** User note for Studio handoff (never sent to target site). */
   label: z.string().max(200).optional(),
 })
 

@@ -3,7 +3,7 @@ import { describe, it } from 'vitest'
 import {
   canViewPrescriptionContent,
   canViewDeterministicFixes,
-  canViewAiViaMaxPublicShare,
+  canViewAiViaAgencyPublicShare,
   isPublicMarketingSample,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromFlags,
@@ -71,21 +71,21 @@ describe('report-access', () => {
 
   it('allows Max public share when owner can share publicly', () => {
     assert.equal(
-      canViewAiViaMaxPublicShare(
+      canViewAiViaAgencyPublicShare(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         true
       ),
       true
     )
     assert.equal(
-      canViewAiViaMaxPublicShare(
+      canViewAiViaAgencyPublicShare(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         false
       ),
       false
     )
     assert.equal(
-      canViewAiViaMaxPublicShare(
+      canViewAiViaAgencyPublicShare(
         { userId: null, aiReviewAt, isPublic: true },
         true
       ),

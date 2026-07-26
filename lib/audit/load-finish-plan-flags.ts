@@ -57,7 +57,7 @@ export function toRankableFlag(flag: LiveFlag): RankableFlag {
   } as RankableFlag
 }
 
-/** Live page flags plus Agency repo findings for one shared Finish Plan ranking. */
+/** Live page flags plus Studio repo findings for one shared Finish Plan ranking. */
 export async function loadFinishPlanFlags(input: {
   userId: string | null
   auditUrl: string
@@ -94,7 +94,7 @@ export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
   }
 }
 
-/** Shared complete Fix List ranking including Agency repo findings. */
+/** Shared complete Fix List ranking including Studio repo findings. */
 export async function buildUnifiedFixList(input: UnifiedPlanInput): Promise<FixList> {
   const planInput = await buildPlanInput(input)
   return buildFixList(planInput)

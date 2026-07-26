@@ -12,7 +12,7 @@ const MAX_PI_MUTATION_ATTEMPTS = 5
 
 /**
  * Resolve the one internal Product owned by this user and exact hostname.
- * Agency Projects promote this same row instead of creating a parallel record.
+ * Studio Projects promote this same row instead of creating a parallel record.
  */
 export async function ensureProductProject(
   userId: string,

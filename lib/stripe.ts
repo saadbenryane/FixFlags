@@ -6,7 +6,6 @@ export {
   scanLimitForPlan,
   projectLimitForPlan,
   planFromPriceId,
-  getMarketingPlans,
   PLAN_DEFINITIONS,
 } from '@/lib/billing/plans'
 

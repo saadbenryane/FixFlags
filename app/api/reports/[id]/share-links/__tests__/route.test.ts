@@ -52,7 +52,7 @@ describe('/api/reports/[id]/share-links', () => {
     expect(response.status).toBe(401)
   })
 
-  it('creates an Agency share link and rejects Free users', async () => {
+  it('creates a Studio share link and rejects Free users', async () => {
     prismaMock.shareLink.create.mockResolvedValue({ id: 'share-2', token: 'tok', revoked: false })
     const created = await POST(
       new NextRequest('http://localhost/api/reports/audit-1/share-links', {

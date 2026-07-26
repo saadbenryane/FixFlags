@@ -47,12 +47,12 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first check?',
-    answer: `No. One free teaser scan shows scores, Flags, and evidence without an account. ${OFFER.short} Create a free account for fix prompts, re-check, and 3 new URL checks with full reports.`,
+    answer: `No. One free teaser scan shows scores, Flags, and evidence without an account. ${OFFER.short} Create a free account for fix prompts, re-check, and 3 checks with full reports.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
     answer:
-      'Free: one teaser scan without an account (evidence and Flags, fix prompts after signup), then 3 new URL checks with full reports on a free account, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in supported builders, and 25 new URL checks per month.',
+      'Free: one teaser scan without an account (evidence and Flags, fix prompts after signup), then 3 checks with full reports on a free account, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in supported builders, and 5 journeys per month.',
   },
   {
     question: 'Do I need Cursor or MCP?',

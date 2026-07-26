@@ -331,9 +331,9 @@ program
   .option('--single', 'Check only the given URL')
   .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')
-  .option('--scan-access-file <path>', 'JSON file with httpBasic, cookies, or headers (Agency)')
-  .option('--basic-auth <credentials>', 'HTTP basic auth as user:password (Agency)')
-  .option('--cookie <value>', 'Session cookie value for protected previews (Agency)')
+  .option('--scan-access-file <path>', 'JSON file with httpBasic, cookies, or headers (Studio)')
+  .option('--basic-auth <credentials>', 'HTTP basic auth as user:password (Studio)')
+  .option('--cookie <value>', 'Session cookie value for protected previews (Studio)')
   .option('--json', 'Print structured JSON')
   .action(
     async (

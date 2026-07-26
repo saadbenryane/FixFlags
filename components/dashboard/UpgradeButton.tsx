@@ -10,7 +10,7 @@ import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgra
 
 interface Props {
   context?: UpgradeMoment
-  /** Target plan for checkout. Defaults to Pro. Use TEAM for Agency. */
+  /** Target plan for checkout. Defaults to Pro. Use TEAM for Studio. */
   plan?: 'BUILDER' | 'TEAM'
   betaGated?: boolean
   userEmail?: string

@@ -21,7 +21,7 @@ describe('toggle-public gating', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('denies an Agency user whose subscription has lapsed', () => {
+  it('denies a Studio user whose subscription has lapsed', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       canSharePublicly({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'PAST_DUE' }),

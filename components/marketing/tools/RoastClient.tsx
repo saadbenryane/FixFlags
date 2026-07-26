@@ -154,7 +154,7 @@ export function RoastClient() {
               {result.overallGrade}
             </p>
             <p className="mt-1 font-display text-2xl font-semibold text-foreground">
-              {result.overallScore}/100
+              {result.overallGrade}
             </p>
             <p className="mt-3 text-muted-foreground">{result.tagline}</p>
           </div>

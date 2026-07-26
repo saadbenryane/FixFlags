@@ -1,47 +1,56 @@
-import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/db'
-import { AuditInput } from '@/components/audit/AuditInput'
-import { UsageMeter } from '@/components/dashboard/UsageMeter'
-import { UpgradeButton } from '@/components/dashboard/UpgradeButton'
-import { ProjectsPanel } from '@/components/dashboard/ProjectsPanel'
-import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
-import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
-import { FirstAuditPrompt } from '@/components/dashboard/FirstAuditPrompt'
-import { McpDashboardCard } from '@/components/dashboard/McpDashboardCard'
-import { RecentChecksList } from '@/components/dashboard/RecentChecksList'
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { AuditInput } from "@/components/audit/AuditInput";
+import { UsageMeter } from "@/components/dashboard/UsageMeter";
+import { UpgradeButton } from "@/components/dashboard/UpgradeButton";
+import { ProjectsPanel } from "@/components/dashboard/ProjectsPanel";
+import { DashboardCheckoutToast } from "@/components/dashboard/DashboardCheckoutToast";
+import { ContextualUpgradeCard } from "@/components/billing/ContextualUpgradeCard";
+import { FirstAuditPrompt } from "@/components/dashboard/FirstAuditPrompt";
+import { McpDashboardCard } from "@/components/dashboard/McpDashboardCard";
+import { RecentChecksList } from "@/components/dashboard/RecentChecksList";
+import { DashboardSummary } from "@/components/dashboard/DashboardSummary";
 
-import { Container } from '@/components/ui/container'
-import { Surface } from '@/components/ui/surface'
-import { Badge } from '@/components/ui/badge'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { SectionTitle } from '@/components/ui/typography'
-import { getEffectiveScanLimit, getPendingCheckCount, isDevUnlimitedScans, isUnlimitedScanLimit } from '@/lib/auth/permissions'
-import { planLabel } from '@/lib/billing/plans'
-import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
-import { isAtCheckLimit } from '@/lib/audit/usage'
-import { getAppViewer } from '@/lib/auth/app-viewer'
-import { getEntitlements } from '@/lib/auth/entitlements'
-import { projectLimitForPlan } from '@/lib/billing/plans'
+import { Container } from "@/components/ui/container";
+import { Surface } from "@/components/ui/surface";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { SectionTitle } from "@/components/ui/typography";
+import {
+  getEffectiveScanLimit,
+  getPendingCheckCount,
+  isDevUnlimitedScans,
+  isUnlimitedScanLimit,
+} from "@/lib/auth/permissions";
+import { planLabel } from "@/lib/billing/plans";
+import {
+  canAccessPaidFeatures,
+  hasRevokedSubscriptionStatus,
+} from "@/lib/auth/entitlements";
+import { isAtCheckLimit } from "@/lib/audit/usage";
+import { getAppViewer } from "@/lib/auth/app-viewer";
+import { getEntitlements } from "@/lib/auth/entitlements";
+import { projectLimitForPlan } from "@/lib/billing/plans";
 
 type DashboardSearchParams = {
-  url?: string | string[]
-}
+  url?: string | string[];
+};
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<DashboardSearchParams>
+  searchParams?: Promise<DashboardSearchParams>;
 }) {
-  const params = searchParams ? await searchParams : {}
-  const initialAuditUrl = typeof params.url === 'string' ? params.url : ''
-  const viewer = await getAppViewer()
-  if (!viewer) redirect('/sign-in')
-  const { user } = viewer
-  const userId = user.id
+  const params = searchParams ? await searchParams : {};
+  const initialAuditUrl = typeof params.url === "string" ? params.url : "";
+  const viewer = await getAppViewer();
+  if (!viewer) redirect("/sign-in");
+  const { user } = viewer;
+  const userId = user.id;
 
-  const PAGE_SIZE = 20
-  const projectLimit = projectLimitForPlan(user.plan)
+  const PAGE_SIZE = 20;
+  const projectLimit = projectLimitForPlan(user.plan);
   const [auditBatch, pending, auditCounts, projects] = await Promise.all([
     prisma.audit.findMany({
       where: { userId, parentId: null },
@@ -60,24 +69,24 @@ export default async function DashboardPage({
           },
         },
         monitoringAudits: {
-          where: { status: 'COMPLETED' },
+          where: { status: "COMPLETED" },
           select: { id: true, score: true, createdAt: true },
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: "asc" },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: PAGE_SIZE + 1,
     }),
     getPendingCheckCount(userId),
     prisma.audit.groupBy({
-      by: ['source'],
+      by: ["source"],
       where: { userId },
       _count: true,
     }),
     projectLimit > 0
       ? prisma.project.findMany({
           where: { userId, isManaged: true },
-          orderBy: { updatedAt: 'desc' },
+          orderBy: { updatedAt: "desc" },
           select: {
             id: true,
             name: true,
@@ -86,38 +95,71 @@ export default async function DashboardPage({
           },
         })
       : Promise.resolve([]),
-  ])
-  const initialHasMore = auditBatch.length > PAGE_SIZE
-  const audits = initialHasMore ? auditBatch.slice(0, PAGE_SIZE) : auditBatch
+  ]);
+  const initialHasMore = auditBatch.length > PAGE_SIZE;
+  const audits = initialHasMore ? auditBatch.slice(0, PAGE_SIZE) : auditBatch;
 
-  const completedAudits = audits.filter((audit) => audit.status === 'COMPLETED')
+  const completedAudits = audits.filter(
+    (audit) => audit.status === "COMPLETED",
+  );
+  const latestCompleted = completedAudits[0] ?? null;
 
-  const used = user.auditsUsed
-  const isUnlimited = isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
-  const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
+  const used = user.auditsUsed;
+  const isUnlimited =
+    isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user));
+  const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user);
   // A revoked subscription (payment failure, cancellation) leaves the user effectively on the
   // free tier even though `plan` hasn't been resynced yet - treat them the same as FREE here so
   // the upgrade nudges aren't hidden from someone who actually needs to see them.
   const isEffectivelyFree =
-    user.plan === 'FREE' || hasRevokedSubscriptionStatus(user.subscriptionStatus)
+    user.plan === "FREE" ||
+    hasRevokedSubscriptionStatus(user.subscriptionStatus);
   const atAuditLimit =
     isEffectivelyFree &&
     !isUnlimited &&
     effectiveLimit !== null &&
-    isAtCheckLimit(used, pending, effectiveLimit)
+    isAtCheckLimit(used, pending, effectiveLimit);
 
-  const entitlements = getEntitlements(user)
-  const canCompare = canAccessPaidFeatures(user)
+  const entitlements = getEntitlements(user);
+  const canCompare = canAccessPaidFeatures(user);
 
   const totalCritical = completedAudits.reduce(
-    (sum, a) => sum + a.rubrics.reduce((s, r) => s + r.flags.filter((f) => f.severity === 'CRITICAL').length, 0),
-    0
-  )
-  const mcpAudits = auditCounts.find((a) => a.source === 'MCP')?._count ?? 0
-  const webAudits = auditCounts.find((a) => a.source !== 'MCP')?._count ?? 0
+    (sum, a) =>
+      sum +
+      a.rubrics.reduce(
+        (s, r) => s + r.flags.filter((f) => f.severity === "CRITICAL").length,
+        0,
+      ),
+    0,
+  );
+  const latestCritical =
+    latestCompleted?.rubrics.reduce(
+      (sum, rubric) =>
+        sum +
+        rubric.flags.filter((flag) => flag.severity === "CRITICAL").length,
+      0,
+    ) ?? 0;
+  const latestImportant =
+    latestCompleted?.rubrics.reduce(
+      (sum, rubric) =>
+        sum +
+        rubric.flags.filter((flag) => flag.severity === "IMPORTANT").length,
+      0,
+    ) ?? 0;
+  const latestTrendScores = latestCompleted
+    ? [
+        latestCompleted.score,
+        ...latestCompleted.monitoringAudits.map((audit) => audit.score),
+      ].filter((score): score is number => score !== null)
+    : [];
+  const mcpAudits = auditCounts.find((a) => a.source === "MCP")?._count ?? 0;
+  const webAudits = auditCounts.find((a) => a.source !== "MCP")?._count ?? 0;
 
   return (
-    <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-7">
+    <Container
+      variant="report"
+      className="space-y-5 px-4 py-5 pb-24 sm:space-y-6 sm:px-6 sm:py-7 sm:pb-24 lg:px-0"
+    >
       <Suspense fallback={null}>
         <DashboardCheckoutToast />
       </Suspense>
@@ -131,29 +173,43 @@ export default async function DashboardPage({
         </div>
         <div className="flex items-center gap-3">
           {!isEffectivelyFree && (
-            <Badge variant="outline" className="text-success border-success/30 bg-success/5 text-xs gap-1.5">
+            <Badge
+              variant="outline"
+              className="text-success border-success/30 bg-success/5 text-xs gap-1.5"
+            >
               {planLabel(user.plan)}
             </Badge>
           )}
           {isEffectivelyFree && !isUnlimited && (
             <UpgradeButton
               context="free_default"
-              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === 'true'}
+              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === "true"}
               userEmail={user.email ?? undefined}
             />
           )}
         </div>
       </div>
 
-      {/* Main action first: the dashboard starts with the product loop. */}
+      <DashboardSummary
+        latestScore={latestCompleted?.score ?? null}
+        latestReportId={latestCompleted?.id ?? null}
+        criticalFlags={latestCritical}
+        importantFlags={latestImportant}
+        trendScores={latestTrendScores}
+      />
+
+      {/* Primary action: start a new Check after orienting to current release health. */}
       <Surface variant="nested" className="shadow-card sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <SectionTitle>Review a URL</SectionTitle>
           {completedAudits.length > 0 && (
             <span className="text-xs text-muted-foreground tabular-nums">
-              {completedAudits.length} check{completedAudits.length !== 1 ? 's' : ''}
+              {completedAudits.length} check
+              {completedAudits.length !== 1 ? "s" : ""}
               {totalCritical > 0 && (
-                <span className="ml-2 text-destructive">{totalCritical} critical Flag{totalCritical !== 1 ? 's' : ''}</span>
+                <span className="ml-2 text-destructive">
+                  {totalCritical} critical Flag{totalCritical !== 1 ? "s" : ""}
+                </span>
               )}
             </span>
           )}
@@ -166,16 +222,25 @@ export default async function DashboardPage({
       </Surface>
 
       {atAuditLimit && (
-        <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" userEmail={user.email ?? undefined} />
+        <ContextualUpgradeCard
+          moment="audit_limit_reached"
+          isLoggedIn
+          currentPlan="FREE"
+          userEmail={user.email ?? undefined}
+        />
       )}
 
       {/* Usage + MCP summary row: defer MCP upsell until the user has a check */}
-      <div className={audits.length > 0 ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
+      <div
+        className={
+          audits.length > 0 ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"
+        }
+      >
         <UsageMeter
           used={used}
           limit={isUnlimited ? null : effectiveLimit}
           pending={pending}
-        plan={user.plan}
+          plan={user.plan}
         />
         {audits.length > 0 ? (
           <McpDashboardCard
@@ -208,5 +273,5 @@ export default async function DashboardPage({
         </div>
       )}
     </Container>
-  )
+  );
 }

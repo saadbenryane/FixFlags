@@ -212,7 +212,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(checkAndPlan).not.toHaveBeenCalled()
   })
 
-  it('returns 402 when scanAccess is sent on a non-Agency plan', async () => {
+  it('returns 402 when scanAccess is sent on a non-Studio plan', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
 
@@ -229,7 +229,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(checkAndPlan).not.toHaveBeenCalled()
   })
 
-  it('passes scanAccess to checkAndPlan for Agency users', async () => {
+  it('passes scanAccess to checkAndPlan for Studio users', async () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'TEAM' }))
     const scanAccess = { httpBasic: { username: 'user', password: 'pass' } }

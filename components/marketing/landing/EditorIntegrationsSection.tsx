@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import Image from "next/image";
 import {
   Check,
   Crosshair,
@@ -7,29 +7,29 @@ import {
   ShieldCheck,
   TrendingUp,
   Wrench,
-} from 'lucide-react'
-import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
-import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
-import { Container } from '@/components/ui/container'
-import { Section } from '@/components/ui/section'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
+} from "lucide-react";
+import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
+import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
+import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
+import { Container } from "@/components/ui/container";
+import { Section } from "@/components/ui/section";
+import { LANDING_PAGE } from "@/lib/marketing/copy";
 
 const INPUT_ICONS = {
   target: Crosshair,
   shield: ShieldCheck,
   wrench: Wrench,
   refresh: RefreshCw,
-} as const
+} as const;
 
 const OUTPUT_ICONS = {
   check: Check,
   trend: TrendingUp,
   diamond: Gem,
-} as const
+} as const;
 
 export function EditorIntegrationsSection() {
-  const copy = LANDING_PAGE.editorIntegrations
+  const copy = LANDING_PAGE.editorIntegrations;
 
   return (
     <Section
@@ -59,7 +59,9 @@ export function EditorIntegrationsSection() {
                   className="[&_ul]:gap-2.5 [&_li]:rounded-full [&_li]:border [&_li]:border-border/60 [&_li]:bg-muted/40 [&_li]:px-3 [&_li]:py-2 [&_li]:text-xs [&_li]:font-medium [&_li]:text-foreground/80 [&_svg]:h-4 [&_svg]:w-4"
                 />
 
-                <p className="text-xs text-muted-foreground">{copy.moreComing}</p>
+                <p className="text-xs text-muted-foreground">
+                  {copy.moreComing}
+                </p>
               </div>
 
               <WorkflowDiagram />
@@ -68,11 +70,11 @@ export function EditorIntegrationsSection() {
         </RevealOnView>
       </Container>
     </Section>
-  )
+  );
 }
 
 function WorkflowDiagram() {
-  const { inputs, outputs } = LANDING_PAGE.editorIntegrations.workflow
+  const { inputs, outputs } = LANDING_PAGE.editorIntegrations.workflow;
 
   return (
     <div
@@ -81,7 +83,7 @@ function WorkflowDiagram() {
     >
       <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
         {inputs.map((item) => {
-          const Icon = INPUT_ICONS[item.icon]
+          const Icon = INPUT_ICONS[item.icon];
           return (
             <li
               key={item.id}
@@ -90,30 +92,26 @@ function WorkflowDiagram() {
               <Icon className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} />
               {item.title}
             </li>
-          )
+          );
         })}
       </ul>
 
       <div className="relative flex flex-col items-center">
-        <div className="absolute inset-y-6 -left-3 hidden w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent md:block md:-left-4" />
-        <div className="absolute inset-y-8 -right-3 hidden w-px bg-gradient-to-b from-transparent via-brand/50 to-transparent md:block md:-right-4" />
-        <div className="relative flex h-28 w-28 items-center justify-center rounded-[1.25rem] bg-gradient-to-b from-muted to-muted/40 shadow-card ring-1 ring-border/50 sm:h-32 sm:w-32">
-          <div className="absolute inset-2 rounded-[1rem] bg-background/70 backdrop-blur-[2px]" />
-          <Image
-            src="/brand/logo-mark.png"
-            alt=""
-            width={56}
-            height={56}
-            unoptimized
-            className="relative z-10 h-12 w-12 object-contain sm:h-14 sm:w-14"
-          />
-        </div>
-        <div className="mt-3 h-3 w-24 rounded-sm bg-muted shadow-inner sm:w-28" />
+        <Image
+          src="/marketing/visuals/pricing-glass-mark.webp"
+          alt=""
+          width={1448}
+          height={1086}
+          sizes="(min-width: 768px) 15rem, 13rem"
+          className="h-auto w-52 select-none object-contain mix-blend-multiply sm:w-60"
+          loading="lazy"
+          draggable={false}
+        />
       </div>
 
       <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
         {outputs.map((item) => {
-          const Icon = OUTPUT_ICONS[item.icon]
+          const Icon = OUTPUT_ICONS[item.icon];
           return (
             <li
               key={item.id}
@@ -123,9 +121,9 @@ function WorkflowDiagram() {
               <span className="flex-1">{item.title}</span>
               <span className="h-1.5 w-1.5 rounded-full bg-success" />
             </li>
-          )
+          );
         })}
       </ul>
     </div>
-  )
+  );
 }

@@ -123,7 +123,7 @@ describe('canScanRepositories', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows Agency plan and admins', () => {
+  it('allows Studio plan and admins', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(canScanRepositories({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' }), true)
     assert.equal(canScanRepositories({ id: 'u1', role: 'admin', plan: 'FREE', subscriptionStatus: 'NONE' }), true)

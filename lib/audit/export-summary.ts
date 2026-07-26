@@ -48,8 +48,8 @@ export function buildAuditExportSummary(audit: ExportAuditInput): string {
   const overallGrade = audit.score != null ? gradeFromScore(audit.score) : null
   const scoreLine =
     audit.score != null
-      ? `**Overall:** ${audit.score}/100 (Grade ${overallGrade})`
-      : '**Overall:** Score unavailable'
+      ? `**Status:** ${overallGrade} (${audit.score}/100)`
+      : '**Status:** Score unavailable'
 
   const rubricRows = audit.rubrics
   const flags = audit.flags

@@ -28,7 +28,7 @@ export type ExampleAudit = {
   score: number
   grade: string
   verdict: string
-  tags: Array<'best-practices' | 'marketing' | 'content-heavy' | 'agency-ready'>
+  tags: Array<'best-practices' | 'marketing' | 'content-heavy' | 'studio-ready'>
   rubrics: ExampleRubric[]
   flags: ExampleFlag[]
 }
@@ -123,7 +123,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
     pageType: 'Marketing / SaaS landing page',
     score: 72,
     grade: 'C',
-    tags: ['marketing', 'agency-ready'],
+    tags: ['marketing', 'studio-ready'],
     verdict:
       'Strong brand presence but conversion path has friction. Mobile hero prioritizes visual over CTA visibility.',
     rubrics: [

@@ -1,13 +1,10 @@
-
-
 export const HERO = {
-  badge: 'AI product review',
+  badge: 'The release readiness layer',
   headline: 'Finish what your AI started.',
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: 'Finish what your AI started',
   headlineAccentPeriod: true,
-  subhead:
-    'AI builds your product. FixFlags reviews the message, experience, and reach so you know what to fix before users find it.',
+  subhead: 'AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review site',
   trySampleCta: 'See a sample review',
@@ -28,38 +25,96 @@ export const DIFFERENTIATION = {
   headline: 'More than a Lighthouse score',
   subhead: 'Automated checks miss what a reviewer sees in a screenshot.',
   lighthouseLinkText: 'Compare FixFlags checks with Google Lighthouse',
-  is: [
-    'A review layer that finishes what your AI started',
-    'Flags with evidence, impact, and fix prompts',
-    'A re-check loop to prove fixes landed',
-  ],
-  isNot: [
-    'Not a generic Lighthouse wrapper',
-    'Not manual QA-as-a-service',
-    'Not an enterprise test suite',
-  ],
-  bullets: [
-    'AI reads screenshots for message, experience, and reach gaps',
-    'Every Flag comes with a fix prompt',
-    'Re-checks prove fixes landed',
-  ],
+  is: ['A review layer that finishes what your AI started', 'Flags with evidence, impact, and fix prompts', 'A re-check loop to prove fixes landed'],
+  isNot: ['Not a generic Lighthouse wrapper', 'Not manual QA-as-a-service', 'Not an enterprise test suite'],
+  bullets: ['AI reads screenshots for message, experience, and reach gaps', 'Every Flag comes with a fix prompt', 'Re-checks prove fixes landed'],
   rows: [
-    { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Identifies missing og:image', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Checks mobile CTA placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
-    { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
-    { feature: 'Before/after comparison', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
-    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Studio)' },
-    { feature: 'Runs inside supported builders', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
+    {
+      feature: 'Says why each Flag hurts conversion',
+      lighthouse: 'Partial',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'AI reads screenshots for UX gaps',
+      lighthouse: 'No',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Identifies missing og:image',
+      lighthouse: 'Partial',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Checks mobile CTA placement',
+      lighthouse: 'No',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Writes fix prompts your agent runs',
+      lighthouse: 'No',
+      manual: 'No',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Re-check after fixes',
+      lighthouse: 'Manual',
+      manual: 'Manual',
+      fixflags: 'Built-in',
+    },
+    {
+      feature: 'Before/after comparison',
+      lighthouse: 'No',
+      manual: 'No',
+      fixflags: 'Yes (Pro)',
+    },
+    {
+      feature: 'Public share links for clients',
+      lighthouse: 'No',
+      manual: 'No',
+      fixflags: 'Yes (Studio)',
+    },
+    {
+      feature: 'Runs inside supported builders',
+      lighthouse: 'No',
+      manual: 'No',
+      fixflags: 'Yes',
+    },
   ],
   comparisonRows: [
-    { feature: 'Says why each Flag hurts conversion', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'AI reads screenshots for UX gaps', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Identifies missing social preview image', lighthouse: 'Partial', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Checks mobile button placement', lighthouse: 'No', manual: 'Yes', fixflags: 'Yes' },
-    { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
+    {
+      feature: 'Says why each Flag hurts conversion',
+      lighthouse: 'Partial',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'AI reads screenshots for UX gaps',
+      lighthouse: 'No',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Identifies missing social preview image',
+      lighthouse: 'Partial',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Checks mobile button placement',
+      lighthouse: 'No',
+      manual: 'Yes',
+      fixflags: 'Yes',
+    },
+    {
+      feature: 'Writes fix prompts your agent runs',
+      lighthouse: 'No',
+      manual: 'No',
+      fixflags: 'Yes',
+    },
   ],
 } as const
 
@@ -93,8 +148,7 @@ export const HOW_IT_WORKS_PAGE = {
     eyebrow: 'The AI Gap',
     headline: 'AI can build products. It still can\u2019t tell you if they\u2019re ready.',
     headlineAccentPeriod: true,
-    subhead:
-      'AI gets you close. FixFlags finds what it missed — the gaps between a draft and a release.',
+    subhead: 'AI gets you close. FixFlags finds what it missed: the gaps between a draft and a release.',
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Set up MCP',
@@ -104,7 +158,7 @@ export const HOW_IT_WORKS_PAGE = {
         id: 'ai-build',
         title: 'AI Build',
         percent: '80%',
-        body: 'Draft complete. Not release ready.',
+        body: 'Draft complete. Not shippable yet.',
         tone: 'muted' as const,
       },
       {
@@ -154,8 +208,7 @@ export const HOW_IT_WORKS_PAGE = {
     label: 'What the report gives you',
     title: 'A fix queue, not a score dump.',
     body: 'Each Flag explains what broke, where we saw it, why it matters, and what to paste into your builder.',
-    rubricLine:
-      'Message is what the page says. Experience is how it works. Reach is how people find and share it.',
+    rubricLine: 'Message is what the page says. Experience is how it works. Reach is how people find and share it.',
     sampleLabel: 'Sample Finish Plan',
     sampleCta: 'Explore a full sample',
     sampleHref: '/samples',
@@ -236,8 +289,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'Every dimension your product needs to pass',
     headlineAccentPeriod: true,
     headline: 'Every dimension your product needs to pass.',
-    subhead:
-      'FixFlags checks your product across message, experience, and reach so you can fix what counts before users find it.',
+    subhead: 'FixFlags checks your product across message, experience, and reach so you can fix what counts before users find it.',
     allChecksTab: 'All checks',
     topIssuesTitle: 'Top issues',
     viewAllIssues: 'View all issues',
@@ -250,16 +302,10 @@ export const LANDING_PAGE = {
         label: 'Message',
         panelTitle: 'Communicate what matters.',
         question: 'Can people understand and care in five seconds?',
-        panelBody:
-          'We analyze clarity, hierarchy, and content quality to make sure your message is instantly clear and on-brand.',
+        panelBody: 'We analyze clarity, hierarchy, and content quality to make sure your message is instantly clear and on-brand.',
         icon: 'message',
         tint: 'brand',
-        checks: [
-          'Clarity & value proposition',
-          'Content hierarchy',
-          'Tone of voice',
-          'Readability',
-        ] as const,
+        checks: ['Clarity & value proposition', 'Content hierarchy', 'Tone of voice', 'Readability'] as const,
         proofExample: {
           finding: 'Hero value is unclear',
           evidence: '"Your team deserves better naps"',
@@ -301,16 +347,10 @@ export const LANDING_PAGE = {
         label: 'Experience',
         panelTitle: 'Make the next step obvious.',
         question: 'Can people use it without friction?',
-        panelBody:
-          'We check mobile layout, flows, accessibility, and trust so visitors can act without friction.',
+        panelBody: 'We check mobile layout, flows, accessibility, and trust so visitors can act without friction.',
         icon: 'experience',
         tint: 'success',
-        checks: [
-          'Mobile layout and tap targets',
-          'Primary flow friction',
-          'Accessibility and performance blockers',
-          'Trust signals like HTTPS and privacy links',
-        ] as const,
+        checks: ['Mobile layout and tap targets', 'Primary flow friction', 'Accessibility and performance blockers', 'Trust signals like HTTPS and privacy links'] as const,
         proofExample: {
           finding: 'Primary CTA below fold at 375px',
           evidence: 'Main action starts at 1,200px on mobile',
@@ -352,16 +392,10 @@ export const LANDING_PAGE = {
         label: 'Reach',
         panelTitle: 'Show up when people share and search.',
         question: 'Can people find and share it?',
-        panelBody:
-          'We check metadata, social previews, and indexability so your link still looks like you.',
+        panelBody: 'We check metadata, social previews, and indexability so your link still looks like you.',
         icon: 'reach',
         tint: 'info',
-        checks: [
-          'Metadata and canonical basics',
-          'Social preview readiness',
-          'Indexability and shareability',
-          'Search snippets people can understand',
-        ] as const,
+        checks: ['Metadata and canonical basics', 'Social preview readiness', 'Indexability and shareability', 'Search snippets people can understand'] as const,
         proofExample: {
           finding: 'Social preview image missing',
           evidence: 'Link previews show blank on Slack and X',
@@ -430,8 +464,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'Three steps from check to fix to verified',
     headlineAccentPeriod: true,
     headline: 'Three steps from check to fix to verified.',
-    subhead:
-      'FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish when you are ready.',
+    subhead: 'FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish when you are ready.',
     sampleLink: 'Explore a full report',
     steps: [
       {
@@ -472,8 +505,7 @@ export const LANDING_PAGE = {
         rubric: 'MESSAGE',
         severity: 'IMPORTANT',
         problem: 'Hero headline repeats the product category instead of the outcome',
-        evidence:
-          'Headline describes the tool category, not the visitor outcome.',
+        evidence: 'Headline describes the tool category, not the visitor outcome.',
       },
       {
         id: 'mobile',
@@ -481,8 +513,7 @@ export const LANDING_PAGE = {
         rubric: 'EXPERIENCE',
         severity: 'CRITICAL',
         problem: 'Primary CTA is hidden below the fold on mobile',
-        evidence:
-          'At 375px, the hero image pushes the main action below the first screen.',
+        evidence: 'At 375px, the hero image pushes the main action below the first screen.',
       },
       {
         id: 'accessibility',
@@ -490,8 +521,7 @@ export const LANDING_PAGE = {
         rubric: 'EXPERIENCE',
         severity: 'IMPORTANT',
         problem: 'Navigation menu consumes too much viewport height on mobile',
-        evidence:
-          'Nav bar plus announcement banner take ~280px before content starts.',
+        evidence: 'Nav bar plus announcement banner take ~280px before content starts.',
       },
       {
         id: 'seo',
@@ -499,8 +529,7 @@ export const LANDING_PAGE = {
         rubric: 'REACH',
         severity: 'IMPORTANT',
         problem: 'Missing og:image, link previews show blank cards',
-        evidence:
-          'Shared links show blank preview cards on Slack, X, and WhatsApp.',
+        evidence: 'Shared links show blank preview cards on Slack, X, and WhatsApp.',
       },
     ] as const,
   },
@@ -509,8 +538,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'More than a score. Everything you need to finish',
     headlineAccentPeriod: true,
     headline: 'More than a score. Everything you need to finish.',
-    subhead:
-      'FixFlags turns complex quality signals into clear guidance so you can finish the product your users need.',
+    subhead: 'FixFlags turns complex quality signals into clear guidance so you can finish the product your users need.',
     features: [
       {
         id: 'findings',
@@ -539,7 +567,7 @@ export const LANDING_PAGE = {
       {
         id: 'recheck',
         title: 'Re-check and improve',
-        body: 'Verify every fix and watch your score improve.',
+        body: 'Verify every fix and watch your status improve.',
         icon: 'refresh' as const,
       },
     ] as const,
@@ -567,38 +595,25 @@ export const LANDING_PAGE = {
   },
   productEvidence: {
     headline: 'What a review actually catches',
-    subhead:
-      'Real Flags from the product, not quote cards.',
+    subhead: 'Real Flags from the product, not quote cards.',
     items: [
       {
         id: 'message',
         title: 'Message',
         lead: 'Visitors should know what you do and why it matters in five seconds.',
-        findings: [
-          'Hero that never names the outcome',
-          'CTA that stays vague',
-          'Copy that names the category, not the win',
-        ],
+        findings: ['Hero that never names the outcome', 'CTA that stays vague', 'Copy that names the category, not the win'],
       },
       {
         id: 'experience',
         title: 'Experience',
         lead: 'On mobile, the next step should be obvious without hunting.',
-        findings: [
-          'Main action buried after a long scroll on phone',
-          'Tap targets too small to hit cleanly',
-          'Layout that hides the next step',
-        ],
+        findings: ['Main action buried after a long scroll on phone', 'Tap targets too small to hit cleanly', 'Layout that hides the next step'],
       },
       {
         id: 'reach',
         title: 'Reach',
         lead: 'When someone shares your link, the card should still look like you.',
-        findings: [
-          'Link cards that render blank when shared',
-          'Missing metadata search cannot use',
-          'Sharing cards that drop your brand',
-        ],
+        findings: ['Link cards that render blank when shared', 'Missing metadata search cannot use', 'Sharing cards that drop your brand'],
       },
     ] as const,
     cta: 'See a sample review',
@@ -641,8 +656,7 @@ export const LANDING_PAGE = {
     ] as const,
     trustLabel: 'Every report is built on real product signals',
     issuesLabel: (count: number) => `${count} issues in the sample review`,
-    checksLabel: (count: number) =>
-      `${count} checks across Message, Experience, and Reach`,
+    checksLabel: (count: number) => `${count} checks across Message, Experience, and Reach`,
     checksShortLabel: (count: number) => `Checked ${count}+ points`,
     checksMetric: (count: number) => ({
       value: `${count}+`,
@@ -653,10 +667,30 @@ export const LANDING_PAGE = {
       label: 'issues found',
     }),
     trustMetrics: [
-      { id: 'speed', value: '<60s', label: 'typical scan time', icon: 'zap' as const },
-      { id: 'recheck', value: 'Unlimited', label: 're-checks', icon: 'refresh' as const },
-      { id: 'private', value: 'Private', label: 'only you can see', icon: 'lock' as const },
-      { id: 'teaser', value: 'No signup', label: 'for your first check', icon: 'users' as const },
+      {
+        id: 'speed',
+        value: '<60s',
+        label: 'typical scan time',
+        icon: 'zap' as const,
+      },
+      {
+        id: 'recheck',
+        value: 'Unlimited',
+        label: 're-checks',
+        icon: 'refresh' as const,
+      },
+      {
+        id: 'private',
+        value: 'Private',
+        label: 'only you can see',
+        icon: 'lock' as const,
+      },
+      {
+        id: 'teaser',
+        value: 'No signup',
+        label: 'for your first check',
+        icon: 'users' as const,
+      },
     ] as const,
     /** Decorative homepage dashboard chrome. Product-true labels only. */
     mock: {
@@ -681,8 +715,7 @@ export const LANDING_PAGE = {
     },
   },
   footer: {
-    tagline:
-      'Independent product verification for AI-built products. We check what blocks the release so you can fix it.',
+    tagline: 'Independent product verification for AI-built products. We check what blocks the release so you can fix it.',
     madeWith: 'Built for people shipping with AI.',
     buildersTitle: 'Built for builders',
     buildersBody: 'FixFlags works where you build. Paste fixes into the editor you already use.',
@@ -835,47 +868,30 @@ export const MADE_WITH_COPY = {
   viewEvidence: 'View stack and evidence',
   verified: 'Verified',
   strongSignal: 'Strong signal',
-  legacy:
-    'Technology signals were not captured for this audit. Run a re-check to create a verified profile.',
-  unavailable:
-    'Technology signals were unavailable for this scan. The rest of the report is unaffected.',
+  legacy: 'Technology signals were not captured for this audit. Run a re-check to create a verified profile.',
+  unavailable: 'Technology signals were unavailable for this scan. The rest of the report is unaffected.',
   empty: 'No technologies could be verified from the site’s public signals.',
-  partial:
-    'Partial profile. Only signals preserved by the historical capture are shown.',
+  partial: 'Partial profile. Only signals preserved by the historical capture are shown.',
   changed: 'Changed since the last re-check',
   added: 'Added',
   removed: 'Removed',
   evidenceChanged: 'Evidence changed',
-  disclaimer:
-    'FixFlags reads public page signals. The report score reflects the site outcome, not the quality of any individual tool.',
-  insightWithRubric: (
-    stack: string,
-    rubric: string,
-    score: number,
-    flagCount: number
-  ) =>
+  disclaimer: 'FixFlags reads public page signals. The report score reflects the site outcome, not the quality of any individual tool.',
+  insightWithRubric: (stack: string, rubric: string, score: number, flagCount: number) =>
     `On this ${stack} site, ${rubric} is the lowest-scoring rubric at ${score} with ${flagCount} unresolved ${flagCount === 1 ? 'Flag' : 'Flags'}.`,
-  insightWithScore: (stack: string, score: number) =>
-    `This ${stack} site scored ${score}. The score reflects the site outcome, not the tools themselves.`,
-  insightCount: (count: number) =>
-    `FixFlags verified ${count} public ${count === 1 ? 'technology' : 'technologies'} on this site.`,
+  insightWithScore: (stack: string, score: number) => `This ${stack} site scored ${score}. The score reflects the site outcome, not the tools themselves.`,
+  insightCount: (count: number) => `FixFlags verified ${count} public ${count === 1 ? 'technology' : 'technologies'} on this site.`,
   publicProfileLabel: 'Public technology profile',
-  publicProfileLead:
-    'Public page signals, checked by the same capture that produced this site’s FixFlags report.',
+  publicProfileLead: 'Public page signals, checked by the same capture that produced this site’s FixFlags report.',
   latestPublicReport: 'Latest public report',
   completed: 'Completed',
   openPublicReport: 'Open the public report',
   relatedProfiles: 'Related public profiles',
   ownSitePrompt: 'Check your own site’s stack, score, evidence, and fix list.',
   checkAgain: 'Check this site again',
-  metaTitle: (hostname: string, technologies: string[]) =>
-    `${hostname} is made with ${technologies.slice(0, 3).join(', ')} | FixFlags`,
-  metaDescription: (hostname: string) =>
-    `Verified public technology signals for ${hostname}, connected to its latest FixFlags score and unresolved Flags.`,
-  reportSummary: (score: number | null, flagCount: number) =>
-    score === null
-      ? `${flagCount} unresolved ${flagCount === 1 ? 'Flag' : 'Flags'}`
-      : `Score ${score} · ${flagCount} ${flagCount === 1 ? 'Flag' : 'Flags'}`,
+  metaTitle: (hostname: string, technologies: string[]) => `${hostname} is made with ${technologies.slice(0, 3).join(', ')} | FixFlags`,
+  metaDescription: (hostname: string) => `Verified public technology signals for ${hostname}, connected to its latest FixFlags score and unresolved Flags.`,
+  reportSummary: (score: number | null, flagCount: number) => (score === null ? `${flagCount} unresolved ${flagCount === 1 ? 'Flag' : 'Flags'}` : `${flagCount} ${flagCount === 1 ? 'Flag' : 'Flags'}`),
 } as const
 
 export const EXAMPLES_PAGE = {
@@ -891,8 +907,7 @@ export const BLOG_INDEX = {
 
 export const ROAST_META = {
   title: 'Website Roast - FixFlags',
-  description:
-    'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
+  description: 'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
   ogDescription: 'Paste your URL. Get roasted. Fix what matters.',
 } as const
 
@@ -901,7 +916,10 @@ export const FIRST_AUDIT_PROMPT = {
   body: 'FixFlags reviews your page before anyone else sees it. You get Flags across Message, Experience, and Reach with evidence. Create a free account for fix prompts you can paste into Cursor, Claude, Lovable, or Bolt.',
   examplesLabel: 'Common first checks',
   examples: [
-    { label: 'Your Product Hunt page', hint: 'producthunt.com/posts/your-product' },
+    {
+      label: 'Your Product Hunt page',
+      hint: 'producthunt.com/posts/your-product',
+    },
     { label: 'Your demo day landing page', hint: 'yourstartup.com' },
     { label: 'A client site before handoff', hint: 'clientsite.com' },
   ],

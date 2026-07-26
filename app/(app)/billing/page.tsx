@@ -7,7 +7,7 @@ import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { Button } from '@/components/ui/button'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { CREDIT_PACKS, getPurchasedCreditsRemaining } from '@/lib/billing/credits'
+import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 import {
   getEffectiveScanLimit,
   getPendingCheckCount,
@@ -15,11 +15,9 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
-import { CreditPackButton } from '@/components/billing/CreditPackButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
-import { Surface } from '@/components/ui/surface'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
@@ -164,31 +162,17 @@ export default async function BillingPage() {
 
       {isPaid && (
         <Card className="space-y-4 p-6" id="credit-packs">
-          <SectionTitle>Credit packs</SectionTitle>
+          <SectionTitle>Credits</SectionTitle>
           {purchasedCreditsRemaining > 0 && (
             <p className="text-sm text-muted-foreground">
               {purchasedCreditsRemaining} purchased audit{purchasedCreditsRemaining !== 1 ? 's' : ''} available
             </p>
           )}
-          <p className="text-xs text-muted-foreground">
-            Buy extra audits without upgrading your plan. Purchased credits never expire.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {CREDIT_PACKS.map((pack) => (
-              <Surface key={pack.id} variant={pack.popular ? 'elevated' : 'flat'} className="p-4 space-y-3">
-                <div>
-                  <p className="font-medium text-sm">{pack.label}</p>
-                  <p className="text-lg font-semibold">{formatUsd(pack.priceUsdCents / 100)}</p>
-                </div>
-                <CreditPackButton
-                  packId={pack.id}
-                  label={pack.label}
-                  price={formatUsd(pack.priceUsdCents / 100)}
-                  popular={pack.popular}
-                />
-              </Surface>
-            ))}
-          </div>
+          {purchasedCreditsRemaining === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Credit packs are no longer available for purchase. Existing credits remain active and never expire.
+            </p>
+          )}
 
           {creditPurchases.length > 0 && (
             <div className="space-y-2">

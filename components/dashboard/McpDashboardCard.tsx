@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState } from "react";
+import Link from "next/link";
 import {
   Settings,
   ExternalLink,
@@ -9,18 +9,18 @@ import {
   Copy,
   Check,
   BarChart3,
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { getMcpEndpoint } from '@/lib/mcp/docs-content'
-import { SITE_URL } from '@/lib/marketing/copy'
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { getMcpEndpoint } from "@/lib/mcp/docs-content";
+import { SITE_URL } from "@/lib/marketing/copy";
 
 interface Props {
-  mcpAudits?: number
-  webAudits?: number
-  canUseMcp: boolean
-  primaryTool?: string
+  mcpAudits?: number;
+  webAudits?: number;
+  canUseMcp: boolean;
+  primaryTool?: string;
 }
 
 export function McpDashboardCard({
@@ -29,19 +29,21 @@ export function McpDashboardCard({
   canUseMcp,
   primaryTool,
 }: Props) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
   const configLines = primaryTool
     ? `"mcpServers": { "fixflags": { "url": "${getMcpEndpoint(SITE_URL)}", "headers": { "x-api-key": "ff_live_..." } } }`
-    : null
+    : null;
 
   if (!canUseMcp) {
     return (
-      <Card className="ring-2 ring-brand/20">
+      <Card className="h-full ring-1 ring-brand/25">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Cpu className="h-4 w-4 text-brand" />
             MCP
-            <Badge variant="secondary" size="sm">Pro</Badge>
+            <Badge variant="secondary" size="sm">
+              Pro
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -53,16 +55,20 @@ export function McpDashboardCard({
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Cpu className="h-4 w-4 text-brand" />
           MCP
-          <Badge variant="outline" size="sm" className="text-success border-success/30 bg-success/5">
+          <Badge
+            variant="outline"
+            size="sm"
+            className="text-success border-success/30 bg-success/5"
+          >
             Active
           </Badge>
         </CardTitle>
@@ -75,11 +81,15 @@ export function McpDashboardCard({
         {(mcpAudits > 0 || webAudits > 0) && (
           <div className="flex gap-4 text-xs">
             <div>
-              <span className="font-medium text-foreground tabular-nums">{mcpAudits}</span>{' '}
+              <span className="font-medium text-foreground tabular-nums">
+                {mcpAudits}
+              </span>{" "}
               <span className="text-muted-foreground">audits via MCP</span>
             </div>
             <div>
-              <span className="font-medium text-foreground tabular-nums">{webAudits}</span>{' '}
+              <span className="font-medium text-foreground tabular-nums">
+                {webAudits}
+              </span>{" "}
               <span className="text-muted-foreground">audits via web</span>
             </div>
           </div>
@@ -99,13 +109,17 @@ export function McpDashboardCard({
                 variant="ghost"
                 className="absolute right-1 top-1 h-6 w-6"
                 onClick={async () => {
-                  await navigator.clipboard.writeText(configLines)
-                  setCopied(true)
-                  setTimeout(() => setCopied(false), 2000)
+                  await navigator.clipboard.writeText(configLines);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
                 }}
                 aria-label="Copy config"
               >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
               </Button>
             </div>
           </div>
@@ -133,5 +147,5 @@ export function McpDashboardCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

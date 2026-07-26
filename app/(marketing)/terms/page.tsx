@@ -34,10 +34,10 @@ export default function TermsPage() {
 
           <h2 className="text-base font-semibold text-foreground">Credit packs</h2>
           <p>
-            Paid subscribers may purchase one-time credit packs for additional new URL checks.
-            Credits do not expire and do not change your subscription tier. Unused credit packs may
-            be refunded within 14 days of purchase if no credits from that pack have been consumed.
-            Partially used packs are not refundable.
+            Credit packs are no longer available for purchase. Existing purchased credits remain
+            active and do not expire. Unused credit packs may be refunded within 14 days of
+            purchase if no credits from that pack have been consumed. Partially used packs are not
+            refundable.
           </p>
 
           <h2 className="text-base font-semibold text-foreground">Refunds and cancellation</h2>
