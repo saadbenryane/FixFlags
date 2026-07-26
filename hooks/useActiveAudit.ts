@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   getActiveAudit,
   clearActiveAudit,
+  ACTIVE_AUDIT_EVENT,
   type ActiveAuditSnapshot,
 } from '@/lib/audit/active-audit'
 
@@ -18,13 +19,18 @@ export function useActiveAudit() {
     }
 
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener(ACTIVE_AUDIT_EVENT, onStorage)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(ACTIVE_AUDIT_EVENT, onStorage)
+    }
   }, [])
 
-  function dismiss(auditId?: string) {
+  const dismiss = useCallback((auditId?: string) => {
     clearActiveAudit(auditId)
     setActive(getActiveAudit())
-  }
+  }, [])
 
-  return { active, dismiss, refresh: () => setActive(getActiveAudit()) }
+  const refresh = useCallback(() => setActive(getActiveAudit()), [])
+  return { active, dismiss, refresh }
 }

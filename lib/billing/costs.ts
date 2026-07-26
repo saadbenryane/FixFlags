@@ -137,8 +137,6 @@ export async function persistAuditRunCost(
   )
   const infraOverheadUsd = computeInfraOverheadUsd(metrics.pagespeedCalls, metrics.durationMs)
 
-  const existing = await prisma.auditRunCost.findUnique({ where: { auditId } })
-
   if (phase === 'triage') {
     const estimatedCostUsd = llmCostUsd + infraOverheadUsd
     await prisma.auditRunCost.upsert({
@@ -174,35 +172,38 @@ export async function persistAuditRunCost(
     return
   }
 
-  if (phase === 'prescription' && existing) {
-    const triageInput = existing.triageInputTokens
-    const triageOutput = existing.triageOutputTokens
-    const triageCost = existing.triageCostUsd.toNumber()
-    const totalInput = triageInput + metrics.llmInputTokens
-    const totalOutput = triageOutput + metrics.llmOutputTokens
-    const prescriptionCost = llmCostUsd
-    const totalLlmCost = triageCost + prescriptionCost
-    const durationMs = Math.max(existing.durationMs, metrics.durationMs)
-    const pagespeedCalls = Math.max(existing.pagespeedCalls, metrics.pagespeedCalls)
-    const estimatedCostUsd =
-      totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
+  if (phase === 'prescription') {
+    const existing = await prisma.auditRunCost.findUnique({ where: { auditId } })
+    if (existing) {
+      const triageInput = existing.triageInputTokens
+      const triageOutput = existing.triageOutputTokens
+      const triageCost = existing.triageCostUsd.toNumber()
+      const totalInput = triageInput + metrics.llmInputTokens
+      const totalOutput = triageOutput + metrics.llmOutputTokens
+      const prescriptionCost = llmCostUsd
+      const totalLlmCost = triageCost + prescriptionCost
+      const durationMs = Math.max(existing.durationMs, metrics.durationMs)
+      const pagespeedCalls = Math.max(existing.pagespeedCalls, metrics.pagespeedCalls)
+      const estimatedCostUsd =
+        totalLlmCost + computeInfraOverheadUsd(pagespeedCalls, durationMs)
 
-    await prisma.auditRunCost.update({
-      where: { auditId },
-      data: {
-        durationMs,
-        llmInputTokens: totalInput,
-        llmOutputTokens: totalOutput,
-        llmModel: [existing.triageModel, metrics.llmModel].filter(Boolean).join(','),
-        llmCostUsd: new Prisma.Decimal(totalLlmCost),
-        pagespeedCalls,
-        estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
-        prescriptionInputTokens: metrics.llmInputTokens,
-        prescriptionOutputTokens: metrics.llmOutputTokens,
-        prescriptionModel: metrics.llmModel,
-        prescriptionCostUsd: new Prisma.Decimal(prescriptionCost),
-      },
-    })
+      await prisma.auditRunCost.update({
+        where: { auditId },
+        data: {
+          durationMs,
+          llmInputTokens: totalInput,
+          llmOutputTokens: totalOutput,
+          llmModel: [existing.triageModel, metrics.llmModel].filter(Boolean).join(','),
+          llmCostUsd: new Prisma.Decimal(totalLlmCost),
+          pagespeedCalls,
+          estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+          prescriptionInputTokens: metrics.llmInputTokens,
+          prescriptionOutputTokens: metrics.llmOutputTokens,
+          prescriptionModel: metrics.llmModel,
+          prescriptionCostUsd: new Prisma.Decimal(prescriptionCost),
+        },
+      })
+    }
     return
   }
 
@@ -235,14 +236,6 @@ export function formatUsd(amount: number | Prisma.Decimal): string {
   const value = typeof amount === 'number' ? amount : amount.toNumber()
   if (value < 0.01) return `$${value.toFixed(4)}`
   return `$${value.toFixed(2)}`
-}
-
-export async function sumEstimatedCost(where?: Prisma.AuditRunCostWhereInput): Promise<number> {
-  const result = await prisma.auditRunCost.aggregate({
-    where,
-    _sum: { estimatedCostUsd: true },
-  })
-  return result._sum.estimatedCostUsd?.toNumber() ?? 0
 }
 
 /** Sum estimated run cost for completed audits on a domain. */
@@ -353,24 +346,4 @@ export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subs
   }
 
   return result
-}
-
-export async function getCostOutliers(days: number = 7): Promise<Array<{ auditId: string; domain: string; model: string | null; estimatedCostUsd: number; inputTokens: number; outputTokens: number }>> {
-  const since = new Date(Date.now() - days * 86_400_000)
-  const costs = await prisma.auditRunCost.findMany({
-    where: { createdAt: { gte: since } },
-    orderBy: { estimatedCostUsd: 'desc' },
-    take: 10,
-    include: {
-      audit: { select: { url: true, normalizedDomain: true } },
-    },
-  })
-  return costs.map((c) => ({
-    auditId: c.auditId,
-    domain: c.audit.normalizedDomain ?? c.audit.url,
-    model: c.llmModel,
-    estimatedCostUsd: c.estimatedCostUsd.toNumber(),
-    inputTokens: c.llmInputTokens,
-    outputTokens: c.llmOutputTokens,
-  }))
 }

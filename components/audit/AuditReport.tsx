@@ -16,7 +16,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_VALUE_STRIP } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
-import { displayVerdict } from '@/lib/audit/verdict'
+import { displayVerdict, resolveReportVerdict } from '@/lib/audit/verdict'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
 import type {
   AuditScreenshot,
@@ -53,7 +53,7 @@ import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { ReportWorkspaceSummary } from '@/components/report/ReportWorkspaceSummary'
+import { computeRubricsFromRows } from '@/lib/audit/rubric'
 
 interface RubricRow {
   id: string
@@ -84,11 +84,7 @@ interface AuditReportProps {
     startedAt?: string | Date | null
     completedAt?: string | Date | null
     parentId?: string | null
-    pageSpeedErrors?: {
-      desktopError?: string
-      mobileError?: string
-      pageSpeedPartial?: boolean
-    }
+    pageSpeedCoverage?: import('@/lib/audit/pagespeed-coverage').PageSpeedCoverage
     previewMeta?: PreviewMeta | null
     flowData?: FlowData | null
     evidenceAnchors?: EvidenceAnchorMap
@@ -161,7 +157,6 @@ export function AuditReport({
   const showFeedback = !isSample && isLoggedIn
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
-  const userVerdict = displayVerdict(audit.verdict ?? null)
   const showJourney = pages.length > 1
   const showJourneyReview = journeyReviews.length > 0
   const showFlow = Boolean(audit.flowData)
@@ -200,9 +195,11 @@ export function AuditReport({
         })
       : null
   const unresolvedFlagCount = explorerModel?.flagCount ?? 0
-  const highImpactCount = audit.flags.filter(
-    (flag) => flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT'
-  ).length
+  const displayedRubrics = computeRubricsFromRows(audit.rubricRows, audit.flags)
+  const userVerdict = resolveReportVerdict(
+    displayVerdict(audit.verdict ?? null),
+    explorerModel?.flags[0]
+  )
 
   const isPartialReport = audit.reportCompleteness === 'PARTIAL'
   const showStatusCallouts =
@@ -221,45 +218,14 @@ export function AuditReport({
         url={audit.url}
         screenshots={audit.screenshots}
         capturePresentation={capturePresentation}
-        pageSpeedPartial={audit.pageSpeedErrors?.pageSpeedPartial}
+        pageSpeedCoverage={audit.pageSpeedCoverage}
         startedAt={audit.startedAt}
         completedAt={audit.completedAt}
         actions={toolbarActions ?? actions}
       />
 
       {!isSample && (
-        <ReportWorkspaceSummary
-          score={audit.score}
-          highImpactCount={highImpactCount}
-          rubricScores={audit.rubricRows}
-          recheckDiff={recheckDiff}
-        />
-      )}
-
-      {!isSample && (
         <>
-          <ReportStickyToolbar
-            showContract={showContract}
-            showRemember={showRemember}
-            showJourney={showJourney || showJourneyReview}
-            showFlow={showFlow}
-            showTimeline={showTimeline}
-            showPreviews={showPreviews}
-            showLaunch={hasLaunchGates}
-            showStack={showStack}
-            showRecheckSection={isLoggedIn && isViewerOwner}
-            hasRecheckDiff={Boolean(recheckDiff)}
-            siteUrl={audit.url}
-            score={audit.score}
-            actions={undefined}
-          />
-
-          {userVerdict ? (
-            <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
-              {userVerdict}
-            </blockquote>
-          ) : null}
-
           {showStatusCallouts ? (
             <div className="space-y-3 sm:space-y-4">
               {aiReviewPending && (
@@ -313,9 +279,37 @@ export function AuditReport({
         </>
       )}
 
+      {!isSample ? (
+        <RubricBar rubrics={displayedRubrics} rubricRows={audit.rubricRows} />
+      ) : null}
+
       {!isSample && audit.technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
           <MadeWithProfile profile={audit.technologyProfile} compact />
+        </div>
+      ) : null}
+
+      {!isSample ? (
+        <div className="space-y-4">
+          {userVerdict ? (
+            <blockquote className="border-l-2 border-brand pl-4 font-sans text-sm font-medium leading-relaxed text-foreground text-pretty sm:text-base">
+              {userVerdict}
+            </blockquote>
+          ) : null}
+          <ReportStickyToolbar
+            showContract={showContract}
+            showRemember={showRemember}
+            showJourney={showJourney || showJourneyReview}
+            showFlow={showFlow}
+            showTimeline={showTimeline}
+            showPreviews={showPreviews}
+            showLaunch={hasLaunchGates}
+            showStack={showStack}
+            showRecheckSection={isLoggedIn && isViewerOwner}
+            hasRecheckDiff={Boolean(recheckDiff)}
+            siteUrl={audit.url}
+            score={audit.score}
+          />
         </div>
       ) : null}
 

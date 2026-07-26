@@ -783,8 +783,27 @@ export const REPORT_COPY = {
     body: 'Desktop or mobile capture was incomplete. Some visual evidence may be missing.',
   },
   pageSpeedPartial: {
-    title: 'PageSpeed incomplete',
-    body: 'PageSpeed data was unavailable for this run. Experience flags that need it may be thinner.',
+    title: 'PageSpeed partially available',
+    body: (missingRoutes: Array<{ url: string; missing: string[] }>) => {
+      const missing = missingRoutes
+        .slice(0, 3)
+        .map((route) => {
+          let label = route.url
+          try {
+            const parsed = new URL(route.url)
+            label = parsed.pathname === '/' ? 'homepage' : parsed.pathname
+          } catch {
+            // Keep the stored route label.
+          }
+          return `${label} (${route.missing.join(' & ')})`
+        })
+        .join(', ')
+      return `PageSpeed findings use the observations captured in this run. Missing coverage: ${missing}.`
+    },
+  },
+  pageSpeedUnavailable: {
+    title: 'PageSpeed unavailable',
+    body: 'No PageSpeed observation completed in this run. Experience findings below use the other captured evidence.',
   },
   sectionTitles: {
     allFixes: 'All fixes',

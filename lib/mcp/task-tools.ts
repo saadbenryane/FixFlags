@@ -4,7 +4,11 @@ import { z } from 'zod'
 import { checkAndPlan, recheckAndCompare } from '@/lib/audit/task-contracts'
 import { assertMcpAccess } from '@/lib/mcp/access'
 import { recordRateLimit } from '@/lib/security/rate-limit'
-import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
+import {
+  computeEnqueueDelay,
+  getWorkerQueueEstimate,
+  type QueueStatus,
+} from '@/lib/queue/estimate'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-access'
@@ -54,17 +58,9 @@ function taskError(error: unknown) {
 
 function taskResult(outcome: object, queue: {
   delayMs: number
-  estimatedWaitSeconds: number
-  queuePosition: number
-  scheduledStartAt: string | null
   queued: boolean
   queueReason?: 'rate_limit' | 'backlog'
-  queue: {
-    state: 'starting' | 'waiting' | 'rate_limited'
-    jobsAhead: number
-    estimatedStartSeconds: number
-    scheduledStartAt?: string
-  }
+  queue: QueueStatus
   rateLimitRetryAfter: number
 }) {
   return {
@@ -72,10 +68,7 @@ function taskResult(outcome: object, queue: {
       type: 'text' as const,
       text: JSON.stringify({
         ...outcome,
-        estimatedWaitSeconds: queue.estimatedWaitSeconds,
         rateLimitRetryAfter: queue.rateLimitRetryAfter,
-        queuePosition: queue.queuePosition,
-        scheduledStartAt: queue.scheduledStartAt,
         queued: queue.queued,
         queueReason: queue.queueReason,
         queue: queue.queue,

@@ -29,7 +29,6 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { ReportWorkspaceSummary } from '@/components/report/ReportWorkspaceSummary'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -136,7 +135,7 @@ export function AuditReportProgressive({
       setQueueWaitSeconds(undefined)
       return
     }
-    setQueueWaitSeconds(getActiveAudit()?.estimatedWaitSeconds)
+    setQueueWaitSeconds(getActiveAudit()?.queue?.estimatedWaitSeconds ?? undefined)
   }, [status])
 
   const showQueueWait =
@@ -198,10 +197,6 @@ export function AuditReportProgressive({
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
   const showSticky = !isFailed
-  const highImpactCount = partialFlags.filter(
-    (flag) => flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT'
-  ).length
-
   return (
     <Container variant="report" className="space-y-6 py-6 sm:space-y-8 sm:py-8">
       <AuditReportHero
@@ -214,33 +209,6 @@ export function AuditReportProgressive({
         capturePresentation={capturePresentation}
       />
 
-      <ReportWorkspaceSummary
-        score={score}
-        highImpactCount={highImpactCount}
-        rubricScores={rubricRowsForBar}
-        loading={isLoading}
-        progress={displayProgress}
-      />
-
-      <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
-
-      {showSticky ? (
-        <ReportStickyToolbar
-          showContract={showContract}
-          showTimeline={showTimeline}
-          showStack
-          showRecheckSection={false}
-          siteUrl={url || undefined}
-          score={score}
-        />
-      ) : null}
-
-      {userVerdict ? (
-        <blockquote className="border-l-2 border-brand pl-4 font-sans text-base font-medium leading-[1.45] text-foreground text-pretty sm:text-lg">
-          {userVerdict}
-        </blockquote>
-      ) : null}
-
       {(workerIdle || showWorkerWarning) && (
         <Callout variant="warning" title="Still preparing">
           {getWorkerQueuedWarning(workerIdle || showWorkerWarning)}
@@ -252,6 +220,8 @@ export function AuditReportProgressive({
           {formatQueueWaitHint(queueWaitSeconds)}
         </Callout>
       )}
+
+      <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
 
       {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
         <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
@@ -271,6 +241,26 @@ export function AuditReportProgressive({
       ) : technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
           <MadeWithProfile profile={technologyProfile} compact />
+        </div>
+      ) : null}
+
+      {showSticky || userVerdict ? (
+        <div className="space-y-4">
+          {userVerdict ? (
+            <blockquote className="border-l-2 border-brand pl-4 font-sans text-sm font-medium leading-relaxed text-foreground text-pretty sm:text-base">
+              {userVerdict}
+            </blockquote>
+          ) : null}
+          {showSticky ? (
+            <ReportStickyToolbar
+              showContract={showContract}
+              showTimeline={showTimeline}
+              showStack
+              showRecheckSection={false}
+              siteUrl={url || undefined}
+              score={score}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -339,23 +329,31 @@ export function AuditReportProgressive({
   )
 }
 
-/** Static shell for route-level loading states; prefers active-audit URL for continuity. */
-export function AuditReportProgressiveShell({ url }: { url?: string } = {}) {
-  const [activeUrl, setActiveUrl] = useState(url ?? '')
-
-  useEffect(() => {
-    if (url) {
-      setActiveUrl(url)
-      return
-    }
-    setActiveUrl(getActiveAudit()?.url ?? '')
-  }, [url])
-
+/** Neutral route shell used before the server has returned an actual audit state. */
+export function AuditReportProgressiveShell() {
   return (
-    <AuditReportProgressive
-      status="QUEUED"
-      url={activeUrl}
-      sectionId="report-flags-loading"
-    />
+    <Container
+      variant="report"
+      className="space-y-6 py-6 sm:space-y-8 sm:py-8"
+      aria-busy="true"
+      aria-label="Loading report"
+    >
+      <div className="space-y-3" role="status" aria-live="polite">
+        <p className="section-label">Finish Plan</p>
+        <h1 className="font-display text-2xl font-semibold text-foreground text-balance">
+          Loading report…
+        </h1>
+        <p className="text-sm text-muted-foreground text-pretty">
+          Retrieving the latest saved report state.
+        </p>
+      </div>
+      <Skeleton className="h-32 w-full rounded-card" />
+      <div className="flex flex-wrap gap-3">
+        {RUBRIC_ORDER.map((name) => (
+          <Skeleton key={name} className="h-11 w-36 rounded-full" />
+        ))}
+      </div>
+      <Skeleton className="h-72 w-full rounded-card" />
+    </Container>
   )
 }

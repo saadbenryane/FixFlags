@@ -17,3 +17,22 @@ export function displayVerdict(verdict: string | null | undefined): string | nul
   if (!verdict || isSystemVerdict(verdict)) return null
   return verdict
 }
+
+function sentence(value: string): string {
+  const trimmed = value.trim().replace(/[.!?]+$/, '')
+  return trimmed ? `${trimmed}.` : ''
+}
+
+export function resolveReportVerdict(
+  verdict: string | null | undefined,
+  topFlag?: { title?: string; problem?: string; whyItMatters?: string | null } | null
+): string | null {
+  const problem = topFlag?.problem?.trim() || topFlag?.title?.trim()
+  if (!problem) return displayVerdict(verdict)
+  const normalizedVerdict = displayVerdict(verdict)
+  if (normalizedVerdict?.toLocaleLowerCase().includes(problem.toLocaleLowerCase())) {
+    return normalizedVerdict
+  }
+  const rationale = topFlag?.whyItMatters?.trim()
+  return `Fix ${sentence(problem)}${rationale ? ` ${sentence(rationale)}` : ''}`
+}

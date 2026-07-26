@@ -149,10 +149,15 @@ export function extractMcpLogMetadata(
       const parsed = JSON.parse(resultText) as Record<string, unknown>
       if (parsed.queued != null) metadata.queued = parsed.queued
       if (parsed.queueReason != null) metadata.queueReason = parsed.queueReason
-      if (parsed.estimatedWaitSeconds != null) {
-        metadata.estimatedWaitSeconds = parsed.estimatedWaitSeconds
+      const queue =
+        parsed.queue && typeof parsed.queue === 'object'
+          ? parsed.queue as Record<string, unknown>
+          : null
+      if (queue?.estimatedWaitSeconds != null) {
+        metadata.estimatedWaitSeconds = queue.estimatedWaitSeconds
       }
-      if (parsed.queuePosition != null) metadata.queuePosition = parsed.queuePosition
+      if (queue?.jobsAhead != null) metadata.jobsAhead = queue.jobsAhead
+      if (queue?.workerAvailable != null) metadata.workerAvailable = queue.workerAvailable
     } catch {
       // ignore non-json tool payloads
     }

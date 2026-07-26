@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { trackEvent } from '@/lib/analytics/events'
+import type { QueueStatus } from '@/lib/queue/estimate'
 
 type CreateCheckBody = Record<string, unknown>
 
@@ -61,20 +62,14 @@ export async function startScanWithHandoff(
     options.onStarted?.(data)
 
     if (reportId) {
-      const queued = data.queued === true
-      const estimatedWaitSeconds =
-        queued && typeof data.estimatedWaitSeconds === 'number'
-          ? data.estimatedWaitSeconds
-          : undefined
-      const queuePosition =
-        queued && typeof data.queuePosition === 'number'
-          ? data.queuePosition
+      const queue =
+        data.queue && typeof data.queue === 'object'
+          ? data.queue as QueueStatus
           : undefined
       setActiveAudit({
         auditId: reportId,
         url: options.url,
-        estimatedWaitSeconds,
-        queuePosition,
+        queue,
       })
       window.location.assign(`/report/${reportId}`)
       return { ok: true, reportId }

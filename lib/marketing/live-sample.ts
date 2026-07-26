@@ -26,7 +26,7 @@ export type LiveSampleAudit = {
   performanceData?: unknown
   screenshotCapture?: ScreenshotCaptureStatus
   parentId?: string | null
-  pageSpeedErrors?: { desktopError?: string; mobileError?: string; pageSpeedPartial?: boolean }
+  pageSpeedCoverage?: import('@/lib/audit/pagespeed-coverage').PageSpeedCoverage
   startedAt?: string | Date | null
   rubricRows: ReportRubricRow[]
   flags: RankableFlag[]

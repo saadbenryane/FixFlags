@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       rateLimitRetryAfter,
       workerEstimate
     )
-    const { delayMs, estimatedWaitSeconds, queuePosition, scheduledStartAt } = queueInfo
+    const { delayMs } = queueInfo
 
     const referer = req.headers.get('referer')
     const refererPath = referer ? (() => { try { return new URL(referer).pathname } catch { return null } })() : null
@@ -151,9 +151,6 @@ export async function POST(req: NextRequest) {
         reportUrl: outcome.reportUrl,
         status: outcome.status,
         isLoggedIn: Boolean(session?.user),
-        estimatedWaitSeconds,
-        queuePosition,
-        scheduledStartAt,
         queued: queueInfo.queued,
         queueReason: queueInfo.queueReason,
         queue: queueInfo.queue,

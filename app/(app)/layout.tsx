@@ -4,7 +4,8 @@ import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { SiteShell } from '@/components/layout/site-shell'
 import { BRAND } from '@/lib/marketing/copy'
-import { getAppViewer } from '@/lib/auth/app-viewer'
+import { getAppMeUser, getAppViewer } from '@/lib/auth/app-viewer'
+import { MeProvider } from '@/hooks/useMe'
 
 export const metadata: Metadata = {
   title: BRAND.name,
@@ -19,13 +20,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect(signInUrl(await getRequestedPath('/dashboard')))
   }
   const showAdmin = isAdminUser(viewer.user)
+  const initialUser = await getAppMeUser()
 
   return (
-    <SiteShell
-      variant="app"
-      showAdmin={showAdmin}
-    >
-      {children}
-    </SiteShell>
+    <MeProvider initialUser={initialUser}>
+      <SiteShell variant="app" showAdmin={showAdmin}>
+        {children}
+      </SiteShell>
+    </MeProvider>
   )
 }

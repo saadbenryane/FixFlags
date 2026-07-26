@@ -10,6 +10,7 @@ import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
+import { buildFixList } from '@/lib/audit/finish-plan'
 
 function topIssueFromFlags(
   flags: Array<{ severity: string; problem: string }>
@@ -70,7 +71,6 @@ export async function loadReportRouteState(
     aiReviewAt: audit.aiReviewAt,
     isPublic: audit.isPublic,
   })
-  const topIssue = topIssueFromFlags(audit.flags)
 
   const [user, latestMonitoring, recheckDiff] = await Promise.all([
     session?.user
@@ -200,6 +200,37 @@ export async function loadReportRouteState(
       auditUrl: audit.url,
       flags,
     })
+    const fixList = buildFixList({
+      flags: allFlags,
+      rubricRows,
+      url: audit.url,
+      contract: audit.productContract,
+      promptAccess: showDeterministicFixes
+        ? 'all'
+        : sampleFixFlag
+          ? 'one'
+          : 'none',
+      demonstratedFlag: sampleFixFlag,
+    })
+    const flagsById = new Map(allFlags.map((flag) => [flag.id, flag]))
+    const canonicalFlags = fixList.items.flatMap((item) => {
+      const source = flagsById.get(item.id)
+      return source
+        ? [{
+            ...source,
+            checkId: item.checkId,
+            rubric: item.rubricName,
+            severity: item.severity,
+            impactTag: item.impactTag,
+            problem: item.problem,
+            evidence: item.evidence,
+            whyItMatters: item.whyItMatters ?? undefined,
+            verificationRule: item.verificationRule ?? undefined,
+            pageUrl: item.pageUrl ?? undefined,
+          }]
+        : []
+    })
+    const topIssue = topIssueFromFlags(canonicalFlags)
 
     const reportAudit = {
       pageType: audit.pageType,
@@ -210,7 +241,7 @@ export async function loadReportRouteState(
       screenshotCapture: audit.screenshotCapture,
       rubrics: audit.rubrics,
       rubricRows,
-      flags: allFlags,
+      flags: canonicalFlags,
       shareStatus: audit.shareStatus,
       launchReadiness: audit.launchReadiness,
       reportCompleteness: audit.reportCompleteness,
@@ -219,7 +250,7 @@ export async function loadReportRouteState(
       startedAt: audit.startedAt,
       completedAt: audit.completedAt,
       parentId: audit.parentId,
-      pageSpeedErrors: audit.pageSpeedErrors,
+      pageSpeedCoverage: audit.pageSpeedCoverage,
       previewMeta: audit.previewMeta,
       flowData: audit.flowData,
       evidenceAnchors: audit.evidenceAnchors,
@@ -254,7 +285,7 @@ export async function loadReportRouteState(
       canAccessCompareView,
       viewerIsPaid,
       rubricRows,
-      flags: allFlags,
+      flags: canonicalFlags,
       reportAudit,
       topIssue,
       shareToken,

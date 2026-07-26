@@ -19,7 +19,8 @@ export interface QueueEstimate {
   availableCapacity: number
   jobsAhead: number
   queued: boolean
-  estimatedWaitSeconds: number
+  estimatedWaitSeconds: number | null
+  workerAvailable: boolean
 }
 
 export function estimateQueueState(input: {
@@ -35,8 +36,10 @@ export function estimateQueueState(input: {
   const availableCapacity = Math.max(0, workerCapacity - activeJobs)
   const queued = workerCapacity === 0 || waitingJobs >= availableCapacity
   const jobsAhead = queued ? activeJobs + waitingJobs : 0
-  const estimatedWaitSeconds =
-    queued && workerCapacity > 0
+  const workerAvailable = workerCapacity > 0
+  const estimatedWaitSeconds = !workerAvailable
+    ? null
+    : queued
       ? Math.ceil((waitingJobs + 1) / workerCapacity) * AVG_JOB_DURATION_SECONDS
       : 0
 
@@ -49,6 +52,7 @@ export function estimateQueueState(input: {
     jobsAhead,
     queued,
     estimatedWaitSeconds,
+    workerAvailable,
   }
 }
 
@@ -71,60 +75,68 @@ export async function getWorkerQueueEstimate(): Promise<QueueEstimate> {
   })
 }
 
-export interface AuditQueueInfo {
-  queuePosition: number
-  estimatedWaitSeconds: number
+export type QueueState = 'starting' | 'waiting' | 'rate_limited' | 'delayed' | 'active'
+
+export interface QueueStatus {
+  state: QueueState
+  jobsAhead: number
+  estimatedWaitSeconds: number | null
   scheduledStartAt: string | null
-  isDelayed: boolean
+  workerAvailable: boolean
 }
 
-export async function getAuditQueueInfo(auditId: string): Promise<AuditQueueInfo | null> {
+export async function getAuditQueueInfo(auditId: string): Promise<QueueStatus | null> {
   const queue = getAuditQueue()
   const job = await queue.getJob(auditId)
   if (!job) return null
 
   const state = await job.getState()
-  const [active, waiting, delayed] = await Promise.all([
+  const [active, waiting, heartbeat] = await Promise.all([
     queue.getActiveCount(),
     queue.getWaitingCount(),
-    queue.getDelayedCount(),
+    readWorkerHeartbeat(),
   ])
+  const workerAvailable = heartbeat.alive && heartbeat.browserOk
 
   if (state === 'delayed') {
     const delayMs = typeof job.opts.delay === 'number' ? job.opts.delay : 0
     const processedOn = job.processedOn ?? job.timestamp ?? Date.now()
     const scheduledStartAt = new Date(processedOn + delayMs)
     const remainingMs = Math.max(0, scheduledStartAt.getTime() - Date.now())
-    const jobsAhead = active + waiting + delayed
     return {
-      queuePosition: jobsAhead,
+      state: 'delayed',
+      jobsAhead: 0,
       estimatedWaitSeconds: Math.max(1, Math.ceil(remainingMs / 1000)),
       scheduledStartAt: scheduledStartAt.toISOString(),
-      isDelayed: true,
+      workerAvailable,
     }
   }
 
   if (state === 'waiting') {
     const waitingJobs = await queue.getWaiting()
     const index = waitingJobs.findIndex((j) => j.id === auditId)
-    const position = index >= 0 ? active + index + 1 : active + waiting
+    const waitingAhead = index >= 0 ? index : waiting
+    const capacity = workerAvailable ? heartbeat.configuredConcurrency : 0
+    const position = active + waitingAhead
     return {
-      queuePosition: position,
-      estimatedWaitSeconds: Math.max(
-        15,
-        Math.ceil(position / WORKER_CONCURRENCY) * AVG_JOB_DURATION_SECONDS
-      ),
+      state: 'waiting',
+      jobsAhead: position,
+      estimatedWaitSeconds:
+        capacity > 0
+          ? Math.ceil((waitingAhead + 1) / capacity) * AVG_JOB_DURATION_SECONDS
+          : null,
       scheduledStartAt: null,
-      isDelayed: false,
+      workerAvailable,
     }
   }
 
   if (state === 'active') {
     return {
-      queuePosition: 1,
-      estimatedWaitSeconds: AVG_JOB_DURATION_SECONDS,
+      state: 'active',
+      jobsAhead: 0,
+      estimatedWaitSeconds: 0,
       scheduledStartAt: null,
-      isDelayed: false,
+      workerAvailable: true,
     }
   }
 
@@ -136,24 +148,18 @@ export function computeEnqueueDelay(
   workerEstimate: QueueEstimate
 ): {
   delayMs: number
-  estimatedWaitSeconds: number
-  queuePosition: number
-  scheduledStartAt: string | null
   queued: boolean
   queueReason?: 'rate_limit' | 'backlog'
-  queue: {
-    state: 'starting' | 'waiting' | 'rate_limited'
-    jobsAhead: number
-    estimatedStartSeconds: number
-    scheduledStartAt?: string
-  }
+  queue: QueueStatus
 } {
-  const workerWait = workerEstimate.estimatedWaitSeconds
+  const workerWait = workerEstimate.estimatedWaitSeconds ?? 0
   const rateWait = rateLimitRetryAfterSeconds
-  const estimatedWaitSeconds = Math.max(rateWait, workerWait)
+  const estimatedWaitSeconds = workerEstimate.workerAvailable
+    ? Math.max(rateWait, workerWait)
+    : null
   const delayMs = rateWait > 0 ? rateWait * 1000 : 0
   const queued = rateWait > 0 || workerEstimate.queued
-  const queuePosition = queued ? workerEstimate.jobsAhead : 0
+  const jobsAhead = queued ? workerEstimate.jobsAhead : 0
   const scheduledStartAt =
     delayMs > 0 ? new Date(Date.now() + delayMs).toISOString() : null
   const state =
@@ -161,17 +167,15 @@ export function computeEnqueueDelay(
 
   return {
     delayMs,
-    estimatedWaitSeconds,
-    queuePosition,
-    scheduledStartAt,
     queued,
     queueReason:
       rateWait > 0 ? 'rate_limit' : workerEstimate.queued ? 'backlog' : undefined,
     queue: {
       state,
-      jobsAhead: queuePosition,
-      estimatedStartSeconds: estimatedWaitSeconds,
-      ...(scheduledStartAt ? { scheduledStartAt } : {}),
+      jobsAhead,
+      estimatedWaitSeconds,
+      scheduledStartAt,
+      workerAvailable: workerEstimate.workerAvailable,
     },
   }
 }

@@ -16,6 +16,7 @@ import {
 import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
+import type { PageSpeedCoverage } from '@/lib/audit/pagespeed-coverage'
 
 type Props = {
   variant?: 'default' | 'minimal'
@@ -24,7 +25,7 @@ type Props = {
   url: string
   screenshots?: AuditScreenshot[]
   capturePresentation?: CapturePresentation
-  pageSpeedPartial?: boolean
+  pageSpeedCoverage?: PageSpeedCoverage
   durationMs?: number | null
   startedAt?: string | Date | null
   completedAt?: string | Date | null
@@ -42,7 +43,7 @@ export function AuditReportHero({
   url,
   screenshots,
   capturePresentation = { state: 'complete' },
-  pageSpeedPartial = false,
+  pageSpeedCoverage,
   durationMs,
   startedAt,
   completedAt,
@@ -177,7 +178,8 @@ export function AuditReportHero({
 
       {(capturePresentation.state === 'unavailable' ||
         capturePresentation.state === 'partial' ||
-        pageSpeedPartial) && (
+        (pageSpeedCoverage?.status === 'partial' ||
+          pageSpeedCoverage?.status === 'unavailable')) && (
         <div className="space-y-2">
           {capturePresentation.state === 'unavailable' ? (
             <Callout variant="warning" title={REPORT_COPY.captureLimited.title}>
@@ -189,9 +191,14 @@ export function AuditReportHero({
               {REPORT_COPY.capturePartial.body}
             </Callout>
           ) : null}
-          {pageSpeedPartial ? (
+          {pageSpeedCoverage?.status === 'partial' ? (
             <Callout variant="neutral" title={REPORT_COPY.pageSpeedPartial.title}>
-              {REPORT_COPY.pageSpeedPartial.body}
+              {REPORT_COPY.pageSpeedPartial.body(pageSpeedCoverage.missingRoutes)}
+            </Callout>
+          ) : null}
+          {pageSpeedCoverage?.status === 'unavailable' ? (
+            <Callout variant="neutral" title={REPORT_COPY.pageSpeedUnavailable.title}>
+              {REPORT_COPY.pageSpeedUnavailable.body}
             </Callout>
           ) : null}
         </div>

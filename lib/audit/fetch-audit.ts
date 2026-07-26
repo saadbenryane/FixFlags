@@ -40,24 +40,7 @@ import {
   type RubricComputed,
   type ShareStatus,
 } from '@/lib/audit/rubric'
-
-function parsePageSpeedErrors(performanceData: unknown): {
-  desktopError?: string
-  mobileError?: string
-  pageSpeedPartial?: boolean
-} {
-  if (!performanceData || typeof performanceData !== 'object') return {}
-  const data = performanceData as Record<string, unknown>
-  const desktopError =
-    typeof data.desktopError === 'string' ? data.desktopError : undefined
-  const mobileError =
-    typeof data.mobileError === 'string' ? data.mobileError : undefined
-  const pageSpeedPartial =
-    Boolean(desktopError || mobileError) ||
-    data.desktop === null ||
-    data.mobile === null
-  return { desktopError, mobileError, pageSpeedPartial }
-}
+import { derivePageSpeedCoverage } from '@/lib/audit/pagespeed-coverage'
 
 export const auditFullInclude = {
   rubrics: {
@@ -266,7 +249,14 @@ export async function getGatedAuditForRequest(id: string) {
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
   const launchReadiness =
     hasTriage || showPrescription ? parseLaunchReadiness(audit.launchReadiness) : null
-  const pageSpeed = parsePageSpeedErrors(audit.performanceData)
+  const pageSpeedCoverage = derivePageSpeedCoverage(
+    audit.pages.length > 0
+      ? audit.pages.map((page) => ({
+          url: page.url,
+          performanceData: page.performanceData,
+        }))
+      : [{ url: audit.url, performanceData: audit.performanceData }]
+  )
   const ogImageBroken = audit.flags.some(
     (f) => f.checkId === 'og-image-broken' && f.status !== 'FIXED'
   )
@@ -378,7 +368,7 @@ export async function getGatedAuditForRequest(id: string) {
       launchReadiness,
       rubrics,
       shareStatus,
-      pageSpeedErrors: pageSpeed,
+      pageSpeedCoverage,
       previewMeta,
       flowData,
       evidenceAnchors,

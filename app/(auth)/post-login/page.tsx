@@ -15,13 +15,20 @@ import { PasskeyEnrollPrompt, shouldShowPasskeyEnroll } from '@/components/auth/
 
 function PostLoginRedirect() {
   const { navigateAfterAuth, next, plan, from } = useAuthRedirect()
-  const { user, isLoading, claimedCount, error, refresh } = useMe({ claim: true, showClaimToast: true })
+  const { user, isLoading, claimedCount, error, claimAnonymous } = useMe({ load: false })
   const { hostname, reportHref, isReportContext } = useReportAuthContext(next)
   const searchParams = useSearchParams()
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
   const [showPasskeyEnroll, setShowPasskeyEnroll] = useState(false)
   const passkeyEnrollChecked = useRef(false)
+  const claimStarted = useRef(false)
+
+  useEffect(() => {
+    if (claimStarted.current) return
+    claimStarted.current = true
+    void claimAnonymous({ showToast: true })
+  }, [claimAnonymous])
 
   useEffect(() => {
     if (isLoading || error || !user || passkeyEnrollChecked.current) return
@@ -61,7 +68,7 @@ function PostLoginRedirect() {
         <p className="font-medium">{AUTH.reportContext.saveError}</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => void refresh()} className="min-h-11">
+          <Button onClick={() => void claimAnonymous({ showToast: true })} className="min-h-11">
             {AUTH.reportContext.retryCta}
           </Button>
           {reportHref ? (
