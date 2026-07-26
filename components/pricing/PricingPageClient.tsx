@@ -52,7 +52,7 @@ export function PricingPageClient() {
   const isLoggedIn = !!user;
 
   return (
-    <Section spacing="default" className="relative overflow-hidden">
+    <Section spacing="tight" className="relative overflow-hidden">
       <MarketingPageViewTracker page="/pricing" />
       <Container
         variant="marketing"

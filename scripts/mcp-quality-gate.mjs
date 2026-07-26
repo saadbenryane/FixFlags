@@ -40,8 +40,8 @@ function main() {
   if (!docs.includes("from '@/lib/mcp/tool-manifest'")) {
     errors.push('MCP documentation does not consume the canonical tool manifest')
   }
-  if (manifest.size !== 17) {
-    errors.push(`Expected 17 tools in the MCP manifest, found ${manifest.size}`)
+  if (manifest.size !== 18) {
+    errors.push(`Expected 18 tools in the MCP manifest, found ${manifest.size}`)
   }
   if (registered.length !== catalog.length) {
     errors.push(`Registration count (${registered.length}) diverges from catalog (${catalog.length})`)

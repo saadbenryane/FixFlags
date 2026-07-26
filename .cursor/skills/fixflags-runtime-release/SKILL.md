@@ -20,11 +20,16 @@ Read `AGENTS.md`, `.agents/BOARD.md`, `DEVELOPMENT.md`, `QUALITY.md`, and `SECUR
 ## Workflow
 
 1. Run `npm run agent -- context release` and inspect Git ownership before edits.
-2. Trace configuration from `lib/env.ts` through readiness, startup, migrations, web, worker, and scheduler.
-3. Build once. Exercise both web and worker modes from that image, including graceful termination and restart.
-4. Inspect image contents and history for secrets, local data, repository-write assumptions, missing standalone assets, and unnecessary files.
-5. Run `npm run agent -- verify`, then `npm run verify:release` with explicit disposable database reset authorization and required smoke credentials.
-6. Treat missing release resources as a blocker. Never turn a required probe into a skip or fallback.
+2. Treat a push to `origin/main` as a production code deployment. Commit only
+   the intended verified changes, push `main`, and wait for the Railway `QewOS`
+   deployment to reach `SUCCESS`.
+3. Trace configuration from `lib/env.ts` through readiness, startup, migrations, web, worker, and scheduler.
+4. Build once. Exercise both web and worker modes from that image, including graceful termination and restart.
+5. Inspect image contents and history for secrets, local data, repository-write assumptions, missing standalone assets, and unnecessary files.
+6. Run `npm run agent -- verify`, then `npm run verify:release` with explicit disposable database reset authorization and required smoke credentials.
+7. Verify production behavior and `/api/health` after the new deployment, not
+   against the previous live version.
+8. Treat missing release resources as a blocker. Never turn a required probe into a skip or fallback.
 
 ## Release inputs
 

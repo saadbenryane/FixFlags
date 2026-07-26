@@ -4,7 +4,6 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| launch-ready-product-completion | in_progress | codex-root | main | Responsive spacing system, permanent homepage visuals, launch-critical journey polish, billing-plan reconciliation, and full verification | shared UI/design tokens, marketing/pricing/auth/dashboard/report/share/settings/billing, Prisma billing contract, focused tests | Preserve current hero and design-QA changes; release-only checks still require operator credentials | 2026-07-26 |
 | launch-design-implementation | completed | codex-root | main | Implement supplied launch references across homepage, pricing, and dashboard with responsive visual QA | components/marketing/landing, components/pricing, components/dashboard, app/(app)/dashboard, shared UI only where required | Implemented and browser-verified at desktop and mobile sizes; repository-wide verification remains blocked by unrelated pre-existing database drift | 2026-07-26 |
 | cli-customer-onboarding | blocked | codex-root | main | Publish-ready CLI, safe browser/token auth, customer skill, editor init, unified onboarding, and release verification | fixflags-cli, app/api/cli, app/cli, public/.well-known/skills, prisma, .github/workflows, CLI/MCP docs | Operator must rotate the exposed key, claim npm package with 2FA, configure trusted publishing, and push the protected release tag | 2026-07-26 |
 | current-product-completion | blocked | codex-root | main | Local product completion is implemented and fully verified; only credentialed deployed release proof remains. | app, components, lib, e2e, docs, .agents | Operator-provided release URL, disposable database/reset consent, sandbox users, mailbox assertion, GitHub fixture, and container environment | 2026-07-26 |
@@ -15,6 +14,7 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| launch-ready-product-completion | codex-root | Centralized responsive spacing, permanent homepage artwork, launch-critical journey polish, canonical billing-plan reconciliation, browser QA, focused regression coverage, and a passing full repository gate | 2026-07-26 |
 | dogfood-scan-accuracy | codex-root | Adjudicated the latest saadbenryane.com scan, removed CTA and AI false positives, consolidated repeated route occurrences, added a rendered accuracy gate and reusable dogfood skill, and proved the result with a fresh production-path scan | 2026-07-26 |
 | scan-freeze-core-path | codex-root | Dedicated web/worker runtime, lightweight progressive report handoff, shared pipeline deadlines and terminal recovery, operational health, local real-URL browser proof, full repository verification; deployment proof handed off separately | 2026-07-26 |
 | homepage-reference-polish | codex-root | Supplied-reference homepage hero, sample proof, supporting-section polish, correct navigation, responsive QA | 2026-07-26 |

@@ -1,0 +1,6 @@
+# BEGIN FIXFLAGS MANAGED
+[mcp_servers.fixflags]
+command = "fixflags"
+args = ["mcp"]
+env = { FIXFLAGS_API_URL = "https://fixflags.com" }
+# END FIXFLAGS MANAGED

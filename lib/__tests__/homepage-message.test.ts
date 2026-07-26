@@ -82,7 +82,7 @@ const ABOVE_FOLD_COPY = [
 
 describe('homepage message guardrails', () => {
   it('hero headline names the finish-the-loop moment after AI builds', () => {
-    assert.match(HERO.badge, /product review/i)
+    assert.match(HERO.badge, /release readiness layer/i)
     assert.match(HERO.headlineDisplay, /finish what your ai started/i)
     assert.equal(HERO.headline, `${HERO.headlineDisplay}.`)
     assert.equal(HERO.headlineAccentPeriod, true)

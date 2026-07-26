@@ -140,7 +140,7 @@ export function CheckDimensionsSection() {
     >
       <Container
         variant="marketing"
-        className="space-y-7 px-4 sm:space-y-8 sm:px-6 lg:px-12"
+        className="space-y-10 px-4 sm:space-y-12 sm:px-6 lg:space-y-14 lg:px-12"
       >
         <LandingSectionHeader
           label={copy.label}

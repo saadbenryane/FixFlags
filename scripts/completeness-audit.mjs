@@ -47,7 +47,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const unknownKeys = registeredKeys.filter((key) => !manifest.has(key))
   const missingKeys = [...manifest.keys()].filter((key) => !registeredKeys.includes(key))
   const tools = [...manifest.values()]
-  assert(manifest.size === 17, `MCP tool manifest drift: expected=17, code=${manifest.size}`)
+  assert(manifest.size === 18, `MCP tool manifest drift: expected=18, code=${manifest.size}`)
   assert(duplicateKeys.length === 0, `MCP tools registered more than once: ${[...new Set(duplicateKeys)].join(', ')}`)
   assert(unknownKeys.length === 0, `MCP registrations absent from manifest: ${[...new Set(unknownKeys)].join(', ')}`)
   assert(missingKeys.length === 0, `MCP manifest tools not registered: ${missingKeys.join(', ')}`)
