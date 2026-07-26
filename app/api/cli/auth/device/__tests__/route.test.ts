@@ -3,6 +3,9 @@ import { NextRequest } from 'next/server'
 
 const createCliDeviceAuthorization = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/cli/device-auth', () => ({ createCliDeviceAuthorization }))
+vi.mock('@/lib/get-app-url', () => ({
+  getAppUrl: () => 'https://fixflags.test',
+}))
 vi.mock('@/lib/security/rate-limit', () => ({
   enforceRateLimit: vi.fn(),
   requestClientId: () => 'test-client',

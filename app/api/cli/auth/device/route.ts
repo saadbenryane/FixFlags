@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createCliDeviceAuthorization } from '@/lib/cli/device-auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
+import { getAppUrl } from '@/lib/get-app-url'
 import {
   enforceRateLimit,
   requestClientId,
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
       windowSeconds: 60,
     })
     return NextResponse.json(
-      await createCliDeviceAuthorization(new URL(req.url).origin),
+      await createCliDeviceAuthorization(getAppUrl()),
       { status: 201, headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
