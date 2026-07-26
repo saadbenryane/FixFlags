@@ -4,6 +4,7 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   audit: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
     update: vi.fn(),
   },
   project: {
@@ -57,6 +58,10 @@ describe('claimAnonymousAudits', () => {
       },
     ])
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.audit.findUnique.mockResolvedValue({
+      status: 'CHECKING',
+      aiReviewAt: null,
+    })
     prismaMock.project.upsert.mockResolvedValue({
       id: 'project-1',
       productIntelligence: null,
@@ -106,5 +111,53 @@ describe('claimAnonymousAudits', () => {
       where: { id: 'teaser-1' },
       data: { includeAi: true },
     })
+  })
+
+  it('persists prompt eligibility when an audit is claimed in flight', async () => {
+    prismaMock.audit.findMany.mockResolvedValue([
+      {
+        id: 'teaser-1',
+        status: 'CHECKING',
+        aiReviewAt: null,
+        skipUsageCount: false,
+        usageCountedAt: null,
+        url: 'https://example.com',
+        projectId: null,
+        productContract: null,
+      },
+    ])
+
+    await claimAnonymousAudits('u1')
+
+    expect(prismaMock.audit.update).toHaveBeenCalledWith({
+      where: { id: 'teaser-1' },
+      data: { includeAi: true },
+    })
+    expect(enqueueAiReview).not.toHaveBeenCalled()
+    expect(cookieStore.delete).toHaveBeenCalledWith(ANON_AUDIT_IDS_COOKIE)
+  })
+
+  it('enqueues once when an in-flight claim completes during handoff', async () => {
+    prismaMock.audit.findMany.mockResolvedValue([
+      {
+        id: 'teaser-1',
+        status: 'FINALIZING',
+        aiReviewAt: null,
+        skipUsageCount: false,
+        usageCountedAt: null,
+        url: 'https://example.com',
+        projectId: null,
+        productContract: null,
+      },
+    ])
+    prismaMock.audit.findUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      aiReviewAt: null,
+    })
+
+    await claimAnonymousAudits('u1')
+
+    expect(enqueueAiReview).toHaveBeenCalledTimes(1)
+    expect(enqueueAiReview).toHaveBeenCalledWith('teaser-1')
   })
 })

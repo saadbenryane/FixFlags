@@ -129,7 +129,7 @@ describe('buildSampleReportDisplay', () => {
     assert.ok(flag.evidenceHighlights[0].width > 0)
     assert.ok(flag.evidenceHighlights[0].visualTarget.length > 0)
     assert.match(flag.evidence, /Headline reads|H1|category/i)
-    assert.deepEqual(flag.evidenceDevices, ['desktop', 'mobile'])
+    assert.deepEqual(flag.affectedDevices, ['desktop', 'mobile'])
     assert.equal(flag.evidenceHighlights[1].id, 'flag-message-1-mobile')
   })
 
@@ -181,7 +181,7 @@ describe('buildSampleReportDisplay', () => {
     assert.ok(merged.length >= 3)
     assert.ok(merged.some((h) => h.flagId === 'flag-message-1'))
     assert.ok(merged.some((h) => h.flagId === 'flag-experience-1'))
-    assert.ok(report.flags[1].evidenceDevices.includes('mobile'))
-    assert.equal(report.flags[1].evidenceDevices.includes('desktop'), false)
+    assert.ok(report.flags[1].affectedDevices.includes('mobile'))
+    assert.equal(report.flags[1].affectedDevices.includes('desktop'), false)
   })
 })

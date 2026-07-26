@@ -128,7 +128,14 @@ async function finalizeTriageComplete(
     evidence: buildEvidence(pageRuns, true),
   })
 
-  if (ctx.includeAi) {
+  // Claiming can happen while this runner is capturing or checking. Re-read
+  // the persisted entitlement so a newly owned report does not miss its
+  // prescription job because the runner's initial context is stale.
+  const prescriptionState = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { includeAi: true, aiReviewAt: true },
+  })
+  if (prescriptionState?.includeAi && !prescriptionState.aiReviewAt) {
     await enqueueAiReview(auditId)
   }
 }

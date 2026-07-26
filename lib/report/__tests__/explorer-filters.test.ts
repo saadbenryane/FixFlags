@@ -25,7 +25,7 @@ function flag(
     copyFixPrompt: '',
     toolPrompts: {},
     verificationRule: null,
-    evidenceDevices: ['desktop'],
+    affectedDevices: ['desktop'],
     hasFixPrompt: false,
     pageUrl: null,
     pageUrls: [],

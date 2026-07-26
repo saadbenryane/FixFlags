@@ -6,6 +6,7 @@ import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { cn } from '@/lib/utils'
 import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
 import { rubricLabel, impactTagLabel } from '@/lib/utils'
+import { severityLabel } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export type FixLoopFlagItem = {
@@ -49,7 +50,11 @@ function FlagList({
         const selected = selectedFlagId === flag.id
         const RubricIcon = rubricIcon(flag.rubric)
         const ImpactIcon = impactTagIcon(flag.impactTag)
-        const categoryLabel = [rubricLabel(flag.rubric), impactTagLabel(flag.impactTag)]
+        const categoryLabel = [
+          severityLabel(flag.severity),
+          rubricLabel(flag.rubric),
+          impactTagLabel(flag.impactTag),
+        ]
           .filter(Boolean)
           .join(' · ')
         return (

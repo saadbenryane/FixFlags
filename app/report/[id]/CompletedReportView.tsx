@@ -12,6 +12,7 @@ import {
 } from '@/lib/audit/screenshot-types'
 import type { loadReportRouteState } from './load-report-route-state'
 import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
+import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
@@ -161,6 +162,12 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
       </div>
       <ReportAuthGate auditId={state.id} required={Boolean(requireAuthGate)} />
+      {state.isOwner && state.showPrescription && !state.aiReviewPending ? (
+        <ReportPromptsUnlockedTracker
+          auditId={state.id}
+          promptCount={state.flags.length}
+        />
+      ) : null}
     </AuditShell>
   )
 }

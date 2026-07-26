@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SectionTitle } from '@/components/ui/typography'
 import { Card } from '@/components/ui/card'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
-import { RubricBar } from '@/components/audit/RubricBar'
+import { ReportOverviewBand } from '@/components/report/ReportOverviewBand'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
@@ -225,6 +225,7 @@ export function AuditReportProgressive({
         scanning={isLoading}
         scanningLabel={isLoading ? stage.scanningLabel : null}
         capturePresentation={capturePresentation}
+        showScore={false}
       />
 
       {(workerIdle || showWorkerWarning) && (
@@ -245,7 +246,13 @@ export function AuditReportProgressive({
         captureStatus={screenshotCapture}
       />
 
-      <RubricBar rubrics={rubricsComputed} rubricRows={rubricRowsForBar} loading={isLoading} />
+      <ReportOverviewBand
+        unresolvedCount={partialFlags.length}
+        score={score}
+        rubrics={rubricsComputed}
+        rubricRows={rubricRowsForBar}
+        loading={isLoading}
+      />
 
       {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
         <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
@@ -282,7 +289,6 @@ export function AuditReportProgressive({
               showStack
               showRecheckSection={false}
               siteUrl={url || undefined}
-              score={score}
             />
           ) : null}
         </div>
@@ -430,12 +436,14 @@ function ProgressiveCapturePair({
           url={hostname}
           imageUrl={desktop}
           state={desktopState}
+          alt={`Desktop screenshot of ${hostname ?? 'site'}`}
         />
         <BrowserFrame
           device="mobile"
           url={hostname}
           imageUrl={mobile}
           state={mobileState}
+          alt={`Mobile screenshot of ${hostname ?? 'site'}`}
         />
       </div>
     </section>

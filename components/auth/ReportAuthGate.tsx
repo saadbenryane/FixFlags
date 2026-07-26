@@ -42,6 +42,7 @@ export function ReportAuthGate({
       return
     }
     trackEvent('report_auth_gate_completed', { audit_id: auditId })
+    trackEvent('report_claimed', { audit_id: auditId })
     router.refresh()
   }
 
@@ -75,6 +76,7 @@ export function ReportAuthGate({
               presentation="report-dialog"
               nextPath={`/report/${auditId}`}
               from="report"
+              auditId={auditId}
               onAuthenticated={handleAuthenticated}
             />
             <Button asChild variant="ghost" className="w-full">

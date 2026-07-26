@@ -10,6 +10,7 @@ import {
   type Ref,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { CheckCircle2, CircleAlert } from 'lucide-react'
 import {
   MOBILE_VIEWPORT,
   mobileViewportSizeForHeight,
@@ -32,6 +33,7 @@ interface ScreenshotWithHighlightsProps {
   onPinSelect?: (flagId: string) => void
   showDesktop?: boolean
   showMobile?: boolean
+  affectedDevices?: ('desktop' | 'mobile')[]
   className?: string
 }
 
@@ -443,6 +445,7 @@ function ScreenshotPanel({
   useMobileTooltip,
   containerRef,
   size,
+  comparisonState = 'neutral',
 }: {
   imageUrl: string
   device: 'desktop' | 'mobile'
@@ -454,6 +457,7 @@ function ScreenshotPanel({
   useMobileTooltip?: boolean
   containerRef?: Ref<HTMLDivElement>
   size?: { width: number; height: number }
+  comparisonState?: 'affected' | 'unaffected' | 'neutral'
 }) {
   const resolvedImageUrl = normalizeInternalScreenshotUrl(imageUrl)
   const [imgError, setImgError] = useState(false)
@@ -468,6 +472,15 @@ function ScreenshotPanel({
   )
   const pageBorderCritical = selectedPageHighlight?.severity === 'CRITICAL'
   const pageBorderSelected = Boolean(selectedPageHighlight)
+  const resolvedComparisonState = imgError ? 'neutral' : comparisonState
+  const comparisonLabel =
+    resolvedComparisonState === 'affected'
+      ? `Flagged on ${device}`
+      : resolvedComparisonState === 'unaffected'
+        ? 'Not detected for this Flag'
+        : null
+  const ComparisonIcon =
+    resolvedComparisonState === 'affected' ? CircleAlert : CheckCircle2
 
   return (
     <div
@@ -477,11 +490,28 @@ function ScreenshotPanel({
         pageBorderSelected && 'border-[3px]',
         pageBorderSelected && pageBorderCritical && 'border-destructive',
         pageBorderSelected && !pageBorderCritical && 'border-brand',
+        resolvedComparisonState === 'affected' &&
+          'ring-2 ring-destructive ring-offset-2 ring-offset-background',
+        resolvedComparisonState === 'unaffected' &&
+          'ring-2 ring-emerald-600 ring-offset-2 ring-offset-background',
         size ? 'shrink-0' : 'w-full',
         className
       )}
       style={panelStyle}
     >
+      {comparisonLabel ? (
+        <div
+          className={cn(
+            'absolute left-2 top-2 z-20 inline-flex min-h-7 items-center gap-1.5 rounded-md border bg-background/95 px-2 py-1 text-2xs font-medium shadow-sm backdrop-blur',
+            resolvedComparisonState === 'affected'
+              ? 'border-destructive/40 text-destructive'
+              : 'border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
+          )}
+        >
+          <ComparisonIcon className="h-3.5 w-3.5" aria-hidden />
+          {comparisonLabel}
+        </div>
+      ) : null}
       {imgError ? (
         <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
           Screenshot unavailable
@@ -528,6 +558,7 @@ export function ScreenshotWithHighlights({
   onPinSelect,
   showDesktop = true,
   showMobile = true,
+  affectedDevices,
   className,
 }: ScreenshotWithHighlightsProps) {
   const showDesktopPanel = showDesktop && Boolean(desktopScreenshot)
@@ -557,6 +588,13 @@ export function ScreenshotWithHighlights({
           highlights={highlights}
           selectedFlagId={selectedFlagId}
           onPinSelect={onPinSelect}
+          comparisonState={
+            affectedDevices
+              ? affectedDevices.includes('desktop')
+                ? 'affected'
+                : 'unaffected'
+              : 'neutral'
+          }
           useMobileTooltip
         />
       </div>
@@ -575,6 +613,13 @@ export function ScreenshotWithHighlights({
           highlights={highlights}
           selectedFlagId={selectedFlagId}
           onPinSelect={onPinSelect}
+          comparisonState={
+            affectedDevices
+              ? affectedDevices.includes('mobile')
+                ? 'affected'
+                : 'unaffected'
+              : 'neutral'
+          }
           size={mobileOnlySize}
           useMobileTooltip
         />
@@ -593,6 +638,13 @@ export function ScreenshotWithHighlights({
             highlights={highlights}
             selectedFlagId={selectedFlagId}
             onPinSelect={onPinSelect}
+            comparisonState={
+              affectedDevices
+                ? affectedDevices.includes('desktop')
+                  ? 'affected'
+                  : 'unaffected'
+                : 'neutral'
+            }
             useMobileTooltip
           />
         </div>
@@ -604,6 +656,13 @@ export function ScreenshotWithHighlights({
             highlights={highlights}
             selectedFlagId={selectedFlagId}
             onPinSelect={onPinSelect}
+            comparisonState={
+              affectedDevices
+                ? affectedDevices.includes('mobile')
+                  ? 'affected'
+                  : 'unaffected'
+                : 'neutral'
+            }
             size={mobilePanelSize}
             useMobileTooltip
           />

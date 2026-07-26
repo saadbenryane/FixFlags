@@ -150,6 +150,22 @@ describe('AuditReportProgressive', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
+  it('resolves desktop and mobile capture frames independently', () => {
+    render(
+      <AuditReportProgressive
+        status="CAPTURING"
+        url={URL}
+        screenshots={[
+          { device: 'DESKTOP', url: '/desktop.png', width: 1280, height: 900 },
+        ]}
+        screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
+      />
+    )
+    expect(screen.getByAltText('Desktop screenshot of example.com')).toBeInTheDocument()
+    expect(screen.getByText(/Screenshot could not be captured/i)).toBeInTheDocument()
+    expect(screen.queryByAltText('Mobile screenshot of example.com')).not.toBeInTheDocument()
+  })
+
   it('replaces the stack skeleton with verified progressive detections', () => {
     render(
       <AuditReportProgressive

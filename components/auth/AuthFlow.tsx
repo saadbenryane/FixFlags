@@ -32,6 +32,7 @@ interface AuthFlowProps {
   nextPath?: string | null
   from?: string | null
   onAuthenticated?: () => Promise<void> | void
+  auditId?: string
 }
 
 export function AuthFlow({
@@ -40,6 +41,7 @@ export function AuthFlow({
   nextPath,
   from,
   onAuthenticated,
+  auditId,
 }: AuthFlowProps) {
   const route = useAuthRedirect()
   const router = useRouter()
@@ -71,6 +73,13 @@ export function AuthFlow({
   }, [initialMode, isDialog])
 
   function markStarted(method: string) {
+    if (isDialog) {
+      trackEvent('report_auth_method_selected', {
+        audit_id: auditId,
+        method,
+        mode,
+      })
+    }
     if (mode !== 'signup' || signupStartedRef.current) return
     signupStartedRef.current = true
     trackEvent('signup_started', { method, from: resolvedFrom ?? undefined })
@@ -213,6 +222,7 @@ export function AuthFlow({
           disabled={loading !== null}
           from={resolvedFrom ?? undefined}
           mode={mode}
+          onMethodSelected={markStarted}
         />
       ) : null}
 
@@ -286,19 +296,30 @@ export function AuthFlow({
             {mode === 'signup' ? AUTH.signUp.cta : AUTH.signIn.cta}
           </Button>
           {mode === 'signin' ? (
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() => void handlePasskeySignIn()}
-              className="mx-auto inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
-            >
-              {loading === 'passkey' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                <Fingerprint className="h-3.5 w-3.5" aria-hidden />
-              )}
-              {AUTH.signIn.passkeyCta}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-x-4">
+              <Link
+                href="/forgot-password"
+                className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                {AUTH.signIn.forgotPassword}
+              </Link>
+              <button
+                type="button"
+                disabled={loading !== null}
+                onClick={() => {
+                  markStarted('passkey')
+                  void handlePasskeySignIn()
+                }}
+                className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
+              >
+                {loading === 'passkey' ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Fingerprint className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {AUTH.signIn.passkeyCta}
+              </button>
+            </div>
           ) : null}
         </FormContainer>
       )}

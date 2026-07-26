@@ -16,6 +16,7 @@ interface Props {
   disabled?: boolean
   from?: string
   mode?: 'signup' | 'signin'
+  onMethodSelected?: (method: 'google' | 'github') => void
 }
 
 export function OAuthButtons({
@@ -26,6 +27,7 @@ export function OAuthButtons({
   disabled,
   from,
   mode = 'signup',
+  onMethodSelected,
 }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
   const showGoogle = !!google
@@ -36,7 +38,8 @@ export function OAuthButtons({
   }
 
   async function handleOAuth(provider: 'google' | 'github') {
-    if (mode === 'signup') {
+    onMethodSelected?.(provider)
+    if (mode === 'signup' && !onMethodSelected) {
       trackEvent('signup_started', { method: provider, from })
     }
     setLoading(provider)

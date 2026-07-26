@@ -2,8 +2,8 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
-import { RubricBar } from '@/components/audit/RubricBar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { ReportOverviewBand } from '@/components/report/ReportOverviewBand'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
@@ -209,7 +209,7 @@ export function AuditReport({
   return (
     <Container
       variant="report"
-      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-6 py-6 sm:space-y-8 sm:py-8'}
+      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-5 py-5 sm:space-y-6 sm:py-6'}
     >
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
@@ -222,6 +222,7 @@ export function AuditReport({
         startedAt={audit.startedAt}
         completedAt={audit.completedAt}
         actions={toolbarActions ?? actions}
+        showScore={false}
       />
 
       {!isSample && (
@@ -279,9 +280,12 @@ export function AuditReport({
         </>
       )}
 
-      {!isSample ? (
-        <RubricBar rubrics={displayedRubrics} rubricRows={audit.rubricRows} />
-      ) : null}
+      <ReportOverviewBand
+        unresolvedCount={unresolvedFlagCount}
+        score={audit.score}
+        rubrics={displayedRubrics}
+        rubricRows={audit.rubricRows}
+      />
 
       {!isSample && audit.technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
@@ -308,7 +312,6 @@ export function AuditReport({
             showRecheckSection={isLoggedIn && isViewerOwner}
             hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
-            score={audit.score}
           />
         </div>
       ) : null}

@@ -18,6 +18,37 @@ import {
 } from '@/lib/audit/product-intelligence'
 import { parseProductContract } from '@/lib/audit/product-contract'
 
+async function unlockClaimedAudit(audit: {
+  id: string
+  status: string
+  aiReviewAt: Date | null
+}): Promise<void> {
+  if (audit.aiReviewAt) return
+
+  if (audit.status === 'COMPLETED') {
+    // Enqueue first for completed audits. A queue failure leaves includeAi
+    // unchanged, so the claim remains safely retryable.
+    await enqueueAiReview(audit.id)
+    await prisma.audit.update({ where: { id: audit.id }, data: { includeAi: true } })
+    return
+  }
+
+  // The runner may already have copied includeAi into memory. Persist the
+  // entitlement now, then let finalization re-read it before enqueueing.
+  await prisma.audit.update({ where: { id: audit.id }, data: { includeAi: true } })
+
+  // Close the race where this audit completed between the transaction above
+  // and the includeAi update. Queue job IDs are stable, so this remains
+  // idempotent with the finalizer.
+  const latest = await prisma.audit.findUnique({
+    where: { id: audit.id },
+    select: { status: true, aiReviewAt: true },
+  })
+  if (latest?.status === 'COMPLETED' && !latest.aiReviewAt) {
+    await enqueueAiReview(audit.id)
+  }
+}
+
 export async function claimAnonymousAudits(userId: string): Promise<number> {
   const cookieStore = await cookies()
   const ids = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
@@ -110,22 +141,16 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
 
   if (user && !hasUnlimitedScans(user)) {
     let credits = await remainingAiReportCredits(user)
-    const unlockCandidates = audits
-      .filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)
-      .map((a) => a.id)
+    const unlockCandidates = audits.filter((audit) => !audit.aiReviewAt)
 
-    for (const auditId of unlockCandidates) {
+    for (const audit of unlockCandidates) {
       if (credits <= 0) break
-      // Enqueue first. Only mark includeAi after the job is accepted so a dead
-      // queue cannot leave the report stuck on "Fix prompts generating".
-      await enqueueAiReview(auditId)
-      await prisma.audit.update({ where: { id: auditId }, data: { includeAi: true } })
+      await unlockClaimedAudit(audit)
       credits -= 1
     }
   } else if (user && hasUnlimitedScans(user)) {
-    for (const audit of audits.filter((a) => a.status === 'COMPLETED' && !a.aiReviewAt)) {
-      await enqueueAiReview(audit.id)
-      await prisma.audit.update({ where: { id: audit.id }, data: { includeAi: true } })
+    for (const audit of audits.filter((candidate) => !candidate.aiReviewAt)) {
+      await unlockClaimedAudit(audit)
     }
   }
 

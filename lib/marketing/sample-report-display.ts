@@ -52,7 +52,7 @@ export interface SampleFlagDisplay {
   fixPrompt: string
   verificationRule: string | null
   evidenceHighlights: EvidenceHighlight[]
-  evidenceDevices: ('desktop' | 'mobile')[]
+  affectedDevices: ('desktop' | 'mobile')[]
   /** Prefer mobile screenshot for experience flags */
   preferredDevice: 'desktop' | 'mobile'
   pageUrl: string | null
@@ -192,7 +192,7 @@ function mapFlag(
     fixPrompt: buildExpertFixPrompt(flag),
     verificationRule: flag.verificationRule ?? null,
     evidenceHighlights: buildEvidenceHighlights(flag, index, anchors),
-    evidenceDevices: devicesForCheck(flag.checkId ?? flag.id),
+    affectedDevices: devicesForCheck(flag.checkId ?? flag.id),
     preferredDevice: flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop',
     pageUrl: flag.pageUrl ?? null,
   }

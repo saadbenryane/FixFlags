@@ -69,17 +69,74 @@ export function MadeWithProfile({
   const summary = profile.technologies.slice(0, 4)
   const emptyCopy = stateCopy(profile)
 
+  if (compact) {
+    return (
+      <section
+        className={cn('scroll-mt-[var(--header-offset)]', className)}
+        aria-labelledby="made-with-title"
+      >
+        <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
+          <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4 [&::-webkit-details-marker]:hidden">
+            <h2 id="made-with-title" className="text-xs font-medium text-muted-foreground">
+              {MADE_WITH_COPY.title}
+            </h2>
+            {summary.map((technology) => (
+              <span
+                key={technology.slug}
+                className="rounded-full bg-muted/70 px-2 py-1 text-xs font-medium text-foreground"
+              >
+                {technology.name}
+              </span>
+            ))}
+            {profile.technologies.length > summary.length ? (
+              <span className="font-mono text-2xs text-muted-foreground">
+                +{profile.technologies.length - summary.length}
+              </span>
+            ) : null}
+            {emptyCopy ? (
+              <span className="text-xs text-muted-foreground">{emptyCopy}</span>
+            ) : null}
+            <ChevronDown
+              className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+              aria-hidden
+            />
+          </summary>
+          <div className="space-y-3 border-t border-border/35 px-4 py-3">
+            {groups.map(([category, technologies]) => {
+              const meta = CATEGORY_META[category]
+              const Icon = meta.icon
+              return (
+                <div key={category} className="grid gap-2 sm:grid-cols-[8rem_1fr]">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <Icon className="size-3.5" aria-hidden />
+                    {meta.label}
+                  </div>
+                  <p className="text-xs text-foreground">
+                    {technologies.map((technology) => technology.name).join(', ')}
+                  </p>
+                </div>
+              )
+            })}
+            <p className="text-2xs leading-relaxed text-muted-foreground">
+              {MADE_WITH_COPY.disclaimer}
+            </p>
+          </div>
+        </details>
+      </section>
+    )
+  }
+
   return (
     <section
       className={cn('scroll-mt-[var(--header-offset)]', className)}
       aria-labelledby="made-with-title"
     >
       <Card className="overflow-hidden p-0">
-        <div className={cn('flex flex-col', compact ? 'gap-3 p-4' : 'gap-4 p-5 sm:p-6')}>
+        <div className="flex flex-col gap-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="section-label mb-2">{MADE_WITH_COPY.sectionLabel}</p>
-              <SectionTitle id="made-with-title" className={cn(compact && 'text-base')}>
+              <SectionTitle id="made-with-title">
                 {MADE_WITH_COPY.title}
               </SectionTitle>
             </div>
@@ -115,7 +172,7 @@ export function MadeWithProfile({
             </div>
           ) : null}
 
-          {profile.insight && !compact ? (
+          {profile.insight ? (
             <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground text-pretty">
               {profile.insight}
             </p>

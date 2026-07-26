@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Container } from '@/components/ui/container'
-import { ScoreDot } from '@/components/ui/score-dot'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -35,7 +34,6 @@ interface Props {
   /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
   hasRecheckDiff?: boolean
   siteUrl?: string
-  score?: number | null
   actions?: ReactNode
 }
 
@@ -62,7 +60,6 @@ export function ReportStickyToolbar({
   showRecheckSection = true,
   hasRecheckDiff = false,
   siteUrl,
-  score,
   actions,
 }: Props) {
   const navShellRef = useRef<HTMLDivElement>(null)
@@ -174,8 +171,7 @@ export function ReportStickyToolbar({
       >
         <div className="order-2 flex w-full min-w-0 items-center gap-3 overflow-x-auto scrollbar-thin max-xl:gap-2 sm:gap-4 xl:order-1 xl:w-auto xl:flex-1 xl:gap-4">
           {hostname && isStuck && (
-            <span className="hidden max-w-[140px] shrink-0 items-center gap-2 truncate text-xs font-medium text-muted-foreground sm:flex">
-              <ScoreDot score={score ?? null} size="sm" />
+            <span className="hidden max-w-[140px] shrink-0 items-center truncate text-xs font-medium text-muted-foreground sm:flex">
               <span className="truncate">{hostname}</span>
             </span>
           )}

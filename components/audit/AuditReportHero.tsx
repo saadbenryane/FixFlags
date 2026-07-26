@@ -34,6 +34,7 @@ type Props = {
   scanning?: boolean
   /** Stage label from getStagePresentation. Shown beside the Scanning badge. */
   scanningLabel?: string | null
+  showScore?: boolean
 }
 
 export function AuditReportHero({
@@ -50,6 +51,7 @@ export function AuditReportHero({
   actions,
   scanning = false,
   scanningLabel = null,
+  showScore = true,
 }: Props) {
   const isMinimal = variant === 'minimal'
   const hostname = url ? displayHostname(url) : null
@@ -78,10 +80,12 @@ export function AuditReportHero({
           <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
             {hostname ?? '…'}
           </h1>
-          <ScoreDot
-            score={score}
-            className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
-          />
+          {showScore ? (
+            <ScoreDot
+              score={score}
+              className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
+            />
+          ) : null}
         </div>
         {url ? (
           <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
@@ -135,17 +139,19 @@ export function AuditReportHero({
                 ) : (
                   <Skeleton className="h-6 w-40" />
                 )}
-                <ScoreDot
-                  score={score}
-                  className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
-                  aria-label={
-                    score != null
-                      ? `Overall status: ${score} out of 100`
-                      : scanning
-                        ? 'Status pending'
-                        : 'Overall status unavailable'
-                  }
-                />
+                {showScore ? (
+                  <ScoreDot
+                    score={score}
+                    className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
+                    aria-label={
+                      score != null
+                        ? `Overall status: ${score} out of 100`
+                        : scanning
+                          ? 'Status pending'
+                          : 'Overall status unavailable'
+                    }
+                  />
+                ) : null}
                 {badgeLabel ? (
                   <Badge
                     variant="secondary"

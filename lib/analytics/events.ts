@@ -39,6 +39,11 @@ type FunnelEvent =
   | 'clicked_sample_cta'
   | 'audit_intent'
   | 'report_signup_cta_clicked'
+  | 'report_auth_gate_viewed'
+  | 'report_auth_method_selected'
+  | 'report_auth_gate_completed'
+  | 'report_claimed'
+  | 'report_prompts_unlocked'
   | 'audits_claimed'
   | 'product_contract_saved'
   | 'remember_shown'
@@ -124,7 +129,10 @@ type EventParams = {
     from: 'value_strip' | 'sample_fix' | 'limit_gate'
   }
   report_auth_gate_viewed: { audit_id?: string }
+  report_auth_method_selected: { audit_id?: string; method?: string; mode?: string }
   report_auth_gate_completed: { audit_id?: string }
+  report_claimed: { audit_id?: string }
+  report_prompts_unlocked: { audit_id?: string; prompt_count?: number }
   audits_claimed: { claimed_count: number }
   product_contract_saved: { audit_id?: string }
   remember_shown: { audit_id?: string; learning_count?: number }

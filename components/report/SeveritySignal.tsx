@@ -20,8 +20,9 @@ interface Props {
  */
 export function SeveritySignal({ severity, className }: Props) {
   const label = severityLabel(severity)
-  const isCritical = severity === 'CRITICAL'
-  const isImportant = severity === 'IMPORTANT'
+  if (severity !== 'CRITICAL') {
+    return <span className="sr-only">{label}</span>
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -30,12 +31,7 @@ export function SeveritySignal({ severity, className }: Props) {
           <span
             role="img"
             aria-label={label}
-            className={cn(
-              'inline-flex shrink-0 items-center justify-center',
-              isCritical && 'text-destructive',
-              isImportant && 'text-grade-D',
-              !isCritical && !isImportant && 'text-muted-foreground/70',
-            )}
+            className={cn('inline-flex shrink-0 items-center justify-center text-destructive')}
           >
             <CircleAlert
               className={cn('h-5 w-5', className)}

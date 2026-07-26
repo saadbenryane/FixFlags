@@ -211,6 +211,11 @@ export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SeveritySignal severity={flag.severity} />
+      {flag.severity !== 'CRITICAL' ? (
+        <span className="text-2xs font-medium text-muted-foreground">
+          {flag.severityLabel}
+        </span>
+      ) : null}
       <RubricPill rubric={flag.rubric} label={flag.rubricLabel} />
       {impactLabel && (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2.5 py-1 text-2xs text-muted-foreground">

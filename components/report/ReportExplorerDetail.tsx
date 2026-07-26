@@ -121,8 +121,8 @@ export function FlagDetailPane({
   variant?: 'hero' | 'live'
   headingRef?: RefObject<HTMLHeadingElement | null>
 }) {
-  const showDesktop = flag.evidenceDevices.includes('desktop')
-  const showMobile = flag.evidenceDevices.includes('mobile')
+  const showDesktop = Boolean(model.desktopScreenshot)
+  const showMobile = Boolean(model.mobileScreenshot)
   const shareableFlag = isShareableCheck(flag.checkId)
   const isHero = variant === 'hero'
 
@@ -155,6 +155,7 @@ export function FlagDetailPane({
             onPinSelect={onSelectFlag}
             showDesktop={showDesktop}
             showMobile={showMobile}
+            affectedDevices={flag.affectedDevices}
             className={cn('mb-5', compact && 'lg:mb-0')}
           />
         ) : null}
@@ -168,6 +169,7 @@ export function FlagDetailPane({
             onPinSelect={onSelectFlag}
             showDesktop={showDesktop}
             showMobile={showMobile}
+            affectedDevices={flag.affectedDevices}
           />
         ) : null}
 

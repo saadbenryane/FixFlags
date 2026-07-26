@@ -31,7 +31,7 @@ function flag(
     copyFixPrompt: hasFixPrompt ? 'Render the CTA in the initial HTML.' : '',
     toolPrompts: {},
     verificationRule: null,
-    evidenceDevices: ['desktop'],
+    affectedDevices: ['desktop'],
     hasFixPrompt,
     pageUrl: 'https://example.com/',
     pageUrls: ['https://example.com/'],
@@ -80,7 +80,9 @@ describe('ReportExplorer anonymous teaser', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: 'Experience · Conversion: Demonstrated fix' })
+        screen.getByRole('button', {
+          name: 'Important Flag · Experience · Conversion: Demonstrated fix',
+        })
       ).toHaveAttribute('aria-pressed', 'true')
     })
     expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
@@ -96,7 +98,9 @@ describe('ReportExplorer anonymous teaser', () => {
     )
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: 'Experience · Conversion: Locked first flag' })
+        screen.getByRole('button', {
+          name: 'Important Flag · Experience · Conversion: Locked first flag',
+        })
       ).toHaveAttribute('aria-pressed', 'true')
     })
     expect(window.location.search).toContain('flag=locked')
@@ -112,10 +116,31 @@ describe('ReportExplorer anonymous teaser', () => {
     )
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: 'Experience · Conversion: Locked first flag' })
+        screen.getByRole('button', {
+          name: 'Important Flag · Experience · Conversion: Locked first flag',
+        })
       ).toHaveAttribute('aria-pressed', 'true')
     })
     expect(window.location.search).toContain('flag=locked')
     expect(window.location.search).not.toContain('deleted')
+  })
+
+  it('marks affected and unaffected captures without treating missing captures as healthy', async () => {
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{
+            ...model,
+            flags: [locked],
+            flagCount: 1,
+            desktopScreenshot: '/desktop.png',
+            mobileScreenshot: '/mobile.png',
+          }}
+        />
+      </MeProvider>
+    )
+
+    expect(await screen.findByText('Flagged on desktop')).toBeInTheDocument()
+    expect(screen.getByText('Not detected for this Flag')).toBeInTheDocument()
   })
 })

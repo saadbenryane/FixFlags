@@ -68,7 +68,7 @@ export interface ExplorerFlag {
   copyFixPrompt: string
   toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>>
   verificationRule: string | null
-  evidenceDevices: ('desktop' | 'mobile')[]
+  affectedDevices: ('desktop' | 'mobile')[]
   hasFixPrompt: boolean
   pageUrl: string | null
   pageUrls: string[]
@@ -133,7 +133,7 @@ function mapLiveFlag(
         }
       : {},
     verificationRule: flag.verificationRule ?? null,
-    evidenceDevices: flag.checkId
+    affectedDevices: flag.checkId
       ? devicesForCheck(flag.checkId)
       : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
     hasFixPrompt: mayShowPrompt && Boolean(sourceFix),
@@ -286,7 +286,7 @@ function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
     copyFixPrompt: flag.fixPrompt,
     toolPrompts: {},
     verificationRule: flag.verificationRule,
-    evidenceDevices: flag.evidenceDevices,
+    affectedDevices: flag.affectedDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),
     pageUrl: flag.pageUrl ?? null,
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
