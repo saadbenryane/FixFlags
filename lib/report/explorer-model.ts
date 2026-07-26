@@ -71,6 +71,8 @@ export interface ExplorerFlag {
   evidenceDevices: ('desktop' | 'mobile')[]
   hasFixPrompt: boolean
   pageUrl: string | null
+  pageUrls: string[]
+  occurrenceCount: number
   /** Animated GIF or overlay/side-by-side image URL for this flag. */
   visualUrl?: string | null
   /** Derived truth label: Reproduced / Detected / Observed / Likely cause. */
@@ -94,7 +96,11 @@ export interface ReportExplorerModel {
 function mapLiveFlag(
   flag: RankableFlag,
   visualByCheckId?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>,
-  mayShowPrompt = true
+  mayShowPrompt = true,
+  occurrences: { pageUrls: string[]; count: number } = {
+    pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
+    count: 1,
+  }
 ): ExplorerFlag {
   const fixPrompt = mayShowPrompt ? buildExpertFixPrompt(flag) : ''
   const copyFixPrompt = fixPrompt
@@ -132,6 +138,8 @@ function mapLiveFlag(
       : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
     hasFixPrompt: mayShowPrompt && Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
+    pageUrls: occurrences.pageUrls,
+    occurrenceCount: occurrences.count,
     visualUrl,
     truthLabel: deriveTruthLabel(flag.source, flag.checkId ?? null),
   }
@@ -169,7 +177,20 @@ export function buildLiveExplorerModel(input: {
       item.id === input.demonstratedFlag?.id
         ? input.demonstratedFlag
         : flagsById.get(item.id)
-    return flag ? [flag] : []
+    return flag
+      ? [
+          {
+            flag: {
+              ...flag,
+              checkId: item.checkId,
+              problem: item.problem,
+              evidence: item.evidence,
+              pageUrl: item.pageUrl,
+            },
+            item,
+          },
+        ]
+      : []
   })
   const promptVisibleById = new Map(
     fixList.items.map((item) => [item.id, item.prompt !== null])
@@ -189,14 +210,18 @@ export function buildLiveExplorerModel(input: {
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
-    flags: sorted.map((flag) =>
+    flags: sorted.map(({ flag, item }) =>
       mapLiveFlag(
         flag,
         input.flagVisualEvidence,
-        promptVisibleById.get(flag.id) ?? false
+        promptVisibleById.get(flag.id) ?? false,
+        { pageUrls: item.pageUrls, count: item.occurrenceCount }
       )
     ),
-    allHighlights: buildAllEvidenceHighlights(sorted, input.evidenceAnchors),
+    allHighlights: buildAllEvidenceHighlights(
+      sorted.map(({ flag }) => flag),
+      input.evidenceAnchors
+    ),
     previewMeta: input.previewMeta ?? null,
   }
 }
@@ -264,6 +289,8 @@ function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
     evidenceDevices: flag.evidenceDevices,
     hasFixPrompt: Boolean(flag.fixPrompt),
     pageUrl: flag.pageUrl ?? null,
+    pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
+    occurrenceCount: 1,
     visualUrl: null,
     truthLabel: 'Detected',
   }

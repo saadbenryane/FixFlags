@@ -146,7 +146,9 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       else if (/signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i.test(combined)) score = 70
       else if (
         tag === 'button' &&
-        /get started|sign up|signup|start|try|demo|contact|register|join|learn more|explore|shop|browse|watch|find|claim|reserve|see how|get access/i.test(text)
+        /\b(?:get started|sign up|signup|start(?: now| free| trial)?|try(?: free)?|demo|contact|register|join|learn more|explore|shop|browse|watch|find|claim|reserve|see how|get access)\b/i.test(
+          text
+        )
       )
         score = 85
       else if (

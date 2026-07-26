@@ -4,7 +4,7 @@ export const NAV_LINK_BASE =
 
 /** Tighter marketing desktop nav to match homepage mockup density. */
 export const NAV_LINK_MARKETING =
-  'inline-flex min-h-10 items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-200 hover:bg-accent hover:text-foreground'
+  'inline-flex min-h-11 items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-200 hover:bg-accent hover:text-foreground'
 
 export const NAV_LINK_ACTIVE = 'bg-accent text-foreground font-medium'
 

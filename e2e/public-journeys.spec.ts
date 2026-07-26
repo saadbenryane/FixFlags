@@ -96,7 +96,7 @@ for (const width of [320, 375]) {
     await expect(flags).toHaveCount(7)
     await flags.nth(1).click()
     await expect(flags.nth(1)).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('#selected-flag-detail h3')).toBeFocused()
+    await expect(page.locator('#selected-flag-detail h3[tabindex="-1"]')).toBeFocused()
   })
 }
 

@@ -124,4 +124,34 @@ describe('buildFixList', () => {
     expect(list.items.map((item) => item.id)).toEqual(['regressed', 'open'])
     expect(list.totalCount).toBe(2)
   })
+
+  it('consolidates repeated per-page checks into one site fix with all occurrences', () => {
+    const list = buildFixList({
+      flags: [
+        {
+          ...flag('privacy-home', 'POLISH'),
+          checkId: 'no-privacy-policy',
+          pageUrl: 'https://example.com/',
+          evidence: 'No privacy link found.',
+        },
+        {
+          ...flag('privacy-contact', 'POLISH'),
+          checkId: 'no-privacy-policy::page:1',
+          pageUrl: 'https://example.com/contact',
+          evidence: 'No privacy link found.',
+        },
+      ],
+      promptAccess: 'all',
+    })
+
+    expect(list.totalCount).toBe(1)
+    expect(list.items).toHaveLength(1)
+    expect(list.items[0]?.checkId).toBe('no-privacy-policy')
+    expect(list.items[0]?.occurrenceCount).toBe(2)
+    expect(list.items[0]?.pageUrls).toEqual([
+      'https://example.com/',
+      'https://example.com/contact',
+    ])
+    expect(list.items[0]?.evidence).toContain('Seen on 2 scanned pages')
+  })
 })

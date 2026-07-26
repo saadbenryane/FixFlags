@@ -4,6 +4,7 @@ import {
   clampFlagIndex,
   countFlagsByRubric,
   filterExplorerFlags,
+  initialExplorerFlagIndex,
   pageFilterLabel,
   resolveRubricFilter,
 } from '@/lib/report/explorer-filters'
@@ -27,16 +28,18 @@ function flag(
     evidenceDevices: ['desktop'],
     hasFixPrompt: false,
     pageUrl: null,
+    pageUrls: [],
+    occurrenceCount: 1,
     truthLabel: 'Detected',
     ...partial,
   }
 }
 
 const FLAGS: ExplorerFlag[] = [
-  flag({ id: '1', rubric: 'MESSAGE', severity: 'CRITICAL', impactTag: 'CONVERSION', pageUrl: 'https://ex.com/' }),
-  flag({ id: '2', rubric: 'MESSAGE', severity: 'IMPORTANT', impactTag: 'TRUST', pageUrl: 'https://ex.com/pricing' }),
-  flag({ id: '3', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'ACCESSIBILITY', pageUrl: 'https://ex.com/' }),
-  flag({ id: '4', rubric: 'REACH', severity: 'POLISH', impactTag: 'SEO', pageUrl: 'https://ex.com/pricing' }),
+  flag({ id: '1', rubric: 'MESSAGE', severity: 'CRITICAL', impactTag: 'CONVERSION', pageUrl: 'https://ex.com/', pageUrls: ['https://ex.com/'] }),
+  flag({ id: '2', rubric: 'MESSAGE', severity: 'IMPORTANT', impactTag: 'TRUST', pageUrl: 'https://ex.com/pricing', pageUrls: ['https://ex.com/pricing'] }),
+  flag({ id: '3', rubric: 'EXPERIENCE', severity: 'CRITICAL', impactTag: 'ACCESSIBILITY', pageUrl: 'https://ex.com/', pageUrls: ['https://ex.com/'] }),
+  flag({ id: '4', rubric: 'REACH', severity: 'POLISH', impactTag: 'SEO', pageUrl: 'https://ex.com/pricing', pageUrls: ['https://ex.com/pricing'] }),
 ]
 
 describe('explorer-filters', () => {
@@ -72,6 +75,25 @@ describe('explorer-filters', () => {
     )
   })
 
+  it('keeps one consolidated fix discoverable from every affected page', () => {
+    const shared = flag({
+      id: 'shared',
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      pageUrls: ['https://ex.com/', 'https://ex.com/pricing'],
+      occurrenceCount: 2,
+    })
+
+    assert.equal(
+      filterExplorerFlags([shared], { pageFilter: 'https://ex.com/' }).length,
+      1
+    )
+    assert.equal(
+      filterExplorerFlags([shared], { pageFilter: 'https://ex.com/pricing' }).length,
+      1
+    )
+  })
+
   it('resolveRubricFilter resets when the rubric disappears', () => {
     assert.equal(resolveRubricFilter('ALL', { MESSAGE: 0, EXPERIENCE: 0, REACH: 0 }), 'ALL')
     assert.equal(
@@ -89,5 +111,10 @@ describe('explorer-filters', () => {
     assert.equal(clampFlagIndex(2, 3), 2)
     assert.equal(clampFlagIndex(3, 3), 0)
     assert.equal(clampFlagIndex(-1, 3), 0)
+  })
+
+  it('selects the demonstrated anonymous prompt without reordering the Fix List', () => {
+    assert.equal(initialExplorerFlagIndex(FLAGS, 0, '3'), 2)
+    assert.equal(initialExplorerFlagIndex(FLAGS, 1, 'missing'), 1)
   })
 })

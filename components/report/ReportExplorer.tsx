@@ -15,6 +15,7 @@ import {
   clampFlagIndex,
   countFlagsByRubric,
   filterExplorerFlags,
+  initialExplorerFlagIndex,
   pageFilterLabel,
   resolveRubricFilter,
   type RubricFilter,
@@ -79,7 +80,7 @@ export function ReportExplorer({
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [impactFilter, setImpactFilter] = useState<string | null>(null)
   const [flagIndex, setFlagIndex] = useState(() =>
-    clampFlagIndex(initialFlagIndex, model.flags.length)
+    initialExplorerFlagIndex(model.flags, initialFlagIndex, demonstratedFlagId)
   )
   const firstFindingTracked = useRef(false)
 
@@ -267,7 +268,7 @@ export function ReportExplorer({
             {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
           </FilterPill>
           {pages.map((page) => {
-            const count = pageScopedFlags.filter((f) => f.pageUrl === page.url).length
+            const count = pageScopedFlags.filter((f) => f.pageUrls.includes(page.url)).length
             if (count === 0) return null
             const label = pageFilterLabel(page.url, page.role)
             return (

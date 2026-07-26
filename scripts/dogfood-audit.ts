@@ -14,6 +14,7 @@ import {
   resolveFixConfidence,
 } from '@/lib/audit/priority-flags'
 import type { RankableFlag } from '@/lib/audit/flag-types'
+import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
 
 const args = process.argv.slice(2)
 const includeAi = args.includes('--include-ai')
@@ -81,6 +82,7 @@ async function auditUrl(url: string) {
   const rubricRows = result.rubrics.map((r) => ({ name: r.name, grade: r.grade, score: r.score }))
   const top3 = rankFlagsByPriority(flags, rubricRows, 3)
   const sorted = [...flags].sort(compareFlagsByPriority)
+  const consolidatedFlags = consolidateFlagsByCheck(flags)
 
   // --- Quality analysis ---
   const checkIdCounts = new Map<string, number>()
@@ -122,6 +124,7 @@ async function auditUrl(url: string) {
     journeyReviews: result.journeyReviews,
     rubricRows,
     flagCount: flags.length,
+    distinctFixCount: consolidatedFlags.length,
     flags,
     sortedCheckIds: sorted.map((f) => f.checkId ?? `ai:${f.problem.slice(0, 40)}`),
     top3: top3.map(({ flag, rubricName, rubricGrade }) => ({
@@ -139,7 +142,19 @@ async function auditUrl(url: string) {
       source: flag.source,
       pageUrl: flag.pageUrl,
     })),
-    analysis: { duplicateCheckIds, nearDupes, weakEvidence: weakEvidence.map((f) => f.checkId), lowConfidence: lowConfidence.map((f) => `${f.checkId} (${f.confidence})`) },
+    analysis: {
+      duplicateCheckIds,
+      repeatedFixes: consolidatedFlags
+        .filter((flag) => flag.occurrenceCount > 1)
+        .map((flag) => ({
+          checkId: flag.checkId,
+          occurrences: flag.occurrenceCount,
+          pageUrls: flag.occurrencePageUrls,
+        })),
+      nearDupes,
+      weakEvidence: weakEvidence.map((f) => f.checkId),
+      lowConfidence: lowConfidence.map((f) => `${f.checkId} (${f.confidence})`),
+    },
     elapsedMs,
   }
 }
@@ -151,7 +166,7 @@ async function main() {
     console.log(`Auditing ${url} ...`)
     const r = await auditUrl(url)
     results.push(r)
-    console.log(`  -> ${r.status} score=${r.score ?? '-'} flags=${r.flagCount} triage=${r.triageAt ? 'ok' : 'none'} ${Math.round(r.elapsedMs / 1000)}s`)
+    console.log(`  -> ${r.status} score=${r.score ?? '-'} rows=${r.flagCount} distinct-fixes=${r.distinctFixCount} triage=${r.triageAt ? 'ok' : 'none'} ${Math.round(r.elapsedMs / 1000)}s`)
     if (r.errorMsg) console.log(`  ERROR: ${r.errorMsg}`)
     console.log(`  Rubrics: ${r.rubricRows.map((x) => `${x.name}=${x.grade ?? '-'}(${x.score ?? '-'})`).join(' ')}`)
     console.log(`  Pages: ${r.pages.map((p) => `${p.role}:${p.status}`).join(' ')}`)

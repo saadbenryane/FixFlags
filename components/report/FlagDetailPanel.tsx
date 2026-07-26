@@ -104,7 +104,8 @@ function FlagCard({
 function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
   const stepMatch = flag.evidence?.match(/[Rr]eproduced at step (\d+)/)
   const hasMedia = Boolean(flag.visualUrl)
-  const hasLinks = Boolean(stepMatch || flag.pageUrl)
+  const pageUrls = flag.pageUrls.length > 0 ? flag.pageUrls : flag.pageUrl ? [flag.pageUrl] : []
+  const hasLinks = Boolean(stepMatch || pageUrls.length > 0)
   if (!hasMedia && !hasLinks) return null
 
   return (
@@ -127,17 +128,18 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
               View timeline step {stepMatch[1]}
             </a>
           ) : null}
-          {flag.pageUrl ? (
+          {pageUrls.map((pageUrl) => (
             <a
-              href={flag.pageUrl}
+              key={pageUrl}
+              href={pageUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="truncate max-w-[300px]">{flag.pageUrl}</span>
+              <span className="truncate max-w-[300px]">{pageUrl}</span>
             </a>
-          ) : null}
+          ))}
         </div>
       ) : null}
     </div>

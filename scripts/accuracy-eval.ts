@@ -17,6 +17,8 @@ import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
+import { runLayoutChecks } from '@/lib/audit/checks/layout'
+import type { CaptureMetrics } from '@/lib/audit/capture-metrics'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
 function countImportantFalseBlockers(flags: RankableFlag[], tier: AccuracyFixtureTier): number {
@@ -96,6 +98,13 @@ function evaluateNonHtmlFixture() {
       timeToCtaMs: number
       screenshotUrls: string[]
     }
+    mobileLayoutCases?: Array<{
+      name: string
+      mobilePrimaryCtaTopPx: number | null
+      mobilePrimaryCtaText: string | null
+      mobileViewportHeight: number
+      expectedCheckIds: string[]
+    }>
   }
 
   const checkIds = [
@@ -107,6 +116,31 @@ function evaluateNonHtmlFixture() {
   if (flowCheckId) checkIds.push(flowCheckId)
   if (fixture.slowReplay) {
     checkIds.push(...runSlowReplayChecks(fixture.slowReplay).map((flag) => flag.checkId))
+  }
+
+  for (const layoutCase of fixture.mobileLayoutCases ?? []) {
+    const metrics: CaptureMetrics = {
+      mobilePrimaryCtaTopPx: layoutCase.mobilePrimaryCtaTopPx,
+      mobilePrimaryCtaText: layoutCase.mobilePrimaryCtaText,
+      mobileViewportHeight: layoutCase.mobileViewportHeight,
+      competingPrimaryCtaCount: 0,
+      competingPrimaryCtaLabels: [],
+      stuckLoadingIndicator: false,
+      stuckLoadingLabel: null,
+      uniqueFontFamilies: 0,
+      fontFamilySample: [],
+      buttonBorderRadii: [],
+      motionIgnoresReducedPreference: false,
+      motionSampleLabel: null,
+      inputsBelow16px: [],
+    }
+    const actualLayout = runLayoutChecks(metrics).map((flag) => flag.checkId).sort()
+    const expectedLayout = [...layoutCase.expectedCheckIds].sort()
+    if (actualLayout.join(',') !== expectedLayout.join(',')) {
+      failures.push(
+        `mobile layout "${layoutCase.name}" mismatch: expected ${expectedLayout.join(', ') || 'none'}, got ${actualLayout.join(', ') || 'none'}`
+      )
+    }
   }
 
   const actual = [...new Set(checkIds)].sort()

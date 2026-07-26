@@ -94,6 +94,42 @@ describe('deduplicateFlags', () => {
     assert.equal(deduplicateFlags(deterministic, aiFlags).length, 0)
   })
 
+  it('rejects AI mobile CTA geometry claims when the deterministic check correctly passes', () => {
+    const aiFlags = [
+      {
+        rubric: 'EXPERIENCE' as const,
+        impactTag: 'CONVERSION' as const,
+        severity: 'IMPORTANT' as const,
+        problem: 'Primary CTA is not prominent on mobile',
+        evidence: 'The Book a Call CTA is somewhat hidden within the mobile layout.',
+        whyItMatters: 'Mobile visitors may miss it.',
+        fix: 'Move the CTA.',
+        confidence: 0.75,
+        verificationRule: 'Check the mobile viewport.',
+      },
+    ]
+
+    assert.equal(deduplicateFlags([], aiFlags).length, 0)
+  })
+
+  it('rejects AI absence claims for privacy and contact facts owned by deterministic metadata', () => {
+    const aiFlags = [
+      {
+        rubric: 'REACH' as const,
+        impactTag: 'TRUST' as const,
+        severity: 'CRITICAL' as const,
+        problem: 'Missing privacy policy and contact information',
+        evidence: 'There is no link to a privacy policy or easy access to contact information.',
+        whyItMatters: 'Visitors may hesitate.',
+        fix: 'Add both.',
+        confidence: 0.75,
+        verificationRule: 'Check the footer.',
+      },
+    ]
+
+    assert.equal(deduplicateFlags([], aiFlags).length, 0)
+  })
+
   it('keeps genuinely new AI flags', () => {
     const deterministic = [
       det({

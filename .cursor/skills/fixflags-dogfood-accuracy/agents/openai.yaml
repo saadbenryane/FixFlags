@@ -1,0 +1,4 @@
+interface:
+  display_name: "FixFlags Dogfood Accuracy"
+  short_description: "Adjudicate live scans and prevent regressions"
+  default_prompt: "Use $fixflags-dogfood-accuracy to compare a FixFlags report with the rendered target site and improve the accuracy harness."

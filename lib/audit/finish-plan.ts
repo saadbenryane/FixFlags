@@ -5,6 +5,7 @@ import {
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
+import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
 
 export type FinishPlanPromptAccess = 'all' | 'one' | 'none'
 type FixListFlag = RankableFlag & { status?: string | null }
@@ -21,6 +22,8 @@ export interface FinishPlanItem {
   whyItMatters?: string | null
   verificationRule?: string | null
   pageUrl?: string | null
+  pageUrls: string[]
+  occurrenceCount: number
   prompt: string | null
   toolPrompts: {
     universal?: string | null
@@ -48,7 +51,7 @@ export function buildAllFixPrompts(input: {
   url?: string | null
   contract?: ProductContract | null
 }): string {
-  const flags = unresolvedFlags(input.flags)
+  const flags = consolidateFlagsByCheck(unresolvedFlags(input.flags))
   return buildPlanModePrompt(flags, {
     url: input.url,
     limit: flags.length,
@@ -75,7 +78,9 @@ function buildRankedFixes(
   input: PlanInput,
   options: { limit: number; demonstratedFirst: boolean }
 ): FinishPlan {
-  const unresolved = unresolvedFlags(input.flags)
+  const unresolved = consolidateFlagsByCheck(unresolvedFlags(input.flags), {
+    demonstratedFlagId: input.demonstratedFlag?.id,
+  })
   const ranked = rankFlagsByPriority(
     unresolved,
     input.rubricRows ?? [],
@@ -112,6 +117,8 @@ function buildRankedFixes(
       whyItMatters: flag.whyItMatters,
       verificationRule: flag.verificationRule,
       pageUrl: flag.pageUrl,
+      pageUrls: flag.occurrencePageUrls,
+      occurrenceCount: flag.occurrenceCount,
       prompt,
       toolPrompts: prompt
         ? {
@@ -144,7 +151,7 @@ function buildRankedFixes(
  * anonymous reports can keep every problem and evidence summary visible.
  */
 export function buildFixList(input: PlanInput): FixList {
-  const totalCount = unresolvedFlags(input.flags).length
+  const totalCount = consolidateFlagsByCheck(unresolvedFlags(input.flags)).length
   const plan = buildRankedFixes(input, {
     limit: totalCount,
     demonstratedFirst: false,

@@ -74,6 +74,7 @@ TITLE CRAFTING RULES:
 - Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
 - Omit markdown, quotes, punctuation at end
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
+- Browser geometry and metadata presence are deterministic truth. Never create a new flag claiming a CTA is hidden/below-fold, or that privacy/contact information is missing; those are already owned by deterministic checks and the supplied metadata facts.
 
 For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
 
@@ -90,6 +91,8 @@ interface TriageContext {
     h1s: string[]
     ctaTexts: string[]
     hasStructuredData: boolean
+    hasPrivacyPolicy?: boolean
+    hasContactInfo?: boolean
   }
   scores: {
     desktopPerf: number | null
@@ -130,6 +133,8 @@ Technical metadata:
 - H1s: ${context.metadata.h1s.join(', ') || 'NONE'}
 - CTAs found: ${context.metadata.ctaTexts.join(', ') || 'NONE'}
 - Structured data: ${context.metadata.hasStructuredData ? 'Yes' : 'No'}
+- Privacy policy link: ${context.metadata.hasPrivacyPolicy === undefined ? 'UNKNOWN' : context.metadata.hasPrivacyPolicy ? 'Present' : 'Missing'}
+- Contact information: ${context.metadata.hasContactInfo === undefined ? 'UNKNOWN' : context.metadata.hasContactInfo ? 'Present' : 'Missing'}
 
 Performance scores:
 - Desktop: ${context.scores.desktopPerf ?? 'N/A'}/100

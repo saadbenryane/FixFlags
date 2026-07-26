@@ -28,7 +28,7 @@ export function countFlagsByRubric(
   const impactFilter = options.impactFilter ?? null
 
   for (const flag of flags) {
-    if (pageFilter && flag.pageUrl !== pageFilter) continue
+    if (pageFilter && !flag.pageUrls.includes(pageFilter)) continue
     if (severityFilter && flag.severity !== severityFilter) continue
     if (impactFilter && flag.impactTag !== impactFilter) continue
     if (flag.rubric in counts) {
@@ -54,7 +54,7 @@ export function filterExplorerFlags(
 
   return flags.filter((flag) => {
     if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
-    if (pageFilter && flag.pageUrl !== pageFilter) return false
+    if (pageFilter && !flag.pageUrls.includes(pageFilter)) return false
     if (severityFilter && flag.severity !== severityFilter) return false
     if (impactFilter && flag.impactTag !== impactFilter) return false
     return true
@@ -75,6 +75,18 @@ export function clampFlagIndex(index: number, flagCount: number): number {
   if (index < 0) return 0
   if (index >= flagCount) return 0
   return index
+}
+
+export function initialExplorerFlagIndex(
+  flags: ExplorerFlag[],
+  requestedIndex: number,
+  demonstratedFlagId?: string | null
+): number {
+  if (demonstratedFlagId) {
+    const demonstratedIndex = flags.findIndex((flag) => flag.id === demonstratedFlagId)
+    if (demonstratedIndex >= 0) return demonstratedIndex
+  }
+  return clampFlagIndex(requestedIndex, flags.length)
 }
 
 export { RUBRIC_ORDER }

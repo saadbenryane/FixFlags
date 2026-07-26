@@ -350,12 +350,12 @@ export function countFixPrompts(flags: RankableFlag[]): number {
   return flags.filter(flagHasFixPrompt).length
 }
 
-export function rankFlagsByPriority(
-  flags: RankableFlag[],
+export function rankFlagsByPriority<TFlag extends RankableFlag>(
+  flags: TFlag[],
   rubricRows: Array<{ name: string; grade: string | null }> = [],
   limit = 3,
   contract?: ProductContract | null
-): Array<{ flag: RankableFlag; rubricName: string; rubricGrade: string | null }> {
+): Array<{ flag: TFlag; rubricName: string; rubricGrade: string | null }> {
   const gradeByRubric = new Map(rubricRows.map((row) => [row.name, row.grade]))
   const ranked = flags.map((flag) => ({
     flag,

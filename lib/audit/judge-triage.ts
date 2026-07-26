@@ -50,6 +50,8 @@ function buildTriageContext(
       h1s: metadata.h1s,
       ctaTexts: metadata.ctaTexts,
       hasStructuredData: metadata.hasStructuredData,
+      hasPrivacyPolicy: metadata.hasPrivacyPolicy,
+      hasContactInfo: metadata.hasContactInfo,
     },
     scores: {
       desktopPerf: desktop?.score ?? null,

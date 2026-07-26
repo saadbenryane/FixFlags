@@ -66,5 +66,21 @@
     "timeToFirstTextMs": 6000,
     "timeToCtaMs": 9000,
     "screenshotUrls": []
-  }
+  },
+  "mobileLayoutCases": [
+    {
+      "name": "visible CTA in bottom viewport zone",
+      "mobilePrimaryCtaTopPx": 743,
+      "mobilePrimaryCtaText": "Book a call",
+      "mobileViewportHeight": 812,
+      "expectedCheckIds": []
+    },
+    {
+      "name": "CTA starts outside initial viewport",
+      "mobilePrimaryCtaTopPx": 900,
+      "mobilePrimaryCtaText": "Get started",
+      "mobileViewportHeight": 812,
+      "expectedCheckIds": ["cta-below-fold-mobile"]
+    }
+  ]
 }

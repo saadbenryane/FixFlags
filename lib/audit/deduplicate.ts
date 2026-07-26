@@ -26,11 +26,17 @@ function similarity(a: string, b: string): number {
 }
 
 /** Themes where AI flags often paraphrase deterministic checks across rubrics. */
-const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> = [
+const DETERMINISTIC_AI_THEMES: Array<{
+  checkIds: string[]
+  keywords: RegExp
+  /** The deterministic layer owns both positive and negative truth for this theme. */
+  exclusivelyDeterministic?: boolean
+}> = [
   {
     checkIds: ['cta-below-fold-mobile', 'no-cta-detected', 'flow-no-cta-found'],
     keywords:
-      /below fold|above fold|hidden below|scroll depth|mobile cta|primary cta|cta not visible|without scrolling/i,
+      /below fold|above fold|hidden below|scroll depth|mobile cta|primary cta|cta not visible|without scrolling|not prominent on mobile|somewhat hidden.*mobile|less accessible.*smaller screens/i,
+    exclusivelyDeterministic: true,
   },
   {
     checkIds: ['og-image-missing', 'og-image-broken'],
@@ -52,6 +58,12 @@ const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> =
     checkIds: ['messaging-no-audience', 'messaging-weak-value-prop'],
     keywords:
       /audience specificity|audience signal|who (?:this|the|it) is for|target audience|does not specify who|lacks audience/i,
+  },
+  {
+    checkIds: ['no-privacy-policy', 'no-contact-info', 'trust-no-direct-contact'],
+    keywords:
+      /missing (?:a )?privacy policy|no (?:link to (?:a )?)?privacy policy|missing (?:easy )?(?:access to )?contact information|no (?:easy )?access to contact information|lacks contact (?:information|details)/i,
+    exclusivelyDeterministic: true,
   },
   {
     checkIds: ['robots-blocks-indexing'],
@@ -79,7 +91,10 @@ function matchesDeterministicTheme(
 
   for (const theme of DETERMINISTIC_AI_THEMES) {
     if (!theme.keywords.test(combined)) continue
-    if (deterministic.some((flag) => theme.checkIds.includes(flag.checkId))) {
+    if (
+      theme.exclusivelyDeterministic ||
+      deterministic.some((flag) => theme.checkIds.includes(flag.checkId))
+    ) {
       return true
     }
   }

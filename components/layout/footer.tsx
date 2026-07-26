@@ -43,7 +43,7 @@ export function Footer() {
               />
               <Link
                 href={buildersHref as Route}
-                className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:text-brand-hover"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:text-brand-hover"
               >
                 {buildersCta}
               </Link>
