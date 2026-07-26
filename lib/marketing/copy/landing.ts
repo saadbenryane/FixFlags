@@ -12,7 +12,7 @@ export const HERO = {
   /** Honest product assurances only. No invented counts or testimonials. */
   assurances: [
     { id: 'speed', label: 'Results in under 60 seconds', icon: 'zap' as const },
-    { id: 'teaser', label: 'No sign up required', icon: 'shield' as const },
+    { id: 'teaser', label: '3 checks included free', icon: 'shield' as const },
     { id: 'private', label: 'Your report is private', icon: 'lock' as const },
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
@@ -687,8 +687,8 @@ export const LANDING_PAGE = {
       },
       {
         id: 'teaser',
-        value: 'No signup',
-        label: 'for your first check',
+        value: '3 checks',
+        label: 'included on Free',
         icon: 'users' as const,
       },
     ] as const,
@@ -738,6 +738,25 @@ export const LANDING_PAGE = {
 } as const
 
 export const REPORT_COPY = {
+  reportFirst: {
+    loadingLabel: 'Loading report',
+    loadingTitle: 'Loading report…',
+    openingReport: 'Opening your report while the check is created.',
+    retrievingReport: 'Retrieving the latest saved report state.',
+    capturesTitle: 'Page captures',
+    capturesBody: 'Desktop and mobile views resolve independently.',
+    capturesLabel: 'Desktop and mobile captures',
+    summaryLabel: 'Report summary',
+    unresolvedLabel: 'Unresolved',
+    readinessLabel: 'Readiness',
+    checkingLabel: 'Checking',
+    calculatingLabel: 'Calculating',
+    unavailableLabel: 'Unavailable',
+    statusPendingLabel: 'Status pending',
+    overallUnavailableLabel: 'Overall status unavailable',
+    affectedViewport: (device: 'desktop' | 'mobile') => `Flagged on ${device}`,
+    unaffectedViewport: 'Not detected for this Flag',
+  },
   lovableBolt: {
     heroTitle: 'Paste this into Lovable or Bolt',
     heroBody: 'One click copies a fix prompt tuned for your builder. Publish the change, then re-check here.',

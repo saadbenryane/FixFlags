@@ -48,13 +48,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Your first teaser does not require an account. It shows every problem and evidence summary plus exactly one complete fix prompt. A free account saves the report, reveals every available prompt, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
+        text: 'Your report opens immediately in scanning mode. If you are signed out, create an account or sign in while the check runs. A free account saves the report, reveals every available prompt, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
       },
       {
         type: 'ol',
         items: [
           'Paste your live URL (or a public preview URL).',
-          'Wait for the scan to finish. You will see progress as it captures and checks.',
+          'Create an account or sign in on the report. Desktop and mobile captures appear independently as the check runs.',
           'Open the Fix list. Select any Flag to inspect its screenshot, evidence, and available fix prompt.',
         ],
       },
@@ -445,7 +445,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'After sign-in you always land on post-login so anonymous checks can be claimed before navigation. That keeps reports unlocked on your account.',
+        text: 'After sign-in you always land on post-login so a check that is still running can be claimed before navigation. You then return to the same report.',
       },
     ],
     related: ['report-privacy', 'contact-us'],
@@ -459,7 +459,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Owned reports are private to your account. Anonymous scans stay on a private link until you sign in and save them.',
+        text: 'Owned reports are private to your account. A newly submitted private scan requires sign-up or sign-in before its report can be inspected or saved.',
       },
       {
         type: 'p',

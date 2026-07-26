@@ -23,6 +23,7 @@ import {
   normalizedPercent,
 } from '@/lib/audit/highlight-geometry'
 import { cn } from '@/lib/utils'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 interface ScreenshotWithHighlightsProps {
   host: string
@@ -475,9 +476,9 @@ function ScreenshotPanel({
   const resolvedComparisonState = imgError ? 'neutral' : comparisonState
   const comparisonLabel =
     resolvedComparisonState === 'affected'
-      ? `Flagged on ${device}`
+      ? REPORT_COPY.reportFirst.affectedViewport(device)
       : resolvedComparisonState === 'unaffected'
-        ? 'Not detected for this Flag'
+        ? REPORT_COPY.reportFirst.unaffectedViewport
         : null
   const ComparisonIcon =
     resolvedComparisonState === 'affected' ? CircleAlert : CheckCircle2

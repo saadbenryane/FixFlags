@@ -2,6 +2,7 @@ import { Flag, Gauge } from 'lucide-react'
 import { RubricBar } from '@/components/audit/RubricBar'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import { cn } from '@/lib/utils'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 interface RubricRow {
   name: string
@@ -26,7 +27,7 @@ export function ReportOverviewBand({
 }) {
   return (
     <section
-      aria-label="Report summary"
+      aria-label={REPORT_COPY.reportFirst.summaryLabel}
       className={cn(
         'grid gap-3 rounded-card border border-border/50 bg-card/70 p-3 shadow-card sm:grid-cols-[auto_auto_1fr] sm:items-center sm:gap-4 sm:px-4',
         className
@@ -36,19 +37,12 @@ export function ReportOverviewBand({
         <Flag className="h-4 w-4 text-muted-foreground" aria-hidden />
         <div>
           <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-            Unresolved
+            {REPORT_COPY.reportFirst.unresolvedLabel}
           </p>
-          <p
-            className="font-mono text-sm font-semibold tabular-nums"
-            aria-label={
-              score == null
-                ? loading
-                  ? 'Status pending'
-                  : 'Overall status unavailable'
-                : `Overall status: ${score} out of 100`
-            }
-          >
-            {loading && unresolvedCount === 0 ? 'Checking' : unresolvedCount}
+          <p className="font-mono text-sm font-semibold tabular-nums">
+            {loading && unresolvedCount === 0
+              ? REPORT_COPY.reportFirst.checkingLabel
+              : unresolvedCount}
           </p>
         </div>
       </div>
@@ -56,10 +50,23 @@ export function ReportOverviewBand({
         <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
         <div>
           <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-            Readiness
+            {REPORT_COPY.reportFirst.readinessLabel}
           </p>
-          <p className="font-mono text-sm font-semibold tabular-nums">
-            {score == null ? (loading ? 'Calculating' : 'Unavailable') : `${score}/100`}
+          <p
+            className="font-mono text-sm font-semibold tabular-nums"
+            aria-label={
+              score == null
+                ? loading
+                  ? REPORT_COPY.reportFirst.statusPendingLabel
+                  : REPORT_COPY.reportFirst.overallUnavailableLabel
+                : `Overall status: ${score} out of 100`
+            }
+          >
+            {score == null
+              ? loading
+                ? REPORT_COPY.reportFirst.calculatingLabel
+                : REPORT_COPY.reportFirst.unavailableLabel
+              : `${score}/100`}
           </p>
         </div>
       </div>

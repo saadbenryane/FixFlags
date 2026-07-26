@@ -63,7 +63,7 @@ function pollIntervalMs(latest: AuditStatusPayload | undefined): number {
   return 3500
 }
 
-function progressivePayloadFingerprint(value: AuditStatusPayload): string {
+export function progressivePayloadFingerprint(value: AuditStatusPayload): string {
   return JSON.stringify({
     status: value.status,
     progress: value.progress,

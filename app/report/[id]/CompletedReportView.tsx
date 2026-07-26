@@ -107,7 +107,10 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     />
   )
   const requireAuthGate =
-    state.isAnonymous && !state.isMarketingSample && !state.shareToken
+    state.isAnonymous &&
+    !state.isMarketingSample &&
+    !state.shareToken &&
+    !state.audit.isPublic
 
   return (
     <AuditShell
@@ -121,6 +124,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       <div
         className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
         aria-hidden={requireAuthGate || undefined}
+        inert={requireAuthGate ? true : undefined}
       >
         <AuditReport
           audit={state.reportAudit}

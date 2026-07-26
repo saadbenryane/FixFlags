@@ -115,11 +115,12 @@ Steps 4-10 are the differentiator. Re-check is the habit.
 
 Detail: `knowledge/product-system.md`.
 
-### Anonymous teaser (no account)
-- 1 free teaser scan: scores, rubrics, every prioritized problem/evidence summary (real page evidence, not signup placeholders), and exactly one complete demonstrated fix prompt
-- Remaining fix prompts, ownership, and re-check require signup + a successful claim
+### First check and account claim
+- A homepage URL submission immediately opens the progressive report canvas. New anonymous scans place a required sign-up or sign-in dialog over an inert report until ownership is confirmed.
+- The dialog returns to the same report after email, OAuth, passkey, or two-factor authentication. Abandoning the flow returns home.
+- Anonymous API responses remain redacted for access safety. They never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
+- A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
-- Access control is read-time; do not persist gate copy into Flag evidence/fix fields
 
 ### Free (forever)
 - 3 new URL checks lifetime (claimed teaser counts as 1; full report with fix prompts)
@@ -205,7 +206,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
-- **Live progressive report:** after URL submit, `/report/{id}` keeps the final Fix list layout in place and appends Flags as they arrive; Contract and timeline evidence stay behind "How FixFlags is checking"
+- **Live progressive report:** URL submission immediately replaces the homepage with report geometry, then history-replaces the URL with `/report/{id}`. Desktop and mobile captures resolve independently, and the final Fix list layout appends Flags as they arrive. Contract and timeline evidence stay behind "How FixFlags is checking".
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
 - **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 

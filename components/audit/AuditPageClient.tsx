@@ -292,6 +292,7 @@ export function AuditPageClient({
       <div
         className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
         aria-hidden={requireAuthGate || undefined}
+        inert={requireAuthGate ? true : undefined}
       >
         <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
           <AuditReportProgressive {...progressiveProps} />

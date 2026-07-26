@@ -341,7 +341,7 @@ export function AuthFlow({
     return (
       <div className="space-y-4">
         <div className="space-y-1 text-center">
-          <h2 className="font-display text-xl font-semibold tracking-heading text-balance">
+          <h2 className="text-xl font-semibold tracking-heading text-balance">
             {title}
           </h2>
           <p className="text-sm text-muted-foreground text-pretty">{subtitle}</p>

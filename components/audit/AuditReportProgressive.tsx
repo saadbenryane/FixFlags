@@ -372,17 +372,17 @@ export function AuditReportProgressiveShell({
       variant="report"
       className="space-y-5 py-5 sm:space-y-6 sm:py-6"
       aria-busy="true"
-      aria-label="Loading report"
+      aria-label={REPORT_COPY.reportFirst.loadingLabel}
     >
       <div className="space-y-3" role="status" aria-live="polite">
         <p className="section-label">Finish Plan</p>
         <h1 className="text-2xl font-semibold text-foreground text-balance">
-          {url ? displayHostname(url) : 'Loading report…'}
+          {url ? displayHostname(url) : REPORT_COPY.reportFirst.loadingTitle}
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
           {launchPending
-            ? 'Opening your report while the check is created.'
-            : 'Retrieving the latest saved report state.'}
+            ? REPORT_COPY.reportFirst.openingReport
+            : REPORT_COPY.reportFirst.retrievingReport}
         </p>
       </div>
       <ProgressiveCapturePair url={url} screenshots={[]} />
@@ -422,12 +422,16 @@ function ProgressiveCapturePair({
   return (
     <section
       className="rounded-card bg-card/55 p-3 shadow-card glass-surface sm:p-4"
-      aria-label="Desktop and mobile captures"
+      aria-label={REPORT_COPY.reportFirst.capturesLabel}
     >
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
         <div>
-          <p className="text-sm font-medium text-foreground">Page captures</p>
-          <p className="text-xs text-muted-foreground">Desktop and mobile views resolve independently.</p>
+          <p className="text-sm font-medium text-foreground">
+            {REPORT_COPY.reportFirst.capturesTitle}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {REPORT_COPY.reportFirst.capturesBody}
+          </p>
         </div>
       </div>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(6.5rem,10rem)] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)] sm:gap-4">

@@ -51,18 +51,18 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 | Altitude | Surface | Score treatment |
 |----------|---------|-----------------|
-| Identity | `AuditReportHero` | `ScoreDot` only |
-| Rubric summary | `RubricBar` | Per-rubric numbers |
+| Identity | `AuditReportHero` | Hostname, URL, scan status, and actions only |
+| Summary | `ReportOverviewBand` | One overall readiness value plus Message, Experience, and Reach |
 | Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside rubric/page filters (no severity filter) |
-| Stuck chrome | `ReportStickyToolbar` when stuck | hostname + `ScoreDot` |
+| Stuck chrome | `ReportStickyToolbar` when stuck | Hostname only, with no repeated score |
 
 Share readiness is not a second rubric strip. RubricBar owns score + status + critical/flag counts. When shareStatus is `fix_before_sharing`, ShareDrawer shows one warning line (no rubric pills). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Made with:** One compact glass disclosure sits before the complete Fix list. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector re-check diff states are explicit. Use Lucide category icons, not remote logos.
 
-**Flags chrome:** Meta row is `SeveritySignal` → Rubric → Impact. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. Evidence screenshots match `devicesForCheck` (issue device only).
+**Flags chrome:** Meta row is Severity → Rubric → Impact. Only Critical uses the `CircleAlert` icon; Important and Polish use accessible text. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. When both captures exist, each selected Flag compares desktop and mobile: affected is red, available unaffected is green, and missing or failed remains neutral.
 
-**Progressive / loading:** The in-progress report uses the same altitudes as completed (`AuditReportHero` with scanning stage label, `RubricBar` loading, sticky wayfinding when sections exist, Flags-first Fix list, then Contract/Timeline under “How FixFlags is checking”). Progress advances with real pipeline stages and partial flags; never fake rotating copy. On COMPLETED, hold the progressive frame until `router.refresh()` swaps in SSR `AuditReport`. Submit shows the same progressive chrome immediately while `POST /api/checks` completes.
+**Progressive / loading:** The in-progress report uses the same altitudes as completed (`AuditReportHero` with scanning stage label, `ReportOverviewBand` loading, sticky wayfinding when sections exist, Flags-first Fix list, then Contract/Timeline under “How FixFlags is checking”). Desktop and mobile placeholders resolve independently. Progress advances with real pipeline stages and partial flags; never fake rotating copy. On COMPLETED, hold the progressive frame until `router.refresh()` swaps in SSR `AuditReport`. Submit replaces homepage content with the same progressive chrome while `POST /api/checks` completes. A new anonymous private report adds a focus-trapped auth dialog over blurred, inert report content; Escape cannot reveal the report, and the only non-auth exit returns home.
 
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
