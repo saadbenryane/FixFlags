@@ -7,10 +7,11 @@ import { join } from 'node:path'
 const repository = new URL('..', import.meta.url)
 const cliDirectory = new URL('../fixflags-cli/', import.meta.url)
 const temporary = mkdtempSync(join(tmpdir(), 'fixflags-cli-package-'))
+const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 
 try {
   const packOutput = execFileSync(
-    'npm',
+    npmExecutable,
     ['pack', '--json', '--pack-destination', temporary],
     {
     cwd: cliDirectory,
@@ -19,8 +20,8 @@ try {
   )
   const packed = JSON.parse(packOutput)[0]
   const tarball = join(temporary, packed.filename)
-  execFileSync('npm', ['init', '-y'], { cwd: temporary, stdio: 'ignore' })
-  execFileSync('npm', ['install', tarball], { cwd: temporary, stdio: 'inherit' })
+  execFileSync(npmExecutable, ['init', '-y'], { cwd: temporary, stdio: 'ignore' })
+  execFileSync(npmExecutable, ['install', tarball], { cwd: temporary, stdio: 'inherit' })
   const output = execFileSync(
     process.execPath,
     [join(temporary, 'node_modules', 'fixflags', 'bin', 'fixflags.js'), '--version'],

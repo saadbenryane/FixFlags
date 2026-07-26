@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 
-const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+const raw = execFileSync(npmExecutable, ['pack', '--dry-run', '--json'], {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
 })
