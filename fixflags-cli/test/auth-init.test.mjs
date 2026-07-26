@@ -7,10 +7,11 @@ import {
   statSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
-const cli = resolve(new URL('../bin/fixflags.js', import.meta.url).pathname)
+const cli = fileURLToPath(new URL('../bin/fixflags.js', import.meta.url))
 
 function runCli(args, options) {
   return new Promise((resolveRun, reject) => {
