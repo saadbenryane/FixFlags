@@ -723,7 +723,7 @@ describe('runLayoutChecks', () => {
       checkIds(
         runLayoutChecks(
           healthyCaptureMetrics({
-            mobilePrimaryCtaTopPx: 720,
+            mobilePrimaryCtaTopPx: 812,
             mobilePrimaryCtaText: 'Get started',
           })
         )
@@ -737,6 +737,18 @@ describe('runLayoutChecks', () => {
         healthyCaptureMetrics({
           mobilePrimaryCtaTopPx: 400,
           mobilePrimaryCtaText: 'Get started',
+        })
+      ).length,
+      0
+    )
+  })
+
+  it('does not call a visible bottom-of-viewport CTA hidden', () => {
+    assert.equal(
+      runLayoutChecks(
+        healthyCaptureMetrics({
+          mobilePrimaryCtaTopPx: 743,
+          mobilePrimaryCtaText: 'Book a call',
         })
       ).length,
       0
@@ -1373,7 +1385,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(
         runLayoutChecks(
           healthyCaptureMetrics({
-            mobilePrimaryCtaTopPx: 720,
+            mobilePrimaryCtaTopPx: 812,
             mobilePrimaryCtaText: 'Get started',
           })
         )

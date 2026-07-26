@@ -49,6 +49,11 @@ const DETERMINISTIC_AI_THEMES: Array<{ checkIds: string[]; keywords: RegExp }> =
     keywords: /generic headline|h1 heading|hero headline|template copy|placeholder copy|welcome to/i,
   },
   {
+    checkIds: ['messaging-no-audience', 'messaging-weak-value-prop'],
+    keywords:
+      /audience specificity|audience signal|who (?:this|the|it) is for|target audience|does not specify who|lacks audience/i,
+  },
+  {
     checkIds: ['robots-blocks-indexing'],
     keywords: /noindex|robots meta|blocking indexing|search engines cannot crawl/i,
   },

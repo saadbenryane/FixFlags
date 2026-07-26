@@ -1,16 +1,15 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 
-/** Primary CTA should appear within the first ~85% of the mobile viewport without scrolling. */
-const MOBILE_FOLD_RATIO = 0.85
-
 export function runLayoutChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
   if (metrics == null || metrics.mobilePrimaryCtaTopPx == null) {
     return []
   }
 
-  const foldLine = Math.round(metrics.mobileViewportHeight * MOBILE_FOLD_RATIO)
-  if (metrics.mobilePrimaryCtaTopPx <= foldLine) {
+  // This check promises that the CTA is hidden without scrolling. A CTA whose
+  // top edge is inside the initial viewport is visible, even when it sits in
+  // the less-comfortable bottom thumb zone (covered separately as POLISH).
+  if (metrics.mobilePrimaryCtaTopPx < metrics.mobileViewportHeight) {
     return []
   }
 

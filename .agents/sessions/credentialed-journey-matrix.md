@@ -14,8 +14,8 @@
 | Email / Product Watch credentials | Blocked | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ADMIN_NOTIFICATION_EMAIL` are absent |
 | `npm run verify` | Pass | Full gate passed 2026-07-26: 2,387 unit tests, accuracy, CLI, production web build, worker build, dependency audit, and Docker image |
 | `npm run verify:release` | Blocked at preflight | `npm run agent -- eval release` stopped safely because `RELEASE_FRESH_DATABASE_URL` is absent; smoke, R2, email, and reset consent also remain required |
-| Credentialed Playwright suite | Scaffolded | `e2e/credentialed-journeys.spec.ts` skips unless `E2E_CREDENTIALED=true` + release DB |
-| Dedicated worker topology | Local Pass; deploy pending | Stable local startup reported web role, one worker, concurrency one, zero contexts, and no stalled or overdue jobs. Railway deployment and external heartbeat smoke remain required. |
+| Credentialed Playwright suite | Implemented; sandbox run blocked | Eight executable journeys replace the former deliberate failures. `verify:release` now enables them and preflights every disposable fixture before destructive setup. Sandbox credentials remain absent locally. |
+| Dedicated worker topology | Local Pass; deploy pending | Stable local startup reported web role, one worker, concurrency one, zero contexts, and no stalled or overdue jobs. The container smoke now provisions Postgres, Redis, web, and worker, submits a real check, observes worker readiness, and requires a completed report. Railway deployment and external heartbeat smoke remain required. |
 
 Record command output here when credentials are provisioned.
 
@@ -24,14 +24,14 @@ Record command output here when credentials are provisioned.
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
 | Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` + local browser dogfood | Local Pass; deployed dogfood pending | `saadbenryane.com` audit `cms10xj8n0001gr82h9f3l989` completed `FULL` in 155 seconds without restart. Progressive handoff rendered without a frozen frame. Confirm gates and claim flow after deploy. |
-| Passkeys / 2FA / recovery | `lib/auth/` unit tests + credentialed skeleton | Partial | Route E2E gated in `e2e/credentialed-journeys.spec.ts` |
-| Billing / webhooks | `lib/billing/` + webhook + checkout handler tests | Partial | Manual Stripe checkout sign-off still required |
-| Re-check / diff / Remember | Unit + sample contract | Partial | FULL re-check path covered in unit tests |
-| Protected sharing | Share token + share-links handler tests | Partial | Manual password share smoke in QUALITY §86–96 |
-| Product Watch | Unit + `/projects/[id]/watch` handler tests | Pass (unit/handler) | Live email delivery still needs release sandbox |
-| GitHub Fix PR | Integration tests | Partial | Requires encrypted token fixture |
-| MCP | Contract / tool / quality gate | Pass (local) | 17 typed tools; deployed Lovable/Bolt smokes pending |
-| CLI | `npm run test:cli` | Pass | Task-shaped check → plan workflow |
+| Passkeys / 2FA / recovery | Unit tests + virtual WebAuthn and backup-code E2E | Implemented; sandbox run pending | Release fixture supplies the registered credential material and one disposable backup code. |
+| Billing / webhooks | Unit/handler tests + checkout/portal E2E | Implemented; sandbox run pending | Uses separate free and paid Stripe test users. Signed webhook lifecycle still relies on the existing handler tests plus operator Stripe dogfood. |
+| Re-check / diff / Remember | Unit + claim/re-check E2E | Implemented; sandbox run pending | Claims the anonymous report through `/post-login`, unlocks the Fix List, performs a fresh FULL re-check, and asserts diff and Remember UI. |
+| Protected sharing | Handler tests + credentialed E2E | Implemented; sandbox run pending | Creates a password/expiry/max-view link, verifies one scoped view, revokes it, and asserts denial in a clean context. |
+| Product Watch | Unit/handler tests + scheduler/mailbox E2E | Implemented; sandbox run pending | Requires a due disposable project and a mail-sandbox assertion endpoint; asserts exactly one matching message. |
+| GitHub Fix PR | Integration tests + dedicated-repository E2E | Implemented; sandbox run pending | Starts a real repo scan, selects a permitted fixable finding, and requires an open GitHub PR URL. |
+| MCP | Contract / tool / quality gate + release E2E | Implemented; sandbox run pending | Authenticates, checks, polls, reads the complete Fix List, and starts a re-check. |
+| CLI | Unit tests + packaged release E2E | Implemented; sandbox run pending | Runs the packaged CLI against the release app for check, Fix List, and re-check. |
 
 ## Manual smoke (QUALITY §86–96)
 

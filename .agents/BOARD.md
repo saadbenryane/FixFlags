@@ -4,6 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
+| dogfood-scan-accuracy | in_progress | codex-root | main | Adjudicate the latest saadbenryane.com scan, remove CTA false positives and repeated cross-page fixes, extend the rendered accuracy harness, and create a reusable accuracy skill. | lib/audit capture/checks/dedup/finalize, scripts/accuracy*, report explorer, accuracy fixtures/tests, .cursor/skills, .agents/learnings/sessions | Preserve current-product-completion edits; no overlapping files currently modified | 2026-07-26 |
 | current-product-completion | in_progress | codex-root | main | Complete local current-product implementation, executable journey proof, design consistency, topology smoke, and full verification. Preserve landed homepage and scan-freeze work. | app, components, lib, prisma, scripts, e2e, docs, package manifests, .agents | External deployed release proof still requires operator-provided release URL, disposable DB consent, R2, Stripe, email, and GitHub sandbox credentials | 2026-07-26 |
 
 ---

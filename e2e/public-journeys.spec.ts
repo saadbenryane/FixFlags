@@ -176,6 +176,49 @@ test('auth and pricing entry points render without client errors', async ({ page
   expect(errors).toEqual([])
 })
 
+for (const width of widths) {
+  test(`auth shell keeps its wordmark and controls in bounds at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/sign-in')
+    await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible()
+
+    const geometry = await page.evaluate(() => {
+      const logo = document.querySelector<HTMLElement>('header a[href="/"]')
+      const rect = logo?.getBoundingClientRect()
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        logoText: logo?.textContent?.trim(),
+        logoLeft: rect?.left ?? -1,
+        logoRight: rect?.right ?? Number.POSITIVE_INFINITY,
+        logoClientWidth: logo?.clientWidth ?? 0,
+        logoScrollWidth: logo?.scrollWidth ?? 1,
+      }
+    })
+
+    expect(geometry.logoText).toBe('FixFlags')
+    expect(geometry.logoLeft).toBeGreaterThanOrEqual(0)
+    expect(geometry.logoRight).toBeLessThanOrEqual(geometry.clientWidth)
+    expect(geometry.logoScrollWidth).toBeLessThanOrEqual(geometry.logoClientWidth)
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1)
+  })
+}
+
+test('auth shell supports light and dark themes without reflow', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 })
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/sign-in')
+  const themeToggle = page.locator('footer').getByRole('button', { name: 'Toggle theme' })
+  await expect(themeToggle).toBeVisible()
+  await themeToggle.click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible()
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  )
+  expect(overflow).toBeLessThanOrEqual(1)
+})
+
 test('anonymous check reaches a completed report and enforces the one-teaser boundary', async ({ page }) => {
   test.skip(process.env.E2E_FULL !== 'true', 'Set E2E_FULL=true for the queue-backed journey')
   test.setTimeout(240_000)

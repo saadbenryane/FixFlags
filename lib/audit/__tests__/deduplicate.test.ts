@@ -68,6 +68,32 @@ describe('deduplicateFlags', () => {
     assert.equal(deduplicateFlags(deterministic, aiFlags).length, 0)
   })
 
+  it('drops an AI audience-specificity paraphrase of the deterministic headline flag', () => {
+    const deterministic = [
+      det({
+        checkId: 'messaging-no-audience',
+        rubric: 'MESSAGE',
+        problem: 'Headline does not specify who this is for',
+        evidence: 'H1: "From vision to reality." has no audience signal.',
+      }),
+    ]
+    const aiFlags = [
+      {
+        rubric: 'MESSAGE' as const,
+        impactTag: 'CLARITY' as const,
+        severity: 'IMPORTANT' as const,
+        problem: 'Headline lacks audience specificity',
+        evidence: 'The headline does not specify who this service is for.',
+        whyItMatters: 'Visitors may not recognize themselves.',
+        fix: 'Name the audience.',
+        confidence: 0.75,
+        verificationRule: 'The headline names the intended audience.',
+      },
+    ]
+
+    assert.equal(deduplicateFlags(deterministic, aiFlags).length, 0)
+  })
+
   it('keeps genuinely new AI flags', () => {
     const deterministic = [
       det({
