@@ -79,11 +79,10 @@ async function analyticsTick(): Promise<void> {
 
 /**
  * Self-hosted scheduler for periodic jobs (stuck-audit recovery + nurture
- * emails + knowledge-graph issue rollup). Runs inside every worker (inline or
- * standalone); a Redis lock ensures exactly one instance runs each job per
- * window, so it scales safely to any number of workers and needs no external
- * cron. Idempotent; timers are unref'd so they never keep the process alive
- * on their own.
+ * emails + knowledge-graph issue rollup). Runs in every dedicated worker; a
+ * Redis lock ensures exactly one instance runs each job per window, so it
+ * scales safely to any number of workers and needs no external cron.
+ * Idempotent; timers are unref'd so they never keep the process alive.
  */
 export function startRecoveryScheduler(): void {
   if (started) return

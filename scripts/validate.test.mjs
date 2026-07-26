@@ -87,8 +87,8 @@ describe('validate.mjs', () => {
       const workerTest = plan.commands.find((command) => command.label === 'test:worker')
       assert.deepEqual(workerTest, {
         label: 'test:worker',
-        executable: 'npx',
-        args: ['vitest', 'run', 'worker/'],
+        executable: 'npm',
+        args: ['run', 'worker:test'],
       })
     })
 
@@ -126,10 +126,19 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('test:e2e'))
       assert.ok(labels.includes('container:build'))
       assert.ok(labels.includes('container:ready'))
+      assert.ok(labels.includes('release:preflight'))
       assert.ok(labels.includes('clean-install'))
       assert.ok(labels.includes('fresh-database'))
       assert.ok(labels.includes('deployed-smoke'))
       assert.ok(labels.includes('test:unit'))
+      assert.deepEqual(
+        buildPlan('release', []).commands.find((command) => command.label === 'test:e2e'),
+        {
+          label: 'test:e2e',
+          executable: 'npm',
+          args: ['run', 'test:e2e:release'],
+        }
+      )
     })
 
     it('ignores generated build and test artifacts', () => {

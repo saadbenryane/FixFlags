@@ -19,8 +19,8 @@ Customer **Product Intelligence** (Project-scoped) is separate from the growth `
 Next.js 15 application (App Router) with:
 - PostgreSQL 16 database with Prisma 6 ORM
 - Redis 7 queue (BullMQ 5) for async audit processing
-- Inline worker mode (default) or separate worker process
-- Self-hosted scheduler for recovery + nurture (no external cron)
+- Required dedicated worker process for audits, Chromium, recovery, and scheduled work
+- Redis worker heartbeats for browser readiness and active-context diagnostics
 - Edge middleware for security headers + auth gating
 - Docker-based local development
 
@@ -37,7 +37,7 @@ app/                     # Next.js App Router
   compare/               # Before/after comparison
   share/                 # Shared reports
   admin/                 # Admin dashboard
-  api/                   # API routes (audits, auth, mcp, stripe, cron, etc.)
+  api/                   # Public checks/reports plus auth, MCP, Stripe, and health routes
 
 components/              # React components
   ui/                    # shadcn primitives (33 components)

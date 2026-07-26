@@ -61,7 +61,7 @@ const scopes = {
   },
   worker: {
     prefixes: ['worker/'],
-    test: ['npx', ['vitest', 'run', 'worker/']],
+    test: ['npm', ['run', 'worker:test']],
   },
 }
 
@@ -274,10 +274,11 @@ export function fullCommands() {
 
 export function releaseCommands() {
   return [
+    command('release:preflight', 'node', ['scripts/release-preflight.mjs']),
     command('clean-install', 'npm', ['ci']),
     command('fresh-database', 'node', ['scripts/release-database.mjs']),
     ...fullCommands(),
-    command('test:e2e', 'npm', ['run', 'test:e2e']),
+    command('test:e2e', 'npm', ['run', 'test:e2e:release']),
     command('container:build', 'docker', ['build', '-t', 'fixflags:release-check', '.']),
     command('container:ready', 'node', ['scripts/container-smoke.mjs']),
     command('deployed-smoke', 'npm', ['run', 'smoke:release']),

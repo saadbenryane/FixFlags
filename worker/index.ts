@@ -13,7 +13,9 @@ import { createWorkerRuntime } from './runtime'
 
 const runtime = createWorkerRuntime({
   validateEnvironment: validateWorkerEnv,
-  warmBrowser: getAuditBrowser,
+  warmBrowser: async () => {
+    await getAuditBrowser()
+  },
   readBrowserDiagnostics: getBrowserDiagnostics,
   touchHeartbeat: touchWorkerHeartbeat,
   clearHeartbeat: clearWorkerHeartbeat,

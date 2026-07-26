@@ -29,7 +29,7 @@ export interface WorkerDiagnostics {
   activeBrowserContexts: number
 }
 
-interface WorkerHeartbeatRecord extends WorkerDiagnostics {
+export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   workerId: string
   lastSeenMs: number
   configuredConcurrency: number
@@ -126,7 +126,6 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeatStatus> {
     }
   }
   const values = await getRedis().mget(...keys)
-  const now = Date.now()
   const records = values.flatMap((raw) => {
     if (!raw) return []
     try {
@@ -136,6 +135,13 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeatStatus> {
       return []
     }
   })
+  return aggregateWorkerHeartbeats(records)
+}
+
+export function aggregateWorkerHeartbeats(
+  records: WorkerHeartbeatRecord[],
+  now = Date.now()
+): WorkerHeartbeatStatus {
   const aliveRecords = records.filter(
     (record) => now - record.lastSeenMs <= HEARTBEAT_TTL_SECONDS * 1000
   )
