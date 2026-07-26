@@ -29,6 +29,7 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
+import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
 export type { FlowData }
@@ -104,51 +105,6 @@ export const auditFullInclude = {
   },
 } as const
 
-/** Lightweight report projection shared by SSR handoff and status polling. */
-export const progressiveAuditSelect = {
-  id: true,
-  status: true,
-  progress: true,
-  score: true,
-  pageType: true,
-  verdict: true,
-  errorMsg: true,
-  failureCode: true,
-  pipelineVersion: true,
-  reportCompleteness: true,
-  startedAt: true,
-  completedAt: true,
-  updatedAt: true,
-  createdAt: true,
-  url: true,
-  userId: true,
-  isPublic: true,
-  parentId: true,
-  aiReviewAt: true,
-  triageAt: true,
-  includeAi: true,
-  performanceData: true,
-  productContract: true,
-  screenshots: {
-    select: { device: true, url: true, width: true, height: true },
-  },
-  rubrics: {
-    select: { name: true, grade: true, score: true, status: true },
-    orderBy: { name: 'asc' as const },
-  },
-  flags: {
-    select: {
-      id: true,
-      severity: true,
-      problem: true,
-      rubric: true,
-      checkId: true,
-      source: true,
-    },
-    orderBy: { position: 'asc' as const },
-  },
-} as const
-
 async function fetchAuditRow(id: string) {
   return prisma.audit.findUnique({
     where: { id },
@@ -197,7 +153,20 @@ export async function getProgressiveAuditForRequest(id: string) {
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
 
   if (audit.status === 'COMPLETED') {
-    return { kind: 'completed' as const }
+    return {
+      kind: 'completed' as const,
+      audit: {
+        url: audit.url,
+        score: audit.score,
+        verdict: audit.verdict,
+        userId: audit.userId,
+        isPublic: audit.isPublic,
+        flags: audit.flags.map(({ severity, problem }) => ({
+          severity,
+          problem,
+        })),
+      },
+    }
   }
 
   const storedCapture = parseScreenshotCaptureStatus(audit.performanceData)

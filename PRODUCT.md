@@ -105,6 +105,7 @@ Each rubric: Pass / Needs Attention / Blocked, score, flags with fix prompts.
 - Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
 - **Live progressive report:** after URL submit, `/report/{id}` keeps the final Fix list layout in place and appends Flags as they arrive; Contract and timeline evidence stay behind “How FixFlags is checking”
+- Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
 - **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 
 ## Limitations and technical debt

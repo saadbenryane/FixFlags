@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAuditBrowser, getChromePath } from '@/lib/audit/screenshot'
 import { checkR2Connection, isR2Configured } from '@/lib/storage/r2'
+import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +19,8 @@ export async function GET() {
     ok: false,
     browser: {
       ok: false,
-      executablePath: getChromePath() ?? null,
+      workerCount: 0,
+      activeContexts: 0,
       error: null as string | null,
     },
     storage: {
@@ -29,18 +30,15 @@ export async function GET() {
     },
   }
 
-  // Browser: launch (shared pool) + trivial screenshot.
+  // Chromium belongs to dedicated worker processes. The web health route reads
+  // their confirmed browser state instead of launching another browser here.
   try {
-    const browser = await getAuditBrowser()
-    const context = await browser.newContext()
-    const page = await context.newPage()
-    try {
-      await page.setContent('<!doctype html><html><body>ok</body></html>')
-      await page.screenshot({ type: 'png' })
-      result.browser.ok = true
-    } finally {
-      await page.close().catch(() => {})
-      await context.close().catch(() => {})
+    const heartbeat = await readWorkerHeartbeat()
+    result.browser.ok = heartbeat.alive && heartbeat.browserOk
+    result.browser.workerCount = heartbeat.workerCount
+    result.browser.activeContexts = heartbeat.activeBrowserContexts
+    if (!result.browser.ok) {
+      result.browser.error = 'No live worker has confirmed Chromium readiness'
     }
   } catch (err) {
     result.browser.error = err instanceof Error ? err.message : String(err)

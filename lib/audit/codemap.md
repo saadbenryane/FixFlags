@@ -51,10 +51,10 @@ Key modules: metadata, performance, accessibility, SEO, trust, mobile, content, 
 - `pipeline-errors.ts` - Error classification
 - `pipeline-log.ts` - Structured logging
 - `stuck-audit-recovery.ts` - Recovery for stalled audits
-- `recover-audit-job.ts` - Re-enqueue stuck jobs
+- `recover-audit-job.ts` - Re-enqueue unstarted jobs or terminally fail lost active jobs
 
 ## Integration Points
-- **Queue:** Enqueued by `lib/queue/client.ts`, processed by `lib/queue/inline-worker.ts` or `worker/index.ts`
+- **Queue:** Enqueued by the web role through `lib/queue/client.ts`, processed only by `worker/index.ts`
 - **DB:** Persists via Prisma (`prisma/schema.prisma` models: Audit, AuditFlag, AuditPage, etc.)
 - **AI:** Calls OpenAI/Anthropic via `lib/audit/judge-config.ts`
 - **Storage:** Screenshots to Cloudflare R2 (`lib/storage/`) or local `.data/screenshots/`

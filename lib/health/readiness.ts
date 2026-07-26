@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db'
 import { isAiProviderConfigured, isProdStorageConfigured } from '@/lib/env'
 import { validateAuthEnv } from '@/lib/auth/env'
 import { isBillingFullyConfigured } from '@/lib/billing/config'
-import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { productWatchReadiness } from '@/lib/audit/project-watch'
 import { createQueueRedis } from '@/lib/queue/redis'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
@@ -61,20 +60,10 @@ function productionDependencies(): ReadinessDependencies {
         : { ok: false, detail: 'No current worker heartbeat' }
     },
     browser: async () => {
-      const browser = await getAuditBrowser()
-      const context = await browser.newContext()
-      try {
-        const page = await context.newPage()
-        try {
-          await page.setContent('<!doctype html><html><body>ready</body></html>')
-          await page.screenshot({ type: 'png' })
-          return { ok: true }
-        } finally {
-          await page.close()
-        }
-      } finally {
-        await context.close()
-      }
+      const heartbeat = await readWorkerHeartbeat()
+      return heartbeat.alive && heartbeat.browserOk
+        ? { ok: true }
+        : { ok: false, detail: 'No worker has confirmed browser readiness' }
     },
     storage: async () => {
       if (process.env.NODE_ENV !== 'production') return { ok: true }

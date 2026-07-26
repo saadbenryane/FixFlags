@@ -51,6 +51,8 @@ export interface CreateAuditPageOptions {
   journeySafe?: boolean
   /** HTTP basic auth, cookies, or headers for preview/staging targets. */
   scanAccess?: ScanAccessConfig | null
+  /** Absolute audit deadline. Navigation never receives more than the remaining budget. */
+  deadline?: number
 }
 
 export async function settleAuditPage(page: Page): Promise<void> {
@@ -132,9 +134,12 @@ export async function createAuditPage(
 
   const network: NetworkMonitor = attachNetworkMonitor(page, targetUrl)
 
+  const navigationTimeout = options.deadline
+    ? Math.max(1, Math.min(PAGE_TIMEOUT_MS, options.deadline - Date.now()))
+    : PAGE_TIMEOUT_MS
   const response = await page.goto(targetUrl, {
     waitUntil: 'domcontentloaded',
-    timeout: PAGE_TIMEOUT_MS,
+    timeout: navigationTimeout,
   })
 
   // Yield the event loop after the heavy page.goto() to let pending I/O

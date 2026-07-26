@@ -16,7 +16,7 @@ cp .env.example .env.local
 # Edit .env.local: at minimum set OPENAI_API_KEY or ANTHROPIC_API_KEY and BETTER_AUTH_SECRET
 docker compose up -d
 npm run setup          # docker up + generate + migrate + seed
-npm run dev            # Next.js + inline worker (audits process end-to-end)
+npm run dev            # Next.js + one dedicated worker
 ```
 
 Open http://localhost:3000, enter a public URL, wait ~60s for results.
@@ -32,10 +32,16 @@ See `.env.example` for full list.
 ### Development
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Next.js dev + inline worker |
-| `npm run dev:all` | Next.js + separate worker process |
-| `npm run worker` | Standalone audit worker (dev) |
+| `npm run dev` | Next.js + one dedicated worker process |
+| `npm run dev:web` | Next.js web process only |
+| `npm run dev:all` | Alias for `npm run dev` |
+| `npm run worker` | Standalone audit worker without hot reload (dev default) |
+| `npm run worker:watch` | Focused worker hot reload; use only with no active scan |
 | `npm run stripe:listen` | Stripe webhook forwarding (requires Stripe CLI) |
+
+The default worker is intentionally not hot-reloaded. Editing web or shared
+modules must not interrupt an active scan or create overlapping queue
+consumers; restart the worker deliberately when worker code changes.
 
 ### Database
 | Command | Purpose |
@@ -107,7 +113,7 @@ Agents work directly on `main` and coordinate write ownership through `.agents/B
 - Launch readiness: `curl http://localhost:3000/api/health/ready` (503 until every launch-required subsystem is ready)
 - AI readiness: `GET /api/health/ai`
 - Worker diagnostics: `GET /api/health/worker` (heartbeat age, queue depth)
-- Browser diagnostics: `GET /api/health/browser` (Playwright + R2)
+- Browser diagnostics: `GET /api/health/browser` (worker-confirmed Playwright state + R2)
 - Audit pipeline: see `docs/audit-pipeline.md`
 - Prisma Studio: `npm run db:studio`
 - Worker logs: pino JSON, pipe through `pino-pretty` in dev
@@ -150,12 +156,12 @@ Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not
 # Local parity with Railway image (required when Dockerfile / package*.json change)
 docker build -t fixflags:local .
 
-# What runs inside the container (web service default)
+# Web service
 npm start
-# INLINE_WORKER defaults on; prestart applies Prisma migrations via DATABASE_URL
+# FIXFLAGS_PROCESS_ROLE=web; prestart applies Prisma migrations
 
-# Dedicated worker (separate Railway service from railway.worker.toml)
-INLINE_WORKER=false npm run worker:start
+# Required worker service from railway.worker.toml
+FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start
 ```
 
 **Docker / Playwright:** image installs apt `chromium`, sets `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`. Auth packages are pinned in `package.json` `overrides` (better-auth 1.6.22 + Zod 4). If you add an `.npmrc`, COPY it **before** `npm ci` in the Dockerfile.

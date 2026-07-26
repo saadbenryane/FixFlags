@@ -98,6 +98,16 @@ async function getBrowser(): Promise<Browser> {
   }
 }
 
+export function getBrowserDiagnostics(): {
+  connected: boolean
+  activeContexts: number
+} {
+  return {
+    connected: Boolean(browser?.isConnected()),
+    activeContexts: browser?.isConnected() ? browser.contexts().length : 0,
+  }
+}
+
 /**
  * Desktop and mobile captures each navigate their own page but push console
  * errors into one shared array, so any error that fires on every page load (the
@@ -329,7 +339,9 @@ async function captureDesktopWithFlow(
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
   runFlow: boolean,
-  scanAccess?: ScanAccessConfig | null
+  scanAccess?: ScanAccessConfig | null,
+  flowDeadlineMs?: number,
+  deadline?: number
 ): Promise<
   ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -363,6 +375,7 @@ async function captureDesktopWithFlow(
       settle: false,
       scanAccess,
       journeySafe: runFlow,
+      deadline,
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
@@ -412,6 +425,7 @@ async function captureDesktopWithFlow(
         result.flowResult = await runFlowScan(page, auditId, targetUrl, {
           landingStep,
           fetchHeaders: scanAccessToFetchHeaders(scanAccess),
+          deadlineMs: flowDeadlineMs,
         })
         result.networkFailures = [...session.networkFailures]
         result.formProbe = session.formProbe
@@ -453,7 +467,8 @@ async function captureMobileViewport(
   auditId: string,
   pageKey: string | undefined,
   consoleErrors: Array<{ type: string; text: string }>,
-  scanAccess?: ScanAccessConfig | null
+  scanAccess?: ScanAccessConfig | null,
+  deadline?: number
 ): Promise<ViewportCapture> {
   const result: ViewportCapture = { base64: null, url: null, initialUrl: null, html: null }
   let page: Page | null = null
@@ -466,6 +481,7 @@ async function captureMobileViewport(
       consoleErrors,
       settle: false,
       scanAccess,
+      deadline,
     })
     page = session.page
     disposeNetwork = session.disposeNetwork
@@ -506,7 +522,12 @@ export async function captureScreenshots(
   url: string,
   auditId: string,
   pageKey?: string,
-  options?: { runFlow?: boolean; scanAccess?: ScanAccessConfig | null }
+  options?: {
+    runFlow?: boolean
+    scanAccess?: ScanAccessConfig | null
+    flowDeadlineMs?: number
+    deadline?: number
+  }
 ): Promise<ScreenshotResult> {
   await assertPublicAuditUrl(url)
   const b = await getBrowser()
@@ -516,8 +537,26 @@ export async function captureScreenshots(
   const scanAccess = options?.scanAccess ?? null
 
   const [desktopSettled, mobileSettled] = await Promise.allSettled([
-    captureDesktopWithFlow(b, url, auditId, pageKey, consoleErrors, runFlow, scanAccess),
-    captureMobileViewport(b, url, auditId, pageKey, consoleErrors, scanAccess),
+    captureDesktopWithFlow(
+      b,
+      url,
+      auditId,
+      pageKey,
+      consoleErrors,
+      runFlow,
+      scanAccess,
+      options?.flowDeadlineMs,
+      options?.deadline
+    ),
+    captureMobileViewport(
+      b,
+      url,
+      auditId,
+      pageKey,
+      consoleErrors,
+      scanAccess,
+      options?.deadline
+    ),
   ])
 
   let desktop: ViewportCapture & {

@@ -2,10 +2,8 @@ import type { Metadata } from 'next'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
-import { prisma } from '@/lib/db'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
-import { canAccessAudit } from '@/lib/audit/access'
-import { resolveSessionUser } from '@/lib/audit/fetch-audit'
+import { getProgressiveAuditForRequest } from '@/lib/audit/fetch-audit'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { CompletedReportView } from './CompletedReportView'
 import { loadReportRouteState } from './load-report-route-state'
@@ -24,28 +22,11 @@ function topIssueFromFlags(
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
-  const session = await resolveSessionUser()
-
-  const audit = await prisma.audit.findUnique({
-    where: { id },
-    select: {
-      url: true,
-      score: true,
-      verdict: true,
-      status: true,
-      userId: true,
-      isPublic: true,
-      flags: {
-        select: { severity: true, problem: true },
-        orderBy: { position: 'asc' },
-        take: 5,
-      },
-    },
-  })
-
-  if (!audit || audit.status !== 'COMPLETED') {
+  const envelope = await getProgressiveAuditForRequest(id)
+  if (envelope.kind !== 'completed') {
     return { title: 'FixFlags report' }
   }
+  const { audit } = envelope
 
   const isShareableOg = audit.isPublic || audit.userId === null
 
@@ -55,10 +36,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `Sign in to view this ${BRAND.name} report.`,
       robots: { index: false, follow: false },
     }
-  }
-
-  if (!canAccessAudit(audit, session?.user) && !audit.isPublic && audit.userId) {
-    return { title: 'FixFlags report' }
   }
 
   const hostname = displayHostname(audit.url)

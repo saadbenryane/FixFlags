@@ -120,7 +120,7 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 ## Debugging runbook
 
 1. `curl https://fixflags.com/api/health/ready` — confirm `ok: true`
-2. Check Railway env: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` on web service (inline worker)
+2. Check Railway worker env: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` on the dedicated worker service
 3. Redeploy after setting keys (SDK clients init at module load)
 4. Pipeline log events: `triage_step_failed`, `triage_degraded`, `triage_runner_retry`, `recovery_force_failed`
 5. Post-deploy: `npm run smoke:triage:prod`

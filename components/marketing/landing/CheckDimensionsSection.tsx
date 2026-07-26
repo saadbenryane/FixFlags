@@ -55,7 +55,7 @@ function ValuePedestal({
 }) {
   return (
     <span className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center">
-      {/* Soft pedestal shadow — CSS only, no white-fringe raster */}
+          {/* Soft pedestal shadow using CSS only, with no white-fringe raster */}
       <span
         aria-hidden
         className="absolute bottom-0.5 h-3 w-10 rounded-full bg-foreground/10 blur-[6px]"

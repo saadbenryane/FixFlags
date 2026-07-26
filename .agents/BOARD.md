@@ -4,9 +4,7 @@
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 |---------|--------|-------|-----------------|-------|-------------|--------------|---------|
-| scan-freeze-core-path | in_progress | codex-root | main | Isolate audit workers, make progressive report handoff immediate, enforce pipeline deadlines and terminal states, and prove the first-value scan path | package/runtime, report loaders, audit flow/recovery, health, focused tests/docs | Preserve homepage-reference-polish WIP; external release credentials remain operator-provided | 2026-07-26 |
-| homepage-reference-polish | active | codex-root | main | Bring homepage hero and non-conflicting supporting sections to supplied references while preserving canonical product truth and routes | LandingHeroSection, HeroProductPreview, SampleReportSection, WhyBuildersChooseSection, EditorIntegrationsSection, LandingFinalCtaSection, shared marketing chrome/styles | Preserve active home-how-it-works-glass ownership and all existing WIP | 2026-07-26 |
-| current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: Phases 0–3 local work landed; release gate blocked on Prisma reset consent for disposable `fixflags_release`, RELEASE_SMOKE_URL, R2, and a quiet tree for full verify (side-effect guard). Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent for `prisma migrate reset` on `fixflags_release`; RELEASE_SMOKE_URL; R2; pause concurrent writers for full verify | 2026-07-24 |
+| current-product-completion | blocked | auto | main | Close Builder-Native + Current-Product: local implementation and full verification pass; release proof remains blocked on disposable database reset consent and external service credentials. Preserve concurrent auth/journey WIP. | app, components, lib, prisma, scripts, e2e, PRODUCT.md, ROADMAP.md, QUALITY.md, .agents | Explicit user consent plus `RELEASE_FRESH_DATABASE_URL`; `RELEASE_SMOKE_URL`; R2; email/Product Watch credentials | 2026-07-26 |
 
 ---
 
@@ -14,6 +12,8 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| scan-freeze-core-path | codex-root | Dedicated web/worker runtime, lightweight progressive report handoff, shared pipeline deadlines and terminal recovery, operational health, local real-URL browser proof, full repository verification; deployment proof handed off separately | 2026-07-26 |
+| homepage-reference-polish | codex-root | Supplied-reference homepage hero, sample proof, supporting-section polish, correct navigation, responsive QA | 2026-07-26 |
 | home-how-it-works-glass | auto | Homepage how-it-works glass three-step section + interim clips | 2026-07-26 |
 | check-dimensions-visuals | auto | Check-dimensions section UI to mockup; CSS scene/pedestals (no JPEG soft-key fringe); swap-ready for hi-res RGBA | 2026-07-26 |
 | hero-complete-closeout | auto | Homepage hero complete closeout: glass pad, marketing container, hero logos variant, dead HERO keys | 2026-07-25 |

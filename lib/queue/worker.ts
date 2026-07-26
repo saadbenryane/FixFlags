@@ -5,28 +5,37 @@ import { runAiReview } from '../audit/run-ai-review'
 import { runRepoScan } from '../repo-scan/runner'
 import { runFixPr } from '../repo-scan/fix-pr-runner'
 import { createWorkerRedis } from './redis'
-import { touchWorkerHeartbeat } from './worker-heartbeat'
+import { recordStalledJob, touchWorkerHeartbeat } from './worker-heartbeat'
 import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
 import { WORKER_CONCURRENCY } from './estimate'
+import { getBrowserDiagnostics } from '../audit/screenshot'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
+function workerBrowserDiagnostics() {
+  const browser = getBrowserDiagnostics()
+  return {
+    browserOk: browser.connected,
+    activeBrowserContexts: browser.activeContexts,
+  }
+}
+
 export function startWorker() {
-  void touchWorkerHeartbeat().catch((err) => {
+  void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch((err) => {
     logger.error('Initial worker heartbeat failed', err)
   })
 
   const heartbeatTimer = setInterval(() => {
-    void touchWorkerHeartbeat().catch(() => {})
+    void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch(() => {})
   }, HEARTBEAT_INTERVAL_MS)
   heartbeatTimer.unref?.()
 
   const worker = new Worker(
     'audit',
     async (job) => {
-      await touchWorkerHeartbeat()
+      await touchWorkerHeartbeat(workerBrowserDiagnostics())
       if (job.name === 'repo-scan') {
         const { repoScanId } = job.data as { repoScanId: string }
         await runRepoScan(repoScanId)
@@ -45,6 +54,25 @@ export function startWorker() {
         }
         const { auditId } = job.data as { auditId: string }
         await runAudit(auditId)
+        const terminal = await prisma.audit.findUnique({
+          where: { id: auditId },
+          select: { status: true },
+        })
+        if (terminal && terminal.status !== 'COMPLETED' && terminal.status !== 'FAILED') {
+          await prisma.audit.update({
+            where: { id: auditId },
+            data: {
+              status: 'FAILED',
+              errorMsg: 'Audit worker finished without a terminal report state',
+              failureCode: 'AUDIT_JOB_NON_TERMINAL',
+              failureStage: terminal.status.toLowerCase(),
+              failureMetadata: { jobId: String(job.id) },
+            },
+          })
+          throw new UnrecoverableError(
+            `Audit ${auditId} finished in non-terminal state ${terminal.status}`
+          )
+        }
       } catch (err) {
         throw wrapAuditJobError(err)
       }
@@ -54,11 +82,15 @@ export function startWorker() {
       connection: createWorkerRedis() as any,
       concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
+      // Replaying an active Playwright scan deletes and recaptures evidence,
+      // which makes the user-visible audit jump backwards. A stalled run fails
+      // once and the explicit retry path starts a clean, observable attempt.
+      maxStalledCount: 0,
     }
   )
 
   worker.on('completed', (job) => {
-    void touchWorkerHeartbeat().catch(() => {})
+    void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch(() => {})
     logger.info(`Audit job ${job.id} completed`, { auditId: job.data.auditId })
   })
 
@@ -109,6 +141,11 @@ export function startWorker() {
         },
       })
     }
+  })
+
+  worker.on('stalled', (jobId) => {
+    void recordStalledJob().catch(() => {})
+    logger.error(`Audit job ${jobId} stalled and will not be replayed`)
   })
 
   return worker

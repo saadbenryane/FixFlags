@@ -13,6 +13,8 @@ export type ScanHandoffLimitGate = {
 export type ScanHandoffState = {
   url: string | null
   limitGate: ScanHandoffLimitGate | null
+  estimatedWaitSeconds?: number
+  queuePosition?: number
 }
 
 type Listener = () => void
@@ -42,6 +44,18 @@ function getServerSnapshot(): ScanHandoffState {
 /** Open progressive chrome immediately while a create/re-check request runs. */
 export function openScanHandoff(url: string): void {
   state = { url, limitGate: null }
+  emit()
+}
+
+export function updateScanHandoffQueue(estimate: {
+  estimatedWaitSeconds?: number
+  queuePosition?: number
+}): void {
+  state = {
+    ...state,
+    estimatedWaitSeconds: estimate.estimatedWaitSeconds,
+    queuePosition: estimate.queuePosition,
+  }
   emit()
 }
 

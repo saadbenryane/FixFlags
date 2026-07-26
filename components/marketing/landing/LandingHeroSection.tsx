@@ -83,7 +83,7 @@ export function LandingHeroSection() {
               className="pointer-events-none absolute left-[8%] top-[6%] h-[78%] w-[82%] rounded-full bg-[radial-gradient(ellipse_at_center,hsl(var(--brand)/0.3),transparent_70%)] blur-[72px]"
             />
             <div
-              className="relative w-full lg:absolute lg:right-0 lg:-top-11 lg:w-[36rem] lg:max-w-none"
+              className="relative w-full lg:absolute lg:-right-4 lg:-top-11 lg:w-[36rem] lg:max-w-none"
               style={{ aspectRatio: `${HERO_GLASS.width} / ${HERO_GLASS.height}` }}
             >
               <Image
@@ -103,7 +103,7 @@ export function LandingHeroSection() {
 
         <a
           href="#sample-review"
-          className="mx-auto mt-7 flex w-fit flex-col items-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-8"
+          className="mx-auto mt-7 flex w-fit flex-col items-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-10"
         >
           {HERO.scrollHint}
           <ChevronDown className="h-3.5 w-3.5 animate-bounce motion-reduce:animate-none" aria-hidden />

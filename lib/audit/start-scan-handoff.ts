@@ -8,6 +8,7 @@ import {
   closeScanHandoff,
   openScanHandoff,
   setScanHandoffLimitGate,
+  updateScanHandoffQueue,
 } from '@/lib/audit/scan-handoff-store'
 import { trackEvent } from '@/lib/analytics/events'
 
@@ -71,22 +72,23 @@ export async function startScanWithHandoff(
     options.onStarted?.(data)
 
     if (reportId) {
+      const estimatedWaitSeconds =
+        typeof data.estimatedWaitSeconds === 'number'
+          ? data.estimatedWaitSeconds
+          : undefined
+      const queuePosition =
+        typeof data.queuePosition === 'number' ? data.queuePosition : undefined
+      updateScanHandoffQueue({ estimatedWaitSeconds, queuePosition })
       setActiveAudit({
         auditId: reportId,
         url: options.url,
-        estimatedWaitSeconds:
-          typeof data.estimatedWaitSeconds === 'number'
-            ? data.estimatedWaitSeconds
-            : undefined,
-        queuePosition:
-          typeof data.queuePosition === 'number' ? data.queuePosition : undefined,
+        estimatedWaitSeconds,
+        queuePosition,
       })
-      try {
-        await router.replace(`/report/${reportId}`)
-      } catch {
-        // If client-side navigation fails (e.g. server too slow), fall back to full navigation.
-        window.location.href = `/report/${reportId}`
-      }
+      // Commit the lightweight report independently of the large marketing-page
+      // React tree. A client-router transition keeps the handoff portal and
+      // homepage mounted together and can block input and paint under load.
+      window.location.assign(`/report/${reportId}`)
       return { ok: true, reportId }
     }
 

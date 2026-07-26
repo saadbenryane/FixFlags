@@ -12,8 +12,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | Edge middleware | `middleware.ts` → `proxy.ts` | CSP, HSTS, auth gating, rate limiting |
 | Audit pipeline | `lib/audit/runner.ts` | Pipeline orchestration and completion behavior |
 | Task contracts | `lib/audit/task-contracts.ts` | Check-to-plan and re-check-to-diff application outcomes |
-| Queue worker | `lib/queue/inline-worker.ts` | BullMQ job processor (audit jobs) |
-| Standalone worker | `worker/index.ts` | Separate worker process (production scaling) |
+| Queue processor | `lib/queue/worker.ts` | BullMQ audit job processor |
+| Worker runtime | `worker/index.ts` | Required dedicated Playwright and recovery process |
 | Marketing copy | `lib/marketing/copy.ts` | Single source of truth for all marketing text |
 | Design tokens | `lib/design/tokens.css` | Canonical design tokens (colors, shadows, radii) |
 | AI prompts | `lib/prompts/system-prompt.ts` | Triage + prescription prompt builders |
@@ -39,7 +39,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `lib/` | Core business logic | [lib/codemap.md](lib/codemap.md) |
 | `lib/audit/` | Audit engine (90 files: runner, checks, scoring, flow, judge, persist, capture) | [lib/audit/codemap.md](lib/audit/codemap.md) |
 | `lib/audit/checks/` | 22 check modules (metadata, performance, accessibility, SEO, trust, etc.) | — |
-| `lib/queue/` | BullMQ queue (client, worker, inline-worker, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
+| `lib/queue/` | BullMQ queue (client, worker, heartbeat, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
 | `lib/billing/` | Subscription limits, credits, Stripe integration | [lib/billing/codemap.md](lib/billing/codemap.md) |
 | `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only | — |
 | `lib/prompts/` | AI system prompts (triage + prescription) | — |
@@ -83,7 +83,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 ### Audit Pipeline Flow
 1. User submits URL → `app/api/checks/route.ts` calls the shared check-to-plan task contract
 2. Audit enqueued to BullMQ → `lib/queue/client.ts`
-3. Worker picks up job → `lib/queue/inline-worker.ts` or `worker/index.ts`
+3. Dedicated worker picks up job → `worker/index.ts` → `lib/queue/worker.ts`
 4. Pipeline stages: QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED
 5. Capture: Playwright loads page, collects HTML/screenshots/console errors → `lib/audit/browser/page-session.ts`
 6. Check: 22 modules run via `lib/audit/checks/index.ts` barrel

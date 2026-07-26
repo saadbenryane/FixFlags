@@ -69,3 +69,7 @@ export function formatQueueWaitHint(seconds: number): string {
   }
   return `About ${Math.max(1, Math.round(seconds))}s before the scan starts.`
 }
+
+export function formatQueuePosition(position: number): string {
+  return `Queue position ${position}.`
+}

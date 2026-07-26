@@ -2,7 +2,11 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { runWithContext } from '@/lib/logger/context'
 import { PIPELINE_PROGRESS } from './progress'
-import { AUDIT_DEADLINE_MS } from './pipeline-config'
+import {
+  AUDIT_DEADLINE_MS,
+  FINALIZE_RESERVE_MS,
+  MIN_JUDGE_BUDGET_MS,
+} from './pipeline-config'
 import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
@@ -83,9 +87,25 @@ export async function runAudit(auditId: string): Promise<void> {
           ? await discoverCriticalPathUrlsEnriched(audit.url, primary.metadata, ctx.scanAccess)
           : [{ url: audit.url, category: 'primary' as const }]
 
+      const secondaryPageBudgetMs = 25_000
+      const secondaryStartReserveMs =
+        secondaryPageBudgetMs + MIN_JUDGE_BUDGET_MS + FINALIZE_RESERVE_MS
       for (const [index, page] of discovered.slice(1).entries()) {
+        if (ctx.deadline - Date.now() < secondaryStartReserveMs) {
+          ctx.supplementalPagesSkipped = true
+          await logPipelineEvent(auditId, {
+            stage: 'capturing',
+            event: 'critical_path_skipped_deadline',
+            detail: String(discovered.length - index - 1),
+          })
+          break
+        }
+        const secondaryCtx: PipelineContext = {
+          ...ctx,
+          deadline: Math.min(ctx.deadline, Date.now() + secondaryPageBudgetMs),
+        }
         pageRuns.push(
-          await runPage(ctx, {
+          await runPage(secondaryCtx, {
             url: page.url,
             position: index + 1,
             role: page.category,
@@ -123,6 +143,12 @@ export async function runAudit(auditId: string): Promise<void> {
         pageRuns: retriedPageRuns,
         startedAt,
       })
+      if (ctx.supplementalPagesSkipped) {
+        await prisma.audit.updateMany({
+          where: { id: auditId, status: 'COMPLETED' },
+          data: { reportCompleteness: 'PARTIAL' },
+        })
+      }
     } catch (error) {
       const partialDone = await tryPartialFinalize(ctx, pageRuns, error)
       if (partialDone) return

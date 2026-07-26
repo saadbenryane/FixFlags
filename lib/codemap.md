@@ -7,7 +7,7 @@ Core business logic for FixFlags: audit engine, queue, billing, graph, prompts, 
 | Directory | Purpose | Codemap |
 |-----------|---------|---------|
 | `audit/` | Audit pipeline (runner, checks, scoring, flow, judge, persist, capture) | [lib/audit/codemap.md](lib/audit/codemap.md) |
-| `queue/` | BullMQ queue (client, worker, inline-worker, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
+| `queue/` | BullMQ queue (client, worker, heartbeat, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
 | `billing/` | Subscription limits, credits, Stripe integration | [lib/billing/codemap.md](lib/billing/codemap.md) |
 | `graph/` | Knowledge graph (persist, queries, snapshot) - internal only | - |
 | `prompts/` | AI system prompts (triage + prescription) | - |

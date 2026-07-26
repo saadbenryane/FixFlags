@@ -77,7 +77,7 @@ runIntegration('application audit queue recovery', () => {
     expect(prismaMock.audit.update).toHaveBeenCalled()
   })
 
-  it('requeues a stale mid-CAPTURING audit when the worker and job disappeared', async () => {
+  it('fails a stale mid-CAPTURING audit when the worker and job disappeared', async () => {
     const staleUpdatedAt = new Date(Date.now() - (WORKER_DEAD_RECOVERY_SECONDS + 5) * 1000)
     const startedAt = new Date(Date.now() - (WORKER_DEAD_RECOVERY_SECONDS + 5) * 1000)
     const result = await recoverAuditJobOnPoll(auditId, {
@@ -87,11 +87,14 @@ runIntegration('application audit queue recovery', () => {
       createdAt: startedAt,
     })
 
-    expect(result).toBe('requeued')
-    expect(await queueRef.current!.getJob(auditId)).not.toBeNull()
+    expect(result).toBe('force_failed')
+    expect(await queueRef.current!.getJob(auditId)).toBeNull()
     expect(prismaMock.audit.update).toHaveBeenCalledWith({
       where: { id: auditId },
-      data: { updatedAt: expect.any(Date), startedAt: null },
+      data: expect.objectContaining({
+        status: 'FAILED',
+        failureCode: 'AUDIT_JOB_LOST',
+      }),
     })
   })
 })

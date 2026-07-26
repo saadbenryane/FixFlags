@@ -47,9 +47,23 @@ await check('Redis', async () => {
 
 await check('Chromium', async () => {
   const { chromium } = await import('playwright')
-  const executable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
-  await access(executable)
-  return executable
+  const candidates = [
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    chromium.executablePath(),
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].filter(Boolean)
+  for (const executable of candidates) {
+    try {
+      await access(executable)
+      return executable
+    } catch {
+      // Keep checking the same fallbacks used by the audit browser runtime.
+    }
+  }
+  throw new Error(`No Chromium executable found in ${candidates.join(', ')}`)
 })
 
 await check('migrations', async () => {

@@ -24,7 +24,7 @@ docker compose up -d
 npm run db:migrate
 npm run db:seed
 
-# 5. Run the app (the web server runs the audit worker in-process)
+# 5. Run the app (one web process + one dedicated audit worker)
 npm run dev
 ```
 
@@ -57,10 +57,11 @@ Review the generated snapshot and its visual regression before replacing the che
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Next.js + inline audit worker (audits process end-to-end) |
+| `npm run dev` | Next.js + one dedicated audit worker |
+| `npm run dev:web` | Next.js web process only |
 | `npm run worker` | Standalone audit worker only |
-| `npm run dev:all` | Next.js + a separate worker process concurrently |
-| `npm run dev:full` | Alias for `dev:all` |
+| `npm run dev:all` | Alias for `dev` |
+| `npm run dev:full` | Alias for `dev` |
 | `npm run setup` | Docker up + migrate + generate + seed |
 | `npm run db:migrate` | Apply Prisma migrations |
 | `npm run db:seed` | Seed local admin user |
@@ -112,26 +113,26 @@ capture and returns the verification diff plus the next Finish Plan. See
 
 ## Production deployment (Railway)
 
-**One service is enough.** Railway builds the **Web** service from `Dockerfile` (`railway.toml`). The image `CMD` runs `npm start` (`prestart` applies migrations). By default it also runs the audit worker in-process (`INLINE_WORKER` defaults on) plus a self-hosted scheduler that recovers stuck audits and sends nurture emails; no separate worker and no external cron required. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
+Railway uses two required services from the same image: the **Web** service from `railway.toml` and the **Worker** service from `railway.worker.toml`. The web process serves HTTP and enqueues scans. The worker owns Playwright, audit execution, and recovery. When `Dockerfile` or `package*.json` change, run `docker build -t fixflags:local .` before push.
 
 - Liveness: `GET /api/health`. Deployment promotion uses strict `GET /api/health/ready` and receives 503 until all launch-required subsystems are ready.
 - Worker/queue diagnostics: `GET /api/health/worker` (heartbeat age, Redis, queue depth). Use this to confirm the worker is alive.
-- Scanning diagnostics: `GET /api/health/browser` (launches Chromium + screenshots, checks R2 connectivity). If every scan fails with "scanner temporarily unavailable", curl this first — it pinpoints whether the browser or storage subsystem is broken.
+- Scanning diagnostics: `GET /api/health/browser` (reads worker-confirmed Chromium state and checks R2 connectivity).
 - Worker heartbeat is owned by `lib/queue/worker.ts` (writes every 20s, 45s TTL in Redis).
 
 > R2, a live worker, Chromium, AI, PageSpeed, production auth, billing, email, and Product Watch dependencies are launch requirements. Production validation and `/api/health/ready` reject partial configuration; local development can still run an explicitly visible degraded mode.
 
 **SSO:** Google/GitHub buttons appear automatically once `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (or the GitHub pair) are set on the deployed service — availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed**. Register the callback `https://fixflags.com/api/auth/callback/google` and run `npm run auth:check` to verify.
 
-**Scaling scanning** (optional): set `INLINE_WORKER=false` on the web service and deploy one or more dedicated **Worker** services (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). All workers consume the same Redis queue; recovery runs in whichever workers are alive, guarded by a Redis lock, so it scales to any number of workers.
+Deploy at least one dedicated **Worker** service (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). Additional workers consume the same Redis queue; recovery is Redis-lock guarded.
 
-Optional worker env: `AUDIT_WORKER_CONCURRENCY` (default `5`; use ~`2` on a small single-service instance).
+Worker env: `FIXFLAGS_PROCESS_ROLE=worker` and `AUDIT_WORKER_CONCURRENCY` (default `1` locally and `2` in production).
 
 All services share the same `DATABASE_URL` and `REDIS_URL`.
 
 > GitHub Actions and local full verification share `scripts/validate.mjs`. Use `npm run verify:release` for the clean-install, browser, Docker, and deployed readiness bar.
 
-Local dev: `npm run dev` runs Next.js **and** the inline worker, so audits process end-to-end with a single command (set `INLINE_WORKER=false` to use `npm run dev:all` with a separate worker instead).
+Local dev: `npm run dev` runs Next.js and one dedicated worker as separate processes.
 
 ### Required production env vars
 

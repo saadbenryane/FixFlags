@@ -2,12 +2,16 @@ import { AUDIT_ERRORS } from '@/lib/marketing/copy'
 
 const FAILURE_CODE_MESSAGES: Record<string, string> = {
   AUDIT_TIMEOUT: AUDIT_ERRORS.timeout,
+  AUDIT_HARD_DEADLINE: AUDIT_ERRORS.timeout,
   DESKTOP_CAPTURE_FAILED: AUDIT_ERRORS.captureFailed,
   AI_CONTRACT_INVALID: AUDIT_ERRORS.aiReviewFailed,
   AI_REVIEW_FAILED: AUDIT_ERRORS.partialAiReview,
   AI_PROVIDER_NOT_CONFIGURED: AUDIT_ERRORS.scannerUnavailable,
   AUDIT_PIPELINE_FAILED: AUDIT_ERRORS.generic,
   AUDIT_JOB_FAILED: AUDIT_ERRORS.generic,
+  AUDIT_JOB_LOST: AUDIT_ERRORS.scannerUnavailable,
+  AUDIT_JOB_NON_TERMINAL: AUDIT_ERRORS.scannerUnavailable,
+  BROWSER_CONTEXT_TERMINATED: AUDIT_ERRORS.scannerUnavailable,
   QUEUE_ENQUEUE_FAILED: AUDIT_ERRORS.generic,
   // Our infrastructure, not the target site; never blame the user's site.
   BROWSER_LAUNCH_FAILED: AUDIT_ERRORS.scannerUnavailable,

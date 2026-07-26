@@ -145,6 +145,9 @@ export function isExplicitLocalDegradedMode(): boolean {
 }
 
 export function validateWorkerEnv(): void {
+  if (process.env.FIXFLAGS_PROCESS_ROLE !== 'worker') {
+    throw new Error('Worker runtime requires FIXFLAGS_PROCESS_ROLE=worker')
+  }
   const required = ['DATABASE_URL', 'REDIS_URL'] as const
   const missing = required.filter((k) => !process.env[k])
   if (missing.length > 0) {
@@ -194,8 +197,16 @@ export function validateWorkerEnv(): void {
 export function validateProductionEnv(): void {
   if (process.env.NODE_ENV !== 'production') return
   if (process.env.NEXT_PHASE === 'phase-production-build') return
+  if (process.env.FIXFLAGS_PROCESS_ROLE !== 'web') {
+    throw new Error('Web runtime requires FIXFLAGS_PROCESS_ROLE=web')
+  }
   getEnv()
-  validateWorkerEnv()
+  const missingRuntime = ['DATABASE_URL', 'REDIS_URL'].filter(
+    (key) => !process.env[key]
+  )
+  if (missingRuntime.length > 0) {
+    throw new Error(`Missing required env vars: ${missingRuntime.join(', ')}`)
+  }
   if (isExplicitLocalDegradedMode()) {
     logger.warn('[env] Explicit localhost degraded mode enabled; launch readiness remains unavailable.')
     return

@@ -79,7 +79,8 @@ async function forceFailAudit(
   auditId: string,
   audit: RecoverAuditJobAudit,
   source: string,
-  errorMsg = 'Audit timed out, please try again'
+  errorMsg = 'Audit timed out, please try again',
+  failureCode = 'AUDIT_TIMEOUT'
 ): Promise<void> {
   await logPipelineEvent(auditId, {
     stage: audit.status.toLowerCase(),
@@ -92,7 +93,7 @@ async function forceFailAudit(
     data: {
       status: 'FAILED',
       errorMsg,
-      failureCode: 'AUDIT_TIMEOUT',
+      failureCode,
       failureStage: audit.status.toLowerCase(),
       failureMetadata: { source },
     },
@@ -142,15 +143,21 @@ export async function recoverAuditJobOnPoll(
   // Past the deadline (plus a grace window so the worker's own graceful finalize
   // can win): force-fail AND kill the still-active job so the DB status and the
   // queue stay consistent - otherwise a lingering active job makes Retry throw
-  // "Audit is already running". Never fire while the worker is finalizing.
+  // "Audit is already running". FINALIZING is still non-terminal and receives
+  // the same grace; a lost worker must not leave it there indefinitely.
   if (
-    audit.status !== 'FINALIZING' &&
     isAuditPastDeadline(audit.startedAt, Date.now() - POLL_FORCE_FAIL_GRACE_MS)
   ) {
     if (job && jobState === 'active') {
       await job.moveToFailed(new Error('Audit exceeded deadline'), '0', true)
     }
-    await forceFailAudit(auditId, audit, 'poll')
+    await forceFailAudit(
+      auditId,
+      audit,
+      'poll',
+      'Audit exceeded its hard deadline. Retry the check.',
+      'AUDIT_HARD_DEADLINE'
+    )
     return 'force_failed'
   }
 
@@ -183,8 +190,18 @@ export async function recoverAuditJobOnPoll(
   }
 
   if (!job || jobState === 'failed' || jobState === 'completed') {
-    await requeueAudit(auditId, audit, 'poll', job)
-    return 'requeued'
+    if (audit.status === 'QUEUED' && !audit.startedAt) {
+      await requeueAudit(auditId, audit, 'poll', job)
+      return 'requeued'
+    }
+    await forceFailAudit(
+      auditId,
+      audit,
+      'poll',
+      'The scanner stopped before this report could finish. Retry the check.',
+      'AUDIT_JOB_LOST'
+    )
+    return 'force_failed'
   }
 
   const ageSeconds = (Date.now() - audit.updatedAt.getTime()) / 1000

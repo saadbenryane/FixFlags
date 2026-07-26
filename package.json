@@ -43,7 +43,8 @@
     "smoke:triage:prod": "tsx scripts/smoke-triage-prod.ts",
     "audit:capabilities": "tsx scripts/audit-capability-report.ts",
     "signups": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/signup-count.ts",
-    "worker": "FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx watch worker/index.ts",
+    "worker": "FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx worker/index.ts",
+    "worker:watch": "FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx watch worker/index.ts",
     "worker:build": "tsc --project tsconfig.worker.json && tsc-alias --project tsconfig.worker.json",
     "worker:start": "node scripts/runtime-start.mjs worker",
     "db:generate": "prisma generate",
@@ -134,7 +135,8 @@
     "better-call": "1.3.7",
     "sharp": "0.35.0",
     "@hono/node-server": "2.0.11",
-    "postcss": "$postcss"
+    "postcss": "$postcss",
+    "brace-expansion": "5.0.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

@@ -1874,6 +1874,12 @@ the browser's isolated world, `__name` doesn't exist there → crash.
   path via `tsx`. If refreshing the marketing sample has been failing silently,
   this is why.
 
+**2026-07-26 correction:** the inline-worker architecture is superseded.
+`npm run dev` now starts a dedicated `tsx` worker and the real
+`saadbenryane.com` audit completed through that path. Browser-evaluated
+callbacks must remain free of transform-only helpers; the standalone path is
+now part of normal acceptance rather than an optional development mode.
+
 **FIXED (Session 11):** added a one-line defensive shim as the first statement
 inside all 4 `page.evaluate()` callbacks in `lib/audit/screenshot.ts` (lines
 ~132, ~166) and `lib/audit/capture-metrics.ts` (lines ~38, ~176):

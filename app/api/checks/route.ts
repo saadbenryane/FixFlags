@@ -30,6 +30,7 @@ const createSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = performance.now()
   try {
     const body = await req.json().catch(() => ({}))
     const parsed = createSchema.safeParse(body)
@@ -156,7 +157,14 @@ export async function POST(req: NextRequest) {
         queueReason:
           delayMs > 0 ? ('rate_limit' as const) : workerEstimate.waitingJobs > 0 ? ('backlog' as const) : undefined,
       },
-      { status: 201 }
+      {
+        status: 201,
+        headers: {
+          'Server-Timing': `check-create;dur=${(
+            performance.now() - requestStartedAt
+          ).toFixed(1)}`,
+        },
+      }
     )
   } catch (err) {
     if (err instanceof AuditLimitError) {

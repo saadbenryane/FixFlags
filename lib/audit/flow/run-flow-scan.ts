@@ -19,6 +19,7 @@ import {
 
 export const FLOW_SCAN_TIMEOUT_MS = 20_000
 export const FLOW_CLICK_TIMEOUT_MS = 8_000
+export const PRIMARY_CTA_BUDGET_MS = 12_000
 
 export interface FlowScanStep {
   label: string
@@ -107,7 +108,7 @@ async function fetchDestinationTrust(
   }
 }
 
-export async function runFlowScan(
+async function runFlowScanWithinBudget(
   page: Page,
   auditId: string,
   pageUrl: string,
@@ -301,6 +302,58 @@ export async function runFlowScan(
     destinationUX,
     ...ctaMeta,
   }
+}
+
+/**
+ * Enforce one wall-clock budget across every nested flow probe. Closing the
+ * page cancels outstanding Playwright work so an optional probe cannot delay
+ * the rest of the audit or leak browser work into a later stage.
+ */
+export async function runFlowScan(
+  page: Page,
+  auditId: string,
+  pageUrl: string,
+  options: RunFlowScanOptions = {}
+): Promise<FlowScanResult> {
+  const deadlineMs = Math.max(
+    1,
+    Math.min(options.deadlineMs ?? FLOW_SCAN_TIMEOUT_MS, FLOW_SCAN_TIMEOUT_MS)
+  )
+
+  return new Promise<FlowScanResult>((resolve) => {
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      const finalUrl = page.isClosed() ? pageUrl : page.url()
+      resolve({ status: 'timeout', steps: [], finalUrl })
+      void page.close().catch(() => {})
+    }, deadlineMs)
+    timer.unref?.()
+
+    void runFlowScanWithinBudget(page, auditId, pageUrl, {
+      ...options,
+      deadlineMs: Math.min(deadlineMs, PRIMARY_CTA_BUDGET_MS),
+    }).then(
+      (result) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve(result)
+      },
+      (error) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        logger.error('Flow scan failed inside deadline', error)
+        resolve({
+          status: 'skipped',
+          steps: [],
+          finalUrl: page.isClosed() ? pageUrl : page.url(),
+        })
+      }
+    )
+  })
 }
 
 async function captureCtaAnchor(page: Page, selector: string): Promise<EvidenceAnchor | null> {

@@ -92,6 +92,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
       runFlow: input.primary && input.position === 0,
       scanAccess: ctx.scanAccess,
+      flowDeadlineMs: Math.max(
+        1,
+        Math.min(20_000, ctx.deadline - Date.now() - 15_000)
+      ),
+      deadline: ctx.deadline,
     }),
     fetchPageSpeedData(normalizedUrl, createDeadlineSignal(ctx.deadline)),
   ])

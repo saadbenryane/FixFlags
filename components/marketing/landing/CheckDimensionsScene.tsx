@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
  * Center visual for the check-dimensions section.
  *
  * Prefer a true RGBA plate (`check-dimensions-center.webp`) with clean soft
- * edges — never soft-key a JPEG-on-white mockup into alpha (white fringe).
+ * edges; never soft-key a JPEG-on-white mockup into alpha (white fringe).
  * Until a hi-res transparent master lands, render the CSS scene so the mesh
  * backdrop shows through without a white plate.
  */
@@ -53,7 +53,7 @@ export function CheckDimensionsScene({
       className={cn('relative mx-auto w-full max-w-[22rem] sm:max-w-md lg:max-w-none', className)}
       aria-hidden
     >
-      {/* Soft orange ambient — no baked white plate */}
+      {/* Soft orange ambient with no baked white plate */}
       <div className="pointer-events-none absolute inset-[18%_10%_8%] rounded-[45%] bg-brand/25 blur-3xl" />
 
       {/* Plinth */}

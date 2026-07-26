@@ -134,7 +134,7 @@ Tech stack for prescription: `auditPage.performanceData.detectedTech`, not `html
 |------|------|
 | `lib/queue/client.ts` | BullMQ queue producer |
 | `lib/queue/worker.ts` | BullMQ worker (audit, ai-review, repo-scan, repo-fix-pr jobs) |
-| `lib/queue/inline-worker.ts` | In-process worker (default; single-service deployment) |
+| `worker/index.ts` | Dedicated worker runtime and browser lifecycle owner |
 | `lib/queue/recovery-scheduler.ts` | Self-hosted scheduler |
 | `lib/queue/worker-heartbeat.ts` | Redis heartbeat every 20s, 45s TTL |
 | `lib/queue/redis.ts` | Redis connection |
@@ -189,8 +189,9 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ## Deployment
 
-- **Single service (default):** Next.js + inline worker + self-hosted scheduler
-- **Dedicated worker:** `INLINE_WORKER=false`, deploy separate worker service
+- **Web service:** `FIXFLAGS_PROCESS_ROLE=web`; enqueues jobs and serves report reads without importing the worker
+- **Worker service:** `FIXFLAGS_PROCESS_ROLE=worker`; required dedicated process that owns Playwright, recovery, and browser shutdown
+- **Local development:** `npm run dev` starts exactly one web process and one worker with concurrency one
 - **Container:** Single-stage Docker (Debian bookworm-slim + apt Chromium). Railway uses `Dockerfile` via `railway.toml`. Playwright launches system Chromium (`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`).
 - **Platform:** Railway (fly.io-compatible)
 - **Health:** `/api/health` (liveness), `/api/health/ready` (strict launch contract), `/api/health/worker` (heartbeat), `/api/health/browser` (Playwright+R2), `/api/health/ai?validate=1` (live provider credentials)

@@ -15,7 +15,7 @@ import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
-import { progressiveAuditSelect } from '@/lib/audit/fetch-audit'
+import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -23,6 +23,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestStartedAt = performance.now()
   try {
     const { id } = await params
     const session = await resolveSessionUser()
@@ -121,20 +122,29 @@ export async function GET(
         })
       : undefined
 
-    return NextResponse.json({
-      ...rest,
-      status: effectiveStatus,
-      errorMsg: refreshed?.errorMsg ?? audit.errorMsg,
-      failureCode: refreshed?.failureCode ?? audit.failureCode,
-      screenshotCapture,
-      pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
-      flagCount,
-      shareStatus,
-      partialFlags: showPartialFlags ? partialFlags : undefined,
-      actionTimeline,
-      productContract: contract,
-      technologyProfile,
-    })
+    return NextResponse.json(
+      {
+        ...rest,
+        status: effectiveStatus,
+        errorMsg: refreshed?.errorMsg ?? audit.errorMsg,
+        failureCode: refreshed?.failureCode ?? audit.failureCode,
+        screenshotCapture,
+        pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
+        flagCount,
+        shareStatus,
+        partialFlags: showPartialFlags ? partialFlags : undefined,
+        actionTimeline,
+        productContract: contract,
+        technologyProfile,
+      },
+      {
+        headers: {
+          'Server-Timing': `report-status;dur=${(
+            performance.now() - requestStartedAt
+          ).toFixed(1)}`,
+        },
+      }
+    )
   } catch (err) {
     return handleRouteError(err)
   }

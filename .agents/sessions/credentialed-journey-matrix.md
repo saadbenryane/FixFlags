@@ -1,19 +1,21 @@
 # Credentialed journey matrix
 
-*Created: 2026-07-23. Updated: 2026-07-24. Release gate: all revenue-critical paths signed off before distribution scale.*
+*Created: 2026-07-23. Updated: 2026-07-26. Release gate: all revenue-critical paths signed off before distribution scale.*
 
 ## Release verification
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
 | `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Pass | `npm run doctor` passes locally |
-| `RELEASE_FRESH_DATABASE_URL` + reset flag | Partial | Local disposable DB `fixflags_release` created; `.cache/release/exports.sh` ready. **Prisma migrate reset blocked** until explicit user consent for AI agents. |
+| `RELEASE_FRESH_DATABASE_URL` + reset flag | Blocked | Variables are absent. Reset of a disposable `fixflags_release` database also requires explicit user consent. |
 | `RELEASE_CONTAINER_ENV_FILE` | Partial | `.cache/release/container.env` written (gitignored) |
 | `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target still missing |
-| R2 capture credentials | Blocked | `R2_*` not set in `.env.local` |
-| Quiet tree for full verify | Blocked | Concurrent writers keep mutating the working tree; side-effect guard correctly aborts mid-run |
-| `npm run verify:release` | **Not run** | Blocked on consent + smoke + R2 + quiet tree |
+| R2 capture credentials | Blocked | Required `R2_*` variables are absent |
+| Email / Product Watch credentials | Blocked | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ADMIN_NOTIFICATION_EMAIL` are absent |
+| `npm run verify` | Pass | Full gate passed 2026-07-26: 2,387 unit tests, accuracy, CLI, production web build, worker build, dependency audit, and Docker image |
+| `npm run verify:release` | Blocked at preflight | `npm run agent -- eval release` stopped safely because `RELEASE_FRESH_DATABASE_URL` is absent; smoke, R2, email, and reset consent also remain required |
 | Credentialed Playwright suite | Scaffolded | `e2e/credentialed-journeys.spec.ts` skips unless `E2E_CREDENTIALED=true` + release DB |
+| Dedicated worker topology | Local Pass; deploy pending | Stable local startup reported web role, one worker, concurrency one, zero contexts, and no stalled or overdue jobs. Railway deployment and external heartbeat smoke remain required. |
 
 Record command output here when credentials are provisioned.
 
@@ -21,7 +23,7 @@ Record command output here when credentials are provisioned.
 
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
-| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` | Code Pass; live dogfood pending | Public E2E covers sample, header, Flag focus, deleted report, unknown share. Confirm on production after deploy. |
+| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` + local browser dogfood | Local Pass; deployed dogfood pending | `saadbenryane.com` audit `cms10xj8n0001gr82h9f3l989` completed `FULL` in 155 seconds without restart. Progressive handoff rendered without a frozen frame. Confirm gates and claim flow after deploy. |
 | Passkeys / 2FA / recovery | `lib/auth/` unit tests + credentialed skeleton | Partial | Route E2E gated in `e2e/credentialed-journeys.spec.ts` |
 | Billing / webhooks | `lib/billing/` + webhook + checkout handler tests | Partial | Manual Stripe checkout sign-off still required |
 | Re-check / diff / Remember | Unit + sample contract | Partial | FULL re-check path covered in unit tests |
@@ -40,10 +42,11 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 - [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
 - [x] Production brand restored (`fix-live-images` / Phase 0)
 - [x] Unknown report and share tokens render explicit not-found/unavailable states (`e2e/public-journeys.spec.ts`)
-- [ ] Progressive route: captures and verified Flags append to the canonical ranked explorer
+- [x] Progressive route: lightweight status UI renders immediately and advances through the canonical stages without loading the completed-report graph
 - [x] `/samples` and loading shell never empty (public E2E)
 - [ ] Password share: generic metadata, authorize, no view inflation, revoke
-- [x] 375 / 768 / 1280px, keyboard, reduced motion on sample; deleted-report state covered
+- [x] Progressive report has no horizontal overflow at 320 / 375 / 768 / 1280px; Back navigation and invalid-input recovery work
+- [ ] Keyboard submission, reduced motion, and 200% text still require the deployed release smoke
 
 ## Browser / pipeline truth (2026-07-23)
 
@@ -51,7 +54,7 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 - Mobile + desktop `networkFailures` merged in `captureScreenshots`
 - Primary flow capture uses `journeySafe` for engagement POST probe
 - AXI/chrome-devtools-axi rejected for audit capture; AXI applies to CLI/MCP agent tooling
-- Recovery evaluation loads its required environment and fails rather than silently skipping; stale QUEUED and mid-CAPTURING application-queue requeues pass against Redis.
+- Recovery evaluation loads its required environment and fails rather than silently skipping. Stale unstarted QUEUED jobs may requeue; a lost job after CAPTURING fails explicitly instead of silently restarting the report.
 
 ## Accuracy adjudication backlog
 
@@ -61,4 +64,4 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 | replit.com | Structural curated | Fixture `replit-com.html` frozen with provenance. Live probe historically 403 (bot block). Keep curated fixture; do not invent gold. expectedPresent: `canonical-missing`, `h1-multiple`. |
 | v0.dev | Structural frozen | Fixture `v0-dev.html` frozen with provenance (`captured=2026-07-23`). Docs that said “no frozen fixture” are stale. expectedPresent: `no-structured-data`, `measurement-ga-gtm-posthog-missing`. Elevate to gold only after FP/FN adjudication with frozen evidence. |
 
-`npm run accuracy:eval`: Pass (2026-07-24) — 11 HTML gate fixtures, 2 gold, 0 failures.
+`npm run accuracy:eval`: Pass (2026-07-26) — 11 HTML gate fixtures, 2 gold, 0 failures.

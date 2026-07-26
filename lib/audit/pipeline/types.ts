@@ -49,5 +49,7 @@ export interface PipelineContext {
     cacheWriteTokens?: number
   }
   includeAi: boolean
+  /** Critical-path pages were discovered but skipped to preserve finalization budget. */
+  supplementalPagesSkipped?: boolean
   scanAccess?: import('../scan-access').ScanAccessConfig | null
 }
