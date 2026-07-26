@@ -5,6 +5,7 @@ const npmExecutable = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const raw = execFileSync(npmExecutable, ['pack', '--dry-run', '--json'], {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
+  shell: process.platform === 'win32',
 })
 const pack = JSON.parse(raw)[0]
 const files = pack.files.map((entry) => entry.path)

@@ -16,12 +16,21 @@ try {
     {
     cwd: cliDirectory,
     encoding: 'utf8',
+    shell: process.platform === 'win32',
     }
   )
   const packed = JSON.parse(packOutput)[0]
   const tarball = join(temporary, packed.filename)
-  execFileSync(npmExecutable, ['init', '-y'], { cwd: temporary, stdio: 'ignore' })
-  execFileSync(npmExecutable, ['install', tarball], { cwd: temporary, stdio: 'inherit' })
+  execFileSync(npmExecutable, ['init', '-y'], {
+    cwd: temporary,
+    shell: process.platform === 'win32',
+    stdio: 'ignore',
+  })
+  execFileSync(npmExecutable, ['install', tarball], {
+    cwd: temporary,
+    shell: process.platform === 'win32',
+    stdio: 'inherit',
+  })
   const output = execFileSync(
     process.execPath,
     [join(temporary, 'node_modules', 'fixflags', 'bin', 'fixflags.js'), '--version'],
