@@ -11,6 +11,7 @@ import {
   toStoredPageSpeedResult,
 } from '../pagespeed'
 import { runAllChecks, computeRubricScores, suppressOverlappingFlags } from '../checks'
+import { suppressFlagsForPageRole } from '../suppression'
 import { runFlowChecks } from '../checks/flow'
 import { runSlowReplayChecks } from '../checks/slow-replay'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
@@ -356,7 +357,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
-  const flags = suppressOverlappingFlags(
+  const flags = suppressFlagsForPageRole(suppressOverlappingFlags(
     detFlags
       .concat(
         input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
@@ -374,7 +375,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           ? runSlowReplayChecks(slowReplayResult)
           : []
       )
-  ).map((flag) => ({
+  ), input.role).map((flag) => ({
       ...flag,
       checkId:
         input.position === 0

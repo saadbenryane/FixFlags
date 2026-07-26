@@ -142,7 +142,9 @@ test('legacy report details path redirects after access checks', async ({ page }
 
 test('unknown share tokens render an unavailable or not-found state', async ({ page }) => {
   await page.goto('/share/revoked-or-unknown-share-token')
-  await expect(page.getByText(/not found|does not exist|unavailable/i).first()).toBeVisible()
+  await expect(
+    page.locator('main').getByText(/not found|does not exist|unavailable/i).first()
+  ).toBeVisible()
 })
 
 test('help and MCP setup surfaces render without client errors', async ({ page }) => {
@@ -228,12 +230,32 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
   await page.getByLabel('Website URL').first().fill(targetUrl)
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await page.waitForURL(/\/report\//, { timeout: 30_000 })
+  const reportId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
+  await expect.poll(async () => {
+    const response = await page.request.get(`/api/reports/${reportId}/status`)
+    const body = (await response.json().catch(() => null)) as { status?: string } | null
+    return body?.status
+  }, { timeout: 240_000 }).toBe('COMPLETED')
+  await page.reload()
   const fixList = page.locator('#report-flags')
-  await expect(fixList).toBeVisible({ timeout: 180_000 })
+  await expect(fixList).toBeVisible()
   await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
 
+  const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
+  await expect.poll(() => flags.count(), { timeout: 180_000 }).toBeGreaterThan(0)
+  const flagCount = await flags.count()
+  const promptFlagIndexes: number[] = []
+  for (let index = 0; index < flagCount; index += 1) {
+    await flags.nth(index).click()
+    await expect(flags.nth(index)).toHaveAttribute('aria-pressed', 'true')
+    if (await fixList.getByRole('button', { name: /copy prompt/i }).count()) {
+      promptFlagIndexes.push(index)
+    }
+  }
+  expect(promptFlagIndexes).toHaveLength(1)
+  await flags.nth(promptFlagIndexes[0]!).click()
   const copyButtons = fixList.getByRole('button', { name: /copy prompt/i })
-  await expect(copyButtons).toHaveCount(1, { timeout: 180_000 })
+  await expect(copyButtons).toHaveCount(1)
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await copyButtons.first().click()
   const copiedPrompt = await page.evaluate(() => navigator.clipboard.readText())

@@ -172,6 +172,16 @@ describe('runConversionFrictionChecks', () => {
     )
   })
 
+  it('treats booking a call as a low-commitment conversion path', () => {
+    assert.ok(
+      !checkIds(runConversionFrictionChecks(healthyMeta({
+        ctaTexts: ['Book a call'],
+        links: [{ href: 'https://calendar.example.com', text: 'Book a call', rel: null }],
+        pageText: 'Prefer to book time directly? Book a call.',
+      }))).includes('friction-no-commitment-path')
+    )
+  })
+
   it('flags forms with too many fields', () => {
     assert.ok(
       checkIds(runConversionFrictionChecks(healthyMeta({
@@ -364,6 +374,16 @@ describe('runMobileUXQualityChecks', () => {
         mobilePrimaryCtaText: 'Click here',
         mobilePrimaryCtaTopPx: 400,
       }))).includes('mobile-cta-weak-label')
+    )
+  })
+
+  it('does not describe a visible bottom CTA as hard to reach', () => {
+    assert.ok(
+      !checkIds(runMobileUXQualityChecks(healthyMeta(), captureMetrics({
+        mobilePrimaryCtaText: 'Book a call',
+        mobilePrimaryCtaTopPx: 743,
+        mobileViewportHeight: 812,
+      }))).includes('mobile-cta-thumb-zone')
     )
   })
 

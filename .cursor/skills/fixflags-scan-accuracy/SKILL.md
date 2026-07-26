@@ -26,6 +26,7 @@ Read [`AGENTS.md`](../../../AGENTS.md) first. Accuracy expectations are product 
 
 ```bash
 npm run accuracy:eval                              # offline gate (CI)
+npm run accuracy:browser                           # curated rendered-browser geometry gate
 npm run accuracy:probe -- https://stripe.com ...   # live HTML adjudication
 npm run accuracy:capture-fixtures                  # refresh lovable + bolt HTML
 npm run demo:audit:offline                         # demo v1 repair proof
@@ -56,6 +57,7 @@ npm run agent -- eval accuracy
 |-------|--------|----------------|
 | HTML fixtures + `accuracy:eval` | Metadata, a11y names, messaging, trust heuristics | Flow paths, overlay clicks, PageSpeed live |
 | `accuracy-probe` | Live HTML fetch checks | Browser render, network timeline |
+| `accuracy:browser` | Rendered CTA geometry, candidate semantics, visual metrics | PageSpeed and full pipeline persistence |
 | `dogfood-audit.ts --include-ai` | Full prod pipeline | Not in CI without creds |
 | `non-html-regression.json` | PageSpeed, overlay, network, flow check IDs | Live capture refresh |
 

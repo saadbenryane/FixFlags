@@ -130,6 +130,53 @@ describe('deduplicateFlags', () => {
     assert.equal(deduplicateFlags([], aiFlags).length, 0)
   })
 
+  it('rejects AI cookie-consent findings owned by deterministic metadata', () => {
+    const aiFlags = [
+      {
+        rubric: 'REACH' as const,
+        impactTag: 'TRUST' as const,
+        severity: 'IMPORTANT' as const,
+        problem: 'No cookie consent mechanism in place',
+        evidence: 'Analytics is present but no cookie banner is found.',
+        whyItMatters: 'Consent requirements may apply.',
+        fix: 'Add consent controls.',
+        confidence: 0.8,
+        verificationRule: 'Confirm analytics waits for consent.',
+      },
+    ]
+
+    assert.equal(deduplicateFlags([], aiFlags).length, 0)
+  })
+
+  it('rejects AI console and share-control claims owned by deterministic checks', () => {
+    const aiFlags = [
+      {
+        rubric: 'EXPERIENCE' as const,
+        impactTag: 'TRUST' as const,
+        severity: 'IMPORTANT' as const,
+        problem: 'Presence of console errors',
+        evidence: 'Console errors appear during inspection.',
+        whyItMatters: 'Errors may indicate broken behavior.',
+        fix: 'Fix errors.',
+        confidence: 0.7,
+        verificationRule: 'Open the console.',
+      },
+      {
+        rubric: 'REACH' as const,
+        impactTag: 'SHARING' as const,
+        severity: 'POLISH' as const,
+        problem: 'No social sharing options',
+        evidence: 'There are no visible ways to share or promote the site further.',
+        whyItMatters: 'Visitors cannot promote the site.',
+        fix: 'Add share buttons.',
+        confidence: 0.7,
+        verificationRule: 'Find a share button.',
+      },
+    ]
+
+    assert.equal(deduplicateFlags([], aiFlags).length, 0)
+  })
+
   it('keeps genuinely new AI flags', () => {
     const deterministic = [
       det({

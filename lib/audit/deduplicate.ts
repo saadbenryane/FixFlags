@@ -66,12 +66,25 @@ const DETERMINISTIC_AI_THEMES: Array<{
     exclusivelyDeterministic: true,
   },
   {
+    checkIds: ['cookie-consent-absent'],
+    keywords:
+      /cookie consent|consent mechanism|cookie banner|cookie management/i,
+    exclusivelyDeterministic: true,
+  },
+  {
     checkIds: ['robots-blocks-indexing'],
     keywords: /noindex|robots meta|blocking indexing|search engines cannot crawl/i,
   },
   {
     checkIds: ['console-errors-critical', 'console-errors-some'],
     keywords: /console error|javascript error|js error|runtime error/i,
+    exclusivelyDeterministic: true,
+  },
+  {
+    checkIds: ['og-image-missing', 'og-image-broken', 'og-title-missing', 'og-description-missing'],
+    keywords:
+      /social sharing options|social share buttons|ways? to share|share controls|promote the site further/i,
+    exclusivelyDeterministic: true,
   },
   {
     checkIds: ['mobile-perf-critical', 'mobile-perf-poor', 'mobile-lcp-critical', 'lcp-critical', 'lcp-poor'],

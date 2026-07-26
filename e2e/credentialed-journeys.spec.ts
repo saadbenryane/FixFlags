@@ -106,7 +106,21 @@ test.describe('credentialed revenue journeys', () => {
 
     const fixList = page.locator('#report-flags')
     await expect(fixList).toBeVisible()
-    await expect(fixList.getByRole('button', { name: /copy prompt/i })).toHaveCount(1)
+    const anonymousFlags = fixList.locator(
+      'button[aria-controls="selected-flag-detail"]'
+    )
+    await expect
+      .poll(() => anonymousFlags.count(), { timeout: 180_000 })
+      .toBeGreaterThan(0)
+    const anonymousFlagCount = await anonymousFlags.count()
+    let demonstratedPromptCount = 0
+    for (let index = 0; index < anonymousFlagCount; index += 1) {
+      await anonymousFlags.nth(index).click()
+      demonstratedPromptCount += await fixList
+        .getByRole('button', { name: /copy prompt/i })
+        .count()
+    }
+    expect(demonstratedPromptCount).toBe(1)
 
     await page.goto(`/sign-up?next=${encodeURIComponent(`/report/${reportId}`)}`)
     await page.getByLabel('Email').fill(email)

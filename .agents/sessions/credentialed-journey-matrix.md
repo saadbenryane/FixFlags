@@ -12,7 +12,7 @@
 | `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target still missing |
 | R2 capture credentials | Blocked | Required `R2_*` variables are absent |
 | Email / Product Watch credentials | Blocked | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ADMIN_NOTIFICATION_EMAIL` are absent |
-| `npm run verify` | Pass | Full gate passed 2026-07-26: 2,387 unit tests, accuracy, CLI, production web build, worker build, dependency audit, and Docker image |
+| `npm run verify` | Pass | Full gate passed 2026-07-26: 2,420 unit tests, 184 test files, accuracy, CLI, production web build, worker build, and zero moderate-or-higher dependency vulnerabilities |
 | `npm run verify:release` | Blocked at preflight | `npm run agent -- eval release` stopped safely because `RELEASE_FRESH_DATABASE_URL` is absent; smoke, R2, email, and reset consent also remain required |
 | Credentialed Playwright suite | Implemented; sandbox run blocked | Eight executable journeys replace the former deliberate failures. `verify:release` now enables them and preflights every disposable fixture before destructive setup. Sandbox credentials remain absent locally. |
 | Dedicated worker topology | Local Pass; deploy pending | Stable local startup reported web role, one worker, concurrency one, zero contexts, and no stalled or overdue jobs. The container smoke now provisions Postgres, Redis, web, and worker, submits a real check, observes worker readiness, and requires a completed report. Railway deployment and external heartbeat smoke remain required. |
@@ -23,7 +23,7 @@ Record command output here when credentials are provisioned.
 
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
-| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` + local browser dogfood | Local Pass; deployed dogfood pending | `saadbenryane.com` audit `cms10xj8n0001gr82h9f3l989` completed `FULL` in 155 seconds without restart. Progressive handoff rendered without a frozen frame. Confirm gates and claim flow after deploy. |
+| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` + local browser dogfood | Local Pass; deployed dogfood pending | The isolated production-like E2E submitted a real check, reached `COMPLETED` in 38.9 seconds, verified exactly one complete non-placeholder prompt, copied it, and proved the second-URL signup gate. `saadbenryane.com` audit `cms10xj8n0001gr82h9f3l989` also completed `FULL` in 155 seconds without restart. Claim flow remains part of the credentialed sandbox run. |
 | Passkeys / 2FA / recovery | Unit tests + virtual WebAuthn and backup-code E2E | Implemented; sandbox run pending | Release fixture supplies the registered credential material and one disposable backup code. |
 | Billing / webhooks | Unit/handler tests + checkout/portal E2E | Implemented; sandbox run pending | Uses separate free and paid Stripe test users. Signed webhook lifecycle still relies on the existing handler tests plus operator Stripe dogfood. |
 | Re-check / diff / Remember | Unit + claim/re-check E2E | Implemented; sandbox run pending | Claims the anonymous report through `/post-login`, unlocks the Fix List, performs a fresh FULL re-check, and asserts diff and Remember UI. |
@@ -38,7 +38,7 @@ Record command output here when credentials are provisioned.
 Run on **one anonymous** and **one signed-in** journey before distribution:
 
 - [ ] `/report/[id]` hierarchy: identity → diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → re-check
-- [ ] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts
+- [x] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts (local production-like E2E)
 - [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
 - [x] Production brand restored (`fix-live-images` / Phase 0)
 - [x] Unknown report and share tokens render explicit not-found/unavailable states (`e2e/public-journeys.spec.ts`)
@@ -46,7 +46,7 @@ Run on **one anonymous** and **one signed-in** journey before distribution:
 - [x] `/samples` and loading shell never empty (public E2E)
 - [ ] Password share: generic metadata, authorize, no view inflation, revoke
 - [x] Progressive report has no horizontal overflow at 320 / 375 / 768 / 1280px; Back navigation and invalid-input recovery work
-- [ ] Keyboard submission, reduced motion, and 200% text still require the deployed release smoke
+- [x] Keyboard submission, reduced motion, 200% text, touch targets, theme switching, and responsive reflow pass in the isolated production E2E; deployed release smoke remains required
 
 ## Browser / pipeline truth (2026-07-23)
 

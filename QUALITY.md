@@ -66,6 +66,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
 | Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
 | Scan accuracy | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression | Yes (via `validate.mjs` full gate) |
+| Rendered dogfood accuracy | `npm run accuracy:browser` | Curated live mobile CTA selection, fold geometry, input zoom candidates, and visual-metric false positives | On demand |
 | SEO | `npm run seo:guard` | SEO compliance | Yes |
 | Migration | `npm run db:check` | Migration status | Verify script |
 | Drift | `npm run db:drift` | Schema drift | Verify script |

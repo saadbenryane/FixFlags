@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
+import {
+  AuditReportProgressive,
+  AuditReportProgressiveShell,
+} from '@/components/audit/AuditReportProgressive'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
@@ -12,6 +15,12 @@ afterEach(() => {
 })
 
 describe('AuditReportProgressive', () => {
+  it('uses a non-canonical section id for the route loading shell', () => {
+    const { container } = render(<AuditReportProgressiveShell url={URL} />)
+    expect(container.querySelector('#report-flags-loading')).not.toBeNull()
+    expect(container.querySelector('#report-flags')).toBeNull()
+  })
+
   it('warns when the worker is idle instead of pretending to progress', () => {
     render(<AuditReportProgressive status="QUEUED" url={URL} workerIdle />)
     expect(screen.getByText('Still preparing')).toBeInTheDocument()

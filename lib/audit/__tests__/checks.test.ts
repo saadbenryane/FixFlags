@@ -9,6 +9,10 @@ import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
 import { runSlopChecks } from '@/lib/audit/checks/slop'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
+import {
+  suppressFlagsForPageRole,
+  suppressOverlappingFlags,
+} from '@/lib/audit/suppression'
 import { runInteractionChecks } from '@/lib/audit/checks/interaction'
 import { runCtaFocusChecks } from '@/lib/audit/checks/cta-focus'
 import { runAuthCheckoutChecks } from '@/lib/audit/checks/auth-checkout'
@@ -453,6 +457,16 @@ describe('runTrustChecks', () => {
     )
   })
 
+  it('ignores Chromium inspector requests blocked by the capture client', () => {
+    const errors = [
+      {
+        type: 'error',
+        text: 'Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector',
+      },
+    ]
+    assert.equal(runTrustChecks('https://example.com', healthyMeta(), errors).length, 0)
+  })
+
   it('passes a healthy HTTPS page', () => {
     assert.equal(runTrustChecks('https://example.com', healthyMeta(), []).length, 0)
   })
@@ -753,6 +767,79 @@ describe('runLayoutChecks', () => {
       ).length,
       0
     )
+  })
+})
+
+describe('page-role suppression', () => {
+  const flag = (checkId: string) => ({
+    checkId,
+    rubric: 'MESSAGE',
+    severity: 'POLISH',
+    problem: checkId,
+    evidence: checkId,
+    fix: checkId,
+    confidence: 1,
+    source: 'DETERMINISTIC' as const,
+  })
+
+  it('does not apply landing-page headline rules to contact and about page titles', () => {
+    assert.deepEqual(
+      suppressFlagsForPageRole(
+        [flag('messaging-no-audience'), flag('no-privacy-policy')],
+        'secondary-cta'
+      ).map((item) => item.checkId),
+      ['no-privacy-policy']
+    )
+    assert.deepEqual(
+      suppressFlagsForPageRole(
+        [
+          flag('messaging-headline-too-short'),
+          flag('hierarchy-no-sections'),
+          flag('friction-no-commitment-path'),
+          flag('no-privacy-policy'),
+        ],
+        'trust'
+      ).map((item) => item.checkId),
+      ['no-privacy-policy']
+    )
+  })
+})
+
+describe('overlap suppression', () => {
+  it('keeps the root slow-3G blank-screen finding instead of its CTA symptom', () => {
+    const makeFlag = (checkId: string) => ({
+      checkId,
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      problem: checkId,
+      evidence: checkId,
+      fix: checkId,
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    })
+    const flags = suppressOverlappingFlags([
+      makeFlag('slow-3g-blank-screen'),
+      makeFlag('slow-3g-cta-delayed'),
+    ])
+    assert.deepEqual(flags.map((flag) => flag.checkId), ['slow-3g-blank-screen'])
+  })
+
+  it('drops an aggregate performance score when a specific severe metric is present', () => {
+    const makeFlag = (checkId: string) => ({
+      checkId,
+      rubric: 'EXPERIENCE',
+      severity: 'IMPORTANT',
+      problem: checkId,
+      evidence: checkId,
+      fix: checkId,
+      confidence: 1,
+      source: 'DETERMINISTIC' as const,
+    })
+    const flags = suppressOverlappingFlags([
+      makeFlag('perf-score-poor'),
+      makeFlag('cls-critical'),
+    ])
+    assert.deepEqual(flags.map((flag) => flag.checkId), ['cls-critical'])
   })
 })
 
@@ -1963,7 +2050,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
       checkIds(
         runMobileUXQualityChecks(
           healthyMeta({}),
-          healthyCaptureMetrics({ mobilePrimaryCtaTopPx: 700, mobilePrimaryCtaText: 'Get started', mobileViewportHeight: 800 })
+          healthyCaptureMetrics({ mobilePrimaryCtaTopPx: 100, mobilePrimaryCtaText: 'Get started', mobileViewportHeight: 800 })
         )
       ),
     'mobile-cta-weak-label': () =>

@@ -25,7 +25,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | First-value / anon dogfood | [`.agents/sessions/customer-journey-completion-plan.md`](.agents/sessions/customer-journey-completion-plan.md), [PRODUCT.md](PRODUCT.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
 | Browser capture (Playwright) | [`.cursor/skills/fixflags-browser-capture/SKILL.md`](.cursor/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
-| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.cursor/skills/fixflags-scan-accuracy/SKILL.md`](.cursor/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
+| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.cursor/skills/fixflags-scan-accuracy/SKILL.md`](.cursor/skills/fixflags-scan-accuracy/SKILL.md), [`.cursor/skills/fixflags-dogfood-accuracy/SKILL.md`](.cursor/skills/fixflags-dogfood-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
 | Public CLI | `fixflags-cli/` | `npm run agent -- context cli` |

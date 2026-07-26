@@ -70,6 +70,7 @@ interface AuditReportProgressiveProps {
   actionTimeline?: ActionTimelineEvent[]
   productContract?: ProductContract | null
   technologyProfile?: TechnologyProfile
+  sectionId?: string
 }
 
 function buildPartialRubricsComputed(
@@ -111,6 +112,7 @@ export function AuditReportProgressive({
   actionTimeline = [],
   productContract = null,
   technologyProfile,
+  sectionId = 'report-flags',
 }: AuditReportProgressiveProps) {
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -260,7 +262,7 @@ export function AuditReportProgressive({
       ) : null}
 
       <section
-        id="report-flags"
+        id={sectionId}
         className="scroll-mt-[var(--header-offset)] space-y-4"
         aria-busy={isLoading}
       >
@@ -336,5 +338,11 @@ export function AuditReportProgressiveShell({ url }: { url?: string } = {}) {
     setActiveUrl(getActiveAudit()?.url ?? '')
   }, [url])
 
-  return <AuditReportProgressive status="QUEUED" url={activeUrl} />
+  return (
+    <AuditReportProgressive
+      status="QUEUED"
+      url={activeUrl}
+      sectionId="report-flags-loading"
+    />
+  )
 }

@@ -79,13 +79,31 @@ export function ReportExplorer({
   const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [impactFilter, setImpactFilter] = useState<string | null>(null)
+  const visibleDemonstratedFlagId =
+    demonstratedFlagId ??
+    (aiLocked ? model.flags.find((flag) => flag.hasFixPrompt)?.id : undefined)
   const [flagIndex, setFlagIndex] = useState(() =>
-    initialExplorerFlagIndex(model.flags, initialFlagIndex, demonstratedFlagId)
+    initialExplorerFlagIndex(model.flags, initialFlagIndex, visibleDemonstratedFlagId)
   )
   const firstFindingTracked = useRef(false)
+  const demonstratedSelectionApplied = useRef(false)
+
+  useEffect(() => {
+    if (!visibleDemonstratedFlagId || demonstratedSelectionApplied.current) return
+    const demonstratedIndex = model.flags.findIndex(
+      (flag) => flag.id === visibleDemonstratedFlagId
+    )
+    if (demonstratedIndex < 0) return
+    demonstratedSelectionApplied.current = true
+    setFlagIndex(demonstratedIndex)
+  }, [visibleDemonstratedFlagId, model.flags])
 
   useEffect(() => {
     if (firstFindingTracked.current || variant !== 'live' || model.flags.length === 0) return
+    if (
+      visibleDemonstratedFlagId &&
+      model.flags[flagIndex]?.id !== visibleDemonstratedFlagId
+    ) return
     const flag = model.flags[flagIndex]
     if (!flag) return
     firstFindingTracked.current = true
@@ -94,7 +112,7 @@ export function ReportExplorer({
       check_id: flag.checkId ?? undefined,
       severity: flag.severity,
     })
-  }, [variant, model.flags, auditId, flagIndex])
+  }, [variant, model.flags, auditId, flagIndex, visibleDemonstratedFlagId])
 
   const rubricCounts = useMemo(
     () =>
@@ -321,7 +339,7 @@ export function ReportExplorer({
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
         compact={config.compact}
-        demonstratedFlagId={demonstratedFlagId}
+        demonstratedFlagId={visibleDemonstratedFlagId}
         variant={variant}
         headingRef={detailHeadingRef}
       />

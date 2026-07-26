@@ -31,17 +31,17 @@ export function runMobileUXQualityChecks(
 
   if (primaryCtaTop !== null && viewportHeight > 0) {
     const ctaPositionRatio = primaryCtaTop / viewportHeight
-    const thumbZoneThreshold = 0.7
+    const hardToReachTopThreshold = 0.2
 
-    if (ctaPositionRatio > thumbZoneThreshold && ctaPositionRatio <= 1.0) {
+    if (ctaPositionRatio >= 0 && ctaPositionRatio < hardToReachTopThreshold) {
       findings.push({
         checkId: 'mobile-cta-thumb-zone',
         rubric: 'EXPERIENCE',
         impactTag: 'CONVERSION',
         severity: 'POLISH',
-        problem: 'Primary CTA is in the hard-to-reach bottom zone on mobile',
-        evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(ctaPositionRatio * 100)}% of the viewport height. Users may need to stretch to tap it one-handed.`,
-        fix: '1. Move the primary CTA lower in the mobile viewport (40-70% from top) for thumb-friendly reach\n2. Or ensure the CTA is large enough (min 48px height) to tap easily even when reaching\n3. Consider a sticky bottom CTA that stays within thumb range\n4. Test one-handed on a 6.7" phone - can you tap the CTA comfortably?',
+        problem: 'Primary CTA is in the hard-to-reach top zone on mobile',
+        evidence: `CTA "${captureMetrics.mobilePrimaryCtaText ?? 'Primary CTA'}" appears at ${Math.round(ctaPositionRatio * 100)}% of the viewport height. The top edge is harder to reach one-handed on larger phones.`,
+        fix: '1. Move the primary CTA into the middle or lower mobile viewport (35-75% from top)\n2. Keep the CTA at least 48px tall\n3. Consider a sticky bottom CTA for the primary action\n4. Test one-handed on a 6.7" phone',
         confidence: 0.7,
         source: 'DETERMINISTIC',
       })

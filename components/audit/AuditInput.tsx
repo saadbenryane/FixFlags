@@ -46,11 +46,16 @@ export function AuditInput({
   const handoff = useScanHandoffState()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   const [urlError, setUrlError] = useState('')
   const autoStartedRef = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
   const auditSource = source ?? (isLanding ? 'homepage' : 'dashboard')
+
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   async function submitUrl(inputUrl?: string) {
     setUrlError('')
@@ -199,7 +204,7 @@ export function AuditInput({
                   setUrl(e.target.value)
                   setUrlError('')
                 }}
-                disabled={busy}
+                disabled={!hydrated || busy}
                 aria-invalid={Boolean(urlError)}
                 aria-describedby={describedBy}
                 className="h-12 min-h-12 flex-1 pl-2.5 pr-2 text-[0.9375rem] placeholder:text-muted-foreground/70 sm:h-[3.25rem] sm:min-h-[3.25rem] sm:pl-2.5 sm:text-base"
@@ -209,7 +214,7 @@ export function AuditInput({
               type="submit"
               variant="brand"
               size="lg"
-              disabled={busy}
+              disabled={!hydrated || busy}
               className={cn(
                 'h-12 min-h-12 w-full shrink-0 gap-1.5 rounded-[var(--radius-control)] px-5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[11.5rem] sm:gap-2 sm:px-6 sm:text-base'
               )}
@@ -245,14 +250,14 @@ export function AuditInput({
                 setUrlError('')
               }}
               className={cn(fieldHeightInputClass, 'flex-1 text-base')}
-              disabled={busy}
+              disabled={!hydrated || busy}
               aria-invalid={Boolean(urlError)}
               aria-describedby={urlError ? errorId : undefined}
             />
             <Button
               type="submit"
               size="lg"
-              disabled={busy}
+              disabled={!hydrated || busy}
               className={cn(
                 fieldHeightClass,
                 'w-full shrink-0 gap-2 px-6 sm:w-auto'

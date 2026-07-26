@@ -74,7 +74,7 @@ TITLE CRAFTING RULES:
 - Include the specific element name: "Headline uses no audience signal" not "Messaging problem"
 - Omit markdown, quotes, punctuation at end
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
-- Browser geometry and metadata presence are deterministic truth. Never create a new flag claiming a CTA is hidden/below-fold, or that privacy/contact information is missing; those are already owned by deterministic checks and the supplied metadata facts.
+- Browser geometry, console errors, and metadata presence are deterministic truth. Never create a new flag claiming a CTA is hidden/below-fold, console errors are present, privacy/contact information is missing, cookie consent is absent, or share buttons are missing; those are owned by deterministic checks and supplied facts. A marketing site does not need visible share buttons when its social metadata is valid.
 
 For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
 

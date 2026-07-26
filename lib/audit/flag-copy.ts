@@ -151,7 +151,7 @@ const WHY_IT_MATTERS: Record<string, string> = {
   'mobile-input-zoom':
     'Inputs below 16px trigger iOS zoom, disorienting users during signup or contact forms.',
   'mobile-cta-thumb-zone':
-    'A hard-to-reach mobile CTA adds physical friction right when a user is ready to act.',
+    'A CTA near the top edge adds one-handed reach friction on larger phones.',
   'mobile-cta-weak-label':
     'Vague mobile CTA labels make users uncertain about what tapping will do, which lowers intent.',
   'mobile-no-viewport':

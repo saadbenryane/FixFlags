@@ -80,9 +80,9 @@ async function auditUrl(url: string) {
   }))
 
   const rubricRows = result.rubrics.map((r) => ({ name: r.name, grade: r.grade, score: r.score }))
-  const top3 = rankFlagsByPriority(flags, rubricRows, 3)
-  const sorted = [...flags].sort(compareFlagsByPriority)
   const consolidatedFlags = consolidateFlagsByCheck(flags)
+  const top3 = rankFlagsByPriority(consolidatedFlags, rubricRows, 3)
+  const sorted = [...consolidatedFlags].sort(compareFlagsByPriority)
 
   // --- Quality analysis ---
   const checkIdCounts = new Map<string, number>()

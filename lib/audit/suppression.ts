@@ -4,6 +4,9 @@ const SUPPRESSIONS: Array<[string, string]> = [
   ['no-contact-info', 'trust-no-direct-contact'],
   ['hierarchy-competing-actions', 'competing-ctas'],
   ['mobile-load-delay-content', 'loading-state-slow'],
+  ['slow-3g-cta-delayed', 'slow-3g-blank-screen'],
+  ['perf-score-poor', 'cls-critical'],
+  ['perf-score-critical', 'cls-critical'],
   ['heading-hierarchy-missing', 'hierarchy-no-sections'],
   ['flow-cta-unclickable', 'overlay-blocks-cta'],
   ['flow-pricing-nav-broken', 'overlay-blocks-nav'],
@@ -35,4 +38,25 @@ export function suppressOverlappingFlags(flags: DeterministicFlag[]): Determinis
     if (hasConsolidated && CONSOLIDATED_SUPPRESSED_BY.has(flag.checkId)) return false
     return true
   })
+}
+
+const PAGE_ROLE_SUPPRESSIONS: Record<string, Set<string>> = {
+  'secondary-cta': new Set(['messaging-no-audience']),
+  trust: new Set([
+    'messaging-headline-too-short',
+    'messaging-no-audience',
+    'heading-hierarchy-missing',
+    'hierarchy-no-sections',
+    'friction-no-commitment-path',
+  ]),
+}
+
+/** Remove landing-page heuristics that are not valid for a page's known role. */
+export function suppressFlagsForPageRole(
+  flags: DeterministicFlag[],
+  role: string
+): DeterministicFlag[] {
+  const suppressed = PAGE_ROLE_SUPPRESSIONS[role]
+  if (!suppressed) return flags
+  return flags.filter((flag) => !suppressed.has(flag.checkId))
 }

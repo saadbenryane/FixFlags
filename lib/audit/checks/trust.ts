@@ -64,7 +64,11 @@ export function runTrustChecks(
     })
   }
 
-  const criticalErrors = consoleErrors.filter((e) => e.type === 'error')
+  const criticalErrors = consoleErrors.filter(
+    (error) =>
+      error.type === 'error' &&
+      !/net::ERR_BLOCKED_BY_CLIENT\.Inspector\b/i.test(error.text)
+  )
   if (criticalErrors.length >= 3) {
     findings.push({
       checkId: 'console-errors-critical',

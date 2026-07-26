@@ -9,6 +9,9 @@ const credentialedDatabaseUrl =
 
 const localRuntimeEnv = {
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
+  // Exercise production quota and anonymous-teaser gates in local E2E.
+  // Development otherwise grants unlimited scans by design.
+  DEV_SIMULATE_BILLING: 'true',
   NEXT_PUBLIC_APP_URL: baseURL,
   BETTER_AUTH_URL: baseURL,
   NEXT_DIST_DIR: '.next-e2e',

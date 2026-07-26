@@ -84,12 +84,25 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
       if (btn.closest('nav, header, [role="navigation"]')) continue
       const text = (btn.textContent ?? '').trim()
       if (!text || text.length > 48) continue
+      const href = btn.tagName.toLowerCase() === 'a'
+        ? (btn as HTMLAnchorElement).getAttribute('href') ?? ''
+        : btn.closest('a')?.getAttribute('href') ?? ''
+      const ctaSignal = `${href} ${text}`
+      if (
+        !/\b(book (?:a )?call|book demo|get started|start free|try free|sign up|register|contact|pricing|subscribe|request demo|schedule|shop now)\b/i.test(
+          ctaSignal
+        )
+      ) {
+        continue
+      }
       const px = parseFloat(window.getComputedStyle(btn).borderRadius)
       if (!Number.isNaN(px) && px >= 0) radii.add(Math.round(px))
     }
 
     const inputsBelow16px: Array<{ selector: string; fontSize: number }> = []
-    for (const input of document.querySelectorAll('main input, main textarea, main select')) {
+    for (const input of document.querySelectorAll(
+      'main input:not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), main textarea, main select'
+    )) {
       const el = input as HTMLElement
       const rect = el.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) continue

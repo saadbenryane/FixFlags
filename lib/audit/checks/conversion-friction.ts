@@ -10,7 +10,7 @@ const DEMO_MARKERS = /(book demo|request demo|schedule demo|see it in action|wat
 
 const PRICING_MARKERS = /\b(pricing|plans|see pricing|view pricing|compare plans)\b/i
 
-const BOOKING_MARKERS = /\b(book now|book online|book appointment|schedule|make a reservation|schedule visit|request appointment|request quote|get quote|find near you|search by|browse|explore)\b/i
+const BOOKING_MARKERS = /\b(book (?:a )?call|book now|book online|book appointment|schedule|make a reservation|schedule visit|request appointment|request quote|get quote|find near you|search by|browse|explore)\b/i
 
 const GUARANTEE_MARKERS = /(money.back|guarantee|satisfied guaranteed|refund|risk.free|cancel anytime)/i
 

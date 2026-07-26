@@ -36,7 +36,7 @@ async function measureCtaVisible(page: Page): Promise<boolean> {
     for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
       if (el.closest('nav, header, [role="navigation"]')) continue
       const combined = `${(el as HTMLAnchorElement).href ?? ''} ${el.textContent ?? ''}`.toLowerCase()
-      if (!/get started|sign up|signup|start free|try|register|contact|pricing/i.test(combined)) continue
+      if (!/get started|sign up|signup|start free|try|register|contact|pricing|book (?:a )?call|schedule/i.test(combined)) continue
       const rect = el.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight) return true
     }

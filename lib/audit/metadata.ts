@@ -221,7 +221,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   let totalFormInputs = 0
   let maxConversionFormInputs = 0
   const formInputSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]), textarea, select'
-  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([type="email"]):not([type="url"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
+  const formValidationSelectors = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="search"]):not([type="email"]):not([type="url"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([type="radio"]):not([type="checkbox"]):not([type="range"]):not([type="color"]):not([type="file"]):not([required]):not([aria-required]), textarea:not([required]):not([aria-required]), select:not([required]):not([aria-required])'
   const CONVERSION_CTA_RE = /\b(sign\s*up|start\s*free|get\s*started|try\s*free|book\s*demo|register|join|subscribe|buy|purchase)\b/i
   const formElements = $('form')
   if (formElements.length > 0) {

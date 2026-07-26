@@ -2,11 +2,17 @@
 
 ## Status
 
-Local completion work for Builder-Native + Current-Product closeout advanced on 2026-07-24. Release verification remains blocked on operator consent for disposable DB reset, R2 credentials, container/smoke URLs, and deployed dogfood.
-
-Preserve concurrent auth WIP (`PasskeyEnrollPrompt`, ConnectedAccounts, sign-in/post-login/2FA, marketing auth copy) and journey schema fields.
+Local current-product implementation and verification completed on 2026-07-26. Release verification remains blocked only on operator-provided disposable fixtures, reset consent, deployed service configuration, and external sandbox credentials. No production database reset was attempted.
 
 ## Completed in this closeout pass
+
+- Dedicated web/worker lifecycle, browser prewarming, per-replica Redis heartbeat aggregation, terminal job guarantees, and production-like Postgres/Redis/web/worker container smoke.
+- Real credentialed Playwright journeys replaced all deliberate throws for anonymous claim/re-check, WebAuthn/2FA recovery, Stripe, protected sharing, Product Watch, GitHub Fix PR, MCP, and packaged CLI workflows.
+- Release preflight now fails before setup unless every disposable fixture and explicit database-reset consent are present.
+- Auth, billing, examples, and report Suspense states use layout-matched loading UI; auth wordmark bounds, touch targets, themes, reduced motion, 200% text, and responsive reflow are covered by public Playwright tests.
+- Anonymous prompt selection survives progressive-to-completed report hydration and exposes exactly one demonstrated prompt while the remaining prompts stay gated.
+- Homepage scan inputs remain disabled until hydration, preventing native pre-hydration form navigation and controlled-input value loss.
+- Local production-like Playwright enables real quota enforcement instead of development's intentional unlimited-scan mode.
 
 - Validation side-effect guard hardened: `normalizeRepositoryState` / `assertRepositoryUnchanged` in `scripts/validate.mjs` with unit tests; ignores generated artifact paths.
 - Report API Fix List parity: `GET /api/reports/[id]` uses `buildUnifiedFixList` (includes Agency repo Flags). Parity + route tests added.
@@ -20,26 +26,34 @@ Preserve concurrent auth WIP (`PasskeyEnrollPrompt`, ConnectedAccounts, sign-in/
 
 ## Verified
 
-- `npm run agent -- verify` (affected): passed after journey/capability fixes.
-- `npm run mcp:quality-gate`: 17 tools.
-- `npm run completeness:audit`: passed.
-- `npm run accuracy:eval`: passed.
-- Targeted route/parity vitests: passed.
+- `npm run agent -- verify --full`: 23-command gate passed on 2026-07-26.
+- Vitest: 184 files passed, 2,420 tests passed; one file and two tests skipped by their declared environments.
+- Dependency audit: zero moderate-or-higher vulnerabilities.
+- Accuracy: 11 HTML gate fixtures, 2 gold fixtures, zero failures.
+- Isolated production public Playwright: 27 passed, one credentialed/full-scan test skipped by default.
+- Production-like anonymous full scan: one passed in 38.9 seconds, including terminal completion, exactly one demonstrated prompt, clipboard content, and the second-URL signup gate.
+- Changed-file verification: TypeScript, lint, audit/component/prompt tests, brand, UI drift, image policy, and SEO all passed.
 
 ## Remaining release blockers
 
-1. **Prisma AI consent required** to run `npx prisma migrate reset --force --skip-seed` against disposable `fixflags_release` only (not `fixflags` / production). Prisma blocks Cursor agents until the user explicitly consents and the exact consent text is passed as `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION`.
-2. `RELEASE_SMOKE_URL` (and bearer if required) for deployed readiness/browser/AI smoke.
-3. Real R2 credentials for capture-backed Linear full-pipeline adjudication and browser health.
-4. **Quiet working tree** for `npm run verify` / `verify:release`: the validation side-effect guard correctly fails while concurrent writers keep editing auth/journey/status files mid-run. Pause overlapping agents, then re-run full verify.
-5. After reset consent: run `source .cache/release/exports.sh`, set `RELEASE_SMOKE_URL`, then `npm run verify:release`.
-6. Execute credentialed matrix rows and Lovable/Bolt real connector smokes against the deployed commit.
-7. Production dogfood (anon, signed-in, billing, protected-share, re-check).
+`node scripts/release-preflight.mjs` stops safely until these are supplied:
 
-## Local gate evidence (2026-07-24)
+- `RELEASE_FRESH_DATABASE_URL`, `RELEASE_CONTAINER_ENV_FILE`, `RELEASE_SMOKE_URL`, and `RELEASE_ALLOW_DATABASE_RESET=true`
+- `E2E_AUDIT_URL`, `E2E_SIGNUP_PASSWORD`, and the disposable WebAuthn/2FA fixture values
+- Disposable free/paid billing users
+- Disposable share owner/report/password values
+- Disposable Product Watch user/project plus mail-sandbox assertion URL
+- Disposable GitHub user and dedicated test repository
+- Authenticated release `E2E_API_KEY`
 
-- `npm run agent -- verify` (affected path): passed after journey/capability/typecheck/lint fixes.
-- Mid-run `npm run verify` (full) aborted by side-effect guard when concurrent agents modified `app/api/reports/[id]/status`, `hooks/useMe.ts`, `lib/audit/active-audit.ts`, `app/(auth)/error.tsx`, etc. Guard behavior is correct; exclusive ownership needed for a clean full pass.
+The release environment file must contain the required R2, Stripe, email, GitHub, AI, PageSpeed, database, Redis, and service-role values checked by preflight and readiness. Both Railway services and deployed dogfood remain operator-dependent.
+
+## Local gate evidence (2026-07-26)
+
+- Full repository gate and affected gate pass.
+- Public production Playwright passes at 320, 375, 768, and 1280 px.
+- The real anonymous queue-backed journey passes with production quota gates enabled.
+- Release preflight is the only local failure, and reports missing external inputs before any reset or sandbox mutation.
 
 ## Safe release command (after consent + smoke URL)
 

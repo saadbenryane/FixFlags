@@ -10,6 +10,7 @@ import {
   resolveFixConfidence,
 } from '@/lib/audit/priority-flags'
 import type { RankableFlag } from '@/lib/audit/flag-types'
+import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
 
 const args = process.argv.slice(2)
 const outIdx = args.indexOf('--out')
@@ -54,13 +55,15 @@ async function main() {
       verificationRule: f.verificationRule,
     }))
     const rubricRows = full.rubrics.map((r) => ({ name: r.name, grade: r.grade, score: r.score }))
-    const top3 = rankFlagsByPriority(flags, rubricRows, 3)
-    const sorted = [...flags].sort(compareFlagsByPriority)
+    const consolidatedFlags = consolidateFlagsByCheck(flags)
+    const top3 = rankFlagsByPriority(consolidatedFlags, rubricRows, 3)
+    const sorted = [...consolidatedFlags].sort(compareFlagsByPriority)
 
     console.log(`=== ${full.url} | ${full.status} | score=${full.score} | err=${full.errorMsg ?? '-'} | completeness=${full.reportCompleteness}`)
     console.log(`Rubrics: ${rubricRows.map((x) => `${x.name}=${x.grade ?? '-'}(${x.score ?? '-'})`).join(' ')}`)
     console.log(`Pages: ${full.pages.map((p) => `${p.role}:${p.status}`).join(' ')}`)
-    console.log('All flags (priority order):')
+    console.log(`Distinct fixes: ${consolidatedFlags.length} (${flags.length} persisted rows)`)
+    console.log('All distinct fixes (priority order):')
     for (const f of sorted) {
       console.log(`  [${f.severity}/${f.impactTag ?? '-'}/${f.source}] ${f.checkId ?? 'AI'} conf=${f.confidence}`)
       console.log(`    P: ${f.problem}`)

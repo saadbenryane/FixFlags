@@ -13,6 +13,7 @@ import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { MOBILE_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 import { measureMobileLayout } from '@/lib/audit/capture-metrics'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
+import { runVisualPolishChecks } from '@/lib/audit/checks/visual-polish'
 import { closeBrowser, getAuditBrowser } from '@/lib/audit/screenshot'
 
 const args = process.argv.slice(2)
@@ -27,6 +28,7 @@ const targets =
         url,
         expectedPrimaryCtaText: undefined,
         expectedAbsentCheckIds: [] as string[],
+        expectedInputsBelow16Count: undefined,
       }))
     : ACCURACY_BROWSER_TARGETS
 
@@ -42,7 +44,10 @@ async function main() {
       })
       try {
         const metrics = await measureMobileLayout(session.page)
-        const flags = runLayoutChecks(metrics)
+        const flags = [
+          ...runLayoutChecks(metrics),
+          ...runVisualPolishChecks(metrics),
+        ]
         const checkIds = flags.map((flag) => flag.checkId)
         const result = {
           url: target.url,
@@ -54,6 +59,7 @@ async function main() {
             text: metrics.mobilePrimaryCtaText,
             topPx: metrics.mobilePrimaryCtaTopPx,
           },
+          inputsBelow16px: metrics.inputsBelow16px,
           checkIds,
         }
         results.push(result)
@@ -71,6 +77,14 @@ async function main() {
             failures.push(`${target.url}: known false positive ${checkId} is present`)
           }
         }
+        if (
+          target.expectedInputsBelow16Count !== undefined &&
+          metrics.inputsBelow16px.length !== target.expectedInputsBelow16Count
+        ) {
+          failures.push(
+            `${target.url}: expected ${target.expectedInputsBelow16Count} text inputs below 16px, got ${metrics.inputsBelow16px.length}`
+          )
+        }
       } finally {
         await session.page.context().close()
       }
@@ -85,7 +99,7 @@ async function main() {
   console.log('FixFlags rendered-browser accuracy probe\n')
   for (const result of results) {
     console.log(
-      `${result.url}\n  CTA=${JSON.stringify(result.primaryCta.text)} top=${result.primaryCta.topPx ?? 'none'}px viewport=${result.viewport.height}px flags=${result.checkIds.join(', ') || 'none'}`
+      `${result.url}\n  CTA=${JSON.stringify(result.primaryCta.text)} top=${result.primaryCta.topPx ?? 'none'}px viewport=${result.viewport.height}px small-inputs=${result.inputsBelow16px.length} flags=${result.checkIds.join(', ') || 'none'}`
     )
   }
   console.log(`\nFailures: ${failures.length}`)

@@ -6,6 +6,22 @@ import { ALL_CHECK_IDS, CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 const BASE_URL = 'https://example.com'
 
 describe('parseMetadataFromHtml', () => {
+  it('does not treat optional radio choices as text fields missing validation', () => {
+    const html = `<!doctype html><html><body>
+      <form>
+        <fieldset>
+          <legend>What kind of business is this?</legend>
+          <label><input type="radio" name="businessType" value="portfolio" />Portfolio</label>
+          <label><input type="radio" name="businessType" value="startup" />Startup</label>
+        </fieldset>
+        <button type="submit">Subscribe</button>
+      </form>
+    </body></html>`
+
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(meta.formInputsMissingValidation, 0)
+  })
+
   it('extracts head tags, landmarks, and CTA text from HTML', () => {
     const html = `<!DOCTYPE html>
 <html lang="en">

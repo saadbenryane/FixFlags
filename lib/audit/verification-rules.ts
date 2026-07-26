@@ -286,7 +286,7 @@ export const MOBILE_UX_VERIFICATION_RULES: Record<string, string> = {
   'mobile-input-zoom':
     'Set font-size to 16px minimum on all input, textarea, and select elements. Test on iOS Safari.',
   'mobile-cta-thumb-zone':
-    'Move CTA lower in the viewport or add sticky bottom positioning. One-hand test on a 6.7" phone.',
+    'Keep the CTA out of the top reach zone or add sticky bottom positioning. One-hand test on a 6.7" phone.',
   'mobile-cta-weak-label':
     'Replace vague CTA text with outcome-specific action text (e.g. "Start free trial" not "Click here").',
   'mobile-load-delay-content':
