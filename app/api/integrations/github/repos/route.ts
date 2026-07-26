@@ -14,7 +14,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user || !canScanRepositories(user)) {
-      return apiError('Repository scanning requires the Agency plan', 402, {
+      return apiError('Repository scanning requires the Studio plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'upgrade',
       })

@@ -5,11 +5,11 @@ import { planLabel, PLAN_DEFINITIONS } from '@/lib/billing/plans'
 describe('planLabel', () => {
   // Paying customers must always see the name they bought. The internal enum
   // codes (BUILDER, TEAM) are not customer-facing: rendering "Builder plan" or
-  // "Team plan" reads as a billing bug to someone who paid for "Pro" / "Agency".
+  // "Team plan" reads as a billing bug to someone who paid for "Pro" / "Studio".
   it('maps internal plan codes to customer-facing names', () => {
     assert.equal(planLabel('FREE'), 'Free')
     assert.equal(planLabel('BUILDER'), 'Pro')
-    assert.equal(planLabel('TEAM'), 'Agency')
+    assert.equal(planLabel('TEAM'), 'Studio')
   })
 
   it('never leaks a raw enum code as a label', () => {

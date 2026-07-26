@@ -6,7 +6,7 @@ import { OFFER } from './brand'
  * The billing module remains the source of truth for limits, pricing logic,
  * and Stripe price IDs.
  */
-const PRO_PRICE = '$29'
+const PRO_PRICE = '$39'
 const PRO_PERIOD = '/mo'
 
 function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
@@ -38,12 +38,12 @@ export const PLANS = [
     price: PRO_PRICE,
     period: PRO_PERIOD,
     persona: 'Solo builders shipping weekly',
-    outcome: 'Prove every fix, audit from your editor',
-    audits: '25 / month',
+    outcome: 'Finish what your AI started, every week',
+    audits: '5 journeys / month',
     features: [
+      '5 journeys per month (check → fix → re-check cycles)',
       'Before/after comparisons',
       'MCP in supported builders',
-      '25 new URL checks per month',
       'Weekly product watch with regression email',
     ],
     cta: 'Start Pro',
@@ -52,22 +52,23 @@ export const PLANS = [
     accountModel: 'Single account. No seats or shared workspace.',
   },
   {
-    name: 'Agency',
+    name: 'Studio',
     plan: 'TEAM' as const,
-    price: '$99',
+    price: '$129',
     period: '/mo',
-    persona: 'Freelancers, agencies, and client-driven teams',
-    outcome: 'Send polished client reports with one link',
-    audits: '100 / month',
+    persona: 'Agencies and multi-site teams',
+    outcome: 'Finish many products, not just one',
+    audits: '25 journeys / month',
     features: [
       'Everything in Pro',
-      'Client-ready public share links',
+      '25 journeys per month',
       'Up to 5 projects',
+      'Client-ready public share links',
       'GitHub repository scans',
       'Draft Fix PRs from repo findings (secrets auto-patch when possible)',
       'Daily product watch with regression email',
     ],
-    cta: 'Start Agency',
+    cta: 'Start Studio',
     href: '/sign-up?plan=TEAM',
     highlight: false,
     accountModel: 'Single account. No seats or shared workspace.',
@@ -96,7 +97,7 @@ export const PRICING_FAQ = [
   },
   {
     question: 'Are reports public or private?',
-    answer: `${OFFER.linkPrivacy} Agency plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private audit.`,
+    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private audit.`,
   },
   {
     question: 'Are screenshots stored?',
@@ -171,8 +172,10 @@ export const UPGRADE_MOMENTS = {
     plan: 'BUILDER' as const,
   },
   compare_improved: {
-    headline: (scoreDelta: number) =>
-      `Score improved ${scoreDelta > 0 ? `+${scoreDelta}` : ''}`.trim(),
+    headline: (scoreDelta: number) => {
+      void scoreDelta
+      return 'Fixes verified'
+    },
     body: 'Keep the loop in your editor with MCP and 25 new checks each month.',
     cta: proUpgradeCta('Start Pro'),
     plan: 'BUILDER' as const,
@@ -185,14 +188,14 @@ export const UPGRADE_MOMENTS = {
   },
   share_public: {
     headline: 'Share reports with clients',
-    body: 'Agency includes public share links with OG previews and a Check My Site CTA for viewers.',
-    cta: 'Upgrade to Agency',
+    body: 'Studio includes public share links with OG previews and a Check My Site CTA for viewers.',
+    cta: 'Upgrade to Studio',
     plan: 'TEAM' as const,
   },
   export_locked: {
-    headline: 'Proof exports are on Agency',
-    body: 'Agency includes client-ready summaries with rubrics and top Flags.',
-    cta: 'Upgrade to Agency',
+    headline: 'Proof exports are on Studio',
+    body: 'Studio includes client-ready summaries with rubrics and top Flags.',
+    cta: 'Upgrade to Studio',
     plan: 'TEAM' as const,
   },
   free_default: {

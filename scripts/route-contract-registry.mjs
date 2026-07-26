@@ -24,7 +24,8 @@ function boundaryFor(file) {
     file.includes('/health/') || file.endsWith('/health/route.ts') || file.includes('/badge/') ||
     file.includes('/share/') || file.includes('/screenshots/') || file.includes('/well-known/') ||
     file.includes('/auth/') || file.includes('/newsletter/') || file.includes('/tools/') ||
-    file.includes('/v1/score/') || file.endsWith('/checks/route.ts')
+    file.includes('/v1/score/') || file.endsWith('/checks/route.ts') ||
+    file.endsWith('/cli/release/route.ts')
   ) return 'public'
   return 'session'
 }

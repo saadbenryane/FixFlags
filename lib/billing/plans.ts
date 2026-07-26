@@ -48,18 +48,18 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'BUILDER',
     name: 'Pro',
     label: 'Pro',
-    price: '$29',
+    price: '$39',
     period: '/mo',
     persona: 'Solo builders shipping weekly',
-    outcome: 'Prove every fix, audit from your editor',
-    auditLimit: 25,
+    outcome: 'Finish what your AI started, every week',
+    auditLimit: 5,
     auditLimitKind: 'monthly',
-    auditLimitLabel: '25 / month',
+    auditLimitLabel: '5 journeys / month',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
+      '5 journeys per month (check → fix → re-check cycles)',
       'Before/after comparisons',
       'MCP in supported builders',
-      '25 new URL checks per month',
       'Weekly product watch with regression email',
     ],
     highlight: true,
@@ -68,28 +68,47 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
   },
   TEAM: {
     plan: 'TEAM',
-    name: 'Agency',
-    label: 'Agency',
-    price: '$99',
+    name: 'Studio',
+    label: 'Studio',
+    price: '$129',
     period: '/mo',
-    persona: 'Freelancers, agencies, and client-driven teams',
-    outcome: 'Send polished client reports with one link',
-    auditLimit: 100,
+    persona: 'Agencies and multi-site teams',
+    outcome: 'Finish many products, not just one',
+    auditLimit: 25,
     auditLimitKind: 'monthly',
-    auditLimitLabel: '100 / month',
+    auditLimitLabel: '25 journeys / month',
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: 5,
     features: [
       'Everything in Pro',
-      'Client-ready public share links',
+      '25 journeys per month',
       'Up to 5 projects',
+      'Client-ready public share links',
       'GitHub repository scans',
       'Draft Fix PRs from repo findings (secrets auto-patch when possible)',
       'Daily product watch with regression email',
     ],
     highlight: false,
-    cta: 'Start Agency',
+    cta: 'Start Studio',
     href: '/sign-up?plan=TEAM',
+  },
+  STUDIO: {
+    plan: 'STUDIO',
+    name: 'Studio Add-on',
+    label: 'Studio Add-on',
+    price: '$0',
+    period: '',
+    persona: 'Additional journeys',
+    outcome: 'Buy journey packs when you need more',
+    auditLimit: 0,
+    auditLimitKind: 'monthly',
+    auditLimitLabel: 'Add-on journeys',
+    features: [
+      'Additional journeys beyond your plan limit',
+    ],
+    highlight: false,
+    cta: 'Contact us',
+    href: 'mailto:hello@fixflags.com?subject=FixFlags%20Studio%20Add-on',
   },
 }
 
@@ -117,7 +136,7 @@ export function scanLimitForPlan(plan: Plan): number {
 }
 
 /**
- * Customer-facing plan name (Free / Pro / Agency). Never render the raw enum
+ * Customer-facing plan name (Free / Pro / Studio). Never render the raw enum
  * (FREE / BUILDER / TEAM): "Builder" and "Team" are internal codes that do not
  * match what users bought, which reads as a billing bug to a paying customer.
  */
@@ -165,7 +184,7 @@ export const CONTACT_PLAN = {
   outcome: 'Volume pricing for teams that need more checks',
   audits: '500+ / month',
   features: [
-    'Everything in Agency',
+    'Everything in Studio',
     'Custom audit volume',
     'Talk through your workflow with us',
   ],

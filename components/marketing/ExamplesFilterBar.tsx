@@ -8,7 +8,7 @@ export const EXAMPLE_TAGS = [
   { id: 'best-practices', label: 'Best practices' },
   { id: 'marketing', label: 'Marketing' },
   { id: 'content-heavy', label: 'Content-heavy' },
-  { id: 'agency-ready', label: 'Agency-ready' },
+  { id: 'agency-ready', label: 'Studio-ready' },
 ] as const
 
 export type ExampleTagId = (typeof EXAMPLE_TAGS)[number]['id']

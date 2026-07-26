@@ -4,8 +4,8 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'Finish what your AI started.',
-  category: 'The release readiness layer for AI-built products.',
-  oneLiner: 'FixFlags is the release readiness layer for AI-built products.',
+  category: 'Independent product verification for AI-built products.',
+  oneLiner: 'Check your AI-built product, fix what blocks the release, re-check, and watch until it ships.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -141,7 +141,7 @@ export const OFFER = {
 /** User-facing score explanation. Must match lib/audit/checks/rubric.ts + scoring.ts. */
 export const SCORE_HELP = {
   short:
-    'Score starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
+    'Each rubric starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
   detail:
     'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
   /** Canonical deep link: keep in sync with lib/help scores-and-severity */

@@ -270,4 +270,51 @@ export function registerFlagTools(server: McpServer, user: User) {
       }
     }
   )
+
+  server.tool(
+    MCP_TOOLS.markFixAttempted.name,
+    MCP_TOOLS.markFixAttempted.desc,
+    {
+      flagId: z.string(),
+      status: z.enum(['FIXED', 'IGNORED']),
+      comment: z.string().optional(),
+    },
+    async ({ flagId, status, comment }) => {
+      const flag = await prisma.flag.findUnique({
+        where: { id: flagId },
+        include: { audit: { select: { userId: true, isPublic: true } } },
+      })
+      if (!flag) throw new Error('Flag not found')
+      await assertAuditAccess(flag.audit, user.id)
+
+      const updated = await prisma.flag.update({
+        where: { id: flagId },
+        data: { status },
+      })
+
+      if (comment) {
+        await prisma.flagFeedback.create({
+          data: {
+            flagId,
+            vote: status === 'FIXED' ? 1 : -1,
+            comment,
+          },
+        })
+      }
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              flagId: updated.id,
+              status: updated.status,
+              previousStatus: flag.status,
+              comment: comment ?? null,
+            }),
+          },
+        ],
+      }
+    }
+  )
 }

@@ -12,6 +12,10 @@ export const IMPACT_TAG_ORDER = [
   'SHARING',
   'SEO',
   'ACCESSIBILITY',
+  'CLARITY',
+  'AUTHORITY',
+  'FRICTION',
+  'EMOTION',
 ] as const
 
 export type ImpactTagName = (typeof IMPACT_TAG_ORDER)[number]

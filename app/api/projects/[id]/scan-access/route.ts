@@ -47,7 +47,7 @@ export async function GET(
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Agency plan', 402, {
+      return apiError('Preview scan access requires the Studio plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })
@@ -76,7 +76,7 @@ export async function PUT(
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Agency plan', 402, {
+      return apiError('Preview scan access requires the Studio plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })
@@ -119,7 +119,7 @@ export async function DELETE(
     if (access.kind === 'not_found') return apiError('Project not found', 404)
     if (access.kind === 'unauthorized') return apiError('Sign in required', 401)
     if (access.kind === 'upgrade_required') {
-      return apiError('Preview scan access requires the Agency plan', 402, {
+      return apiError('Preview scan access requires the Studio plan', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })

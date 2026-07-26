@@ -1,0 +1,69 @@
+name: Publish FixFlags CLI
+
+on:
+  push:
+    tags:
+      - 'fixflags-cli-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: fixflags-cli/package-lock.json
+      - run: npm ci
+        working-directory: fixflags-cli
+      - run: npm test
+        working-directory: fixflags-cli
+      - run: npm run package:check
+        working-directory: fixflags-cli
+      - name: Clean-install packed CLI
+        shell: bash
+        run: node scripts/verify-cli-package.mjs
+
+  publish:
+    name: Publish with provenance
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Install OIDC-capable npm
+        run: npm install --global npm@latest
+      - run: npm ci
+        working-directory: fixflags-cli
+      - name: Match tag to package version
+        shell: bash
+        run: |
+          EXPECTED="fixflags-cli-v$(node -p "require('./fixflags-cli/package.json').version")"
+          test "${GITHUB_REF_NAME}" = "${EXPECTED}"
+      - name: Publish beta
+        if: contains(github.ref_name, '-')
+        run: npm publish --tag beta --provenance --access public
+        working-directory: fixflags-cli
+      - name: Publish stable
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: npm publish --tag latest --provenance --access public
+        working-directory: fixflags-cli
+      - name: Verify registry availability
+        run: node scripts/verify-cli-registry.mjs --version "$(node -p "require('./fixflags-cli/package.json').version")"

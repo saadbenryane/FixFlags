@@ -12,6 +12,7 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional().or(z.literal('')),
+  NEXT_PUBLIC_STRIPE_BETA_GATING: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   NEXT_PUBLIC_GA_ID: z
     .string()
     .regex(/^G-[A-Z0-9]+$/, 'NEXT_PUBLIC_GA_ID must be a GA4 Measurement ID (e.g. G-XXXXXXXXXX)')
@@ -63,6 +64,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL: z.string().optional(),
   NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
   META_CAPI_TOKEN: z.string().optional(),
+  STRIPE_BETA_GATING: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>

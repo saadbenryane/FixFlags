@@ -1,13 +1,13 @@
 
 
 export const HERO = {
-  badge: 'The release readiness layer',
+  badge: 'AI product review',
   headline: 'Finish what your AI started.',
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: 'Finish what your AI started',
   headlineAccentPeriod: true,
   subhead:
-    'AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.',
+    'AI builds your product. FixFlags reviews the message, experience, and reach so you know what to fix before users find it.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review site',
   trySampleCta: 'See a sample review',
@@ -51,7 +51,7 @@ export const DIFFERENTIATION = {
     { feature: 'Writes fix prompts your agent runs', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
     { feature: 'Re-check after fixes', lighthouse: 'Manual', manual: 'Manual', fixflags: 'Built-in' },
     { feature: 'Before/after comparison', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Pro)' },
-    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Agency)' },
+    { feature: 'Public share links for clients', lighthouse: 'No', manual: 'No', fixflags: 'Yes (Studio)' },
     { feature: 'Runs inside supported builders', lighthouse: 'No', manual: 'No', fixflags: 'Yes' },
   ],
   comparisonRows: [
@@ -94,7 +94,7 @@ export const HOW_IT_WORKS_PAGE = {
     headline: 'AI can build products. It still can\u2019t tell you if they\u2019re ready.',
     headlineAccentPeriod: true,
     subhead:
-      'AI gets you 80%. FixFlags gets you to 100%. The final step between a draft and a release.',
+      'AI gets you close. FixFlags finds what it missed — the gaps between a draft and a release.',
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Set up MCP',
@@ -194,7 +194,7 @@ export const HOW_IT_WORKS_PAGE = {
       },
       {
         title: 'Re-check',
-        body: 'Run the same URL again, prove the fix landed, and ship with confidence.',
+        body: 'Run the same URL again, prove the fix landed, and ship when you are ready.',
       },
     ],
   },
@@ -233,11 +233,11 @@ export const LANDING_PAGE = {
   },
   checkDimensions: {
     label: 'Built to cover what matters',
-    headlineDisplay: 'Every dimension of release readiness',
+    headlineDisplay: 'Every dimension your product needs to pass',
     headlineAccentPeriod: true,
-    headline: 'Every dimension of release readiness.',
+    headline: 'Every dimension your product needs to pass.',
     subhead:
-      'FixFlags scans your product across message, experience, and reach so you can fix what counts and ship with confidence.',
+      'FixFlags checks your product across message, experience, and reach so you can fix what counts before users find it.',
     allChecksTab: 'All checks',
     topIssuesTitle: 'Top issues',
     viewAllIssues: 'View all issues',
@@ -420,18 +420,18 @@ export const LANDING_PAGE = {
       {
         id: 'recheck',
         title: 'Re-check with confidence',
-        body: 'Verify every fix and watch your score improve.',
+        body: 'Verify every fix and watch the status improve.',
         icon: 'refresh' as const,
       },
     ] as const,
   },
   howItWorks: {
     label: 'How it works',
-    headlineDisplay: 'Three steps to ship with confidence',
+    headlineDisplay: 'Three steps from check to fix to verified',
     headlineAccentPeriod: true,
-    headline: 'Three steps to ship with confidence.',
+    headline: 'Three steps from check to fix to verified.',
     subhead:
-      'FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish with confidence.',
+      'FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish when you are ready.',
     sampleLink: 'Explore a full report',
     steps: [
       {
@@ -444,16 +444,16 @@ export const LANDING_PAGE = {
       },
       {
         step: 2,
-        title: 'We run a complete audit',
-        body: 'We scan 150+ checks across Message, Experience, and Reach.',
+        title: 'We check the live product',
+        body: 'We check your product across Message, Experience, and Reach.',
         image: '/marketing/visuals/how-it-works-step-02.webp',
         imageWidth: 323,
         imageHeight: 309,
       },
       {
         step: 3,
-        title: 'Get fixes. Ship.',
-        body: 'Apply the fixes with our prompts, then re-check to confirm you\u2019re ready.',
+        title: 'Fix it. Check again.',
+        body: 'Apply the fixes with our prompts, then re-check to confirm you are ready.',
         image: '/marketing/visuals/how-it-works-step-03.webp',
         imageWidth: 286,
         imageHeight: 314,
@@ -506,11 +506,11 @@ export const LANDING_PAGE = {
   },
   whyBuildersChoose: {
     label: 'Why builders choose FixFlags',
-    headlineDisplay: 'More than a score. Everything you need to ship',
+    headlineDisplay: 'More than a score. Everything you need to finish',
     headlineAccentPeriod: true,
-    headline: 'More than a score. Everything you need to ship.',
+    headline: 'More than a score. Everything you need to finish.',
     subhead:
-      'FixFlags turns complex quality signals into clear guidance so you can ship product your users love.',
+      'FixFlags turns complex quality signals into clear guidance so you can finish the product your users need.',
     features: [
       {
         id: 'findings',
@@ -560,8 +560,8 @@ export const LANDING_PAGE = {
       ] as const,
       outputs: [
         { id: 'fixed', title: 'Issues fixed', icon: 'check' as const },
-        { id: 'score', title: 'Score improved', icon: 'trend' as const },
-        { id: 'ship', title: 'Ship with confidence', icon: 'diamond' as const },
+        { id: 'score', title: 'Status improved', icon: 'trend' as const },
+        { id: 'ship', title: 'Ready to publish', icon: 'diamond' as const },
       ] as const,
     },
   },
@@ -603,19 +603,6 @@ export const LANDING_PAGE = {
     ] as const,
     cta: 'See a sample review',
     ctaHref: '/#sample-review',
-  },
-  /** @deprecated Prefer reportExamples / sample explorer. Kept for AGENTS social-proof disclaimer invariant. */
-  testimonials: {
-    headline: 'What a review actually catches',
-    subhead: 'Real Flags from the product, not quote cards.',
-    disclaimer: 'Illustrative findings only. Not attributed customer testimonials.',
-    cardLabel: 'Example finding',
-    quotes: [] as ReadonlyArray<{
-      id: string
-      quote: string
-      role: string
-      context: string
-    }>,
   },
   sampleReport: {
     label: 'Sample report',
@@ -676,7 +663,7 @@ export const LANDING_PAGE = {
       sampleFinishPlan: 'Sample Finish Plan',
       share: 'Share report',
       recheck: 'Re-check',
-      releaseReadiness: 'Release readiness',
+      releaseReadiness: 'Release status',
       scoreDenom: '/100',
       highImpact: 'High impact issues',
       needsAttention: 'Needs attention',
@@ -695,7 +682,7 @@ export const LANDING_PAGE = {
   },
   footer: {
     tagline:
-      'The release readiness layer for AI-built products. We find what blocks your release so you can ship with confidence.',
+      'Independent product verification for AI-built products. We check what blocks the release so you can fix it.',
     madeWith: 'Built for people shipping with AI.',
     buildersTitle: 'Built for builders',
     buildersBody: 'FixFlags works where you build. Paste fixes into the editor you already use.',

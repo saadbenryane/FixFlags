@@ -19,6 +19,7 @@ interface Props {
   primaryHref?: string
   showCta?: boolean
   className?: string
+  userEmail?: string
 }
 
 export function ContextualUpgradeCard({
@@ -29,6 +30,7 @@ export function ContextualUpgradeCard({
   primaryHref,
   showCta = true,
   className,
+  userEmail,
 }: Props) {
   const content = getUpgradeMomentContent(moment, { scoreDelta })
   const signUpHref =
@@ -52,6 +54,8 @@ export function ContextualUpgradeCard({
               highlight
               isLoggedIn={isLoggedIn}
               currentPlan={currentPlan}
+              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === 'true'}
+              userEmail={userEmail}
             />
           </div>
         ))}

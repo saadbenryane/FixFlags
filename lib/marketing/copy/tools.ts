@@ -5,10 +5,10 @@ export const MCP_DOCS = {
   subhead:
     'Your agent can check and fix your site without you copy-pasting URLs. Connect FixFlags to your AI coding tool.',
   quickStart: [
-    'Generate an API key in Settings → API Keys (Pro plan)',
-    'Add the HTTP config in Cursor, Claude Code, Windsurf, Lovable, or Bolt',
-    'Run ff_check_and_plan: use the curl test below to verify your key',
-    'Optional: build the local CLI from fixflags-cli/ (`npm run build` then `node bin/fixflags.js`)',
+    'Choose the deployed product URL you want FixFlags to check',
+    'Install the verified CLI release and run fixflags login',
+    'Run fixflags init to connect MCP and install the FixFlags customer skill',
+    'Run fixflags check <url> --wait --plan, then Re-check the original report after deploying a fix',
   ],
   builderRequired: 'Requires Pro plan',
   expectationsTitle: 'What to expect',

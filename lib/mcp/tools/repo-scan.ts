@@ -18,7 +18,7 @@ export function registerRepoScanTools(server: McpServer, user: User) {
     async ({ repoFullName }) => {
       const freshUser = await assertMcpAccess(user)
       if (!canScanRepositories(freshUser)) {
-        throw new Error('Repository scanning requires the Agency plan')
+        throw new Error('Repository scanning requires the Studio plan')
       }
 
       try {
@@ -66,7 +66,7 @@ export function registerRepoScanTools(server: McpServer, user: User) {
     async ({ limit = 10, offset = 0, repoFullName }) => {
       const freshUser = await assertMcpAccess(user)
       if (!canScanRepositories(freshUser)) {
-        throw new Error('Repository scanning requires the Agency plan')
+        throw new Error('Repository scanning requires the Studio plan')
       }
 
       const where = {

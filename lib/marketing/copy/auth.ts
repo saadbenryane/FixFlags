@@ -111,8 +111,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro, with 25 monthly checks, compare, and MCP from day one',
-      TEAM: 'You\u2019re signing up for Agency, publish client-ready share links and organize across up to 5 projects',
+      BUILDER: 'You\u2019re signing up for Pro, with 5 monthly journeys, compare, and MCP from day one',
+      TEAM: 'You\u2019re signing up for Studio, publish client-ready share links and organize across up to 5 projects',
     },
     planSteps: [
       'Create your account',
@@ -254,11 +254,11 @@ export const AUTH = {
 
 export const SHARE_COPY = {
   privateTitle: 'Private report',
-  privateBody: 'This link only works for you while signed in. Upgrade to Agency for public share links anyone can open.',
+  privateBody: 'This link only works for you while signed in. Upgrade to Studio for public share links anyone can open.',
   privateLinkCta: 'Copy private link',
   privateLinkCopied: 'Private link copied',
   privateLinkCopiedDetail: 'This link only works for you while signed in.',
-  agencyCta: 'Agency',
+  agencyCta: 'Studio',
   access: {
     openingTitle: 'Opening shared report',
     openingBody: 'Checking that this link is still available.',

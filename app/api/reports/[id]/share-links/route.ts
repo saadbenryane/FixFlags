@@ -90,7 +90,7 @@ export async function POST(
         })
       : null
     if (!user || !canSharePublicly(user)) {
-      return apiError('Share links require the Agency plan.', 402, {
+      return apiError('Share links require the Studio plan.', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'upgrade',
       })

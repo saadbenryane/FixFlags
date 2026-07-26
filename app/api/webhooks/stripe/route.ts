@@ -285,6 +285,23 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          if (session.metadata?.type === 'one_time') {
+            const userId = session.metadata?.userId
+            if (userId) {
+              const plan = session.metadata?.plan as Plan | undefined
+              if (plan === 'BUILDER') {
+                await tx.user.update({
+                  where: { id: userId },
+                  data: {
+                    plan: 'BUILDER',
+                    auditsLimit: 1,
+                    auditsUsed: 0,
+                  },
+                })
+              }
+            }
+          }
+
           const userId = session.metadata?.userId
           if (userId && session.customer) {
             await tx.user.update({

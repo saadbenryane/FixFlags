@@ -46,7 +46,6 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
         const score = scoreByName.get(name) ?? null
         const Icon = RUBRIC_ICONS[name]
         const label = rubricLabel(name)
-        const scoreLabel = score == null ? 'N/A' : String(score)
         const pending = loading && (r?.flagCount ?? 0) === 0 && score == null
         const status = pending ? 'SCANNING' : r?.status
         const countLabel = !pending && r ? flagCountLabel(r) : null
@@ -68,14 +67,6 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
               />
             )}
             <span className="text-xs font-medium text-foreground">{label}</span>
-            {score != null && (
-              <span
-                className="font-mono text-xs font-bold tabular-nums"
-                style={{ color: scoreToScanColor(score) }}
-              >
-                {scoreLabel}
-              </span>
-            )}
             {status ? (
               <RubricStatusBadge
                 status={status}

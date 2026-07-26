@@ -12,7 +12,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'AI gets you 80%. FixFlags closes the gap to release ready: Flag, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
+      'FixFlags closes the AI gap to release ready: Check, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
   },
   samples: {
     title: 'Sample Report',

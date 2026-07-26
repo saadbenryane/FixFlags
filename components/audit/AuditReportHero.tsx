@@ -75,13 +75,13 @@ export function AuditReportHero({
     return (
       <div className="space-y-1">
         <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
+            {hostname ?? '…'}
+          </h1>
           <ScoreDot
             score={score}
             className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
           />
-          <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
-            {hostname ?? '…'}
-          </h1>
         </div>
         {url ? (
           <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
@@ -128,6 +128,13 @@ export function AuditReportHero({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
+                {hostname ? (
+                  <h1 className="text-lg font-semibold tracking-heading text-foreground">
+                    {hostname}
+                  </h1>
+                ) : (
+                  <Skeleton className="h-6 w-40" />
+                )}
                 <ScoreDot
                   score={score}
                   className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
@@ -139,13 +146,6 @@ export function AuditReportHero({
                         : 'Overall score unavailable'
                   }
                 />
-                {hostname ? (
-                  <h1 className="text-lg font-semibold tracking-heading text-foreground">
-                    {hostname}
-                  </h1>
-                ) : (
-                  <Skeleton className="h-6 w-40" />
-                )}
                 {badgeLabel ? (
                   <Badge
                     variant="secondary"

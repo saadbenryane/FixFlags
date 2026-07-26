@@ -41,7 +41,7 @@ export function PricingComparisonTable() {
               Pro
             </th>
             <th className="p-4 text-center font-medium" scope="col">
-              Agency
+              Studio
             </th>
           </tr>
         </thead>

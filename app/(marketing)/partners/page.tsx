@@ -36,7 +36,7 @@ export default function PartnersPage() {
             <a href={`mailto:${PARTNERS_COPY.email}`}>{PARTNERS_COPY.cta}</a>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/pricing">See Agency plans</Link>
+            <Link href="/pricing">See Studio plans</Link>
           </Button>
         </div>
       </div>

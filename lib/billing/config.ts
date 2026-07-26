@@ -3,9 +3,18 @@
  * Price IDs and secrets come from env; mode is implied by key prefix (sk_test_ vs sk_live_).
  */
 
+/**
+ * When true, paid checkout is replaced with a private beta email-capture gate.
+ * Set STRIPE_BETA_GATING=true until Stripe is out of test mode.
+ */
+export function isStripeBetaGated(): boolean {
+  return process.env.STRIPE_BETA_GATING === 'true'
+}
+
 export const STRIPE_PRICE_ENV_KEYS = [
   'STRIPE_BUILDER_PRICE_ID',
   'STRIPE_TEAM_PRICE_ID',
+  'STRIPE_FINISH_CHECK_PRICE_ID',
   'STRIPE_CREDIT_PACK_10_ID',
   'STRIPE_CREDIT_PACK_25_ID',
   'STRIPE_CREDIT_PACK_50_ID',

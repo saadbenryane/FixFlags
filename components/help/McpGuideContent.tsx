@@ -18,10 +18,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { Callout } from '@/components/ui/callout'
 import { BUILDERS, type ApiKeyClient } from '@/lib/mcp/builders'
+import { CliInstallCard } from '@/components/cli/CliInstallCard'
 
 const CONFIG_EDITORS = BUILDERS
   .filter((builder) => builder.supportsMcp && builder.apiKeyClient)
-  .map((builder) => builder.apiKeyClient as Exclude<ApiKeyClient, 'vscode' | 'other'>)
+  .map(
+    (builder) =>
+      builder.apiKeyClient as Exclude<ApiKeyClient, 'cli' | 'vscode' | 'other'>
+  )
 
 const MCP_SECURITY = [
   'Never commit API keys to git, add .env to .gitignore and use env vars or your editor secret store.',
@@ -51,20 +55,21 @@ export function McpGuideContent() {
         </div>
       </div>
 
+      <CliInstallCard />
+
       <Surface variant="elevated" className="space-y-5">
         <div className="flex flex-wrap items-center gap-2">
           <Heading as="h2" className="text-lg">
-            Quick start
+            MCP-only setup
           </Heading>
           <Badge variant="secondary" className="text-xs">
             {MCP_DOCS.builderRequired}
           </Badge>
         </div>
-        <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-          {MCP_DOCS.quickStart.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
+        <Body className="text-sm text-muted-foreground">
+          Use this path when your editor connects directly to remote MCP servers and you do
+          not want the CLI or customer skill.
+        </Body>
         <div className="space-y-2">
           <p className="text-xs font-medium">One-click install</p>
           <McpInstallButtons />

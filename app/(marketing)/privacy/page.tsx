@@ -30,7 +30,7 @@ export default function PrivacyPage() {
 
           <h2 className="text-base font-semibold text-foreground">Report access</h2>
           <p>
-            {OFFER.linkPrivacy} Agency plans can create public share links. Separate public pages for
+            {OFFER.linkPrivacy} Studio plans can create public share links. Separate public pages for
             sites are for discovery; they are not your private audit.
           </p>
 

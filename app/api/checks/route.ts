@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         select: { id: true, role: true, plan: true, subscriptionStatus: true },
       })
       if (!scanAccessUser || !canUseEphemeralScanAccess(scanAccessUser)) {
-        return apiError('Preview scan access requires the Agency plan', 402, {
+        return apiError('Preview scan access requires the Studio plan', 402, {
           code: 'UPGRADE_REQUIRED',
           action: 'view_pricing',
         })

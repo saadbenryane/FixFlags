@@ -76,12 +76,12 @@ export const FAQ = [
   },
   {
     question: 'Are my reports public?',
-    answer: `${OFFER.linkPrivacy} Agency plans can create public share links. Separate public pages for sites are for discovery; they are not your private audit.`,
+    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Separate public pages for sites are for discovery; they are not your private audit.`,
   },
   {
     question: 'Does it work on staging/password-protected sites?',
     answer:
-      'Yes for preview URLs you can reach over HTTPS (ngrok, Vercel preview, Cloudflare tunnel). On Agency projects, save HTTP basic auth or a session cookie under Projects → Preview access. Localhost and private networks are still not supported.',
+      'Yes for preview URLs you can reach over HTTPS (ngrok, Vercel preview, Cloudflare tunnel). On Studio projects, save HTTP basic auth or a session cookie under Projects → Preview access. Localhost and private networks are still not supported.',
   },
   {
     question: 'We already have a live site. Is this only for pre-launch?',

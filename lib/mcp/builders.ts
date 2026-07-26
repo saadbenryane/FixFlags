@@ -10,6 +10,7 @@ export const PROMPT_TOOL_KEYS = [
 export type PromptToolKey = (typeof PROMPT_TOOL_KEYS)[number]
 
 export const API_KEY_CLIENTS = [
+  'cli',
   'cursor',
   'claudeCode',
   'windsurf',

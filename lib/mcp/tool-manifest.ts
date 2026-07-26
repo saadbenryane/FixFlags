@@ -7,7 +7,7 @@
 export const MCP_TOOLS = {
   checkAndPlan: {
     name: 'ff_check_and_plan',
-    desc: 'Check a URL and return the report plus every ranked fix.',
+    desc: 'Check a deployed URL and return its canonical ranked Fix List. Validate the highest-ranked Flag against its evidence before changing product code.',
   },
   getCheckStatus: {
     name: 'ff_get_check_status',
@@ -43,7 +43,7 @@ export const MCP_TOOLS = {
   },
   recheckAndCompare: {
     name: 'ff_recheck_and_compare',
-    desc: 'Run a fresh re-check and return its diff plus the next complete Fix List.',
+    desc: 'After testing and deploying a product fix, run a fresh Re-check from the original report and return Fixed, Remaining, New, and Regressed Flags plus the next Fix List.',
   },
   compare: {
     name: 'ff_compare',
@@ -72,6 +72,10 @@ export const MCP_TOOLS = {
   getRepoFinding: {
     name: 'ff_get_repo_finding',
     desc: 'Get a branch-ready fix task for one repository finding.',
+  },
+  markFixAttempted: {
+    name: 'ff_mark_fix_attempted',
+    desc: 'Mark a Flag as fixed or ignored with an optional comment.',
   },
 } as const
 

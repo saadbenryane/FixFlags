@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PRICING } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
@@ -16,14 +17,41 @@ interface Props {
   highlight?: boolean
   isLoggedIn: boolean
   currentPlan: string
+  betaGated?: boolean
+  userEmail?: string
 }
 
-export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn, currentPlan }: Props) {
+export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn, currentPlan, betaGated, userEmail }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [betaState, setBetaState] = useState<'idle' | 'submitting' | 'done'>('idle')
+  const [betaEmail, setBetaEmail] = useState(userEmail ?? '')
 
   const isCurrent = isLoggedIn && currentPlan === plan
   const isPaidPlan = plan !== 'FREE'
+
+  async function handleBetaSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!betaEmail) return
+    setBetaState('submitting')
+    try {
+      const res = await fetch('/api/stripe/beta-interest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: betaEmail, plan, name: '' }),
+      })
+      if (res.ok) {
+        setBetaState('done')
+        trackEvent('beta_interest_submitted', { plan, email: betaEmail })
+      } else {
+        toast.error('Could not submit. Try again.')
+        setBetaState('idle')
+      }
+    } catch {
+      toast.error('Could not submit. Try again.')
+      setBetaState('idle')
+    }
+  }
 
   async function handleClick() {
     if (plan !== 'FREE') {
@@ -49,8 +77,13 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
       })
       const data = (await res.json().catch(() => ({}))) as {
         url?: string
+        code?: string
         error?: string
         message?: string
+      }
+      if (data.code === 'PRIVATE_BETA') {
+        setBetaState('idle')
+        return
       }
       if (data.url && (res.ok || res.status === 409)) {
         if (res.status === 409) {
@@ -88,6 +121,48 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
     }
   }
 
+  if (betaState === 'done') {
+    return (
+      <div className="space-y-2 text-center">
+        <div className="flex items-center justify-center gap-2 text-sm text-foreground">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          You&apos;re on the list.
+        </div>
+        <p className="text-3xs text-muted-foreground">
+          We&apos;ll reach out when {plan === 'TEAM' ? 'Studio' : 'Pro'} is ready.
+        </p>
+      </div>
+    )
+  }
+
+  if (betaState !== 'idle') {
+    return (
+      <form onSubmit={handleBetaSubmit} className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder="you@example.com"
+            value={betaEmail}
+            onChange={(e) => setBetaEmail(e.target.value)}
+            required
+            disabled={betaState === 'submitting'}
+            className="flex-1"
+          />
+          <Button type="submit" disabled={betaState === 'submitting' || !betaEmail}>
+            {betaState === 'submitting' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Join beta'
+            )}
+          </Button>
+        </div>
+        <p className="text-3xs text-center text-muted-foreground">
+          Paid features are in private beta. Enter your email to get an invitation.
+        </p>
+      </form>
+    )
+  }
+
   return (
     <div className="space-y-2">
       <Button
@@ -101,14 +176,20 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
           ? 'Redirecting to checkout…'
           : isCurrent
             ? 'Current plan'
-            : cta}
+            : betaGated && isPaidPlan
+              ? 'Join private beta'
+              : cta}
       </Button>
       {isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
-          {isLoggedIn ? PRICING.upgradeStepsLoggedIn : PRICING.upgradeSteps}
+          {betaGated
+            ? 'Paid features are in private beta. Request an invitation above.'
+            : isLoggedIn
+              ? PRICING.upgradeStepsLoggedIn
+              : PRICING.upgradeSteps}
         </p>
       )}
-      {isPaidPlan && !isLoggedIn && (
+      {isPaidPlan && !isLoggedIn && !betaGated && (
         <p className="text-3xs text-center text-muted-foreground">
           <Link href={signUpHref} className="underline hover:text-foreground">
             Sign up first

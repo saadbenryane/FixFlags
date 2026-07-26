@@ -11,9 +11,11 @@ enum Plan {
   FREE
   BUILDER
   TEAM
+  STUDIO
 }
 
 enum ApiKeyClient {
+  cli
   cursor
   claudeCode
   windsurf
@@ -21,6 +23,13 @@ enum ApiKeyClient {
   bolt
   vscode
   other
+}
+
+enum CliDeviceAuthorizationStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CONSUMED
 }
 
 enum CreditPurchaseStatus {
@@ -249,6 +258,7 @@ model User {
   projects                Project[]
   audits                  Audit[]
   apiKeys                 ApiKey[]
+  cliDeviceAuthorizations CliDeviceAuthorization[]
   sessions                Session[]
   accounts                Account[]
   passkeys                Passkey[]
@@ -498,10 +508,33 @@ model ApiKey {
   revokedAt       DateTime?
   createdAt       DateTime         @default(now())
   mcpInteractions McpInteraction[]
+  cliDeviceAuthorizations CliDeviceAuthorization[]
 
   @@index([userId])
   @@index([client])
   @@map("api_keys")
+}
+
+model CliDeviceAuthorization {
+  id                  String                       @id @default(cuid())
+  deviceCodeHash      String                       @unique
+  userCodeHash        String                       @unique
+  status              CliDeviceAuthorizationStatus @default(PENDING)
+  intervalSeconds     Int                          @default(5)
+  encryptedCredential String?                      @db.Text
+  userId              String?
+  user                User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeyId            String?
+  apiKey              ApiKey?                      @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  lastPolledAt        DateTime?
+  expiresAt           DateTime
+  approvedAt          DateTime?
+  consumedAt          DateTime?
+  createdAt           DateTime                     @default(now())
+
+  @@index([status, expiresAt])
+  @@index([userId, createdAt])
+  @@map("cli_device_authorizations")
 }
 
 model Project {

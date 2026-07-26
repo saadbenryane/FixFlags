@@ -18,7 +18,7 @@ describe('MCP public tool manifest', () => {
     registerAllTools(server, user)
 
     const expected = MCP_TOOL_DEFINITIONS.map((tool) => tool.name)
-    expect(registered).toHaveLength(17)
+    expect(registered).toHaveLength(18)
     expect(new Set(registered).size).toBe(registered.length)
     expect([...registered].sort()).toEqual([...expected].sort())
   })

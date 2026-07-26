@@ -3,46 +3,33 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 import {
   checkAndPlan,
   recheckAndDiff,
   type FinishPlan,
   type McpCaller,
 } from './workflows.js'
-
-const CONFIG_PATH = join(homedir(), '.fixflags')
-const API_BASE = (process.env.FIXFLAGS_API_URL || 'https://fixflags.com').replace(/\/$/, '')
+import {
+  API_BASE,
+  hasConfiguredCredential,
+  removeCredential,
+  requireApiKey,
+} from './credentials.js'
+import {
+  fetchIdentity,
+  loginWithBrowser,
+  loginWithToken,
+  revokeCredential,
+} from './auth.js'
+import { EDITORS, initializeFixFlags, type Editor } from './init.js'
+import { runMcpBridge } from './mcp-bridge.js'
 const PROMPT_PREVIEW_LENGTH = 700
-
-interface Config {
-  apiKey?: string
-}
-
-function loadConfig(): Config {
-  if (!existsSync(CONFIG_PATH)) return {}
-  try {
-    return JSON.parse(readFileSync(CONFIG_PATH, 'utf-8')) as Config
-  } catch {
-    return {}
-  }
-}
-
-function saveConfig(config: Config): void {
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 })
-}
-
-function requireApiKey(): string {
-  const apiKey = process.env.FIXFLAGS_API_KEY || loadConfig().apiKey
-  if (!apiKey) {
-    throw new Error(
-      'Not authenticated. Set FIXFLAGS_API_KEY or run: fixflags auth --api-key <key>'
-    )
-  }
-  return apiKey
-}
+const CLI_VERSION = (
+  JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+  ) as { version: string }
+).version
 
 let rpcId = 1
 
@@ -117,7 +104,7 @@ function printPlan(
 function fail(error: unknown, json = false): void {
   const message = (error as Error).message
   const recovery = message.includes('authenticated')
-    ? 'Set FIXFLAGS_API_KEY or run: fixflags auth --api-key <key>'
+    ? 'Run fixflags login, or set FIXFLAGS_API_KEY for CI.'
     : 'Check the command input and retry. Run fixflags --help if needed.'
   if (json) {
     console.error(JSON.stringify({ error: { code: 'FIXFLAGS_ERROR', message, recovery } }))
@@ -133,10 +120,10 @@ const program = new Command()
 program
   .name('fixflags')
   .description('Finish and verify AI-built products')
-  .version('0.2.0-beta.1')
+  .version(CLI_VERSION)
   .option('--json', 'Print structured JSON')
   .action((options: { json?: boolean }) => {
-    const authenticated = Boolean(process.env.FIXFLAGS_API_KEY || loadConfig().apiKey)
+    const authenticated = hasConfiguredCredential()
     const payload = {
       schemaVersion: 1,
       service: 'FixFlags',
@@ -145,7 +132,7 @@ program
       workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
       next: authenticated
         ? ['fixflags check <url>', 'fixflags --help']
-        : ['fixflags auth --api-key <key>', 'Create a key at https://fixflags.com/settings/api-keys'],
+        : ['fixflags login', 'fixflags init'],
     }
     if (options.json) console.log(JSON.stringify(payload, null, 2))
     else {
@@ -160,18 +147,152 @@ program
   })
 
 program
-  .command('auth')
-  .description('Save a FixFlags API key locally')
-  .option('--api-key <key>', 'API key from fixflags.com/settings/api-keys')
-  .action((options: { apiKey?: string }) => {
-    const apiKey = options.apiKey || process.env.FIXFLAGS_API_KEY
-    if (!apiKey) {
-      console.log('Create an API key at https://fixflags.com/settings/api-keys')
-      console.log('Then run: fixflags auth --api-key <your-key>')
-      return
+  .command('login')
+  .description('Connect the CLI to your FixFlags account')
+  .option('--with-token', 'Read an existing API key from a hidden prompt or standard input')
+  .option(
+    '--insecure-storage',
+    'Explicitly store the credential in a mode-0600 config file instead of the OS credential store'
+  )
+  .action(
+    async (options: { withToken?: boolean; insecureStorage?: boolean }) => {
+      try {
+        if (process.env.FIXFLAGS_API_KEY) {
+          const identity = await fetchIdentity(process.env.FIXFLAGS_API_KEY)
+          console.log(
+            chalk.green(`Authenticated as ${identity.user.email} through FIXFLAGS_API_KEY.`)
+          )
+          return
+        }
+        const identity = options.withToken
+          ? await loginWithToken(options)
+          : await loginWithBrowser(options)
+        console.log(chalk.green(`Authenticated as ${identity.user.email}.`))
+        if (options.insecureStorage) {
+          console.log(
+            chalk.yellow(
+              'Credential stored in the local config because --insecure-storage was explicitly selected.'
+            )
+          )
+        }
+      } catch (error) {
+        fail(error)
+      }
     }
-    saveConfig({ apiKey })
-    console.log(chalk.green('Authenticated with FixFlags.'))
+  )
+
+program
+  .command('whoami')
+  .description('Show the account used by the CLI')
+  .option('--json', 'Print structured JSON')
+  .action(async (options: { json?: boolean }) => {
+    const json = Boolean(options.json || program.opts().json)
+    try {
+      const identity = await fetchIdentity(requireApiKey())
+      if (json) console.log(JSON.stringify(identity, null, 2))
+      else {
+        console.log(identity.user.email)
+        console.log(`Plan: ${identity.user.plan}`)
+        console.log(`API: ${API_BASE}`)
+      }
+    } catch (error) {
+      fail(error, json)
+    }
+  })
+
+program
+  .command('logout')
+  .description('Revoke the CLI credential and remove it from this computer')
+  .option('--local-only', 'Remove the local credential without revoking it')
+  .action(async (options: { localOnly?: boolean }) => {
+    try {
+      if (process.env.FIXFLAGS_API_KEY) {
+        throw new Error(
+          'FIXFLAGS_API_KEY is set. Remove it from the environment to log out.'
+        )
+      }
+      const apiKey = requireApiKey()
+      if (!options.localOnly) await revokeCredential(apiKey)
+      removeCredential()
+      console.log(
+        chalk.green(
+          options.localOnly
+            ? 'Local CLI credential removed.'
+            : 'CLI credential revoked and removed.'
+        )
+      )
+    } catch (error) {
+      fail(error)
+    }
+  })
+
+program
+  .command('init [url]')
+  .description('Connect FixFlags to this project and install its customer skill')
+  .option(
+    '--editor <editor>',
+    `Editor to configure (${[...EDITORS, 'all'].join(', ')})`
+  )
+  .option('--scope <scope>', 'Install for this project or this user', 'project')
+  .option('--dry-run', 'Show the files that would change without writing them')
+  .option('--yes', 'Accept detected settings without prompting')
+  .action(
+    async (
+      url: string | undefined,
+      options: {
+        editor?: string
+        scope?: string
+        dryRun?: boolean
+        yes?: boolean
+      }
+    ) => {
+      try {
+        if (
+          options.editor &&
+          options.editor !== 'all' &&
+          !EDITORS.includes(options.editor as Editor)
+        ) {
+          throw new Error(`--editor must be one of ${[...EDITORS, 'all'].join(', ')}`)
+        }
+        if (options.scope !== 'project' && options.scope !== 'user') {
+          throw new Error('--scope must be project or user')
+        }
+        const result = await initializeFixFlags({
+          editor: options.editor as Editor | 'all' | undefined,
+          scope: options.scope,
+          productUrl: url,
+          dryRun: options.dryRun,
+        })
+        console.log(
+          result.dryRun
+            ? 'FixFlags init preview:'
+            : chalk.green('FixFlags connected to this project.')
+        )
+        for (const file of result.files) console.log(`  ${file}`)
+        console.log(`Skill: ${result.skillUrl}`)
+        if (!process.env.FIXFLAGS_API_KEY) {
+          console.log(
+            chalk.gray(
+              'MCP uses the CLI credential store through fixflags mcp; no secret was written to the project.'
+            )
+          )
+        }
+      } catch (error) {
+        fail(error)
+      }
+    }
+  )
+
+program
+  .command('mcp')
+  .description('Run the secure local bridge used by editor MCP configurations')
+  .action(async () => {
+    try {
+      await runMcpBridge()
+    } catch (error) {
+      console.error((error as Error).message)
+      process.exitCode = 1
+    }
   })
 
 function parseScanAccessFromCli(options: {

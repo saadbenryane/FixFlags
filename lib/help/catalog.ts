@@ -177,7 +177,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'public-urls-only',
     categoryId: 'checks-and-reports',
     title: 'Public URLs only',
-    excerpt: 'Public HTTPS URLs work everywhere. Agency projects can scan password-protected preview deploys.',
+    excerpt: 'Public HTTPS URLs work everywhere. Studio projects can scan password-protected preview deploys.',
     searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private', 'preview', 'basic auth'],
     body: [
       {
@@ -190,7 +190,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'On Agency, open a Project and configure preview scan access (HTTP basic auth or cookies) when a deploy is behind a password.',
+        text: 'On Studio, open a Project and configure preview scan access (HTTP basic auth or cookies) when a deploy is behind a password.',
       },
     ],
     related: ['why-check-failed', 'first-check'],
@@ -209,7 +209,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       {
         type: 'ol',
         items: [
-          'Create a FixFlags API key from Settings → API keys (Pro or Agency).',
+          'Create a FixFlags API key from Settings → API keys (Pro or Studio).',
           'Optional: set RAILWAY_WEBHOOK_SECRET on your FixFlags deployment and append webhookSecret to the webhook URL.',
           'In Railway → Project → Settings → Webhooks, point a successful-deploy event to your FixFlags host with apiKey and url query parameters.',
           'Use your service public HTTPS domain for url. Railway webhooks do not always include the public URL in the payload.',
@@ -244,7 +244,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'free-vs-pro',
     categoryId: 'billing-and-plans',
     title: 'Free vs Pro',
-    excerpt: 'What you get on Free, Pro, and Agency.',
+    excerpt: 'What you get on Free, Pro, and Studio.',
     popular: true,
     searchTokens: ['pricing', 'upgrade', 'agency', 'plan'],
     body: [
@@ -258,7 +258,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Agency ($99/mo): 100 new URL checks per month, share links for client reports, and everything in Pro.',
+        text: 'Studio ($129/mo): 25 new URL checks per month, share links for client reports, and everything in Pro.',
       },
       {
         type: 'p',
@@ -415,7 +415,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'API keys are available on Pro and Agency. Create them in Settings → API Keys. Keys are stored hashed on the server; we cannot recover a lost key. Rotate and create a new one if needed.',
+        text: 'API keys are available on Pro and Studio. Create them in Settings → API Keys. Keys are stored hashed on the server; we cannot recover a lost key. Rotate and create a new one if needed.',
       },
       {
         type: 'ul',
@@ -454,7 +454,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'report-privacy',
     categoryId: 'account',
     title: 'Report privacy',
-    excerpt: 'Owned reports are private. Agency can create share links.',
+    excerpt: 'Owned reports are private. Studio can create share links.',
     searchTokens: ['private', 'share', 'public', 'anonymous'],
     body: [
       {
@@ -463,7 +463,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Agency plans can create revocable client share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
+        text: 'Studio plans can create revocable client share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
       },
     ],
     related: ['free-vs-pro', 'sign-in-and-security'],

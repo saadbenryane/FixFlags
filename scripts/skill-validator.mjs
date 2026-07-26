@@ -6,6 +6,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const SKILLS_ROOT = '.cursor/skills'
+const CUSTOMER_SKILLS_ROOT = 'public/.well-known/skills'
 const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const MAX_SKILL_LINES = 180
 const STALE = [
@@ -40,14 +41,23 @@ function frontmatter(source) {
 
 export function validateSkills(root = process.cwd()) {
   const skillsRoot = path.join(root, SKILLS_ROOT)
+  const customerSkillsRoot = path.join(root, CUSTOMER_SKILLS_ROOT)
   const errors = []
-  const directories = readdirSync(skillsRoot).filter((entry) => {
-    const directory = path.join(skillsRoot, entry)
-    return statSync(directory).isDirectory() && existsSync(path.join(directory, 'SKILL.md'))
-  })
+  if (!existsSync(path.join(customerSkillsRoot, 'fixflags', 'SKILL.md'))) {
+    errors.push(`${CUSTOMER_SKILLS_ROOT}/fixflags/SKILL.md: canonical customer skill is missing`)
+  }
+  const roots = [skillsRoot, customerSkillsRoot].filter(existsSync)
+  const directories = roots.flatMap((currentRoot) =>
+    readdirSync(currentRoot)
+      .filter((entry) => {
+        const directory = path.join(currentRoot, entry)
+        return statSync(directory).isDirectory() && existsSync(path.join(directory, 'SKILL.md'))
+      })
+      .map((entry) => ({ currentRoot, name: entry }))
+  )
 
-  for (const name of directories) {
-    const directory = path.join(skillsRoot, name)
+  for (const { currentRoot, name } of directories) {
+    const directory = path.join(currentRoot, name)
     const skillFile = path.join(directory, 'SKILL.md')
     const source = readFileSync(skillFile, 'utf8')
     const meta = frontmatter(source)
@@ -60,7 +70,7 @@ export function validateSkills(root = process.cwd()) {
     }
   }
 
-  for (const file of markdownFiles(skillsRoot)) {
+  for (const file of roots.flatMap((currentRoot) => markdownFiles(currentRoot))) {
     const source = readFileSync(file, 'utf8')
     for (const match of source.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
       const target = match[1].split('#')[0]
@@ -69,6 +79,22 @@ export function validateSkills(root = process.cwd()) {
       if (!existsSync(absolute)) errors.push(`${path.relative(root, file)}: broken link ${match[1]}`)
       if (target.includes('references/') && target.split('/').filter(Boolean).length > 2) {
         errors.push(`${path.relative(root, file)}: reference depth exceeds one level (${target})`)
+      }
+    }
+  }
+
+  const customerSkillFile = path.join(customerSkillsRoot, 'fixflags', 'SKILL.md')
+  if (existsSync(customerSkillFile)) {
+    const customerSkill = readFileSync(customerSkillFile, 'utf8')
+    for (const required of [
+      /fixflags check/,
+      /ff_check_and_plan/,
+      /fixflags recheck/,
+      /ff_recheck_and_compare/,
+      /Fixed, Remaining, New, and Regressed/,
+    ]) {
+      if (!required.test(customerSkill)) {
+        errors.push(`${path.relative(root, customerSkillFile)}: missing customer workflow contract ${required}`)
       }
     }
   }

@@ -8,7 +8,7 @@ const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
 const pack = JSON.parse(raw)[0]
 const files = pack.files.map((entry) => entry.path)
 
-for (const required of ['bin/fixflags.js', 'dist/index.js', 'dist/workflows.js', 'README.md', 'LICENSE', 'package.json']) {
+for (const required of ['bin/fixflags.js', 'dist/index.js', 'dist/workflows.js', 'dist/auth.js', 'dist/credentials.js', 'dist/init.js', 'dist/mcp-bridge.js', 'README.md', 'LICENSE', 'package.json']) {
   assert(files.includes(required), `Package is missing ${required}`)
 }
 assert(!files.some((file) => file.includes('node_modules/')), 'Package contains node_modules')

@@ -61,6 +61,6 @@ export function buildMcpTestCurl(baseUrl: string = SITE_URL): string {
   const url = getMcpEndpoint(baseUrl)
   return `curl -s -X POST "${url}" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer $FF_API_KEY" \\
+  -H "Authorization: Bearer $FIXFLAGS_API_KEY" \\
   -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"fixflags-curl","version":"1.0.0"}},"id":1}'`
 }

@@ -28,7 +28,7 @@
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
 
-- **Distribution harden** — Roast, badge API, CLI entitlements/docs; do not market npm global until publishable.
+- **Distribution harden** — Claim the initial `fixflags` npm package with operator 2FA, configure its trusted publisher, run the protected provenance release, then complete published-package CLI and MCP dogfood.
 
 - **Residual hardening** — API route contract tests beyond critical path; auth/session coverage; Touch-tier matrix.
   *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).

@@ -129,7 +129,7 @@ export function ShareDrawer({
         toast.error(content.headline, {
           description: content.body,
           action: {
-            label: 'See Agency',
+            label: 'See Studio',
             onClick: () => router.push('/pricing'),
           },
         })

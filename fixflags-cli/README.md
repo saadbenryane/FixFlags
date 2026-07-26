@@ -4,24 +4,29 @@ Product Intelligence for AI-built products. A thin, task-shaped client over the 
 
 ## Status
 
-The supported beta is built and published from `fixflags-cli/` as `fixflags@beta`.
-
-```bash
-# Before the first registry release, from this directory
-npm install
-npm run build
-node bin/fixflags.js check https://your-app.com
-```
+Version `0.2.0-beta.1` is release-ready. The website only presents it as
+installable after that exact version is verified on npm. Publishing is performed
+from a protected version tag through npm trusted publishing with provenance.
 
 ## Setup
 
 ```bash
-fixflags auth --api-key <your-key>
-# Create a key at https://fixflags.com/settings/api-keys (Pro or Agency)
+npm install --global fixflags@beta
+fixflags login
+fixflags init https://your-app.com
 ```
 
-For CI, set `FIXFLAGS_API_KEY` instead of writing a local config file. Set
-`FIXFLAGS_API_URL` to target a non-production API. The default is `https://fixflags.com`.
+Browser login stores the credential in the operating-system credential store.
+Use `fixflags login --with-token` to paste a manually created key through a
+hidden prompt or standard input. Plaintext storage is never selected silently.
+For CI, set `FIXFLAGS_API_KEY`; it has the highest precedence. Set
+`FIXFLAGS_API_URL` only when targeting a non-production API.
+
+`fixflags init` merges FixFlags-managed editor configuration without replacing
+existing settings. Codex, Claude, and Cursor run `fixflags mcp` as a local
+bridge, so the editor uses the same credential store without putting a secret in
+the repository. Use `--dry-run`, `--editor`, `--scope`, and `--yes` for review
+or automation.
 
 ## Usage
 
@@ -50,6 +55,10 @@ fixflags recheck <reportId> --json
 
 # Inspect a running check
 fixflags status <reportId>
+
+# Inspect or disconnect the active account
+fixflags whoami
+fixflags logout
 ```
 
 `check` waits by default, returns every unresolved fix, and exits non-zero when

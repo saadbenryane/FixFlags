@@ -83,14 +83,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     if (body.data.interval && !canAccessProductWatch(user)) {
-      return apiError('Product watch requires Pro or Agency', 402, {
+      return apiError('Product watch requires Pro or Studio', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })
     }
 
     if (body.data.interval === 'daily' && user.plan !== 'TEAM' && user.role !== 'admin') {
-      return apiError('Daily watch requires Agency', 402, {
+      return apiError('Daily watch requires Studio', 402, {
         code: 'UPGRADE_REQUIRED',
         action: 'view_pricing',
       })

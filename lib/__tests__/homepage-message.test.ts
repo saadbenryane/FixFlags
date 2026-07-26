@@ -82,7 +82,7 @@ const ABOVE_FOLD_COPY = [
 
 describe('homepage message guardrails', () => {
   it('hero headline names the finish-the-loop moment after AI builds', () => {
-    assert.match(HERO.badge, /release readiness/i)
+    assert.match(HERO.badge, /product review/i)
     assert.match(HERO.headlineDisplay, /finish what your ai started/i)
     assert.equal(HERO.headline, `${HERO.headlineDisplay}.`)
     assert.equal(HERO.headlineAccentPeriod, true)
@@ -98,7 +98,7 @@ describe('homepage message guardrails', () => {
     assert.match(HERO.subhead, /message/i)
     assert.match(HERO.subhead, /experience/i)
     assert.match(HERO.subhead, /reach/i)
-    assert.match(HERO.subhead, /ship with confidence/i)
+    assert.match(HERO.subhead, /fix/i)
     assert.ok(HERO.subhead.split(/\s+/).length <= 40)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
   })
@@ -187,7 +187,7 @@ describe('homepage message guardrails', () => {
       PLAN_DEFINITIONS.BUILDER.features.some((feature) => /before\/after/i.test(feature))
     )
     assert.ok(
-      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /25 new URL checks/i.test(feature))
+      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /journeys/i.test(feature))
     )
     assert.doesNotMatch(PLAN_DEFINITIONS.BUILDER.features.join(' '), /unlimited re-check/i)
     for (const line of PRICING_STRINGS) {
@@ -239,10 +239,9 @@ describe('homepage message guardrails', () => {
   it('how it works steps match glass mockup titles and keep product-true rubrics', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Start your audit', 'We run a complete audit', 'Get fixes. Ship.']
+      ['Start your audit', 'We check the live product', 'Fix it. Check again.']
     )
     const scan = LANDING_PAGE.howItWorks.steps[1]!
-    assert.match(scan.body, /150\+ checks/i)
     assert.match(scan.body, /Message, Experience, and Reach/i)
     assert.doesNotMatch(scan.body, /performance, accessibility, SEO/i)
     for (const step of LANDING_PAGE.howItWorks.steps) {
@@ -266,9 +265,7 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('empty testimonials invariant holds without inventing quotes', () => {
-    assert.match(LANDING_PAGE.testimonials.disclaimer, /not attributed/i)
-    assert.equal(LANDING_PAGE.testimonials.quotes.length, 0)
+  it('product evidence holds real product findings', () => {
     assert.equal(LANDING_PAGE.productEvidence.items.length, 3)
   })
 
@@ -314,7 +311,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /release readiness/i)
+    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /your product needs/i)
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']

@@ -31,8 +31,8 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
       })
 
       if (res.status === 402) {
-        toast.error('Share links require the Agency plan', {
-          action: { label: 'See Agency', onClick: () => router.push('/pricing') },
+        toast.error('Share links require the Studio plan', {
+          action: { label: 'See Studio', onClick: () => router.push('/pricing') },
         })
         return
       }

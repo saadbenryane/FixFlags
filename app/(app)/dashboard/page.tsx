@@ -135,7 +135,13 @@ export default async function DashboardPage({
               {planLabel(user.plan)}
             </Badge>
           )}
-          {isEffectivelyFree && !isUnlimited && <UpgradeButton context="free_default" />}
+          {isEffectivelyFree && !isUnlimited && (
+            <UpgradeButton
+              context="free_default"
+              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === 'true'}
+              userEmail={user.email ?? undefined}
+            />
+          )}
         </div>
       </div>
 
@@ -160,7 +166,7 @@ export default async function DashboardPage({
       </Surface>
 
       {atAuditLimit && (
-        <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" />
+        <ContextualUpgradeCard moment="audit_limit_reached" isLoggedIn currentPlan="FREE" userEmail={user.email ?? undefined} />
       )}
 
       {/* Usage + MCP summary row: defer MCP upsell until the user has a check */}

@@ -97,7 +97,7 @@ export function registerTaskTools(
       const freshUser = await assertMcpAccess(user)
       const normalizedUrl = (await assertPublicAuditUrl(url)).toString()
       if (scanAccess && !canUseEphemeralScanAccess(freshUser)) {
-        throw new Error('Preview scan access requires the Agency plan')
+        throw new Error('Preview scan access requires the Studio plan')
       }
       const resolvedScanAccess = scanAccess ? parseScanAccessInput(scanAccess) : null
       const [userLimit, hostLimit, workerEstimate] = await Promise.all([

@@ -45,6 +45,7 @@ type FunnelEvent =
   | 'managed_subscription'
   | 'share_link_created'
   | 'marketing_page_view'
+  | 'beta_interest_submitted'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -133,6 +134,7 @@ type EventParams = {
     utm_campaign?: string
     device?: string
   }
+  beta_interest_submitted: { plan?: string; email?: string }
 }
 
 function deviceClass(): string | undefined {

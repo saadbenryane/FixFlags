@@ -95,6 +95,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
               moment="compare_flat"
               isLoggedIn
               currentPlan={user.plan}
+              userEmail={user.email ?? undefined}
             />
             <Button asChild variant="outline">
               <Link href={`/report/${id}`}>Back to report</Link>

@@ -24,6 +24,28 @@ function runCli(args, apiUrl) {
   })
 }
 
+function runMcpBridge(request, apiUrl) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['bin/fixflags.js', 'mcp'], {
+      cwd: new URL('..', import.meta.url),
+      env: {
+        ...process.env,
+        FIXFLAGS_API_KEY: 'ff_live_test',
+        FIXFLAGS_API_URL: apiUrl,
+        NO_COLOR: '1',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => { stdout += chunk })
+    child.stderr.on('data', (chunk) => { stderr += chunk })
+    child.on('error', reject)
+    child.on('close', (code) => resolve({ code, stdout, stderr }))
+    child.stdin.end(`${JSON.stringify(request)}\n`)
+  })
+}
+
 test('built CLI completes check and recheck task-shaped workflows', async (t) => {
   const tools = []
   const server = createServer((request, response) => {
@@ -135,4 +157,45 @@ test('built CLI returns structured errors in JSON mode', async () => {
   assert.equal(payload.error.code, 'FIXFLAGS_ERROR')
   assert.ok(payload.error.message)
   assert.ok(payload.error.recovery)
+})
+
+test('local MCP bridge uses CLI authentication without writing a project secret', async (t) => {
+  const server = createServer((request, response) => {
+    assert.equal(request.headers.authorization, 'Bearer ff_live_test')
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', () => {
+      const rpc = JSON.parse(body)
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: rpc.id,
+        result: {
+          protocolVersion: '2025-03-26',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'fixflags', version: '0.2.0-beta.1' },
+        },
+      }))
+    })
+  })
+  await new Promise((resolveListen) => server.listen(0, '127.0.0.1', resolveListen))
+  t.after(() => server.close())
+  const address = server.address()
+  const result = await runMcpBridge(
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-03-26',
+        capabilities: {},
+        clientInfo: { name: 'test', version: '1' },
+      },
+    },
+    `http://127.0.0.1:${address.port}`
+  )
+  assert.equal(result.code, 0, result.stderr)
+  const response = JSON.parse(result.stdout)
+  assert.equal(response.result.serverInfo.name, 'fixflags')
+  assert.doesNotMatch(result.stdout + result.stderr, /ff_live_test/)
 })

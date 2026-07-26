@@ -272,7 +272,7 @@ export async function sumEstimatedCostByPlan(since: Date): Promise<Record<Plan, 
     where: { createdAt: { gte: since } },
     _sum: { estimatedCostUsd: true },
   })
-  if (costs.length === 0) return { FREE: 0, BUILDER: 0, TEAM: 0 }
+  if (costs.length === 0) return { FREE: 0, BUILDER: 0, TEAM: 0, STUDIO: 0 }
 
   const auditIds = costs.map((c) => c.auditId)
   const audits = await prisma.audit.findMany({
@@ -297,13 +297,14 @@ export async function sumEstimatedCostByPlan(since: Date): Promise<Record<Plan, 
     if (!plan) continue
     planMap[plan] = (planMap[plan] ?? 0) + (cost._sum.estimatedCostUsd?.toNumber() ?? 0)
   }
-  return { FREE: planMap['FREE'] ?? 0, BUILDER: planMap['BUILDER'] ?? 0, TEAM: planMap['TEAM'] ?? 0 }
+  return { FREE: planMap['FREE'] ?? 0, BUILDER: planMap['BUILDER'] ?? 0, TEAM: planMap['TEAM'] ?? 0, STUDIO: planMap['STUDIO'] ?? 0 }
 }
 
 const PLAN_MONTHLY_PRICE: Record<Plan, number> = {
   FREE: 0,
-  BUILDER: 29,
-  TEAM: 99,
+  BUILDER: 39,
+  TEAM: 129,
+  STUDIO: 0,
 }
 
 export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subscriptions: number; creditPacks: number; total: number }>> {
@@ -341,6 +342,7 @@ export async function sumRevenueByPlan(since: Date): Promise<Record<Plan, { subs
     FREE: { ...zero },
     BUILDER: { ...zero },
     TEAM: { ...zero },
+    STUDIO: { ...zero },
   } as Record<Plan, { subscriptions: number; creditPacks: number; total: number }>
 
   for (const plan of Object.keys(subRevenue) as Plan[]) {

@@ -97,17 +97,21 @@ See [MCP docs](/docs/mcp) for full tool reference.
 
 ### Agent CLI
 
-The in-repo `fixflags-cli/` package turns the common agent workflow into two
-task-shaped commands over the same MCP endpoint:
+The `fixflags` package turns the common customer workflow into task-shaped
+commands over the same MCP endpoint:
 
 ```bash
+npm install --global fixflags@beta
+fixflags login
+fixflags init https://your-app.com
 fixflags check https://your-app.com --wait --plan
 fixflags recheck <reportId> --wait --diff
 ```
 
-`check` returns the current three-item Finish Plan. `recheck` performs a fresh
-capture and returns the verification diff plus the next Finish Plan. See
-[`fixflags-cli/README.md`](fixflags-cli/README.md) for local setup and JSON output.
+The install command is only shown in the product after the exact version is
+available from npm. `check` returns the canonical Fix List. `recheck` performs a
+fresh capture and returns Fixed, Remaining, New, and Regressed Flags. See
+[`fixflags-cli/README.md`](fixflags-cli/README.md) for authentication and JSON output.
 
 **OAuth sign-in:** Set both `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (and/or GitHub equivalents) in `.env.local`. Sign-in and sign-up pages show Google/GitHub buttons automatically.
 
