@@ -1,0 +1,4 @@
+interface:
+  display_name: "FixFlags npm operations"
+  short_description: "Release and maintain the FixFlags CLI"
+  default_prompt: "Use $fixflags-npm-operations to inspect, update, or release the FixFlags npm package safely."
