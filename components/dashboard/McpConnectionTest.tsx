@@ -73,15 +73,14 @@ export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props
         variant="outline"
         size="sm"
         onClick={runTest}
-        disabled={state === 'testing'}
+        loading={state === 'testing'}
+        loadingLabel="Testing…"
         className="gap-1.5"
       >
-        {state === 'testing' ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
+        {state !== 'testing' && (
           <Zap className="h-3.5 w-3.5" />
         )}
-        {state === 'testing' ? 'Testing...' : 'Test Connection'}
+        Test connection
       </Button>
 
       {state === 'success' && (

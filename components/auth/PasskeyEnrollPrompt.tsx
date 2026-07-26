@@ -41,10 +41,13 @@ export function PasskeyEnrollPrompt({ onComplete }: Props) {
           <p className="text-sm text-muted-foreground">{AUTH.passkeyEnroll.body}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button onClick={() => void handleCreate()} disabled={busy} className="min-h-11">
-            {busy ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
+          <Button
+            onClick={() => void handleCreate()}
+            loading={busy}
+            loadingLabel={AUTH.passkeyEnroll.cta}
+            className="min-h-11"
+          >
+            {!busy && (
               <Fingerprint className="mr-2 h-4 w-4" />
             )}
             {AUTH.passkeyEnroll.cta}

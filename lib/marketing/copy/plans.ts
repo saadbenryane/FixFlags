@@ -147,6 +147,25 @@ export const PRICING = {
     "Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.",
 } as const;
 
+export const BILLING_ACTION_COPY = {
+  checkout: {
+    redirecting: 'Redirecting to checkout…',
+    unavailableTitle: 'Checkout is not configured yet.',
+    unavailableBody: 'Manage billing from your dashboard or try again later.',
+    failed: 'Could not start checkout. Try again.',
+    missingDestination: 'Checkout did not return a destination.',
+    existingTitle: 'You already have a subscription',
+    existingBody: 'Opening the billing portal to change plans.',
+  },
+  beta: {
+    submit: 'Join beta',
+    submitting: 'Joining…',
+    failed: 'Could not join the beta. Try again.',
+    success: "You're on the list.",
+    description: 'Paid features are in private beta. Enter your email to get an invitation.',
+  },
+} as const;
+
 export const UPSELLS = {
   anon: {
     headline: "Save this report and run more checks",

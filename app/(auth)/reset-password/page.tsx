@@ -3,7 +3,6 @@
 import { Suspense, useState } from 'react'
 import { TextLink } from '@/components/ui/text-link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormContainer } from '@/components/ui/form-field'
 import { toast } from 'sonner'
@@ -83,8 +82,7 @@ function ResetPasswordForm() {
           error={confirmError}
           autoComplete="new-password"
         />
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full" loading={loading} loadingLabel={AUTH.resetPassword.cta}>
           {AUTH.resetPassword.cta}
         </Button>
       </FormContainer>

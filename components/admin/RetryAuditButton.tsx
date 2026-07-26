@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { SYSTEM_COPY } from '@/lib/marketing/copy'
 
 export function RetryAuditButton({ auditId }: { auditId: string }) {
   const router = useRouter()
@@ -22,15 +22,20 @@ export function RetryAuditButton({ auditId }: { auditId: string }) {
       toast.success('Audit re-queued')
       router.refresh()
     } catch {
-      toast.error('Something went wrong')
+      toast.error(SYSTEM_COPY.errors.retryAudit)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Button variant="outline" size="xs" onClick={handleClick} disabled={loading}>
-      {loading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+    <Button
+      variant="outline"
+      size="xs"
+      onClick={handleClick}
+      loading={loading}
+      loadingLabel="Retrying…"
+    >
       Retry
     </Button>
   )

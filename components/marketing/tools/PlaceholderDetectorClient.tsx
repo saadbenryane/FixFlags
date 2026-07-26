@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Heading } from '@/components/ui/typography'
-import { TOOLS } from '@/lib/marketing/copy'
+import { SYSTEM_COPY, TOOLS } from '@/lib/marketing/copy'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { ToolUrlForm } from '@/components/marketing/tools/ToolUrlForm'
@@ -66,7 +66,7 @@ export function PlaceholderDetectorClient() {
       setMatches(data.matches)
       setSearched(true)
     } catch {
-      setError('Something went wrong. Try again.')
+      setError(SYSTEM_COPY.errors.genericRetry)
     } finally {
       setLoading(false)
     }

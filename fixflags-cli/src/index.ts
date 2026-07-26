@@ -39,7 +39,7 @@ function createMcpCaller(apiKey: string): McpCaller {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        Accept: 'application/json, text/event-stream',
         'x-api-key': apiKey,
       },
       body: JSON.stringify({

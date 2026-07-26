@@ -179,8 +179,13 @@ function SignInForm() {
             </Link>
           </span>
         </div>
-        <Button type="submit" className="w-full" disabled={loading !== null}>
-          {loading === 'email' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loading !== null}
+          loading={loading === 'email'}
+          loadingLabel={AUTH.signIn.cta}
+        >
           {AUTH.signIn.cta}
         </Button>
         <p className="text-center">

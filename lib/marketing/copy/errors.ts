@@ -35,6 +35,59 @@ export const AUDIT_ERRORS = {
   pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
 } as const
 
+export const SYSTEM_COPY = {
+  actions: {
+    retry: 'Try again',
+    home: 'Home',
+    goHome: 'Go home',
+    dashboard: 'Dashboard',
+    billing: 'Billing',
+  },
+  errors: {
+    genericRetry: 'Something went wrong. Try again.',
+    criticalTitle: 'Something went wrong',
+    criticalBody: 'A critical error occurred. Try again or refresh the page.',
+    billingPortal: 'Could not open billing. Try again.',
+    retryAudit: 'Could not retry the audit. Try again.',
+    root: {
+      title: 'This page could not be loaded',
+      body: 'Your data was not changed. Try again or return to the dashboard.',
+    },
+    marketing: {
+      title: 'This page could not be loaded',
+      body: 'Try again or return to the homepage.',
+    },
+    app: {
+      title: 'Something went wrong',
+      body: 'Your data was not changed. Try again or return to the dashboard.',
+    },
+    admin: {
+      title: 'Something went wrong',
+      body: 'Try again or return to the admin dashboard.',
+    },
+    auth: {
+      title: 'Could not load this account page',
+      body: 'Try again or return to the homepage.',
+    },
+    report: {
+      title: 'Could not load report',
+      body: 'Try again or return to the dashboard.',
+    },
+    repoReport: {
+      title: 'Could not load repo report',
+      body: 'Try again or return to the dashboard.',
+    },
+    comparison: {
+      title: 'Could not load comparison',
+      body: 'Try again or return to the dashboard.',
+    },
+    billing: {
+      title: 'Billing unavailable',
+      body: 'Could not load billing information. Try again or return to the dashboard.',
+    },
+  },
+} as const
+
 export const AUDIT_PROGRESS = {
   inProgress: 'Scanning your site...',
   submitLoading: 'Scanning…',

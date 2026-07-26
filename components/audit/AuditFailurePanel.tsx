@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
-import { RefreshCw, Loader2 } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { helpHrefForFailureCode } from '@/lib/help/contextual'
@@ -27,12 +27,13 @@ export function AuditFailurePanel({
       <p>{displayMessage}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {onRetry && (
-          <Button variant="default" onClick={onRetry} disabled={retryLoading}>
-            {retryLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
+          <Button
+            variant="default"
+            onClick={onRetry}
+            loading={retryLoading}
+            loadingLabel={AUDIT_ERRORS.retryCta}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
             {AUDIT_ERRORS.retryCta}
           </Button>
         )}

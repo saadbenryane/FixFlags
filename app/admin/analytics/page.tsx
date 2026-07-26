@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { StatValue } from '@/components/admin/StatValue'
+import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { subscriptionMetrics } from '@/lib/analytics/subscription-metrics'
@@ -151,42 +152,32 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Anonymous wedge (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser starts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{anonAuditsMonth.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Anon teaser completes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{anonCompletedMonth.toLocaleString()}</StatValue>
-              <span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Signed-in audit starts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{loggedInAuditsMonth.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Unlinked leads (domains)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{anonUnlinkedLeads.toLocaleString()}</StatValue>
+          <MetricCard
+            label="Anon teaser starts"
+            value={anonAuditsMonth.toLocaleString()}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Anon teaser completes"
+            value={anonCompletedMonth.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Signed-in audit starts"
+            value={loggedInAuditsMonth.toLocaleString()}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Unlinked leads (domains)"
+            value={anonUnlinkedLeads.toLocaleString()}
+            action={
               <Link href="/admin/leads" className="text-xs text-brand underline">
                 Open leads &rarr;
               </Link>
-            </CardContent>
-          </Card>
+            }
+            variant="subtle"
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Anon teaser = audits with no user at create time. Claim conversion is tracked in GA4 via{' '}
@@ -207,14 +198,12 @@ export default async function AdminAnalyticsPage() {
             { label: 'Accounts with a completed audit', value: usersWithCompletedAudits },
             { label: 'Paid accounts', value: paidUsers },
           ].map((item) => (
-            <Card key={item.label} variant="subtle">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">{item.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatValue>{item.value.toLocaleString()}</StatValue>
-              </CardContent>
-            </Card>
+            <MetricCard
+              key={item.label}
+              label={item.label}
+              value={item.value.toLocaleString()}
+              variant="subtle"
+            />
           ))}
         </div>
       </section>
@@ -222,40 +211,24 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Revenue (current)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">MRR</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>${mrr.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Active paying customers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{paidUserCount.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">New + expansion MRR (30d)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>${(newMrr + expansionMrr).toLocaleString()}</StatValue>
-              <span className="text-xs text-muted-foreground">${newMrr} new · ${expansionMrr} expansion</span>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Churn (30d)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{churnRate === null ? 'N/A' : `${churnRate.toFixed(1)}%`}</StatValue>
-              <span className="text-xs text-muted-foreground">{churnedUsers} accounts · ${churnedMrr} MRR</span>
-            </CardContent>
-          </Card>
+          <MetricCard label="MRR" value={`$${mrr.toLocaleString()}`} variant="subtle" />
+          <MetricCard
+            label="Active paying customers"
+            value={paidUserCount.toLocaleString()}
+            variant="subtle"
+          />
+          <MetricCard
+            label="New + expansion MRR (30d)"
+            value={`$${(newMrr + expansionMrr).toLocaleString()}`}
+            detail={<span className="text-xs text-muted-foreground">${newMrr} new · ${expansionMrr} expansion</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Churn (30d)"
+            value={churnRate === null ? 'N/A' : `${churnRate.toFixed(1)}%`}
+            detail={<span className="text-xs text-muted-foreground">{churnedUsers} accounts · ${churnedMrr} MRR</span>}
+            variant="subtle"
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Revenue transitions come from idempotent Stripe lifecycle events. Churn remains N/A until a
@@ -297,25 +270,17 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>Product (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Avg audit duration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>
-                {avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`}
-              </StatValue>
-              <span className="text-xs text-muted-foreground">Target: under 30s</span>
-            </CardContent>
-          </Card>
-          <Card variant="subtle">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Completed audits</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{completedAuditsMonth.length.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
+          <MetricCard
+            label="Avg audit duration"
+            value={avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`}
+            detail={<span className="text-xs text-muted-foreground">Target: under 30s</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Completed audits"
+            value={completedAuditsMonth.length.toLocaleString()}
+            variant="subtle"
+          />
         </div>
       </section>
 
@@ -338,27 +303,27 @@ export default async function AdminAnalyticsPage() {
       <section className="space-y-4">
         <SectionTitle>GA4 events tracked</SectionTitle>
         <div className="rounded-card bg-muted/30 p-4 text-sm text-muted-foreground space-y-1">
-          <p><code className="text-foreground font-mono text-xs">landing_view</code> &mdash; Homepage viewed</p>
-          <p><code className="text-foreground font-mono text-xs">started_audit</code> &mdash; User submitted a URL (scan_submitted)</p>
-          <p><code className="text-foreground font-mono text-xs">scan_validation_failed</code> &mdash; Client URL validation failed</p>
+          <p><code className="text-foreground font-mono text-xs">landing_view</code>: Homepage viewed</p>
+          <p><code className="text-foreground font-mono text-xs">started_audit</code>: User submitted a URL (scan_submitted)</p>
+          <p><code className="text-foreground font-mono text-xs">scan_validation_failed</code>: Client URL validation failed</p>
           <p><code className="text-foreground font-mono text-xs">signup_started</code>: Email focus or OAuth click on sign-up</p>
-          <p><code className="text-foreground font-mono text-xs">signed_up</code> &mdash; Account created</p>
-          <p><code className="text-foreground font-mono text-xs">signed_in</code> &mdash; User signed in</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_pricing</code> &mdash; Pricing page viewed</p>
-          <p><code className="text-foreground font-mono text-xs">started_checkout</code> &mdash; Upgrade button clicked</p>
-          <p><code className="text-foreground font-mono text-xs">completed_checkout</code> &mdash; Stripe checkout succeeded</p>
-          <p><code className="text-foreground font-mono text-xs">audit_completed</code> &mdash; Audit finished processing</p>
-          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code> &mdash; Top flag shown in explorer</p>
-          <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code> &mdash; Free tier limit hit</p>
-          <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code> &mdash; Fix prompt copied to clipboard</p>
-          <p><code className="text-foreground font-mono text-xs">recheck_started</code> &mdash; Owner started a re-check</p>
+          <p><code className="text-foreground font-mono text-xs">signed_up</code>: Account created</p>
+          <p><code className="text-foreground font-mono text-xs">signed_in</code>: User signed in</p>
+          <p><code className="text-foreground font-mono text-xs">viewed_pricing</code>: Pricing page viewed</p>
+          <p><code className="text-foreground font-mono text-xs">started_checkout</code>: Upgrade button clicked</p>
+          <p><code className="text-foreground font-mono text-xs">completed_checkout</code>: Stripe checkout succeeded</p>
+          <p><code className="text-foreground font-mono text-xs">audit_completed</code>: Audit finished processing</p>
+          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code>: Top flag shown in explorer</p>
+          <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code>: Free tier limit hit</p>
+          <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code>: Fix prompt copied to clipboard</p>
+          <p><code className="text-foreground font-mono text-xs">recheck_started</code>: Owner started a re-check</p>
           <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Re-check result viewed (compare page or report diff strip)</p>
           <p><code className="text-foreground font-mono text-xs">audit_intent</code>: Landing URL field focused (hero/final CTA)</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_report</code> &mdash; Completed report viewed</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_sample</code> &mdash; Sample report section viewed</p>
-          <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code> &mdash; Sample CTA clicked</p>
-          <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code> &mdash; Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
-          <p><code className="text-foreground font-mono text-xs">audits_claimed</code> &mdash; Anonymous audits claimed after signup</p>
+          <p><code className="text-foreground font-mono text-xs">viewed_report</code>: Completed report viewed</p>
+          <p><code className="text-foreground font-mono text-xs">viewed_sample</code>: Sample report section viewed</p>
+          <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code>: Sample CTA clicked</p>
+          <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code>: Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
+          <p><code className="text-foreground font-mono text-xs">audits_claimed</code>: Anonymous audits claimed after signup</p>
         </div>
       </section>
     </Container>

@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Loader2 } from 'lucide-react'
+import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -86,11 +86,11 @@ function TwoFactorForm() {
           type="button"
           className="w-full"
           disabled={loading !== null}
+          loading={loading === 'passkey'}
+          loadingLabel={AUTH.twoFactor.passkeyCta}
           onClick={() => void verifyPasskey()}
         >
-          {loading === 'passkey' ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
+          {loading !== 'passkey' && (
             <Fingerprint className="mr-2 h-4 w-4" />
           )}
           {AUTH.twoFactor.passkeyCta}
@@ -129,8 +129,14 @@ function TwoFactorForm() {
             />
             {AUTH.twoFactor.trustDevice}
           </label>
-          <Button type="submit" variant="outline" className="w-full" disabled={loading !== null}>
-            {loading === 'backup' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button
+            type="submit"
+            variant="outline"
+            className="w-full"
+            disabled={loading !== null}
+            loading={loading === 'backup'}
+            loadingLabel={AUTH.twoFactor.backupCta}
+          >
             {AUTH.twoFactor.backupCta}
           </Button>
         </FormContainer>

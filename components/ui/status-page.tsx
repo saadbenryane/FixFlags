@@ -18,12 +18,21 @@ interface Props {
   description: string
   actions?: Action[]
   className?: string
+  children?: React.ReactNode
+  containerVariant?: 'default' | 'narrow' | 'report' | 'content' | 'wide' | 'marketing'
 }
 
-export function StatusPage({ title, description, actions = [], className }: Props) {
+export function StatusPage({
+  title,
+  description,
+  actions = [],
+  className,
+  children,
+  containerVariant = 'report',
+}: Props) {
   return (
     <Container
-      variant="report"
+      variant={containerVariant}
       className={`flex flex-col items-center justify-center space-y-4 py-24 text-center ${className ?? ''}`}
     >
       <Heading as="h1">{title}</Heading>
@@ -43,6 +52,7 @@ export function StatusPage({ title, description, actions = [], className }: Prop
           ))}
         </div>
       )}
+      {children}
     </Container>
   )
 }

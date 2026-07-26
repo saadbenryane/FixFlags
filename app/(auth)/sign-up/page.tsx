@@ -4,7 +4,7 @@ import { useState, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TextLink } from '@/components/ui/text-link'
-import { Mail, Loader2 } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -151,8 +151,7 @@ function SignUpForm() {
           </Link>
           .
         </p>
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Button type="submit" className="w-full" loading={loading} loadingLabel={AUTH.signUp.cta}>
           {AUTH.signUp.cta}
         </Button>
         <p className="text-center">

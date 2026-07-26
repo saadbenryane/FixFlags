@@ -264,10 +264,14 @@ export function PasskeyTwoFactorSettings({
               aria-label={sec.passkeyNameLabel}
               disabled={busy !== null}
             />
-            <Button type="button" onClick={() => void addPasskey()} disabled={busy !== null}>
-              {busy === 'add' ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
+            <Button
+              type="button"
+              onClick={() => void addPasskey()}
+              disabled={busy !== null}
+              loading={busy === 'add'}
+              loadingLabel={sec.addPasskey}
+            >
+              {busy !== 'add' && (
                 <Fingerprint className="mr-2 h-4 w-4" />
               )}
               {sec.addPasskey}
@@ -308,11 +312,10 @@ export function PasskeyTwoFactorSettings({
               type="submit"
               variant={enabled ? 'outline' : 'default'}
               disabled={busy !== null || (!enabled && passkeys.length < 1)}
+              loading={busy === 'enable' || busy === 'disable'}
+              loadingLabel={enabled ? sec.disableCta : sec.enableCta}
             >
-              {(busy === 'enable' || busy === 'disable') && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              <KeyRound className="mr-2 h-4 w-4" />
+              {busy !== 'enable' && busy !== 'disable' && <KeyRound className="mr-2 h-4 w-4" />}
               {enabled ? sec.disableCta : sec.enableCta}
             </Button>
             {enabled && (
@@ -321,8 +324,9 @@ export function PasskeyTwoFactorSettings({
                 variant="outline"
                 disabled={busy !== null}
                 onClick={() => void regenerateBackupCodes()}
+                loading={busy === 'backup'}
+                loadingLabel={sec.regenerateBackupCodes}
               >
-                {busy === 'backup' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {sec.regenerateBackupCodes}
               </Button>
             )}

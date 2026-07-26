@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
@@ -52,10 +51,10 @@ export function CreditPackButton({ packId, label, price, popular }: Props) {
     <Button
       variant={popular ? 'default' : 'outline'}
       onClick={handlePurchase}
-      disabled={loading}
+      loading={loading}
+      loadingLabel="Opening checkout…"
       className="w-full"
     >
-      {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
       {label} - {price}
     </Button>
   )

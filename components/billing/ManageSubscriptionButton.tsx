@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
+import { SYSTEM_COPY } from '@/lib/marketing/copy'
 
 export function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false)
@@ -26,15 +26,19 @@ export function ManageSubscriptionButton() {
         toast.error('The billing portal did not return a destination.')
       }
     } catch {
-      toast.error('Something went wrong')
+      toast.error(SYSTEM_COPY.errors.billingPortal)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Button variant="outline" onClick={handleClick} disabled={loading}>
-      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+    <Button
+      variant="outline"
+      onClick={handleClick}
+      loading={loading}
+      loadingLabel="Opening billing…"
+    >
       Manage subscription
     </Button>
   )

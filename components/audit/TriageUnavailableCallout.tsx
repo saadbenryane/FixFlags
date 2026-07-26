@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { Callout } from '@/components/ui/callout'
 import { Button } from '@/components/ui/button'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { toast } from 'sonner'
@@ -42,7 +42,7 @@ export function TriageUnavailableCallout({
       }
       router.refresh()
     } catch {
-      toast.error('Something went wrong. Please try again.')
+      toast.error(SYSTEM_COPY.errors.genericRetry)
     } finally {
       setRetryLoading(false)
     }

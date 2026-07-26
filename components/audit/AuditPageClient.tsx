@@ -15,7 +15,7 @@ import {
   ReportPollErrorStatus,
 } from '@/components/ui/status-page'
 import { toast } from 'sonner'
-import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
@@ -229,7 +229,7 @@ export function AuditPageClient({ id, initialAudit, pollStatus = true, session }
       }
       router.refresh()
     } catch {
-      toast.error('Something went wrong. Please try again.')
+      toast.error(SYSTEM_COPY.errors.genericRetry)
     } finally {
       setRetryLoading(false)
     }

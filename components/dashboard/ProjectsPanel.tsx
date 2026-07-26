@@ -197,8 +197,12 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
               {formError}
             </p>
           )}
-          <Button type="submit" size="sm" disabled={creating}>
-            {creating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          <Button
+            type="submit"
+            size="sm"
+            loading={creating}
+            loadingLabel="Creating project…"
+          >
             Create project
           </Button>
           </Surface>

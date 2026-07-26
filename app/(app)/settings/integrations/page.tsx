@@ -332,10 +332,10 @@ function IntegrationsPageContent() {
                       variant="outline"
                       onClick={() => startScan(repo)}
                       disabled={scanning !== null}
+                      loading={scanning === repo}
+                      loadingLabel="Scanning…"
                     >
-                      {scanning === repo ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
+                      {scanning !== repo && (
                         <ScanSearch className="mr-2 h-4 w-4" />
                       )}
                       Scan

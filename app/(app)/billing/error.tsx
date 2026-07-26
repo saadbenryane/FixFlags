@@ -1,12 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Container } from '@/components/ui/container'
-import { Heading, Muted } from '@/components/ui/typography'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import { HelpSupportActions } from '@/components/help/HelpSupportActions'
+import { RouteErrorPage } from '@/components/ui/route-error-page'
+import { SYSTEM_COPY } from '@/lib/marketing/copy'
 
 export default function BillingError({
   error,
@@ -15,33 +12,17 @@ export default function BillingError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  useEffect(() => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'ui.billing.error',
-        digest: error.digest,
-        message: error.message,
-      })
-    )
-  }, [error.message, error.digest])
-
   return (
-    <Container
-      variant="narrow"
-      className="flex flex-1 flex-col items-center justify-center py-24 text-center"
+    <RouteErrorPage
+      error={error}
+      reset={reset}
+      event="ui.billing.error"
+      title={SYSTEM_COPY.errors.billing.title}
+      description={SYSTEM_COPY.errors.billing.body}
+      returnHref="/dashboard"
+      returnLabel={SYSTEM_COPY.actions.dashboard}
     >
-      <Heading as="h1">Billing unavailable</Heading>
-      <Muted className="mt-2 max-w-md">
-        Could not load billing information. Try again or return to the dashboard.
-      </Muted>
-      <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Button onClick={reset}>Try again</Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard">Dashboard</Link>
-        </Button>
-        <HelpSupportActions helpHref={helpHrefForSurface('billing_error')} />
-      </div>
-    </Container>
+      <HelpSupportActions helpHref={helpHrefForSurface('billing_error')} />
+    </RouteErrorPage>
   )
 }

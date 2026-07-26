@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { TextLink } from '@/components/ui/text-link'
-import { Mail, Loader2, ArrowLeft } from 'lucide-react'
+import { Mail, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -66,8 +66,7 @@ export default function ForgotPasswordPage() {
             placeholder={AUTH.forgotPassword.emailPlaceholder}
             required
           />
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full" loading={loading} loadingLabel={AUTH.forgotPassword.cta}>
             {AUTH.forgotPassword.cta}
           </Button>
         </FormContainer>

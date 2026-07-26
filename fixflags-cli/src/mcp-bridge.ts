@@ -38,7 +38,7 @@ export async function runMcpBridge(): Promise<void> {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          Accept: 'application/json',
+          Accept: 'application/json, text/event-stream',
         },
         body: line,
       })

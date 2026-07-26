@@ -49,6 +49,8 @@ function runMcpBridge(request, apiUrl) {
 test('built CLI completes check and recheck task-shaped workflows', async (t) => {
   const tools = []
   const server = createServer((request, response) => {
+    assert.match(request.headers.accept ?? '', /application\/json/)
+    assert.match(request.headers.accept ?? '', /text\/event-stream/)
     let body = ''
     request.on('data', (chunk) => { body += chunk })
     request.on('end', () => {
@@ -162,6 +164,8 @@ test('built CLI returns structured errors in JSON mode', async () => {
 test('local MCP bridge uses CLI authentication without writing a project secret', async (t) => {
   const server = createServer((request, response) => {
     assert.equal(request.headers.authorization, 'Bearer ff_live_test')
+    assert.match(request.headers.accept ?? '', /application\/json/)
+    assert.match(request.headers.accept ?? '', /text\/event-stream/)
     let body = ''
     request.on('data', (chunk) => { body += chunk })
     request.on('end', () => {

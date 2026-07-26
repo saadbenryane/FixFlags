@@ -127,8 +127,13 @@ export function AuditPageActions({
       />
       {!toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
       {showRecheck && (
-        <Button size="sm" onClick={handleRecheck} disabled={recheckLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${recheckLoading ? 'animate-spin' : ''}`} />
+        <Button
+          size="sm"
+          onClick={handleRecheck}
+          loading={recheckLoading}
+          loadingLabel={REPORT_COPY.recheck.label}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
           {REPORT_COPY.recheck.label}
         </Button>
       )}

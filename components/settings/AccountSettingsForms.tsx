@@ -10,6 +10,7 @@ import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { Field } from '@/components/ui/form-field'
 
 export function AccountSettingsForms({
   initialName,
@@ -133,18 +134,19 @@ export function AccountSettingsForms({
       <Card className="border-0 p-5 shadow-card">
       <form onSubmit={saveProfile} className="space-y-4">
         <h2 className="text-base font-semibold">{ac.profileTitle}</h2>
-        <div className="space-y-2">
-          <label htmlFor="account-name" className="text-sm font-medium">{ac.nameLabel}</label>
-          <Input
-            id="account-name"
-            name="name"
-            autoComplete="name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-        <Button type="submit" disabled={busy !== null}>
-          {busy === 'profile' ? ac.saving : ac.saveCta}
+        <Field id="account-name" label={ac.nameLabel}>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              name="name"
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          )}
+        </Field>
+        <Button type="submit" disabled={busy !== null} loading={busy === 'profile'} loadingLabel={ac.saving}>
+          {ac.saveCta}
         </Button>
       </form>
       </Card>
@@ -157,24 +159,37 @@ export function AccountSettingsForms({
             {emailVerified ? ac.verified : ac.notVerified}
           </p>
         </div>
-        <div className="space-y-2">
-          <label htmlFor="account-email" className="text-sm font-medium">{ac.emailLabel}</label>
-          <Input
-            id="account-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={newEmail}
-            onChange={(event) => setNewEmail(event.target.value)}
-          />
-        </div>
+        <Field id="account-email" label={ac.emailLabel}>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
+            />
+          )}
+        </Field>
         <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={busy !== null || newEmail === email}>
-            {busy === 'email' ? ac.changeEmailSending : ac.changeEmailCta}
+          <Button
+            type="submit"
+            disabled={busy !== null || newEmail === email}
+            loading={busy === 'email'}
+            loadingLabel={ac.changeEmailSending}
+          >
+            {ac.changeEmailCta}
           </Button>
           {!emailVerified && (
-            <Button type="button" variant="outline" onClick={sendVerification} disabled={busy !== null}>
-              {busy === 'verify' ? ac.verifySending : ac.verifyCta}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={sendVerification}
+              disabled={busy !== null}
+              loading={busy === 'verify'}
+              loadingLabel={ac.verifySending}
+            >
+              {ac.verifyCta}
             </Button>
           )}
         </div>
@@ -184,33 +199,40 @@ export function AccountSettingsForms({
       <Card className="border-0 p-5 shadow-card">
       <form onSubmit={changePassword} className="space-y-4">
         <h2 className="text-base font-semibold">{ac.passwordTitle}</h2>
-        <div className="space-y-2">
-          <label htmlFor="current-password" className="text-sm font-medium">{ac.currentPasswordLabel}</label>
-          <Input
-            id="current-password"
-            name="currentPassword"
-            type="password"
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="new-password" className="text-sm font-medium">{ac.newPasswordLabel}</label>
-          <Input
-            id="new-password"
-            name="newPassword"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-            required
-          />
-        </div>
-        <Button type="submit" disabled={busy !== null}>
-          {busy === 'password' ? ac.changePasswordChanging : ac.changePasswordCta}
+        <Field id="current-password" label={ac.currentPasswordLabel} required>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              name="currentPassword"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              required
+            />
+          )}
+        </Field>
+        <Field id="new-password" label={ac.newPasswordLabel} required>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              name="newPassword"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              required
+            />
+          )}
+        </Field>
+        <Button
+          type="submit"
+          disabled={busy !== null}
+          loading={busy === 'password'}
+          loadingLabel={ac.changePasswordChanging}
+        >
+          {ac.changePasswordCta}
         </Button>
       </form>
       </Card>
@@ -223,18 +245,25 @@ export function AccountSettingsForms({
             {ac.deleteDescription}
           </p>
         </div>
-        <div className="space-y-2">
-          <label htmlFor="delete-password" className="text-sm font-medium">{ac.deletePasswordLabel}</label>
-          <Input
-            id="delete-password"
-            type="password"
-            autoComplete="current-password"
-            value={deletePassword}
-            onChange={(event) => setDeletePassword(event.target.value)}
-          />
-        </div>
-        <Button type="submit" variant="destructive" disabled={busy !== null}>
-          {busy === 'delete' ? ac.deleteConfirming : ac.deleteCta}
+        <Field id="delete-password" label={ac.deletePasswordLabel}>
+          {(fieldProps) => (
+            <Input
+              {...fieldProps}
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+            />
+          )}
+        </Field>
+        <Button
+          type="submit"
+          variant="destructive"
+          disabled={busy !== null}
+          loading={busy === 'delete'}
+          loadingLabel={ac.deleteConfirming}
+        >
+          {ac.deleteCta}
         </Button>
       </form>
       </Card>

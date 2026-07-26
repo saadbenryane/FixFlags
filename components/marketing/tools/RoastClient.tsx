@@ -126,8 +126,14 @@ export function RoastClient() {
           className="flex-1"
           disabled={loading}
         />
-        <Button onClick={handleRoast} disabled={loading || !url.trim()} variant="default">
-          {loading ? ROAST_COPY.ctaLoading : ROAST_COPY.cta}
+        <Button
+          onClick={handleRoast}
+          disabled={!url.trim()}
+          loading={loading}
+          loadingLabel={ROAST_COPY.ctaLoading}
+          variant="default"
+        >
+          {ROAST_COPY.cta}
         </Button>
       </div>
 

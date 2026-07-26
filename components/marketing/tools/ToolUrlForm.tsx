@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, Loader2, Search } from 'lucide-react'
+import { AlertCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -37,16 +37,13 @@ export function ToolUrlForm({
           className="flex-1 text-base"
           aria-label="Website URL"
         />
-        <Button type="submit" disabled={loading} className="shrink-0 gap-2">
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" /> {loadingLabel}
-            </>
-          ) : (
-            <>
-              <Search className="h-4 w-4" /> {ctaLabel}
-            </>
-          )}
+        <Button
+          type="submit"
+          loading={loading}
+          loadingLabel={loadingLabel}
+          className="shrink-0 gap-2"
+        >
+          <Search className="h-4 w-4" /> {ctaLabel}
         </Button>
       </form>
       {error && (

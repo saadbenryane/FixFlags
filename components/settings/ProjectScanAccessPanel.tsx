@@ -183,8 +183,8 @@ export function ProjectScanAccessPanel({ projectId, projectUrl }: Props) {
           />
         </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button type="submit" disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Save access'}
+          <Button type="submit" loading={saving} loadingLabel="Saving access…">
+            Save access
           </Button>
           {configured ? (
             <Button type="button" variant="outline" disabled={saving} onClick={() => void handleClear()}>

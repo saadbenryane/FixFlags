@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { AUDIT_CAPABILITIES, capabilitySummary, type AuditDimension } from '@/lib/audit/capability-matrix'
 import { StatValue } from '@/components/admin/StatValue'
+import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 
 /** Growth target for monitoring progress */
@@ -101,44 +102,24 @@ export default async function OperatingPlanPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Core loop health (30d) &mdash; Flag, Fix, Re-check</SectionTitle>
+        <SectionTitle>Core loop health (30d): Flag, Fix, Re-check</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Re-check rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{recheckRate}%</StatValue>
-              <p className="text-xs text-muted-foreground mt-1">
+          <MetricCard
+            label="Re-check rate"
+            value={`${recheckRate}%`}
+            detail={
+              <p className="text-xs text-muted-foreground">
                 {rechecksMonth.toLocaleString()} rechecks / {completedRootAuditsMonth.toLocaleString()} completed audits
               </p>
-            </CardContent>
-          </Card>
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Flags fixed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{pct(fixedFlags, totalFlagsMonth)}%</StatValue>
-              <p className="text-xs text-muted-foreground mt-1">{fixedFlags.toLocaleString()} of {totalFlagsMonth.toLocaleString()} flags</p>
-            </CardContent>
-          </Card>
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Flags open</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{openFlags.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Flags regressed</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{regressedFlags.toLocaleString()}</StatValue>
-            </CardContent>
-          </Card>
+            }
+          />
+          <MetricCard
+            label="Flags fixed"
+            value={`${pct(fixedFlags, totalFlagsMonth)}%`}
+            detail={<p className="text-xs text-muted-foreground">{fixedFlags.toLocaleString()} of {totalFlagsMonth.toLocaleString()} flags</p>}
+          />
+          <MetricCard label="Flags open" value={openFlags.toLocaleString()} />
+          <MetricCard label="Flags regressed" value={regressedFlags.toLocaleString()} />
         </div>
       </section>
 
@@ -166,33 +147,12 @@ export default async function OperatingPlanPage() {
         <SectionTitle>Scan roadmap build-out</SectionTitle>
         <p className="text-xs text-muted-foreground">
           Live from <code className="font-mono">lib/audit/capability-matrix.ts</code> (source of truth for
-          docs/scan-roadmap.md) &mdash; run <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
+          docs/scan-roadmap.md). Run <code className="font-mono">npm run audit:capabilities</code> for the full breakdown.
         </p>
         <div className="grid grid-cols-3 gap-4">
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Live</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{capSummary.byStatus.live}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Partial</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{capSummary.byStatus.partial}</StatValue>
-            </CardContent>
-          </Card>
-          <Card variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">Planned</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{capSummary.byStatus.planned}</StatValue>
-            </CardContent>
-          </Card>
+          <MetricCard label="Live" value={capSummary.byStatus.live} />
+          <MetricCard label="Partial" value={capSummary.byStatus.partial} />
+          <MetricCard label="Planned" value={capSummary.byStatus.planned} />
         </div>
         {capSummary.unmapped.length > 0 && (
           <p className="text-xs text-destructive">

@@ -64,6 +64,21 @@ for (const dir of SCAN_DIRS) {
     if (MICRO_TEXT_RE.test(content)) {
       violations.push(`${rel}: arbitrary micro font size (use text-2xs/text-3xs or .section-label/.meta-label)`)
     }
+
+    if (/fetch\(['"]\/api\/stripe\/(?:checkout|beta-interest)['"]/.test(content)) {
+      violations.push(
+        `${rel}: duplicate Stripe action request (use lib/billing/client-checkout.ts)`
+      )
+    }
+
+    if (
+      /(?:^|\/)error\.tsx$/.test(rel) &&
+      rel !== 'app/global-error.tsx' &&
+      !content.includes('RouteErrorPage') &&
+      !content.includes('export { default }')
+    ) {
+      violations.push(`${rel}: route error boundary must use RouteErrorPage`)
+    }
   }
 }
 

@@ -184,8 +184,12 @@ export function RepoFindingCard({
                       <p>No code changes are made - the PR description carries the fix prompt above for your own agent to apply.</p>
                     )}
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={handleConfirmFixPr} disabled={submitting}>
-                        {submitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                      <Button
+                        size="sm"
+                        onClick={handleConfirmFixPr}
+                        loading={submitting}
+                        loadingLabel="Confirming…"
+                      >
                         Confirm
                       </Button>
                       <Button

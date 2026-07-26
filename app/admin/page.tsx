@@ -1,7 +1,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -9,7 +9,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCost, getCostOutliers } from '@/lib/billing/costs'
 import { getAdminUnreadCount } from '@/lib/live-support/sessions'
 import { MarginPanel } from '@/components/admin/MarginPanel'
-import { StatValue } from '@/components/admin/StatValue'
+import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf } from '@/lib/admin/date-ranges'
 
 export default async function AdminPage() {
@@ -102,31 +102,23 @@ export default async function AdminPage() {
         <SectionTitle>Customer ops</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {opsStats.map((s) => (
-            <Card key={s.label} variant="solid">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <StatValue>{s.value}</StatValue>
+            <MetricCard
+              key={s.label}
+              label={s.label}
+              value={s.value}
+              action={
                 <Button variant="link" className="h-auto p-0 text-xs" asChild>
                   <Link href={s.href as Route}>View</Link>
                 </Button>
-              </CardContent>
-            </Card>
+              }
+            />
           ))}
         </div>
       </section>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((s) => (
-          <Card key={s.label} variant="solid">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StatValue>{s.value}</StatValue>
-            </CardContent>
-          </Card>
+          <MetricCard key={s.label} label={s.label} value={s.value} />
         ))}
       </div>
 
@@ -134,14 +126,7 @@ export default async function AdminPage() {
         <SectionTitle>Estimated run costs</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {costStats.map((s) => (
-            <Card key={s.label} variant="solid">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground font-medium">{s.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatValue>{s.value}</StatValue>
-              </CardContent>
-            </Card>
+            <MetricCard key={s.label} label={s.label} value={s.value} />
           ))
         }
         </div>
@@ -165,14 +150,7 @@ export default async function AdminPage() {
         <SectionTitle>Plan breakdown</SectionTitle>
         <div className="grid grid-cols-3 gap-4">
           {plans.map((p) => (
-            <Card key={p.label} variant="solid">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs text-muted-foreground font-medium">{p.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatValue>{p.value.toLocaleString()}</StatValue>
-              </CardContent>
-            </Card>
+            <MetricCard key={p.label} label={p.label} value={p.value.toLocaleString()} />
           ))}
         </div>
       </section>
