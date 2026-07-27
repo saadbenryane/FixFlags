@@ -229,7 +229,7 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   if (formElements.length > 0) {
     formElements.each((_, form) => {
       const $form = $(form)
-      // Skip forms where all inputs are disabled — these are SSR placeholders
+      // Skip forms where all inputs are disabled - these are SSR placeholders
       // that JavaScript enables on mount. They are not real user-facing forms
       // in the static HTML snapshot.
       const allInputsDisabled = $form.find(formInputSelectors).toArray()

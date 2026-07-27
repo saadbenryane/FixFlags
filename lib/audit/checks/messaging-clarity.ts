@@ -5,8 +5,13 @@ import { normalizeHeadingText } from './utils'
 
 const WEAK_VALUE_WORDS = /\b(solution|platform|tool|app|software|product|company|business)\b/i
 
+// B2B-common vocabulary that is standard positioning language, not jargon.
+// These words appear naturally in legitimate product marketing and should not
+// trigger a jargon check unless they dominate the headings (3+ matches).
+const B2B_COMMON_TERMS = /\b(seamless|robust|scalable|innovative|end-to-end|ecosystem)\b/i
+
 const JARGON_PATTERNS = [
-  /\b(leverage|utilize|synerg(y|ize)|paradigm|disrupt|empower|innovative|robust|scalable|enterprise-grade|best-in-class|cutting-edge|next-gen|holistic|end-to-end|seamless|ecosystem)\b/i,
+  /\b(leverage|utilize|synerg(y|ize)|paradigm|disrupt|empower|enterprise-grade|best-in-class|cutting-edge|next-gen|holistic)\b/i,
 ]
 
 const AUDIENCE_REGEX = /\b(for\s+(?:[\w-]+\s+){0,3}(teams?|developers?|designers?|founders?|startups?|companies?|enterprises?|creators?|marketers?|operators?|agencies?)|built\s+for|designed\s+for|made\s+for)\b/i
@@ -38,20 +43,36 @@ export function runMessagingClarityChecks(meta: PageMetadata): DeterministicFlag
     })
   }
 
+  // Collect jargon matches from pure-jargon patterns AND B2B-common terms.
+  // B2B-common terms (seamless, robust, scalable, etc.) are standard
+  // positioning language - require a higher threshold to avoid false positives
+  // on legitimate product pages like Stripe or Vercel.
   const jargonMatches: string[] = []
   for (const { source } of JARGON_PATTERNS.map((p) => ({ source: p }))) {
     const match = combinedTopText.match(source)
     if (match) jargonMatches.push(match[0])
   }
+  const b2bMatches: string[] = []
+  const b2bMatch = combinedTopText.match(B2B_COMMON_TERMS)
+  if (b2bMatch) b2bMatches.push(b2bMatch[0])
 
-  if (jargonMatches.length > 0) {
+  const totalJargon = jargonMatches.length + b2bMatches.length
+
+  // Skip jargon check entirely when the headline clearly names both audience
+  // and outcome - such headlines are well-written even if they include a B2B
+  // term like "robust" or "scalable".
+  if (totalJargon > 0 && !(hasAudience && hasOutcome)) {
+    // Pure jargon (leverage, synergy, etc.) is always flagged.
+    // B2B-common terms only escalate when total jargon is 3+.
+    const allMatches = [...jargonMatches, ...b2bMatches]
+    const isHighDensity = totalJargon >= 3
     findings.push({
       checkId: 'messaging-jargon-overload',
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
-      severity: jargonMatches.length >= 2 ? 'IMPORTANT' : 'POLISH',
+      severity: isHighDensity ? 'IMPORTANT' : 'POLISH',
       problem: `Headings contain marketing jargon that reduces clarity`,
-      evidence: `Found in visible headings: ${jargonMatches.slice(0, 3).join(', ')}. These words sound impressive but don't tell the user what the product does.`,
+      evidence: `Found in visible headings: ${allMatches.slice(0, 3).join(', ')}. These words sound impressive but don't tell the user what the product does.`,
       fix: '1. Replace each jargon word with specific, concrete language\n2. Use "build apps" instead of "empower innovation"\n3. Use "works at any size" instead of "scalable enterprise-grade"\n4. Read each heading aloud - if it would sound natural in a conversation, keep it',
       confidence: 0.9,
       source: 'DETERMINISTIC',

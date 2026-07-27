@@ -119,8 +119,8 @@ describe('regression: saadbenryane-com.html', () => {
     'saadbenryane-com.html',
     3,
     [
-      // Portfolio page classified as 'article' — no-cta-detected suppressed.
-      // JSON-LD email detection finds contact info — no-contact-info suppressed.
+      // Portfolio page classified as 'article' - no-cta-detected suppressed.
+      // JSON-LD email detection finds contact info - no-contact-info suppressed.
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },

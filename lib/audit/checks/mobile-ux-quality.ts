@@ -49,22 +49,19 @@ export function runMobileUXQualityChecks(
 
     if (captureMetrics.mobilePrimaryCtaText) {
       const ctaText = captureMetrics.mobilePrimaryCtaText.toLowerCase().trim()
+      // Multi-word weak phrases: match as prefix (e.g. "learn more about..." matches "learn more")
       const weakPhrases = [
         'click here',
         'learn more',
         'read more',
-        'submit',
-        'go',
-        'start',
-        'try',
       ]
+      // Single-word weak phrases: exact match only. "start" alone is vague,
+      // but "Get started" or "Start building" are effective CTAs.
+      const weakExactWords = ['submit', 'go']
 
-      const isVague = weakPhrases.some((p) => {
-        if (p.includes(' ')) return ctaText.startsWith(p)
-        // For single-word phrases, use startsWith to catch variations like
-        // "Get started" (matches "start") or "Try free" (matches "try").
-        return ctaText.startsWith(p)
-      })
+      const isVague =
+        weakPhrases.some((p) => ctaText.startsWith(p)) ||
+        weakExactWords.some((p) => ctaText === p)
       if (isVague) {
         findings.push({
           checkId: 'mobile-cta-weak-label',

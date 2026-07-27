@@ -17,9 +17,7 @@ export function runContentChecks(
       /create something (amazing|great|beautiful)/i,
       /make something (amazing|great|beautiful)/i,
       /\bthe next-generation\b/i,
-      /\bship faster\.?$/i,
-      /\bwith AI\.?$/i,
-      /\bpowered by AI\.?$/i,
+      /\bnext-gen\b/i,
     ]
     const isGeneric =
       genericPhrases.some((p) => h1.toLowerCase().includes(p)) ||

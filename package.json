@@ -39,6 +39,7 @@
     "accuracy:probe": "npm run accuracy:browser --",
     "accuracy:browser": "tsx scripts/accuracy-browser-probe.ts",
     "accuracy:capture-fixtures": "tsx scripts/capture-accuracy-fixtures.ts",
+    "accuracy:adjudicate": "tsx scripts/accuracy-adjudicate.ts",
     "accuracy:generate-rubrics-tiles": "node scripts/generate-rubrics-tiles.mjs",
     "demo:audit:flow": "tsx scripts/demo-fixture-flow-audit.ts",
     "demo:audit:production": "tsx scripts/demo-fixture-audit.ts https://fixflags.com --production",

@@ -1,0 +1,82 @@
+[
+  {
+    "url": "https://stripe.com",
+    "category": "gold-saas",
+    "tier": "gold",
+    "expectedPresent": ["no-structured-data", "cookie-consent-absent"],
+    "knownFalsePositives": [],
+    "notes": "Zero false blockers required. Standard B2B vocabulary in headings."
+  },
+  {
+    "url": "https://vercel.com",
+    "category": "gold-saas",
+    "tier": "gold",
+    "expectedPresent": ["no-structured-data", "measurement-ga-gtm-posthog-missing"],
+    "knownFalsePositives": [],
+    "notes": "Zero false blockers required. Client-rendered SPA."
+  },
+  {
+    "url": "https://nextjs.org",
+    "category": "content-docs",
+    "tier": "gold",
+    "expectedPresent": ["canonical-missing", "measurement-ga-gtm-posthog-missing"],
+    "knownFalsePositives": [],
+    "notes": "Documentation site. Should not trigger conversion or trust checks."
+  },
+  {
+    "url": "https://lovable.dev",
+    "category": "ai-builder",
+    "tier": "builder",
+    "expectedPresent": ["measurement-ga-gtm-posthog-missing", "trust-no-authority-signals"],
+    "knownFalsePositives": [],
+    "notes": "AI builder. 'Ship faster with AI' should not trigger h1-generic."
+  },
+  {
+    "url": "https://bolt.new",
+    "category": "ai-builder",
+    "tier": "builder",
+    "expectedPresent": ["trust-unsupported-claims", "links-no-text"],
+    "knownFalsePositives": [],
+    "notes": "AI builder. Allows 2 IMPORTANT (trust-unsupported-claims, links-no-text)."
+  },
+  {
+    "url": "https://linear.app",
+    "category": "gold-saas",
+    "tier": "structural",
+    "expectedPresent": ["no-structured-data", "cookie-consent-absent"],
+    "knownFalsePositives": [],
+    "notes": "Minimal marketing page. Should not produce false blockers."
+  },
+  {
+    "url": "https://v0.dev",
+    "category": "ai-builder",
+    "tier": "structural",
+    "expectedPresent": ["no-structured-data", "measurement-ga-gtm-posthog-missing"],
+    "knownFalsePositives": [],
+    "notes": "AI builder. Client-rendered SPA."
+  },
+  {
+    "url": "https://replit.com",
+    "category": "gold-saas",
+    "tier": "structural",
+    "expectedPresent": ["canonical-missing", "h1-multiple"],
+    "knownFalsePositives": [],
+    "notes": "Developer platform. Multiple H1s expected."
+  },
+  {
+    "url": "https://fixflags.com",
+    "category": "gold-saas",
+    "tier": "gold",
+    "expectedPresent": ["cookie-consent-absent", "security-headers-missing"],
+    "knownFalsePositives": [],
+    "notes": "Own site. Zero false blockers required."
+  },
+  {
+    "url": "https://saadbenryane.com",
+    "category": "portfolio",
+    "tier": "personal",
+    "expectedPresent": ["skip-link-missing", "no-privacy-policy"],
+    "knownFalsePositives": [],
+    "notes": "Personal portfolio. Allows 2 IMPORTANT."
+  }
+]

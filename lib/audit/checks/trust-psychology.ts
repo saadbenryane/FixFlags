@@ -121,17 +121,29 @@ export function runTrustPsychologyChecks(
   // Only flag superlatives in prominent positions (headings, above-fold) or when
   // multiple unsupported claims appear. A single superlative in body copy is
   // common brand voice on legitimate marketing pages and not a trust signal.
+  // Leadership terms (leading, trusted, proven) are standard positioning language
+  // and are downgraded to POLISH - only aggressive superlatives (best, fastest,
+  // #1) escalate to IMPORTANT.
   const headingText = [...(meta.h1s ?? []), ...(meta.h2s ?? [])].join(' ')
-  const claimInHeading = headingText.match(/\b(the\s+(best|fastest|easiest|most\s+powerful|#1|leading|top))\b/i)
+  const LEADERSHIP_TERMS = /\b(leading|trusted|industry-standard|battle-tested|proven|enterprise-grade)\b/i
+  const AGGRESSIVE_SUPERLATIVES = /\b(the\s+(best|fastest|easiest|most\s+powerful|#1))\b/i
+
+  const claimInHeading = headingText.match(AGGRESSIVE_SUPERLATIVES) ?? headingText.match(/\b(the\s+(best|fastest|easiest|most\s+powerful|#1|leading|top))\b/i)
   const claimInBody = bodyText.match(/\b(the\s+(best|fastest|easiest|most\s+powerful|#1|leading|top))\b/gi)
-  const hasClaim = claimInHeading || (claimInBody && claimInBody.length >= 2)
+  const headingClaimCount = (headingText.match(/\b(the\s+(best|fastest|easiest|most\s+powerful|#1|leading|top))\b/gi) || []).length
+  const hasAggressiveClaim = !!(headingText.match(AGGRESSIVE_SUPERLATIVES) || (claimInBody && claimInBody.length >= 2))
+  const hasLeadershipClaim = LEADERSHIP_TERMS.test(headingText)
+  // Fire when: aggressive claim in heading (single is enough), OR 2+ leadership
+  // terms in headings, OR 2+ body superlatives without data.
+  const hasClaim = hasAggressiveClaim || (hasLeadershipClaim && headingClaimCount >= 2) || (claimInBody && claimInBody.length >= 2)
   if (hasClaim && !hasDataClaim) {
     const claim = claimInHeading?.[0] ?? claimInBody?.[0] ?? 'superlative claim'
+    const isAggressive = AGGRESSIVE_SUPERLATIVES.test(claim)
     findings.push({
       checkId: 'trust-unsupported-claims',
       rubric: 'MESSAGE',
       impactTag: 'TRUST',
-      severity: 'IMPORTANT',
+      severity: isAggressive ? 'IMPORTANT' : 'POLISH',
       problem: 'Page makes superlative claims without supporting evidence',
       evidence: `Found absolute claims like "${claim}" but no specific data points to back them up. Claims without evidence reduce trust.`,
       fix: '1. Replace each unsupported superlative with a verifiable claim or remove it\n2. Add benchmarks, methodology, customer results, or third-party evidence only when you can substantiate them\n3. Link to case studies, research, or benchmark details when available\n4. Prefer precise scoped claims over absolutes, e.g. "cuts review time for small landing pages" instead of "the fastest"',
