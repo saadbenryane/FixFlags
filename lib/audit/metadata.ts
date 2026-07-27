@@ -398,12 +398,20 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
     }).length > 0
   )
 
-  // Contact info detection
-  const hasContactInfo = !!(
+  // Contact info detection - check body text, visible links, and JSON-LD structured data
+  const hasContactInfoFromText = !!(
     htmlStr.includes('contact') ||
     htmlStr.includes('@') ||
     htmlStr.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/)
   )
+  const hasContactInfoFromJsonLd = jsonLd.some((item) => {
+    if (!item || typeof item !== 'object') return false
+    const obj = item as Record<string, unknown>
+    if (obj.email || obj.contactPoint) return true
+    const str = JSON.stringify(obj).toLowerCase()
+    return str.includes('"email"') || str.includes('contactpoint')
+  })
+  const hasContactInfo = hasContactInfoFromText || hasContactInfoFromJsonLd
 
   const hasFavicon = $(
     'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'

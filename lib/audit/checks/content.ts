@@ -45,13 +45,14 @@ export function runContentChecks(
   // conversion CTA, and flagging them pollutes the report with non-actionable
   // IMPORTANT findings above real issues.
   if (productPage && meta.ctaTexts.length === 0) {
+    const sampleLinks = meta.links.slice(0, 5).map((l) => `"${l.text || l.href}"`).join(', ')
     findings.push({
       checkId: 'no-cta-detected',
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',
-      problem: 'No call-to-action buttons found',
-      evidence: 'No buttons or links with CTA text found',
+      problem: 'No call-to-action buttons or links found',
+      evidence: `No links or buttons matched CTA keywords (get started, sign up, try, etc.). Found: ${sampleLinks || 'no links'}`,
       fix: '1. Add a primary CTA button above the fold\n2. Use an outcome-led label: "Get started free", "Start your trial"\n3. Make it visually distinct (high contrast, larger touch target)',
       confidence: 0.8,
       source: 'DETERMINISTIC',
@@ -81,9 +82,9 @@ export function runContentChecks(
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: missingRatio >= 0.5 ? 'IMPORTANT' : 'POLISH',
-      problem: `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} form field${meta.totalFormInputs > 1 ? 's' : ''} allow${meta.formInputsMissingValidation === 1 ? 's' : ''} submission without inline validation`,
-      evidence: `${meta.forms} form${meta.forms > 1 ? 's' : ''} on the page with ${meta.formInputsMissingValidation} input${meta.formInputsMissingValidation > 1 ? 's' : ''} missing required, aria-required, or pattern attributes`,
-      fix: '1. Add required or aria-required to mandatory form fields\n2. Use pattern attribute for format validation (email, phone, etc.)\n3. Display inline error messages on submit so users know what to fix',
+      problem: `${meta.formInputsMissingValidation} of ${meta.totalFormInputs} form field${meta.totalFormInputs > 1 ? 's' : ''} lack${meta.formInputsMissingValidation === 1 ? 's' : ''} HTML validation attributes`,
+      evidence: `${meta.forms} form with ${meta.totalFormInputs} input${meta.totalFormInputs > 1 ? 's' : ''}; ${meta.formInputsMissingValidation} missing required, aria-required, or pattern`,
+      fix: 'Add required or aria-required to mandatory fields. Use pattern for format validation. If validation is handled client-side (e.g. React Hook Form), ensure error messages are announced with aria-invalid and role="alert".',
       confidence: 0.9,
       source: 'DETERMINISTIC',
     })
