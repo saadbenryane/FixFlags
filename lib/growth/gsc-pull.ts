@@ -2,8 +2,11 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GSC_PROPERTY = process.env.GSC_PROPERTY
-if (!GSC_PROPERTY) throw new Error('GSC_PROPERTY env var is required')
+function getGscProperty(): string {
+  const prop = process.env.GSC_PROPERTY
+  if (!prop) throw new Error('GSC_PROPERTY env var is required')
+  return prop
+}
 
 interface GscRow {
   keys: string[]
@@ -41,7 +44,7 @@ async function queryGsc(
   let startRow = 0
   for (;;) {
     const response = await searchconsole.searchanalytics.query({
-      siteUrl: GSC_PROPERTY,
+      siteUrl: getGscProperty(),
       requestBody: { startDate, endDate, dimensions: [dimension], rowLimit, startRow },
     })
     const rows = (response.data.rows ?? []) as GscRow[]

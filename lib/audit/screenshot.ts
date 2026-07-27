@@ -142,6 +142,7 @@ export interface ScreenshotResult {
   actionTimeline?: ActionTimelineEvent[]
   formProbe?: FormProbeResult | null
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  ariaSnapshot?: string | null
 }
 
 interface ViewportCapture {
@@ -158,6 +159,7 @@ interface ViewportCapture {
   technologyResourcesTruncated?: boolean
   technologyRuntimeMarkers?: string[]
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  ariaSnapshot?: string | null
 }
 
 const TECHNOLOGY_RUNTIME_MARKERS = [
@@ -420,6 +422,14 @@ async function captureDesktopWithFlow(
       result.axeViolations = []
     }
 
+    // Capture ARIA snapshot for semantic structure validation.
+    try {
+      result.ariaSnapshot = await page.locator('body').ariaSnapshot()
+    } catch (err) {
+      logger.warn('ARIA snapshot capture failed', err)
+      result.ariaSnapshot = null
+    }
+
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
@@ -628,6 +638,7 @@ export async function captureScreenshots(
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
     axeViolations: desktop.axeViolations ?? [],
+    ariaSnapshot: desktop.ariaSnapshot ?? null,
   }
 }
 

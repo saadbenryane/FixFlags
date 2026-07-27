@@ -28,15 +28,20 @@ function sleep(ms: number): Promise<void> {
 
 /** Reset desktop capture viewport after mobile probes. */
 export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {
-  await page.setViewportSize({
-    width: DESKTOP_CAPTURE_PROFILE.width,
-    height: DESKTOP_CAPTURE_PROFILE.height,
-  })
-  await page.evaluate(() => {
-    ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
-    window.scrollTo(0, 0)
-  })
-  await sleep(200)
+  if (page.isClosed()) return
+  try {
+    await page.setViewportSize({
+      width: DESKTOP_CAPTURE_PROFILE.width,
+      height: DESKTOP_CAPTURE_PROFILE.height,
+    })
+    await page.evaluate(() => {
+      ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
+      window.scrollTo(0, 0)
+    })
+    await sleep(200)
+  } catch {
+    // page or browser may have closed during probes; nothing to restore
+  }
 }
 
 interface PricingProbeResult {
@@ -165,6 +170,7 @@ interface MobileMenuProbeResult {
 
 /** On mobile viewport, nav links hidden behind a menu toggle must become reachable after open. */
 export async function probeMobileMenu(page: Page): Promise<MobileMenuProbeResult> {
+  if (page.isClosed()) return { mobileMenu: 'skipped' as const }
   await page.setViewportSize({
     width: MOBILE_VIEWPORT.width,
     height: MOBILE_VIEWPORT.height,

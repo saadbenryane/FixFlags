@@ -2,8 +2,11 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GA4_PROPERTY = process.env.GA4_PROPERTY_ID
-if (!GA4_PROPERTY) throw new Error('GA4_PROPERTY_ID env var is required')
+function getGa4Property(): string {
+  const prop = process.env.GA4_PROPERTY_ID
+  if (!prop) throw new Error('GA4_PROPERTY_ID env var is required')
+  return prop
+}
 
 export interface GaPullResult {
   summary: Record<string, number | string>

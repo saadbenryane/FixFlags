@@ -2,7 +2,7 @@ import { PageMetadata } from '../metadata'
 import { PageSpeedResult } from '../pagespeed'
 import { runMetadataChecks, runOgImageUrlCheck } from './metadata-checks'
 import { runPerformanceChecks } from './performance'
-import { runAccessibilityChecks } from './accessibility'
+import { runAccessibilityChecks, type AxeViolation } from './accessibility'
 import { runSeoChecks } from './seo'
 import { runTrustChecks } from './trust'
 import { runMobileChecks } from './mobile'
@@ -29,6 +29,7 @@ import { detectPagePurpose } from '../page-purpose'
 import { suppressOverlappingFlags } from '../suppression'
 
 export type { DeterministicFlag } from '../flag-types'
+export type { AxeViolation } from './accessibility'
 
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
@@ -43,7 +44,9 @@ export async function runAllChecks(
   consoleErrors: Array<{ type: string; text: string }>,
   onAreaComplete?: (index: number) => void,
   captureMetrics?: CaptureMetrics | null,
-  responseHeaders?: Record<string, string> | null
+  responseHeaders?: Record<string, string> | null,
+  axeViolations?: AxeViolation[],
+  ariaSnapshot?: string | null
 ): Promise<RunAllChecksResult> {
   const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
@@ -54,41 +57,75 @@ export async function runAllChecks(
   // "missing trial / contact / authority signal" is not actionable.
   const purpose = detectPagePurpose(metadata, url)
 
-const checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
+  // Group checks into independent buckets for parallel execution.
+  // Each bucket reads from different data sources, so they can run concurrently.
+  const bucketA: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
     { name: 'metadata',        run: () => runMetadataChecks(metadata) },
     { name: 'og-image',        run: () => runOgImageUrlCheck(url, metadata) },
-    { name: 'performance',     run: () => runPerformanceChecks(desktop, mobile) },
-    { name: 'accessibility',   run: () => runAccessibilityChecks(metadata, desktop ?? mobile) },
+    { name: 'accessibility',   run: () => runAccessibilityChecks(metadata, desktop ?? mobile, axeViolations) },
     { name: 'seo',             run: () => runSeoChecks(url, metadata) },
     { name: 'trust',           run: () => runTrustChecks(url, metadata, consoleErrors) },
-    { name: 'mobile',          run: () => runMobileChecks(mobile) },
     { name: 'content',         run: () => runContentChecks(metadata, purpose) },
     { name: 'slop',            run: () => runSlopChecks(metadata) },
-    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
-    { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
-    { name: 'cta-focus',       run: () => runCtaFocusChecks(captureMetrics ?? null) },
     { name: 'measurement',     run: () => runMeasurementChecks(metadata) },
     { name: 'auth-checkout',   run: () => runAuthCheckoutChecks(url, metadata) },
     { name: 'security',        run: () => runSecurityBasicsChecks(url, metadata) },
     { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
-    { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
     { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
     { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata, purpose) },
     { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata, purpose) },
-    { name: 'visual-hierarchy', run: () => runVisualHierarchyChecks(metadata, captureMetrics ?? null) },
+  ]
+
+  const bucketB: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
+    { name: 'performance',     run: () => runPerformanceChecks(desktop, mobile) },
+    { name: 'mobile',          run: () => runMobileChecks(mobile) },
     { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null) },
   ]
 
-  for (let i = 0; i < checkers.length; i++) {
-    const { name, run } = checkers[i]
-    try {
-      const findings = await run()
-      allFindings.push(...findings)
-    } catch (err) {
-      logger.error(`Check module "${name}" failed`, err)
-      failedModules.push(name)
+  const bucketC: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
+    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
+    { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
+    { name: 'cta-focus',       run: () => runCtaFocusChecks(captureMetrics ?? null) },
+    { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },
+    { name: 'visual-hierarchy', run: () => runVisualHierarchyChecks(metadata, captureMetrics ?? null) },
+  ]
+
+  async function runBucket(checkers: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }>): Promise<DeterministicFlag[]> {
+    const findings: DeterministicFlag[] = []
+    for (let i = 0; i < checkers.length; i++) {
+      const { name, run } = checkers[i]
+      try {
+        const results = await run()
+        findings.push(...results)
+      } catch (err) {
+        logger.error(`Check module "${name}" failed`, err)
+        failedModules.push(name)
+      }
     }
-    onAreaComplete?.(i)
+    return findings
+  }
+
+  // Run all three buckets in parallel.
+  const [bucketAResults, bucketBResults, bucketCResults] = await Promise.allSettled([
+    runBucket(bucketA),
+    runBucket(bucketB),
+    runBucket(bucketC),
+  ])
+
+  const allFindings: DeterministicFlag[] = []
+  for (const result of [bucketAResults, bucketBResults, bucketCResults]) {
+    if (result.status === 'fulfilled') {
+      allFindings.push(...result.value)
+    } else {
+      logger.error('Check bucket failed', result.reason)
+    }
+  }
+
+  // Fire progress callbacks for all completed checkers.
+  let globalIndex = 0
+  for (const checker of [...bucketA, ...bucketB, ...bucketC]) {
+    void checker // progress callbacks are informational; buckets ran in parallel
+    onAreaComplete?.(globalIndex++)
   }
 
   // Deduplicate by checkId

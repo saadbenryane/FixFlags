@@ -1,5 +1,12 @@
-import { PageSpeedResult } from '../pagespeed'
+import { PageSpeedResult, CruxMetrics } from '../pagespeed'
 import type { DeterministicFlag } from '../flag-types'
+
+function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string {
+  if (!crux) return ''
+  const value = crux[metric]
+  if (value === null || value === undefined) return ''
+  return `. Field (CrUX p75): ${typeof value === 'number' && metric === 'cls' ? value : `${Math.round(typeof value === 'number' ? value : 0)}ms`}`
+}
 
 export function runPerformanceChecks(
   desktop: PageSpeedResult | null,
@@ -46,7 +53,7 @@ export function runPerformanceChecks(
         rubric: 'EXPERIENCE',
         severity: 'CRITICAL',
         problem: `LCP is critically slow (${lcpSeconds.toFixed(1)}s, target < 2.5s)`,
-        evidence: `Largest Contentful Paint: ${lcpSeconds.toFixed(2)}s`,
+        evidence: `Largest Contentful Paint: ${lcpSeconds.toFixed(2)}s${cruxSuffix(ps.crux, 'lcp')}`,
         fix: '1. Identify the LCP element (hero image, heading, or large text block)\n2. Add preload for the LCP image or font\n3. Ensure the server responds within 600ms TTFB (use CDN, enable caching)',
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -57,7 +64,7 @@ export function runPerformanceChecks(
         rubric: 'EXPERIENCE',
         severity: 'IMPORTANT',
         problem: `LCP needs improvement (${lcpSeconds.toFixed(1)}s, target < 2.5s)`,
-        evidence: `Largest Contentful Paint: ${lcpSeconds.toFixed(2)}s`,
+        evidence: `Largest Contentful Paint: ${lcpSeconds.toFixed(2)}s${cruxSuffix(ps.crux, 'lcp')}`,
         fix: '1. Add fetchpriority="high" to the hero image\n2. Serve the image from a CDN with compression\n3. Convert to WebP or AVIF format for smaller file size',
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -72,7 +79,7 @@ export function runPerformanceChecks(
         rubric: 'EXPERIENCE',
         severity: 'CRITICAL',
         problem: `Layout shift is severe (CLS ${ps.cls}, target < 0.1)`,
-        evidence: `Cumulative Layout Shift: ${ps.cls}`,
+        evidence: `Cumulative Layout Shift: ${ps.cls}${cruxSuffix(ps.crux, 'cls')}`,
         fix: '1. Set explicit width and height attributes on all images\n2. Set explicit dimensions on embeds, ads, and iframes\n3. Avoid inserting content above existing content after the page loads',
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -83,7 +90,7 @@ export function runPerformanceChecks(
         rubric: 'EXPERIENCE',
         severity: 'IMPORTANT',
         problem: `Layout shift needs improvement (CLS ${ps.cls}, target < 0.1)`,
-        evidence: `Cumulative Layout Shift: ${ps.cls}`,
+        evidence: `Cumulative Layout Shift: ${ps.cls}${cruxSuffix(ps.crux, 'cls')}`,
         fix: '1. Add width and height attributes to all images\n2. Reserve space for ads and embeds with CSS aspect-ratio or min-height\n3. Use font-display: optional or swap for web fonts',
         confidence: 1.0,
         source: 'DETERMINISTIC',
@@ -164,7 +171,7 @@ function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
       rubric: 'EXPERIENCE',
       severity: 'CRITICAL',
       problem: `Interaction to Next Paint is critically slow (${mobile.inp}ms, target <= 200ms)`,
-      evidence: `INP: ${mobile.inp}ms on mobile`,
+      evidence: `INP: ${mobile.inp}ms on mobile${cruxSuffix(mobile.crux, 'inp')}`,
       fix: '1. Defer non-critical JavaScript to reduce main-thread work\n2. Split long tasks (over 50ms) with setTimeout or scheduler.yield\n3. Optimize event handlers to avoid heavy DOM operations',
       confidence: 1.0,
       source: 'DETERMINISTIC',
@@ -175,7 +182,7 @@ function runInpChecks(mobile: PageSpeedResult): DeterministicFlag[] {
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
       problem: `Interaction to Next Paint needs improvement (${mobile.inp}ms, target <= 200ms)`,
-      evidence: `INP: ${mobile.inp}ms on mobile`,
+      evidence: `INP: ${mobile.inp}ms on mobile${cruxSuffix(mobile.crux, 'inp')}`,
       fix: '1. Open Chrome DevTools Performance panel and record an interaction\n2. Identify long tasks and JavaScript execution during the interaction\n3. Reduce or defer non-essential work to keep INP under 200ms',
       confidence: 1.0,
       source: 'DETERMINISTIC',

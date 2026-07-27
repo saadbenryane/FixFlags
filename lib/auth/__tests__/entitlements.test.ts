@@ -1,16 +1,20 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import type { User } from '@prisma/client'
-
-vi.mock('@/lib/auth/permissions', () => ({
-  isAdminUser: vi.fn(),
-  isDevUnlimitedScans: vi.fn(() => false),
-}))
 
 vi.mock('@/lib/db', () => ({
   prisma: { user: { findUnique: vi.fn() } },
 }))
 
-import { isAdminUser, isDevUnlimitedScans } from '@/lib/auth/permissions'
+vi.mock('@/lib/env', () => {
+  const env = {
+    NODE_ENV: 'test',
+    ADMIN_USER_IDS: [] as string[],
+  }
+  return {
+    getEnv: () => env,
+  }
+})
+
 import { prisma } from '@/lib/db'
 import {
   canAccessPaidFeatures,
@@ -27,8 +31,6 @@ import {
   resolveReportTierForAudit,
 } from '@/lib/auth/entitlements'
 
-const mockedIsAdminUser = vi.mocked(isAdminUser)
-const mockedIsDevUnlimitedScans = vi.mocked(isDevUnlimitedScans)
 const mockedFindUnique = vi.mocked(prisma.user.findUnique)
 
 type UserPick = Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
@@ -43,9 +45,20 @@ function makeUser(overrides: Partial<UserPick> = {}): UserPick {
   }
 }
 
+let originalAdminIds: string | undefined
+
 beforeEach(() => {
+  originalAdminIds = process.env.ADMIN_USER_IDS
+  process.env.ADMIN_USER_IDS = ''
   vi.clearAllMocks()
-  mockedIsDevUnlimitedScans.mockReturnValue(false)
+})
+
+afterEach(() => {
+  if (originalAdminIds === undefined) {
+    delete process.env.ADMIN_USER_IDS
+  } else {
+    process.env.ADMIN_USER_IDS = originalAdminIds
+  }
 })
 
 describe('hasRevokedSubscriptionStatus', () => {
@@ -79,19 +92,8 @@ describe('hasRevokedSubscriptionStatus', () => {
 })
 
 describe('canAccessPaidFeatures', () => {
-  it('returns true when plan gates are not enforced', () => {
-    mockedIsDevUnlimitedScans.mockReturnValue(true)
-    const user = makeUser({ plan: 'FREE' })
-    expect(canAccessPaidFeatures(user)).toBe(true)
-  })
-
   it('returns true for admin role', () => {
     expect(canAccessPaidFeatures(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
-  })
-
-  it('returns true for admin user by id', () => {
-    mockedIsAdminUser.mockReturnValue(true)
-    expect(canAccessPaidFeatures(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns false for FREE plan', () => {
@@ -144,18 +146,8 @@ describe('canAccessPaidFeatures', () => {
 })
 
 describe('canSharePublicly', () => {
-  it('returns true when plan gates are not enforced', () => {
-    mockedIsDevUnlimitedScans.mockReturnValue(true)
-    expect(canSharePublicly(makeUser({ plan: 'FREE' }))).toBe(true)
-  })
-
   it('returns true for admin role', () => {
     expect(canSharePublicly(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
-  })
-
-  it('returns true for admin user by id', () => {
-    mockedIsAdminUser.mockReturnValue(true)
-    expect(canSharePublicly(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns false for FREE plan', () => {
@@ -208,15 +200,15 @@ describe('canSharePublicly', () => {
 })
 
 describe('canExportSummary', () => {
-  it('delegates to canSharePublicly - false for BUILDER', () => {
+  it('returns false for BUILDER plan', () => {
     expect(canExportSummary(makeUser({ plan: 'BUILDER' }))).toBe(false)
   })
 
-  it('delegates to canSharePublicly - true for TEAM', () => {
+  it('returns true for TEAM plan', () => {
     expect(canExportSummary(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('delegates to canSharePublicly - false for FREE', () => {
+  it('returns false for FREE plan', () => {
     expect(canExportSummary(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 
@@ -232,15 +224,15 @@ describe('canExportSummary', () => {
 })
 
 describe('canScanRepositories', () => {
-  it('delegates to canSharePublicly - true for TEAM', () => {
+  it('returns true for TEAM plan', () => {
     expect(canScanRepositories(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('delegates to canSharePublicly - false for BUILDER', () => {
+  it('returns false for BUILDER plan', () => {
     expect(canScanRepositories(makeUser({ plan: 'BUILDER' }))).toBe(false)
   })
 
-  it('delegates to canSharePublicly - false for FREE', () => {
+  it('returns false for FREE plan', () => {
     expect(canScanRepositories(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 
@@ -256,15 +248,15 @@ describe('canScanRepositories', () => {
 })
 
 describe('canAccessProductWatch', () => {
-  it('delegates to canAccessPaidFeatures - true for BUILDER', () => {
+  it('returns true for BUILDER plan', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - true for TEAM', () => {
+  it('returns true for TEAM plan', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - false for FREE', () => {
+  it('returns false for FREE plan', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 
@@ -280,15 +272,15 @@ describe('canAccessProductWatch', () => {
 })
 
 describe('canUseApiKeys', () => {
-  it('delegates to canAccessPaidFeatures - true for BUILDER', () => {
+  it('returns true for BUILDER plan', () => {
     expect(canUseApiKeys(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - true for TEAM', () => {
+  it('returns true for TEAM plan', () => {
     expect(canUseApiKeys(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - false for FREE', () => {
+  it('returns false for FREE plan', () => {
     expect(canUseApiKeys(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 })
@@ -300,15 +292,15 @@ describe('canAccessMonitoring', () => {
 })
 
 describe('canAccessCompare', () => {
-  it('delegates to canAccessPaidFeatures - true for BUILDER', () => {
+  it('returns true for BUILDER plan', () => {
     expect(canAccessCompare(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - true for TEAM', () => {
+  it('returns true for TEAM plan', () => {
     expect(canAccessCompare(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('delegates to canAccessPaidFeatures - false for FREE', () => {
+  it('returns false for FREE plan', () => {
     expect(canAccessCompare(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 
@@ -326,13 +318,8 @@ describe('getReportTierForUser', () => {
     expect(getReportTierForUser(undefined)).toBe('free')
   })
 
-  it('returns paid for admin user', () => {
+  it('returns paid for admin user by role', () => {
     expect(getReportTierForUser(makeUser({ role: 'admin', plan: 'FREE' }))).toBe('paid')
-  })
-
-  it('returns paid for admin user by id', () => {
-    mockedIsAdminUser.mockReturnValue(true)
-    expect(getReportTierForUser(makeUser({ plan: 'FREE' }))).toBe('paid')
   })
 
   it('returns free for FREE plan', () => {
@@ -375,11 +362,6 @@ describe('getReportTierForUser', () => {
     expect(
       getReportTierForUser(makeUser({ plan: 'BUILDER', subscriptionStatus: 'TRIALING' }))
     ).toBe('paid')
-  })
-
-  it('returns paid when plan gates are not enforced', () => {
-    mockedIsDevUnlimitedScans.mockReturnValue(true)
-    expect(getReportTierForUser(makeUser({ plan: 'FREE' }))).toBe('paid')
   })
 })
 
@@ -453,21 +435,6 @@ describe('getEntitlements', () => {
       canWatchProduct: false,
       canUseMcp: false,
       canScanRepositories: false,
-    })
-  })
-
-  it('returns full entitlements when plan gates are not enforced', () => {
-    mockedIsDevUnlimitedScans.mockReturnValue(true)
-    const entitlements = getEntitlements(makeUser({ plan: 'FREE' }))
-    expect(entitlements).toEqual({
-      reportTier: 'paid',
-      canSharePublicly: true,
-      canExportSummary: true,
-      canAccessPaidFeatures: true,
-      canMonitor: true,
-      canWatchProduct: true,
-      canUseMcp: true,
-      canScanRepositories: true,
     })
   })
 })

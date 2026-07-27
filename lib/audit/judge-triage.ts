@@ -253,32 +253,28 @@ async function runOpenAITriage(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'quality_triage',
+            strict: true,
+            schema: QUALITY_TRIAGE_SCHEMA_OPENAI,
+          },
+        },
         messages: [
           { role: 'system', content: buildTriageSystemPrompt() },
           { role: 'user', content },
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'quality_triage',
-              description: 'Output a fast quality triage for a website',
-              parameters: QUALITY_TRIAGE_SCHEMA_OPENAI,
-              strict: true,
-            },
-          },
-        ],
-        tool_choice: { type: 'function', function: { name: 'quality_triage' } },
       },
       { signal: controller.signal }
     )
 
-    const toolCall = response.choices[0]?.message?.tool_calls?.[0]
-    if (!toolCall || toolCall.type !== 'function') {
-      throw new Error('No function call in triage response')
+    const rawContent = response.choices[0]?.message?.content
+    if (!rawContent) {
+      throw new Error('No content in triage response')
     }
 
-    const raw = JSON.parse(toolCall.function.arguments)
+    const raw = JSON.parse(rawContent)
     return {
       output: parseTriageOutput(raw, flags),
       usage: {

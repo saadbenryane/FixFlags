@@ -6,6 +6,16 @@ export interface LighthouseAuditSummary {
   score: number | null
 }
 
+export interface CruxMetrics {
+  lcp: number | null  // p75 in ms
+  cls: number | null  // p75
+  fcp: number | null  // p75 in ms
+  inp: number | null  // p75 in ms
+  ttfb: number | null // p75 in ms
+  formFactor: string | null
+  effectiveConnectionType: string | null
+}
+
 export interface PageSpeedResult {
   strategy: 'desktop' | 'mobile'
   score: number | null
@@ -18,6 +28,34 @@ export interface PageSpeedResult {
   failedAccessibilityAudits: LighthouseAuditSummary[]
   diagnostics: Record<string, unknown>
   raw: Record<string, unknown>
+  crux: CruxMetrics | null
+}
+
+function extractCruxMetrics(data: Record<string, unknown>): CruxMetrics | null {
+  const cruxData = data.crux as Record<string, unknown> | undefined
+  const record = (cruxData?.data as Record<string, unknown> | undefined)?.record as Record<string, unknown> | undefined
+  if (!record) return null
+
+  const metrics = record.metrics as Record<string, Record<string, unknown>> | undefined
+  if (!metrics) return null
+
+  const lcp = metrics.largest_contentful_paint?.percentile as number | undefined ?? null
+  const cls = metrics.cumulative_layout_shift?.percentile as number | undefined ?? null
+  const fcp = metrics.first_contentful_paint?.percentile as number | undefined ?? null
+  const inp = metrics.interaction_to_next_paint?.percentile as number | undefined ?? null
+  const ttfb = metrics.first_byte?.percentile as number | undefined ?? null
+
+  const recordKey = record.key as Record<string, unknown> | undefined
+
+  return {
+    lcp: lcp !== null ? Math.round(lcp) : null,
+    cls: cls !== null ? Math.round(cls * 1000) / 1000 : null,
+    fcp: fcp !== null ? Math.round(fcp) : null,
+    inp: inp !== null ? Math.round(inp) : null,
+    ttfb: ttfb !== null ? Math.round(ttfb) : null,
+    formFactor: (recordKey?.formFactor as string) ?? null,
+    effectiveConnectionType: (recordKey?.effectiveConnectionType as string) ?? null,
+  }
 }
 
 const PAGESPEED_TIMEOUT_MS = 25_000
@@ -160,6 +198,8 @@ async function runPageSpeed(
       }
     }
 
+    const crux = extractCruxMetrics(data)
+
     return {
       strategy,
       score: perfScore !== null ? Math.round(perfScore * 100) : null,
@@ -172,6 +212,7 @@ async function runPageSpeed(
       failedAccessibilityAudits,
       diagnostics: {},
       raw: data,
+      crux,
     }
   } finally {
     clearTimeout(timeout)

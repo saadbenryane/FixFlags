@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { UnrecoverableError } from 'bullmq'
 import {
   AuditDeadlineError,
   BrowserLaunchError,
@@ -7,10 +6,16 @@ import {
   StorageUploadError,
 } from '@/lib/audit/pipeline-errors'
 
-const { capturedListeners, ...mocks } = vi.hoisted(() => {
-  const capturedListeners: Record<string, Function> = {}
+const mocks = vi.hoisted(() => {
+  class UnrecoverableError extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = 'UnrecoverableError'
+    }
+  }
   return {
-    capturedListeners,
+    UnrecoverableError,
+    capturedListeners: {} as Record<string, Function>,
     runAudit: vi.fn(),
     runAiReview: vi.fn(),
     runRepoScan: vi.fn(),
@@ -27,6 +32,8 @@ const { capturedListeners, ...mocks } = vi.hoisted(() => {
     logger: { info: vi.fn(), error: vi.fn() },
   }
 })
+
+const UnrecoverableError = mocks.UnrecoverableError
 
 vi.mock('@/lib/audit/runner', () => ({ runAudit: mocks.runAudit }))
 vi.mock('@/lib/audit/run-ai-review', () => ({ runAiReview: mocks.runAiReview }))
@@ -69,23 +76,20 @@ vi.mock('@/lib/db', () => ({
 }))
 
 let capturedProcessor: ((job: any) => Promise<any>) | undefined
+let lastWorkerOpts: any
 
-vi.mock('bullmq', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('bullmq')>()
-
-  const FakeWorker = vi.fn().mockImplementation((_name: string, processor: any, _opts: any) => {
-    capturedProcessor = processor
-    return {
-      on: vi.fn((event: string, handler: Function) => {
-        capturedListeners[event] = handler
-      }),
+vi.mock('bullmq', () => {
+  class FakeWorker {
+    constructor(_name: string, processor: any, opts: any) {
+      capturedProcessor = processor
+      lastWorkerOpts = opts
     }
-  })
-
-  return {
-    ...actual,
-    Worker: FakeWorker,
+    on(event: string, handler: Function) {
+      mocks.capturedListeners[event] = handler
+      return this
+    }
   }
+  return { Worker: FakeWorker, UnrecoverableError: mocks.UnrecoverableError }
 })
 
 function makeJob(overrides: Partial<{
@@ -108,8 +112,9 @@ function makeJob(overrides: Partial<{
 beforeEach(() => {
   vi.clearAllMocks()
   capturedProcessor = undefined
-  for (const key of Object.keys(capturedListeners)) {
-    delete capturedListeners[key]
+  lastWorkerOpts = undefined
+  for (const key of Object.keys(mocks.capturedListeners)) {
+    delete mocks.capturedListeners[key]
   }
 })
 
@@ -211,21 +216,21 @@ describe('wrapAuditJobError', () => {
 
 describe('startWorker', () => {
   it('creates a BullMQ Worker with correct configuration', async () => {
-    const { Worker } = await import('bullmq')
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
 
-    expect(Worker).toHaveBeenCalledWith(
-      'audit',
-      expect.any(Function),
-      expect.objectContaining({
-        concurrency: 2,
-        maxStalledCount: 0,
-      })
-    )
+    expect(lastWorkerOpts).toMatchObject({
+      concurrency: 2,
+      maxStalledCount: 0,
+    })
+    expect(mocks.capturedListeners['completed']).toBeTypeOf('function')
+    expect(mocks.capturedListeners['failed']).toBeTypeOf('function')
+    expect(mocks.capturedListeners['stalled']).toBeTypeOf('function')
   })
 
   it('touches heartbeat on initial start', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledWith({
       browserOk: true,
       activeBrowserContexts: 0,
@@ -233,7 +238,8 @@ describe('startWorker', () => {
   })
 
   it('routes audit jobs to runAudit', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
 
@@ -243,7 +249,8 @@ describe('startWorker', () => {
   })
 
   it('routes ai-review jobs to runAiReview', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAiReview.mockResolvedValue(undefined)
 
     await capturedProcessor!(makeJob({ name: 'ai-review', data: { auditId: 'a2' } }))
@@ -253,7 +260,8 @@ describe('startWorker', () => {
   })
 
   it('routes repo-scan jobs to runRepoScan', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runRepoScan.mockResolvedValue(undefined)
 
     await capturedProcessor!(makeJob({ name: 'repo-scan', data: { repoScanId: 'rs1' } }))
@@ -262,7 +270,8 @@ describe('startWorker', () => {
   })
 
   it('routes repo-fix-pr jobs to runFixPr', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runFixPr.mockResolvedValue(undefined)
 
     await capturedProcessor!(makeJob({ name: 'repo-fix-pr', data: { repoFixPrId: 'fp1' } }))
@@ -271,7 +280,8 @@ describe('startWorker', () => {
   })
 
   it('touches heartbeat before processing each job', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
 
@@ -285,7 +295,8 @@ describe('startWorker', () => {
 
 describe('non-terminal audit state detection', () => {
   it('marks audit as FAILED and throws UnrecoverableError when status is non-terminal', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'CHECKING' })
     prismaMocks.auditUpdate.mockResolvedValue(undefined)
@@ -304,7 +315,8 @@ describe('non-terminal audit state detection', () => {
   })
 
   it('does not mark FAILED when audit reaches COMPLETED', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
 
@@ -314,7 +326,8 @@ describe('non-terminal audit state detection', () => {
   })
 
   it('does not mark FAILED when audit reaches FAILED', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockResolvedValue(undefined)
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'FAILED' })
 
@@ -326,21 +339,24 @@ describe('non-terminal audit state detection', () => {
 
 describe('error wrapping in processor', () => {
   it('wraps retryable audit errors as plain Error', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockRejectedValue(new Error('ECONNRESET'))
 
     await expect(capturedProcessor!(makeJob())).rejects.toThrow('ECONNRESET')
   })
 
   it('wraps non-retryable audit errors as UnrecoverableError', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockRejectedValue(new AuditDeadlineError('capturing'))
 
     await expect(capturedProcessor!(makeJob())).rejects.toThrow(UnrecoverableError)
   })
 
   it('wraps unknown throw values as Error', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.runAudit.mockRejectedValue('raw string')
 
     await expect(capturedProcessor!(makeJob())).rejects.toThrow('raw string')
@@ -349,10 +365,11 @@ describe('error wrapping in processor', () => {
 
 describe('failed event handler', () => {
   it('updates repoScan to FAILED on repo-scan job failure', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.repoScanUpdateMany.mockResolvedValue({ count: 1 })
 
-    await capturedListeners['failed'](
+    await mocks.capturedListeners['failed'](
       makeJob({ name: 'repo-scan', data: { repoScanId: 'rs2' } }),
       new Error('scan crashed')
     )
@@ -364,10 +381,11 @@ describe('failed event handler', () => {
   })
 
   it('updates repoFixPr to FAILED on repo-fix-pr job failure', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.repoFixPrUpdateMany.mockResolvedValue({ count: 1 })
 
-    await capturedListeners['failed'](
+    await mocks.capturedListeners['failed'](
       makeJob({ name: 'repo-fix-pr', data: { repoFixPrId: 'fp2' } }),
       new Error('pr failed')
     )
@@ -379,10 +397,11 @@ describe('failed event handler', () => {
   })
 
   it('skips FAILED audit update when audit is already terminal', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
 
-    await capturedListeners['failed'](
+    await mocks.capturedListeners['failed'](
       makeJob({ data: { auditId: 'a6' } }),
       new Error('late failure')
     )
@@ -391,10 +410,11 @@ describe('failed event handler', () => {
   })
 
   it('skips FAILED audit update when audit is already FAILED', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'FAILED' })
 
-    await capturedListeners['failed'](
+    await mocks.capturedListeners['failed'](
       makeJob({ data: { auditId: 'a7' } }),
       new Error('already failed')
     )
@@ -403,14 +423,15 @@ describe('failed event handler', () => {
   })
 
   it('marks audit as FAILED after exhausting all retries', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'CHECKING' })
     prismaMocks.auditUpdateMany.mockResolvedValue({ count: 1 })
 
     const job = makeJob({ data: { auditId: 'a8' }, opts: { attempts: 3 } })
     job.attemptsMade = 3
 
-    await capturedListeners['failed'](job, new Error('final failure'))
+    await mocks.capturedListeners['failed'](job, new Error('final failure'))
 
     expect(prismaMocks.auditUpdateMany).toHaveBeenCalledWith({
       where: { id: 'a8', status: { notIn: ['COMPLETED', 'FAILED'] } },
@@ -423,31 +444,34 @@ describe('failed event handler', () => {
   })
 
   it('does not mark audit FAILED when retries remain', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     prismaMocks.auditFindUnique.mockResolvedValue({ status: 'CHECKING' })
 
     const job = makeJob({ data: { auditId: 'a9' }, opts: { attempts: 3 } })
     job.attemptsMade = 1
 
-    await capturedListeners['failed'](job, new Error('transient'))
+    await mocks.capturedListeners['failed'](job, new Error('transient'))
 
     expect(prismaMocks.auditUpdateMany).not.toHaveBeenCalled()
   })
 
   it('returns early when job is null', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
 
-    await capturedListeners['failed'](null, new Error('no job'))
+    await mocks.capturedListeners['failed'](null, new Error('no job'))
     expect(mocks.logger.error).toHaveBeenCalled()
   })
 })
 
 describe('completed event handler', () => {
   it('logs job completion and touches heartbeat', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
     mocks.touchWorkerHeartbeat.mockClear()
 
-    await capturedListeners['completed'](
+    await mocks.capturedListeners['completed'](
       makeJob({ data: { auditId: 'a10' } })
     )
 
@@ -461,9 +485,10 @@ describe('completed event handler', () => {
 
 describe('stalled event handler', () => {
   it('records stalled job metric and logs error', async () => {
-    await import('@/lib/queue/worker')
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
 
-    await capturedListeners['stalled']('stalled-job-id')
+    await mocks.capturedListeners['stalled']('stalled-job-id')
 
     expect(mocks.recordStalledJob).toHaveBeenCalled()
     expect(mocks.logger.error).toHaveBeenCalledWith(
