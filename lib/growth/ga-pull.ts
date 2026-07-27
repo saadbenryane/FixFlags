@@ -2,7 +2,8 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GA4_PROPERTY = process.env.GA4_PROPERTY_ID ?? 'properties/541892062'
+const GA4_PROPERTY = process.env.GA4_PROPERTY_ID
+if (!GA4_PROPERTY) throw new Error('GA4_PROPERTY_ID env var is required')
 
 export interface GaPullResult {
   summary: Record<string, number | string>
@@ -54,9 +55,8 @@ async function runReport(
 export async function runGaPull(): Promise<GaPullResult | null> {
   const auth = await googleServiceAccount(['https://www.googleapis.com/auth/analytics.readonly'])
   if (!auth) return null
-  // googleapis-common bundles a separate google-auth-library type instance.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const analyticsdata = google.analyticsdata({ version: 'v1beta', auth: auth as any })
+  // googleapis-common bundles its own google-auth-library type instance.
+  const analyticsdata = google.analyticsdata({ version: 'v1beta', auth: auth as unknown as Parameters<typeof google.analyticsdata>[0]['auth'] })
   const fetchedAt = new Date().toISOString()
   const summaryRows = await runReport(
     analyticsdata,

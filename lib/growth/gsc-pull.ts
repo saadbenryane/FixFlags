@@ -2,7 +2,8 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
-const GSC_PROPERTY = process.env.GSC_PROPERTY ?? 'sc-domain:fixflags.com'
+const GSC_PROPERTY = process.env.GSC_PROPERTY
+if (!GSC_PROPERTY) throw new Error('GSC_PROPERTY env var is required')
 
 interface GscRow {
   keys: string[]
@@ -53,9 +54,8 @@ async function queryGsc(
 export async function runGscPull(): Promise<GscPullResult | null> {
   const auth = await googleServiceAccount(['https://www.googleapis.com/auth/webmasters.readonly'])
   if (!auth) return null
-  // googleapis-common bundles a separate google-auth-library type instance.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const searchconsole = google.searchconsole({ version: 'v1', auth: auth as any })
+  // googleapis-common bundles its own google-auth-library type instance.
+  const searchconsole = google.searchconsole({ version: 'v1', auth: auth as unknown as Parameters<typeof google.searchconsole>[0]['auth'] })
   const now = new Date()
   const fetchedAt = now.toISOString()
   const endDate = fetchedAt.slice(0, 10)

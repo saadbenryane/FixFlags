@@ -78,8 +78,7 @@ export function startWorker() {
       }
     },
     {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      connection: createWorkerRedis() as any,
+      connection: createWorkerRedis() as unknown as ConstructorParameters<typeof Worker>[1]['connection'],
       concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
       // Replaying an active Playwright scan deletes and recaptures evidence,

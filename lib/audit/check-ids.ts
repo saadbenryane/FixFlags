@@ -29,7 +29,7 @@ export const ALL_CHECK_IDS = [
   'unoptimized-images',
   'inp-critical',
   'inp-poor',
-  // accessibility.ts
+  // accessibility.ts (axe-core primary + PageSpeed fallback)
   'images-missing-alt',
   'form-inputs-no-label',
   'buttons-no-text',
@@ -40,6 +40,19 @@ export const ALL_CHECK_IDS = [
   'skip-link-missing',
   'keyboard-nav-trap',
   'focus-visible-missing',
+  // axe-core structural checks
+  'axe-aria-required-children',
+  'axe-aria-required-parent',
+  'axe-duplicate-id-active',
+  'axe-duplicate-id-aria',
+  'axe-landmark-banner',
+  'axe-landmark-contentinfo',
+  'axe-landmark-main',
+  'axe-landmark-duplicate',
+  'axe-landmark-one-main',
+  'axe-missing-h1',
+  'axe-list-structure',
+  'axe-meta-viewport',
   // seo.ts
   'h1-missing',
   'h1-multiple',

@@ -7,6 +7,7 @@ import { decryptSecret } from '@/lib/security/crypto'
 import { getAuditQueue } from '@/lib/queue/client'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST() {
   try {
@@ -37,7 +38,11 @@ export async function POST() {
       select: { id: true },
     })
     await Promise.all(
-      pendingFixPrs.map((fixPr) => getAuditQueue().remove(fixPr.id).catch(() => {}))
+      pendingFixPrs.map((fixPr) =>
+        getAuditQueue().remove(fixPr.id).catch((err) => {
+          logger.warn?.('Failed to remove queued fix-PR job', { fixPrId: fixPr.id, error: err })
+        })
+      )
     )
 
     // Cascades to repo_scans -> repo_scan_findings -> repo_fix_prs (existing data-retention

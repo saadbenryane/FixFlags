@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getAuthBaseUrl } from '@/lib/auth/env'
+import { logger } from '@/lib/logger'
 
 const GITHUB_REPO_SCOPE = 'repo'
 const STATE_TTL_MS = 10 * 60 * 1000
@@ -133,12 +134,15 @@ export async function revokeGithubGrant(accessToken: string): Promise<void> {
   const clientId = process.env.GITHUB_CLIENT_ID
   const clientSecret = process.env.GITHUB_CLIENT_SECRET
   if (!clientId || !clientSecret) return
-  await fetch(`https://api.github.com/applications/${clientId}/grant`, {
+  const res = await fetch(`https://api.github.com/applications/${clientId}/grant`, {
     method: 'DELETE',
     headers: {
       Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       Accept: 'application/vnd.github+json',
     },
     body: JSON.stringify({ access_token: accessToken }),
-  }).catch(() => {})
+  }).catch(() => null)
+  if (!res || !res.ok) {
+    logger.warn?.('GitHub grant revocation failed', { status: res?.status })
+  }
 }

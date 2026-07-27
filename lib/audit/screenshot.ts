@@ -1,4 +1,5 @@
 import { chromium, type Browser, type Page } from 'playwright'
+import { AxeBuilder } from '@axe-core/playwright'
 import fs from 'fs'
 import { uploadScreenshot } from '@/lib/storage/screenshots'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './viewports'
@@ -140,6 +141,7 @@ export interface ScreenshotResult {
   technologyRuntimeMarkers?: string[]
   actionTimeline?: ActionTimelineEvent[]
   formProbe?: FormProbeResult | null
+  axeViolations?: import('./checks/accessibility').AxeViolation[]
 }
 
 interface ViewportCapture {
@@ -155,6 +157,7 @@ interface ViewportCapture {
   technologyResources?: TechnologyResourceRecord[]
   technologyResourcesTruncated?: boolean
   technologyRuntimeMarkers?: string[]
+  axeViolations?: import('./checks/accessibility').AxeViolation[]
 }
 
 const TECHNOLOGY_RUNTIME_MARKERS = [
@@ -406,6 +409,17 @@ async function captureDesktopWithFlow(
     result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
     result.html = await page.content()
 
+    // Run axe-core accessibility scan on the settled page.
+    try {
+      const axeResults = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
+        .analyze()
+      result.axeViolations = axeResults.violations as import('./checks/accessibility').AxeViolation[]
+    } catch (err) {
+      logger.warn('axe-core scan failed, falling back to PageSpeed checks', err)
+      result.axeViolations = []
+    }
+
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'desktop', buffer, pageKey)
@@ -613,6 +627,7 @@ export async function captureScreenshots(
     technologyRuntimeMarkers: desktop.technologyRuntimeMarkers ?? [],
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
+    axeViolations: desktop.axeViolations ?? [],
   }
 }
 
