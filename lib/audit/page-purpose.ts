@@ -137,17 +137,25 @@ export function detectPagePurpose(
   // 5. Personal / portfolio / advisory page: personal pronouns in the headline,
   //    case-study or portfolio sections, and the absence of commercial signals
   //    indicate a personal site that legitimately lacks conversion CTAs.
+  //    Commercial intent is checked only in the headline/title and CTA text,
+  //    NOT in body content, because portfolio pages naturally mention "pricing"
+  //    or "buy" in case-study descriptions without having conversion intent.
   const h1Text = (meta.h1s ?? [])[0] ?? ''
   const titleText = meta.title ?? ''
   const headlineAndTitle = `${h1Text} ${titleText}`.toLowerCase()
   const hasPersonalPronouns = /\b(i'm|i am|my\s+(?:work|story|journey|portfolio|approach)|from vision|case stud)\b/i.test(headlineAndTitle)
   const hasPortfolioSections = /\b(case stud|portfolio|selected work|journal|blog)\b/i.test(pageText.slice(0, 2000))
-  const hasNoCommercialIntent = !hasCommercialSignal && ctaCount === 0
+  const headlineAndCtas = `${headlineAndTitle} ${(meta.ctaTexts ?? []).join(' ')}`.toLowerCase()
+  const hasCommercialIntent =
+    /(free trial|try free|start free|no credit card|free plan|\bpricing\b|\bbuy\b|\bcart\b|\bcheckout\b|\bpurchase\b|\bbilling\b)/i.test(
+      headlineAndCtas
+    )
+  const hasNoCommercialIntent = !hasCommercialIntent && ctaCount === 0
   if (hasPersonalPronouns && hasPortfolioSections && hasNoCommercialIntent) {
     return {
       purpose: 'article',
       reasons: [
-        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialSignal})`,
+        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialIntent})`,
       ],
     }
   }

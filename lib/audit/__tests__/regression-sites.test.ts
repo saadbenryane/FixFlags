@@ -9,6 +9,7 @@ import { runAccessibilityChecks } from '../checks/accessibility'
 import { runSlopChecks } from '../checks/slop'
 import { runMeasurementChecks } from '../checks/measurement'
 import { runSecurityBasicsChecks } from '../checks/security'
+import { detectPagePurpose } from '../page-purpose'
 
 const FIXTURE_DIR = 'lib/audit/__tests__/fixtures/sites'
 const URL = 'https://example.com'
@@ -35,10 +36,11 @@ function testFixture(
   it(`produces ${expectedCount} flags for ${file}`, () => {
     const html = readFileSync(`${FIXTURE_DIR}/${file}`, 'utf-8')
     const meta = parseMetadataFromHtml(html, URL)
+    const purpose = detectPagePurpose(meta, URL)
 
     const flags = [
       ...runMetadataChecks(meta),
-      ...runContentChecks(meta),
+      ...runContentChecks(meta, purpose),
       ...runTrustChecks(URL, meta, []),
       ...runAccessibilityChecks(meta, null),
       ...runSlopChecks(meta),
@@ -115,14 +117,15 @@ describe('regression: broken-page.html', () => {
 describe('regression: saadbenryane-com.html', () => {
   testFixture(
     'saadbenryane-com.html',
-    4,
+    3,
     [
-      { checkId: 'no-cta-detected', severity: 'IMPORTANT' },
+      // Portfolio page classified as 'article' — no-cta-detected suppressed.
+      // JSON-LD email detection finds contact info — no-contact-info suppressed.
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent']
+    ['form-missing-validation', 'scroll-ghost-sections', 'visual-radius-inconsistent', 'no-cta-detected', 'no-contact-info']
   )
 })
 
