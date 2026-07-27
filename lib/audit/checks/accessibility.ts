@@ -29,7 +29,7 @@ export function runAccessibilityChecks(
       impactTag: 'ACCESSIBILITY',
       severity: 'IMPORTANT',
       problem: `${meta.inputsWithoutLabel} form input${meta.inputsWithoutLabel > 1 ? 's' : ''} without a label`,
-      evidence: `${meta.inputsWithoutLabel} input element${meta.inputsWithoutLabel > 1 ? 's' : ''} found without associated <label>, aria-label, or aria-labelledby`,
+      evidence: `${meta.inputsWithoutLabel} input element${meta.inputsWithoutLabel > 1 ? 's' : ''} found without associated <label>, aria-label, or aria-labelledby (placeholder alone is not a valid accessible name)`,
       fix: '1. Add a <label for="inputId"> to each form input\n2. If a visible label is not possible, add aria-label instead\n3. Test by clicking the label to confirm it focuses the input',
       confidence: 1.0,
       source: 'DETERMINISTIC',

@@ -203,8 +203,10 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   }
 
   // Forms and inputs
+  // Note: <input type="file"> is excluded because it is always visually hidden
+  // and triggered by an adjacent button that carries the accessible name.
   let inputsWithoutLabel = 0
-  $('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), textarea, select').each((_, el) => {
+  $('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([type="file"]), textarea, select').each((_, el) => {
     const $el = $(el)
     if ($el.attr('aria-hidden') === 'true') return
     const id = $el.attr('id')
