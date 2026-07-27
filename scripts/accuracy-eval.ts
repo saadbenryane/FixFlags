@@ -29,6 +29,11 @@ function countImportantFalseBlockers(flags: RankableFlag[], tier: AccuracyFixtur
 async function evaluateHtmlFixtures() {
   const failures: string[] = []
   let goldImportantTotal = 0
+  let totalFlags = 0
+  let totalImportant = 0
+  let totalPolish = 0
+  let goldTotalFlags = 0
+  let goldImportantFlags = 0
 
   for (const fixture of accuracyGateFixtures()) {
     if (!existsSync(`${ACCURACY_FIXTURE_DIR}/${fixture.file}`)) {
@@ -42,7 +47,15 @@ async function evaluateHtmlFixtures() {
     const top3 = rankFlagsByPriority(sorted, [], 3).map((r) => r.flag.checkId ?? '')
     const importantCount = countImportantFalseBlockers(flags as RankableFlag[], fixture.tier)
 
-    if (fixture.tier === 'gold') goldImportantTotal += importantCount
+    totalFlags += flags.length
+    totalImportant += flags.filter((f) => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT').length
+    totalPolish += flags.filter((f) => f.severity === 'POLISH').length
+
+    if (fixture.tier === 'gold') {
+      goldImportantTotal += importantCount
+      goldTotalFlags += flags.length
+      goldImportantFlags += flags.filter((f) => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT').length
+    }
     if (importantCount > fixture.maxImportantFalseBlockers) {
       failures.push(
         `${fixture.file}: ${importantCount} CRITICAL/IMPORTANT flags exceeds max ${fixture.maxImportantFalseBlockers}`
@@ -68,7 +81,7 @@ async function evaluateHtmlFixtures() {
     failures.push(`gold fixtures: expected 0 CRITICAL/IMPORTANT false blockers, got ${goldImportantTotal}`)
   }
 
-  return failures
+  return { failures, totalFlags, totalImportant, totalPolish, goldTotalFlags, goldImportantFlags }
 }
 
 async function evaluateDemoRepair() {
@@ -152,15 +165,18 @@ function evaluateNonHtmlFixture() {
 }
 
 async function main() {
-  const failures = [
-    ...await evaluateHtmlFixtures(),
-    ...await evaluateDemoRepair(),
-    ...evaluateNonHtmlFixture(),
-  ]
+  const htmlResult = await evaluateHtmlFixtures()
+  const demoFailures = await evaluateDemoRepair()
+  const nonHtmlFailures = evaluateNonHtmlFixture()
+  const failures = [...htmlResult.failures, ...demoFailures, ...nonHtmlFailures]
 
   console.log('FixFlags accuracy eval\n')
   console.log(`HTML gate fixtures: ${accuracyGateFixtures().length}`)
   console.log(`Gold fixtures: ${goldAccuracyFixtures().length}`)
+  console.log(`Total flags across fixtures: ${htmlResult.totalFlags}`)
+  console.log(`  IMPORTANT/CRITICAL: ${htmlResult.totalImportant}`)
+  console.log(`  POLISH: ${htmlResult.totalPolish}`)
+  console.log(`Gold-tier flags: ${htmlResult.goldTotalFlags} (IMPORTANT/CRITICAL: ${htmlResult.goldImportantFlags})`)
   console.log(`Failures: ${failures.length}`)
 
   if (failures.length > 0) {

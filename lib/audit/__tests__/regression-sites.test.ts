@@ -173,3 +173,77 @@ describe('regression: vercel-com.html', () => {
     ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'links-no-text']
   )
 })
+
+describe('regression: stripe-com.html', () => {
+  testFixture(
+    'stripe-com.html',
+    2,
+    [
+      { checkId: 'skip-link-missing', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
+    ],
+    ['form-missing-validation', 'links-no-text', 'images-missing-alt', 'no-privacy-policy',
+     'friction-no-risk-reversal', 'no-structured-data', 'security-headers-missing']
+  )
+})
+
+describe('regression: tailwindui-com.html', () => {
+  testFixture(
+    'tailwindui-com.html',
+    2,
+    [
+      { checkId: 'skip-link-missing', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
+    ],
+    ['form-missing-validation', 'links-no-text', 'images-missing-alt', 'no-privacy-policy',
+     'friction-no-risk-reversal', 'no-structured-data', 'security-headers-missing']
+  )
+})
+
+describe('regression: github-com.html', () => {
+  testFixture(
+    'github-com.html',
+    5,
+    [
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
+      { checkId: 'form-missing-validation', severity: 'POLISH' },
+      { checkId: 'description-too-long', severity: 'POLISH' },
+      { checkId: 'title-too-long', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
+    ],
+    ['links-no-text', 'images-missing-alt', 'no-privacy-policy']
+  )
+})
+
+describe('regression: blog-samaltman-com.html', () => {
+  testFixture(
+    'blog-samaltman-com.html',
+    10,
+    [
+      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'images-missing-alt', severity: 'IMPORTANT' },
+      { checkId: 'links-no-text', severity: 'IMPORTANT' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
+      { checkId: 'description-too-short', severity: 'POLISH' },
+      { checkId: 'lang-missing', severity: 'POLISH' },
+      { checkId: 'canonical-missing', severity: 'POLISH' },
+      { checkId: 'no-privacy-policy', severity: 'POLISH' },
+      { checkId: 'skip-link-missing', severity: 'POLISH' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
+    ],
+    ['no-cta-detected', 'h1-generic']
+  )
+})
+
+describe('regression: shopify-com.html', () => {
+  testFixture(
+    'shopify-com.html',
+    3,
+    [
+      { checkId: 'buttons-no-text', severity: 'IMPORTANT' },
+      { checkId: 'title-too-long', severity: 'POLISH' },
+      { checkId: 'cookie-consent-absent', severity: 'POLISH' },
+    ],
+    ['links-no-text', 'images-missing-alt', 'no-privacy-policy', 'form-missing-validation']
+  )
+})
