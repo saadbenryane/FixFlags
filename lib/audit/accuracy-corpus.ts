@@ -40,6 +40,15 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     brokenLinks: true,
   },
   {
+    file: 'fixflags-com.html',
+    url: 'https://fixflags.com',
+    tier: 'gold',
+    maxImportantFalseBlockers: 0,
+    expectedTop3: ['cookie-consent-absent', 'no-structured-data', 'description-too-long'],
+    knownFalsePositives: ['form-missing-validation'],
+    expectedPresent: ['cookie-consent-absent', 'security-headers-missing'],
+  },
+  {
     file: 'nextjs-org.html',
     url: 'https://nextjs.org',
     tier: 'gold',

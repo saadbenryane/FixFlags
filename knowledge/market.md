@@ -121,7 +121,7 @@ Strongest current use case: "check before launch." Excellent entry point, weak r
 
 PageSpeed has Google distribution, SEO visibility, browser credibility, and years of standardization. FixFlags starts with none of these.
 
-## Fastest Agency Channel: Expert Ecosystem
+## Fastest Studio Channel: Expert Ecosystem
 
 Lovable has a partner program and directory of experts selling projects at meaningful budgets and hourly rates ($100-$130). This is a much more precise acquisition surface than "agencies in general."
 
@@ -215,7 +215,7 @@ Give creators:
 - "FixFlags launch checklist" lesson
 - Public case studies using their builds
 
-### Agency program
+### Studio program
 
 FixFlags Verified Delivery program based on actual report completion, without implying a guarantee of security or quality.
 

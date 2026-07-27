@@ -37,7 +37,7 @@ Run this before changing hero copy.
 |---------|-------------|------------|
 | AI shipper (Cursor) | Fix loop in editor | Mentions fix prompts + re-check |
 | Live site founder | Why traffic doesn't convert | Mentions AI reads page / conversion |
-| Agency designer | Not generic audit tool | Shows screenshot review, not Lighthouse clone |
+| Studio designer | Not generic audit tool | Shows screenshot review, not Lighthouse clone |
 | Skeptic dev | Real pipeline | Capture → Check → Judge is explicit |
 | Non-technical founder | Plain language | No jargon; clear what happens on paste |
 

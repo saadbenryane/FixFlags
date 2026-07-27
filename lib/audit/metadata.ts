@@ -228,22 +228,30 @@ export function parseMetadataFromHtml(html: string, url: string): PageMetadata {
   const formElements = $('form')
   if (formElements.length > 0) {
     formElements.each((_, form) => {
+      const $form = $(form)
+      // Skip forms where all inputs are disabled — these are SSR placeholders
+      // that JavaScript enables on mount. They are not real user-facing forms
+      // in the static HTML snapshot.
+      const allInputsDisabled = $form.find(formInputSelectors).toArray()
+        .every((el) => $(el).attr('disabled') !== undefined)
+      if (allInputsDisabled) return
+
       let formFieldCount = 0
-      $(form).find(formInputSelectors).each(() => {
+      $form.find(formInputSelectors).each(() => {
         totalFormInputs++
         formFieldCount++
       })
       // Check if this form contains a conversion CTA (button text, link, or
       // submit value). Only these forms represent real conversion friction.
-      const formText = $(form).text()
+      const formText = $form.text()
       const hasCta = CONVERSION_CTA_RE.test(formText) ||
-        $(form).find('button, [type="submit"], a').toArray().some((el) =>
+        $form.find('button, [type="submit"], a').toArray().some((el) =>
           CONVERSION_CTA_RE.test($(el).text())
         )
       if (hasCta && formFieldCount > maxConversionFormInputs) {
         maxConversionFormInputs = formFieldCount
       }
-      $(form).find(formValidationSelectors).each((_, field) => {
+      $form.find(formValidationSelectors).each((_, field) => {
         const el = $(field)
         const hasPattern = el.attr('pattern') !== undefined
         const hasMinOrMax = el.attr('min') !== undefined || el.attr('max') !== undefined

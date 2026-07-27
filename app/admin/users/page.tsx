@@ -67,7 +67,7 @@ export default async function AdminUsersPage() {
 
       <Card variant="solid">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Credit packs</CardTitle>
+          <CardTitle className="text-sm font-medium">Credit history</CardTitle>
         </CardHeader>
         <CardContent className="flex gap-6 text-sm">
           <div>

@@ -27,7 +27,7 @@ export default function TermsPage() {
           <h2 className="text-base font-semibold text-foreground">Accounts and billing</h2>
           <p>
             Paid plans renew monthly unless you cancel through the Stripe billing portal. Usage
-            limits apply to new URL checks per plan. Re-checks on reports you own are unlimited and
+            limits apply to checks per plan. Re-checks on reports you own are unlimited and
             do not consume plan quota. Downgrades and cancellations take effect at the end of the
             current billing period unless Stripe indicates otherwise.
           </p>

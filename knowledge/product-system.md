@@ -175,7 +175,7 @@ After Finish Check:
 | P1 | Goal-based Finish Check | Product-purpose confirmation, goal selection, journey policy, explicit success assertions, bounded agent runner, replay, complete evidence, three journeys, mobile and desktop, seven-day re-checking, before-and-after verification |
 | P2 | Authenticated journeys | Encrypted test credentials, reusable isolated auth state, test inbox, safe data reset, role support, credential revocation, detailed audit log |
 | P3 | Watch | GitHub connection, deployment trigger, change mapping, saved journeys, affected-journey selection, regression detection, alerts, history |
-| P4 | Agency workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
+| P4 | Studio workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
 | P5 | Real-user evidence | Sentry connector, PostHog connector, FullStory connector, evidence correlation, clear separation between simulated/observed/real-user evidence |
 
 ## What we will not build first

@@ -287,18 +287,18 @@ If it catches something on your site, quote this tweet and tell me what it found
 
 ---
 
-## 6. LinkedIn Post (Agency/Studio Audience)
+## 6. LinkedIn Post (Studio Audience)
 
 ### Post
 I built FixFlags because I kept seeing the same pattern:
 
-Agency delivers site. Client finds a broken CTA or a missing privacy policy in the first 5 minutes.
+Studio delivers site. Client finds a broken CTA or a missing privacy policy in the first 5 minutes.
 
 FixFlags checks AI-built sites before handoff. Paste the URL. Get a ranked list of issues across Message, Experience, and Reach. Every issue includes a fix prompt shaped for Cursor, Lovable, or Bolt.
 
 The useful part for agencies: share the report with your client before delivery. Catch the issues before they do. Looks professional. Saves the back-and-forth.
 
-Agency plan: 100 checks/month, share links, 5 projects, GitHub repo scanning.
+Studio plan: 100 checks/month, share links, 5 projects, GitHub repo scanning.
 
 Try it: fixflags.com
 

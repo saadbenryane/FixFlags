@@ -204,11 +204,11 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
-- Project product watch (Pro/Agency): weekly/daily FULL re-check + regression email
+- Project product watch (Pro/Studio): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
 - **Live progressive report:** URL submission immediately replaces the homepage with report geometry, then history-replaces the URL with `/report/{id}`. Desktop and mobile captures resolve independently, and the final Fix list layout appends Flags as they arrive. Contract and timeline evidence stay behind "How FixFlags is checking".
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
-- **Scoped Agency sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
+- **Scoped Studio sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 
 ## Evaluation system
 
@@ -225,7 +225,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 - Regression suite covers HTML plus frozen PageSpeed, network, overlay, slow-replay, and dead-end-flow outputs; screenshot pixel rendering is not yet frozen
 - Route contract tests cover the critical path (checks create, api-keys, projects, scan-access, railway webhook, report status poll, re-check); remaining API routes still lack handler-level tests
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
-- No localhost or private network checks (preview tunnels and HTTP basic auth supported on Agency projects)
+- No localhost or private network checks (preview tunnels and HTTP basic auth supported on Studio projects)
 - No team workspaces or white-label reports
 - Deployed Lovable/Bolt connector smoke, release credential proof, and production dogfood remain open; local MCP setup and API-key auth for those builders are shipped
 - The `fixflags` npm package is claimed. CLI `0.2.0-beta.1`, device authorization, credential-store login, editor init, and the public customer skill remain unshipped until the trusted-publishing release verifies the package in the registry
@@ -263,7 +263,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Unresolved questions
 
-- Does Agency Fix PR creation close enough sales, or do buyers still want white-label share branding?
+- Does Studio Fix PR creation close enough sales, or do buyers still want white-label share branding?
 - Will free users convert to Pro before exhausting their 3 lifetime AI reports?
 - What re-check cadence builds the strongest Check → Fix → Verify → Watch habit?
 - Does the $49 Finish Check price point optimize for conversion against $29 and $79 variants?
@@ -274,5 +274,5 @@ Five concrete checks from report evidence. Fix before shipping:
 - **Core loop above all.** Every feature must serve Check → Fix → Verify → Watch.
 - **Every feature must serve the core loop.** If it does not fit Check → Fix → Verify → Watch, it does not ship.
 - **Re-checks are never gated.** A user who re-checks is a user who sees value.
-- **Localhost and private networks are not supported.** Agency projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
+- **Localhost and private networks are not supported.** Studio projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
 - **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Launch Checks after deploy. See `docs/railway-deploy-check.md`.

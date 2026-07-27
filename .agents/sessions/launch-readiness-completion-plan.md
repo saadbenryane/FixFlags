@@ -148,7 +148,7 @@ Remaining from handoff (after release verification):
 
 1. Runtime recovery on **application audit queue** (not only isolated BullMQ eval)
 2. Report / MCP / marketing module splits + dead-code adjudication (behavior-driven, not size-driven)
-3. Launch Check completeness signals: Contract merge-not-wipe, watch FULL re-check, Agency share honesty
+3. Launch Check completeness signals: Contract merge-not-wipe, watch FULL re-check, Studio share honesty
 
 ---
 

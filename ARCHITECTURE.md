@@ -144,8 +144,8 @@ Tech stack for prescription: `auditPage.performanceData.detectedTech`, not `html
 ### Job types
 - `audit` — full audit execution
 - `ai-review` — phase-2 prescription only (triage runs in `audit` job)
-- `repo-scan` — codebase scan (Agency plan)
-- `repo-fix-pr` — automated fix PR (Agency plan)
+- `repo-scan` — codebase scan (Studio plan)
+- `repo-fix-pr` — automated fix PR (Studio plan)
 
 ## Knowledge graph
 
@@ -170,7 +170,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 - **Session:** Cookie-based, edge-safe presence check in `proxy.ts`
 - **Middleare:** (`proxy.ts`) sets CSP, HSTS, X-Frame-Options, CORS. Gates `/admin/` and `/settings/`.
 - **Roles:** `user` (default), `admin` (via `ADMIN_USER_IDS`)
-- **Plans:** FREE, BUILDER (Pro), TEAM (Agency)
+- **Plans:** FREE, BUILDER (Pro), TEAM (Studio)
 - **API keys:** Hashed, prefixed `ff_live_`, for MCP access
 
 ## Billing
@@ -178,9 +178,8 @@ Internal-only system for organic growth. Never queried directly by public pages.
 | Plan | Env price ID | Price | New URL checks |
 |------|--------------|-------|----------------|
 | Free | — | $0 | 3 lifetime |
-| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 25/mo |
-| Agency (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $99/mo | 100/mo |
-| Credits | `STRIPE_CREDIT_PACK_{10,25,50}_ID` | $15 / $30 / $50 | +10 / +25 / +50 one-time |
+| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $39/mo | 5/mo |
+| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $129/mo | 25/mo |
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
@@ -217,7 +216,7 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 | Canonical report workspace | `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts` |
 | Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, Contract/Memory, evidence timelines, explorer, previews, gates |
 | Fix List contract | `buildFixList()` in `lib/audit/finish-plan.ts` via `loadFinishPlanFlags` / `buildUnifiedFixList`; report, API, export, task outcomes, MCP, CLI; `buildFinishPlan()` / `buildUnifiedFinishPlan()` are ≤3 compatibility |
-| Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Agency API + MCP `scanAccess` on check |
+| Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Studio API + MCP `scanAccess` on check |
 | Deploy CI gate | `app/api/webhooks/railway/route.ts` (`?apiKey=` + `?url=`); see `docs/railway-deploy-check.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |

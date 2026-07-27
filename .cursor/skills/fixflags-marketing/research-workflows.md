@@ -100,7 +100,7 @@ Compare FixFlags to what the visitor already tries.
 |-------------|--------------|---------------------|
 | Lighthouse / PageSpeed | Performance, a11y, SEO scores | Conversion, trust, content, fix prompts, re-check |
 | ChatGPT "review my site" | Generic feedback | Evidence from live page, grades, structured prompts |
-| Agency audit sprint | Human strategy deck | 60-second graded report, agent-ready fixes |
+| Studio audit sprint | Human strategy deck | 60-second graded report, agent-ready fixes |
 | Hotjar / analytics | Behavior data | Qualitative launch-readiness grades + fix loop |
 
 **Differentiation rows** already live in `copy.ts` → `DIFFERENTIATION`. Extend only with verified claims.

@@ -8,8 +8,8 @@ Created 2026-07-19 in **test mode** (`livemode=false`).
 
 | Product | Price ID | Env var | Amount |
 |---------|----------|---------|--------|
-| FixFlags Pro | `price_1Tv0h4AjciMDcWE189gBj6wf` | `STRIPE_BUILDER_PRICE_ID` | $29/mo |
-| FixFlags Agency | `price_1Tv0h5AjciMDcWE1qGjHsdJR` | `STRIPE_TEAM_PRICE_ID` | $99/mo |
+| FixFlags Pro | `price_1Tv0h4AjciMDcWE189gBj6wf` | `STRIPE_BUILDER_PRICE_ID` | $39/mo |
+| FixFlags Studio | `price_1Tv0h5AjciMDcWE1qGjHsdJR` | `STRIPE_TEAM_PRICE_ID` | $129/mo |
 | Credit Pack +10 | `price_1Tv0h6AjciMDcWE1BtRvPmOg` | `STRIPE_CREDIT_PACK_10_ID` | $15 |
 | Credit Pack +25 | `price_1Tv0h6AjciMDcWE1ShtiyPUu` | `STRIPE_CREDIT_PACK_25_ID` | $30 |
 | Credit Pack +50 | `price_1Tv0h7AjciMDcWE1XZWi26WU` | `STRIPE_CREDIT_PACK_50_ID` | $50 |
@@ -48,7 +48,7 @@ Health: `/api/health` → `billingConfigured: true`.
 
 ## Dashboard checklist (test mode)
 
-1. Customer Portal: cancel, update payment method, switch Pro↔Agency with proration
+1. Customer Portal: cancel, update payment method, switch Pro↔Studio with proration
 2. Stripe Tax enabled (Checkout uses `automatic_tax`)
 3. Customer emails: receipts + invoices
 4. Webhook events: subscription created/updated/deleted, invoice payment_failed/succeeded, checkout.session completed/expired, charge.refunded
@@ -59,7 +59,7 @@ Health: `/api/health` → `billingConfigured: true`.
 2. New live webhook endpoint + live `whsec_`
 3. Railway: replace all Stripe vars with `sk_live_` / live price IDs / live webhook secret; keep `BILLING_REQUIRED=true`
 4. Rotate any keys that were pasted in chat before going live
-5. One real $29 smoke charge (refund if desired)
+5. One real $39 smoke charge (refund if desired)
 
 ## Smoke
 

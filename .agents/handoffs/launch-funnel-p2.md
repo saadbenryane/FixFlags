@@ -10,7 +10,7 @@ After a controlled campaign produces roughly 100 completed scans, pick up:
 
 1. **Audience-specific landing pages** — AI shipper vs existing site owner variants (see `.cursor/skills/fixflags-marketing/audiences.md`). Do not dilute the homepage further before conversion baselines.
 2. **Authentic testimonials / case studies** — finding → action → outcome, with permission. Replace `LANDING_PAGE.productEvidence` only when real quotes exist.
-3. **Agency sharing workflow** polish and repo/MCP connection CTAs.
+3. **Studio sharing workflow** polish and repo/MCP connection CTAs.
 4. **Scheduled monitoring** productization (user-facing “Monitor”; keep API `ff_monitoring` / `MonitoringMode` as-is until then).
 5. **Magic link auth** if signup funnel shows password friction.
 6. **Deeper evidence-type system** (waterfall, a11y tree, interaction traces) beyond shareable-check social previews.

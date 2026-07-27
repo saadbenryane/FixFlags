@@ -54,8 +54,8 @@ For each participant:
 ### Test pricing
 
 Randomly or sequentially test:
-- $29 Finish Check
 - $49 Finish Check
+- $69 Finish Check
 - $79 Finish Check
 
 Measure purchase, completion, perceived value and refund requests.

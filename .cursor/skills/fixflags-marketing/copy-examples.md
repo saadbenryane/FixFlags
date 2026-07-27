@@ -53,7 +53,7 @@ A: No. FixFlags audits any public page, live or new. Most live sites still fail 
 A: Lighthouse scores performance, accessibility, and SEO. FixFlags also grades conversion, trust, and content, with evidence and fix prompts for each finding.
 
 **Q: Can I send the report to my dev or client?**  
-A: Copy fix prompts from the report, or upgrade to Agency for public share links before a client call.
+A: Copy fix prompts from the report, or upgrade to Studio for public share links before a client call.
 
 ---
 

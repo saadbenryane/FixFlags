@@ -198,7 +198,7 @@ export const AUTH = {
   valueProps: [
     { icon: 'history' as const, text: 'Report history saved to your account' },
     { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
-    { icon: 'monitoring' as const, text: 'Re-check after fixes to see what cleared' },
+    { icon: 'recheck' as const, text: 'Re-check after fixes to see what cleared' },
   ],
   passkeyErrors: {
     cancelled: 'Passkey sign-in was cancelled or failed. Try another method.',

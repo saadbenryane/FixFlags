@@ -61,9 +61,9 @@ export const FAQ = [
       'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt also connect through custom MCP connectors.',
   },
   {
-    question: 'Can it check sites built with Lovable/Bolt/v0?',
+    question: 'Can it check sites built with Lovable/Bolt/v0/Devin?',
     answer:
-      'Yes. FixFlags checks any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, and Bolt.',
+      'Yes. FixFlags checks any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, Bolt, and Devin.',
   },
   {
     question: 'How do fix prompts work with Cursor/Claude?',
@@ -92,7 +92,7 @@ export const FAQ = [
   {
     question: 'Who is FixFlags for?',
     answer:
-      'Builders shipping with AI tools like Cursor, Lovable, and Bolt, and teams with a live site that gets traffic but weak conversion. Not for enterprise QA suites or password-only staging.',
+      'Builders shipping with AI tools like Cursor, Lovable, Bolt, and Devin, and teams with a live site that gets traffic but weak conversion. Not for enterprise QA suites or password-only staging.',
   },
 ] as const
 
@@ -126,7 +126,7 @@ export const CHANGELOG_ENTRIES = [
       'Sign up and create your account to start testing your sites',
       'Run free checks on any live or preview URL',
       'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
-      'Fix prompts for Cursor, Claude Code, Lovable, Bolt, and Windsurf',
+      'Fix prompts for Cursor, Claude Code, Lovable, Bolt, Windsurf, and Devin',
       'View your report history and AI tool usage from your dashboard',
     ],
   },

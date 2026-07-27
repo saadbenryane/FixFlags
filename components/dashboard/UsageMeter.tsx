@@ -59,8 +59,8 @@ export function UsageMeter({
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {isUnlimited
-              ? `new URL check${used === 1 ? "" : "s"} this period`
-              : `new URL check${remaining === 1 ? "" : "s"} remaining`}
+              ? `journey${used === 1 ? "" : "s"} this period`
+              : `journey${remaining === 1 ? "" : "s"} remaining`}
           </p>
         </div>
 
@@ -113,13 +113,7 @@ export function UsageMeter({
 
         {atLimit && plan !== "FREE" && purchasedCredits === 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Plan limit reached.{" "}
-            <Link
-              href="/billing#credit-packs"
-              className="text-brand hover:underline"
-            >
-              Buy +10 checks
-            </Link>
+            Plan limit reached. Re-checks stay free.
           </p>
         )}
 

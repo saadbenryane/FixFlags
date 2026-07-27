@@ -6,7 +6,7 @@ FixFlags itself runs on Railway; this is the supported post-deploy gate for your
 
 ## Setup
 
-1. Create a FixFlags API key (Pro or Agency) from **Settings → API keys**.
+1. Create a FixFlags API key (Pro or Studio) from **Settings → API keys**.
 2. Optional: set `RAILWAY_WEBHOOK_SECRET` on your FixFlags deployment and append `&webhookSecret=...` to the webhook URL.
 3. In Railway → **Project → Settings → Webhooks**:
    - **URL:** `https://fixflags.com/api/webhooks/railway?apiKey=ff_live_...&url=https://YOUR-SERVICE.up.railway.app`

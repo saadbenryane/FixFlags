@@ -22,10 +22,10 @@ Adjacent tools currently range from low-cost browser access around $19 monthly, 
 | Tier | Plan enum | Price | New URL checks | Key hook |
 |------|-----------|-------|----------------|----------|
 | Free | `FREE` | $0 | 3 lifetime | Full report after claim, unlimited re-checks on owned reports |
-| Pro | `BUILDER` | $29/mo | 25/mo | Compare, MCP / API keys, Journey Review |
-| Agency | `TEAM` | $99/mo | 100/mo | Share links, projects, GitHub repo scans |
+| Pro | `BUILDER` | $39/mo | 25/mo | Compare, MCP / API keys, Journey Review |
+| Studio | `TEAM` | $129/mo | 100/mo | Share links, projects, GitHub repo scans |
 
-Display name **Agency** maps to `TEAM`. Do not use "Max" in docs.
+Display name **Studio** maps to `TEAM`. Do not use "Max" in docs.
 
 Re-checks are free and unlimited. Credit packs are paid overflow for new URL checks.
 
@@ -63,8 +63,8 @@ Browser automation, screenshots, models, and storage create variable cost. Stric
 
 ## Targets
 
-Near-term operating plan: [docs/year-1-operating-plan.md](../docs/year-1-operating-plan.md) (Agency naming). Long-term blend of builders + agencies/studios + teams; agencies carry disproportionate MRR.
+Near-term operating plan: [docs/year-1-operating-plan.md](../docs/year-1-operating-plan.md) (Studio naming). Long-term blend of builders + agencies/studios + teams; agencies carry disproportionate MRR.
 
 ## Open math
 
-At $29/$99, Year-1 MRR targets require either more customers, a price increase, or a higher tier. GTM decision; docs do not invent a fix.
+At $39/$129, Year-1 MRR targets require either more customers, a price increase, or a higher tier. GTM decision; docs do not invent a fix.

@@ -12,7 +12,7 @@ FixFlags is the QA layer for AI-built products. Scan any public web app across M
 
 ## Setup
 
-1. Pro or Agency API key from https://fixflags.com/settings
+1. Pro or Studio API key from https://fixflags.com/settings
 2. MCP endpoint: `https://fixflags.com/api/mcp` with `x-api-key`
 3. This power file lives in-repo at `ide-integrations/kiro/fixflags-power.md` (install into Kiro from this path)
 

@@ -10,7 +10,7 @@ const ROWS = [
   },
   {
     feature: "What you get",
-    free: "Full report + fix prompts on each of your 3 new URL checks",
+    free: "3 checks with full reports and fix prompts",
     pro: "Before/after compare + MCP in your editor",
     studio: "Share links, proof exports, 5 projects, GitHub repo scans",
   },

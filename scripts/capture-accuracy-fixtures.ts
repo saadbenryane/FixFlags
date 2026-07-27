@@ -11,6 +11,7 @@ import {
 } from '@/lib/audit/fixture-sanitize'
 
 const TARGETS = [
+  { id: 'fixflags', url: 'https://fixflags.com', file: 'lib/audit/__tests__/fixtures/sites/fixflags-com.html', curated: false },
   { id: 'lovable', url: 'https://lovable.dev', file: 'lib/audit/__tests__/fixtures/sites/lovable-dev.html', curated: false },
   { id: 'bolt', url: 'https://bolt.new', file: 'lib/audit/__tests__/fixtures/sites/bolt-new.html', curated: false },
   { id: 'cineverse', url: 'https://cineverse.replit.app', file: 'lib/audit/__tests__/fixtures/sites/cineverse-replit-app.html', curated: false },

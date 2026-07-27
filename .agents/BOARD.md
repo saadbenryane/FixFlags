@@ -53,7 +53,7 @@
 | launch-quality-accuracy | cloud-agent | Scan accuracy baseline, accuracy-eval CI gate, HTML parser FP fixes, builder fixtures, corpus refactor, completion plan, skills | 2026-07-23 |
 | axi-project-agent-pilot | codex | Independent AXI-style project context, affected verification, real evals, bounded output, and harness measurement | 2026-07-22 |
 | agent-native-cli | codex | Task-shaped check → Finish Plan and re-check → verification diff CLI workflows | 2026-07-22 |
-| launch-check-completeness | auto | PI/Finish Plan/Remember, dogfood, Agency share, Project watch, skills/docs | 2026-07-22 |
+| launch-check-completeness | auto | PI/Finish Plan/Remember, dogfood, Studio share, Project watch, skills/docs | 2026-07-22 |
 | dogfood-audit-quality | auto | Absorbed into launch-check-completeness | 2026-07-22 |
 | howitworks-visual-spacing | auto | Absorbed / superseded by launch-check-completeness focus | 2026-07-22 |
 | merge-origin-main-sync | auto | Merged origin/main into local main; auto-resolved overlaps; pushed | 2026-07-21 |

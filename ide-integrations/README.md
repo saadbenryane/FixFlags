@@ -40,6 +40,6 @@ All three integrations use the FixFlags MCP server (17 tools). The rules/skill/p
 
 ## Requirements
 
-- FixFlags account with API access (Pro or Agency plan)
+- FixFlags account with API access (Pro or Studio plan)
 - API key from https://fixflags.com/settings
 - MCP server configured in your editor (`https://fixflags.com/api/mcp` with `x-api-key`)

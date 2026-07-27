@@ -41,9 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hostname = displayHostname(audit.url)
 
   const topIssue = topIssueFromFlags(audit.flags)
-  const title = audit.score != null
-    ? `${hostname} - ${audit.score}/100 · ${BRAND.name}`
-    : `${hostname} report · ${BRAND.name}`
+  const title = `${hostname} report · ${BRAND.name}`
   const description = topIssue
     ? `${topIssue}. Run your own check at ${BRAND.name}.`
     : audit.verdict?.slice(0, 140) ??

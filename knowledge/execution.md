@@ -27,14 +27,14 @@ Maps to Check → Fix → Verify → Watch. See [vision.md](./vision.md).
 3. **Honest acquisition** — deterministic curated sample; anonymous gets every Flag and evidence summary plus exactly one complete fix.
 4. **Claim integrity** — Product anchor, Contract merge, usage, prescription enqueue, retry, then return to the report.
 5. **Share integrity** — direct token routes, signed password grant, atomic view admission, revocation/expiry/entitlement checks, private metadata.
-6. **Release proof** — database, static gates, unit, CLI pack, E2E, build/worker/Docker, local core loop, Agency share loop, production smoke.
+6. **Release proof** — database, static gates, unit, CLI pack, E2E, build/worker/Docker, local core loop, Studio share loop, production smoke.
 
 ## Next (after thesis signals)
 
 - Repo signals into the Fix list
 - Benchmark task-shaped CLI workflows against raw MCP; add deeper PI commands only from usage evidence
 - MCP PI tools polish
-- Agency nurture / referral program
+- Studio nurture / referral program
 
 ## Later (demand-triggered)
 
@@ -94,5 +94,5 @@ Protect Check → Fix → Verify → Watch. Prefer Fix List quality and watch ha
 | P1 | Goal-based Finish Check | Product-purpose confirmation, goal selection, journey policy, explicit success assertions, bounded agent runner, replay, complete evidence, three journeys, mobile and desktop, seven-day re-checking, before-and-after verification |
 | P2 | Authenticated journeys | Encrypted test credentials, reusable isolated auth state, test inbox, safe data reset, role support, credential revocation, detailed audit log |
 | P3 | Watch | GitHub connection, deployment trigger, change mapping, saved journeys, affected-journey selection, regression detection, alerts, history |
-| P4 | Agency workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
+| P4 | Studio workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
 | P5 | Real-user evidence | Sentry connector, PostHog connector, FullStory connector, evidence correlation, clear separation between simulated/observed/real-user evidence |

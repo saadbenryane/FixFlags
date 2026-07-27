@@ -10,7 +10,7 @@ The user asks to scan, check, finish, test, or review a web app or URL; run FixF
 
 ## Setup
 
-1. Pro or Agency API key from https://fixflags.com/settings
+1. Pro or Studio API key from https://fixflags.com/settings
 2. Configure the FixFlags MCP server (`https://fixflags.com/api/mcp`) with header `x-api-key`
 3. Keep this skill in-repo at `ide-integrations/claude-code/fixflags-skill.md` (copy into Claude Code skills as needed)
 

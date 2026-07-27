@@ -9,6 +9,7 @@ export type EditorMarkName =
   | 'Bolt'
   | 'Replit'
   | 'Codex'
+  | 'Devin'
 
 const SVG_MARKS: Record<EditorMarkName, ReactNode> = {
   Cursor: (
@@ -53,6 +54,13 @@ const SVG_MARKS: Record<EditorMarkName, ReactNode> = {
       <path d="M3 15.5c3.4-4.8 7.15-7.2 11.25-7.2 2.25 0 4.5.72 6.75 2.15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="M5 18.5c2.25-2.45 4.78-3.68 7.6-3.68 1.9 0 3.7.45 5.4 1.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <path d="M8.75 5.5 13.25 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  Devin: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden fill="none">
+      <path d="M12 2 4 6.5v5l8 4.5 8-4.5v-5L12 2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M4 11.5 12 16l8-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M12 16v6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   ),
 }

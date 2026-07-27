@@ -48,7 +48,7 @@ Create dedicated pages for: Lovable app testing, Replit app testing, Cursor app 
 
 Each page uses the same product with language matched to the buyer's moment.
 
-### F. Agency acquisition
+### F. Studio acquisition
 
 Offer agencies: "We will run one client handoff through FixFlags." Then ask them to run the next three projects through a paid Studio pilot. The goal is repeat usage across projects, not a compliment on one report.
 
@@ -117,7 +117,7 @@ The CLI is distribution. The persistent verification system is the product.
 - Fast fix and verify loop
 - Cross-builder independence
 - Excellent distribution through free checks
-- Agency workflow
+- Studio workflow
 
 ### Medium-term moat
 - Persistent product and journey memory

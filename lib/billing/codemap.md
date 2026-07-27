@@ -6,7 +6,7 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 ## Entry Points
 | File | Purpose |
 |------|---------|
-| `limits.ts` | Audit limits per plan (Free: 3 lifetime, Pro: 25/mo, Agency: 100/mo) |
+| `limits.ts` | Audit limits per plan (Free: 3 lifetime, Pro: 5/mo, Studio: 25/mo) |
 | `credits.ts` | AI credit tracking (prescription costs credits) |
 | `plans.ts` | Plan definitions + feature gates |
 | `config.ts` | Stripe config (prices, products) |
@@ -16,7 +16,7 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 | `upgrade-moments.ts` | Upgrade prompt triggers |
 
 ## Architecture
-- **Plans:** Free (3 lifetime new URL checks), Pro $29/mo (25/mo), Agency $99/mo (100/mo)
+- **Plans:** Free (3 lifetime new URL checks), Pro $39/mo (5/mo), Studio $129/mo (25/mo)
 - **Credits:** AI prescription gated by `includeAi` + available credits
 - **Stripe:** Hosted Checkout + Customer Portal + webhooks (`app/api/stripe/webhook/route.ts`)
 - **Cost tracking:** Cache-aware (`estimateLlmCostUsd` prices cache reads/writes differently)

@@ -15,7 +15,7 @@ const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags }
 const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
-const RECHECK_SECTION = { id: 'report-monitoring', label: REPORT_COPY.recheck.label } as const
+const RECHECK_SECTION = { id: 'report-recheck', label: REPORT_COPY.recheck.label } as const
 const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
 
 type NavSection = { id: string; label: string }

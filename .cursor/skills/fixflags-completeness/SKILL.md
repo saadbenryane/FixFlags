@@ -39,7 +39,7 @@ Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the
 - `npm run accuracy:eval` owns offline scan accuracy: gold-standard false blockers, builder top-3, demo v1 repair, non-HTML regression.
 - `npm run routes:contract-guard` generates the endpoint inventory and applicable acceptance cases from code.
 - Finish Plan ranking must use `buildUnifiedFinishPlan` on every surface (report, MCP, export, task contracts).
-- Preview scan access is Agency-gated at the API and threaded through capture, journey, flow, and visual evidence paths.
+- Preview scan access is Studio-gated at the API and threaded through capture, journey, flow, and visual evidence paths.
 - CI deploy hooks: Railway project webhook at `/api/webhooks/railway` with `apiKey`, `url`, and optional `webhookSecret`.
 - `npm run skills:validate` protects skill frontmatter, links, reference depth, stale terms, length, and volatile facts.
 - `npm run test:scripts` protects the completeness checker itself.

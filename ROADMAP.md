@@ -14,9 +14,9 @@
 ## Now
 
 - **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
-  *Signal:* anonymous URL → progressive complete Fix list with real evidence → one demonstrated prompt (clipboard real) → successful claim → copy remaining → free re-check → diff; Agency password share → canonical report → revoke.
+  *Signal:* anonymous URL → progressive complete Fix list with real evidence → one demonstrated prompt (clipboard real) → successful claim → copy remaining → free re-check → diff; Studio password share → canonical report → revoke.
 
-- **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Agency share honesty, Project product watch. Board `current-product-completion`.
+- **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Studio share honesty, Project product watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
@@ -70,7 +70,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Shipped retention (was Next)
 
-- **Project product watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Pro/Agency. Manual re-check remains free for all owners.
+- **Project product watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Pro/Studio. Manual re-check remains free for all owners.
 
 ## Not planned
 
@@ -91,5 +91,5 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 |------|--------|
 | PI thesis | Contract persistence + Fix list action + Remember on re-check |
 | 100 paying users | Monetization blockers closed, conversion >5% |
-| Agency viability | 10+ Agency subscribers, CI/CD or white-label share demand |
+| Studio viability | 10+ Studio subscribers, CI/CD or white-label share demand |
 | Product-market fit | >20% MoM paid user growth for 3 consecutive months |

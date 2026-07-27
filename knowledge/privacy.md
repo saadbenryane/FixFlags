@@ -11,7 +11,7 @@ Customer code and Product Intelligence belong to the customer. Private product k
 ## Principles
 
 1. Customer owns Product Intelligence; it should be exportable and portable.
-2. Sensitive repository analysis should happen locally where possible (direction; cloud MCP/repo scan exists for Agency today with encrypted tokens).
+2. Sensitive repository analysis should happen locally where possible (direction; cloud MCP/repo scan exists for Studio today with encrypted tokens).
 3. Cloud transmission should be minimized, explicit, encrypted, and understandable.
 4. Telemetry limited, transparent, configurable.
 5. Cross-product learning uses anonymous, aggregated, or abstracted patterns only.
@@ -25,7 +25,7 @@ Customer code and Product Intelligence belong to the customer. Private product k
 | Submitted URL + captured page HTML/text/screenshots | Audit / observer |
 | Audit Flags, scores, Contract snapshot | Report |
 | Lead URLs for anon teasers | Outbound / admin leads |
-| GitHub tokens (Agency) | Encrypted at rest; repo scan |
+| GitHub tokens (Studio) | Encrypted at rest; repo scan |
 | Billing / auth identity | Stripe + session |
 
 Growth `graph_*` stores anonymized aggregates for FixFlags market pages (sample-size gated). Not a substitute for customer PI privacy.

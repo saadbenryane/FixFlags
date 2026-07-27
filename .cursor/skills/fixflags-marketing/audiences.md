@@ -87,7 +87,7 @@ Use when choosing headline angle, ad copy, FAQ answers, or upgrade moment tone.
 
 ---
 
-## Segment C: Agency / freelancer (secondary, Team plan)
+## Segment C: Studio / freelancer (secondary, Team plan)
 
 **Who:** Small shops running pre-call audits for clients.
 

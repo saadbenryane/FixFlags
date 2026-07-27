@@ -108,13 +108,13 @@ export function AuditReportHero({
                 width={80}
                 height={56}
                 className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40 object-cover"
-                style={{ aspectRatio: '1280 / 900' }}
+                style={{ aspectRatio: 'var(--screenshot-desktop-aspect)' }}
                 onError={() => setScreenshotFailed(true)}
               />
             ) : showCapturePlaceholder ? (
               <Skeleton
                 className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40"
-                style={{ aspectRatio: '1280 / 900' }}
+                style={{ aspectRatio: 'var(--screenshot-desktop-aspect)' }}
                 aria-label="Capturing page screenshot"
               />
             ) : (

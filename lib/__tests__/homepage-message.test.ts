@@ -82,7 +82,7 @@ const ABOVE_FOLD_COPY = [
 
 describe('homepage message guardrails', () => {
   it('hero headline names the finish-the-loop moment after AI builds', () => {
-    assert.match(HERO.badge, /release readiness layer/i)
+    assert.match(HERO.badge, /product review layer/i)
     assert.match(HERO.headlineDisplay, /finish what your ai started/i)
     assert.equal(HERO.headline, `${HERO.headlineDisplay}.`)
     assert.equal(HERO.headlineAccentPeriod, true)
@@ -328,6 +328,7 @@ describe('homepage message guardrails', () => {
       'Claude Code',
       'Windsurf',
       'Codex',
+      'Devin',
     ])
     assert.equal(LANDING_PAGE.reportExamples.cards.length, 4)
     assert.deepEqual(

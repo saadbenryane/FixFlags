@@ -7,7 +7,7 @@
 ## Done
 
 - Canonized Product Intelligence vision under `knowledge/` (vision, PI, integrity-engine, finish-plan, privacy, open-source; rewrote foundations/execution/strategy; thinned product.md + offering/business-model stubs).
-- Updated PRODUCT, SOUL, ROADMAP, DECISIONS, ARCHITECTURE, AGENTS; renamed growth architecture/roadmap files; Agency/Max drift fixed.
+- Updated PRODUCT, SOUL, ROADMAP, DECISIONS, ARCHITECTURE, AGENTS; renamed growth architecture/roadmap files; Studio/Max drift fixed.
 - New skill `fixflags-product-intelligence`; updated product/pipeline/marketing/completeness skills.
 - Phase 1: `Project.productIntelligence`, ensure project on audit create, Contract carry + edit sync, Finish Plan UI, contract-aware ranking, MCP `ff_get_product_context` / `ff_get_current_finish_plan`, Remember on re-check + intentional dismissal.
 - Quality: unit tests, agent-evals cases, MIN_SAMPLE_SIZE documented, typecheck/lint/unit/agent:eval green.

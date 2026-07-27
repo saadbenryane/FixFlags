@@ -234,7 +234,7 @@ Before claiming a knowledge update is complete:
 **After implementation:**
 - Update knowledge/strategy.md → Pricing (Current)
 - Update knowledge/strategy.md → Tier Pricing (Proposed Evolution) if applicable
-- Update PRODUCT.md → Pro / Agency / High Volume
+- Update PRODUCT.md → Pro / Studio / High Volume
 - Update DECISIONS.md with the pricing decision and rationale
 - Update CANONICAL-SOURCES.md if the canonical source changed
 

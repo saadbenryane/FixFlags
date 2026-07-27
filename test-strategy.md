@@ -88,7 +88,7 @@
 
 ### Ready for monetization when:
 
-> A customer can: paste a URL → watch an honest three-card plan form → copy a fix → re-check it → see the diff. An Agency customer can share a private, password-protected focused report and revoke it without making the report public. Every step has loading, failure, retry, and responsive coverage.
+> A customer can: paste a URL → watch an honest three-card plan form → copy a fix → re-check it → see the diff. A Studio customer can share a private, password-protected focused report and revoke it without making the report public. Every step has loading, failure, retry, and responsive coverage.
 
 ---
 

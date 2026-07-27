@@ -3,7 +3,7 @@
 **Status:** MVP shipped (template journeys + DB + report timeline). LLM planner/evaluator and separate queue job are not built.  
 **Author:** Agent session  
 **Date:** 2026-07-19  
-**Decision required:** No for MVP. Yes before LLM planner / Agency journey selection.
+**Decision required:** No for MVP. Yes before LLM planner / Studio journey selection.
 
 **MVP reality (2026-07-19):**
 - Playwright template walks (first-visit, pricing, signup, contact) for Pro+ (`journeyReviewIncluded`)
@@ -998,7 +998,7 @@ Accessibility tree snapshots stored as JSON in the `JourneyStep.accessibilityTre
 |------|-------------------------|-------|
 | Free | 1 (first-visit only) | Demonstrates the capability, drives signup |
 | Pro | 3 per audit (first-visit, signup, pricing) | Core journey set |
-| Agency | 5 per audit (all templates) | Full coverage |
+| Studio | 5 per audit (all templates) | Full coverage |
 
 Cost to FixFlags per journey review:
 - Playwright context: ~$0.001 (2 min compute)
@@ -1007,7 +1007,7 @@ Cost to FixFlags per journey review:
 - Screenshots storage: ~$0.001 (5-10 screenshots)
 - **Total per journey: ~$0.05-0.08**
 
-At Pro pricing ($29/mo, 25 audits, 3 journeys each = 75 journeys): ~$3.75-6.00 in costs. Margin: ~$23-25/mo. Viable.
+At Pro pricing ($39/mo, 5 journeys): ~$0.25-0.40 in costs. Margin: ~$38-39/mo. Viable.
 
 ### 10.10 Observability
 
@@ -1091,7 +1091,7 @@ New dashboard panels:
 
 ### Phase 2: Journey Expansion (Week 6-8)
 
-**Goal:** Add signup, pricing, and contact journey types. Ship for Agency tier.
+**Goal:** Add signup, pricing, and contact journey types. Ship for Studio tier.
 
 | Task | Effort | Risk |
 |------|--------|------|
@@ -1105,12 +1105,12 @@ New dashboard panels:
 | Add journey selection logic (plan tier × URL type) | 3h | Low |
 | Enhance evaluator with journey-specific finding templates | 4h | Medium |
 | Fix prompt templates for journey findings | 4h | Low |
-| Agency plan journey access | 2h | Low |
+| Studio plan journey access | 2h | Low |
 | Journey findings in report UI (new section or tab) | 8h | Medium |
 | Cross-journey dedup (same issue found by multiple journeys) | 3h | Medium |
 
 **Exit criteria:**
-- Agency users get 5 journey types per audit
+- Studio users get 5 journey types per audit
 - Signup journey detects real issues (tested on 5+ real sites)
 - Report UI shows journey findings with step-by-step evidence
 - Journey findings generate tool-specific fix prompts via prescription AI

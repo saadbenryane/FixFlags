@@ -4,7 +4,7 @@ Use this file for judgment-heavy review. Deterministic drift belongs in `scripts
 
 ## Product and persistence
 
-- A signed-in hostname resolves to one internal Product by `canonicalHost`. `isManaged` controls Agency quota and UI only.
+- A signed-in hostname resolves to one internal Product by `canonicalHost`. `isManaged` controls Studio quota and UI only.
 - All Product Intelligence mutations use the revisioned mutation helper. Contract edits, feedback, claims, heuristics, and verified learning must merge current state.
 - Claims keep their cookie until ownership, Product attachment, Contract merge, and audit assignment commit together.
 - Manual re-checks stay free. Only WATCH children produce scheduled regression delivery.

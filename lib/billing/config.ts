@@ -11,15 +11,12 @@ export function isStripeBetaGated(): boolean {
   return process.env.STRIPE_BETA_GATING === 'true'
 }
 
-export const STRIPE_PRICE_ENV_KEYS = [
+const STRIPE_PRICE_ENV_KEYS = [
   'STRIPE_BUILDER_PRICE_ID',
   'STRIPE_TEAM_PRICE_ID',
-  'STRIPE_CREDIT_PACK_10_ID',
-  'STRIPE_CREDIT_PACK_25_ID',
-  'STRIPE_CREDIT_PACK_50_ID',
 ] as const
 
-export const STRIPE_CORE_ENV_KEYS = [
+const STRIPE_CORE_ENV_KEYS = [
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
 ] as const
@@ -33,7 +30,7 @@ export function missingStripeEnvVars(): string[] {
   return STRIPE_ALL_ENV_KEYS.filter((key) => !process.env[key]?.length)
 }
 
-/** True when secret, webhook secret, and all five price IDs are set. */
+/** True when secret, webhook secret, and both subscription price IDs are set. */
 export function isBillingFullyConfigured(): boolean {
   return missingStripeEnvVars().length === 0
 }
@@ -58,8 +55,7 @@ export function validateStripeBillingEnv(): void {
     throw new Error(
       `[env] Stripe is partially configured. Missing: ${missing.join(', ')}. ` +
         'Set all of STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_BUILDER_PRICE_ID, ' +
-        'STRIPE_TEAM_PRICE_ID, STRIPE_CREDIT_PACK_10_ID, STRIPE_CREDIT_PACK_25_ID, and ' +
-        'STRIPE_CREDIT_PACK_50_ID, or clear them all.'
+        'and STRIPE_TEAM_PRICE_ID, or clear them all.'
     )
   }
 

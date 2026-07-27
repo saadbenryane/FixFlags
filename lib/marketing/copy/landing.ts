@@ -1,5 +1,5 @@
 export const HERO = {
-  badge: 'The release readiness layer',
+  badge: 'The product review layer',
   headline: 'Finish what your AI started.',
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: 'Finish what your AI started',
@@ -282,13 +282,13 @@ export const LANDING_PAGE = {
   logoCloud: {
     label: 'Works where you build',
     disclaimer: '',
-    logos: ['Lovable', 'Bolt', 'Cursor', 'Replit', 'Claude Code', 'Windsurf', 'Codex'] as const,
+    logos: ['Lovable', 'Bolt', 'Cursor', 'Replit', 'Claude Code', 'Windsurf', 'Codex', 'Devin'] as const,
   },
   checkDimensions: {
     label: 'Built to cover what matters',
-    headlineDisplay: 'Every dimension your product needs to pass',
+    headlineDisplay: 'Everything your product needs before users find it',
     headlineAccentPeriod: true,
-    headline: 'Every dimension your product needs to pass.',
+    headline: 'Everything your product needs before users find it.',
     subhead: 'FixFlags checks your product across message, experience, and reach so you can fix what counts before users find it.',
     allChecksTab: 'All checks',
     topIssuesTitle: 'Top issues',
@@ -436,7 +436,7 @@ export const LANDING_PAGE = {
       {
         id: 'aligned',
         title: 'Human-aligned AI',
-        body: 'Trained on real product standards, not guesswork.',
+        body: 'Aligned with real product standards, not guesswork.',
         icon: 'shield' as const,
       },
       {
@@ -574,10 +574,10 @@ export const LANDING_PAGE = {
   },
   editorIntegrations: {
     label: 'Works where you build',
-    headlineDisplay: 'Seamless in your existing workflow',
+    headlineDisplay: 'Fits your existing workflow',
     headlineAccentPeriod: true,
-    headline: 'Seamless in your existing workflow.',
-    body: 'Connect your stack and run audits in seconds. Built for modern builders.',
+    headline: 'Fits your existing workflow.',
+    body: 'Connect your stack and run checks in seconds.',
     moreComing: 'More integrations coming soon',
     workflow: {
       inputs: [

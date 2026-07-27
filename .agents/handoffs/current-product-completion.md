@@ -23,7 +23,7 @@ Local current-product implementation and verification completed on 2026-07-26. R
 - Local production-like Playwright enables real quota enforcement instead of development's intentional unlimited-scan mode.
 
 - Validation side-effect guard hardened: `normalizeRepositoryState` / `assertRepositoryUnchanged` in `scripts/validate.mjs` with unit tests; ignores generated artifact paths.
-- Report API Fix List parity: `GET /api/reports/[id]` uses `buildUnifiedFixList` (includes Agency repo Flags). Parity + route tests added.
+- Report API Fix List parity: `GET /api/reports/[id]` uses `buildUnifiedFixList` (includes Studio repo Flags). Parity + route tests added.
 - PRODUCT.md: Lovable/Bolt MCP listed as shipped; remaining limitation is deployed connector smoke / release proof.
 - Builder registry alignment: help MCP guide derives editors from `BUILDERS`; repo-scan prompt tools include `lovable` / `bolt`.
 - Public E2E expanded (unknown share, details redirect, MCP help/docs). Credentialed suite scaffolded at `e2e/credentialed-journeys.spec.ts` (skips unless `E2E_CREDENTIALED=true` + release DB).

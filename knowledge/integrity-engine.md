@@ -15,7 +15,7 @@ The Integrity Engine is FixFlags’ general reasoning and evaluation system. It 
 | **Product Integrity** | Does it deliver the value it claims? | Purpose/positioning checks, journey outcomes, Product Contract alignment |
 | **Experience Integrity** | Can users understand and use it? | Experience rubric, journeys, flow, a11y, conversion friction |
 | **Design Integrity** | Does it feel like one intentional system? | Visual/layout/design-system checks (expand over time) |
-| **Implementation Integrity** | Can it evolve without fragility? | Agency repo scan, performance, reliability signals |
+| **Implementation Integrity** | Can it evolve without fragility? | Studio repo scan, performance, reliability signals |
 | **Agent Integrity** | Do builders share coherent project context? | Future: AGENTS.md / instruction drift (not shipped) |
 
 ## User-facing rubrics (shipped)

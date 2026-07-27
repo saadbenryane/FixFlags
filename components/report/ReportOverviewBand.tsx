@@ -3,6 +3,7 @@ import { RubricBar } from '@/components/audit/RubricBar'
 import type { RubricComputed } from '@/lib/audit/rubric'
 import { cn } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { gradeFromScore } from '@/lib/audit/scoring'
 
 interface RubricRow {
   name: string
@@ -59,14 +60,14 @@ export function ReportOverviewBand({
                 ? loading
                   ? REPORT_COPY.reportFirst.statusPendingLabel
                   : REPORT_COPY.reportFirst.overallUnavailableLabel
-                : `Overall status: ${score} out of 100`
+                : `Overall status: Grade ${gradeFromScore(score)}, ${score} out of 100`
             }
           >
             {score == null
               ? loading
                 ? REPORT_COPY.reportFirst.calculatingLabel
                 : REPORT_COPY.reportFirst.unavailableLabel
-              : `${score}/100`}
+              : gradeFromScore(score)}
           </p>
         </div>
       </div>

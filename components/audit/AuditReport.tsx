@@ -408,7 +408,7 @@ export function AuditReport({
         </Card>
       )}
 
-      <div id="report-monitoring" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
+      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
         {showMonitoringHint && isLoggedIn && isViewerOwner && (
           <Card className="space-y-3 p-5">
             <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>

@@ -43,7 +43,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Customer segments | `knowledge/market.md` → Customer Segments |
 | Five execution risks | `knowledge/market.md` → Five Execution Risks |
 | Distribution strategy | `knowledge/market.md` → Distribution Strategy |
-| Agency channel | `knowledge/market.md` → Fastest Agency Channel |
+| Studio channel | `knowledge/market.md` → Fastest Studio Channel |
 | Product vision and north-star system layers | `knowledge/vision.md` |
 | Product mechanics and moat | `knowledge/product.md` |
 | Product moat | `knowledge/product.md` → The Moat |
@@ -100,7 +100,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | What we ship (anonymous teaser) | `PRODUCT.md` → Anonymous teaser |
 | What we ship (free tier) | `PRODUCT.md` → Free |
 | What we ship (pro tier) | `PRODUCT.md` → Pro |
-| What we ship (agency tier) | `PRODUCT.md` → Agency |
+| What we ship (Studio tier) | `PRODUCT.md` → Studio |
 | What we ship (high volume) | `PRODUCT.md` → High Volume |
 | Rubrics (Message/Experience/Reach) | `PRODUCT.md` → Rubrics |
 | Current capabilities (verified) | `PRODUCT.md` → Current capabilities |

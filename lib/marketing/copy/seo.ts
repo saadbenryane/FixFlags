@@ -2,7 +2,7 @@ export const SEO = {
   home: {
     title: 'FixFlags - Check before you publish',
     description:
-      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product: message gaps, UX issues, missing metadata. Fix prompts for Cursor, Claude, Lovable, and Bolt. Free check.',
+      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product: message gaps, UX issues, missing metadata. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free check.',
   },
   pricing: {
     title: 'Pricing',

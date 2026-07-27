@@ -4,7 +4,7 @@ import { AUTH } from '@/lib/marketing/copy'
 const ICONS = {
   history: History,
   reports: FileText,
-  monitoring: RefreshCw,
+  recheck: RefreshCw,
 } as const
 
 export function AuthValueProps() {
