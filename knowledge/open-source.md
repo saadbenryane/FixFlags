@@ -11,12 +11,27 @@ Do not open-source the entire company. Open the parts that create trust, portabi
 - Local runtime / CLI surface
 - Repository file format / Product Intelligence schema (portable projection)
 - MCP server protocol surface
-- Agent skill (lightweight loop adoption, not full engine)
+- Agent skill (lightweight loop adoption, not full engine) — roadmap: [ROADMAP.md](../ROADMAP.md) **Open community skills**
 - Basic checks
 - Integration SDK
 - Product Intelligence Protocol (vendor-neutral)
 
 The open layer should work independently.
+
+## Community skills (planned)
+
+Thin orchestration over MCP and CLI. Skills teach agents the Check → Fix → Verify loop; they do not ship the Integrity Engine.
+
+| Layer | Location today | OSS target |
+|-------|----------------|------------|
+| Core loop skill | `public/.well-known/skills/fixflags/`, `ide-integrations/` | Standalone `fixflags-skills` repo |
+| Editor rules | `ide-integrations/cursor/`, `claude-code/`, `kiro/` | Same repo, per-editor install paths |
+| Platform extensions | — | Community contributions (`fixflags-lovable`, launch-gate, Re-check-only, etc.) |
+| Operator skills | `.cursor/skills/fixflags-*` | Proprietary (contributor tooling only) |
+
+Planned repo shape: `skills/` (SKILL.md per workflow), `rules/` (Cursor `.mdc`), `integrations/` (Claude Code, Kiro), `mcp/mcp.json.example`, and CI that validates tool names against the published MCP contract.
+
+Gate: ship after Distribution harden and MCP proof so install paths point at a stable CLI/MCP surface. See [ROADMAP.md](../ROADMAP.md).
 
 ## Keep proprietary
 
@@ -35,7 +50,8 @@ The open layer should work independently.
 | Artifact | Status |
 |----------|--------|
 | `fixflags-cli/` | In-repo thin MCP client; not marketed as published npm global until publishable |
-| `ide-integrations/` | Distributed docs/skills for Cursor / Claude Code |
+| `ide-integrations/` | In-repo proto for Cursor / Claude Code / Kiro; extract to OSS repo per roadmap |
+| `public/.well-known/skills/fixflags/` | Canonical core loop skill source; same extraction target |
 | Cloud app + Integrity Engine | Closed |
 | Customer Product Intelligence | Customer-owned data; not OSS |
 
