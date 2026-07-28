@@ -578,7 +578,7 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: 'Fits your existing workflow.',
     body: 'Connect your stack and run checks in seconds.',
-    moreComing: 'More integrations coming soon',
+    moreComing: 'More editors as the stack expands',
     workflow: {
       inputs: [
         { id: 'scan', title: 'Scan', icon: 'target' as const },
