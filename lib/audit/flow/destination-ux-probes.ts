@@ -37,13 +37,8 @@ export interface DestinationUXQuality {
     layoutShift: boolean
   }
 }
-
-const LOADING_SELECTOR =
-  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
+import { LOADING_SELECTOR } from '@/lib/audit/flow/constants'
 
 async function measureLoadQuality(page: Page, deadlineMs = 6000): Promise<DestinationUXQuality['loadQuality']> {
   const started = Date.now()

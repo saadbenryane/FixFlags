@@ -143,8 +143,23 @@ export const PRICING = {
   ] as const,
   upgradeSteps: "Create account → Stripe checkout → Dashboard",
   upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
+  checkoutRedirecting: "Redirecting to checkout…",
   allPlansInclude:
     "Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.",
+  pickerEyebrow: "Pick a plan",
+  pickerTitle: "Choose how you want to start",
+  pickerSubtitle: "Free includes 3 URL checks and every Flag. Paid adds more checks, compare, and MCP.",
+  pickerBody: "Pick the plan that matches how often you ship.",
+  pickerBodyWithReport: "Your scan is still running. Pick a plan to keep your report and fix prompts.",
+  pickerReportNote: "Choosing Free returns you to the running report.",
+  pickerFootnote: "Need more detail?",
+  pickerCompareLink: "Open the full comparison.",
+  pickerCurrentPlan: "Current plan",
+  pickerFreeCta: "Start free",
+  pickerProCta: "Start Pro",
+  pickerStudioCta: "Start Studio",
+  pickerRecommended: "Recommended",
+  pickerBusy: "Working…",
 } as const;
 
 export const BILLING_ACTION_COPY = {

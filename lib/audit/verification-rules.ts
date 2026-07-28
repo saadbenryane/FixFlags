@@ -73,6 +73,30 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'Tab through modals and overlays; focus should not become stuck and Escape should close.',
   'focus-visible-missing':
     'Tab through interactive elements; each should show a visible focus indicator.',
+  'axe-aria-required-children':
+    'Run axe DevTools; ensure ARIA role elements contain the required child elements per spec.',
+  'axe-aria-required-parent':
+    'Run axe DevTools; ensure elements with ARIA roles are contained within required parent roles.',
+  'axe-duplicate-id-active':
+    'Run axe DevTools; ensure no active HTML elements share the same id attribute value.',
+  'axe-duplicate-id-aria':
+    'Run axe DevTools; ensure no ARIA IDs are duplicated in the accessibility tree.',
+  'axe-landmark-banner':
+    'Run axe DevTools; ensure the banner landmark is a top-level landmark.',
+  'axe-landmark-contentinfo':
+    'Run axe DevTools; ensure the contentinfo landmark is a top-level landmark.',
+  'axe-landmark-main':
+    'Run axe DevTools; ensure the main landmark is a top-level landmark.',
+  'axe-landmark-duplicate':
+    'Run axe DevTools; ensure banner landmark is not duplicated.',
+  'axe-landmark-one-main':
+    'Run axe DevTools; ensure exactly one main landmark is present on the page.',
+  'axe-missing-h1':
+    'Run axe DevTools; ensure the page contains at least one heading level 1 element.',
+  'axe-list-structure':
+    'Run axe DevTools; ensure list elements contain only li elements and script/supporting elements.',
+  'axe-meta-viewport':
+    'Run axe DevTools; ensure the viewport meta tag disables user scaling for accessibility.',
   'h1-missing': 'DevTools Elements, confirm exactly one visible H1 on the page.',
   'h1-multiple': 'DevTools Elements, confirm only one H1; secondary headings should be H2/H3.',
   'no-structured-data':
@@ -220,6 +244,47 @@ export const SECURITY_VERIFICATION_RULES = {
     'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
   'security-headers-missing':
     'Open DevTools Network tab, reload the page, and verify Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, and X-Content-Type-Options headers are all present.',
+  'security-csp-unsafe-eval':
+    'In the CSP header, remove unsafe-eval and replace with specific script hashes or nonces.',
+  'security-csp-weak-object-src':
+    'Set the CSP object-src directive to \'none\' to prevent plugin-based attacks.',
+  'security-csp-report-only':
+    'Replace Content-Security-Policy-Report-Only with Content-Security-Policy for enforcement.',
+  'security-hsts-no-subdomains':
+    'Add includeSubDomains to the Strict-Transport-Security header.',
+  'security-hsts-no-preload':
+    'Add preload to the Strict-Transport-Security header and submit to HSTS preload list.',
+  'security-referrer-policy-missing':
+    'Add a Referrer-Policy header (e.g. strict-origin-when-cross-origin) to limit referrer leakage.',
+  'security-referrer-policy-weak':
+    'Strengthen Referrer-Policy to strict-origin-when-cross-origin or no-referrer.',
+  'security-coop-missing':
+    'Add Cross-Origin-Opener-Policy: same-origin to prevent cross-origin attacks via window.opener.',
+  'security-coep-missing':
+    'Add Cross-Origin-Embedder-Policy: require-corp to enable cross-origin isolation.',
+  'security-corp-missing':
+    'Add Cross-Origin-Resource-Policy: same-origin to control which sites can load your resources.',
+  'security-permissions-policy-missing':
+    'Add a Permissions-Policy header to disable or limit browser features (camera, microphone, geolocation).',
+  'security-permissions-policy-overbroad':
+    'Restrict Permissions-Policy to only required origins; set unused features to \'none\'.',
+  'security-x-permitted-cross-domain':
+    'Add X-Permitted-Cross-Domain-Policies: none to restrict Adobe Flash/flex cross-domain requests.',
+}
+
+export const SEARCH_PERFORMANCE_VERIFICATION_RULES: Record<string, string> = {
+  'indexing-failure':
+    'Open Google Search Console > Pages and check coverage for this URL. Submit to index and address reported issues.',
+  'soft-404':
+    'Confirm the page returns meaningful content (not a thin or empty page). Add 200-300 words of unique content or return a proper 404 status.',
+  'robots-blocked':
+    'Check robots.txt for a Disallow directive targeting this page. Remove the directive to allow crawling.',
+  'noindex-meta':
+    'View page source and remove the noindex robots meta tag. Verify with URL Inspection in Google Search Console.',
+  'canonical-mismatch':
+    'Set your canonical tag to match Google-selected canonical, or fix the signals causing the mismatch.',
+  'low-ctr':
+    'Rewrite the page title and meta description to be more compelling. Include the target keyword and a clear value proposition.',
 }
 
 /**
@@ -345,6 +410,7 @@ export const ALL_VERIFICATION_RULES: Record<string, string> = {
   ...VISUAL_HIERARCHY_VERIFICATION_RULES,
   ...MOBILE_UX_VERIFICATION_RULES,
   ...JOURNEY_VERIFICATION_RULES,
+  ...SEARCH_PERFORMANCE_VERIFICATION_RULES,
 }
 
 export function verificationRuleForCheckId(checkId: string): string | null {

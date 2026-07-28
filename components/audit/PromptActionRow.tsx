@@ -1,20 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { Loader2, PlugZap } from 'lucide-react'
-import { toast } from 'sonner'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { Button } from '@/components/ui/button'
-import { useMe } from '@/hooks/useMe'
-import { createApiKey } from '@/lib/api/api-key-client'
-import { buildCursorInstallLink } from '@/lib/mcp/deeplinks'
-import { SITE_URL } from '@/lib/marketing/copy'
-import {
-  apiKeyClientForTool,
-  getBuilder,
-  isPromptToolKey,
-  type PromptToolKey,
-} from '@/lib/mcp/builders'
+import { useConnectBuilderMcp } from '@/lib/hooks/useConnectBuilderMcp'
 import { cn } from '@/lib/utils'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
@@ -24,7 +13,6 @@ interface PromptActionRowProps {
   showCursorAction?: boolean
   className?: string
   compact?: boolean
-  dark?: boolean
   tool?: string
   auditId?: string
   surface?: ReportSurface
@@ -39,7 +27,6 @@ export function PromptActionRow({
   showCursorAction = false,
   className,
   compact = false,
-  dark = false,
   tool,
   auditId,
   surface,
@@ -47,52 +34,17 @@ export function PromptActionRow({
   itemPosition,
   nextStep,
 }: PromptActionRowProps) {
-  const { user } = useMe()
-  const [installing, setInstalling] = useState(false)
-
-  const actionTool: PromptToolKey =
-    tool && isPromptToolKey(tool) && tool !== 'universal' ? tool : 'cursor'
-  const actionBuilder = getBuilder(actionTool)
-
-  async function connectBuilderMcp() {
-    const setupPath = `/dashboard/mcp-setup?builder=${actionBuilder.apiKeyClient ?? actionTool}`
-    if (!user) {
-      window.location.href = `/sign-in?next=${encodeURIComponent(setupPath)}`
-      return
-    }
-
-    if (actionTool !== 'cursor') {
-      window.location.href = setupPath
-      return
-    }
-
-    setInstalling(true)
-    try {
-      const data = await createApiKey({
-        name: `${actionBuilder.label} MCP`,
-        client: apiKeyClientForTool(actionTool),
-      })
-      window.location.href = buildCursorInstallLink({ baseUrl: SITE_URL, apiKey: data.key })
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : `Could not connect to ${actionBuilder.label}`)
-    } finally {
-      setInstalling(false)
-    }
-  }
+  const { installing, connect, actionBuilder } = useConnectBuilderMcp(tool)
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {showCursorAction && (
         <Button
-          variant={dark ? 'ghost' : 'outline'}
+          variant="outline"
           size="xs"
-          className={cn(
-            'gap-1.5',
-            dark &&
-              'border border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'
-          )}
+          className="gap-1.5"
           disabled={installing}
-          onClick={connectBuilderMcp}
+          onClick={connect}
           aria-label={`Connect ${actionBuilder.label} to FixFlags`}
         >
           {installing ? (
@@ -113,10 +65,6 @@ export function PromptActionRow({
         accessState={accessState}
         itemPosition={itemPosition}
         nextStep={nextStep}
-        className={cn(
-          dark &&
-            'border-terminal-border bg-terminal-foreground/5 text-terminal-foreground hover:bg-terminal-foreground/10 hover:text-terminal-foreground'
-        )}
       />
     </div>
   )

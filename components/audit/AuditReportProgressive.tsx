@@ -220,12 +220,10 @@ export function AuditReportProgressive({
       <AuditReportHero
         url={url}
         pageType={pageType}
-        score={score}
         screenshots={screenshots}
         scanning={isLoading}
         scanningLabel={isLoading ? stage.scanningLabel : null}
         capturePresentation={capturePresentation}
-        showScore={false}
       />
 
       {(workerIdle || showWorkerWarning) && (
@@ -328,7 +326,6 @@ export function AuditReportProgressive({
           <LiveReportExplorer
             model={explorerModel}
             loading={isLoading}
-            progress={isLoading ? displayProgress : undefined}
           />
         </ExplorerErrorBoundary>
       </section>
@@ -362,10 +359,8 @@ export function AuditReportProgressive({
 /** Neutral route shell used before the server has returned an actual audit state. */
 export function AuditReportProgressiveShell({
   url = '',
-  launchPending = false,
 }: {
   url?: string
-  launchPending?: boolean
 } = {}) {
   return (
     <Container
@@ -380,9 +375,7 @@ export function AuditReportProgressiveShell({
           {url ? displayHostname(url) : REPORT_COPY.reportFirst.loadingTitle}
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          {launchPending
-            ? REPORT_COPY.reportFirst.openingReport
-            : REPORT_COPY.reportFirst.retrievingReport}
+          {REPORT_COPY.reportFirst.preparingReport}
         </p>
       </div>
       <ProgressiveCapturePair url={url} screenshots={[]} />

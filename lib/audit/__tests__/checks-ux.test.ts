@@ -71,6 +71,7 @@ function healthyMobilePs(overrides: Partial<PageSpeedResult> = {}): PageSpeedRes
     failedAccessibilityAudits: [],
     diagnostics: {},
     raw: {},
+    crux: null,
     ...overrides,
   }
 }
@@ -84,12 +85,13 @@ function healthyDesktopPs(overrides: Partial<PageSpeedResult> = {}): PageSpeedRe
     fcp: 900,
     tbt: 30,
     inp: 80,
-    opportunities: [],
-    failedAccessibilityAudits: [],
-    diagnostics: {},
-    raw: {},
-    ...overrides,
-  }
+  opportunities: [],
+  failedAccessibilityAudits: [],
+  diagnostics: {},
+  raw: {},
+  crux: null,
+  ...overrides,
+}
 }
 
 function captureMetrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics {

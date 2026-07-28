@@ -66,8 +66,6 @@ export interface CheckAndPlanOutcome {
   rubrics?: TaskRubricSummary[]
   fixList?: TaskFixList
   technologyProfile?: TechnologyProfile
-  /** @deprecated Use fixList. */
-  finishPlan?: TaskFinishPlan
   nextAction?: TaskNextAction
   error?: TaskOutcomeError
 }
@@ -103,7 +101,6 @@ export interface RecheckAndCompareOutcome {
       regressed: FlagDiffSummaryItem[]
     }
   } | null
-  nextFinishPlan?: TaskFinishPlan
   nextFixList?: TaskFixList
   technologyProfile?: TechnologyProfile
   nextAction?: TaskNextAction
@@ -170,7 +167,6 @@ export async function loadCompletedOutcome(
   verdict: string | null
   rubrics: TaskRubricSummary[]
   fixList: TaskFixList
-  finishPlan: TaskFinishPlan
   technologyProfile: TechnologyProfile
 }> {
   const audit = await prisma.audit.findUnique({
@@ -197,7 +193,7 @@ export async function loadCompletedOutcome(
     contract,
     promptAccess: 'all' as const,
   }
-  const [{ fixList, finishPlan: legacyPlan }, technologyProfile] = await Promise.all([
+  const [{ fixList }, technologyProfile] = await Promise.all([
     buildUnifiedPlanBundle(planInput),
     loadTechnologyProfile(reportId, {
       score: audit.score,
@@ -245,12 +241,6 @@ export async function loadCompletedOutcome(
       planPrompt: fixList.copyPrompt ?? '',
       totalCount: fixList.totalCount,
     },
-    finishPlan: {
-      reportId,
-      url: audit.url,
-      items: toTaskItems(legacyPlan.items, reportId, tool),
-      planPrompt: legacyPlan.copyPrompt ?? '',
-    },
   }
 }
 
@@ -260,7 +250,6 @@ export async function loadCompletedTaskOutcome(
 ): Promise<CheckAndPlanOutcome & {
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
-  nextFinishPlan?: TaskFinishPlan
   nextFixList?: TaskFixList
 }> {
   const audit = await prisma.audit.findUnique({
@@ -317,7 +306,6 @@ export async function loadCompletedTaskOutcome(
         regressed: diff.regressed,
       },
     },
-    nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,
     technologyProfile: completed.technologyProfile,
   }
@@ -481,7 +469,6 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
         regressed: diff.regressed,
       },
     },
-    nextFinishPlan: completed.finishPlan,
     nextFixList: completed.fixList,
     technologyProfile: completed.technologyProfile,
   }

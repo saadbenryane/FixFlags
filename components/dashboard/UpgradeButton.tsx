@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { trackEvent } from '@/lib/analytics/events'
 import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { requestPlanCheckout } from '@/lib/billing/client-checkout'
-import { BILLING_ACTION_COPY } from '@/lib/marketing/copy'
+import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
 
 interface Props {
@@ -69,7 +69,7 @@ export function UpgradeButton({ context, plan = 'BUILDER', betaGated, userEmail 
         size="sm"
         onClick={handleUpgrade}
         loading={loading}
-        loadingLabel={BILLING_ACTION_COPY.checkout.redirecting}
+        loadingLabel={PRICING.checkoutRedirecting}
       >
         {!loading && <Sparkles className="h-4 w-4 mr-2" />}
         {betaGated

@@ -1,17 +1,10 @@
 'use client'
 
-import { RUBRIC_ORDER } from '@/lib/audit/constants'
-import { rubricLabel, cn } from '@/lib/utils'
+import { buildRubricOverview } from '@/lib/report/rubric-overview'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { cn } from '@/lib/utils'
 import type { RubricComputed } from '@/lib/audit/rubric'
-import { Globe2, MessageSquare, Zap } from 'lucide-react'
-
-const RUBRIC_ICONS: Record<string, typeof MessageSquare> = {
-  MESSAGE: MessageSquare,
-  EXPERIENCE: Zap,
-  REACH: Globe2,
-}
 
 interface RubricRow {
   name: string
@@ -26,33 +19,23 @@ interface Props {
   loading?: boolean
 }
 
-function flagCountLabel(r: RubricComputed): string | null {
-  if (r.criticalCount > 0) {
-    return `${r.criticalCount} critical`
-  }
-  if (r.flagCount > 0) {
-    return `${r.flagCount} ${r.flagCount === 1 ? 'flag' : 'flags'}`
-  }
-  return null
-}
-
 export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
-  const scoreByName = new Map(rubricRows.map((row) => [row.name, row.score] as const))
+  const overview = buildRubricOverview(rubrics, rubricRows, loading)
 
   return (
     <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-      {RUBRIC_ORDER.map((name) => {
-        const r = rubrics.find((x) => x.name === name)
-        const score = scoreByName.get(name) ?? null
-        const Icon = RUBRIC_ICONS[name]
-        const label = rubricLabel(name)
-        const pending = loading && (r?.flagCount ?? 0) === 0 && score == null
-        const status = pending ? 'SCANNING' : r?.status
-        const countLabel = !pending && r ? flagCountLabel(r) : null
+      {overview.map((item) => {
+        const Icon = item.icon
+        const countLabel =
+          !item.pending && item.flagCount > 0
+            ? item.criticalCount > 0
+              ? `${item.criticalCount} critical`
+              : `${item.flagCount} ${item.flagCount === 1 ? 'flag' : 'flags'}`
+            : null
 
         return (
           <a
-            key={name}
+            key={item.name}
             href="#report-flags"
             className={cn(
               'group flex min-h-11 items-center gap-2 rounded-full border border-border/40 bg-card px-3 py-1.5',
@@ -61,17 +44,17 @@ export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
           >
             {Icon && (
               <Icon
-                className={cn('h-3.5 w-3.5 shrink-0', score != null ? '' : 'text-muted-foreground')}
-                style={score != null ? { color: scoreToScanColor(score) } : undefined}
+                className={cn('h-3.5 w-3.5 shrink-0', item.score != null ? '' : 'text-muted-foreground')}
+                style={item.score != null ? { color: scoreToScanColor(item.score) } : undefined}
                 aria-hidden
               />
             )}
-            <span className="text-xs font-medium text-foreground">{label}</span>
-            {status ? (
+            <span className="text-xs font-medium text-foreground">{item.label}</span>
+            {item.status ? (
               <RubricStatusBadge
-                status={status}
+                status={item.status}
                 size="sm"
-                label={pending ? 'Scanning' : undefined}
+                label={item.pending ? 'Scanning' : undefined}
                 className="hidden sm:inline-flex"
               />
             ) : null}

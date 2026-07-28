@@ -251,7 +251,7 @@ export function registerFlagTools(server: McpServer, user: User) {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
       const outcome = await loadCompletedTaskOutcome(reportId, tool)
-      const plan = outcome.finishPlan
+      const plan = outcome.fixList
       const items = plan?.items.slice(0, limit ?? plan.items.length) ?? []
       return {
         content: [

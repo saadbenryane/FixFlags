@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { Check, Cpu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { buildReportMcpCommand } from '@/lib/mcp/report-command-copy'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 
 interface Props {
   auditId: string
@@ -11,13 +11,11 @@ interface Props {
 }
 
 export function CopyMcpCommand({ auditId, disabled }: Props) {
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const command = buildReportMcpCommand(auditId)
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(command)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    await copy(command, { kind: 'command', auditId })
   }
 
   return (

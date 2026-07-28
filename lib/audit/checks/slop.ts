@@ -2,6 +2,9 @@ import { PageMetadata } from '../metadata'
 import { isDeadHref } from '../flow/link-scoring'
 import type { DeterministicFlag } from '../flag-types'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
+import { getEnv } from '@/lib/env'
+import { openai } from '../judge-runner'
+import { logger } from '@/lib/logger'
 
 const PLACEHOLDER_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /lorem ipsum/i, label: 'Lorem ipsum placeholder text' },
@@ -198,4 +201,83 @@ export function runSlopChecks(meta: PageMetadata): DeterministicFlag[] {
   }
 
   return findings
+}
+
+const SLOP_LLM_CHECK_IDS = new Set([
+  'placeholder-copy-detected',
+  'template-default-copy',
+  'messaging-weak-value-prop',
+])
+
+const slopLlmCache = new Map<string, boolean>()
+
+/**
+ * Re-checks slop flags against a cheap LLM to suppress false positives.
+ * Only fires when USE_SEMANTIC_SLOP env flag is enabled.
+ * Returns the filtered flags array (in place).
+ */
+export async function filterSlopFlagsWithLlm(
+  flags: DeterministicFlag[]
+): Promise<DeterministicFlag[]> {
+  const env = getEnv()
+  if (!env.USE_SEMANTIC_SLOP) return flags
+  if (!openai) return flags
+
+  const toFilter = flags.filter((f) => SLOP_LLM_CHECK_IDS.has(f.checkId))
+  if (toFilter.length === 0) return flags
+
+  const suppress = new Set<string>()
+  const batchTexts: string[] = []
+
+  for (const flag of toFilter) {
+    const cacheKey = `${flag.checkId}|${flag.problem}|${flag.evidence?.slice(0, 80) ?? ''}`
+    if (slopLlmCache.has(cacheKey)) {
+      if (slopLlmCache.get(cacheKey) === false) suppress.add(cacheKey)
+      continue
+    }
+    batchTexts.push(`${flag.checkId}: "${flag.problem}". Evidence: ${flag.evidence ?? ''}`)
+  }
+
+  if (batchTexts.length === 0) {
+    return flags.filter((f) => {
+      if (!SLOP_LLM_CHECK_IDS.has(f.checkId)) return true
+      const cacheKey = `${f.checkId}|${f.problem}|${f.evidence?.slice(0, 80) ?? ''}`
+      return !suppress.has(cacheKey)
+    })
+  }
+
+  try {
+    const prompt = `For each item below, answer only "placeholder" or "intentional".
+Placeholder means: template default text, unreplaced tokens, Lorem ipsum, AI-builder watermarks, or unverifiable fake content.
+Intentional means: real human-written content that may be imperfect but is not a placeholder.
+
+${batchTexts.map((t, i) => `${i + 1}. ${t.slice(0, 300)}`).join('\n')}
+
+Respond with one line per item: "N. placeholder" or "N. intentional" (N is the item number).`
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 200,
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    const lines = (response.choices[0]?.message?.content ?? '').split('\n').filter(Boolean)
+    for (let i = 0; i < toFilter.length; i++) {
+      const cacheKey = `${toFilter[i].checkId}|${toFilter[i].problem}|${toFilter[i].evidence?.slice(0, 80) ?? ''}`
+      const line = lines[i]?.toLowerCase() ?? ''
+      const isPlaceholder = line.includes('placeholder')
+      slopLlmCache.set(cacheKey, isPlaceholder)
+      if (!isPlaceholder) suppress.add(cacheKey)
+    }
+  } catch (err) {
+    logger.warn('Semantic slop LLM filter failed, keeping all flags', err)
+    return flags
+  }
+
+  return flags.filter((f) => {
+    if (!SLOP_LLM_CHECK_IDS.has(f.checkId)) return true
+    const cacheKey = `${f.checkId}|${f.problem}|${f.evidence?.slice(0, 80) ?? ''}`
+    return !suppress.has(cacheKey)
+  })
 }

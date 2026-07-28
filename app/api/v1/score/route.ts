@@ -167,10 +167,7 @@ export async function GET(req: NextRequest) {
     )
   } catch (error) {
     if (error instanceof AuditLimitError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code, action: error.action },
-        { status: 403 }
-      )
+      return apiError(error.message, 403, { code: error.code, action: error.action })
     }
     return handleRouteError(error)
   }

@@ -39,7 +39,7 @@ async function runReport(
   if (orderBy) body.orderBys = [{ metric: { metricName: orderBy.metric }, desc: orderBy.desc }]
 
   const response = await analyticsdata.properties.runReport({
-    property: GA4_PROPERTY,
+    property: getGa4Property(),
     requestBody: body,
   })
   return (response.data.rows ?? []).map((row) => {

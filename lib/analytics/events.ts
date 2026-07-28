@@ -18,7 +18,7 @@ declare global {
  * Funnel events for launch instrumentation.
  * `started_audit` is the product name for scan_submitted (kept for ad conversions).
  */
-type FunnelEvent =
+export type FunnelEvent =
   | 'landing_view'
   | 'started_audit'
   | 'scan_validation_failed'
@@ -51,6 +51,9 @@ type FunnelEvent =
   | 'share_link_created'
   | 'marketing_page_view'
   | 'beta_interest_submitted'
+  | 'plan_picker_viewed'
+  | 'plan_picker_picked'
+  | 'plan_picker_dismissed'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -145,6 +148,9 @@ type EventParams = {
     device?: string
   }
   beta_interest_submitted: { plan?: string; email?: string }
+  plan_picker_viewed: { source?: string; current_plan?: string }
+  plan_picker_picked: { plan: string; source?: string }
+  plan_picker_dismissed: { source?: string }
 }
 
 function deviceClass(): string | undefined {

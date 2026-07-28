@@ -1,5 +1,4 @@
-import { Badge } from '@/components/ui/badge'
-import { cn, severityColor, severityLabel } from '@/lib/utils'
+import { StatusBadge } from '@/components/audit/StatusBadge'
 
 interface Props {
   severity: string
@@ -7,17 +6,5 @@ interface Props {
 }
 
 export function SeverityBadge({ severity, className }: Props) {
-  return (
-    <Badge
-      variant="outline"
-      size="sm"
-      className={cn(
-        'shrink-0 border-transparent font-mono uppercase tracking-label',
-        severityColor(severity),
-        className
-      )}
-    >
-      {severityLabel(severity)}
-    </Badge>
-  )
+  return <StatusBadge kind="severity" status={severity} className={className} />
 }

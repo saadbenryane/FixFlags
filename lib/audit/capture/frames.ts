@@ -134,6 +134,4 @@ export async function captureInteractionFrames(
   return { frames, totalTimeMs: Date.now() - startedAt, device, pageKey }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'

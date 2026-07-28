@@ -1,10 +1,13 @@
 import { useId } from 'react'
 import { GRADE_THRESHOLDS } from '@/lib/audit/rubric'
+import { gradeHsl } from '@/lib/marketing/scan-score-color'
 
 interface ScoreSparklineProps {
   scores: number[]
   width?: number
   height?: number
+  /** Stretch to the parent width instead of keeping the intrinsic aspect ratio. */
+  responsive?: boolean
   className?: string
 }
 
@@ -12,6 +15,7 @@ export function ScoreSparkline({
   scores,
   width = 64,
   height = 24,
+  responsive = false,
   className,
 }: ScoreSparklineProps) {
   const gradientId = useId()
@@ -35,18 +39,19 @@ export function ScoreSparkline({
   const latest = scores[scores.length - 1]
   const latestColor =
     latest >= GRADE_THRESHOLDS.A
-      ? 'hsl(var(--grade-A))'
+      ? gradeHsl('A')
       : latest >= GRADE_THRESHOLDS.B
-        ? 'hsl(var(--grade-B))'
+        ? gradeHsl('B')
         : latest >= GRADE_THRESHOLDS.C
-          ? 'hsl(var(--grade-C))'
-          : 'hsl(var(--grade-D))'
+          ? gradeHsl('C')
+          : gradeHsl('D')
 
   return (
     <svg
-      width={width}
-      height={height}
+      width={responsive ? '100%' : width}
+      height={responsive ? '100%' : height}
       viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio={responsive ? 'none' : undefined}
       className={className}
       aria-label={`Score trend: ${scores.join(', ')}`}
       role="img"

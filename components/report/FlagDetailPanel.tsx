@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { ExternalLink, Share2, Wrench, type LucideIcon } from 'lucide-react'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
-import { MarkdownPromptBox } from '@/components/audit/MarkdownPromptBox'
+import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
@@ -189,12 +189,13 @@ export function FlagDetailPanel({
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : (
-            <MarkdownPromptBox
+            <FixPromptBlock
               prompt={flag.fixPrompt}
               toolPrompts={flag.toolPrompts}
               showToolSelector
               showCursorAction
               nested
+              render="markdown"
             />
           )}
         </section>

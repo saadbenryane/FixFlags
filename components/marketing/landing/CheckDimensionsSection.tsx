@@ -337,7 +337,7 @@ export function CheckDimensionsSection() {
                             </p>
                             <Link
                               href={issue.categoryHref}
-                              className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                              className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
                             >
                               /{issue.category}
                               <ArrowRight className="h-3 w-3" aria-hidden />

@@ -213,16 +213,12 @@ export function AuditReport({
     >
       <AuditReportHero
         variant={isSample ? 'minimal' : 'default'}
-        score={audit.score}
         pageType={audit.pageType}
         url={audit.url}
         screenshots={audit.screenshots}
         capturePresentation={capturePresentation}
         pageSpeedCoverage={audit.pageSpeedCoverage}
-        startedAt={audit.startedAt}
-        completedAt={audit.completedAt}
         actions={toolbarActions ?? actions}
-        showScore={false}
       />
 
       {!isSample && (
@@ -359,7 +355,7 @@ export function AuditReport({
         />
       ) : null}
 
-      {(showJourney || showJourneyReview) ? (
+      {(showJourney || showJourneyReview || showFlow || showTimeline) ? (
         <div id="report-journey" className="scroll-mt-[var(--header-offset)] space-y-4">
           {showJourney ? (
             <JourneyBar
@@ -370,19 +366,14 @@ export function AuditReport({
             />
           ) : null}
           {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
+          {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
+          {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
+            <section className="rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface">
+              <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
+              <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
+            </section>
+          ) : null}
         </div>
-      ) : null}
-
-      {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
-
-      {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
-        <section
-          id="report-timeline"
-          className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface"
-        >
-          <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
-          <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
-        </section>
       ) : null}
 
       {showPreviews && audit.previewMeta ? <PreviewCards preview={audit.previewMeta} /> : null}

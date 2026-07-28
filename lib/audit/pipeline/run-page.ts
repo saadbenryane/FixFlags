@@ -1,5 +1,7 @@
 import { prisma } from '../../db'
 import { captureScreenshots, getAuditBrowser } from '../screenshot'
+import type { PageCaptureFailure } from '../browser/page-capture'
+import { SiteOutageError } from '../pipeline-errors'
 import {
   fetchAndParseMetadata,
   mergeRuntimeHeadMetadata,
@@ -39,6 +41,62 @@ import {
 } from '../product-intelligence'
 import { loadProjectIntelligence, mutateProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
+
+interface CaptureOutage {
+  failureCode: string
+  failureMessage: string
+  throwMessage: string
+}
+
+/**
+ * Translate a structured capture failure into a clear, user-facing message.
+ * When the destination site is unreachable or refuses the audit, the user
+ * should understand WHY (and that it is not a FixFlags bug) rather than seeing
+ * a generic "Desktop screenshot capture failed".
+ */
+function buildCaptureOutageMessage(
+  failure: PageCaptureFailure | undefined,
+  normalizedUrl: string
+): CaptureOutage {
+  const status = failure?.httpStatus
+  switch (failure?.code) {
+    case 'HTTP_FORBIDDEN':
+      return {
+        failureCode: 'SITE_FORBIDDEN',
+        failureMessage:
+          'This site returned HTTP 403 (Forbidden). It may be blocking automated audits, so FixFlags cannot scan it.',
+        throwMessage: `Site returned HTTP 403 for ${normalizedUrl}`,
+      }
+    case 'HTTP_RATE_LIMIT':
+      return {
+        failureCode: 'SITE_RATE_LIMITED',
+        failureMessage:
+          'This site returned HTTP 429 (Too Many Requests). Wait a few minutes and re-check.',
+        throwMessage: `Site returned HTTP 429 for ${normalizedUrl}`,
+      }
+    case 'NON_HTML_RESPONSE':
+      return {
+        failureCode: 'SITE_NOT_HTML',
+        failureMessage:
+          'This URL did not return an HTML page, so FixFlags cannot analyze its content.',
+        throwMessage: `Destination did not return HTML for ${normalizedUrl}`,
+      }
+    case 'HTTP_ERROR':
+      return {
+        failureCode: 'SITE_UNREACHABLE',
+        failureMessage: status
+          ? `This site returned HTTP ${status}. FixFlags can only audit sites that respond successfully, so check that the URL is live and try again.`
+          : 'This site did not respond successfully, so FixFlags could not capture it. Confirm the URL is live and reachable, then re-check.',
+        throwMessage: `Site returned HTTP ${status ?? 'error'} for ${normalizedUrl}`,
+      }
+    default:
+      return {
+        failureCode: 'DESKTOP_CAPTURE_FAILED',
+        failureMessage: 'Desktop screenshot capture is required to analyze the page.',
+        throwMessage: `Desktop screenshot capture failed for ${normalizedUrl}`,
+      }
+  }
+}
 
 /** Create an AbortSignal that fires when the deadline is approaching (≤15s remaining). */
 function createDeadlineSignal(deadline: number): AbortSignal {
@@ -149,15 +207,19 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   })
 
   if (!screenshots.desktopUrl || !screenshots.desktopBase64) {
+    const desktopFailure = (screenshots.captureFailures ?? []).find(
+      (f: PageCaptureFailure) => f.code && f.code !== 'CAPTURE_FAILED'
+    )
+    const outage = buildCaptureOutageMessage(desktopFailure, normalizedUrl)
     await prisma.auditPage.update({
       where: { id: page.id },
       data: {
         status: 'FAILED',
-        failureCode: 'DESKTOP_CAPTURE_FAILED',
-        failureMessage: 'Desktop screenshot capture is required',
+        failureCode: outage.failureCode,
+        failureMessage: outage.failureMessage,
       },
     })
-    throw new Error(`Desktop screenshot capture failed for ${normalizedUrl}`)
+    throw new SiteOutageError(outage.failureCode, outage.failureMessage, outage.throwMessage)
   }
 
   desktopBase64 = screenshots.desktopBase64

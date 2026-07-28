@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Fingerprint, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy/auth'
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
@@ -193,16 +193,9 @@ export function AuthFlow({
 
   const content = (
     <>
-      {isDialog ? (
-        <div className="rounded-[var(--radius-inner)] bg-brand/[0.055] p-4">
-          <p className="text-sm font-medium text-foreground">{AUTH.reportGate.valueTitle}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {AUTH.reportGate.valueBody}
-          </p>
-        </div>
-      ) : resolvedNext?.match(/^\/report\/[^/?#]+$/) ? (
+      {!isDialog && resolvedNext?.match(/^\/report\/[^/?#]+$/) ? (
         <AuthReportContext next={resolvedNext} />
-      ) : mode === 'signup' ? (
+      ) : !isDialog && mode === 'signup' ? (
         <div className="rounded-card bg-muted/30 p-4 shadow-none">
           <AuthValueProps />
         </div>
@@ -240,7 +233,11 @@ export function AuthFlow({
           {mode === 'signup' ? AUTH.reportGate.emailSignup : AUTH.reportGate.emailSignin}
         </Button>
       ) : (
-        <FormContainer onSubmit={handleEmailSubmit} className="space-y-4">
+        <FormContainer
+          onSubmit={handleEmailSubmit}
+          className="space-y-4"
+          aria-live="polite"
+        >
           {isDialog && oauth.anyEnabled ? (
             <button
               type="button"

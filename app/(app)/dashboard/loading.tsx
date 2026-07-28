@@ -17,11 +17,13 @@ export default function DashboardLoading() {
         <Skeleton className="h-6 w-20 rounded-full" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Skeleton className="h-28 rounded-card" />
         <Skeleton className="h-28 rounded-card" />
         <Skeleton className="h-28 rounded-card" />
       </div>
+
+      <Skeleton className="h-32 rounded-card" />
 
       <Skeleton className="h-36 rounded-card" />
 

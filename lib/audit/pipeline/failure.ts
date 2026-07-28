@@ -28,5 +28,8 @@ export function deriveAuditFailure(error: unknown, fallbackStage: string): Audit
   if (isInfrastructureAuditError(error)) {
     return { failureCode: auditFailureCodeFromError(error), failureStage: fallbackStage }
   }
-  return { failureCode: 'AUDIT_PIPELINE_FAILED', failureStage: fallbackStage }
+  // Site-outage and any other known error class carry their own failure code
+  // (e.g. SITE_UNREACHABLE, SITE_FORBIDDEN) so the report can explain WHY no
+  // report was produced instead of a generic pipeline failure.
+  return { failureCode: auditFailureCodeFromError(error), failureStage: fallbackStage }
 }

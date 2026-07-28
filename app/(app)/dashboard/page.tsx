@@ -25,7 +25,6 @@ import {
 } from "@/lib/auth/permissions";
 import { planLabel } from "@/lib/billing/plans";
 import {
-  canAccessPaidFeatures,
   hasRevokedSubscriptionStatus,
 } from "@/lib/auth/entitlements";
 import { isAtCheckLimit } from "@/lib/audit/usage";
@@ -121,7 +120,6 @@ export default async function DashboardPage({
     isAtCheckLimit(used, pending, effectiveLimit);
 
   const entitlements = getEntitlements(user);
-  const canCompare = canAccessPaidFeatures(user);
 
   const totalCritical = completedAudits.reduce(
     (sum, a) =>
@@ -152,6 +150,13 @@ export default async function DashboardPage({
         ...latestCompleted.monitoringAudits.map((audit) => audit.score),
       ].filter((score): score is number => score !== null)
     : [];
+  const latestRubricScores = latestCompleted
+    ? latestCompleted.rubrics.map((rubric) => ({
+        name: rubric.name,
+        grade: rubric.grade,
+        score: rubric.score,
+      }))
+    : [];
   const mcpAudits = auditCounts.find((a) => a.source === "MCP")?._count ?? 0;
   const webAudits = auditCounts.find((a) => a.source !== "MCP")?._count ?? 0;
 
@@ -164,13 +169,11 @@ export default async function DashboardPage({
         <DashboardCheckoutToast />
       </Suspense>
 
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <PageHeader title="Dashboard" />
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review what changed, copy the right fix, then Re-check.
-          </p>
-        </div>
+      <PageHeader
+        title="Dashboard"
+        description="Review what changed, copy the right fix, then Re-check."
+        className="flex items-center justify-between gap-4"
+      >
         <div className="flex items-center gap-3">
           {!isEffectivelyFree && (
             <Badge
@@ -183,12 +186,11 @@ export default async function DashboardPage({
           {isEffectivelyFree && !isUnlimited && (
             <UpgradeButton
               context="free_default"
-              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === "true"}
               userEmail={user.email ?? undefined}
             />
           )}
         </div>
-      </div>
+      </PageHeader>
 
       <DashboardSummary
         latestScore={latestCompleted?.score ?? null}
@@ -196,10 +198,11 @@ export default async function DashboardPage({
         criticalFlags={latestCritical}
         importantFlags={latestImportant}
         trendScores={latestTrendScores}
+        rubricScores={latestRubricScores}
       />
 
       {/* Primary action: start a new Check after orienting to current release health. */}
-      <Surface variant="nested" className="shadow-card sm:p-6">
+      <Surface variant="elevated" className="sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <SectionTitle>Review a URL</SectionTitle>
           {completedAudits.length > 0 && (
@@ -259,7 +262,6 @@ export default async function DashboardPage({
           <RecentChecksList
             audits={audits}
             initialHasMore={initialHasMore}
-            canCompare={canCompare}
           />
           <ProjectsPanel
             plan={user.plan}

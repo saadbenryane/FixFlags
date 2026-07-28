@@ -14,9 +14,17 @@ export function scoreToScanColor(score: number): string {
   return 'hsl(var(--success))'
 }
 
-/** Color at the tip of the score ring arc (matches where the score lands on 0→100). */
-export function scoreToRingTipColor(score: number): string {
-  return scoreToScanColor(score)
+/** Grade → HSL color string, sourced from the shared grade CSS variables. */
+export const GRADE_HSL: Record<string, string> = {
+  A: 'hsl(var(--grade-A))',
+  B: 'hsl(var(--grade-B))',
+  C: 'hsl(var(--grade-C))',
+  D: 'hsl(var(--grade-D))',
+  F: 'hsl(var(--grade-F))',
+}
+
+export function gradeHsl(grade: string): string {
+  return GRADE_HSL[grade] ?? 'hsl(var(--muted-foreground))'
 }
 
 export const CRITICAL_SCAN_THRESHOLD = 48

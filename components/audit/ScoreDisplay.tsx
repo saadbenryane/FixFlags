@@ -1,8 +1,7 @@
 import { cn, rubricLabel, gradeColor } from '@/lib/utils'
 import { resolveScoreDisplay } from '@/lib/audit/score-display'
-import { Card } from '@/components/ui/card'
 
-export type ScoreDisplayVariant = 'card' | 'compact' | 'inline' | 'pill'
+export type ScoreDisplayVariant = 'compact' | 'inline'
 
 interface ScoreDisplayProps {
   rubricName?: string
@@ -48,16 +47,12 @@ export function ScoreDisplay({
   label,
   grade,
   score = null,
-  variant = 'card',
+  variant = 'compact',
   size = 'md',
   className,
 }: ScoreDisplayProps) {
   const resolved = resolveScoreDisplay({ grade, score })
   const displayLabel = label ?? (rubricName ? rubricLabel(rubricName) : 'Overall')
-
-  if (variant === 'pill') {
-    return <GradePill grade={resolved.grade} size={size} className={className} />
-  }
 
   if (variant === 'compact') {
     return (
@@ -94,46 +89,4 @@ export function ScoreDisplay({
       </div>
     )
   }
-
-  // card variant (default)
-  return (
-    <Card
-      className={cn(
-        'flex min-h-[4.5rem] items-center gap-4 p-4',
-        size === 'sm' && 'min-h-[3.75rem] gap-3 p-3',
-        className
-      )}
-    >
-      <div className="shrink-0 text-left">
-        {resolved.mode === 'numeric' && resolved.score != null ? (
-          <div className="tabular-nums">
-            <div
-              className={cn(
-                'font-mono font-bold leading-none text-brand',
-                size === 'sm' ? 'text-2xl' : 'text-3xl'
-              )}
-            >
-              {resolved.primary}
-            </div>
-            <div className="mt-0.5 font-mono text-xs text-muted-foreground">{resolved.caption}</div>
-          </div>
-        ) : (
-          <GradePill grade={resolved.grade} size={size === 'sm' ? 'md' : 'lg'} />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className={cn('font-medium leading-snug', size === 'sm' ? 'text-xs' : 'text-sm')}>
-          {displayLabel}
-        </p>
-        {resolved.mode === 'numeric' && resolved.secondary ? (
-          <p className="mt-0.5 font-mono text-xs text-muted-foreground">{resolved.secondary}</p>
-        ) : null}
-        {resolved.mode === 'grade' && resolved.caption ? (
-          <p className="mt-0.5 meta-label text-muted-foreground">
-            {resolved.caption}
-          </p>
-        ) : null}
-      </div>
-    </Card>
-  )
 }

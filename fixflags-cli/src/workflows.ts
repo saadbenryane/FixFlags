@@ -35,7 +35,6 @@ export interface CheckResult {
     importantCount?: number
   }>
   fixList?: FixList
-  finishPlan?: FinishPlan
   technologyProfile?: {
     status: string
     technologies: Array<{ name: string; category: string; confidenceBand: string }>
@@ -48,7 +47,6 @@ export interface RecheckResult {
   reportUrl: string
   status: string
   diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
-  nextFinishPlan?: FinishPlan
   nextFixList?: FixList
   technologyProfile?: CheckResult['technologyProfile']
 }
@@ -155,8 +153,6 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
     verdict: typeof outcome.verdict === 'string' || outcome.verdict === null ? outcome.verdict : undefined,
     rubrics,
     fixList: parseFixList(outcome.fixList, tool),
-    finishPlan: parseFinishPlan(outcome.finishPlan, tool),
-    technologyProfile: parseTechnologyProfile(outcome.technologyProfile, tool),
   }
 }
 

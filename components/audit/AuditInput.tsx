@@ -14,8 +14,6 @@ import {
   startScanWithHandoff,
   trackStartedAudit,
 } from '@/lib/audit/start-scan-handoff'
-import { AuditReportProgressiveShell } from '@/components/audit/AuditReportProgressive'
-import { Logo } from '@/components/brand/Logo'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -172,9 +170,7 @@ export function AuditInput({
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
 
   return (
-    <>
-      {isLanding && loading ? <ForegroundScanHandoff url={url} /> : null}
-      <div className={cn('flex w-full flex-col gap-3', isLanding ? 'w-full' : 'max-w-2xl')}>
+    <div className={cn('flex w-full flex-col gap-3', isLanding ? 'w-full' : 'max-w-2xl')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         {isLanding ? (
           <InputGroup className="gap-1.5 rounded-[var(--radius-inner)] border-border/35 bg-background p-1.5 shadow-glass-deep sm:flex-row sm:items-center sm:gap-1 sm:p-1.5">
@@ -309,33 +305,6 @@ export function AuditInput({
           </Button>
         </div>
       ) : null}
-      </div>
-    </>
-  )
-}
-
-function ForegroundScanHandoff({ url }: { url: string }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [])
-
-  return (
-    <div
-      className="fixed inset-0 z-modal overflow-y-auto bg-background"
-      role="status"
-      aria-live="polite"
-      aria-label="Opening your report"
-    >
-      <div className="sticky top-0 z-navbar h-14 border-b border-border/35 bg-background/95 px-4 backdrop-blur-md sm:px-6">
-        <div className="mx-auto flex h-full max-w-6xl items-center">
-          <Logo variant="lockup" size="sm" />
-        </div>
-      </div>
-      <AuditReportProgressiveShell url={url} launchPending />
     </div>
   )
 }

@@ -6,13 +6,8 @@ export interface PostClickMetrics {
   blankScreenMs: number
   stuckLoadingLabel: string | null
 }
-
-const LOADING_SELECTOR =
-  '[aria-busy="true"], [data-loading], [class*="skeleton" i], [class*="spinner" i], [class*="loading" i]'
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
+import { LOADING_SELECTOR } from '@/lib/audit/flow/constants'
 
 /** After CTA navigation, measure how long until meaningful content appears and loading UI clears. */
 export async function measurePostClickLoading(

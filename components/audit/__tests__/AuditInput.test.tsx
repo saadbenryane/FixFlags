@@ -14,12 +14,12 @@ vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))
 
 import { AuditInput } from '@/components/audit/AuditInput'
 
-describe('AuditInput report-first handoff', () => {
+describe('AuditInput scan handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('replaces the landing content with report geometry while creation is pending', async () => {
+  it('shows an in-flight submit button while the scan request is pending', async () => {
     startScanWithHandoff.mockReturnValue(new Promise(() => {}))
     render(
       <MeProvider initialUser={null}>
@@ -32,9 +32,9 @@ describe('AuditInput report-first handoff', () => {
     fireEvent.change(input, { target: { value: 'example.com' } })
     fireEvent.submit(input.closest('form')!)
 
-    expect(await screen.findByLabelText('Loading report')).toBeInTheDocument()
-    expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.queryByText(/Scanning in the background/i)).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Scanning/ })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeInTheDocument()
+    expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
   })
 
   it('returns to the URL field after a creation error without submitting again', async () => {
@@ -54,7 +54,7 @@ describe('AuditInput report-first handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Loading report')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Review my site/i })).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
   })
 })

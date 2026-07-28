@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Github, Trash2, Loader2, ScanSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Container } from '@/components/ui/container'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -205,7 +206,7 @@ function IntegrationsPageContent() {
   }
 
   return (
-    <div className="space-y-8">
+    <Container variant="narrow" className="py-8 space-y-8">
       <PageHeader
         title="Integrations"
         description="Connect GitHub to scan your codebase for issues, not just live URLs."
@@ -377,6 +378,6 @@ function IntegrationsPageContent() {
         </>
       )}
       {confirmDialog}
-    </div>
+    </Container>
   )
 }

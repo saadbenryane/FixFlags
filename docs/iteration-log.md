@@ -1,6 +1,6 @@
 # Iteration Log
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-27*
 
 Running notes for the "make FixFlags 10x, genius-level accurate" iteration effort.
 Purpose: avoid re-deriving architecture/context on every session, and track what's
@@ -44,6 +44,19 @@ end almost certainly - left it alone again.
 **Resolved ~11:29:** both of the above are done - `npx tsc --noEmit` is clean and
 `npx vitest run` is 1598/1599 (1 skip), 0 failed. Confirms the "wait, don't touch an
 actively-edited file" approach worked cleanly here with zero intervention needed.
+
+---
+
+## 2026-07-27 — Session 50 (end-to-end scan queue unblocked)
+
+- **Bug fixed:** duplicate declaration in `lib/audit/checks/index.ts` (`allFindings`) prevented standalone worker startup (`npx tsx` transform error: `symbol "allFindings" has already been declared`).
+- **Code change:** removed the redundant declaration in `lib/audit/checks/index.ts`, leaving the post-bucket accumulator as the single collector.
+- **Runtime recovery:** DB schema alignment check confirmed `technologyDetectionStatus` exists in `audits`; queue worker now starts with `npm run worker` and logs `Worker ready, listening for audit jobs`.
+- **Verification path:** ran real-site scans against `https://barbertherapy.ca` and `https://aplicativos.poker` using `/api/checks` + `/api/reports/[id]`:
+  - `https://barbertherapy.ca` completed as `COMPLETED`, `score=69`
+  - `https://aplicativos.poker` completed as `COMPLETED`, `score=90`
+- **Pipeline state observed:** `QUEUED -> CAPTURING -> JUDGING -> FINALIZING -> COMPLETED` with worker availability and progress updates while dedicated worker is running.
+- **Outstanding:** `npm run validate:quick` still reports pre-existing unrelated type failures in files outside this change (`lib/auth/__tests__/entitlements.test.ts`, `lib/integrations/google-search-console.ts`, etc.).
 
 ---
 

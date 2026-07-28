@@ -6,9 +6,7 @@ export interface GhostSectionProbeResult {
   sampleText: string | null
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
 
 /** Scroll the page and detect sections that remain invisible in the viewport. */
 export async function probeGhostSections(page: Page): Promise<GhostSectionProbeResult> {

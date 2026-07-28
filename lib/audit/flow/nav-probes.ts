@@ -22,9 +22,7 @@ export interface MultiStepProbeResult {
   ghostSampleText?: string
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
 
 /** Reset desktop capture viewport after mobile probes. */
 export async function restoreDesktopCaptureViewport(page: Page): Promise<void> {

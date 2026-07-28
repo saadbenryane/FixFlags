@@ -12,7 +12,6 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional().or(z.literal('')),
-  NEXT_PUBLIC_STRIPE_BETA_GATING: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   NEXT_PUBLIC_GA_ID: z
     .string()
     .regex(/^G-[A-Z0-9]+$/, 'NEXT_PUBLIC_GA_ID must be a GA4 Measurement ID (e.g. G-XXXXXXXXXX)')
@@ -58,13 +57,14 @@ const envSchema = z.object({
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
   AUDIT_WORKER_CONCURRENCY: z.string().optional(),
+  USE_LLM_PAGE_PURPOSE: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
+  USE_SEMANTIC_SLOP: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   // Ad-platform conversion tracking (Workstream D). All optional; each feature
   // is gated on presence, mirroring NEXT_PUBLIC_GA_ID.
   NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),
   NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL: z.string().optional(),
   NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
   META_CAPI_TOKEN: z.string().optional(),
-  STRIPE_BETA_GATING: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>

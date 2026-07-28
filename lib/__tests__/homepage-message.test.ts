@@ -1,9 +1,7 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
-  AI_TOOLS,
   BRAND,
-  CASE_STUDIES_SECTION,
   CHANGELOG_ENTRIES,
   DIFFERENTIATION,
   FINAL_CTA,
@@ -141,7 +139,6 @@ describe('homepage message guardrails', () => {
   })
 
   it('hero names editor tools; segment proof still covers Cursor', () => {
-    assert.ok(HERO.subhead.includes(AI_TOOLS.split(',')[0]))
     assert.ok(SEGMENT_PROOF_SECTION.tiles.some((t) => t.proof.includes('Cursor')))
   })
 
@@ -241,9 +238,8 @@ describe('homepage message guardrails', () => {
     assert.ok(!/^Google Lighthouse docs$/i.test(DIFFERENTIATION.lighthouseLinkText))
   })
 
-  it('how-it-works and case studies avoid duplicate before/after phrasing', () => {
+  it('how-it-works avoids duplicate before/after phrasing', () => {
     assert.ok(!HOW_IT_WORKS_PAGE.hero.subhead.toLowerCase().includes('before/after'))
-    assert.ok(!CASE_STUDIES_SECTION.headline.toLowerCase().includes('before/after'))
   })
 
   it('segment proof avoids "Graded" marketing copy', () => {

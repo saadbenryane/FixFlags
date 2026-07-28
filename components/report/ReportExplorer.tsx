@@ -21,7 +21,7 @@ import {
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import { cn } from '@/lib/utils'
-import { trackEvent } from '@/lib/analytics/events'
+import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import { impactTagLabel, severityLabel } from '@/lib/utils'
 
@@ -38,7 +38,6 @@ interface ReportExplorerProps {
   signUpHref?: string
   pages?: JourneyPage[]
   loading?: boolean
-  progress?: number
   /** Optional audit id for funnel analytics on live reports. */
   auditId?: string
   demonstratedFlagId?: string
@@ -88,7 +87,6 @@ export function ReportExplorer({
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(
     model.flags[initialIndex]?.id ?? null
   )
-  const firstFindingTracked = useRef(false)
   const demonstratedSelectionApplied = useRef(false)
   const urlStateLoaded = useRef(false)
 
@@ -170,21 +168,18 @@ export function ReportExplorer({
     })
   }, [model.flags, pages, visibleDemonstratedFlagId, writeExplorerUrl])
 
-  useEffect(() => {
-    if (firstFindingTracked.current || variant !== 'live' || model.flags.length === 0) return
-    if (
-      visibleDemonstratedFlagId &&
-      selectedFlagId !== visibleDemonstratedFlagId
-    ) return
-    const flag = model.flags.find((candidate) => candidate.id === selectedFlagId)
-    if (!flag) return
-    firstFindingTracked.current = true
-    trackEvent('first_finding_viewed', {
-      audit_id: auditId,
-      check_id: flag.checkId ?? undefined,
-      severity: flag.severity,
-    })
-  }, [variant, model.flags, auditId, selectedFlagId, visibleDemonstratedFlagId])
+  useOneShotEvent(
+    'first_finding_viewed',
+    auditId!,
+    () => {
+      if (variant !== 'live' || model.flags.length === 0) return null
+      if (visibleDemonstratedFlagId && selectedFlagId !== visibleDemonstratedFlagId) return null
+      const flag = model.flags.find((candidate) => candidate.id === selectedFlagId)
+      if (!flag) return null
+      return { check_id: flag.checkId ?? undefined, severity: flag.severity }
+    },
+    [variant, model.flags, auditId, selectedFlagId, visibleDemonstratedFlagId],
+  )
 
   const rubricCounts = useMemo(
     () =>
@@ -454,7 +449,6 @@ export function ReportExplorer({
           selectedFlagId={currentFlag?.id}
           onSelectFlag={goToFlag}
           compact={config.compact}
-          variant="panel"
           loading={loading}
         />
       )}

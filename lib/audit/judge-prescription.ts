@@ -2,8 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import {
   prescriptionOutputSchema,
-  QUALITY_PRESCRIPTION_SCHEMA,
   QUALITY_PRESCRIPTION_TOOL,
+  QUALITY_PRESCRIPTION_SCHEMA_OPENAI,
   type PrescriptionOutput,
 } from './judge-prescription-schema'
 import {
@@ -293,31 +293,28 @@ async function runOpenAIPrescription(
       {
         model: cfg.model,
         max_tokens: cfg.maxTokens,
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'quality_prescription',
+            strict: true,
+            schema: QUALITY_PRESCRIPTION_SCHEMA_OPENAI,
+          },
+        },
         messages: [
           { role: 'system', content: buildPrescriptionSystemPrompt() },
           { role: 'user', content },
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'quality_prescription',
-              description: 'Generate fix prompts for an already-diagnosed audit',
-              parameters: QUALITY_PRESCRIPTION_SCHEMA,
-            },
-          },
-        ],
-        tool_choice: { type: 'function', function: { name: 'quality_prescription' } },
       },
       { signal: controller.signal }
     )
 
-    const toolCall = response.choices[0]?.message?.tool_calls?.[0]
-    if (!toolCall || toolCall.type !== 'function') {
-      throw new Error('No function call in prescription response')
+    const rawContent = response.choices[0]?.message?.content
+    if (!rawContent) {
+      throw new Error('No content in prescription response')
     }
 
-    const raw = JSON.parse(toolCall.function.arguments)
+    const raw = JSON.parse(rawContent)
     return {
       output: parsePrescriptionOutput(raw, context.existingFlags),
       usage: {

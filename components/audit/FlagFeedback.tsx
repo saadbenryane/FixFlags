@@ -2,12 +2,12 @@
 import { useState } from 'react'
 import { ThumbsFeedback } from '@/components/ui/thumbs-feedback'
 import { Button } from '@/components/ui/button'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
   FLAG_DISMISS_REASONS,
   FLAG_FEEDBACK_COPY,
   type FlagDismissReasonId,
 } from '@/lib/marketing/copy'
+import { useFeedbackSubmit } from '@/lib/hooks/useFeedbackSubmit'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -18,39 +18,28 @@ interface Props {
 
 export function FlagFeedback({ flagId, canDismiss = false }: Props) {
   const [showReasons, setShowReasons] = useState(false)
+  const { submit } = useFeedbackSubmit()
 
-  async function submit(
+  async function submitFeedback(
     vote: number,
     comment?: string,
     reason?: FlagDismissReasonId | null,
   ) {
-    try {
-      const res = await fetch(`/api/flags/${flagId}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vote,
-          comment,
-          reason: vote === -1 ? reason ?? undefined : undefined,
-          dismiss: vote === -1 && canDismiss && Boolean(reason),
-        }),
-      })
-      if (!res.ok) {
-        const error = await parseApiErrorResponse(res)
-        const { toast } = await import('sonner')
-        toast.error(error.message || FLAG_FEEDBACK_COPY.saveFailed)
-        return false
-      }
-      if (vote === -1 && canDismiss && reason) {
-        const { toast } = await import('sonner')
-        toast.success(FLAG_FEEDBACK_COPY.dismissed)
-      }
-      return true
-    } catch {
+    const ok = await submit(
+      `/api/flags/${flagId}/feedback`,
+      {
+        vote,
+        comment,
+        reason: vote === -1 ? reason ?? undefined : undefined,
+        dismiss: vote === -1 && canDismiss && Boolean(reason),
+      },
+      FLAG_FEEDBACK_COPY.saveFailed,
+    )
+    if (ok && vote === -1 && canDismiss && reason) {
       const { toast } = await import('sonner')
-      toast.error(FLAG_FEEDBACK_COPY.saveFailed)
-      return false
+      toast.success(FLAG_FEEDBACK_COPY.dismissed)
     }
+    return ok
   }
 
   return (
@@ -60,7 +49,7 @@ export function FlagFeedback({ flagId, canDismiss = false }: Props) {
           if (v === -1 && canDismiss) {
             setShowReasons(true)
           }
-          return submit(v, c)
+          return submitFeedback(v, c)
         }}
       />
       {canDismiss && showReasons && (
@@ -77,7 +66,7 @@ export function FlagFeedback({ flagId, canDismiss = false }: Props) {
                 variant="outline"
                 className={cn('h-7 rounded-full text-xs')}
                 onClick={() => {
-                  void submit(-1, undefined, item.id)
+                  void submitFeedback(-1, undefined, item.id)
                 }}
               >
                 {item.label}

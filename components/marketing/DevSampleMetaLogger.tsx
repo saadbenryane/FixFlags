@@ -28,6 +28,7 @@ export function DevSampleMetaLogger({
       marketing: true,
     })
 
+    // dev-only diagnostic, NODE_ENV guarded above
     console.info('[FixFlags sample meta]', {
       source,
       pipelineVersion,

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { AuthFlow } from '@/components/auth/AuthFlow'
 import { Button } from '@/components/ui/button'
-import { AUTH } from '@/lib/marketing/copy'
+import { AUTH } from '@/lib/marketing/copy/auth'
 import { useMe } from '@/hooks/useMe'
 import { trackEvent } from '@/lib/analytics/events'
 

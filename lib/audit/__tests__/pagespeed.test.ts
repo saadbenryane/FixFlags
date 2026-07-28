@@ -15,6 +15,7 @@ const mockResult: PageSpeedResult = {
   failedAccessibilityAudits: [],
   diagnostics: {},
   raw: { someRawData: true },
+  crux: null,
 }
 
 describe('toStoredPageSpeedResult', () => {

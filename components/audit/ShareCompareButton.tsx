@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { SITE_URL } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 
 interface Props {
   auditId: string
@@ -17,9 +18,9 @@ interface Props {
 
 export function ShareCompareButton({ auditId, label = 'Share comparison' }: Props) {
   const router = useRouter()
+  const { copied, copy } = useCopyToClipboard()
   const [link, setLink] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   async function handleCreate() {
     setLoading(true)
@@ -51,10 +52,7 @@ export function ShareCompareButton({ auditId, label = 'Share comparison' }: Prop
 
   async function copyLink() {
     if (!link) return
-    await navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    toast.success('Compare link copied')
+    await copy(link, { kind: 'link', auditId, successMessage: 'Compare link copied' })
   }
 
   if (!link) {

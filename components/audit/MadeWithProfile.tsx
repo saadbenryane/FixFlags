@@ -4,10 +4,12 @@ import {
   Bot,
   ChartNoAxesCombined,
   ChevronDown,
+  ClipboardList,
   Cloud,
   CreditCard,
   MessagesSquare,
   PanelsTopLeft,
+  Shield,
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
@@ -31,6 +33,8 @@ const CATEGORY_META: Record<GraphTechKind, { label: string; icon: LucideIcon }> 
   monitoring: { label: 'Monitoring', icon: Activity },
   payments: { label: 'Payments', icon: CreditCard },
   support: { label: 'Support', icon: MessagesSquare },
+  security: { label: 'Security', icon: Shield },
+  form: { label: 'Forms', icon: ClipboardList },
 }
 
 function groupTechnologies(technologies: VisibleTechnology[]) {

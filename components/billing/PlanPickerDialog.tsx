@@ -17,7 +17,9 @@ import {
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { PLANS, PRICING, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { PLANS, PRICING } from '@/lib/marketing/copy'
+import { SYSTEM_COPY } from '@/lib/marketing/copy/errors'
+import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { trackEvent } from '@/lib/analytics/events'
 import {
   pickPlan,
@@ -51,6 +53,7 @@ export function PlanPickerDialog({
 }: PlanPickerDialogProps) {
   const router = useRouter()
   const { user, isLoading: meLoading } = useMe({ load: true })
+  const { signUpHref } = useAuthRedirect()
   const [busyPlan, setBusyPlan] = useState<PickerPlan | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [trackedView, setTrackedView] = useState(false)
@@ -83,8 +86,8 @@ export function PlanPickerDialog({
 
   async function handlePick(plan: PickerPlan) {
     trackPicked(plan)
-    if (plan === 'FREE' && !user) {
-      router.push('/sign-up?from=plan_picker')
+    if (!user) {
+      router.push(signUpHref())
       return
     }
 

@@ -13,7 +13,6 @@ interface LiveReportExplorerProps {
   className?: string
   pages?: JourneyPage[]
   loading?: boolean
-  progress?: number
   auditId?: string
   demonstratedFlagId?: string
 }
@@ -27,7 +26,6 @@ export function LiveReportExplorer({
   className,
   pages,
   loading = false,
-  progress,
   auditId,
   demonstratedFlagId,
 }: LiveReportExplorerProps) {
@@ -44,7 +42,6 @@ export function LiveReportExplorer({
       className={className}
       pages={pages}
       loading={loading}
-      progress={progress}
       auditId={auditId}
       demonstratedFlagId={demonstratedFlagId}
     />

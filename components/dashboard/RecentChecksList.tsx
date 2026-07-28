@@ -37,13 +37,11 @@ interface AuditItem {
 interface RecentChecksListProps {
   audits: AuditItem[];
   initialHasMore: boolean;
-  canCompare: boolean;
 }
 
 export function RecentChecksList({
   audits: initialAudits,
   initialHasMore,
-  canCompare,
 }: RecentChecksListProps) {
   const [audits, setAudits] = useState(initialAudits);
   const [loading, setLoading] = useState(false);
@@ -182,7 +180,6 @@ export function RecentChecksList({
                     )}
                   </div>
                   {audit.monitoringAudits.length > 0 &&
-                  canCompare &&
                   trendScores.length <= 1 ? (
                     <Badge
                       variant="outline"

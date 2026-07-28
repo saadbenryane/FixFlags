@@ -16,9 +16,7 @@ const SLOW_3G = {
   latency: 400,
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
 
 async function measureVisibleText(page: Page): Promise<number> {
   return page.evaluate(() => {

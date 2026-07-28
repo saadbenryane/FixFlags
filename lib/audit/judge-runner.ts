@@ -24,9 +24,7 @@ export interface LlmUsage {
   cacheWriteTokens?: number
 }
 
-export async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
 
 export interface RunLlmWithRetryOptions<TInput, TOutput> {
   label: string

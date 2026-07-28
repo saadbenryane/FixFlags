@@ -55,7 +55,6 @@ function axeRuleToCheckId(axeId: string): string {
     'landmark-no-duplicate-banner': 'axe-landmark-duplicate',
     'landmark-one-main': 'axe-landmark-one-main',
     'page-has-heading-one': 'axe-missing-h1',
-    'heading-order': 'heading-hierarchy-missing',
     'list': 'axe-list-structure',
     'listitem': 'axe-list-structure',
     'meta-viewport': 'axe-meta-viewport',
@@ -101,7 +100,8 @@ export function runAccessibilityChecks(
   const findings: DeterministicFlag[] = []
 
   // --- axe-core results (primary signal) ---
-  if (axeViolations && axeViolations.length > 0) {
+  const axeUnavailable = axeViolations == null
+  if (!axeUnavailable && axeViolations.length > 0) {
     const processedCheckIds = new Set<string>()
 
     for (const violation of axeViolations) {
@@ -126,6 +126,94 @@ export function runAccessibilityChecks(
         evidence: evidence || violation.description,
         fix: buildAxeFix(violation),
         confidence: 1.0,
+        source: 'DETERMINISTIC',
+      })
+    }
+  } else if (axeUnavailable) {
+    // --- Metadata-based fallback when axe-core results are unavailable ---
+    // These checks provide baseline a11y coverage for offline/environments
+    // where a live browser axe-core scan has not been performed.
+
+    if (meta.imagesWithoutAlt && meta.imagesWithoutAlt > 0) {
+      findings.push({
+        checkId: 'images-missing-alt',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'IMPORTANT',
+        problem: `${meta.imagesWithoutAlt} image(s) missing alt text`,
+        evidence: `${meta.imagesWithoutAlt} images without alt attributes`,
+        fix: '1. Add descriptive alt text to every informational image\n2. Use alt="" for decorative images\n3. Images with text must have alt matching the image text',
+        confidence: 0.85,
+        source: 'DETERMINISTIC',
+      })
+    }
+
+    if (meta.inputsWithoutLabel && meta.inputsWithoutLabel > 0) {
+      findings.push({
+        checkId: 'form-inputs-no-label',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'IMPORTANT',
+        problem: `${meta.inputsWithoutLabel} form input(s) missing associated labels`,
+        evidence: `${meta.inputsWithoutLabel} inputs without label or aria-label`,
+        fix: '1. Add <label for="id"> to every visible input\n2. Or add aria-label to icon-only inputs\n3. Placeholder text is not a label replacement',
+        confidence: 0.85,
+        source: 'DETERMINISTIC',
+      })
+    }
+
+    if (meta.buttonsWithoutText && meta.buttonsWithoutText > 0) {
+      findings.push({
+        checkId: 'buttons-no-text',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'IMPORTANT',
+        problem: `${meta.buttonsWithoutText} button(s) missing accessible text`,
+        evidence: `${meta.buttonsWithoutText} buttons without visible text or aria-label`,
+        fix: '1. Add visible text to icon-only buttons\n2. Or add aria-label describing the action\n3. Ensure button text is descriptive (not "click here")',
+        confidence: 0.85,
+        source: 'DETERMINISTIC',
+      })
+    }
+
+    if (meta.linksWithoutText && meta.linksWithoutText > 0) {
+      findings.push({
+        checkId: 'links-no-text',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'IMPORTANT',
+        problem: `${meta.linksWithoutText} link(s) missing accessible text`,
+        evidence: `${meta.linksWithoutText} links without visible text or aria-label`,
+        fix: '1. Add visible text or aria-label to every link\n2. Icon links must have aria-label describing the destination\n3. Avoid empty <a> tags without any accessible name',
+        confidence: 0.85,
+        source: 'DETERMINISTIC',
+      })
+    }
+
+    if (meta.iframesWithoutTitle && meta.iframesWithoutTitle > 0) {
+      findings.push({
+        checkId: 'iframe-no-title',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'POLISH',
+        problem: `${meta.iframesWithoutTitle} iframe(s) missing title attribute`,
+        evidence: `${meta.iframesWithoutTitle} iframes without title`,
+        fix: '1. Add a descriptive title attribute to every iframe\n2. Title should describe the embedded content\n3. Use title="YouTube video player" not title=""',
+        confidence: 0.9,
+        source: 'DETERMINISTIC',
+      })
+    }
+
+    if (meta.positiveTabindex && meta.positiveTabindex > 0) {
+      findings.push({
+        checkId: 'tabindex-positive',
+        rubric: 'EXPERIENCE',
+        impactTag: 'ACCESSIBILITY',
+        severity: 'POLISH',
+        problem: `${meta.positiveTabindex} element(s) with tabindex > 0`,
+        evidence: `${meta.positiveTabindex} elements with tabindex > 0 detected`,
+        fix: '1. Remove tabindex attributes greater than 0\n2. Use semantic HTML to establish natural tab order\n3. Only use tabindex="-1" or tabindex="0" for custom interactive elements',
+        confidence: 0.9,
         source: 'DETERMINISTIC',
       })
     }

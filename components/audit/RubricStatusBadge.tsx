@@ -1,7 +1,6 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
-import { cn, rubricStatusColor } from '@/lib/utils'
+import { StatusBadge } from '@/components/audit/StatusBadge'
 import type { ReactNode } from 'react'
 
 interface Props {
@@ -12,10 +11,7 @@ interface Props {
 }
 
 export function RubricStatusBadge({ status, label, size = 'md', className }: Props) {
-  const displayLabel = label ?? status.replace(/_/g, ' ')
   return (
-    <Badge variant="outline" size={size} className={cn(rubricStatusColor(status), className)}>
-      {displayLabel}
-    </Badge>
+    <StatusBadge kind="rubric" status={status} label={label} size={size} className={className} />
   )
 }

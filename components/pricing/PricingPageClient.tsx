@@ -191,9 +191,6 @@ export function PricingPageClient() {
                       highlight={plan.highlight}
                       isLoggedIn={isLoggedIn}
                       currentPlan={currentPlan}
-                      betaGated={
-                        process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === "true"
-                      }
                       userEmail={user?.email ?? undefined}
                     />
                   </CardContent>

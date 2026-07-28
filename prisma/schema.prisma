@@ -1465,3 +1465,20 @@ model GrowthArtifact {
   @@index([kind, writtenAt])
   @@map("graph_artifact")
 }
+
+model RumMeasurement {
+  id        String                 @id @default(cuid())
+  siteId    String
+  page      String
+  metric    String                 // LCP, CLS, INP, FCP, TTFB
+  value     Float
+  rating    String?                // good, needs-improvement, poor
+  delta     Float?
+  nav       Int?
+  createdAt DateTime               @default(now())
+
+  @@index([siteId])
+  @@index([siteId, metric])
+  @@index([siteId, createdAt])
+  @@map("rum_measurements")
+}

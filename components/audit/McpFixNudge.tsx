@@ -5,6 +5,8 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { useMe } from '@/hooks/useMe'
+import { buildReportMcpCommand } from '@/lib/mcp/report-command-copy'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 
 interface Props {
   auditId: string
@@ -13,11 +15,12 @@ interface Props {
 
 export function McpFixNudge({ auditId, isPaid }: Props) {
   const { user } = useMe()
+  const { copy } = useCopyToClipboard()
   const canUseMcp = user?.entitlements?.canUseMcp ?? false
 
   if (!isPaid || !canUseMcp) return null
 
-  const command = `ff_get_rubric with reportId: "${auditId}", rubric: "MESSAGE"\nff_get_rubric with reportId: "${auditId}", rubric: "EXPERIENCE"\nff_get_rubric with reportId: "${auditId}", rubric: "REACH"`
+  const command = buildReportMcpCommand(auditId)
 
   return (
     <Callout variant="neutral" title="Fix from your editor">
@@ -33,8 +36,9 @@ export function McpFixNudge({ auditId, isPaid }: Props) {
             size="sm"
             variant="outline"
             onClick={async () => {
-              await navigator.clipboard.writeText(
-                `I have a FixFlags report (${auditId}). Run these MCP calls to see what needs fixing:\n\n${command}`
+              await copy(
+                `I have a FixFlags report (${auditId}). Run these MCP calls to see what needs fixing:\n\n${command}`,
+                { kind: 'command', auditId }
               )
             }}
           >

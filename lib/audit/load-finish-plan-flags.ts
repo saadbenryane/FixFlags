@@ -2,9 +2,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import {
-  buildFinishPlan,
   buildFixList,
-  type FinishPlan,
   type FinishPlanPromptAccess,
   type FixList,
 } from '@/lib/audit/finish-plan'
@@ -85,12 +83,10 @@ type UnifiedPlanInput = {
 /** Build canonical and compatibility views from one shared aggregated Flag set. */
 export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
   fixList: FixList
-  finishPlan: FinishPlan
 }> {
   const planInput = await buildPlanInput(input)
   return {
     fixList: buildFixList(planInput),
-    finishPlan: buildFinishPlan(planInput),
   }
 }
 

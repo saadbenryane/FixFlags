@@ -462,7 +462,7 @@ describe('resolveReportTierForAudit', () => {
       plan: 'FREE',
       role: 'user',
       subscriptionStatus: 'NONE',
-    })
+    } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: true })
     expect(tier).toBe('free')
   })
@@ -473,7 +473,7 @@ describe('resolveReportTierForAudit', () => {
       plan: 'TEAM',
       role: 'user',
       subscriptionStatus: 'ACTIVE',
-    })
+    } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: true })
     expect(tier).toBe('paid')
   })
@@ -484,7 +484,7 @@ describe('resolveReportTierForAudit', () => {
       plan: 'FREE',
       role: 'admin',
       subscriptionStatus: 'NONE',
-    })
+    } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: false })
     expect(tier).toBe('paid')
   })
@@ -495,7 +495,7 @@ describe('resolveReportTierForAudit', () => {
       plan: 'TEAM',
       role: 'user',
       subscriptionStatus: 'CANCELED',
-    })
+    } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: true })
     expect(tier).toBe('free')
   })

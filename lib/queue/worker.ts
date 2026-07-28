@@ -78,7 +78,11 @@ export function startWorker() {
       }
     },
     {
-      connection: createWorkerRedis() as unknown as ConstructorParameters<typeof Worker>[1]['connection'],
+      // ioredis.Redis instances are accepted by BullMQ at runtime but TS
+      // overload resolution resolves to QueueOptions|undefined which lacks
+      // `connection` -- the cast bridges the runtime/type-system gap safely.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      connection: createWorkerRedis() as any,
       concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
       // Replaying an active Playwright scan deletes and recaptures evidence,

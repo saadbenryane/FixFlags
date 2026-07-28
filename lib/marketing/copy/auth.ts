@@ -2,8 +2,6 @@ export const AUTH = {
   reportGate: {
     title: 'Your site review is underway',
     subtitle: 'Create a free account while FixFlags checks the site.',
-    valueTitle: 'Three complete checks included',
-    valueBody: 'Get every Flag, every fix prompt, and unlimited re-checks for the reports you own.',
     emailSignup: 'Sign up with email',
     emailSignin: 'Sign in with email',
     backToOptions: 'Back to sign-in options',

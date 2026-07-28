@@ -54,7 +54,6 @@ export function ContextualUpgradeCard({
               highlight
               isLoggedIn={isLoggedIn}
               currentPlan={currentPlan}
-              betaGated={process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === 'true'}
               userEmail={userEmail}
             />
           </div>

@@ -17,6 +17,8 @@ export type GraphTechKind =
   | 'commerce'
   | 'payments'
   | 'support'
+  | 'security'
+  | 'form'
 
 export interface SiteSnapshot {
   /** Audit URL - normalized, hostname + protocol only. */

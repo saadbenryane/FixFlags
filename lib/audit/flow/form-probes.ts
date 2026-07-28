@@ -9,9 +9,7 @@ export interface FormProbeResult {
   formOverlay?: OverlayBlockerInfo | null
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
+import { sleep } from '@/lib/utils/sleep'
 
 /** Submit an empty conversion form and expect inline validation feedback. */
 export async function probeFormValidation(page: Page): Promise<FormProbeResult> {

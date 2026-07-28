@@ -11,6 +11,7 @@ import { Trash2, Plus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCP_DOCS, BRAND } from '@/lib/marketing/copy'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Container } from '@/components/ui/container'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useMe } from '@/hooks/useMe'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -112,7 +113,7 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <Container variant="narrow" className="py-8 space-y-8">
       <PageHeader
         title="API Keys"
         description={`Use API keys to connect ${BRAND.name} to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code via MCP.`}
@@ -221,6 +222,6 @@ export default function ApiKeysPage() {
         to connect your key to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code.
       </div>
       {confirmDialog}
-    </div>
+    </Container>
   )
 }

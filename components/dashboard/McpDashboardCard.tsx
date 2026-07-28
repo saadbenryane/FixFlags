@@ -95,7 +95,7 @@ export function McpDashboardCard({
           </div>
         )}
 
-        {configLines && (
+        {configLines ? (
           <div className="space-y-1">
             <p className="text-3xs font-medium text-muted-foreground uppercase tracking-wider">
               Quick config
@@ -123,6 +123,14 @@ export function McpDashboardCard({
               </Button>
             </div>
           </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Set a preferred editor in{" "}
+            <Link href="/settings" className="text-brand hover:underline">
+              Settings
+            </Link>{" "}
+            to see your one-line MCP config.
+          </p>
         )}
 
         <div className="flex flex-wrap gap-2 pt-1">

@@ -360,10 +360,10 @@ test.describe('credentialed revenue journeys', () => {
     })
     const result = JSON.parse(checked.stdout) as {
       reportId: string
-      finishPlan: { items: unknown[] }
+      fixList: { items: unknown[] }
     }
     expect(result.reportId).toBeTruthy()
-    expect(Array.isArray(result.finishPlan.items)).toBe(true)
+    expect(Array.isArray(result.fixList.items)).toBe(true)
 
     const rechecked = await execFileAsync(
       'node',

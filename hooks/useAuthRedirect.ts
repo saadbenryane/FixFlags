@@ -32,6 +32,19 @@ function appendAuthParams(
   if (from) params.set('from', from)
 }
 
+function buildOnboardingHref(
+  next: string | null,
+  from: string | null,
+  source: 'post_signup' | 'post_signin'
+): Route {
+  const params = new URLSearchParams()
+  if (next) params.set('next', next)
+  if (from) params.set('from', from)
+  params.set('source', source)
+  const qs = params.toString()
+  return (qs ? `/onboarding/plans?${qs}` : '/onboarding/plans') as Route
+}
+
 export function buildPostLoginQuery(
   next: string | null,
   plan: string | null,
@@ -97,8 +110,12 @@ export function useAuthRedirect() {
       return
     }
 
-    router.push(next ?? '/dashboard')
-  }, [next, plan, router])
+    // Pre-checkout (no `plan` param): every signup and every Free signin lands
+    // on the plan picker so they can choose Free, Pro, or Studio. The picker
+    // host checks the user's plan, skips the modal for paid signins, and
+    // re-claims any pending report when they pick Free.
+    router.push(buildOnboardingHref(next, from, 'post_signin'))
+  }, [next, plan, from, router])
 
   function signInHref(extraNext?: string): Route {
     const params = new URLSearchParams()

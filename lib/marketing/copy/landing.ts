@@ -741,8 +741,7 @@ export const REPORT_COPY = {
   reportFirst: {
     loadingLabel: 'Loading report',
     loadingTitle: 'Loading report…',
-    openingReport: 'Opening your report while the check is created.',
-    retrievingReport: 'Retrieving the latest saved report state.',
+    preparingReport: 'Preparing your report while the scan runs.',
     capturesTitle: 'Page captures',
     capturesBody: 'Desktop and mobile views resolve independently.',
     capturesLabel: 'Desktop and mobile captures',

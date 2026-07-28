@@ -9,14 +9,11 @@ import { displayHostname } from '@/lib/utils/url-helpers'
 const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
 const REMEMBER_SECTION = { id: 'report-remember', label: REPORT_COPY.stickyNav.remember } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: REPORT_COPY.stickyNav.journey } as const
-const FLOW_SECTION = { id: 'report-flow', label: REPORT_COPY.stickyNav.flow } as const
-const TIMELINE_SECTION = { id: 'report-timeline', label: REPORT_COPY.stickyNav.timeline } as const
 const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
 const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
 const RECHECK_SECTION = { id: 'report-recheck', label: REPORT_COPY.recheck.label } as const
-const RECHECK_RESULTS_SECTION = { id: 'recheck-results', label: REPORT_COPY.recheck.label } as const
 
 type NavSection = { id: string; label: string }
 
@@ -68,15 +65,13 @@ export function ReportStickyToolbar({
     const items: NavSection[] = []
     if (showContract) items.push(CONTRACT_SECTION)
     if (showRemember) items.push(REMEMBER_SECTION)
-    if (showJourney) items.push(JOURNEY_SECTION)
-    if (showFlow) items.push(FLOW_SECTION)
-    if (showTimeline) items.push(TIMELINE_SECTION)
+    if (showJourney || showFlow || showTimeline) items.push(JOURNEY_SECTION)
     if (showStack) items.push(STACK_SECTION)
     items.push(FLAGS_SECTION)
     if (showPreviews) items.push(PREVIEWS_SECTION)
     if (showLaunch) items.push(LAUNCH_SECTION)
     if (showRecheckSection) {
-      items.push(hasRecheckDiff ? RECHECK_RESULTS_SECTION : RECHECK_SECTION)
+      items.push(RECHECK_SECTION)
     }
     return items
   }, [

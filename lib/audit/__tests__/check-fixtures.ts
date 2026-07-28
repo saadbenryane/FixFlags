@@ -64,6 +64,7 @@ export function healthyDesktopPs(overrides: Partial<PageSpeedResult> = {}): Page
     failedAccessibilityAudits: [],
     diagnostics: {},
     raw: {},
+    crux: null,
     ...overrides,
   }
 }
@@ -81,6 +82,7 @@ export function healthyMobilePs(overrides: Partial<PageSpeedResult> = {}): PageS
     failedAccessibilityAudits: [],
     diagnostics: {},
     raw: {},
+    crux: null,
     ...overrides,
   }
 }

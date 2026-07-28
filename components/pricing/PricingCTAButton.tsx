@@ -4,10 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { BILLING_ACTION_COPY, PRICING, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { PRICING } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
-import { requestPlanCheckout } from '@/lib/billing/client-checkout'
+import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
 import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
 
 interface Props {
@@ -21,7 +20,16 @@ interface Props {
   userEmail?: string
 }
 
-export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn, currentPlan, betaGated, userEmail }: Props) {
+export function PricingCTAButton({
+  plan,
+  cta,
+  signUpHref,
+  highlight,
+  isLoggedIn,
+  currentPlan,
+  betaGated = false,
+  userEmail,
+}: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showBetaForm, setShowBetaForm] = useState(false)
@@ -30,57 +38,39 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
-    if (plan !== 'FREE') {
-      trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
-    }
-
     if (!isLoggedIn) {
+      if (plan !== 'FREE') trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
       router.push(signUpHref)
       return
     }
 
-    if (plan === 'FREE') {
-      router.push('/dashboard')
-      return
-    }
-
-    if (betaGated) {
-      setShowBetaForm(true)
-      return
+    if (plan !== 'FREE') {
+      trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
     }
 
     setLoading(true)
-    const outcome = await requestPlanCheckout(plan)
+    const result = await pickPlan({
+      plan,
+      source: 'pricing',
+      isLoggedIn,
+      currentPlan,
+      betaGated,
+      userEmail,
+      onPrivateBeta: () => setShowBetaForm(true),
+      onCheckoutRedirect: (url) => {
+        window.location.href = url
+      },
+    })
     setLoading(false)
 
-    if (outcome.kind === 'private-beta') {
+    if (result.kind === 'private_beta') {
       setShowBetaForm(true)
       return
     }
-    if (outcome.kind === 'redirect') {
-      if (outcome.existingSubscription) {
-        toast.message(BILLING_ACTION_COPY.checkout.existingTitle, {
-          description: BILLING_ACTION_COPY.checkout.existingBody,
-        })
-      }
-      window.location.href = outcome.url
-      return
-    }
-    if (outcome.kind === 'unavailable') {
-      toast.error(BILLING_ACTION_COPY.checkout.unavailableTitle, {
-        description: outcome.message,
-        action: {
-          label: SYSTEM_COPY.actions.billing,
-          onClick: () => router.push('/billing'),
-        },
-      })
-      return
-    }
-    toast.error(
-      outcome.kind === 'error'
-        ? outcome.message
-        : BILLING_ACTION_COPY.checkout.missingDestination
-    )
+    if (result.kind === 'checkout_redirect') return
+    if (result.kind === 'unavailable' || result.kind === 'error') return
+
+    routerForPlanResult(router, result)
   }
 
   if (showBetaForm && isPaidPlan) {
@@ -94,7 +84,7 @@ export function PricingCTAButton({ plan, cta, signUpHref, highlight, isLoggedIn,
         variant={highlight ? 'default' : 'outline'}
         disabled={loading || isCurrent}
         loading={loading}
-        loadingLabel={BILLING_ACTION_COPY.checkout.redirecting}
+        loadingLabel={PRICING.checkoutRedirecting}
         onClick={handleClick}
       >
         {isCurrent

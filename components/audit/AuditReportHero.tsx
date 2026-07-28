@@ -6,52 +6,40 @@ import { ImageOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ScoreDot } from '@/components/ui/score-dot'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import {
   normalizeInternalScreenshotUrl,
   type AuditScreenshot,
   type CapturePresentation,
 } from '@/lib/audit/screenshot-types'
-import { durationFromTimestamps } from '@/lib/audit/duration'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 import type { PageSpeedCoverage } from '@/lib/audit/pagespeed-coverage'
 
 type Props = {
   variant?: 'default' | 'minimal'
-  score?: number | null
   pageType?: string | null
   url: string
   screenshots?: AuditScreenshot[]
   capturePresentation?: CapturePresentation
   pageSpeedCoverage?: PageSpeedCoverage
-  durationMs?: number | null
-  startedAt?: string | Date | null
-  completedAt?: string | Date | null
   actions?: ReactNode
   /** Pipeline status while the report is still building. */
   scanning?: boolean
   /** Stage label from getStagePresentation. Shown beside the Scanning badge. */
   scanningLabel?: string | null
-  showScore?: boolean
 }
 
 export function AuditReportHero({
   variant = 'default',
-  score = null,
   pageType,
   url,
   screenshots,
   capturePresentation = { state: 'complete' },
   pageSpeedCoverage,
-  durationMs,
-  startedAt,
-  completedAt,
   actions,
   scanning = false,
   scanningLabel = null,
-  showScore = true,
 }: Props) {
   const isMinimal = variant === 'minimal'
   const hostname = url ? displayHostname(url) : null
@@ -64,9 +52,6 @@ export function AuditReportHero({
   useEffect(() => {
     setScreenshotFailed(false)
   }, [firstScreenshotUrl])
-  const durationSec = scanning
-    ? null
-    : durationFromTimestamps(durationMs, startedAt, completedAt)
   const badgeLabel = scanning
     ? scanningLabel
       ? `Scanning · ${scanningLabel}`
@@ -80,12 +65,6 @@ export function AuditReportHero({
           <h1 className="truncate text-lg font-semibold tracking-heading text-foreground">
             {hostname ?? '…'}
           </h1>
-          {showScore ? (
-            <ScoreDot
-              score={score}
-              className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
-            />
-          ) : null}
         </div>
         {url ? (
           <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
@@ -139,19 +118,6 @@ export function AuditReportHero({
                 ) : (
                   <Skeleton className="h-6 w-40" />
                 )}
-                {showScore ? (
-                  <ScoreDot
-                    score={score}
-                    className={cn(scanning && score == null && 'motion-safe:animate-pulse')}
-                    aria-label={
-                      score != null
-                        ? `Overall status: ${score} out of 100`
-                        : scanning
-                          ? 'Status pending'
-                          : 'Overall status unavailable'
-                    }
-                  />
-                ) : null}
                 {badgeLabel ? (
                   <Badge
                     variant="secondary"
@@ -175,12 +141,6 @@ export function AuditReportHero({
           </div>
         </div>
       </div>
-
-      {durationSec != null && (
-        <p className="text-xs text-muted-foreground font-mono tabular-nums">
-          Audited in {durationSec}s
-        </p>
-      )}
 
       {(capturePresentation.state === 'unavailable' ||
         capturePresentation.state === 'partial' ||

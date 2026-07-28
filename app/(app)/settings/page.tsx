@@ -8,8 +8,11 @@ import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'
 import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
+import { GscConnectionCard } from '@/components/settings/GscConnectionCard'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Container } from '@/components/ui/container'
 import { AUTH } from '@/lib/marketing/copy'
+import { isGoogleSearchConsoleConfigured } from '@/lib/integrations/google-search-console'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -27,6 +30,7 @@ export default async function SettingsPage() {
         select: { providerId: true, password: true },
       },
       passkeys: { select: { id: true } },
+      gscConnection: { select: { siteUrl: true } },
     },
   })
 
@@ -39,7 +43,7 @@ export default async function SettingsPage() {
     .filter((p) => p === 'google' || p === 'github')
 
   return (
-    <div className="space-y-8">
+    <Container variant="narrow" className="py-8 space-y-8">
       <PageHeader title="Settings" description="Account, identity, password, and security" />
 
       <ConnectedAccounts
@@ -49,6 +53,13 @@ export default async function SettingsPage() {
         passkeyCount={user.passkeys.length}
         linkedProviders={linkedProviders}
       />
+
+      {isGoogleSearchConsoleConfigured() && (
+        <GscConnectionCard
+          connected={Boolean(user.gscConnection)}
+          siteUrl={user.gscConnection?.siteUrl ?? null}
+        />
+      )}
 
       <Card variant="subtle">
         <CardHeader>
@@ -80,6 +91,6 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
-    </div>
+    </Container>
   )
 }

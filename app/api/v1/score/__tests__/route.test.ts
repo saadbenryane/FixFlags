@@ -23,8 +23,8 @@ vi.mock('@/lib/security/rate-limit', () => ({
 vi.mock('@/lib/api/errors', () => ({
   handleRouteError: (e: unknown) =>
     new Response(JSON.stringify({ error: String(e) }), { status: 500 }),
-  apiError: (msg: string, status: number) =>
-    new Response(JSON.stringify({ error: msg }), { status }),
+  apiError: (msg: string, status: number, extras?: { code?: string; action?: string }) =>
+    new Response(JSON.stringify({ error: msg, code: extras?.code, action: extras?.action }), { status }),
 }))
 
 import { GET } from '@/app/api/v1/score/route'

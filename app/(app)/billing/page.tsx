@@ -98,7 +98,7 @@ export default async function BillingPage() {
         </Callout>
       )}
 
-      <Card className="space-y-4 p-6">
+      <Card variant="subtle" className="space-y-4 p-6">
         <div className="space-y-1">
           <Heading as="h2" className="text-base">
             {displayPlanName}
@@ -170,7 +170,7 @@ export default async function BillingPage() {
       </Card>
 
       {isPaid && (
-        <Card className="space-y-4 p-6" id="credit-packs">
+        <Card variant="subtle" className="space-y-4 p-6" id="credit-packs">
           <SectionTitle>Credits</SectionTitle>
           {purchasedCreditsRemaining > 0 && (
             <p className="text-sm text-muted-foreground">

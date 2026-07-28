@@ -5,7 +5,13 @@ function cruxSuffix(crux: CruxMetrics | null, metric: keyof CruxMetrics): string
   if (!crux) return ''
   const value = crux[metric]
   if (value === null || value === undefined) return ''
-  return `. Field (CrUX p75): ${typeof value === 'number' && metric === 'cls' ? value : `${Math.round(typeof value === 'number' ? value : 0)}ms`}`
+
+  const display =
+    metric === 'cls'
+      ? value.toString()
+      : `${(Math.round((value as number) / 100) / 10).toFixed(1)}s`
+
+  return `. CrUX (p75): ${display}`
 }
 
 export function runPerformanceChecks(

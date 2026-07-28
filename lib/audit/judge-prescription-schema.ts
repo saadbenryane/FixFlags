@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type Anthropic from '@anthropic-ai/sdk'
 import { rubricNameSchema } from './judge-schema'
-import { toJsonSchema, toOpenApiNullableSchema } from './zod-json-schema'
+import { toJsonSchema, toOpenApiNullableSchema, stripFormatKeyword } from './zod-json-schema'
 
 /**
  * Phase-2 "prescription" schema. Generates only the extractable payload keyed
@@ -71,3 +71,9 @@ export const QUALITY_PRESCRIPTION_TOOL: Anthropic.Tool = {
   description: 'Generate fix prompts and evidence for an already-diagnosed audit',
   input_schema: QUALITY_PRESCRIPTION_SCHEMA as Anthropic.Tool.InputSchema,
 }
+
+const prescriptionBaseJsonSchema = toJsonSchema(prescriptionOutputSchema)
+
+export const QUALITY_PRESCRIPTION_SCHEMA_OPENAI = stripFormatKeyword(
+  prescriptionBaseJsonSchema
+) as Record<string, unknown>

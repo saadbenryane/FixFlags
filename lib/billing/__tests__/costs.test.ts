@@ -378,8 +378,8 @@ describe('sumEstimatedCostForDomain', () => {
     } as never)
     const total = await sumEstimatedCostForDomain('example.com')
     expect(total).toBeCloseTo(7.5, 10)
-    const where = mockAggregate.mock.calls[0][0].where
-    expect(where.audit.status).toBe('COMPLETED')
+    const where = mockAggregate.mock.calls[0][0]?.where
+    expect(where?.audit?.status).toBe('COMPLETED')
   })
 
   it('returns 0 when no matching audits', async () => {

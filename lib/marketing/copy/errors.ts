@@ -42,6 +42,7 @@ export const SYSTEM_COPY = {
     goHome: 'Go home',
     dashboard: 'Dashboard',
     billing: 'Billing',
+    close: 'Close',
   },
   errors: {
     genericRetry: 'Something went wrong. Try again.',

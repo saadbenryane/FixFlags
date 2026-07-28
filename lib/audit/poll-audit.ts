@@ -10,23 +10,7 @@ export interface PollAuditOptions {
   signal?: AbortSignal
 }
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal?.aborted) {
-      resolve()
-      return
-    }
-    const timer = setTimeout(resolve, ms)
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer)
-        resolve()
-      },
-      { once: true }
-    )
-  })
-}
+import { sleep } from '@/lib/utils/sleep'
 
 /** Poll until audit reaches a terminal status or timeout/abort. */
 export async function pollAuditUntilDone(options: PollAuditOptions): Promise<{

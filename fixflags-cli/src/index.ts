@@ -391,7 +391,7 @@ program
         if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
           throw new Error('--limit must be a positive integer')
         }
-        printPlan(result.fixList ?? result.finishPlan, Boolean(options.full), limit)
+        printPlan(result.fixList, Boolean(options.full), limit)
         console.log('')
         console.log(chalk.gray(`Next: fixflags recheck ${result.reportId} --wait --diff`))
 

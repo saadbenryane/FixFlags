@@ -29,6 +29,7 @@ import { SITE_URL, SHARE_COPY } from '@/lib/marketing/copy'
 import { shareStatusMessage } from '@/lib/audit/share-status'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 import {
   Sheet,
   SheetTrigger,
@@ -79,6 +80,7 @@ export function ShareDrawer({
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isPublic, setIsPublic] = useState(initialIsPublic)
+  const { copy } = useCopyToClipboard()
 
   const [newLabel, setNewLabel] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -171,23 +173,17 @@ export function ShareDrawer({
   }
 
   async function copyToClipboard(text: string, linkId?: string) {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      toast.error('Could not copy the link')
-      return
-    }
-    if (linkId) {
+    const isPrivateLink = !canPublicShare && isOwner && !isAnonymous && !isPublic && !linkId
+    const ok = await copy(text, {
+      kind: 'link',
+      auditId,
+      successMessage: isPrivateLink ? SHARE_COPY.privateLinkCopied : 'Copied to clipboard',
+      successDescription: isPrivateLink ? SHARE_COPY.privateLinkCopiedDetail : undefined,
+    })
+    if (ok && linkId) {
       setCopiedId(linkId)
       setTimeout(() => setCopiedId(null), 2000)
     }
-    if (!canPublicShare && isOwner && !isAnonymous && !isPublic && !linkId) {
-      toast.success(SHARE_COPY.privateLinkCopied, {
-        description: SHARE_COPY.privateLinkCopiedDetail,
-      })
-      return
-    }
-    toast.success('Copied to clipboard')
   }
 
   async function handleMakePublic() {

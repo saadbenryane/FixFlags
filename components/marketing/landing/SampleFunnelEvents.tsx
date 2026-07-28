@@ -75,7 +75,7 @@ export function HowItWorksSampleLink({
     <Link
       href={href as Route}
       onClick={() => trackEvent('clicked_sample_cta', { placement: 'how_it_works' })}
-      className="inline-flex min-h-10 items-center gap-2 py-1 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
+      className="inline-flex min-h-11 items-center gap-2 py-1 text-sm font-semibold text-brand transition-colors hover:text-brand-hover"
     >
       {label}
       <ArrowRight className="h-4 w-4" aria-hidden />

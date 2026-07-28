@@ -52,6 +52,9 @@ const SAFE_HEADER_NAMES = new Set([
   'x-railway-request-id',
   'x-amz-cf-id',
   'x-amz-request-id',
+  'fly-request-id',
+  'x-served-by',
+  'surrogate-key',
 ])
 
 function signal(
@@ -397,6 +400,231 @@ const RULES: TechnologyRule[] = [
     name: 'Crisp',
     kind: 'support',
     signals: [strongResource(/(?:^|\.)client\.crisp\.chat\//i, 'Crisp support script')],
+  },
+  {
+    name: 'Solid.js',
+    kind: 'framework',
+    signals: [
+      strongHtml(/_\$HYDRATION_/i, 'Solid.js hydration marker'),
+      mediumHtml(/solid-js/i, 'Solid.js reference'),
+    ],
+  },
+  {
+    name: 'Qwik',
+    kind: 'framework',
+    signals: [
+      strongHtml(/q:base\b/i, 'Qwik base marker'),
+      runtime(/__QWIK__/i, 'Qwik runtime marker'),
+    ],
+  },
+  {
+    name: 'Fresh',
+    kind: 'framework',
+    signals: [
+      strongHtml(/class=["'][^"']*\bfresh-[a-z0-9]+\b/i, 'Fresh scoped class'),
+      strongResource(/\/frsh\//i, 'Fresh script URL'),
+    ],
+  },
+  {
+    name: 'Vite',
+    kind: 'framework',
+    signals: [
+      strongResource(/\/@vite\/client/i, 'Vite dev client'),
+      runtime(/__vite_hmr/i, 'Vite HMR marker'),
+    ],
+  },
+  {
+    name: 'esbuild',
+    kind: 'framework',
+    signals: [
+      strongHtml(/\/\/# sourceMappingURL=data:application\/json;base64,/i, 'esbuild source map comment'),
+    ],
+  },
+  {
+    name: 'Turbopack',
+    kind: 'framework',
+    signals: [
+      strongHtml(/\[turbopack\]/i, 'Turbopack comment'),
+    ],
+  },
+  {
+    name: 'Webpack',
+    kind: 'framework',
+    signals: [
+      runtime(/webpackJsonp/i, 'Webpack runtime marker'),
+      runtime(/__webpack_require__/i, 'Webpack require marker'),
+      mediumResource(/webpack[-.]/i, 'Webpack chunk URL'),
+    ],
+  },
+  {
+    name: 'Parcel',
+    kind: 'framework',
+    signals: [
+      strongHtml(/parcelRequire/i, 'Parcel require marker'),
+    ],
+  },
+  {
+    name: 'Fly.io',
+    kind: 'hosting',
+    signals: [
+      strongHeader(/(?:^|\s)fly-[a-z]/i, 'Fly.io response header'),
+    ],
+  },
+  {
+    name: 'Deno Deploy',
+    kind: 'hosting',
+    signals: [
+      strongHeader(/(?:^|\s)server\s+deno\/deploy/i, 'Deno Deploy server header'),
+      mediumResource(/(?:^|\.)deno\.land\//i, 'Deno Deploy function URL'),
+    ],
+  },
+  {
+    name: 'Fastly',
+    kind: 'hosting',
+    signals: [
+      strongHeader(/(?:^|\s)x-served-by\s+cache-[^\s]*fastly/i, 'Fastly CDN header'),
+      mediumHeader(/(?:^|\s)surrogate-key\s+/i, 'Fastly surrogate key'),
+    ],
+  },
+  {
+    name: 'Bunny CDN',
+    kind: 'hosting',
+    signals: [
+      strongResource(/(?:^|\.)b-cdn\.net\//i, 'Bunny CDN resource'),
+      strongHeader(/(?:^|\s)server\s+bunnycdn/i, 'Bunny CDN server header'),
+    ],
+  },
+  {
+    name: 'KeyCDN',
+    kind: 'hosting',
+    signals: [
+      strongResource(/(?:^|\.)kxcdn\.com\//i, 'KeyCDN resource'),
+    ],
+  },
+  {
+    name: 'StackPath',
+    kind: 'hosting',
+    signals: [
+      strongResource(/(?:^|\.)stackpathdns\.com\//i, 'StackPath resource'),
+    ],
+  },
+  {
+    name: 'Amplitude',
+    kind: 'analytics',
+    signals: [
+      strongResource(/(?:^|\.)amplitude\.com\//i, 'Amplitude request'),
+      runtime(/amplitude\.getInstance/i, 'Amplitude SDK marker'),
+    ],
+  },
+  {
+    name: 'Pendo',
+    kind: 'analytics',
+    signals: [
+      strongResource(/pendo-/i, 'Pendo resource'),
+      runtime(/pendo\.initialize/i, 'Pendo SDK marker'),
+    ],
+  },
+  {
+    name: 'Heap',
+    kind: 'analytics',
+    signals: [
+      strongResource(/(?:^|\.)heapanalytics\.com\//i, 'Heap request'),
+      runtime(/heap\.(?:load|identify)/i, 'Heap SDK marker'),
+    ],
+  },
+  {
+    name: 'Lucky Orange',
+    kind: 'analytics',
+    signals: [
+      strongResource(/(?:^|\.)luckorange\.com\//i, 'Lucky Orange request'),
+    ],
+  },
+  {
+    name: 'Crazy Egg',
+    kind: 'analytics',
+    signals: [
+      strongResource(/(?:^|\.)crazyegg\.com\//i, 'Crazy Egg request'),
+      runtime(/CE2/i, 'Crazy Egg runtime marker'),
+    ],
+  },
+  {
+    name: 'Zendesk Chat',
+    kind: 'support',
+    signals: [
+      strongResource(/zendesk\.com\/embeddable/i, 'Zendesk Chat resource'),
+      runtime(/zE\(|webWidget/i, 'Zendesk Chat runtime marker'),
+    ],
+  },
+  {
+    name: 'Drift',
+    kind: 'support',
+    signals: [
+      strongResource(/(?:^|\.)drift\.com\//i, 'Drift resource'),
+      runtime(/drift\.load|driftt/i, 'Drift runtime marker'),
+    ],
+  },
+  {
+    name: 'Tidio',
+    kind: 'support',
+    signals: [
+      strongResource(/(?:^|\.)tidiochat\.com\//i, 'Tidio resource'),
+      runtime(/tidioChatCode/i, 'Tidio runtime marker'),
+    ],
+  },
+  {
+    name: 'LiveChat',
+    kind: 'support',
+    signals: [
+      strongResource(/(?:^|\.)livechatinc\.com\//i, 'LiveChat resource'),
+    ],
+  },
+  {
+    name: 'Freshdesk',
+    kind: 'support',
+    signals: [
+      strongResource(/(?:^|\.)freshchat\.com\//i, 'Freshdesk resource'),
+      runtime(/fcWidget/i, 'Freshdesk runtime marker'),
+    ],
+  },
+  {
+    name: 'Typeform',
+    kind: 'form',
+    signals: [
+      strongResource(/(?:^|\.)typeform\.com\//i, 'Typeform resource'),
+      runtime(/typeformEmbed/i, 'Typeform embed marker'),
+    ],
+  },
+  {
+    name: 'JotForm',
+    kind: 'form',
+    signals: [
+      strongResource(/(?:^|\.)jotform\.com\//i, 'JotForm resource'),
+      runtime(/jotform\./i, 'JotForm runtime marker'),
+    ],
+  },
+  {
+    name: 'reCAPTCHA',
+    kind: 'security',
+    signals: [
+      strongResource(/recaptcha/i, 'reCAPTCHA resource'),
+      runtime(/grecaptcha/i, 'reCAPTCHA runtime marker'),
+    ],
+  },
+  {
+    name: 'hCaptcha',
+    kind: 'security',
+    signals: [
+      strongResource(/(?:^|\.)hcaptcha\.com\//i, 'hCaptcha resource'),
+      runtime(/hcaptcha\.render/i, 'hCaptcha runtime marker'),
+    ],
+  },
+  {
+    name: 'Turnstile',
+    kind: 'security',
+    signals: [
+      strongResource(/challenges\.cloudflare\.com\/turnstile/i, 'Turnstile resource'),
+      runtime(/turnstile\.render/i, 'Turnstile runtime marker'),
+    ],
   },
 ]
 

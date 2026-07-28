@@ -18,7 +18,7 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'indexing-failure',
           rubric: 'REACH',
-          severity: 'HIGH',
+          severity: 'CRITICAL',
           problem: 'Page is not indexed',
           evidence:
             indexStatus.coverageState ||
@@ -26,7 +26,7 @@ export async function runSearchPerformanceChecks(
           fix: 'Check coverage state in Google Search Console and address the issue preventing indexing.',
           confidence: 1,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }
@@ -37,7 +37,7 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'soft-404',
           rubric: 'REACH',
-          severity: 'MEDIUM',
+          severity: 'IMPORTANT',
           problem: 'Soft 404 detected',
           evidence:
             indexStatus.coverageState ||
@@ -45,7 +45,7 @@ export async function runSearchPerformanceChecks(
           fix: 'Provide meaningful content on this page or return a proper 404 HTTP status.',
           confidence: 1,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }
@@ -54,14 +54,14 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'robots-blocked',
           rubric: 'REACH',
-          severity: 'HIGH',
+          severity: 'CRITICAL',
           problem: 'Page is blocked by robots.txt',
           evidence:
             'Google Search Console reports this page is blocked by robots.txt.',
           fix: 'Remove the robots.txt directive blocking this page to allow crawling and indexing.',
           confidence: 1,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }
@@ -70,14 +70,14 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'noindex-meta',
           rubric: 'REACH',
-          severity: 'MEDIUM',
+          severity: 'IMPORTANT',
           problem: 'Page has noindex meta tag',
           evidence:
             'Google Search Console reports a noindex robots meta tag on this page.',
           fix: 'Remove the noindex meta tag to allow indexing.',
           confidence: 1,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }
@@ -90,13 +90,13 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'canonical-mismatch',
           rubric: 'REACH',
-          severity: 'MEDIUM',
+          severity: 'IMPORTANT',
           problem: 'Canonical mismatch',
           evidence: `Google selected: ${indexStatus.googleCanonical}. Declared: ${indexStatus.userCanonical}`,
           fix: 'Align your canonical tag with the page Google selects, or fix signals causing Google to choose differently.',
           confidence: 1,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }
@@ -117,13 +117,13 @@ export async function runSearchPerformanceChecks(
         flags.push({
           checkId: 'low-ctr',
           rubric: 'REACH',
-          severity: 'MEDIUM',
+          severity: 'IMPORTANT',
           problem: `Low CTR for query "${topQuery.query}"`,
           evidence: `Position: ${topQuery.position.toFixed(1)}. CTR: ${(topQuery.ctr * 100).toFixed(1)}%. Impressions: ${topQuery.impressions.toLocaleString()}`,
           fix: 'Improve your title and meta description to attract more clicks from the search results.',
           confidence: 0.8,
           source: 'DETERMINISTIC',
-          impactTag: 'seo',
+          impactTag: 'SEO',
           pageUrl,
         })
       }

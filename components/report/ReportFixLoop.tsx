@@ -1,12 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, Wrench } from 'lucide-react'
+import { Wrench } from 'lucide-react'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { cn } from '@/lib/utils'
 import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
-import { rubricLabel, impactTagLabel } from '@/lib/utils'
-import { severityLabel } from '@/lib/utils'
+import { rubricLabel, impactTagLabel, severityLabel } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export type FixLoopFlagItem = {
@@ -20,19 +18,11 @@ export type FixLoopFlagItem = {
 
 export type ReportFixLoopProps = {
   flags: FixLoopFlagItem[]
-  /** When flags are not loaded (e.g. live report hero), show this count instead */
-  flagCount?: number
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
-  defaultExpanded?: boolean
   compact?: boolean
   /** Audit still running: empty-state copy prefers scanning language. */
   loading?: boolean
-  /**
-    * `accordion` -- collapsible list (legacy / compact).
-    * `panel` -- always-open full-width list for master-detail layouts.
-   */
-  variant?: 'accordion' | 'panel'
 }
 
 function FlagList({
@@ -95,62 +85,22 @@ function FlagList({
 
 export function ReportFixLoop({
   flags,
-  flagCount,
   selectedFlagId,
   onSelectFlag,
-  defaultExpanded = true,
   compact = false,
   loading = false,
-  variant = 'accordion',
 }: ReportFixLoopProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const count = flagCount ?? flags.length
   const interactive = flags.length > 0 && Boolean(onSelectFlag)
 
-  const emptyOrList =
-    count === 0 ? (
-      <p className="px-1 py-2 text-xs text-muted-foreground">
-        {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}
-      </p>
-    ) : interactive ? (
-      <FlagList flags={flags} selectedFlagId={selectedFlagId} onSelectFlag={onSelectFlag} />
-    ) : (
-      <p className="px-1 py-2 text-xs leading-relaxed text-muted-foreground">
-        {count === 1 ? '1 check flagged' : `${count} checks flagged`}. Review the detail pane to copy
-        fixes.
-      </p>
-    )
-
-  if (variant === 'panel') {
-    return <div className={cn(compact ? 'space-y-2' : 'space-y-2.5')}>{emptyOrList}</div>
-  }
-
   return (
-    <div className={cn('space-y-3', compact && 'space-y-2.5')}>
-      <div className="rounded-nested-md bg-muted/25">
-        <button
-          type="button"
-          onClick={() => setExpanded((open) => !open)}
-          className="flex min-h-11 w-full items-center justify-between gap-2 rounded-nested-md px-3 py-2.5 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
-          aria-expanded={expanded}
-        >
-          <span className="meta-label text-muted-foreground">Flags</span>
-          <span className="flex items-center gap-1.5">
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 font-mono text-2xs font-semibold tabular-nums text-brand">
-              {count}
-            </span>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 text-muted-foreground transition-transform motion-safe:duration-200',
-                expanded && 'rotate-180'
-              )}
-              aria-hidden
-            />
-          </span>
-        </button>
-
-        {expanded && <div className="space-y-1 px-1.5 pb-2 pt-1">{emptyOrList}</div>}
-      </div>
+    <div className={cn(compact ? 'space-y-2' : 'space-y-2.5')}>
+      {interactive ? (
+        <FlagList flags={flags} selectedFlagId={selectedFlagId} onSelectFlag={onSelectFlag} />
+      ) : (
+        <p className="px-1 py-2 text-xs text-muted-foreground">
+          {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}
+        </p>
+      )}
     </div>
   )
 }

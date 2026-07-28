@@ -11,6 +11,18 @@ vi.mock('@/lib/analytics/events', () => ({
   trackEvent: vi.fn(),
 }))
 
+vi.mock('@/components/audit/FixPromptBlock', () => ({
+  FixPromptBlock: ({ prompt }: { prompt: string }) => {
+    if (!prompt) return null
+    return (
+      <div data-testid="fix-prompt" role="region">
+        <code>{prompt}</code>
+        <button>Copy prompt</button>
+      </div>
+    )
+  },
+}))
+
 function flag(
   id: string,
   title: string,

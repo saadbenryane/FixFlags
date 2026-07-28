@@ -26,6 +26,8 @@ import type { PipelineContext, PageRun } from './pipeline/types'
 import { runJourneyReviewsForAudit } from './journey/run-journey-reviews'
 import { runCorridorConsistencyChecks } from './checks/corridor-consistency'
 import { resolveAuditScanAccess } from '@/lib/audit/scan-access-store'
+import { pullGscDataForAudit } from './gsc-integration'
+import { runSearchPerformanceChecks } from './checks/search-performance'
 
 export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
@@ -134,6 +136,19 @@ export async function runAudit(auditId: string): Promise<void> {
         deadline: ctx.deadline,
         scanAccess: ctx.scanAccess,
       })
+
+      // Pull GSC data and run search-performance checks before finalize.
+      // This runs after all pages are captured so we have the full URL list.
+      if (audit.userId) {
+        const urls = pageRuns.map((p) => p.url)
+        await pullGscDataForAudit(auditId, audit.userId, urls)
+        for (const pageRun of pageRuns) {
+          const gscFlags = await runSearchPerformanceChecks(auditId, pageRun.url)
+          if (gscFlags.length > 0) {
+            pageRun.flags.push(...gscFlags)
+          }
+        }
+      }
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)
       await finalizeFromOutcome({

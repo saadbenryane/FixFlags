@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getAuthBaseUrl } from '@/lib/auth/env'
-import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
+import { decryptSecret } from '@/lib/security/crypto'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 

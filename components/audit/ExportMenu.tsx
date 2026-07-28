@@ -25,7 +25,7 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
-import { trackEvent } from '@/lib/analytics/events'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 
 interface ExportRubric {
   name: string
@@ -61,28 +61,9 @@ export function ExportMenu({
   size = 'sm',
 }: ExportMenuProps) {
   const router = useRouter()
-  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const { copied, copy } = useCopyToClipboard()
   const [previewPrompt, setPreviewPrompt] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState('Fix prompt preview')
-
-  async function copyText(
-    key: string,
-    text: string,
-    successMessage: string,
-    promptKind?: 'plan' | 'export'
-  ) {
-    try {
-      await navigator.clipboard.writeText(text)
-      if (promptKind) {
-        trackEvent('fix_prompt_copied', { kind: promptKind, audit_id: auditId })
-      }
-      setCopiedKey(key)
-      setTimeout(() => setCopiedKey(null), 2000)
-      toast.success(successMessage)
-    } catch {
-      toast.error('Could not copy to clipboard')
-    }
-  }
 
   function openPreview(title: string, text: string) {
     setPreviewTitle(title)
@@ -116,7 +97,7 @@ export function ExportMenu({
       rubrics,
       flags: flatFlags,
     })
-    await copyText('summary', summary, 'Report summary copied')
+    await copy(summary, { kind: 'export', auditId, successMessage: 'Report summary copied' })
   }
 
   const totalPrompts = countFixPrompts(flags)
@@ -126,7 +107,7 @@ export function ExportMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size={size} className="gap-2">
-            {copiedKey ? (
+            {copied ? (
               <>
                 <Check className="h-4 w-4" /> Copied
               </>
@@ -176,11 +157,13 @@ export function ExportMenu({
                   <DropdownMenuItem
                     key={rubric}
                     onClick={() =>
-                      copyText(
-                        rubric,
+                      copy(
                         rubricHeader + collectFixPromptsByRubric(flags, rubric),
-                        `Copied ${count} ${rubricLabel(rubric)} prompts`,
-                        'export'
+                        {
+                          kind: 'export',
+                          auditId,
+                          successMessage: `Copied ${count} ${rubricLabel(rubric)} prompts`,
+                        }
                       )
                     }
                   >

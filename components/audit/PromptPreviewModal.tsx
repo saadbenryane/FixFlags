@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
 
 interface PromptPreviewModalProps {
   open: boolean
@@ -30,7 +31,7 @@ export function PromptPreviewModal({
   title = 'Fix prompt preview',
   description = 'Review the prompt before copying it to your clipboard.',
 }: PromptPreviewModalProps) {
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const [format, setFormat] = useState<'plain' | 'markdown'>('plain')
 
   const displayPrompt = format === 'markdown' ? promptToMarkdown(prompt) : prompt
@@ -38,13 +39,7 @@ export function PromptPreviewModal({
   const tokenEstimate = estimateTokens(prompt)
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(displayPrompt)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback: select text for manual copy
-    }
+    await copy(displayPrompt, { kind: 'export', successMessage: 'Prompt copied' })
   }
 
   return (
