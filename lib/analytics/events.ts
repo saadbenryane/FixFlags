@@ -54,6 +54,8 @@ export type FunnelEvent =
   | 'plan_picker_viewed'
   | 'plan_picker_picked'
   | 'plan_picker_dismissed'
+  | 'scan_limit_gate_signup_completed'
+  | 'report_upgrade_gate_viewed'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -151,6 +153,8 @@ type EventParams = {
   plan_picker_viewed: { source?: string; current_plan?: string }
   plan_picker_picked: { plan: string; source?: string }
   plan_picker_dismissed: { source?: string }
+  scan_limit_gate_signup_completed: Record<string, never>
+  report_upgrade_gate_viewed: { audit_id?: string }
 }
 
 function deviceClass(): string | undefined {

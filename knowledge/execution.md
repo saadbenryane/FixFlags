@@ -34,6 +34,7 @@ Maps to Check → Fix → Verify → Watch. See [vision.md](./vision.md).
 - Repo signals into the Fix list
 - Benchmark task-shaped CLI workflows against raw MCP; add deeper PI commands only from usage evidence
 - MCP PI tools polish
+- Open community skills repo (loop orchestration only; operator skills stay private) — [open-source.md](./open-source.md), [ROADMAP.md](../ROADMAP.md)
 - Studio nurture / referral program
 
 ## Later (demand-triggered)

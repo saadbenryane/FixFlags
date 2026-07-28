@@ -4,6 +4,7 @@ import { AlertCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import { URL_PLACEHOLDER } from '@/lib/marketing/copy'
 
 interface ToolUrlFormProps {
   url: string
@@ -30,7 +31,7 @@ export function ToolUrlForm({
         <Input
           type="text"
           inputMode="url"
-          placeholder="https://yoursite.com"
+          placeholder={URL_PLACEHOLDER}
           value={url}
           onChange={(e) => onUrlChange(e.target.value)}
           disabled={loading}

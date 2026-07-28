@@ -3,7 +3,7 @@
  *
  * Voice: sharp senior reviewer. Clear, calm, direct. No hype.
  * Do: short sentences, verb-first CTAs, name tools, lead with what to fix.
- * Don't: comprehensive, robust, leverage, unlock, 10x; over-promise free tier.
+ * Don't: comprehensive, robust, leverage, unlock, seamless, 10x; over-promise free tier.
  */
 
 export * from './copy/brand'

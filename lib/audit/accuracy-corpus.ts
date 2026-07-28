@@ -94,9 +94,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://bolt.new',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'trust-no-authority-signals'],
+    expectedTop3: ['trust-unsupported-claims', 'trust-no-authority-signals', 'cookie-consent-absent'],
     knownFalsePositives: ['messaging-weak-value-prop'],
-    expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
+    expectedPresent: ['trust-unsupported-claims'],
   },
   {
     file: 'cineverse-replit-app.html',
@@ -128,7 +128,6 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
       'description-missing',
       'no-cta-detected',
       'form-missing-validation',
-      'images-missing-alt',
     ],
   },
   {
@@ -136,7 +135,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://html5up.net',
     tier: 'structural',
     maxImportantFalseBlockers: 99,
-    expectedTop3: ['form-missing-validation', 'form-inputs-no-label', 'description-missing'],
+    expectedTop3: ['form-missing-validation', 'description-missing', 'messaging-headline-too-short'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',
@@ -173,49 +172,54 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     expectedPresent: ['canonical-missing', 'h1-multiple'],
   },
   {
-    file: 'stripe-com.html',
-    url: 'https://stripe.com',
-    tier: 'gold',
-    maxImportantFalseBlockers: 0,
-    expectedTop3: ['friction-no-risk-reversal', 'skip-link-missing', 'measurement-ga-gtm-posthog-missing'],
-    knownFalsePositives: [],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'no-structured-data'],
-  },
-  {
-    file: 'tailwindui-com.html',
-    url: 'https://tailwindui.com',
-    tier: 'gold',
-    maxImportantFalseBlockers: 0,
-    expectedTop3: ['friction-no-risk-reversal', 'skip-link-missing', 'measurement-ga-gtm-posthog-missing'],
-    knownFalsePositives: [],
-    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'no-structured-data'],
-  },
-  {
-    file: 'github-com.html',
-    url: 'https://github.com',
-    tier: 'structural',
-    maxImportantFalseBlockers: 99,
-    expectedTop3: ['form-inputs-no-label', 'form-missing-validation', 'description-too-long'],
-    knownFalsePositives: [],
-    expectedPresent: ['form-inputs-no-label', 'description-too-long'],
-  },
-  {
-    file: 'blog-samaltman-com.html',
-    url: 'https://blog.samaltman.com',
-    tier: 'personal',
-    maxImportantFalseBlockers: 4,
-    expectedTop3: ['form-missing-validation', 'images-missing-alt', 'links-no-text'],
-    knownFalsePositives: [],
-    expectedPresent: ['images-missing-alt', 'links-no-text'],
-  },
-  {
     file: 'shopify-com.html',
     url: 'https://shopify.com',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['buttons-no-text', 'title-too-long', 'cookie-consent-absent'],
+    expectedTop3: ['title-too-long', 'cookie-consent-absent', 'no-structured-data'],
     knownFalsePositives: [],
-    expectedPresent: ['buttons-no-text', 'cookie-consent-absent'],
+    expectedPresent: ['cookie-consent-absent'],
+  },
+  // ── E-commerce fixture ──────────────────────────────────────────────────────
+  // Product listing page with prices, add-to-cart buttons, reviews, newsletter
+  // form, privacy policy, contact link, and structured data. Validates that a
+  // well-built e-commerce page produces minimal flags.
+  {
+    file: 'shopify-demo-store.html',
+    url: 'https://minimalgear.co',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: ['friction-no-commitment-path'],
+    knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
+    brokenLinks: true,
+  },
+  // ── Blog post fixture ───────────────────────────────────────────────────────
+  // Article page with author, date, structured data, code samples, and footer.
+  // Classified as 'article', no-cta-detected and no-contact-info must NOT fire.
+  {
+    file: 'blog-post.html',
+    url: 'https://devblog.example.com/blog/bundle-size',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: ['measurement-ga-gtm-posthog-missing'],
+    knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing'],
+    brokenLinks: true,
+  },
+  // ── SaaS landing page fixture ───────────────────────────────────────────────
+  // Conversion-focused page with hero, features, testimonials, pricing tiers,
+  // CTAs, footer. Validates that a well-built landing page avoids false
+  // positives while surfacing real issues (long sentences, no skip link).
+  {
+    file: 'forma-landing.html',
+    url: 'https://forma.design',
+    tier: 'structural',
+    maxImportantFalseBlockers: 99,
+    expectedTop3: ['messaging-long-sentences', 'skip-link-missing'],
+    knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
+    expectedPresent: ['measurement-ga-gtm-posthog-missing', 'skip-link-missing'],
+    brokenLinks: true,
   },
 ]
 

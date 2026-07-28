@@ -151,7 +151,7 @@ export function ExportMenu({
                 if (count === 0) return null
                 const rubricRow = rubrics.find((r) => r.name === rubric)
                 const rubricHeader = rubricRow?.rubricPrompt
-                  ? `=== ${rubricLabel(rubric)} comprehensive fix ===\n${rubricRow.rubricPrompt}\n\n`
+                  ? `=== ${rubricLabel(rubric)} fix plan ===\n${rubricRow.rubricPrompt}\n\n`
                   : ''
                 return (
                   <DropdownMenuItem

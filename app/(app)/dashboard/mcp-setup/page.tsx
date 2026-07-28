@@ -18,7 +18,7 @@ import { useMe } from '@/hooks/useMe'
 import { McpConnectionTest } from '@/components/dashboard/McpConnectionTest'
 import { McpToolMark } from '@/components/brand/EditorMarks'
 import { buildMcpConfigExample, getMcpEndpoint } from '@/lib/mcp/docs-content'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL, URL_PLACEHOLDER } from '@/lib/marketing/copy'
 import { createApiKey as createApiKeyRequest } from '@/lib/api/api-key-client'
 import { CliInstallCard } from '@/components/cli/CliInstallCard'
 import {
@@ -148,7 +148,7 @@ export default function McpSetupWizard() {
               inputMode="url"
               value={productUrl}
               onChange={(event) => setProductUrl(event.target.value)}
-              placeholder="https://your-product.com"
+              placeholder={URL_PLACEHOLDER}
               className="h-12 w-full rounded-[var(--radius-control)] border border-input bg-background px-4 text-sm outline-none transition-[border-color,box-shadow] focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-focus-ring"
               required
             />
