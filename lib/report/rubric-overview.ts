@@ -1,13 +1,8 @@
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel, rubricDescription } from '@/lib/utils'
+import { rubricIcon } from '@/lib/rubric-icons'
 import type { RubricComputed } from '@/lib/audit/rubric'
-import { Globe2, MessageSquare, Zap, type LucideIcon } from 'lucide-react'
-
-export const RUBRIC_ICONS: Record<string, LucideIcon> = {
-  MESSAGE: MessageSquare,
-  EXPERIENCE: Zap,
-  REACH: Globe2,
-}
+import type { LucideIcon } from 'lucide-react'
 
 export interface RubricOverviewRow {
   name: string
@@ -43,7 +38,7 @@ export function buildRubricOverview(
       name,
       label: rubricLabel(name),
       description: rubricDescription(name),
-      icon: RUBRIC_ICONS[name],
+      icon: rubricIcon(name),
       score,
       status: pending ? 'SCANNING' : r?.status,
       flagCount,

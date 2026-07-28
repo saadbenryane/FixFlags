@@ -1,16 +1,13 @@
 'use client'
 
-import { Globe2, MessageSquare, Zap } from 'lucide-react'
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { rubricIcon } from '@/lib/rubric-icons'
 import { cn } from '@/lib/utils'
 
-const BAR_META: Record<
-  string,
-  { icon: typeof MessageSquare; tint: string }
-> = {
-  Message: { icon: MessageSquare, tint: 'text-brand' },
-  Experience: { icon: Zap, tint: 'text-success' },
-  Reach: { icon: Globe2, tint: 'text-info' },
+const RUBRIC_TINT: Record<string, string> = {
+  Message: 'text-brand',
+  Experience: 'text-success',
+  Reach: 'text-info',
 }
 
 export function RubricScoreBar({
@@ -24,8 +21,8 @@ export function RubricScoreBar({
 }) {
   const scoreLabel = score == null ? 'N/A' : String(score)
   const barWidth = score == null ? 0 : Math.min(100, score)
-  const meta = BAR_META[name]
-  const Icon = meta?.icon
+  const Icon = rubricIcon(name)
+  const tint = RUBRIC_TINT[name]
 
   return (
     <div
@@ -43,7 +40,7 @@ export function RubricScoreBar({
         >
           {Icon ? (
             <Icon
-              className={cn('shrink-0', meta.tint, compact ? 'h-3 w-3' : 'h-3.5 w-3.5')}
+              className={cn('shrink-0', tint, compact ? 'h-3 w-3' : 'h-3.5 w-3.5')}
               aria-hidden
             />
           ) : null}

@@ -17,7 +17,6 @@ describe('ReportFixLoop empty / loading states', () => {
   it('exposes selected semantics and the controlled detail relationship', () => {
     render(
       <ReportFixLoop
-        variant="panel"
         selectedFlagId="flag-1"
         onSelectFlag={() => undefined}
         flags={[

@@ -129,37 +129,6 @@
   }
 }
 
-@layer utilities {
-  /* Animation keyframes live in tailwind.config.ts */
-
-  /* Peach score gradient — static (mock previews, badges) */
-  .bg-gradient-score-static {
-    background-color: hsl(var(--brand));
-    background-image: var(--gradient-score);
-    background-size: 220% 100%;
-    background-position: 12% 50%;
-  }
-
-  /* Peach score gradient — animated (marketing CTAs, score bars) */
-  .bg-gradient-score-animated {
-    background-color: hsl(var(--brand));
-    background-image: var(--gradient-score);
-    background-size: 250% 100%;
-    background-position: 0% 50%;
-    box-shadow:
-      0 1px 2px hsl(var(--brand) / 0.22),
-      0 6px 18px hsl(var(--brand) / 0.16);
-  }
-
-  /* Report score bar — orange → yellow → green */
-  .bg-gradient-score-bar {
-    background-color: hsl(var(--warning));
-    background-image: var(--gradient-score-bar);
-    background-repeat: no-repeat;
-    background-position: left center;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

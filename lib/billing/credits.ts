@@ -97,10 +97,8 @@ export async function wouldBlockNewCheckWithCredits(
 
   return {
     allowed: false,
-    code: user.plan === 'FREE' ? 'UPGRADE_REQUIRED' : 'TOKEN_LIMIT',
-    action: user.plan === 'FREE' ? 'upgrade' : 'buy_credits',
-    error: user.plan === 'FREE'
-      ? 'New URL check limit reached. Upgrade to continue.'
-      : 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
+    code: 'TOKEN_LIMIT',
+    action: 'buy_credits',
+    error: 'New URL check limit reached. Buy credits or upgrade your plan to continue.',
   }
 }

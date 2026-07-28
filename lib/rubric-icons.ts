@@ -15,8 +15,14 @@ import {
 export function rubricIcon(name: string): LucideIcon {
   const map: Record<string, LucideIcon> = {
     MESSAGE: MessageSquare,
+    message: MessageSquare,
+    Message: MessageSquare,
     EXPERIENCE: Zap,
+    experience: Zap,
+    Experience: Zap,
     REACH: Globe2,
+    reach: Globe2,
+    Reach: Globe2,
   }
   return map[name] ?? MessageSquare
 }

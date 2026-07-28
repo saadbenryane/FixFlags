@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
-import { RUBRIC_ICONS } from '@/components/marketing/landing/rubric-icons'
+import { rubricIcon } from '@/lib/rubric-icons'
 import { SampleReportDashboardMock } from '@/components/marketing/landing/SampleReportDashboardMock'
 import {
   SampleSectionCta,
@@ -71,7 +71,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
 
             <ul className="flex flex-col gap-2">
               {copy.rubricRows.map((row) => {
-                const Icon = RUBRIC_ICONS[row.icon]
+                const Icon = rubricIcon(row.icon)
                 const count = preview.rubricCounts[row.id as keyof typeof preview.rubricCounts] ?? 0
                 return (
                   <li key={row.id}>

@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { requestPlanCheckout } from '@/lib/billing/client-checkout'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
+import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
 
 interface Props {
@@ -73,11 +74,11 @@ export function UpgradeButton({ context, plan = 'BUILDER', betaGated, userEmail 
       >
         {!loading && <Sparkles className="h-4 w-4 mr-2" />}
         {betaGated
-          ? `Join ${plan === 'TEAM' ? 'Studio' : 'Pro'} beta`
+          ? `Join ${PLAN_DEFINITIONS[plan].name} beta`
           : momentContent
             ? momentContent.cta
             : plan === 'TEAM'
-              ? 'Upgrade to Studio'
+              ? `Upgrade to ${PLAN_DEFINITIONS.TEAM.name}`
               : 'Upgrade'}
       </Button>
     </div>

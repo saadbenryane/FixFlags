@@ -202,10 +202,6 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
-        'gradient-shift': {
-          '0%, 100%': { backgroundPosition: '0% 50%' },
-          '50%': { backgroundPosition: '100% 50%' },
-        },
         'pulse': {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.5' },
@@ -234,7 +230,6 @@ const config: Config = {
         'scale-in': 'scale-in 0.3s ease-out',
         'slide-up-fade': 'slide-up-fade 0.4s ease-out',
         'soft-reveal': 'soft-reveal 0.2s ease-out',
-        'gradient-shift': 'gradient-shift 3s ease infinite',
         'peach-drift-a': 'peach-drift-a 22s ease-in-out infinite',
         'peach-drift-b': 'peach-drift-b 30s ease-in-out infinite',
         'peach-breathe': 'peach-breathe 14s ease-in-out infinite',

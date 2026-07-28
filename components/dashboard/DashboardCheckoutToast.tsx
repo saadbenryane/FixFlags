@@ -11,6 +11,15 @@ import { trackEvent } from '@/lib/analytics/events'
 const POLL_MS = 800
 const MAX_ATTEMPTS = 12
 
+const ACTIVATION_SUMMARY: Record<string, string> = {
+  BUILDER: 'Before/after compare and MCP are now active.',
+  TEAM: 'Client sharing, projects, compare, and MCP are now active.',
+}
+
+function activationSummary(plan: string): string {
+  return ACTIVATION_SUMMARY[plan] ?? ACTIVATION_SUMMARY.BUILDER
+}
+
 export function DashboardCheckoutToast() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -26,11 +35,8 @@ export function DashboardCheckoutToast() {
     trackEvent('completed_checkout', { plan: planParam ?? 'BUILDER' })
 
     const expectedPlan = (planParam ?? 'BUILDER') as Plan
-    const planName = PLAN_DEFINITIONS[expectedPlan]?.name ?? 'Pro'
-    const paidFeatures =
-      expectedPlan === 'TEAM'
-        ? 'Client sharing, projects, compare, and MCP are now active.'
-        : 'Before/after compare and MCP are now active.'
+    const planName = PLAN_DEFINITIONS[expectedPlan]?.name ?? PLAN_DEFINITIONS.BUILDER.name
+    const paidFeatures = activationSummary(expectedPlan)
 
     let attempts = 0
     let cancelled = false

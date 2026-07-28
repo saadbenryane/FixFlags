@@ -22,7 +22,7 @@ import {
 import { CheckDimensionsScene } from "@/components/marketing/landing/CheckDimensionsScene";
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
-import { RUBRIC_ICONS } from "@/components/marketing/landing/rubric-icons";
+import { rubricIcon } from "@/lib/rubric-icons";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { LANDING_PAGE } from "@/lib/marketing/copy";
@@ -156,7 +156,7 @@ export function CheckDimensionsSection() {
           className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
         >
           {copy.cards.map((card) => {
-            const Icon = RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS];
+            const Icon = rubricIcon(card.icon);
             const selected = tab === card.id;
             return (
               <button
@@ -213,8 +213,7 @@ export function CheckDimensionsSection() {
             {tab === "all" ? (
               <div className="grid gap-4 md:grid-cols-3">
                 {copy.cards.map((card) => {
-                  const Icon =
-                    RUBRIC_ICONS[card.icon as keyof typeof RUBRIC_ICONS];
+                    const Icon = rubricIcon(card.icon);
                   return (
                     <article
                       key={card.id}
@@ -257,10 +256,7 @@ export function CheckDimensionsSection() {
                   <div className="flex items-center gap-3">
                     <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
                       {(() => {
-                        const Icon =
-                          RUBRIC_ICONS[
-                            activeCard.icon as keyof typeof RUBRIC_ICONS
-                          ];
+                        const Icon = rubricIcon(activeCard.icon);
                         return (
                           <Icon
                             className="h-4 w-4"

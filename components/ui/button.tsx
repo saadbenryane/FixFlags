@@ -22,8 +22,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-link underline-offset-4 hover:text-link-hover hover:underline",
         ink: "bg-foreground text-background shadow-sm hover:bg-foreground/90",
-        gradient:
-          "border-0 bg-gradient-score-animated text-brand-foreground shadow-sm hover:brightness-110 hover:shadow-md motion-safe:hover:animate-gradient-shift motion-safe:focus-visible:animate-gradient-shift",
+
       },
       size: {
         default: "h-[44px] min-w-[44px] px-[20px]",

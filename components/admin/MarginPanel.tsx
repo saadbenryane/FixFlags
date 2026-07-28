@@ -1,12 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCostByPlan, sumRevenueByPlan } from '@/lib/billing/costs'
-
-const PLAN_LABELS: Record<string, string> = {
-  FREE: 'Free',
-  BUILDER: 'Pro',
-  TEAM: 'Studio',
-}
+import { planLabel } from '@/lib/billing/plans'
 
 export async function MarginPanel() {
   const weekAgo = new Date(Date.now() - 7 * 86_400_000)
@@ -33,7 +28,7 @@ export async function MarginPanel() {
           return (
             <Card key={plan} variant="subtle" className={`${!healthy ? 'ring-2 ring-destructive/50' : ''}`}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{PLAN_LABELS[plan]}</CardTitle>
+                <CardTitle className="text-sm font-medium">{planLabel(plan)}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 <div className="flex justify-between">
