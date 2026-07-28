@@ -10,7 +10,6 @@ import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { getAppUrl } from '@/lib/get-app-url'
 import { Plan } from '@prisma/client'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
-import { isStripeBetaGated } from '@/lib/billing/config'
 
 const PAID_PLANS = Object.values(PLAN_DEFINITIONS)
   .filter((def) => def.plan !== 'FREE' && def.stripePriceId)
@@ -31,16 +30,6 @@ export async function POST(req: NextRequest) {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) {
       return apiError('Sign in to start checkout', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
-    }
-
-    if (isStripeBetaGated()) {
-      return NextResponse.json(
-        {
-          code: 'PRIVATE_BETA',
-          message: 'Paid features are in private beta. Enter your email to get an invitation.',
-        },
-        { status: 503 }
-      )
     }
 
     const body = await req.json().catch(() => ({}))

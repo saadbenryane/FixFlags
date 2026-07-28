@@ -4,29 +4,26 @@
 
 ## FixFlags adaptation
 
-This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the release readiness layer for AI-built products.
+This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the QA layer for AI-built products.
 
-**Product context:** FixFlags is the release readiness layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Re-check. The AI built it. FixFlags finishes it.
+**Product context:** FixFlags is the QA layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Re-check. The AI built it. FixFlags finishes it.
 
 **What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
 
 **What adapts:** Examples about "founders" and "product clarity advisory" map to builders, launch quality, and fix loops. Prefer *ship, fix, evidence, pattern, outcome* over *unlock, leverage, holistic, transformation*.
 
 **Marketing doctrine (non-negotiable):**
-- **Hero = value only.** One short trust line under the URL field (`OFFER.short`). No privacy, claim, or legal stack on the homepage.
-- **No sample-hint throat-clearing.** The sample CTA is the link alone (`HERO.trySampleCta`). Do not add a subtitle under it.
+- **Hero = value only.** One short trust line under the URL field. No privacy, claim, or legal stack on the homepage.
 - **Paste verbs over readiness adjectives.** Prefer `Copy for Cursor` / `Paste into Lovable` over `ready`, `AI-ready`, `Agent-ready`, `fix prompt ready`.
-- **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ only.
+- **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ, not marketing heroes or logo clouds.
 - **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
-- **Quota truth:** Free = 3 new URL checks lifetime. Never say "unlimited deterministic checks." Re-checks stay unlimited.
-- **Help Center tone:** Calm, specific, task-first. Same voice as product errors. Chat SLA is one promise (`SUPPORT_CHAT` / `lib/help/sla.ts`). No “priority support” until it exists. CYA stays on privacy/FAQ, not Help heroes.
+- **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *re-check*.
 
 **Related files:**
 - Business model & pricing: [`docs/business-model.md`](./business-model.md)
 - Brand & positioning: [`docs/brand-positioning.md`](./brand-positioning.md)
 - Product scope & philosophy: [`docs/offering.md`](./offering.md)
 - UI copy: [`lib/marketing/copy.ts`](../lib/marketing/copy.ts)
-- Help articles: [`lib/help/catalog.ts`](../lib/help/catalog.ts)
 - AI reviewer voice: [`lib/prompts/system-prompt.ts`](../lib/prompts/system-prompt.ts)
 
 ---

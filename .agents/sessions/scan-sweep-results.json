@@ -1,0 +1,21 @@
+[
+  {
+    "name": "GradLoom",
+    "url": "https://gradloom.app",
+    "persona": "SaaS Founder",
+    "platform": "Lovable",
+    "reportId": "cms3qjdtn0001gu3f76i60c3s",
+    "status": "COMPLETED",
+    "score": 86,
+    "progress": 100,
+    "totalFlags": null,
+    "rubricScores": {
+      "MESSAGE": null,
+      "EXPERIENCE": null,
+      "REACH": null
+    },
+    "technologyProfile": "On this Cloudflare site, EXPERIENCE is the lowest-scoring rubric at 77 with 10 unresolved Flags.",
+    "queue": "?",
+    "error": null
+  }
+]

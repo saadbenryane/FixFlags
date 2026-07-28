@@ -64,3 +64,17 @@ Health: `/api/health` → `billingConfigured: true`.
 ## Smoke
 
 Stripe test card `4242 4242 4242 4242` → Pro checkout → webhook → user `plan=BUILDER` → Billing portal.
+
+## Deploy readiness (Railway)
+
+Confirmed present for revenue path (names only): `DATABASE_URL`, `REDIS_URL`, R2 set, `OPENAI_API_KEY`, `PAGESPEED_API_KEY`, auth URLs, `RESEND_*`, `ADMIN_NOTIFICATION_EMAIL`, full Stripe test set, `BILLING_REQUIRED=true`.
+
+After variable changes, redeploy the web service. Then:
+
+```bash
+curl -sS https://fixflags.com/api/health | jq '{billingConfigured, degraded, status}'
+```
+
+Expect `billingConfigured: true`. Test checkout with card `4242…`.
+
+Set `TOKEN_ENCRYPTION_KEY` before selling Agency GitHub repo scans.

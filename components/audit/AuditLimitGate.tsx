@@ -67,6 +67,15 @@ export function AuditLimitGate({ code, action, message, nextPath, from, onDismis
               <Link href="/pricing">Upgrade plan</Link>
             </Button>
           </>
+        ) : isPaidAtLimit ? (
+          <>
+            <Button asChild size="sm">
+              <Link href="/billing#credit-packs">Buy credits</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/pricing">Upgrade plan</Link>
+            </Button>
+          </>
         ) : (
           <Button asChild size="sm">
             <Link href="/pricing">Upgrade to continue</Link>

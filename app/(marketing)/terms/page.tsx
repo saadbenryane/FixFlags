@@ -27,17 +27,17 @@ export default function TermsPage() {
           <h2 className="text-base font-semibold text-foreground">Accounts and billing</h2>
           <p>
             Paid plans renew monthly unless you cancel through the Stripe billing portal. Usage
-            limits apply to checks per plan. Re-checks on reports you own are unlimited and
+            limits apply to new URL checks per plan. Re-checks on reports you own are unlimited and
             do not consume plan quota. Downgrades and cancellations take effect at the end of the
             current billing period unless Stripe indicates otherwise.
           </p>
 
           <h2 className="text-base font-semibold text-foreground">Credit packs</h2>
           <p>
-            Credit packs are no longer available for purchase. Existing purchased credits remain
-            active and do not expire. Unused credit packs may be refunded within 14 days of
-            purchase if no credits from that pack have been consumed. Partially used packs are not
-            refundable.
+            Paid subscribers may purchase one-time credit packs for additional new URL checks.
+            Credits do not expire and do not change your subscription tier. Unused credit packs may
+            be refunded within 14 days of purchase if no credits from that pack have been consumed.
+            Partially used packs are not refundable.
           </p>
 
           <h2 className="text-base font-semibold text-foreground">Refunds and cancellation</h2>

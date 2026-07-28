@@ -148,6 +148,15 @@ export default async function BillingPage() {
           </p>
         )}
         {isPaid && user.stripeCustomerId ? (
+          <div className="flex flex-wrap gap-2">
+            <ManageSubscriptionButton />
+            {user.plan === 'BUILDER' && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/pricing">Compare Agency</Link>
+              </Button>
+            )}
+          </div>
+        ) : user.stripeCustomerId ? (
           <ManageSubscriptionButton />
         ) : isPaid ? (
           <Button disabled variant="outline">

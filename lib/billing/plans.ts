@@ -83,10 +83,8 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Everything in Pro',
       '25 journeys per month',
       'Up to 5 projects',
-      'Client-ready public share links',
       'GitHub repository scans',
-      'Draft Fix PRs from repo findings (secrets auto-patch when possible)',
-      'Daily product watch with regression email',
+
     ],
     highlight: false,
     cta: 'Start Studio',
