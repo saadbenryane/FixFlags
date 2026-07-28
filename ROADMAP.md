@@ -56,6 +56,8 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
 - **Evolution tracking** — Trend quality over time per Product / URL.
 - **MCP proof and distribution** — deployed Lovable/Bolt connector smokes; PI tools refined.
+- **Open community skills** — Extract the in-repo loop skill (`public/.well-known/skills/`, `ide-integrations/`) into a standalone OSS repo with Cursor, Claude Code, and Kiro install paths, an MCP tool contract manifest, and CI that lints skill tool names against the live MCP surface. Ship the core Check → Fix → Re-check loop only; keep internal operator skills (`.cursor/skills/fixflags-*`) proprietary. Accept community platform extensions (Lovable, Bolt, launch-gate, Re-check-only) via contribution templates. See [knowledge/open-source.md](./knowledge/open-source.md).
+  *Signal:* one-command install of the core skill; help center MCP guide links to the canonical repo; community PRs pass tool-name contract lint; platform skills do not embed engine prompts or ranking logic.
 - **Knowledge graph Phase 2** — Public issue/benchmark pages (growth graph, not customer PI). See `docs/growth/growth-roadmap.md`.
 
 ## Later
