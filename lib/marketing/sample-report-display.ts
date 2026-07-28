@@ -81,6 +81,7 @@ export interface SampleReportDisplay {
   pipelineSteps: PipelineStep[]
   flags: SampleFlagDisplay[]
   demonstratedFlagId: string | null
+  readiness: 'safe' | 'fix_first' | 'not_ready' | 'unknown' | null
 }
 
 function gradeFromScore(score: number | null): string | null {
@@ -257,5 +258,6 @@ export function buildSampleReportDisplay(
     }),
     flags,
     demonstratedFlagId: flags.find((flag) => flag.fixPrompt.trim().length > 0)?.id ?? null,
+    readiness: audit.launchReadiness?.readiness ?? null,
   }
 }
