@@ -44,7 +44,7 @@ export default async function SettingsPage() {
 
   return (
     <Container variant="narrow" className="py-8 space-y-8">
-      <PageHeader title="Settings" description="Account, identity, password, and security" />
+      <PageHeader title="Settings" description="Manage your account and security." />
 
       <ConnectedAccounts
         email={user.email}
@@ -64,7 +64,7 @@ export default async function SettingsPage() {
       <Card variant="subtle">
         <CardHeader>
           <CardTitle className="text-base">Account</CardTitle>
-          <CardDescription>Profile, identity, password, and account lifecycle</CardDescription>
+          <CardDescription>Name, email, password, and account deletion.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
           <div className="flex justify-between gap-4 text-sm">

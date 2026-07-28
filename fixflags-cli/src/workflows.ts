@@ -35,6 +35,8 @@ export interface CheckResult {
     importantCount?: number
   }>
   fixList?: FixList
+  /** Legacy server compatibility. New responses use fixList. */
+  finishPlan?: FinishPlan
   technologyProfile?: {
     status: string
     technologies: Array<{ name: string; category: string; confidenceBand: string }>
@@ -48,6 +50,8 @@ export interface RecheckResult {
   status: string
   diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
   nextFixList?: FixList
+  /** Legacy server compatibility. New responses use nextFixList. */
+  nextFinishPlan?: FinishPlan
   technologyProfile?: CheckResult['technologyProfile']
 }
 
@@ -153,6 +157,7 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
     verdict: typeof outcome.verdict === 'string' || outcome.verdict === null ? outcome.verdict : undefined,
     rubrics,
     fixList: parseFixList(outcome.fixList, tool),
+    finishPlan: parseFinishPlan(outcome.finishPlan, tool),
   }
 }
 

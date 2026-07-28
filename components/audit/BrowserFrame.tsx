@@ -89,7 +89,7 @@ export function BrowserFrame({
         {resolvedState === 'failed' && (
           <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Screenshot could not be captured for this audit.
+              Screenshot could not be captured for this check.
             </p>
           </div>
         )}

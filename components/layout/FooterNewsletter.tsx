@@ -82,7 +82,7 @@ export function FooterNewsletter({ className }: { className?: string }) {
                 setSuccess('')
               }}
               disabled={loading}
-              className="h-9 min-w-0 flex-1 border-0 bg-transparent px-2.5 text-[0.6875rem] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-11 min-h-11 min-w-0 flex-1 border-0 bg-transparent px-2.5 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-xs"
               autoComplete="email"
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'footer-newsletter-error' : success ? 'footer-newsletter-success' : undefined}
@@ -93,7 +93,7 @@ export function FooterNewsletter({ className }: { className?: string }) {
               size="icon"
               loading={loading}
               loadingLabel={<span className="sr-only">Joining…</span>}
-              className="h-9 min-h-9 w-9 min-w-9 shrink-0 border border-border/60 bg-muted/35 text-foreground hover:bg-muted"
+              className="h-11 min-h-11 w-11 min-w-11 shrink-0 border border-border/60 bg-muted/35 text-foreground hover:bg-muted"
               aria-label={cta}
             >
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />

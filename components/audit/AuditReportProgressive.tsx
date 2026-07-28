@@ -192,6 +192,7 @@ export function AuditReportProgressive({
     status: isFailed ? 'failed' : 'checking',
     loading: isLoading,
     checkedScope: 'the submitted page',
+    promptAccess: 'none',
   })
   return (
     <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-6">

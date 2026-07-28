@@ -1,6 +1,6 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { SITE_URL } from '@/lib/marketing/copy'
-import type { SampleSource } from '@/lib/marketing/live-sample'
+import type { SampleSource } from '@/lib/marketing/curated-sample'
 
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
@@ -144,14 +144,7 @@ export function sampleStatusLabel(
       })
     : null
 
-  const parts: string[] = []
-  if (source === 'live') {
-    parts.push('Live sample')
-  } else if (source === 'curated') {
-    parts.push('Curated sample')
-  } else {
-    parts.push('Sample fixture')
-  }
+  const parts: string[] = ['Curated sample']
   parts.push(formatPipelineVersion(version))
   if (dateStr) parts.push(dateStr)
   return parts.join(' · ')

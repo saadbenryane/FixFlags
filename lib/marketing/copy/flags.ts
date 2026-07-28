@@ -2,7 +2,7 @@ export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
   FIXED: { label: 'Fixed', description: 'Cleared on a re-check' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
-  REGRESSED: { label: 'Regressed', description: 'Same issue, worse than before' },
+  REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const
 
 export const RECHECK_DIFF_COPY = {

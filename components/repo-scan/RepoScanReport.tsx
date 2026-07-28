@@ -73,7 +73,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
           <div className="flex items-center gap-3 px-4 py-6">
             <ShieldCheck className="h-6 w-6 shrink-0 text-success" />
             <div className="space-y-0.5">
-              <p className="text-sm font-medium">No issues found</p>
+              <p className="text-sm font-medium">No Flags found</p>
               <p className="text-sm text-muted-foreground">
                 The deterministic code checks did not flag anything in this repository.
               </p>
@@ -85,7 +85,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
       {findings.length > 0 && (
         <>
           <div className="flex flex-wrap gap-2 meta-label text-muted-foreground">
-            <span>{findings.length} findings</span>
+            <span>{findings.length} {findings.length === 1 ? 'Flag' : 'Flags'}</span>
             {counts.critical > 0 && <span className="text-destructive">{counts.critical} critical</span>}
             {counts.important > 0 && <span className="text-warning">{counts.important} important</span>}
             {counts.polish > 0 && <span>{counts.polish} polish</span>}
@@ -108,7 +108,7 @@ export function RepoScanReport({ initialScan }: { initialScan: RepoScan }) {
         <Card variant="subtle">
           <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-brand" />
-            Analyzing the codebase. Findings will appear here as soon as the scan completes.
+            Checking the codebase. Flags appear here as they are verified.
           </div>
         </Card>
       )}

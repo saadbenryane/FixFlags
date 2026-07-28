@@ -71,11 +71,11 @@ export default function HowItWorksPage() {
                 <div key={flag.finding} className="grid gap-3 p-5 sm:grid-cols-[9rem_1fr]">
                   <div className="space-y-2">
                     <Badge
-                      variant={flag.status === 'Blocked' ? 'destructive' : 'secondary'}
+                      variant={flag.severity === 'Critical' ? 'destructive' : 'secondary'}
                       size="sm"
                       className="w-fit"
                     >
-                      {flag.status}
+                      {flag.severity}
                     </Badge>
                     <p className="text-xs font-semibold text-muted-foreground">{flag.rubric}</p>
                   </div>

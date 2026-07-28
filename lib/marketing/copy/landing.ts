@@ -4,7 +4,7 @@ export const HERO = {
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: 'Finish what your AI started',
   headlineAccentPeriod: true,
-  subhead: 'AI builds your product. FixFlags reviews the message, experience, and reach so you ship with confidence.',
+  subhead: 'AI builds your product. FixFlags checks Message, Experience, and Reach, then gives your builder the next fix.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review site',
   trySampleCta: 'See a sample review',
@@ -119,7 +119,7 @@ export const DIFFERENTIATION = {
 } as const
 
 export const FINAL_CTA = {
-  headlineDisplay: 'Ready to see what\u2019s blocking your release',
+  headlineDisplay: 'See what your release still needs',
   headlineAccentPeriod: true,
   body: 'Free check. Paste your site or app URL and get your FixFlags report.',
 } as const
@@ -133,22 +133,22 @@ export const MCP_SECTION = {
   workflow: `User: "Check https://myapp.com and review the Experience rubric"
 
 Claude calls: ff_check_and_plan → ff_get_rubric("EXPERIENCE")
-Claude: "Experience needs attention. Two Flags:
+Claude: "Experience has two Critical Flags:
   - Primary CTA is below fold on 375px screens
   - 3 buttons with tap targets under 40px
   Should I apply fixes now?"
 User: "Yes"
 Claude: applies fixes
 Claude: calls ff_recheck_and_compare
-Claude: "Experience improved from Needs Attention → Pass. Two Flags cleared."`,
+Claude: "Experience has no Critical Flags. Two Flags cleared."`,
 } as const
 
 export const HOW_IT_WORKS_PAGE = {
   hero: {
     eyebrow: 'The AI Gap',
-    headline: 'AI can build products. It still can\u2019t tell you if they\u2019re ready.',
+    headline: 'AI can build the product. FixFlags checks what it missed.',
     headlineAccentPeriod: true,
-    subhead: 'AI gets you close. FixFlags finds what it missed: the gaps between a draft and a release.',
+    subhead: 'Run a live URL, review the Flags, copy the fix prompts, then Re-check.',
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Set up MCP',
@@ -157,22 +157,22 @@ export const HOW_IT_WORKS_PAGE = {
       {
         id: 'ai-build',
         title: 'AI Build',
-        percent: '80%',
-        body: 'Draft complete. Not shippable yet.',
+        percent: '',
+        body: 'The draft is live.',
         tone: 'muted' as const,
       },
       {
         id: 'gap',
         title: 'The Gap',
         percent: '',
-        body: 'What AI misses before you ship.',
+        body: 'The unchecked details.',
         tone: 'muted' as const,
       },
       {
         id: 'fixflags',
         title: 'FixFlags',
-        percent: '100%',
-        body: 'Release ready. Ship with confidence.',
+        percent: '',
+        body: 'Flags, evidence, and fix prompts.',
         tone: 'brand' as const,
       },
     ],
@@ -184,22 +184,22 @@ export const HOW_IT_WORKS_PAGE = {
       },
       {
         title: 'But misses critical signals',
-        body: 'Issues that impact trust, performance, and growth.',
+        body: 'Flags that affect trust, performance, and reach.',
         icon: 'warning' as const,
       },
       {
-        title: 'FixFlags reviews everything',
-        body: 'Message, experience, and reach across every device.',
+        title: 'FixFlags checks the live result',
+        body: 'Message, Experience, and Reach on desktop and mobile.',
         icon: 'shield' as const,
       },
       {
-        title: 'You fix with confidence',
-        body: 'Clear findings, exact fixes, no guesswork.',
+        title: 'You get the next fix',
+        body: 'Clear evidence and a prompt for your builder.',
         icon: 'check' as const,
       },
       {
-        title: 'Then ship, confidently',
-        body: 'Because you know your product is actually ready.',
+        title: 'Then you Re-check',
+        body: 'See which Flags cleared after the change.',
         icon: 'rocket' as const,
       },
     ],
@@ -215,19 +215,19 @@ export const HOW_IT_WORKS_PAGE = {
     flags: [
       {
         rubric: 'Experience',
-        status: 'Needs Attention',
+        severity: 'Important',
         finding: 'Primary action starts below the first mobile viewport.',
         evidence: 'Mobile screenshot (375px) shows the CTA after 1,080px of scrolling.',
       },
       {
         rubric: 'Reach',
-        status: 'Blocked',
+        severity: 'Critical',
         finding: 'The page has no share preview image.',
         evidence: 'Social and Slack previews render as a blank card.',
       },
       {
         rubric: 'Message',
-        status: 'Needs Attention',
+        severity: 'Important',
         finding: 'Hero copy says what the product is, not who it helps.',
         evidence: 'Headline and subhead do not name the buyer, task, or outcome.',
       },
@@ -239,7 +239,7 @@ export const HOW_IT_WORKS_PAGE = {
     steps: [
       {
         title: 'Flag',
-        body: 'Find issues that matter across Message, Experience, and Reach with evidence you can trust.',
+        body: 'Find Flags across Message, Experience, and Reach with evidence you can inspect.',
       },
       {
         title: 'Fix',
@@ -259,17 +259,17 @@ export const HOW_IT_WORKS_PAGE = {
     setupHref: '/help/mcp',
     plansCta: 'See plans',
     plansHref: '/pricing',
-    transcript: `User: "Check the landing page and fix the highest-impact issue"
+    transcript: `User: "Check the landing page and fix the first Critical Flag"
 
 Agent calls: ff_check_and_plan
 Agent reads: Experience rubric and top Flag
 Agent applies: mobile CTA layout fix
 Agent calls: ff_recheck_and_compare
-Agent reports: "Experience moved to Pass. One Flag cleared."`,
+Agent reports: "Experience has no Critical Flags. One Flag cleared."`,
   },
   finalCta: {
     headline: 'Close the AI gap on a live URL.',
-    body: 'Paste your site, get Flags with evidence and fix prompts, then re-check until it is ready to ship.',
+    body: 'Paste your site, get Flags with evidence and fix prompts, then Re-check to see what cleared.',
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Connect MCP',
@@ -286,16 +286,16 @@ export const LANDING_PAGE = {
   },
   checkDimensions: {
     label: 'Built to cover what matters',
-    headlineDisplay: 'Every dimension of release readiness',
+    headlineDisplay: 'Three rubrics. One clear fix list',
     headlineAccentPeriod: true,
-    headline: 'Every dimension of release readiness.',
+    headline: 'Three rubrics. One clear fix list.',
     subhead:
-      'FixFlags checks your product across message, experience, and reach so you can fix what counts and ship with confidence.',
+      'FixFlags checks Message, Experience, and Reach, then ranks the Flags that need your attention.',
     allChecksTab: 'All checks',
-    topIssuesTitle: 'Top issues',
-    viewAllIssues: 'View all issues',
+    topIssuesTitle: 'Top Flags',
+    viewAllIssues: 'View all Flags',
     viewAllIssuesHref: '/issues',
-    exampleFindingLabel: 'Example finding',
+    exampleFindingLabel: 'Example Flag',
     cards: [
       {
         id: 'message',
@@ -402,7 +402,7 @@ export const LANDING_PAGE = {
         id: 'reach',
         title: 'Reach',
         label: 'Reach',
-        panelTitle: 'Be ready to be found and shared.',
+        panelTitle: 'Show up clearly when people find and share you.',
         question: 'Can people find and share it?',
         panelBody:
           'We inspect search, metadata, and link previews so every discovery surface represents the product clearly.',
@@ -410,7 +410,7 @@ export const LANDING_PAGE = {
         tint: 'info',
         checks: [
           'Titles and descriptions',
-          'Social preview readiness',
+          'Social preview coverage',
           'Indexability and canonicals',
           'Structured discovery signals',
         ] as const,
@@ -453,11 +453,11 @@ export const LANDING_PAGE = {
     allChecks: {
       id: 'all',
       title: 'All checks',
-      label: 'Release readiness',
-      panelTitle: 'See the whole release, not isolated symptoms.',
-      question: 'Is the product ready to earn attention and action?',
+      label: 'Full report',
+      panelTitle: 'See the full fix list.',
+      question: 'What needs fixing before the next release?',
       panelBody:
-        'One Finish Plan connects what people understand, what they can complete, and whether they can discover the product.',
+        'One report connects what people understand, what they can complete, and whether they can find and share the product.',
       icon: 'all',
       checks: [
         'Message: understand the value',
@@ -533,7 +533,7 @@ export const LANDING_PAGE = {
     steps: [
       {
         step: 1,
-        title: 'Start your audit',
+        title: 'Start your check',
         body: 'Paste the live URL you want FixFlags to review.',
         visual: 'start' as const,
       },
@@ -553,7 +553,7 @@ export const LANDING_PAGE = {
   },
   reportExamples: {
     headline: 'Flags you can act on.',
-    subhead: 'Real findings from the product. Same shape you get after you paste a URL.',
+    subhead: 'Real Flags from the product. The same report shape you get after you paste a URL.',
     seeInSample: 'See in sample',
     seeInSampleHref: '/#sample-review',
     cards: [
@@ -600,8 +600,8 @@ export const LANDING_PAGE = {
     features: [
       {
         id: 'findings',
-        title: 'Clear findings',
-        body: 'Plain language issues with real impact.',
+        title: 'Clear Flags',
+        body: 'Plain-language Flags tied to user impact.',
         icon: 'sparkles' as const,
       },
       {
@@ -619,7 +619,7 @@ export const LANDING_PAGE = {
       {
         id: 'evidence',
         title: 'Evidence you trust',
-        body: 'Screenshots and context for every issue.',
+        body: 'Screenshots and context for every Flag.',
         icon: 'shield' as const,
       },
       {
@@ -635,7 +635,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'Review, fix, and re-check in your existing workflow',
     body: 'Bring FixFlags into the editor you already use. Keep the live product and every fix in the same loop.',
     inputs: ['Review', 'Flag', 'Fix', 'Re-check'] as const,
-    outcomes: ['Flags cleared', 'Release status improved', 'Ship with confidence'] as const,
+    outcomes: ['Flags cleared', 'Critical count reduced', 'Re-check verified'] as const,
   },
   editorIntegrations: {
     label: 'How it works (MCP)',
@@ -643,7 +643,7 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: 'FixFlags in your workflow. Always in sync.',
     headlineLines: ['FixFlags in your workflow.', 'Always in sync'] as const,
-    body: 'Connect FixFlags to your stack via MCP. Review each change, act on clear findings, and re-check the live product.',
+    body: 'Connect FixFlags through MCP. Review each change, act on clear Flags, and Re-check the live product.',
     steps: [
       {
         id: 'connect',
@@ -675,7 +675,7 @@ export const LANDING_PAGE = {
       },
       {
         id: 'findings',
-        title: 'Get clear findings',
+        title: 'Get clear Flags',
         body: 'See what matters, why it matters, and what to fix.',
         visual: {
           src: '/marketing/visuals/mcp-findings-v2.webp',
@@ -734,7 +734,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'See exactly what AI misses',
     headlineAccentPeriod: true,
     headline: 'See exactly what AI misses.',
-    body: 'FixFlags scans your live product the way your users experience it and turns issues into clear, actionable fixes.',
+    body: 'FixFlags checks the live product, ranks the Flags, and gives your builder the next fix.',
     previewEyebrow: 'Fix list',
     previewTitle: 'Every fix, ranked and ready',
     previewBadge: 'Screenshot evidence included',
@@ -765,16 +765,15 @@ export const LANDING_PAGE = {
       },
     ] as const,
     trustLabel: 'Every report is built on real product signals',
-    issuesLabel: (count: number) => `${count} issues in the sample review`,
+    issuesLabel: (count: number) => `${count} Flags in the sample review`,
     checksLabel: (count: number) => `${count} checks across Message, Experience, and Reach`,
-    checksShortLabel: (count: number) => `Checked ${count}+ points`,
     checksMetric: (count: number) => ({
       value: `${count}+`,
       label: 'checks performed',
     }),
     issuesMetric: (count: number) => ({
       value: String(count),
-      label: 'issues found',
+      label: 'Flags found',
     }),
     trustMetrics: [
       {
@@ -802,27 +801,6 @@ export const LANDING_PAGE = {
         icon: 'users' as const,
       },
     ] as const,
-    /** Decorative homepage dashboard chrome. Product-true labels only. */
-    mock: {
-      sampleFinishPlan: 'Sample Finish Plan',
-      share: 'Share report',
-      recheck: 'Re-check',
-      releaseReadiness: 'Release status',
-      scoreDenom: '/100',
-      highImpact: 'High impact issues',
-      needsAttention: 'Needs attention',
-      byRubric: 'By rubric',
-      allIssues: (count: number) => `All issues ${count}`,
-      messageTab: (count: number) => `Message ${count}`,
-      experienceTab: (count: number) => `Experience ${count}`,
-      reachTab: (count: number) => `Reach ${count}`,
-      whyItMatters: 'Why it matters',
-      impact: 'Impact',
-      fixPrompt: 'Fix prompt',
-      copyPrompt: 'Copy prompt',
-      viewAll: (count: number) => `View all ${count} issues →`,
-      fixPromptFallback: 'Open the sample report to copy the full fix prompt.',
-    },
   },
   footer: {
     tagline: 'Independent product verification for AI-built products. We check what blocks the release so you can fix it.',
@@ -849,38 +827,68 @@ export const LANDING_PAGE = {
 
 export const REPORT_COPY = {
   workspace: {
-    eyebrow: 'Release review',
-    heading: 'Fix these before you share it',
-    checkingScope: 'FixFlags is checking the release. Verified Flags will appear here as evidence arrives.',
+    heading: 'Fix list',
+    identityFallback: 'Website review',
+    status: {
+      checking: 'Checking',
+      completed: 'Completed',
+      partial: 'Partial',
+      degraded: 'Degraded',
+      failed: 'Failed',
+      unavailable: 'Unavailable',
+    },
+    checkingScope: 'Flags appear as they are verified.',
     context: ({
       unresolved,
-      highImpact,
       checkedScope,
     }: {
       unresolved: number
-      highImpact: number
       checkedScope: string | null
     }) => {
-      const scope = checkedScope ? `Checked ${checkedScope}. ` : ''
       const unresolvedLabel = `${unresolved} unresolved ${unresolved === 1 ? 'Flag' : 'Flags'}`
-      const impactLabel =
-        highImpact > 0
-          ? `, including ${highImpact} high-impact ${highImpact === 1 ? 'Flag' : 'Flags'}`
-          : ''
-      return `${scope}${unresolvedLabel}${impactLabel}.`
+      if (!checkedScope) return `${unresolvedLabel}.`
+      if (/^\d+ pages$/.test(checkedScope)) {
+        return `${unresolvedLabel} across ${checkedScope}.`
+      }
+      const preposition = checkedScope.includes('release') ? 'in' : 'on'
+      return `${unresolvedLabel} ${preposition} ${checkedScope}.`
     },
-    summaryLabel: 'Release readiness summary',
-    highImpact: 'High-impact Flags',
-    rubricCoverage: 'Message, Experience, Reach',
+    summaryLabel: 'Critical Flags by rubric',
+    criticalFlags: 'Critical Flags',
+    criticalCount: (count: number) => `${count} Critical ${count === 1 ? 'Flag' : 'Flags'}`,
+    rubricCriticalCount: (count: number) => `${count} critical`,
+    showCriticalFlags: (count: number) => `Show ${count} Critical ${count === 1 ? 'Flag' : 'Flags'}`,
+    showRubricFlags: (rubric: string, count: number) =>
+      count > 0
+        ? `Show ${count} Critical ${count === 1 ? 'Flag' : 'Flags'} in ${rubric}`
+        : `Show all ${rubric} Flags`,
     history: 'Score history',
     recheckCount: (count: number) => `${count} completed ${count === 1 ? 'Re-check' : 'Re-checks'}`,
-    readiness: {
-      label: 'Readiness',
-      ready: 'Ready to share',
-      fixFirst: 'Fix before sharing',
-      notReady: 'Not ready',
-      checking: 'Checking',
-      unavailable: 'Unavailable',
+    dashboard: {
+      latestRelease: 'Latest completed release',
+      openReport: 'Open report',
+      topFlags: 'Top ranked Flags',
+      total: (count: number) => `${count} total`,
+      nextActionLabel: 'Next action',
+      nextActionBody: 'Open a Flag, copy its fix, then Re-check the release.',
+      clearReleaseBody: 'No unresolved Flags remain. Open the report to verify the release details.',
+      reviewTopFlag: 'Review the top Flag',
+      reviewClearRelease: 'Review the release',
+      rechecks: (count: number) =>
+        `${count} completed ${count === 1 ? 'Re-check' : 'Re-checks'}`,
+    },
+    unavailableState: {
+      identity: 'FixFlags report',
+      identityBody: 'Report details are not available',
+      summaryValue: 'Unavailable',
+      privateTitle: 'This report is private',
+      privateBody:
+        'Sign in with the account that owns this report, or ask the owner for a new share link.',
+      sharedTitle: 'This shared report is unavailable',
+      sharedBody:
+        'The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.',
+      returnHome: 'Return home',
+      reviewSite: 'Review my site',
     },
   },
   reportFirst: {
@@ -891,13 +899,9 @@ export const REPORT_COPY = {
     capturesBody: 'Desktop and mobile views resolve independently.',
     capturesLabel: 'Desktop and mobile captures',
     summaryLabel: 'Report summary',
-    unresolvedLabel: 'Unresolved',
-    readinessLabel: 'Readiness',
     checkingLabel: 'Checking',
-    calculatingLabel: 'Calculating',
     unavailableLabel: 'Unavailable',
     statusPendingLabel: 'Status pending',
-    overallUnavailableLabel: 'Overall status unavailable',
     affectedViewport: (device: 'desktop' | 'mobile') => `Flagged on ${device}`,
     unaffectedViewport: 'Not detected for this Flag',
   },
@@ -908,10 +912,9 @@ export const REPORT_COPY = {
   },
   sampleFocused: {
     eyebrow: 'Sample fix list',
-    title: 'See every fix FixFlags found',
-    body: 'A versioned, reviewed snapshot from a completed PlantDad demo audit.',
+    title: 'See what FixFlags found',
+    body: 'A reviewed PlantDad report with real evidence and one complete fix prompt.',
     detailsCta: 'View the sample report',
-    completeList: 'This sample includes the complete ranked fix list.',
   },
   progressive: {
     eyebrow: 'Fix list',
@@ -936,7 +939,7 @@ export const REPORT_COPY = {
   },
   noFlags: {
     title: 'No flags found',
-    body: 'This scan did not surface any issues. Nice work.',
+    body: 'This check found no Flags.',
   },
   aiPending: {
     title: 'Fix prompts generating',
@@ -981,12 +984,12 @@ export const REPORT_COPY = {
           return `${label} (${route.missing.join(' & ')})`
         })
         .join(', ')
-      return `PageSpeed findings use the observations captured in this run. Missing coverage: ${missing}.`
+      return `PageSpeed evidence uses the observations captured in this run. Missing coverage: ${missing}.`
     },
   },
   pageSpeedUnavailable: {
     title: 'PageSpeed unavailable',
-    body: 'No PageSpeed observation completed in this run. Experience findings below use the other captured evidence.',
+    body: 'No PageSpeed observation completed in this run. Experience Flags use the other captured evidence.',
   },
   sectionTitles: {
     allFixes: 'All fixes',
@@ -1016,12 +1019,12 @@ export const REPORT_COPY = {
   explorer: {
     allPages: 'All Pages',
     noMatchFilter: 'No flags match this filter.',
-    checkingIssues: 'Checking for issues…',
+    checkingIssues: 'Checking for Flags…',
     selectFlag: 'Select a flag to see evidence and the fix prompt.',
     flagsAppear: 'Flags appear here as the scan finishes.',
     noFlagsNice: 'No flags. Nice work.',
   },
-  runYourOwnAudit: 'Run your own audit',
+  runYourOwnAudit: 'Check your site',
 } as const
 
 export const MADE_WITH_COPY = {
@@ -1031,7 +1034,7 @@ export const MADE_WITH_COPY = {
   viewEvidence: 'View stack and evidence',
   verified: 'Verified',
   strongSignal: 'Strong signal',
-  legacy: 'Technology signals were not captured for this audit. Run a re-check to create a verified profile.',
+  legacy: 'Technology signals were not captured for this check. Run a Re-check to create a verified profile.',
   unavailable: 'Technology signals were unavailable for this scan. The rest of the report is unaffected.',
   empty: 'No technologies could be verified from the site’s public signals.',
   partial: 'Partial profile. Only signals preserved by the historical capture are shown.',
@@ -1059,8 +1062,8 @@ export const MADE_WITH_COPY = {
 
 export const EXAMPLES_PAGE = {
   label: 'Examples',
-  headline: 'Example audits from recognizable sites',
-  body: 'Real audit output from recognizable sites. Each card shows top issues and fix prompts.',
+  headline: 'Example reports from recognizable sites',
+  body: 'Real reports from recognizable sites. Each card shows top Flags and a fix prompt.',
 } as const
 
 export const BLOG_INDEX = {

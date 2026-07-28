@@ -87,7 +87,7 @@ export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props
         <Callout variant="success" title="Connected!" className="text-xs">
           <p>
             {`Found all ${toolCount} FixFlags tools.`}{' '}
-            Your editor is ready to run FixFlags checks.
+            FixFlags is connected in your editor.
           </p>
         </Callout>
       )}

@@ -13,9 +13,11 @@ describe('homepage refinement sections', () => {
         name: /Review, fix, and re-check in your existing workflow/i,
       })
     ).toBeInTheDocument()
-    expect(screen.getAllByText('Re-check').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Flags cleared').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Ship with confidence').length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('img', {
+        name: /Review, Flag, Fix, and Re-check.*cleared Flags.*improved release status.*confident shipping/i,
+      })
+    ).toBeInTheDocument()
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
   })
 

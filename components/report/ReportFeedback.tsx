@@ -21,7 +21,7 @@ export function ReportFeedback({ auditId }: Props) {
               comment: c,
               pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
             },
-            'Could not save feedback. Please try again.',
+            'Could not save feedback. Try again.',
           )
         }
         label="Was this report useful?"

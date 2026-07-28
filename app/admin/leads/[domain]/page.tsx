@@ -160,7 +160,7 @@ export default async function AdminLeadDetailPage({
         {audits.length === 0 ? (
           <Card variant="solid">
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No completed audits found for this domain.
+              No completed checks found for this domain.
             </CardContent>
           </Card>
         ) : (

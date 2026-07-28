@@ -25,7 +25,7 @@ export const WORKER_DOWN_GIVEUP_SECONDS = 180
 export const POLL_FORCE_FAIL_GRACE_MS = 15_000
 
 const WORKER_DOWN_MESSAGE =
-  'Our scanner is temporarily unavailable. Please try again in a few minutes.'
+  'The scanner is temporarily unavailable. Try again in a few minutes.'
 
 export type RecoverAuditJobResult = 'requeued' | 'force_failed' | 'noop'
 

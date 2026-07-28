@@ -89,7 +89,7 @@ export default async function AdminFeedbackPage() {
     <Container variant="wide" className="space-y-6 py-8">
       <PageHeader
         title="Feedback & Support"
-        description="Live chat, report and flag reactions, and an AI-ready digest, all in one place."
+        description="Live chat, report reactions, Flag reactions, and a copyable digest."
       />
       <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
         <FeedbackHub

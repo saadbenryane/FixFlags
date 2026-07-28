@@ -5,6 +5,13 @@ import { PrismaClient } from '@prisma/client'
 import IORedis from 'ioredis'
 
 const results = []
+const PLACEHOLDER_CREDENTIAL =
+  /(?:place(?:holder)?|change[-_ ]?me|your[-_ ]?(?:api[-_ ]?)?key|example|dummy|fake|\.\.\.)/i
+
+function hasUsableCredential(value) {
+  return Boolean(value && value.length >= 20 && !PLACEHOLDER_CREDENTIAL.test(value))
+}
+
 const check = async (name, run) => {
   try {
     const detail = await run()
@@ -17,9 +24,14 @@ const check = async (name, run) => {
 await check('environment', async () => {
   const required = ['DATABASE_URL', 'REDIS_URL', 'BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'NEXT_PUBLIC_APP_URL']
   const missing = required.filter((key) => !process.env[key])
-  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) missing.push('OPENAI_API_KEY or ANTHROPIC_API_KEY')
+  if (
+    !hasUsableCredential(process.env.OPENAI_API_KEY) &&
+    !hasUsableCredential(process.env.ANTHROPIC_API_KEY)
+  ) {
+    missing.push('a non-placeholder OPENAI_API_KEY or ANTHROPIC_API_KEY')
+  }
   if (missing.length) throw new Error(`Missing ${missing.join(', ')}`)
-  return 'required values present'
+  return 'required values configured without obvious placeholders'
 })
 
 await check('PostgreSQL', async () => {

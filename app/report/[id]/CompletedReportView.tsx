@@ -154,6 +154,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           pages={journeyPages}
           journeyReviews={journeyReviews}
           recheckDiff={state.recheckDiff}
+          scoreHistory={state.scoreHistory}
           sampleFixFlag={state.sampleFixFlag}
           compareHref={
             state.canAccessCompareView && state.audit.parentId

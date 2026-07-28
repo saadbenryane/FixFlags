@@ -18,8 +18,8 @@ export function buildCuratedSampleWorkspaceModel(
     pageType: report.pageType,
     checkedAt: report.completedAt,
     status: 'completed',
-    launchReadiness: report.readiness,
     checkedScope: 'the curated demo page',
+    promptAccess: 'demonstrated',
     demonstratedFlagId: report.demonstratedFlagId,
   })
 }
@@ -31,8 +31,6 @@ export function buildDashboardWorkspaceModel(input: {
   pageType?: string | null
   checkedAt: Date
   history: ReportWorkspaceHistoryPoint[]
-  shareStatus?: 'good_to_share' | 'fix_before_sharing' | null
-  launchReadiness?: 'safe' | 'fix_first' | 'not_ready' | 'unknown' | null
 }): ReportWorkspaceModel {
   return buildReportWorkspaceModel({
     kind: 'dashboard',
@@ -43,9 +41,8 @@ export function buildDashboardWorkspaceModel(input: {
     checkedAt: input.checkedAt,
     status: 'completed',
     history: input.history,
-    shareStatus: input.shareStatus,
-    launchReadiness: input.launchReadiness,
     checkedScope: 'the latest completed release',
+    promptAccess: 'all',
     canRecheck: true,
   })
 }

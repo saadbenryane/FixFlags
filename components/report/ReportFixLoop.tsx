@@ -1,6 +1,8 @@
 'use client'
 
 import { Wrench } from 'lucide-react'
+import Link from 'next/link'
+import type { Route } from 'next'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { cn } from '@/lib/utils'
 import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
@@ -20,6 +22,7 @@ export type ReportFixLoopProps = {
   flags: FixLoopFlagItem[]
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
+  reportHref?: string
   compact?: boolean
   /** Audit still running: empty-state copy prefers scanning language. */
   loading?: boolean
@@ -29,10 +32,12 @@ function FlagList({
   flags,
   selectedFlagId,
   onSelectFlag,
+  reportHref,
 }: {
   flags: FixLoopFlagItem[]
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
+  reportHref?: string
 }) {
   return (
     <ul className="space-y-1" aria-label="Report Flags">
@@ -47,35 +52,52 @@ function FlagList({
         ]
           .filter(Boolean)
           .join(' · ')
+        const content = (
+          <>
+            <SeveritySignal severity={flag.severity} className="h-4 w-4" />
+            <span
+              className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
+              title={categoryLabel}
+            >
+              <RubricIcon className="h-3 w-3" aria-hidden />
+              {ImpactIcon && <ImpactIcon className="h-3 w-3" aria-hidden />}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{flag.title}</span>
+            {flag.hasFixPrompt !== false && (
+              <Wrench className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
+            )}
+          </>
+        )
+        const rowClassName = cn(
+          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
+          selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
+        )
         return (
           <li key={flag.id}>
-            <button
-              type="button"
-              onClick={() => onSelectFlag?.(flag.id)}
-              title={flag.title}
-              aria-label={`${categoryLabel}: ${flag.title}`}
-              aria-current={selected ? 'true' : undefined}
-              aria-pressed={selected}
-              aria-controls="selected-flag-detail"
-              className={cn(
-                'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
-                selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
-              )}
-            >
-              <SeveritySignal severity={flag.severity} className="h-4 w-4" />
-              <span
-                className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
-                title={categoryLabel}
+            {reportHref ? (
+              <Link
+                href={`${reportHref}?flag=${encodeURIComponent(flag.id)}` as Route}
+                title={flag.title}
+                aria-label={`${categoryLabel}: ${flag.title}`}
+                className={rowClassName}
               >
-                <RubricIcon className="h-3 w-3" aria-hidden />
-                {ImpactIcon && <ImpactIcon className="h-3 w-3" aria-hidden />}
-              </span>
-              <span className="min-w-0 flex-1 truncate">{flag.title}</span>
-              {flag.hasFixPrompt !== false && (
-                <Wrench className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
-              )}
-            </button>
+                {content}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onSelectFlag?.(flag.id)}
+                title={flag.title}
+                aria-label={`${categoryLabel}: ${flag.title}`}
+                aria-current={selected ? 'true' : undefined}
+                aria-pressed={selected}
+                aria-controls="selected-flag-detail"
+                className={rowClassName}
+              >
+                {content}
+              </button>
+            )}
           </li>
         )
       })}
@@ -87,15 +109,21 @@ export function ReportFixLoop({
   flags,
   selectedFlagId,
   onSelectFlag,
+  reportHref,
   compact = false,
   loading = false,
 }: ReportFixLoopProps) {
-  const interactive = flags.length > 0 && Boolean(onSelectFlag)
+  const interactive = flags.length > 0 && Boolean(onSelectFlag || reportHref)
 
   return (
     <div className={cn(compact ? 'space-y-2' : 'space-y-2.5')}>
       {interactive ? (
-        <FlagList flags={flags} selectedFlagId={selectedFlagId} onSelectFlag={onSelectFlag} />
+        <FlagList
+          flags={flags}
+          selectedFlagId={selectedFlagId}
+          onSelectFlag={onSelectFlag}
+          reportHref={reportHref}
+        />
       ) : (
         <p className="px-1 py-2 text-xs text-muted-foreground">
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}

@@ -13,23 +13,10 @@ import { HERO } from '@/lib/marketing/copy'
  * and matches the approved glass-card composition.
  */
 const HERO_GLASS = {
-  src: '/marketing/visuals/home-hero-master-v2.webp',
-  width: 1600,
-  height: 1507,
+  src: '/marketing/visuals/home-hero-master-v3.png',
+  width: 1286,
+  height: 1223,
 } as const
-
-const HERO_STATES = [
-  ['Reviewing', 'Live product'],
-  ['7 Flags', 'Issues ranked'],
-  ['Fixing', 'Prompts ready'],
-  ['Ready to ship', 'Re-check passed'],
-] as const
-
-const HERO_RUBRICS = [
-  ['Message', 'Clear and specific'],
-  ['Experience', 'Easy to complete'],
-  ['Reach', 'Ready to find'],
-] as const
 
 export function LandingHeroSection() {
   return (
@@ -112,7 +99,7 @@ export function LandingHeroSection() {
             >
               <Image
                 src={HERO_GLASS.src}
-                alt=""
+                alt="FixFlags reviewing a live product across Message, Experience, and Reach, then preparing fixes for Re-check."
                 width={HERO_GLASS.width}
                 height={HERO_GLASS.height}
                 priority
@@ -120,36 +107,6 @@ export function LandingHeroSection() {
                 className="h-full w-full select-none object-contain object-center drop-shadow-[0_28px_56px_hsl(240_8%_5%/0.12)] dark:drop-shadow-[0_28px_56px_rgb(0_0_0/0.4)] lg:object-right"
                 draggable={false}
               />
-              <div
-                className="pointer-events-none absolute inset-0 select-none text-[0.5rem] leading-tight text-foreground sm:text-[0.58rem]"
-                role="group"
-                aria-label="FixFlags review workflow preview"
-              >
-                <div className="absolute left-[25%] top-[20%] w-[27%] space-y-4 sm:space-y-[1.15rem]">
-                  {HERO_STATES.map(([title, detail]) => (
-                    <div
-                      key={title}
-                      className="rounded-[0.25rem] bg-background/35 px-1.5 py-1 backdrop-blur-[1px]"
-                    >
-                      <p className="font-semibold text-foreground">{title}</p>
-                      <p className="mt-0.5 text-[0.45rem] text-muted-foreground sm:text-[0.5rem]">
-                        {detail}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="absolute right-[3%] top-[27%] w-[29%] space-y-2 sm:space-y-3">
-                  {HERO_RUBRICS.map(([title, detail]) => (
-                    <div
-                      key={title}
-                      className="rounded-[0.4rem] border border-white/65 bg-background/70 px-2 py-2 shadow-sm backdrop-blur-sm sm:rounded-[0.55rem] sm:px-3 sm:py-2.5"
-                    >
-                      <p className="font-semibold text-foreground">{title}</p>
-                      <p className="mt-0.5 text-muted-foreground">{detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>

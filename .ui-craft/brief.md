@@ -1,6 +1,6 @@
 # FixFlags Design Brief
 
-FixFlags is the release readiness layer for AI-built products. Users paste URLs, get graded reports with Flags, screenshots, and share-readiness signals. Tone: **sharp senior reviewer**, clear and direct, not generic SaaS template.
+FixFlags checks AI-built products before they reach users. People paste URLs and get graded reports with Flags, screenshots, and fix prompts. Tone: **sharp senior reviewer**, clear and direct, not generic SaaS template.
 
 ## Product context
 

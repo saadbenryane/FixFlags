@@ -19,7 +19,7 @@ export function useFeedbackSubmit() {
     async (
       path: string,
       body: FeedbackBody,
-      errorToast = 'Could not save feedback. Please try again.',
+      errorToast = 'Could not save feedback. Try again.',
     ): Promise<boolean> => {
       try {
         const res = await fetch(path, {

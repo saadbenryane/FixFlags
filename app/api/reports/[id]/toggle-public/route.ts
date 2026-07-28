@@ -29,7 +29,7 @@ export async function PATCH(
     }
 
     if (audit.status !== 'COMPLETED') {
-      return apiError('Only completed audits can be shared', 400)
+      return apiError('Only completed reports can be shared', 400)
     }
 
     const makingPublic = !audit.isPublic

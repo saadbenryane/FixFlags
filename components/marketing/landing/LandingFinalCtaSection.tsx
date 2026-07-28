@@ -32,12 +32,11 @@ export function LandingFinalCtaSection() {
             <div className="flex items-start gap-4 sm:gap-5 lg:gap-10">
               <div className="relative hidden h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-[0.875rem] bg-muted/55 shadow-sm sm:flex">
                 <Image
-                  src="/brand/logo-mark.png"
+                  src="/marketing/visuals/pricing-glass-mark.webp"
                   alt=""
-                  width={40}
-                  height={40}
-                  unoptimized
-                  className="h-9 w-9 object-contain"
+                  fill
+                  sizes="72px"
+                  className="rounded-[0.875rem] object-cover"
                 />
               </div>
               <LandingSectionHeader

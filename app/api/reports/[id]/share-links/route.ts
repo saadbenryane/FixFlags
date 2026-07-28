@@ -80,7 +80,7 @@ export async function POST(
       return apiError('Sign in to create share links for this report', 401)
     }
     if (audit.status !== 'COMPLETED') {
-      return apiError('Only completed audits can be shared', 400)
+      return apiError('Only completed reports can be shared', 400)
     }
 
     const user = session?.user

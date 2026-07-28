@@ -162,10 +162,10 @@ export default async function IssuePage({ params }: Props) {
                   About this data
                 </Heading>
                 <Muted>
-                  This page is generated from FixFlags audit data across{' '}
+                  This page is generated from FixFlags check data across{' '}
                   <strong className="text-foreground">{data.siteCount}</strong> distinct sites.
                   Sample sizes below {MIN_SAMPLE_SIZE} sites are excluded to maintain quality.
-                  Data refreshes as new audits complete.
+                  Data refreshes as new checks complete.
                 </Muted>
               </CardContent>
             </Card>
@@ -173,11 +173,11 @@ export default async function IssuePage({ params }: Props) {
             {/* CTA */}
             <div className="text-center space-y-3 pt-4 border-t border-border/30">
               <Body className="text-muted-foreground">
-                Check if your site has this issue.
+                Check if your site has this Flag.
               </Body>
               <Button asChild variant="default" size="lg">
                 <Link href={`/?utm_source=issue&utm_medium=organic&utm_campaign=${checkId}`}>
-                  Run a Free Audit
+                  Run a free check
                 </Link>
               </Button>
             </div>

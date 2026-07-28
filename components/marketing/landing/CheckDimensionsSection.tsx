@@ -154,7 +154,7 @@ export function CheckDimensionsSection() {
 
         <div
           role="tablist"
-          aria-label="Release readiness dimensions"
+          aria-label="FixFlags report rubrics"
           className="mx-auto flex w-full max-w-[34rem] justify-between gap-0 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {copy.cards.map((card) => {
@@ -300,7 +300,7 @@ export function CheckDimensionsSection() {
                             </p>
                             <Link
                               href={issue.categoryHref}
-                              className="relative inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground before:absolute before:-inset-x-2 before:-inset-y-3 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+                              className="relative inline-flex min-h-11 shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground before:absolute before:-inset-x-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
                             >
                               /{issue.category}
                               <ArrowRight className="h-3 w-3" aria-hidden />
@@ -313,7 +313,7 @@ export function CheckDimensionsSection() {
                 </ul>
                 <Link
                   href={copy.viewAllIssuesHref}
-                  className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
+                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
                 >
                   {copy.viewAllIssues}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden />

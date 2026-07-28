@@ -206,7 +206,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
         flagDiff.newIssues.length === 0 ? (
           <EmptyState
             title="No changes detected"
-            description="Nothing changed between the two audits."
+            description="Nothing changed between the two checks."
           />
         ) : (
           <FlagDiff

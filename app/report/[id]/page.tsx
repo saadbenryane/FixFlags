@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { AuditPageClient } from '@/components/audit/AuditPageClient'
 import { AuditShell } from '@/components/layout/audit-shell'
-import { ReportAccessDeniedStatus } from '@/components/ui/status-page'
-import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { ReportWorkspaceState } from '@/components/report/ReportWorkspaceState'
+import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy'
 import { getProgressiveAuditForRequest } from '@/lib/audit/fetch-audit'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { CompletedReportView } from './CompletedReportView'
@@ -71,7 +71,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export async function ReportRoute({ params, shareToken }: Props & { shareToken?: string }) {
   const state = await loadReportRouteState(params, shareToken)
   if (state.kind === 'forbidden') {
-    return <AuditShell session={null}><ReportAccessDeniedStatus /></AuditShell>
+    return (
+      <AuditShell session={null}>
+        <ReportWorkspaceState
+          kind="forbidden"
+          title={REPORT_COPY.workspace.unavailableState.privateTitle}
+          description={REPORT_COPY.workspace.unavailableState.privateBody}
+          actionLabel={REPORT_COPY.workspace.unavailableState.returnHome}
+          actionHref="/"
+        />
+      </AuditShell>
+    )
   }
   if (state.kind === 'progressive') {
     const requireAuthGate =

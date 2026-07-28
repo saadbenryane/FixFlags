@@ -39,21 +39,16 @@ Why: habit over scarcity. More users = more data = stronger moat = more upgrades
 
 ## Pricing Philosophy
 
-- **Entry price: $29/mo.** Low enough to convert without justification. Raise after 100 paying users if retention supports it.
+- **Keep entry pricing easy to justify.** Current amounts and any pricing experiments live in [knowledge/strategy.md](../knowledge/strategy.md).
 - **Flat-rate subscription** for the monthly new-check quota. Credit packs are optional overflow for paid plans.
 - **Re-checks never gated.** The core loop (Flag, Fix, Re-check) is the habit.
 - **Annual discount:** Later (not at launch). Monthly only until retention justifies it.
-- **No founding offers.** $29 is the real price. Founding offers create expectation debt.
+- **No founding offers.** Founding offers create expectation debt.
 
 ## Pricing Tiers (Current)
 
-Live tiers, as defined in `lib/billing/plans.ts` (`Plan` enum: `FREE | BUILDER | TEAM`):
-
-| Tier | Plan enum | Price | New URL checks | Key Hook |
-|------|-----------|-------|----------------|----------|
-| Free | `FREE` | $0 | 3 lifetime | Full report, unlimited re-checks on owned reports |
-| Pro | `BUILDER` | $29/mo | 25/mo | Unlimited re-checks + compare, MCP |
-| Agency | `TEAM` | $99/mo | 100/mo | Share links, projects, GitHub repo scans |
+Current tier amounts and strategy live in [knowledge/strategy.md](../knowledge/strategy.md).
+Shipped names, quotas, and capabilities come from `lib/billing/plans.ts` and [PRODUCT.md](../PRODUCT.md).
 
 Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the schema.
 

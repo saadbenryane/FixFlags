@@ -31,7 +31,7 @@ export const TOOLS = {
     subhead:
       'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
     ctaCheck: 'Check preview',
-    ctaAudit: 'Run full audit on this URL',
+    ctaAudit: 'Run a full check on this URL',
     socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
@@ -49,7 +49,7 @@ export const TOOLS = {
     canonicalMissing: 'No canonical',
     robotsPresent: 'Robots meta',
     robotsMissing: 'No robots meta',
-    auditHeading: 'Run a full audit',
+    auditHeading: 'Run a full check',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
   },
@@ -63,23 +63,23 @@ export const TOOLS = {
     noIssuesHeading: 'No placeholder content found',
     noIssuesSubhead:
       'This page looks clean. No template artifacts, placeholder copy, or unreplaced tokens detected.',
-    issuesFound: '{count} issue{plural} found',
+    issuesFound: '{count} match{plural} found',
     typeLabels: {
       placeholder: 'Placeholder',
       'template-copy': 'Template Copy',
       'ai-builder': 'AI Builder Artifact',
       'template-token': 'Template Token',
-      'social-proof': 'Social Proof Issue',
+      'social-proof': 'Social proof',
     },
-    auditHeading: 'Run a full audit',
+    auditHeading: 'Run a full check',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
   },
   shared: {
-    auditHeading: 'Run a full audit',
+    auditHeading: 'Run a full check',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
-    ctaAudit: 'Run full audit on this URL',
+    ctaAudit: 'Run a full check on this URL',
   },
 } as const
 
@@ -90,13 +90,13 @@ export const ROAST_COPY = {
   cta: 'Roast it',
   ctaLoading: 'Roasting...',
   overallLabel: 'Overall Quality',
-  topIssuesHeading: 'Top issues',
+  topIssuesHeading: 'Top Flags',
   shareBadge: 'Share your quality badge',
   downloadSvg: 'Download SVG',
   copyMarkdown: 'Copy markdown',
   fullReport: 'Full report',
-  wantFixes: 'Want fix prompts for every issue?',
-  runFullAudit: 'Run full FixFlags audit',
+  wantFixes: 'Want a fix prompt for every Flag?',
+  runFullAudit: 'Run a full FixFlags check',
   taglines: {
     A: 'Ship it. This is ready for humans.',
     B: 'Solid foundation. A few tweaks and you are golden.',
@@ -173,7 +173,7 @@ export const HELP_CENTER = {
 export const SUPPORT_CHAT = {
   title: 'Chat with FixFlags',
   subtitle: 'We typically reply within a few hours',
-  emptyState: 'Ask us anything about FixFlags, your audit, or getting started.',
+  emptyState: 'Ask us anything about FixFlags, your report, or getting started.',
   startError: 'Could not start chat. Try again in a moment.',
   welcomeMessage:
     "You're chatting with the FixFlags team. We typically reply within a few hours.",

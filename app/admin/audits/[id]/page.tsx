@@ -41,7 +41,7 @@ export default async function AdminAuditDetailPage({
 
   return (
     <Container variant="report" className="py-8 space-y-6">
-      <PageHeader title="Audit detail" description={audit.url}>
+      <PageHeader title="Check detail" description={audit.url}>
         <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/report/${audit.id}`}>View report</Link>

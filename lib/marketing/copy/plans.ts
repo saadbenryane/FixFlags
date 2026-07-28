@@ -65,7 +65,7 @@ export const PLANS = [
       "Up to 5 projects",
       "Client-ready public share links",
       "GitHub repository scans",
-      "Draft Fix PRs from repo findings (secrets auto-patch when possible)",
+      "Draft Fix PRs from repository Flags (secrets auto-patch when possible)",
       "Daily product watch with regression email",
     ],
     cta: "Start Studio",
@@ -97,7 +97,7 @@ export const PRICING_FAQ = [
   },
   {
     question: "Are reports public or private?",
-    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private audit.`,
+    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private report.`,
   },
   {
     question: "Are screenshots stored?",

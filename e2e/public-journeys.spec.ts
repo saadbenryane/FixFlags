@@ -102,7 +102,7 @@ for (const width of [320, 375]) {
 
 test('legacy sample details redirects to the canonical report surface', async ({ page }) => {
   await page.goto('/samples/details')
-  await expect(page).toHaveURL(/\/samples$/)
+  await expect(page).toHaveURL(/\/samples(?:\?flag=[^#]+)?$/)
   await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
 })
 
@@ -173,8 +173,8 @@ test('auth and pricing entry points render without client errors', async ({ page
   const pricingPage = await page.context().newPage()
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
-  await expect(pricingPage.getByText('$39')).toBeVisible()
-  await expect(pricingPage.getByText('$129')).toBeVisible()
+  await expect(pricingPage.getByText('$39', { exact: true })).toBeVisible()
+  await expect(pricingPage.getByText('$129', { exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 

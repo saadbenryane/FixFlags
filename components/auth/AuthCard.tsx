@@ -13,7 +13,7 @@ export function AuthCard({ title, subtitle, trustLine, children, footer }: AuthC
   return (
     <div className="w-full max-w-sm space-y-4">
       <div className="space-y-1 text-center">
-        <h1 className="font-display text-xl font-semibold tracking-heading">{title}</h1>
+        <h1 className="font-sans text-xl font-semibold tracking-heading">{title}</h1>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         {trustLine && <Muted className="text-xs">{trustLine}</Muted>}
       </div>

@@ -58,7 +58,7 @@ export function FeedbackHub({ reactions, reactionCount, unread }: Props) {
             <span className="text-3xs text-muted-foreground">{reactionCount}</span>
           )}
         </TabsTrigger>
-        <TabsTrigger value="digest">AI Digest</TabsTrigger>
+        <TabsTrigger value="digest">Feedback digest</TabsTrigger>
       </TabsList>
 
       <TabsContent value="conversations" className="mt-4">

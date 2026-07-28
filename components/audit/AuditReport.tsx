@@ -57,6 +57,8 @@ import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
+import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
+import type { FixList } from '@/lib/audit/finish-plan'
 
 interface RubricRow {
   id: string
@@ -98,6 +100,7 @@ interface AuditReportProps {
     intentionalNotes?: string[]
     knownRisks?: string[]
     technologyProfile?: TechnologyProfile
+    fixList?: FixList
   }
   auditId?: string
   viewerIsPaid: boolean
@@ -123,6 +126,7 @@ interface AuditReportProps {
   pages?: JourneyPage[]
   journeyReviews?: JourneyReviewSummary[]
   recheckDiff?: RecheckDiffSummary | null
+  scoreHistory?: ReportWorkspaceHistoryPoint[]
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
 }
@@ -153,6 +157,7 @@ export function AuditReport({
   pages = [],
   journeyReviews = [],
   recheckDiff = null,
+  scoreHistory = [],
   compareHref = null,
   sampleFixFlag = null,
 }: AuditReportProps) {
@@ -193,6 +198,7 @@ export function AuditReport({
     productContract: audit.productContract ?? null,
     promptAccess: fixPromptLocked ? (sampleFixFlag ? 'one' : 'none') : 'all',
     demonstratedFlag: sampleFixFlag,
+    fixList: audit.fixList,
   })
   const completedAt =
     audit.completedAt instanceof Date
@@ -209,12 +215,16 @@ export function AuditReport({
     pageType: audit.pageType,
     checkedAt: completedAt,
     status: isPartialReport ? 'partial' : triageDegraded ? 'degraded' : 'completed',
-    shareStatus: audit.shareStatus,
-    launchReadiness: audit.launchReadiness?.readiness,
+    history: scoreHistory,
     checkedScope: pages.length > 1 ? `${pages.length} pages` : 'the submitted page',
     canShare: !isSample && isLoggedIn && isViewerOwner,
     canRecheck: !isSample && isLoggedIn && isViewerOwner,
     canGiveFeedback: showFeedback,
+    promptAccess: fixPromptLocked
+      ? sampleFixFlag
+        ? 'demonstrated'
+        : 'none'
+      : 'all',
     demonstratedFlagId: sampleFixFlag?.id,
     recheckOutcome: recheckDiff,
     degradedReason: triageDegraded ? failureCode : null,

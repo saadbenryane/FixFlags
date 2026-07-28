@@ -44,7 +44,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a complete ranked Fix list with evidence.',
+        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a ranked Fix list with evidence.',
       },
       {
         type: 'p',
@@ -71,7 +71,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Every report groups findings into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews.',
+        text: 'Every report groups Flags into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews.',
       },
       {
         type: 'p',
@@ -120,11 +120,11 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Score starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
+        text: 'The score starts at 100 and drops based on the number and severity of unresolved Flags across Message, Experience, and Reach.',
       },
       {
         type: 'p',
-        text: 'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. A rubric with any Critical flag is Blocked and its score stays below the Pass threshold. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
+        text: 'Critical Flags subtract more than Important Flags, which subtract more than Polish Flags. The report summary shows the total Critical count and a Critical count for each rubric. Select a count to open the matching Flag. The overall score weights Experience highest, then Message, then Reach. Experience may also include PageSpeed when available.',
       },
       {
         type: 'h2',

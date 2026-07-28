@@ -6,14 +6,14 @@ import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSe
 import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
 import { WhyBuildersChooseSection } from '@/components/marketing/landing/WhyBuildersChooseSection'
-import { getLiveSampleAudit } from '@/lib/marketing/live-sample'
+import { getCuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
 export const metadata = buildPageMetadata('home', '/')
 export const revalidate = 3600
 
 export default async function HomePage() {
-  const sample = await getLiveSampleAudit()
+  const sample = await getCuratedSampleAudit()
 
   return (
     <>

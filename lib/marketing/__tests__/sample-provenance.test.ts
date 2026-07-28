@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import { calculateOverallScore, gradeFromScore } from '@/lib/audit/scoring'
-import { isEligibleMarketingSample } from '@/lib/marketing/live-sample'
+import { isEligibleMarketingSample } from '@/lib/marketing/curated-sample'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { resolveDisplayScores } from '@/lib/marketing/sample-report-display'
 

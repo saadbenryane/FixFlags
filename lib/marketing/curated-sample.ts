@@ -8,10 +8,10 @@ import {
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
-/** Marketing sample provenance. Prefer live curated audits; fixture is offline/demo only. */
-export type SampleSource = 'live' | 'curated' | 'fixture'
+/** Marketing sample provenance. The public sample is a repository-owned snapshot. */
+export type SampleSource = 'curated'
 
-export type LiveSampleAudit = {
+export type CuratedSampleAudit = {
   id: string
   url: string
   pageJob: string | null
@@ -44,7 +44,7 @@ export type LiveSampleAudit = {
 }
 
 export type SampleResult = {
-  audit: LiveSampleAudit
+  audit: CuratedSampleAudit
   source: SampleSource
   pipelineVersion: string
   completedAt: Date | null
@@ -69,21 +69,20 @@ export function isEligibleMarketingSample(audit: SampleEligibilityInput): boolea
   )
 }
 
-async function fixtureSample(): Promise<SampleResult> {
+async function loadVersionedSnapshot(): Promise<SampleResult> {
   const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
   const audit = getStaticSampleAudit()
   return {
     audit,
-    source: 'fixture',
+    source: 'curated',
     pipelineVersion: PIPELINE_VERSION,
     completedAt: audit.completedAt,
   }
 }
 
-export async function getLiveSampleAudit(): Promise<SampleResult> {
+export async function getCuratedSampleAudit(): Promise<SampleResult> {
   // Marketing rendering is deterministic. This versioned snapshot is generated
   // from the completed LaunchPad demo audit and reviewed with the sample tests.
   // Production audit rows never affect homepage output or availability.
-  const result = await fixtureSample()
-  return { ...result, source: 'curated' }
+  return loadVersionedSnapshot()
 }

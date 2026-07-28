@@ -15,6 +15,7 @@ This document preserves the operator voice principles from the design system spe
 **Marketing doctrine (non-negotiable):**
 - **Hero = value only.** One short trust line under the URL field. No privacy, claim, or legal stack on the homepage.
 - **Paste verbs over readiness adjectives.** Prefer `Copy for Cursor` / `Paste into Lovable` over `ready`, `AI-ready`, `Agent-ready`, `fix prompt ready`.
+- **Counts over stacked status labels.** Report summaries show Critical counts. Do not pair `Needs Attention` or `Blocked` with the same severity signal.
 - **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ, not marketing heroes or logo clouds.
 - **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
 - **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *re-check*.

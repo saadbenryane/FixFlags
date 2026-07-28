@@ -53,3 +53,15 @@ export function mobileViewportSizeForHeight(viewportHeight: number): {
     width: mobileDisplayWidthForViewportHeight(viewportHeight),
   }
 }
+
+/**
+ * Mobile frame width required for its viewport height to match a desktop frame.
+ * Both widths are display pixels; the result is independent of capture scale.
+ */
+export function equalHeightMobileWidthForDesktopWidth(
+  desktopWidth: number
+): number {
+  const desktopHeight =
+    desktopWidth * (DESKTOP_VIEWPORT.height / DESKTOP_VIEWPORT.width)
+  return mobileDisplayWidthForViewportHeight(desktopHeight)
+}

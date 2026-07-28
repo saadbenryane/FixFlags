@@ -1,54 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { RubricBar } from '@/components/audit/RubricBar'
-import type { RubricComputed } from '@/lib/audit/rubric'
-
-function rubric(overrides: Partial<RubricComputed> & { name: string }): RubricComputed {
-  return {
-    status: 'PASS',
-    flagCount: 0,
-    criticalCount: 0,
-    importantCount: 0,
-    ...overrides,
-  }
-}
 
 describe('RubricBar', () => {
-  it('shows critical count when present', () => {
+  it('links a rubric with Critical Flags to its first Critical Flag', () => {
     render(
       <RubricBar
         rubrics={[
-          rubric({ name: 'MESSAGE', status: 'BLOCKED', flagCount: 2, criticalCount: 2 }),
-          rubric({ name: 'EXPERIENCE' }),
-          rubric({ name: 'REACH', status: 'NEEDS_ATTENTION', flagCount: 1, importantCount: 1 }),
+          { name: 'MESSAGE', criticalCount: 2 },
+          { name: 'EXPERIENCE', criticalCount: 0 },
+          { name: 'REACH', criticalCount: 0 },
         ]}
-        rubricRows={[
-          { name: 'MESSAGE', score: 40, grade: 'F' },
-          { name: 'EXPERIENCE', score: 90, grade: 'A' },
-          { name: 'REACH', score: 72, grade: 'C' },
-        ]}
+        firstCriticalIds={{ MESSAGE: 'flag-message-1' }}
       />
     )
     expect(screen.getByText('2 critical')).toBeInTheDocument()
-    expect(screen.getByText('1 flag')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Show 2 Critical Flags in Message' })
+    ).toHaveAttribute(
+      'href',
+      '?rubric=MESSAGE&severity=CRITICAL&flag=flag-message-1#report-flags'
+    )
   })
 
-  it('omits flag counts when a rubric is clean', () => {
+  it('links a rubric without Critical Flags to its complete Flag list', () => {
     render(
       <RubricBar
         rubrics={[
-          rubric({ name: 'MESSAGE' }),
-          rubric({ name: 'EXPERIENCE' }),
-          rubric({ name: 'REACH' }),
+          { name: 'MESSAGE', criticalCount: 0 },
+          { name: 'EXPERIENCE', criticalCount: 0 },
+          { name: 'REACH', criticalCount: 0 },
         ]}
-        rubricRows={[
-          { name: 'MESSAGE', score: 99, grade: 'A' },
-          { name: 'EXPERIENCE', score: 95, grade: 'A' },
-          { name: 'REACH', score: 88, grade: 'B' },
-        ]}
+        firstCriticalIds={{}}
       />
     )
-    expect(screen.queryByText(/critical/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/flags?/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('0 critical')).toHaveLength(3)
+    expect(
+      screen.getByRole('link', { name: 'Show all Experience Flags' })
+    ).toHaveAttribute('href', '?rubric=EXPERIENCE#report-flags')
   })
 })

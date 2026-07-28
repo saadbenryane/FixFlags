@@ -24,7 +24,7 @@ const TYPE_LABELS: Record<string, { label: string; color: 'destructive' | 'secon
   'template-copy': { label: 'Template Copy', color: 'secondary' },
   'ai-builder': { label: 'AI Builder Artifact', color: 'outline' },
   'template-token': { label: 'Template Token', color: 'destructive' },
-  'social-proof': { label: 'Social Proof Issue', color: 'secondary' },
+  'social-proof': { label: 'Social proof', color: 'secondary' },
 }
 
 function severityClass(type: string): string {
@@ -106,7 +106,7 @@ export function PlaceholderDetectorClient() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-warning" aria-hidden />
-            <h2 className="font-semibold">{matches.length} issue{matches.length !== 1 ? 's' : ''} found</h2>
+            <h2 className="font-semibold">{matches.length} match{matches.length !== 1 ? 'es' : ''} found</h2>
           </div>
 
           <div className="space-y-3">

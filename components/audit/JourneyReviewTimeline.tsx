@@ -62,7 +62,7 @@ export function JourneyReviewTimeline({ reviews }: Props) {
                 {review.goalAchieved
                   ? 'Goal reached'
                   : review.findingsCount > 0
-                    ? `${review.findingsCount} finding${review.findingsCount === 1 ? '' : 's'}`
+                    ? `${review.findingsCount} ${review.findingsCount === 1 ? 'Flag' : 'Flags'}`
                     : review.status}
               </span>
             </div>

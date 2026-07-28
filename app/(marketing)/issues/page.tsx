@@ -45,19 +45,19 @@ export default async function IssuesIndexPage() {
         <div className="space-y-8 sm:space-y-10">
           <div className="text-center space-y-3">
             <Heading as="h1" className="text-3xl sm:text-4xl font-bold">
-              Issue Library
+              Flag Library
             </Heading>
             <Lead className="max-w-xl mx-auto text-muted-foreground">
-              Real issues found across {issues.length > 0 ? issuesWithMeta[0]?.siteCount ?? MIN_SAMPLE_SIZE : MIN_SAMPLE_SIZE}+
-              audited sites. Each page shows frequency, affected frameworks, anonymized examples, and a fix.
+              Real Flags from {issues.length > 0 ? issuesWithMeta[0]?.siteCount ?? MIN_SAMPLE_SIZE : MIN_SAMPLE_SIZE}+
+              checked sites. Each page shows frequency, affected frameworks, anonymized examples, and a fix.
             </Lead>
           </div>
 
           {issuesWithMeta.length === 0 ? (
             <div className="text-center py-12">
               <Muted>
-                No issues have crossed the sample-size threshold yet.
-                We need data from at least {MIN_SAMPLE_SIZE} audited sites per issue.
+                No Flags have crossed the sample-size threshold yet.
+                We need data from at least {MIN_SAMPLE_SIZE} checked sites per Flag.
               </Muted>
             </div>
           ) : (

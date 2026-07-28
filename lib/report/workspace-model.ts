@@ -1,10 +1,5 @@
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
-import type { LaunchReadinessValue } from '@/lib/audit/launch-readiness'
-import {
-  computeRubricStatus,
-  type RubricStatus,
-  type ShareStatus,
-} from '@/lib/audit/rubric'
+import { computeRubricStatus, type RubricStatus } from '@/lib/audit/rubric'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import { rubricLabel } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -23,12 +18,7 @@ export type ReportWorkspaceStatus =
   | 'failed'
   | 'unavailable'
 
-export type ReportWorkspaceReadiness =
-  | 'ready'
-  | 'fix_first'
-  | 'not_ready'
-  | 'checking'
-  | 'unavailable'
+export type ReportPromptAccess = 'none' | 'demonstrated' | 'all'
 
 export interface ReportWorkspaceHistoryPoint {
   id: string
@@ -58,17 +48,17 @@ export interface ReportWorkspaceModel {
   }
   outcome: {
     unresolvedCount: number
-    highImpactCount: number
+    criticalCount: number
     checkedScope: string | null
   }
   summary: {
-    readiness: ReportWorkspaceReadiness
     score: number | null
     rubrics: ReportWorkspaceRubric[]
     history: ReportWorkspaceHistoryPoint[] | null
   }
   explorer: ReportExplorerModel
   capabilities: {
+    promptAccess: ReportPromptAccess
     canCopyPrompts: boolean
     canShare: boolean
     canRecheck: boolean
@@ -92,13 +82,12 @@ export interface BuildReportWorkspaceModelInput {
   checkedAt?: Date | null
   status?: ReportWorkspaceStatus
   loading?: boolean
-  shareStatus?: ShareStatus | null
-  launchReadiness?: LaunchReadinessValue | null
   history?: ReportWorkspaceHistoryPoint[]
   checkedScope?: string | null
   canShare?: boolean
   canRecheck?: boolean
   canGiveFeedback?: boolean
+  promptAccess?: ReportPromptAccess
   demonstratedFlagId?: string | null
   recheckOutcome?: unknown | null
   degradedReason?: string | null
@@ -144,34 +133,6 @@ export function buildWorkspaceRubrics(
   })
 }
 
-export function resolveWorkspaceReadiness(input: {
-  loading?: boolean
-  status?: ReportWorkspaceStatus
-  shareStatus?: ShareStatus | null
-  launchReadiness?: LaunchReadinessValue | null
-  rubrics: ReportWorkspaceRubric[]
-}): ReportWorkspaceReadiness {
-  if (input.loading || input.status === 'checking') return 'checking'
-  if (input.status === 'failed' || input.status === 'unavailable') return 'unavailable'
-  if (input.launchReadiness === 'not_ready') return 'not_ready'
-  if (
-    input.launchReadiness === 'fix_first' ||
-    input.shareStatus === 'fix_before_sharing' ||
-    input.rubrics.some((rubric) => rubric.status === 'BLOCKED')
-  ) {
-    return 'fix_first'
-  }
-  if (
-    input.launchReadiness === 'safe' ||
-    input.shareStatus === 'good_to_share'
-  ) {
-    return 'ready'
-  }
-  return input.rubrics.every((rubric) => rubric.score === null)
-    ? 'unavailable'
-    : 'fix_first'
-}
-
 export function normalizeWorkspaceHistory(
   history: ReportWorkspaceHistoryPoint[] | undefined
 ): ReportWorkspaceHistoryPoint[] | null {
@@ -187,9 +148,10 @@ export function buildReportWorkspaceModel(
   const rubrics = buildWorkspaceRubrics(input.explorer)
   const url = input.url ?? null
   const status = input.status ?? (input.loading ? 'checking' : 'completed')
-  const highImpactCount = input.explorer.flags.filter(
-    (flag) => flag.severity === 'CRITICAL' || flag.severity === 'IMPORTANT'
+  const criticalCount = input.explorer.flags.filter(
+    (flag) => flag.severity === 'CRITICAL'
   ).length
+  const promptAccess = input.promptAccess ?? 'all'
 
   return {
     identity: {
@@ -203,24 +165,20 @@ export function buildReportWorkspaceModel(
     },
     outcome: {
       unresolvedCount: input.explorer.flagCount,
-      highImpactCount,
+      criticalCount,
       checkedScope: input.checkedScope ?? null,
     },
     summary: {
-      readiness: resolveWorkspaceReadiness({
-        loading: input.loading,
-        status,
-        shareStatus: input.shareStatus,
-        launchReadiness: input.launchReadiness,
-        rubrics,
-      }),
       score: input.explorer.score,
       rubrics,
       history: normalizeWorkspaceHistory(input.history),
     },
     explorer: input.explorer,
     capabilities: {
-      canCopyPrompts: input.explorer.flags.some((flag) => flag.hasFixPrompt),
+      promptAccess,
+      canCopyPrompts:
+        promptAccess !== 'none' &&
+        input.explorer.flags.some((flag) => flag.hasFixPrompt),
       canShare: input.canShare ?? false,
       canRecheck: input.canRecheck ?? false,
       canGiveFeedback: input.canGiveFeedback ?? false,

@@ -15,13 +15,13 @@ export const AUDIT_ERRORS = {
   generic:
     "We couldn't complete this check. The site may be unreachable or blocking automated visits.",
   scannerUnavailable:
-    'Our scanner is temporarily unavailable. Please try again in a few minutes.',
+    'The scanner is temporarily unavailable. Try again in a few minutes.',
   captureFailed: 'We could not capture a screenshot of this page. Check that the URL is public and loads in a browser.',
   siteBlocked: 'This site blocked our automated visit. Try again later or check from a public URL.',
   rateLimited: 'This site is rate-limiting requests. Try again in a few minutes.',
   unreachable: 'We could not reach this page. Check the URL and try again.',
   notHtml: 'This URL did not return a normal web page. Check the link and try again.',
-  aiReviewFailed: 'AI review could not finish for this check. Please try again.',
+  aiReviewFailed: 'AI review could not finish. Try again.',
   partialAiReview: 'AI review could not finish. Deterministic checks are shown below.',
   triageDegradedAnonymous:
     'Automated checks are complete. AI summary was unavailable for this run. Sign up to retry with full AI review and fix prompts.',

@@ -84,13 +84,13 @@ export function McpDashboardCard({
               <span className="font-medium text-foreground tabular-nums">
                 {mcpAudits}
               </span>{" "}
-              <span className="text-muted-foreground">audits via MCP</span>
+              <span className="text-muted-foreground">checks through MCP</span>
             </div>
             <div>
               <span className="font-medium text-foreground tabular-nums">
                 {webAudits}
               </span>{" "}
-              <span className="text-muted-foreground">audits via web</span>
+              <span className="text-muted-foreground">checks through web</span>
             </div>
           </div>
         )}

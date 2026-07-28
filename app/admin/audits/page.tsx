@@ -38,10 +38,10 @@ export default async function AdminAuditsPage() {
   return (
     <Container variant="wide" className="space-y-8 py-8">
       <PageHeader
-        title="Recent audits"
+        title="Recent checks"
         description="Pipeline runs with token usage and estimated LLM cost."
       />
-      <AdminTable isEmpty={audits.length === 0} emptyMessage="No audits yet.">
+      <AdminTable isEmpty={audits.length === 0} emptyMessage="No checks yet.">
         <AdminTableHead>
           <AdminTableHeaderCell>URL</AdminTableHeaderCell>
           <AdminTableHeaderCell>User</AdminTableHeaderCell>

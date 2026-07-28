@@ -52,11 +52,11 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 | Altitude | Surface | Score treatment |
 |----------|---------|-----------------|
 | Identity | `AuditReportHero` | Hostname, URL, scan status, and actions only |
-| Summary | `ReportOverviewBand` | One overall readiness value plus Message, Experience, and Reach |
+| Summary | `ReportWorkspaceSummary` | Total Critical Flags plus Critical counts for Message, Experience, and Reach |
 | Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside rubric/page filters (no severity filter) |
 | Stuck chrome | `ReportStickyToolbar` when stuck | Hostname only, with no repeated score |
 
-Share readiness is not a second rubric strip. RubricBar owns score + status + critical/flag counts. When shareStatus is `fix_before_sharing`, ShareDrawer shows one warning line (no rubric pills). Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
+The summary is a shortcut, not a second scoring system. Its Critical total opens the first Critical Flag; each rubric control opens that rubric and its first Critical Flag when one exists. Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts. When shareStatus is `fix_before_sharing`, ShareDrawer may show one warning line. Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Made with:** One compact glass disclosure sits before the complete Fix list. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector re-check diff states are explicit. Use Lucide category icons, not remote logos.
 
@@ -142,7 +142,11 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## States
 
-Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The canonical report is one calm, dense-enough workspace: identity and readiness first, then a ranked master/detail Fix list containing every unresolved Flag. Keep the list independently scrollable on desktop and place the selected detail after the list on mobile. Legacy details URLs redirect to this workspace.
+Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The canonical report is one calm, dense-enough workspace: identity, Critical counts, then a ranked master/detail Fix list containing every unresolved Flag. Keep the list independently scrollable on desktop and place the selected detail after the list on mobile. Legacy details URLs redirect to this workspace.
+
+`ReportWorkspaceModel` composes the canonical `ReportExplorerModel` with identity, unresolved and Critical counts, rubric coverage, real Re-check history, and capabilities. Completed, progressive, curated sample, shared, Re-check, homepage proof, and dashboard release-hub surfaces project this same model. Density may be `compact`, `full`, or `hub`; density changes spacing and available actions, never ranking, evidence, access policy, or scoring semantics.
+
+The workspace heading is “Fix list.” Its supporting line states the unresolved count and checked scope. The segmented summary owns the total Critical count, per-rubric Critical shortcuts, and score history. History appears only with two or more persisted completed points ordered by completion time. Public curated samples expose the complete ranked list and exactly one demonstrated prompt.
 
 Every interactive element must define: rest, hover, focus, active, disabled.
 

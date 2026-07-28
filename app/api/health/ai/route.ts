@@ -18,11 +18,18 @@ export async function GET(request: NextRequest) {
     const validate = request.nextUrl.searchParams.get('validate') === '1'
     const validation = validate ? await validateAiProviderCredentials() : undefined
     const credentialsOk = validation ? validation.ok : true
+    const credentialValidation = validate
+      ? validation?.ok
+        ? 'valid'
+        : 'invalid'
+      : 'not_checked'
 
     return NextResponse.json({
       ok: ai.configured && schemaValid && credentialsOk,
       ai,
       triageSchemaLoaded: schemaValid,
+      credentialValidation,
+      ...(validation ? { validatedAt: new Date().toISOString() } : {}),
       ...(validation ? { validation } : {}),
     })
   } catch (error) {

@@ -71,9 +71,9 @@ export default async function AdminPage() {
   ]
 
   const stats = [
-    { label: 'Total audits', value: totalAudits.toLocaleString() },
-    { label: 'Audits today', value: auditsToday.toLocaleString() },
-    { label: 'Audits this week', value: auditsThisWeek.toLocaleString() },
+    { label: 'Total checks', value: totalAudits.toLocaleString() },
+    { label: 'Checks today', value: auditsToday.toLocaleString() },
+    { label: 'Checks this week', value: auditsThisWeek.toLocaleString() },
     { label: 'Failed (24h)', value: failedLast24h.toLocaleString() },
     { label: 'Active users (7d)', value: activeUsers.toLocaleString() },
   ]
@@ -84,7 +84,7 @@ export default async function AdminPage() {
     { label: 'Est. cost (7d)', value: formatUsd(costWeek) },
     { label: 'Cost / scan (today)', value: formatUsd(costPerScanToday) },
     { label: 'Cost / scan (7d)', value: formatUsd(costPerScanWeek) },
-    { label: 'Avg cost / audit', value: formatUsd(avgCost) },
+    { label: 'Average cost / check', value: formatUsd(avgCost) },
     { label: 'LLM tokens (in+out)', value: totalTokens.toLocaleString() },
   ]
 

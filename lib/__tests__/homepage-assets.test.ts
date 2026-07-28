@@ -1,32 +1,62 @@
-import { access, stat } from 'node:fs/promises'
+import { access, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
-import { LANDING_PAGE } from '@/lib/marketing/copy'
 
 const ROOT = process.cwd()
 
-const PERMANENT_HOMEPAGE_ASSETS = [
-  '/marketing/visuals/home-hero-master-v2.webp',
-  '/marketing/visuals/how-it-works-glass-plate-v2.webp',
-  '/marketing/visuals/builder-workflow-scene-v2.webp',
-  ...LANDING_PAGE.editorIntegrations.steps.map((step) => step.visual.src),
-] as const
+interface ArtworkManifestEntry {
+  id: string
+  src: string
+  width: number
+  height: number
+  requiresAlpha: boolean
+  contentBearing: boolean
+  requiredTerms: string[]
+}
+
+const manifest = JSON.parse(
+  await readFile(
+    path.join(ROOT, 'lib', 'marketing', 'artwork-manifest.json'),
+    'utf8'
+  )
+) as { assets: ArtworkManifestEntry[] }
 
 describe('homepage permanent artwork', () => {
-  it.each(PERMANENT_HOMEPAGE_ASSETS)('%s exists, is high-density, and has alpha', async (src) => {
-    const file = path.join(ROOT, 'public', src)
-    await expect(access(file)).resolves.toBeUndefined()
+  it.each(manifest.assets)(
+    '$id exists and matches its recorded delivery contract',
+    async ({ src, width, height, requiresAlpha }) => {
+      const file = path.join(ROOT, 'public', src)
+      await expect(access(file)).resolves.toBeUndefined()
 
-    const [fileStat, metadata] = await Promise.all([
-      stat(file),
-      sharp(file).metadata(),
-    ])
+      const [fileStat, metadata] = await Promise.all([
+        stat(file),
+        sharp(file).metadata(),
+      ])
 
-    expect(fileStat.size).toBeGreaterThan(10_000)
-    expect(metadata.width).toBeGreaterThanOrEqual(1200)
-    expect(metadata.height).toBeGreaterThanOrEqual(900)
-    expect(metadata.hasAlpha).toBe(true)
+      expect(fileStat.size).toBeGreaterThan(10_000)
+      expect(metadata.width).toBe(width)
+      expect(metadata.height).toBe(height)
+      if (requiresAlpha) {
+        expect(metadata.hasAlpha).toBe(true)
+      }
+    }
+  )
+
+  it('records product-truth terms for every content-bearing illustration', () => {
+    for (const asset of manifest.assets.filter((entry) => entry.contentBearing)) {
+      expect(asset.requiredTerms.length, asset.id).toBeGreaterThan(0)
+      expect(asset.requiredTerms.join(' ')).not.toMatch(
+        /Run Audit|Lighthouse|Performance Score|Best Practices|automatic PR|coming soon/i
+      )
+    }
+  })
+
+  it('keeps every generated asset inside the permanent public directory', async () => {
+    for (const { src } of manifest.assets) {
+      const file = path.join(ROOT, 'public', src)
+      await expect(access(file)).resolves.toBeUndefined()
+    }
   })
 
   it('does not ship the superseded Lighthouse-oriented artwork', async () => {

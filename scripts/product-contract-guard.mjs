@@ -47,9 +47,11 @@ if (home.includes('ReportExamplesSection')) {
 const nav = read('lib/site/nav.ts').split('export const FOOTER_COLUMNS')[0]
 if (nav.includes("'/roast'")) violations.push('lib/site/nav.ts: Roast returned to primary navigation')
 
-const sample = read('lib/marketing/live-sample.ts')
+const sample = read('lib/marketing/curated-sample.ts')
 if (sample.includes("from '@/lib/db'") || sample.includes('prisma.audit')) {
-  violations.push('lib/marketing/live-sample.ts: marketing sample depends on runtime database state')
+  violations.push(
+    'lib/marketing/curated-sample.ts: marketing sample depends on runtime database state'
+  )
 }
 
 const reportRoute = read('app/report/[id]/page.tsx')

@@ -41,7 +41,7 @@ describe('getSampleSiteDisplay', () => {
 
 describe('sampleStatusLabel', () => {
   it('uses demo fixture context on marketing pages', () => {
-    const label = sampleStatusLabel('live', {
+    const label = sampleStatusLabel('curated', {
       marketing: true,
       isDemoFixture: true,
       version: '2.1.0',

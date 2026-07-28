@@ -53,7 +53,7 @@ export const AUTH = {
     backToSignIn: 'Back to sign in',
     invalidBackupCode: 'Invalid backup code',
     backupCodeError: 'Could not verify backup code',
-    sessionExpired: 'Your session expired. Please sign in again.',
+    sessionExpired: 'Your session expired. Sign in again.',
     signInAgain: 'Sign in again',
   },
   security: {
@@ -115,7 +115,7 @@ export const AUTH = {
     cta: 'Create account',
     footer: 'Already have an account?',
     footerLink: 'Sign in',
-    tryWithoutAccount: 'Audit a site without an account',
+    tryWithoutAccount: 'Check a site without an account',
     error: 'Sign up failed',
     unexpectedError: 'Something went wrong',
     emailLabel: 'Email',
@@ -138,7 +138,7 @@ export const AUTH = {
   },
   error: {
     title: 'Could not load this page',
-    body: 'Something went wrong. Please try again or return to the homepage.',
+    body: 'Something went wrong. Try again or return to the homepage.',
     retryCta: 'Try again',
     homeCta: 'Home',
   },
@@ -147,7 +147,7 @@ export const AUTH = {
     continueWithGitHub: 'Continue with GitHub',
     signInFailed: 'Sign in failed. Try again.',
     separator: 'or',
-    popupBlocked: 'The sign-in popup was blocked. Please allow popups and try again.',
+    popupBlocked: 'Your browser blocked the sign-in popup. Allow popups, then try again.',
   },
   password: {
     showLabel: 'Show password',
@@ -181,12 +181,12 @@ export const AUTH = {
       changePasswordChanging: 'Changing\u2026',
       changePasswordSuccess: 'Password changed and other sessions revoked',
       deleteTitle: 'Delete account',
-      deleteDescription: 'This permanently removes your audits, screenshots, projects, API keys, and account.',
+      deleteDescription: 'This permanently removes your reports, screenshots, projects, API keys, and account.',
       deletePasswordLabel: 'Password, if your account has one',
       deleteCta: 'Delete account',
       deleteConfirming: 'Sending confirmation\u2026',
       deleteConfirmTitle: 'Delete your account?',
-      deleteConfirmDescription: 'This permanently deletes your account, audits, screenshots, and API keys.',
+      deleteConfirmDescription: 'This permanently deletes your account, reports, screenshots, and API keys.',
       deleteConfirmLabel: 'Delete account',
       deleteSuccess: 'Check your email to confirm account deletion',
       errorTitle: 'Could not update account',
@@ -207,7 +207,7 @@ export const AUTH = {
   me: {
     loadError: 'Could not load your account.',
     claimError: 'Could not save your report to this account.',
-    claimSuccess: (n: number) => `Saved ${n} audit${n !== 1 ? 's' : ''} to your account`,
+    claimSuccess: (n: number) => `Saved ${n} report${n !== 1 ? 's' : ''} to your account`,
     claimFailure: 'Could not save your scan to this account. Refresh and try again.',
   },
   passkeyEnroll: {
@@ -293,11 +293,11 @@ export const ANON_VALUE_STRIP = {
 } as const
 
 export const LOCKED_INSPECTION = {
-  headline: 'Sign in to inspect this issue',
+  headline: 'Sign in to inspect this Flag',
   body: 'This report includes evidence, screenshots, and fix prompts for every flag.',
   features: [
     'Screenshot evidence with interactive pins',
-    'Detailed explanation of the issue',
+    'Detailed explanation of the Flag',
     'Why this matters for your users',
     'How to verify the fix',
     'Fix prompt for your editor',

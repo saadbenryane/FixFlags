@@ -151,7 +151,7 @@ export function ReactionsList({ reportSummary, reportComments, flagGroups }: Pro
                   </ul>
                 )}
                 <TextLink href={`/admin/audits/${g.sampleAuditId}`} className="text-xs">
-                  View source audit &rarr;
+                  View source check &rarr;
                 </TextLink>
               </Card>
             ))}

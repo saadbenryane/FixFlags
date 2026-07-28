@@ -1,17 +1,9 @@
-import { AlertTriangle, Flag, History, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Flag, History } from 'lucide-react'
 import { RubricBar } from '@/components/audit/RubricBar'
 import { ScoreSparkline } from '@/components/audit/ScoreSparkline'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
-
-const READINESS_LABELS = {
-  ready: REPORT_COPY.workspace.readiness.ready,
-  fix_first: REPORT_COPY.workspace.readiness.fixFirst,
-  not_ready: REPORT_COPY.workspace.readiness.notReady,
-  checking: REPORT_COPY.workspace.readiness.checking,
-  unavailable: REPORT_COPY.workspace.readiness.unavailable,
-} as const
 
 export function ReportWorkspaceOutcome({
   model,
@@ -23,11 +15,9 @@ export function ReportWorkspaceOutcome({
   className?: string
 }) {
   const unresolved = model.outcome.unresolvedCount
-  const highImpact = model.outcome.highImpactCount
 
   return (
     <header className={cn('space-y-2', className)}>
-      <p className="section-label">{REPORT_COPY.workspace.eyebrow}</p>
       <h2
         className={cn(
           'font-sans font-semibold tracking-heading text-balance text-foreground',
@@ -41,7 +31,6 @@ export function ReportWorkspaceOutcome({
           ? REPORT_COPY.workspace.checkingScope
           : REPORT_COPY.workspace.context({
               unresolved,
-              highImpact,
               checkedScope: model.outcome.checkedScope,
             })}
       </p>
@@ -58,17 +47,25 @@ export function ReportWorkspaceSummary({
 }) {
   const rubrics = model.summary.rubrics.map((rubric) => ({
     name: rubric.name,
-    status: rubric.status,
-    flagCount: rubric.flagCount,
     criticalCount: rubric.criticalCount,
-    importantCount: rubric.importantCount,
-  }))
-  const rubricRows = model.summary.rubrics.map((rubric) => ({
-    name: rubric.name,
-    score: rubric.score,
-    grade: rubric.grade,
   }))
   const scores = model.summary.history?.map((point) => point.score) ?? []
+  const firstCritical = model.explorer.flags.find(
+    (flag) => flag.severity === 'CRITICAL'
+  )
+  const firstCriticalIds = Object.fromEntries(
+    model.summary.rubrics.flatMap((rubric) => {
+      const flag = model.explorer.flags.find(
+        (candidate) =>
+          candidate.rubric === rubric.name &&
+          candidate.severity === 'CRITICAL'
+      )
+      return flag ? [[rubric.name, flag.id]] : []
+    })
+  )
+  const criticalHref = firstCritical
+    ? `?severity=CRITICAL&flag=${encodeURIComponent(firstCritical.id)}#report-flags`
+    : undefined
 
   return (
     <section
@@ -82,31 +79,33 @@ export function ReportWorkspaceSummary({
         className={cn(
           'grid',
           scores.length > 1
-            ? 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(10rem,0.8fr)_minmax(0,2fr)_minmax(10rem,0.9fr)]'
-            : 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(10rem,0.8fr)_minmax(0,2fr)]'
+            ? 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(0,2.4fr)_minmax(10rem,0.9fr)]'
+            : 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(0,2.4fr)]'
         )}
       >
         <SummarySegment
-          icon={ShieldCheck}
-          label={REPORT_COPY.workspace.readiness.label}
-          value={READINESS_LABELS[model.summary.readiness]}
-        />
-        <SummarySegment
-          icon={model.outcome.highImpactCount > 0 ? AlertTriangle : Flag}
-          label={REPORT_COPY.workspace.highImpact}
+          icon={model.outcome.criticalCount > 0 ? AlertTriangle : Flag}
+          label={REPORT_COPY.workspace.criticalFlags}
           value={
-            model.context.loading && model.outcome.unresolvedCount === 0
-              ? REPORT_COPY.workspace.readiness.checking
-              : String(model.outcome.highImpactCount)
+            model.context.loading
+              ? REPORT_COPY.reportFirst.checkingLabel
+              : String(model.outcome.criticalCount)
+          }
+          href={criticalHref}
+          ariaLabel={
+            model.context.loading
+              ? REPORT_COPY.reportFirst.statusPendingLabel
+              : model.outcome.criticalCount > 0
+                ? REPORT_COPY.workspace.showCriticalFlags(
+                    model.outcome.criticalCount
+                  )
+                : REPORT_COPY.workspace.criticalCount(0)
           }
         />
-        <div className="min-w-0 border-t border-border/35 p-3 sm:p-4 md:border-l md:border-t-0">
-          <p className="mb-2 text-2xs font-medium uppercase tracking-label text-muted-foreground">
-            {REPORT_COPY.workspace.rubricCoverage}
-          </p>
+        <div className="min-w-0 border-t border-border/35 md:border-l md:border-t-0">
           <RubricBar
             rubrics={rubrics}
-            rubricRows={rubricRows}
+            firstCriticalIds={firstCriticalIds}
             loading={model.context.loading}
           />
         </div>
@@ -141,13 +140,17 @@ function SummarySegment({
   icon: Icon,
   label,
   value,
+  ariaLabel,
+  href,
 }: {
   icon: typeof Flag
   label: string
   value: string
+  ariaLabel?: string
+  href?: string
 }) {
-  return (
-    <div className="flex min-h-16 items-center gap-3 border-t border-border/35 p-3 first:border-t-0 sm:p-4 md:border-l md:border-t-0 md:first:border-l-0">
+  const content = (
+    <>
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <div className="min-w-0">
         <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
@@ -157,6 +160,22 @@ function SummarySegment({
           {value}
         </p>
       </div>
+    </>
+  )
+
+  const className = cn(
+    'flex min-h-16 items-center gap-3 border-t border-border/35 p-3 first:border-t-0 sm:p-4 md:border-l md:border-t-0 md:first:border-l-0',
+    href &&
+      'transition-colors duration-150 hover:bg-accent/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+  )
+
+  return href ? (
+    <a href={href} aria-label={ariaLabel} className={className}>
+      {content}
+    </a>
+  ) : (
+    <div aria-label={ariaLabel} className={className}>
+      {content}
     </div>
   )
 }

@@ -127,7 +127,7 @@ export default async function BillingPage() {
           <Callout variant="danger" title="Payment issue">
             {user.subscriptionStatus === 'CANCELED'
               ? 'Your subscription has been canceled. Features may be downgraded.'
-              : 'Your subscription is unpaid. Please check your payment method.'}
+              : 'Your subscription is unpaid. Check your payment method.'}
           </Callout>
         )}
         <UsageMeter
@@ -174,7 +174,7 @@ export default async function BillingPage() {
           <SectionTitle>Credits</SectionTitle>
           {purchasedCreditsRemaining > 0 && (
             <p className="text-sm text-muted-foreground">
-              {purchasedCreditsRemaining} purchased audit{purchasedCreditsRemaining !== 1 ? 's' : ''} available
+              {purchasedCreditsRemaining} purchased check{purchasedCreditsRemaining !== 1 ? 's' : ''} available
             </p>
           )}
           {purchasedCreditsRemaining === 0 && (

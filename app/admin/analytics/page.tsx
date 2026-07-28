@@ -150,21 +150,21 @@ export default async function AdminAnalyticsPage() {
       </PageHeader>
 
       <section className="space-y-4">
-        <SectionTitle>Anonymous wedge (last 30 days)</SectionTitle>
+        <SectionTitle>Anonymous report conversion (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            label="Anon teaser starts"
+            label="Anonymous checks started"
             value={anonAuditsMonth.toLocaleString()}
             variant="subtle"
           />
           <MetricCard
-            label="Anon teaser completes"
+            label="Anonymous checks completed"
             value={anonCompletedMonth.toLocaleString()}
             detail={<span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>}
             variant="subtle"
           />
           <MetricCard
-            label="Signed-in audit starts"
+            label="Signed-in checks started"
             value={loggedInAuditsMonth.toLocaleString()}
             variant="subtle"
           />
@@ -180,22 +180,22 @@ export default async function AdminAnalyticsPage() {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Anon teaser = audits with no user at create time. Claim conversion is tracked in GA4 via{' '}
+          Anonymous checks have no account when created. Account conversion is tracked in GA4 through{' '}
           <code className="font-mono text-foreground">report_signup_cta_clicked</code> and{' '}
           <code className="font-mono text-foreground">audits_claimed</code>.
         </p>
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Account and audit totals (all time)</SectionTitle>
+        <SectionTitle>Account and check totals (all time)</SectionTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
           These are independent database totals, not sequential funnel steps. Use the GA4 event funnel for stage-to-stage conversion.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: 'Total accounts', value: totalUsers },
-            { label: 'Accounts with an audit', value: usersWithAudits },
-            { label: 'Accounts with a completed audit', value: usersWithCompletedAudits },
+            { label: 'Accounts with a check', value: usersWithAudits },
+            { label: 'Accounts with a completed check', value: usersWithCompletedAudits },
             { label: 'Paid accounts', value: paidUsers },
           ].map((item) => (
             <MetricCard
@@ -246,7 +246,7 @@ export default async function AdminAnalyticsPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div>
-                  <span className="text-xs text-muted-foreground">Audits</span>
+                  <span className="text-xs text-muted-foreground">Checks</span>
                   <StatValue>{p.audits.toLocaleString()}</StatValue>
                 </div>
                 {p.users !== null && (
@@ -271,13 +271,13 @@ export default async function AdminAnalyticsPage() {
         <SectionTitle>Product (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetricCard
-            label="Avg audit duration"
+            label="Average check duration"
             value={avgAuditDurationSeconds === null ? 'N/A' : `${avgAuditDurationSeconds.toFixed(1)}s`}
             detail={<span className="text-xs text-muted-foreground">Target: under 30s</span>}
             variant="subtle"
           />
           <MetricCard
-            label="Completed audits"
+            label="Completed checks"
             value={completedAuditsMonth.length.toLocaleString()}
             variant="subtle"
           />
@@ -285,10 +285,10 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Traffic sources (last 30 days, by audit UTM source)</SectionTitle>
+        <SectionTitle>Traffic sources (last 30 days, by check UTM source)</SectionTitle>
         <div className="rounded-card bg-muted/30 p-4 text-sm space-y-2">
           {trafficSourceRows.length === 0 ? (
-            <p className="text-muted-foreground">No audits in this period.</p>
+            <p className="text-muted-foreground">No checks in this period.</p>
           ) : (
             trafficSourceRows.map((row) => (
               <div key={row.source} className="flex items-center justify-between">
@@ -312,9 +312,9 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">viewed_pricing</code>: Pricing page viewed</p>
           <p><code className="text-foreground font-mono text-xs">started_checkout</code>: Upgrade button clicked</p>
           <p><code className="text-foreground font-mono text-xs">completed_checkout</code>: Stripe checkout succeeded</p>
-          <p><code className="text-foreground font-mono text-xs">audit_completed</code>: Audit finished processing</p>
-          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code>: Top flag shown in explorer</p>
-          <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code>: Free tier limit hit</p>
+          <p><code className="text-foreground font-mono text-xs">audit_completed</code>: Check finished processing</p>
+          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code>: Top Flag shown in explorer</p>
+          <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code>: Free check limit reached</p>
           <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code>: Fix prompt copied to clipboard</p>
           <p><code className="text-foreground font-mono text-xs">recheck_started</code>: Owner started a re-check</p>
           <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Re-check result viewed (compare page or report diff strip)</p>
@@ -323,7 +323,7 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">viewed_sample</code>: Sample report section viewed</p>
           <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code>: Sample CTA clicked</p>
           <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code>: Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
-          <p><code className="text-foreground font-mono text-xs">audits_claimed</code>: Anonymous audits claimed after signup</p>
+          <p><code className="text-foreground font-mono text-xs">audits_claimed</code>: Anonymous reports saved after signup</p>
         </div>
       </section>
     </Container>

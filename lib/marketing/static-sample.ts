@@ -3,7 +3,7 @@ import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/aud
 import { calculateOverallScore, gradeFromScore, statusFromScore } from '@/lib/audit/scoring'
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
+import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
@@ -168,7 +168,7 @@ const STATIC_RUBRIC_ROWS: ReportRubricRow[] = (
   }
 })
 
-export function getStaticSampleAudit(): LiveSampleAudit {
+export function getStaticSampleAudit(): CuratedSampleAudit {
   const rubricSources = STATIC_RUBRIC_ROWS.map((r) => ({
     name: r.name,
     grade: r.grade,

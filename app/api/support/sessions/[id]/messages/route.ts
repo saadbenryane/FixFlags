@@ -59,7 +59,7 @@ export async function POST(
       windowSeconds: 3600,
     })
     if (limit.exceeded) {
-      return apiError('Too many messages. Please wait before sending more.', 429)
+      return apiError('Too many messages. Wait a moment, then send again.', 429)
     }
 
     const message = await sendVisitorMessage(id, parsed.data.body)

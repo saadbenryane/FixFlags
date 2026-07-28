@@ -35,7 +35,7 @@ export async function GET(
       (await cookies()).get(SHARE_GRANT_COOKIE)?.value
     )
     if (access === 'denied') {
-      return apiError('You do not have access to this audit', 403)
+      return apiError('You do not have access to this report', 403)
     }
 
     const pageKey = req.nextUrl.searchParams.get('page')

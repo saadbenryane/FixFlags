@@ -1,66 +1,58 @@
 'use client'
 
-import { buildRubricOverview } from '@/lib/report/rubric-overview'
-import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
-import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { REPORT_COPY } from '@/lib/marketing/copy'
+import { rubricIcon } from '@/lib/rubric-icons'
+import { rubricLabel } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import type { RubricComputed } from '@/lib/audit/rubric'
-
-interface RubricRow {
-  name: string
-  score: number | null
-  grade: string | null
-}
+import type { RubricName } from '@/lib/audit/constants'
 
 interface Props {
-  rubrics: RubricComputed[]
-  rubricRows: RubricRow[]
-  /** Audit still running: pending rubrics show Scanning, not failing. */
+  rubrics: Array<{
+    name: RubricName
+    criticalCount: number
+  }>
+  firstCriticalIds: Partial<Record<RubricName, string>>
   loading?: boolean
 }
 
-export function RubricBar({ rubrics, rubricRows, loading = false }: Props) {
-  const overview = buildRubricOverview(rubrics, rubricRows, loading)
-
+export function RubricBar({ rubrics, firstCriticalIds, loading = false }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-      {overview.map((item) => {
-        const Icon = item.icon
-        const countLabel =
-          !item.pending && item.flagCount > 0
-            ? item.criticalCount > 0
-              ? `${item.criticalCount} critical`
-              : `${item.flagCount} ${item.flagCount === 1 ? 'flag' : 'flags'}`
-            : null
+    <div className="grid min-w-0 grid-cols-1 sm:grid-cols-3">
+      {rubrics.map((rubric) => {
+        const Icon = rubricIcon(rubric.name)
+        const label = rubricLabel(rubric.name)
+        const firstCriticalId = firstCriticalIds[rubric.name]
+        const href =
+          rubric.criticalCount > 0 && firstCriticalId
+            ? `?rubric=${rubric.name}&severity=CRITICAL&flag=${encodeURIComponent(firstCriticalId)}#report-flags`
+            : `?rubric=${rubric.name}#report-flags`
 
         return (
           <a
-            key={item.name}
-            href="#report-flags"
+            key={rubric.name}
+            href={href}
+            aria-label={REPORT_COPY.workspace.showRubricFlags(
+              label,
+              rubric.criticalCount
+            )}
             className={cn(
-              'group flex min-h-11 items-center gap-2 rounded-full border border-border/40 bg-card px-3 py-1.5',
-              'transition-colors hover:border-border/70 hover:bg-accent/50'
+              'group flex min-h-16 min-w-0 items-center gap-3 border-t border-border/35 px-3 py-2 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0 sm:px-4',
+              'transition-colors duration-150 hover:bg-accent/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
             )}
           >
-            {Icon && (
-              <Icon
-                className={cn('h-3.5 w-3.5 shrink-0', item.score != null ? '' : 'text-muted-foreground')}
-                style={item.score != null ? { color: scoreToScanColor(item.score) } : undefined}
-                aria-hidden
-              />
-            )}
-            <span className="text-xs font-medium text-foreground">{item.label}</span>
-            {item.status ? (
-              <RubricStatusBadge
-                status={item.status}
-                size="sm"
-                label={item.pending ? 'Scanning' : undefined}
-                className="hidden sm:inline-flex"
-              />
-            ) : null}
-            {countLabel ? (
-              <span className="hidden text-2xs text-muted-foreground sm:inline">{countLabel}</span>
-            ) : null}
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0">
+              <span className="block truncate text-xs font-medium text-foreground">
+                {label}
+              </span>
+              <span className="mt-0.5 block text-2xs tabular-nums text-muted-foreground">
+                {loading
+                  ? REPORT_COPY.reportFirst.checkingLabel
+                  : REPORT_COPY.workspace.rubricCriticalCount(
+                      rubric.criticalCount
+                    )}
+              </span>
+            </span>
           </a>
         )
       })}

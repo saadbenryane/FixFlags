@@ -8,7 +8,7 @@ import { PARTNERS_COPY } from '@/lib/marketing/partners-copy'
 export const metadata = {
   title: 'Expert program | FixFlags',
   description:
-    'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch issues before client handoff.',
+    'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
 }
 
 export default function PartnersPage() {

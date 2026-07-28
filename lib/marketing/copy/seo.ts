@@ -2,7 +2,7 @@ export const SEO = {
   home: {
     title: 'FixFlags - Check before you publish',
     description:
-      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product: message gaps, UX issues, missing metadata. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free check.',
+      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product for Message, Experience, and Reach Flags. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free check.',
   },
   pricing: {
     title: 'Pricing',
@@ -66,12 +66,12 @@ export const SEO = {
     description: 'Terms for using FixFlags.',
   },
   issues: {
-    title: 'Issue Library',
-    description: 'Real issues found across audited sites. Frequency, affected frameworks, examples, and fixes.',
+    title: 'Flag Library',
+    description: 'Real Flags from checked sites, with frequency, affected frameworks, examples, and fixes.',
   },
   partners: {
     title: 'Expert program',
     description:
-      'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch issues before client handoff.',
+      'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
   },
 } as const

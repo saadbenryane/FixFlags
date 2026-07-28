@@ -20,7 +20,7 @@ export const FAQ = [
   {
     question: 'How are FixFlags checks organized?',
     answer:
-      'Every report groups findings into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews. Each section shows what we found and a fix prompt your agent can run.',
+      'Every report groups Flags into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews. Each Flag includes evidence and a fix prompt your agent can run.',
   },
   {
     question: 'What does the Message section check?',
@@ -71,13 +71,13 @@ export const FAQ = [
       'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
   },
   {
-    question: 'Can I re-check after my agent fixes issues?',
+    question: 'Can I Re-check after my agent fixes Flags?',
     answer:
       'Yes. All registered users can re-check reports they own as often as needed. Re-checks do not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
   },
   {
     question: 'Are my reports public?',
-    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Separate public pages for sites are for discovery; they are not your private audit.`,
+    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Separate public site pages are for discovery; they are not your private report.`,
   },
   {
     question: 'Does it work on staging/password-protected sites?',
@@ -125,7 +125,7 @@ export const CHANGELOG_ENTRIES = [
     items: [
       'Sign up and create your account to start testing your sites',
       'Run free checks on any live or preview URL',
-      'Get results across Message, Experience, and Reach with Pass / Needs Attention / Blocked status',
+      'See Critical Flag counts across Message, Experience, and Reach',
       'Fix prompts for Cursor, Claude Code, Lovable, Bolt, Windsurf, and Devin',
       'View your report history and AI tool usage from your dashboard',
     ],

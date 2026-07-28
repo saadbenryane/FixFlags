@@ -90,7 +90,7 @@ export function DemoSignup({ fixture }: DemoSignupProps) {
                 </div>
               ))}
               <p id="demo-signup-error" className="demo-signup-error" hidden role="alert">
-                Please fill in all required fields.
+                Fill in every required field.
               </p>
               <button type="submit">{fixture.form.submitLabel}</button>
             </form>

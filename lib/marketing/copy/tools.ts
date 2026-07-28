@@ -53,7 +53,7 @@ export const MCP_DOCS = {
     },
     {
       name: 'ff_list_recent_audits',
-      desc: 'List recent audits with status, score, and key metadata.',
+      desc: 'List recent reports with status, score, and key metadata.',
     },
     {
       name: 'ff_start_repo_scan',
@@ -61,15 +61,15 @@ export const MCP_DOCS = {
     },
     {
       name: 'ff_list_repo_scans',
-      desc: 'List recent GitHub repository scans and finding counts.',
+      desc: 'List recent GitHub repository checks and Flag counts.',
     },
     {
       name: 'ff_get_repo_scan',
-      desc: 'Get a GitHub repository scan and code findings.',
+      desc: 'Get a GitHub repository check and its code Flags.',
     },
     {
       name: 'ff_get_repo_finding',
-      desc: 'Get a branch-ready fix task for one repository finding.',
+      desc: 'Get a branch-ready fix task for one repository Flag.',
     },
     {
       name: 'generate-fix-prompt',

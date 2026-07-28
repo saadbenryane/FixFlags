@@ -17,7 +17,7 @@ import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimat
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
 
 const createSchema = z.object({
-  url: z.string().url('Invalid URL, please include https://'),
+  url: z.string().url('Enter a valid URL that starts with https://'),
   mode: z.enum(['single', 'critical_path']).optional(),
   parentId: z.string().optional(),
   source: z.string().optional(),

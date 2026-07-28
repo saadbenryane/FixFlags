@@ -72,7 +72,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
   async function handleDelete(project: ProjectRow) {
     const ok = await confirm({
       title: `Delete "${project.name}"?`,
-      description: 'Its audits will remain available.',
+      description: 'Its reports will remain available.',
       confirmLabel: 'Delete project',
       destructive: true,
     })
@@ -101,7 +101,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
           <div>
             <SectionTitle>Projects</SectionTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Organize audits across sites on the Studio plan.
+              Organize reports across sites on the Studio plan.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -122,7 +122,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
         <div>
         <SectionTitle>Projects</SectionTitle>
           <p className="text-xs text-muted-foreground">
-            {projects.length} / {limit} used, assign audits from report pages
+            {projects.length} / {limit} used. Assign reports from their report pages.
           </p>
         </div>
       </div>
@@ -130,7 +130,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
       {projects.length === 0 ? (
         <EmptyState
           title="No projects yet"
-          description="Create one to group audits for the same site."
+          description="Create a project to group reports for the same site."
         />
       ) : (
         <div className="space-y-2">
@@ -141,7 +141,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{project.name}</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {project.url} · {project.auditCount} audit{project.auditCount !== 1 ? 's' : ''}
+                      {project.url} · {project.auditCount} report{project.auditCount !== 1 ? 's' : ''}
                     </div>
                   </div>
                   <Button

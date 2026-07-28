@@ -207,7 +207,7 @@ describe('homepage message guardrails', () => {
   it('primary CTA uses visitor-facing check language', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
-    assert.match(FINAL_CTA.headlineDisplay, /blocking your release$/i)
+    assert.equal(FINAL_CTA.headlineDisplay, 'See what your release still needs')
     assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))
     assert.equal(FINAL_CTA.headlineAccentPeriod, true)
   })
@@ -242,7 +242,7 @@ describe('homepage message guardrails', () => {
   it('how it works steps match glass mockup titles and keep product-true rubrics', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Start your audit', 'We check the live product', 'Fix it. Check again.']
+      ['Start your check', 'We check the live product', 'Fix it. Check again.']
     )
     const scan = LANDING_PAGE.howItWorks.steps[1]!
     assert.match(scan.body, /Message, Experience, and Reach/i)
@@ -341,27 +341,29 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /exactly what ai misses/i)
     assert.match(LANDING_PAGE.sampleReport.label, /sample report/i)
     assert.match(LANDING_PAGE.sampleReport.body, /live product/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /actionable fixes/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /next fix/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
     assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 4)
     for (const metric of LANDING_PAGE.sampleReport.trustMetrics) {
       assert.ok(!/\d{2,},\d{3}/.test(metric.value), `Invented count: ${metric.value}`)
       assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
     }
-    assert.equal(LANDING_PAGE.sampleReport.mock.copyPrompt, 'Copy prompt')
-    assert.equal(LANDING_PAGE.sampleReport.mock.recheck, 'Re-check')
-    assert.ok(!/apply fix/i.test(JSON.stringify(LANDING_PAGE.sampleReport.mock)))
+    assert.equal(REPORT_COPY.workspace.heading, 'Fix list')
+    assert.equal(REPORT_COPY.workspace.criticalFlags, 'Critical Flags')
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /release readiness/i)
+    assert.equal(
+      LANDING_PAGE.checkDimensions.headlineDisplay,
+      'Three rubrics. One clear fix list'
+    )
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']
     )
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /actionable fixes/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /next fix/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Lovable',

@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -12,7 +11,6 @@ import {
 import { createPortal } from 'react-dom'
 import { CheckCircle2, CircleAlert } from 'lucide-react'
 import {
-  MOBILE_VIEWPORT,
   mobileViewportSizeForHeight,
   viewportAspectStyle,
 } from '@/lib/audit/viewports'
@@ -565,18 +563,6 @@ export function ScreenshotWithHighlights({
   const showDesktopPanel = showDesktop && Boolean(desktopScreenshot)
   const showMobilePanel = showMobile && Boolean(mobileScreenshot)
 
-  const sideBySide = showDesktopPanel && showMobilePanel
-
-  // Use a fixed mobile panel height derived from the desktop viewport's native
-  // height scaled to fit the side-by-side layout. This avoids the ResizeObserver
-  // feedback loop where measuring the desktop panel → setting state → mobile
-  // width changes → desktop width shrinks → desktop height changes → observer fires.
-  const mobilePanelSize = useMemo(() => {
-    if (!sideBySide) return null
-    const targetHeight = Math.round(MOBILE_VIEWPORT.height * 0.55)
-    return mobileViewportSizeForHeight(targetHeight)
-  }, [sideBySide])
-
   if (!showDesktopPanel && !showMobilePanel) return null
 
   if (showDesktopPanel && !showMobilePanel) {
@@ -630,7 +616,7 @@ export function ScreenshotWithHighlights({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex w-full min-w-0 items-start gap-3 sm:gap-6">
+      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1.422222fr)_minmax(0,0.461823fr)] sm:gap-6">
         <div className="min-w-0 flex-1">
           <ScreenshotPanel
             imageUrl={desktopScreenshot!}
@@ -649,7 +635,7 @@ export function ScreenshotWithHighlights({
             useMobileTooltip
           />
         </div>
-        {mobilePanelSize && (
+        <div className="mx-auto min-w-0 w-[32.4719%] sm:w-full">
           <ScreenshotPanel
             imageUrl={mobileScreenshot!}
             device="mobile"
@@ -664,10 +650,9 @@ export function ScreenshotWithHighlights({
                   : 'unaffected'
                 : 'neutral'
             }
-            size={mobilePanelSize}
             useMobileTooltip
           />
-        )}
+        </div>
       </div>
     </div>
   )

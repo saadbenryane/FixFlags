@@ -124,7 +124,7 @@ export default function ApiKeysPage() {
           <CardContent className="space-y-3 py-5">
             <p className="text-sm font-medium">{MCP_DOCS.builderRequired}</p>
             <p className="text-sm text-muted-foreground">
-              Upgrade to Pro to generate API keys and audit from your editor.
+              Upgrade to Pro to generate API keys and run checks from your editor.
             </p>
             <Button asChild size="sm">
               <TextLink href="/pricing">Upgrade to Pro</TextLink>
@@ -134,7 +134,8 @@ export default function ApiKeysPage() {
       )}
 
       {canUseKeys && newKey && (
-        <Callout variant="success" title="API key created, copy it now, you won't see it again">
+        <Callout variant="success" title="Copy this API key now">
+          <p className="text-sm">It will not be shown again.</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all rounded border bg-background px-3 py-2 font-mono text-xs">
               {newKey}
@@ -152,8 +153,8 @@ export default function ApiKeysPage() {
       {canUseKeys && (
         <Card variant="subtle">
           <CardHeader>
-            <CardTitle className="text-base">Create new key</CardTitle>
-            <CardDescription>Give it a name to remember where it&apos;s used</CardDescription>
+            <CardTitle className="text-base">Create API key</CardTitle>
+            <CardDescription>Name the editor or integration that will use it.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
@@ -161,14 +162,14 @@ export default function ApiKeysPage() {
                 aria-label="API key name"
                 name="api-key-name"
                 autoComplete="off"
-                placeholder="e.g. Claude Code"
+                placeholder="Claude Code"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && createKey()}
               />
               <Button onClick={createKey} disabled={creating}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create
+                Create key
               </Button>
             </div>
           </CardContent>

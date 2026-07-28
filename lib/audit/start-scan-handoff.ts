@@ -50,7 +50,7 @@ export async function startScanWithHandoff(
         message:
           parsed.message ||
           options.errorFallback ||
-          'Something went wrong. Please try again.',
+          'Something went wrong. Try again.',
         code: parsed.code,
         action: parsed.action,
         status: res.status,
@@ -85,7 +85,7 @@ export async function startScanWithHandoff(
       ok: false,
       message:
         options.errorFallback ||
-        'Something went wrong. Please try again.',
+        'Something went wrong. Try again.',
     }
   }
 }

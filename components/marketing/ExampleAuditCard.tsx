@@ -111,7 +111,7 @@ export function ExampleAuditCard({ audit }: Props) {
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
         >
-          {expanded ? 'Hide details' : 'View details'}
+          {expanded ? 'Hide report' : 'Show report'}
           {expanded ? (
             <ChevronUp className="ml-2 h-4 w-4" />
           ) : (

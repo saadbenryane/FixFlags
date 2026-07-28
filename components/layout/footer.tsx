@@ -69,7 +69,7 @@ export function Footer() {
             </ul>
             <Link
               href={buildersHref as Route}
-              className="inline-flex min-h-9 items-center text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="inline-flex min-h-11 items-center text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {buildersCta} <span aria-hidden>&nbsp;→</span>
             </Link>
@@ -133,12 +133,12 @@ function FooterColumn({
       <p className="mb-3 font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
         {title}
       </p>
-      <ul className="space-y-0.5">
+      <ul>
         {links.map((link) => (
           <li key={`${link.href}-${link.label}`}>
             <Link
               href={link.href as Route}
-              className="inline-flex min-h-8 items-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="inline-flex min-h-11 min-w-11 items-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {link.label}
             </Link>

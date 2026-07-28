@@ -28,7 +28,7 @@ import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
 import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import type { ProductContract } from '@/lib/audit/product-contract'
-import { buildFixList } from '@/lib/audit/finish-plan'
+import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
 
 /**
  * Derive a visitor-facing truth label from the flag's source and checkId.
@@ -159,18 +159,21 @@ export function buildLiveExplorerModel(input: {
   productContract?: ProductContract | null
   promptAccess?: 'all' | 'one' | 'none'
   demonstratedFlag?: RankableFlag | null
+  fixList?: FixList
 }): ReportExplorerModel {
-  const fixList = buildFixList({
-    flags: input.flags,
-    rubricRows: input.rubricRows.map((row) => ({
-      name: row.name,
-      grade: row.grade ?? null,
-    })),
-    url: input.url,
-    contract: input.productContract ?? null,
-    promptAccess: input.promptAccess ?? 'all',
-    demonstratedFlag: input.demonstratedFlag,
-  })
+  const fixList =
+    input.fixList ??
+    buildFixList({
+      flags: input.flags,
+      rubricRows: input.rubricRows.map((row) => ({
+        name: row.name,
+        grade: row.grade ?? null,
+      })),
+      url: input.url,
+      contract: input.productContract ?? null,
+      promptAccess: input.promptAccess ?? 'all',
+      demonstratedFlag: input.demonstratedFlag,
+    })
   const flagsById = new Map(input.flags.map((flag) => [flag.id, flag]))
   const sorted = fixList.items.flatMap((item) => {
     const flag =

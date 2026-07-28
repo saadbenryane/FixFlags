@@ -36,7 +36,7 @@ export default async function McpAnalyticsPage() {
     <Container variant="narrow" className="py-8 space-y-8">
       <PageHeader
         title="MCP Analytics"
-        description="API call volume from your editor. Dashboard MCP counts track completed audits; this page tracks every MCP request."
+        description="API call volume from your editor. The dashboard counts completed checks; this page tracks every MCP request."
       />
 
       {loadError && (

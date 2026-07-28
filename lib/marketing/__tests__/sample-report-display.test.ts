@@ -11,9 +11,9 @@ import {
   buildSampleReportDisplay,
   resolveDisplayScores,
 } from '@/lib/marketing/sample-report-display'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
+import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 
-function baseAudit(overrides: Partial<LiveSampleAudit> = {}): LiveSampleAudit {
+function baseAudit(overrides: Partial<CuratedSampleAudit> = {}): CuratedSampleAudit {
   return {
     id: 'audit-1',
     url: 'https://example.com',

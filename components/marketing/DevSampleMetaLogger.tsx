@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { sampleStatusLabel } from '@/lib/marketing/display-meta'
-import type { SampleSource } from '@/lib/marketing/live-sample'
+import type { SampleSource } from '@/lib/marketing/curated-sample'
 
 export function DevSampleMetaLogger({
   source,

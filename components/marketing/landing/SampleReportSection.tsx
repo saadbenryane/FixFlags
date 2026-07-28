@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ChevronRight,
   Crosshair,
@@ -11,7 +12,6 @@ import {
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { rubricIcon } from '@/lib/rubric-icons'
-import { SampleReportDashboardMock } from '@/components/marketing/landing/SampleReportDashboardMock'
 import {
   SampleSectionCta,
   SampleViewTracker,
@@ -19,8 +19,7 @@ import {
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
-import { buildSampleDashboardPreview } from '@/lib/marketing/sample-dashboard-preview'
+import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
@@ -36,14 +35,13 @@ const TRUST_ICONS = {
 } as const
 
 interface SampleReportSectionProps {
-  audit?: LiveSampleAudit
+  audit?: CuratedSampleAudit
 }
 
 export function SampleReportSection({ audit }: SampleReportSectionProps) {
   const copy = LANDING_PAGE.sampleReport
   const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit())
-  const preview = buildSampleDashboardPreview(report)
-  const flagCount = preview.flagCount
+  const flagCount = report.flags.length
 
   return (
     <Section
@@ -73,7 +71,9 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <ul className="flex flex-col gap-1.5">
               {copy.rubricRows.map((row) => {
                 const Icon = rubricIcon(row.icon)
-                const count = preview.rubricCounts[row.id as keyof typeof preview.rubricCounts] ?? 0
+                const count = report.flags.filter(
+                  (flag) => flag.rubric.toLowerCase() === row.id
+                ).length
                 return (
                   <li key={row.id}>
                     <Link
@@ -99,7 +99,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                       </span>
                       <span className="inline-flex shrink-0 items-center gap-2 pl-1">
                         <span className="text-[0.6875rem] font-medium tabular-nums text-brand/70">
-                          {count} {count === 1 ? 'issue' : 'issues'}
+                          {count} {count === 1 ? 'Flag' : 'Flags'}
                         </span>
                         <ChevronRight
                           className="h-4 w-4 text-muted-foreground/70 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-foreground"
@@ -115,12 +115,23 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <SampleSectionCta flagCount={flagCount} />
           </RevealOnView>
 
-          <div className="relative min-w-0 lg:aspect-[1.62/1]">
-            <SampleReportDashboardMock
-              preview={preview}
-              checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
-              className="lg:absolute lg:left-0 lg:top-0 lg:w-[161.3%] lg:origin-top-left lg:scale-[0.62]"
-            />
+          <div className="min-w-0">
+            <Link
+              href="/samples"
+              aria-label="Explore the complete generated sample Finish Plan"
+              className="group block rounded-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-4"
+            >
+              <Image
+                src="/marketing/visuals/sample-report-workspace-v3.png"
+                alt="Generated FixFlags sample Finish Plan with seven Flags across Message, Experience, and Reach."
+                width={1536}
+                height={1024}
+                sizes="(min-width: 1024px) 66vw, 100vw"
+                loading="lazy"
+                className="h-auto w-full select-none object-contain drop-shadow-[0_26px_42px_hsl(240_8%_5%/0.12)] transition-transform duration-300 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
+                draggable={false}
+              />
+            </Link>
           </div>
         </div>
 

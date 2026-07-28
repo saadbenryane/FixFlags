@@ -1,15 +1,10 @@
 import Image from "next/image";
 import {
-  CheckCircle2,
   Code2,
-  Flag,
-  Gem,
   RefreshCw,
-  SearchCheck,
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Wrench,
 } from "lucide-react";
 import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
@@ -25,9 +20,6 @@ const FEATURE_ICONS = {
   shield: ShieldCheck,
   refresh: RefreshCw,
 } as const;
-
-const WORKFLOW_INPUT_ICONS = [SearchCheck, Flag, Wrench, RefreshCw] as const;
-const WORKFLOW_OUTCOME_ICONS = [CheckCircle2, TrendingUp, Gem] as const;
 
 export function WhyBuildersChooseSection() {
   const copy = LANDING_PAGE.whyBuildersChoose;
@@ -122,8 +114,8 @@ export function WhyBuildersChooseSection() {
 
             <div className="relative min-h-[20rem] overflow-hidden border-t border-border/35 bg-background/65 lg:min-h-0 lg:border-l lg:border-t-0">
               <Image
-                src="/marketing/visuals/builder-workflow-scene-v2.webp"
-                alt=""
+                src="/marketing/visuals/builder-workflow-scene-v3.png"
+                alt="A generated FixFlags workflow connecting Review, Flag, Fix, and Re-check to cleared Flags, improved release status, and confident shipping."
                 width={1672}
                 height={941}
                 sizes="(min-width: 1024px) 58vw, 100vw"
@@ -131,48 +123,6 @@ export function WhyBuildersChooseSection() {
                 className="absolute inset-0 h-full w-full select-none object-contain object-center"
                 draggable={false}
               />
-
-              <ul className="absolute left-[4%] top-1/2 hidden w-[22%] -translate-y-1/2 space-y-2.5 sm:block">
-                {workflow.inputs.map((label, index) => {
-                  const Icon = WORKFLOW_INPUT_ICONS[index]!
-                  return (
-                    <li
-                      key={label}
-                      className="flex min-h-10 items-center gap-2 rounded-[0.65rem] border border-border/50 bg-background/90 px-3 text-[0.6875rem] font-semibold text-foreground shadow-card backdrop-blur-sm"
-                    >
-                      <Icon className="h-3.5 w-3.5 text-foreground/75" strokeWidth={1.8} aria-hidden />
-                      {label}
-                    </li>
-                  )
-                })}
-              </ul>
-
-              <ul className="absolute right-[3%] top-1/2 hidden w-[25%] -translate-y-1/2 space-y-3 sm:block">
-                {workflow.outcomes.map((label, index) => {
-                  const Icon = WORKFLOW_OUTCOME_ICONS[index]!
-                  return (
-                    <li
-                      key={label}
-                      className="flex min-h-11 items-center gap-2 rounded-[0.65rem] border border-border/50 bg-background/90 px-3 text-[0.6875rem] font-semibold leading-tight text-foreground shadow-card backdrop-blur-sm"
-                    >
-                      <Icon className="h-3.5 w-3.5 shrink-0 text-brand" strokeWidth={1.8} aria-hidden />
-                      <span>{label}</span>
-                      <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-success" aria-hidden />
-                    </li>
-                  )
-                })}
-              </ul>
-
-              <div className="absolute inset-x-5 bottom-5 grid grid-cols-2 gap-2 sm:hidden">
-                {[...workflow.inputs.slice(0, 2), ...workflow.outcomes.slice(0, 2)].map((label) => (
-                  <span
-                    key={label}
-                    className="rounded-[0.6rem] border border-border/50 bg-background/90 px-2.5 py-2 text-center text-[0.625rem] font-semibold text-foreground shadow-sm"
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
             </div>
           </div>
         </RevealOnView>

@@ -106,7 +106,7 @@ Priority order: Clear before clever · Calm before loud · Specific before impre
 - "Rubrics" not "Categories" or "Areas"
 - "Re-check" not "Re-audit"
 - "Fix prompt" not "Action item" or "Recommendation"
-- "Pass / Needs Attention / Blocked" not "Good / Needs Work / Critical"
+- Report summaries lead with Critical counts. Rubric statuses belong only where score semantics require them.
 
 ### Sentence style
 

@@ -6,7 +6,7 @@ import {
 import type { DeterministicFlag } from '@/lib/audit/checks'
 import { calculateOverallScore, gradeFromScore as productionGradeFromScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import type { LiveSampleAudit } from '@/lib/marketing/live-sample'
+import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import {
@@ -105,7 +105,7 @@ function flagToDeterministic(flag: RankableFlag): DeterministicFlag | null {
   }
 }
 
-function evidenceCoverageContext(audit: LiveSampleAudit): RubricScoreContext {
+function evidenceCoverageContext(audit: CuratedSampleAudit): RubricScoreContext {
   const evidence = audit.evidenceCoverage as {
     desktopPageSpeed?: boolean
     mobilePageSpeed?: boolean
@@ -127,7 +127,7 @@ function evidenceCoverageContext(audit: LiveSampleAudit): RubricScoreContext {
   }
 }
 
-export function resolveDisplayScores(audit: LiveSampleAudit): {
+export function resolveDisplayScores(audit: CuratedSampleAudit): {
   overall: number
   rubrics: Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
 } {
@@ -151,7 +151,7 @@ export function resolveDisplayScores(audit: LiveSampleAudit): {
 
 const STATIC_ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
 
-function resolveSampleAnchors(audit: LiveSampleAudit): EvidenceAnchorMap {
+function resolveSampleAnchors(audit: CuratedSampleAudit): EvidenceAnchorMap {
   const live = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   if (live && Object.keys(live).length > 0) return live
   // Static pin map is only valid for the curated fixture screenshots.
@@ -201,7 +201,7 @@ function mapFlag(
 }
 
 export function buildSampleReportDisplay(
-  audit: LiveSampleAudit
+  audit: CuratedSampleAudit
 ): SampleReportDisplay {
   const anchors = resolveSampleAnchors(audit)
   const rankedIds = buildFixList({

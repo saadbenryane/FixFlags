@@ -103,7 +103,7 @@ export async function loadReportRouteState(
     isPublic: audit.isPublic,
   })
 
-  const [user, latestMonitoring, recheckDiff] = await Promise.all([
+  const [user, latestMonitoring, recheckDiff, completedHistoryRows] = await Promise.all([
     session?.user
       ? prisma.user.findUnique({
           where: { id: session.user.id },
@@ -131,7 +131,51 @@ export async function loadReportRouteState(
     audit.status === 'COMPLETED' && audit.parentId
       ? getFlagDiffSummary(audit.parentId, id)
       : Promise.resolve(null),
+    isOwner && audit.userId
+      ? prisma.audit.findMany({
+          where: { userId: audit.userId, status: 'COMPLETED' },
+          select: {
+            id: true,
+            parentId: true,
+            score: true,
+            createdAt: true,
+            completedAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 500,
+        })
+      : Promise.resolve([]),
   ])
+  const auditById = new Map(completedHistoryRows.map((row) => [row.id, row]))
+  let releaseRootId = id
+  let releaseCursor = auditById.get(id)
+  while (releaseCursor?.parentId && auditById.has(releaseCursor.parentId)) {
+    releaseRootId = releaseCursor.parentId
+    releaseCursor = auditById.get(releaseCursor.parentId)
+  }
+  const releaseIds = new Set([releaseRootId])
+  let releaseExpanded = true
+  while (releaseExpanded) {
+    releaseExpanded = false
+    for (const row of completedHistoryRows) {
+      if (row.parentId && releaseIds.has(row.parentId) && !releaseIds.has(row.id)) {
+        releaseIds.add(row.id)
+        releaseExpanded = true
+      }
+    }
+  }
+  const scoreHistory = completedHistoryRows
+    .filter((row) => releaseIds.has(row.id) && row.score !== null)
+    .sort(
+      (left, right) =>
+        (left.completedAt ?? left.createdAt).getTime() -
+        (right.completedAt ?? right.createdAt).getTime()
+    )
+    .map((row) => ({
+      id: row.id,
+      score: row.score!,
+      checkedAt: row.completedAt ?? row.createdAt,
+    }))
 
   const pending = user ? await getPendingCheckCount(user.id) : 0
   const effectiveLimit = user ? getEffectiveScanLimit(user) : 3
@@ -291,6 +335,7 @@ export async function loadReportRouteState(
       intentionalNotes: audit.intentionalNotes,
       knownRisks: audit.knownRisks,
       actionTimeline: audit.actionTimeline,
+      fixList,
     }
 
     return {
@@ -311,6 +356,7 @@ export async function loadReportRouteState(
       sampleFixFlag: sampleFixFlag as typeof flags[number] | null,
       latestMonitoring,
       recheckDiff,
+      scoreHistory,
       atAuditLimit,
       entitlements,
       canAccessCompareView,
