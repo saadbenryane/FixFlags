@@ -26,7 +26,7 @@ import {
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
 import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
-import { ReportUpgradeGate } from '@/components/auth/ReportUpgradeGate'
+import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -302,7 +302,7 @@ export function AuditPageClient({
         </ProgressiveErrorBoundary>
       </div>
       <ReportAuthGate auditId={id} required={requireAuthGate} />
-      <ReportUpgradeGate auditId={id} required={atAuditLimit && !requireAuthGate && Boolean(session)} />
+      <ReportAuthGate auditId={id} required={atAuditLimit && !requireAuthGate && Boolean(session)} />
     </AuditShell>
   )
 }

@@ -12,7 +12,7 @@ import {
 } from '@/lib/audit/screenshot-types'
 import type { loadReportRouteState } from './load-report-route-state'
 import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
-import { ReportUpgradeGate } from '@/components/auth/ReportUpgradeGate'
+import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 
 type CompletedState = Extract<
