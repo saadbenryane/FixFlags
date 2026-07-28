@@ -247,11 +247,10 @@ describe('homepage message guardrails', () => {
     const scan = LANDING_PAGE.howItWorks.steps[1]!
     assert.match(scan.body, /Message, Experience, and Reach/i)
     assert.doesNotMatch(scan.body, /performance, accessibility, SEO/i)
-    for (const step of LANDING_PAGE.howItWorks.steps) {
-      assert.ok(step.image.startsWith('/marketing/visuals/how-it-works-step-'))
-      assert.ok(step.imageWidth > 0)
-      assert.ok(step.imageHeight > 0)
-    }
+    assert.deepEqual(
+      LANDING_PAGE.howItWorks.steps.map((step) => step.visual),
+      ['start', 'review', 'recheck']
+    )
   })
 
   it('dimension cards have checklists and proof examples', () => {
@@ -299,6 +298,9 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
     assert.match(LANDING_PAGE.editorIntegrations.label, /MCP/i)
     assert.equal(LANDING_PAGE.editorIntegrations.steps.length, 4)
+    assert.match(LANDING_PAGE.builderWorkflow.label, /works where you build/i)
+    assert.equal(LANDING_PAGE.builderWorkflow.inputs.length, 4)
+    assert.equal(LANDING_PAGE.builderWorkflow.outcomes.length, 3)
   })
 
   it('editor integrations headline avoids banned jargon and template copy', () => {

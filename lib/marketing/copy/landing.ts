@@ -534,26 +534,20 @@ export const LANDING_PAGE = {
       {
         step: 1,
         title: 'Start your audit',
-        body: 'Enter your product URL and run the audit.',
-        image: '/marketing/visuals/how-it-works-step-01.webp',
-        imageWidth: 958,
-        imageHeight: 886,
+        body: 'Paste the live URL you want FixFlags to review.',
+        visual: 'start' as const,
       },
       {
         step: 2,
         title: 'We check the live product',
         body: 'We check your product across Message, Experience, and Reach.',
-        image: '/marketing/visuals/how-it-works-step-02.webp',
-        imageWidth: 1050,
-        imageHeight: 882,
+        visual: 'review' as const,
       },
       {
         step: 3,
         title: 'Fix it. Check again.',
         body: 'Apply the fixes with our prompts, then re-check to confirm you are ready.',
-        image: '/marketing/visuals/how-it-works-step-03.webp',
-        imageWidth: 989,
-        imageHeight: 926,
+        visual: 'recheck' as const,
       },
     ] as const,
   },
@@ -636,6 +630,13 @@ export const LANDING_PAGE = {
       },
     ] as const,
   },
+  builderWorkflow: {
+    label: 'Works where you build',
+    headlineDisplay: 'Review, fix, and re-check in your existing workflow',
+    body: 'Bring FixFlags into the editor you already use. Keep the live product and every fix in the same loop.',
+    inputs: ['Review', 'Flag', 'Fix', 'Re-check'] as const,
+    outcomes: ['Flags cleared', 'Release status improved', 'Ship with confidence'] as const,
+  },
   editorIntegrations: {
     label: 'How it works (MCP)',
     headlineDisplay: 'FixFlags in your workflow. Always in sync',
@@ -648,7 +649,11 @@ export const LANDING_PAGE = {
         id: 'connect',
         title: 'Connect',
         body: 'Add FixFlags through MCP in your AI editor or CLI.',
-        visual: 'connect' as const,
+        visual: {
+          src: '/marketing/visuals/mcp-plug-v2.webp',
+          width: 1254,
+          height: 1254,
+        },
         note: {
           type: 'tools' as const,
           items: ['Lovable', 'Cursor', 'CLI'] as const,
@@ -658,7 +663,11 @@ export const LANDING_PAGE = {
         id: 'review',
         title: 'Review each change',
         body: 'Run a fresh live-product check after a change or before release.',
-        visual: 'review' as const,
+        visual: {
+          src: '/marketing/visuals/mcp-review-v2.webp',
+          width: 1254,
+          height: 1254,
+        },
         note: {
           type: 'text' as const,
           text: 'Message, Experience, and Reach',
@@ -668,7 +677,11 @@ export const LANDING_PAGE = {
         id: 'findings',
         title: 'Get clear findings',
         body: 'See what matters, why it matters, and what to fix.',
-        visual: 'findings' as const,
+        visual: {
+          src: '/marketing/visuals/mcp-findings-v2.webp',
+          width: 1254,
+          height: 1254,
+        },
         note: {
           type: 'text' as const,
           text: 'Evidence and fix prompts you can act on',
@@ -678,7 +691,11 @@ export const LANDING_PAGE = {
         id: 'ship',
         title: 'Fix, deploy, re-check',
         body: 'Apply the fix with your AI, deploy, then verify the same path.',
-        visual: 'ship' as const,
+        visual: {
+          src: '/marketing/visuals/mcp-ship-v2.webp',
+          width: 1254,
+          height: 1254,
+        },
         note: {
           type: 'text' as const,
           text: 'Re-check proves the fix landed',

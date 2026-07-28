@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 const trackEvent = vi.hoisted(() => vi.fn())
 const useMe = vi.hoisted(() => vi.fn())
 const useRouter = vi.hoisted(() => vi.fn())
+const useSearchParams = vi.hoisted(() => vi.fn())
 const requestPlanCheckout = vi.hoisted(() => vi.fn())
 const getActiveAudit = vi.hoisted(() => vi.fn())
 
@@ -13,7 +14,7 @@ vi.mock('@/lib/audit/active-audit', () => ({ getActiveAudit }))
 vi.mock('@/lib/billing/client-checkout', () => ({
   requestPlanCheckout: (...args: unknown[]) => requestPlanCheckout(...args),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => useRouter() }))
+vi.mock('next/navigation', () => ({ useRouter: () => useRouter(), useSearchParams: () => useSearchParams() }))
 
 beforeAll(() => {
   if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
@@ -52,6 +53,7 @@ describe('PlanPickerDialog', () => {
     requestPlanCheckout.mockResolvedValue({ kind: 'missing-destination' })
     getActiveAudit.mockReturnValue(null)
     useMe.mockReturnValue({ user: null, isLoading: false })
+    useSearchParams.mockReturnValue(new URLSearchParams())
     useRouter.mockReturnValue({ push: vi.fn(), replace: vi.fn() })
   })
 

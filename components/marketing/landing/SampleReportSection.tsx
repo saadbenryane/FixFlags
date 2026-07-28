@@ -47,17 +47,17 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
 
   return (
     <Section
-      spacing="marketing"
+      spacing="tight"
       tint="subtle"
     >
       <SampleViewTracker placement="homepage" />
       <Container
         id="sample-review"
-        className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] space-y-14 px-4 sm:space-y-16 sm:px-6 lg:space-y-20 lg:px-12"
+        className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] space-y-9 px-4 sm:space-y-10 sm:px-6 lg:space-y-11 lg:px-12"
         variant="marketing"
       >
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-8 xl:gap-10">
-          <RevealOnView className="flex flex-col gap-6 sm:gap-7 lg:pt-1">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.64fr)_minmax(0,1.36fr)] lg:gap-7 xl:gap-9">
+          <RevealOnView className="flex flex-col gap-5 sm:gap-6">
             <LandingSectionHeader
               align="left"
               label={copy.label}
@@ -114,21 +114,21 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <SampleSectionCta flagCount={flagCount} />
           </RevealOnView>
 
-          <div className="relative min-w-0 lg:aspect-[1.34/1]">
+          <div className="relative min-w-0 lg:aspect-[1.48/1]">
             <SampleReportDashboardMock
               preview={preview}
               checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
-              className="lg:absolute lg:left-0 lg:top-0 lg:w-[133.333%] lg:origin-top-left lg:scale-75"
+              className="lg:absolute lg:left-0 lg:top-0 lg:w-[147.06%] lg:origin-top-left lg:scale-[0.68]"
             />
           </div>
         </div>
 
         <RevealOnView>
-          <div className="space-y-5 sm:space-y-6">
+          <div className="space-y-4">
             <p className="text-center font-mono text-[0.6875rem] font-medium uppercase tracking-label text-muted-foreground">
               {copy.trustLabel}
             </p>
-            <ul className="grid grid-cols-1 gap-5 overflow-hidden rounded-[1.75rem] glass-surface-elevated px-5 py-7 sm:grid-cols-2 sm:gap-6 sm:px-7 sm:py-8 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-9 xl:px-5">
+            <ul className="grid grid-cols-1 gap-4 overflow-hidden rounded-[1.35rem] glass-surface-elevated px-5 py-5 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:py-6 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-6 xl:px-5">
               <TrustMetric
                 icon={ShieldCheck}
                 value={copy.checksMetric(CHECK_ID_COUNT).value}

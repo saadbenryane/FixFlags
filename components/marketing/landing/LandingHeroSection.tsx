@@ -13,10 +13,23 @@ import { HERO } from '@/lib/marketing/copy'
  * and matches the approved glass-card composition.
  */
 const HERO_GLASS = {
-  src: '/marketing/visuals/home-hero-reference.webp',
-  width: 600,
-  height: 565,
+  src: '/marketing/visuals/home-hero-master-v2.webp',
+  width: 1600,
+  height: 1507,
 } as const
+
+const HERO_STATES = [
+  ['Reviewing', 'Live product'],
+  ['7 Flags', 'Issues ranked'],
+  ['Fixing', 'Prompts ready'],
+  ['Ready to ship', 'Re-check passed'],
+] as const
+
+const HERO_RUBRICS = [
+  ['Message', 'Clear and specific'],
+  ['Experience', 'Easy to complete'],
+  ['Reach', 'Ready to find'],
+] as const
 
 export function LandingHeroSection() {
   return (
@@ -103,11 +116,48 @@ export function LandingHeroSection() {
                 width={HERO_GLASS.width}
                 height={HERO_GLASS.height}
                 priority
-                unoptimized
                 sizes="(min-width: 1024px) 37.5rem, (min-width: 640px) 32rem, 28rem"
-                className="h-full w-full select-none object-contain object-center mix-blend-multiply drop-shadow-[0_28px_56px_-18px_hsl(240_8%_5%/0.14)] [-webkit-mask-image:radial-gradient(ellipse_at_center,black_62%,transparent_88%)] [mask-image:radial-gradient(ellipse_at_center,black_62%,transparent_88%)] dark:drop-shadow-[0_28px_56px_-18px_rgb(0_0_0/0.5)] lg:object-right"
+                className="h-full w-full select-none object-contain object-center drop-shadow-[0_28px_56px_hsl(240_8%_5%/0.12)] dark:drop-shadow-[0_28px_56px_rgb(0_0_0/0.4)] lg:object-right"
                 draggable={false}
               />
+              <div
+                className="pointer-events-none absolute inset-0 select-none text-[0.48rem] leading-tight text-foreground sm:text-[0.58rem]"
+                aria-hidden
+              >
+                <div className="absolute left-[18%] top-[22%] w-[37%] space-y-[6%] sm:space-y-3">
+                  {HERO_STATES.map(([title, detail], index) => (
+                    <div
+                      key={title}
+                      className="grid grid-cols-[0.65rem_1fr] items-center gap-1.5 sm:grid-cols-[0.8rem_1fr] sm:gap-2"
+                    >
+                      <span
+                        className={
+                          index === 1
+                            ? 'h-2.5 w-2.5 rounded-[0.2rem] bg-brand sm:h-3 sm:w-3'
+                            : index === HERO_STATES.length - 1
+                              ? 'h-2.5 w-2.5 rounded-full border border-success/70 bg-success/10 sm:h-3 sm:w-3'
+                              : 'h-2.5 w-2.5 rounded-full border border-foreground/35 sm:h-3 sm:w-3'
+                        }
+                      />
+                      <div>
+                        <p className="font-semibold text-foreground">{title}</p>
+                        <p className="mt-0.5 text-muted-foreground">{detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="absolute right-[3%] top-[28%] w-[29%] space-y-2 sm:space-y-3">
+                  {HERO_RUBRICS.map(([title, detail]) => (
+                    <div
+                      key={title}
+                      className="rounded-[0.4rem] border border-white/65 bg-background/70 px-2 py-2 shadow-sm backdrop-blur-sm sm:rounded-[0.55rem] sm:px-3 sm:py-2.5"
+                    >
+                      <p className="font-semibold text-foreground">{title}</p>
+                      <p className="mt-0.5 text-muted-foreground">{detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

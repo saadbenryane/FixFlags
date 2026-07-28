@@ -172,6 +172,76 @@ final result: passed
 
 ---
 
+# Homepage MCP workflow section QA
+
+## Comparison target
+
+- Source visual truth: `/Users/saadbenryane/Pictures/Photos Library.photoslibrary/resources/derivatives/6/6AC19492-8032-4823-AE33-1666ED5611CA_1_105_c.jpeg`
+- Browser-rendered desktop implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-mcp-workflow-desktop.png`
+- Focused lower desktop implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-mcp-workflow-desktop-lower.png`
+- Same-input comparison: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-mcp-workflow-comparison.png`
+- Responsive evidence: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-mcp-workflow-mobile.png`
+- Route and state: `/#integrations`, light theme, workflow section in its enabled reveal state
+- Desktop CSS viewport: `1144 × 684`; browser capture pixels: `1144 × 684`
+- Mobile CSS viewport: `375 × 812`; browser capture pixels: `375 × 812`
+- Source pixels: `1144 × 684`
+- Browser device pixel ratio: `2`; the in-app browser returned CSS-sized captures, so source and implementation were compared at the same `1144 × 684` pixel dimensions without further density scaling
+
+## Full-view comparison evidence
+
+- The implementation preserves the source hierarchy: centered MCP eyebrow, two-line display headline, supporting copy, four numbered steps, square glass tiles, directional arrows, and compact notes.
+- The final implementation section measures approximately `718px` high versus the source's `684px` frame. The small difference accommodates product-true copy and is classified as P3 because it does not change the hierarchy or responsive behavior.
+- The production marketing header remains sticky above the section. The same-input comparison therefore includes the real site chrome, while the focused lower capture isolates the four-step visual and note rail.
+
+## Focused region comparison evidence
+
+- The lower desktop capture verifies all four glass tiles, arrows, icon scale, note pills, and supported-tool marks without cropping.
+- The mobile capture verifies the single-column reading order, headline wrapping, first step, tool marks, card radius, and absence of horizontal overflow.
+- Focused captures were required because the source omits site chrome and does not define a mobile state.
+
+## Findings
+
+- No actionable P0, P1, or P2 visual differences remain.
+- Fonts and typography: Inter Tight, the monospaced uppercase eyebrow, compact step numbers, display weight, line height, and tracking reproduce the reference hierarchy. Product-true body copy creates small intentional wrapping differences.
+- Spacing and layout rhythm: the four-column desktop grid, square visual tiles, arrows, note rail, radii, and shadow depth match the source composition. The section is approximately five percent taller than the isolated reference frame, which remains a P3 refinement.
+- Colors and visual tokens: the implementation uses the existing light canvas, ink, muted foreground, border, warning, info, and Flag Orange tokens. No isolated palette or gradient was introduced.
+- Image quality and asset fidelity: the shipped FixFlags logo raster is used for the final step. The other visuals use the project's existing Lucide icon system and supported editor marks at crisp UI-native sizes.
+- Copy and content: the section keeps MCP, Message, Experience, Reach, fix prompts, deploy, and re-check language. It intentionally avoids the source's unsupported automatic PR-review claim and leading `150+ checks` claim.
+- Responsiveness: the desktop grid becomes two columns at medium widths and one column at `375px`. The mobile capture has no horizontal overflow or clipped content.
+- Accessibility and behavior: the four steps are an ordered list with semantic headings. Decorative arrows and visual marks are excluded from the accessibility tree. The section has no user-operated controls.
+
+## Comparison history
+
+### Pass 1
+
+- [P2] The first implementation measured approximately `884px` high at the source viewport, making the headline, inter-section gaps, and `238px` visual tiles materially larger than the reference.
+- [P2] The full four-step story did not fit the intended section rhythm.
+
+Fixes:
+
+- Reduced the desktop headline from `56px` to `48px`.
+- Replaced the generic marketing-section padding with a compact `56px` section rhythm.
+- Reduced the step-header reserve, header-to-grid gap, and visual tiles to `176px`.
+
+### Pass 2
+
+- Re-captured desktop at the exact `1144 × 684` source viewport and mobile at `375 × 812`.
+- Built and inspected the same-input comparison plus the focused lower-step capture.
+- Confirmed all four steps and notes render, the mobile order is coherent, and no actionable P0/P1/P2 differences remain.
+
+## Interaction and runtime checks
+
+- The homepage and anchored workflow state loaded in the in-app browser.
+- Desktop and mobile responsive states were exercised at `1144 × 684` and `375 × 812`.
+- Browser console errors: zero.
+- TypeScript, the 29-test homepage copy suite, focused ESLint, brand hex guard, and local-image guard passed.
+- The UI drift guard remains blocked by the separate pre-existing `components/auth/AuthCard.tsx` violation.
+- The repository-selected full verification remains unavailable while local PostgreSQL is offline.
+
+final result: passed
+
+---
+
 # Homepage benefits and workflow fidelity QA
 
 ## Comparison target

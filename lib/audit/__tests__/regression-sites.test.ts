@@ -87,7 +87,7 @@ describe('regression: clean-page.html', () => {
 describe('regression: broken-page.html', () => {
   testFixture(
     'broken-page.html',
-    14,
+    18,
     [
       { checkId: 'title-missing', severity: 'CRITICAL' },
       { checkId: 'description-missing', severity: 'IMPORTANT' },
@@ -102,11 +102,14 @@ describe('regression: broken-page.html', () => {
       { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'no-contact-info', severity: 'POLISH' },
+      { checkId: 'images-missing-alt', severity: 'IMPORTANT' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
+      { checkId: 'buttons-no-text', severity: 'IMPORTANT' },
+      { checkId: 'iframe-no-title', severity: 'POLISH' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
     // template-default-copy must stay absent: this fixture's generic body prose is
     // not a heading template default. consent flag absent: no analytics detected.
-    // axe-core now handles images-missing-alt, form-inputs-no-label, buttons-no-text, iframe-no-title.
     ['scroll-ghost-sections', 'visual-radius-inconsistent', 'template-default-copy']
   )
 })
@@ -129,7 +132,7 @@ describe('regression: saadbenryane-com.html', () => {
 describe('regression: html5up-paradigm-shift.html', () => {
   testFixture(
     'html5up-paradigm-shift.html',
-    6,
+    7,
     [
       { checkId: 'description-missing', severity: 'IMPORTANT' },
       { checkId: 'lang-missing', severity: 'POLISH' },
@@ -137,8 +140,8 @@ describe('regression: html5up-paradigm-shift.html', () => {
       { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
     ],
-    // axe-core now handles form-inputs-no-label.
     ['template-default-copy', 'placeholder-copy-detected', 'scroll-ghost-sections', 'visual-radius-inconsistent']
   )
 })
@@ -198,14 +201,14 @@ describe('regression: tailwindui-com.html', () => {
 describe('regression: github-com.html', () => {
   testFixture(
     'github-com.html',
-    4,
+    5,
     [
-      { checkId: 'form-missing-validation', severity: 'POLISH' },
-      { checkId: 'description-too-long', severity: 'POLISH' },
       { checkId: 'title-too-long', severity: 'POLISH' },
+      { checkId: 'description-too-long', severity: 'POLISH' },
+      { checkId: 'form-missing-validation', severity: 'POLISH' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
       { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    // axe-core now handles form-inputs-no-label.
     ['links-no-text', 'images-missing-alt', 'no-privacy-policy']
   )
 })
@@ -213,17 +216,19 @@ describe('regression: github-com.html', () => {
 describe('regression: blog-samaltman-com.html', () => {
   testFixture(
     'blog-samaltman-com.html',
-    7,
+    10,
     [
-      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
-      { checkId: 'description-too-short', severity: 'POLISH' },
-      { checkId: 'lang-missing', severity: 'POLISH' },
       { checkId: 'canonical-missing', severity: 'POLISH' },
+      { checkId: 'description-too-short', severity: 'POLISH' },
+      { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
+      { checkId: 'form-inputs-no-label', severity: 'IMPORTANT' },
+      { checkId: 'images-missing-alt', severity: 'IMPORTANT' },
+      { checkId: 'lang-missing', severity: 'POLISH' },
+      { checkId: 'links-no-text', severity: 'IMPORTANT' },
+      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'skip-link-missing', severity: 'POLISH' },
-      { checkId: 'measurement-ga-gtm-posthog-missing', severity: 'POLISH' },
     ],
-    // axe-core now handles images-missing-alt, links-no-text, form-inputs-no-label.
     ['no-cta-detected', 'h1-generic']
   )
 })
@@ -231,12 +236,12 @@ describe('regression: blog-samaltman-com.html', () => {
 describe('regression: shopify-com.html', () => {
   testFixture(
     'shopify-com.html',
-    2,
+    3,
     [
       { checkId: 'title-too-long', severity: 'POLISH' },
       { checkId: 'cookie-consent-absent', severity: 'POLISH' },
+      { checkId: 'buttons-no-text', severity: 'IMPORTANT' },
     ],
-    // axe-core now handles buttons-no-text.
     ['links-no-text', 'images-missing-alt', 'no-privacy-policy', 'form-missing-validation']
   )
 })

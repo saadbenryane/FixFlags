@@ -306,7 +306,6 @@ export function AuditReport({
             showLaunch={hasLaunchGates}
             showStack={showStack}
             showRecheckSection={isLoggedIn && isViewerOwner}
-            hasRecheckDiff={Boolean(recheckDiff)}
             siteUrl={audit.url}
           />
         </div>

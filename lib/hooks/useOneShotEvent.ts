@@ -24,7 +24,6 @@ export function useOneShotEvent<T extends FunnelEvent>(
     }
     if (typeof window !== 'undefined') window.sessionStorage.setItem(storageKey, '1')
     // trackEvent is typed per-event; the generic hook forwards a dynamic name.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(trackEvent as (name: string, params: Record<string, unknown>) => void)(eventName, {
       audit_id: auditId,
       ...payload,

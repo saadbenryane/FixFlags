@@ -1,11 +1,6 @@
 import Image from 'next/image'
 import {
   ArrowRight,
-  CircleAlert,
-  CircleCheckBig,
-  Info,
-  ListChecks,
-  Plug,
   Terminal,
 } from 'lucide-react'
 import { EditorMark } from '@/components/brand/EditorMarks'
@@ -14,13 +9,6 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
-
-const STEP_VISUALS = {
-  connect: ConnectVisual,
-  review: ReviewVisual,
-  findings: FindingsVisual,
-  ship: ShipVisual,
-} as const
 
 export function EditorIntegrationsSection() {
   const copy = LANDING_PAGE.editorIntegrations
@@ -55,12 +43,9 @@ export function EditorIntegrationsSection() {
         </RevealOnView>
 
         <ol
-          data-design-qa="editor-workflow"
           className="mt-10 grid gap-12 sm:mt-12 sm:grid-cols-2 sm:gap-x-7 sm:gap-y-14 lg:grid-cols-4 lg:gap-8"
         >
           {copy.steps.map((step, index) => {
-            const Visual = STEP_VISUALS[step.visual]
-
             return (
               <RevealOnView key={step.id}>
                 <li className="relative flex h-full flex-col">
@@ -78,7 +63,19 @@ export function EditorIntegrationsSection() {
 
                   <div className="relative mt-4">
                     <div className="workflow-glass-tile mx-auto flex aspect-square w-full max-w-[11rem] items-center justify-center rounded-[1.35rem]">
-                      <Visual />
+                      <Image
+                        src={step.visual.src}
+                        alt=""
+                        width={step.visual.width}
+                        height={step.visual.height}
+                        sizes="176px"
+                        loading="lazy"
+                        className={cn(
+                          'h-[82%] w-[82%] select-none object-contain drop-shadow-[0_14px_18px_hsl(var(--brand)/0.16)]',
+                          step.id === 'findings' && 'h-[90%] w-[90%]',
+                        )}
+                        draggable={false}
+                      />
                     </div>
                     {index < copy.steps.length - 1 ? (
                       <span
@@ -133,79 +130,5 @@ function StepNote({
     <p className="workflow-note mx-auto mt-4 flex min-h-12 w-full max-w-[13.75rem] items-center justify-center rounded-[0.8rem] px-4 py-2 text-center text-[0.6875rem] leading-[1.4] text-muted-foreground lg:max-w-none">
       {step.note.text}
     </p>
-  )
-}
-
-function ConnectVisual() {
-  return (
-    <Plug
-      className="h-[4.75rem] w-[4.75rem] -rotate-45 text-brand drop-shadow-[0_14px_14px_hsl(var(--brand)/0.2)]"
-      strokeWidth={2.4}
-      aria-hidden
-    />
-  )
-}
-
-function ReviewVisual() {
-  return (
-    <div className="relative flex h-[6.5rem] w-[6.5rem] items-center justify-center">
-      <CircleCheckBig
-        className="h-full w-full text-brand drop-shadow-[0_14px_14px_hsl(var(--brand)/0.16)]"
-        strokeWidth={1.65}
-        aria-hidden
-      />
-    </div>
-  )
-}
-
-function FindingsVisual() {
-  return (
-    <div className="relative w-[7.75rem]">
-      <ListChecks className="absolute inset-0 h-full w-full text-border/35" aria-hidden />
-      <div className="space-y-2.5">
-        <FindingRow icon={CircleAlert} tone="brand" />
-        <FindingRow icon={CircleAlert} tone="warning" />
-        <FindingRow icon={Info} tone="info" />
-      </div>
-    </div>
-  )
-}
-
-function FindingRow({
-  icon: Icon,
-  tone,
-}: {
-  icon: typeof CircleAlert
-  tone: 'brand' | 'warning' | 'info'
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <Icon
-        className={cn(
-          'h-[1.15rem] w-[1.15rem] shrink-0',
-          tone === 'brand' && 'text-brand',
-          tone === 'warning' && 'text-warning',
-          tone === 'info' && 'text-info',
-        )}
-        strokeWidth={1.8}
-        aria-hidden
-      />
-      <span className="workflow-finding-line h-5 flex-1 rounded-full" />
-    </div>
-  )
-}
-
-function ShipVisual() {
-  return (
-    <Image
-      src="/brand/logo-mark.png"
-      alt=""
-      width={512}
-      height={512}
-      sizes="96px"
-      className="h-24 w-24 object-contain drop-shadow-[0_16px_16px_hsl(var(--brand)/0.2)]"
-      unoptimized
-      draggable={false}
-    />
   )
 }

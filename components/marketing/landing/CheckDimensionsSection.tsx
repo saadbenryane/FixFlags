@@ -133,14 +133,14 @@ export function CheckDimensionsSection() {
 
   return (
     <Section
-      spacing="default"
+      spacing="tight"
       tint="subtle"
       id="what-it-checks"
       className="scroll-mt-[var(--header-offset)]"
     >
       <Container
         variant="marketing"
-        className="space-y-8 px-4 sm:space-y-9 sm:px-6 lg:space-y-10 lg:px-12"
+        className="space-y-6 px-4 sm:space-y-7 sm:px-6 lg:space-y-8 lg:px-12"
       >
         <LandingSectionHeader
           label={copy.label}
@@ -149,7 +149,7 @@ export function CheckDimensionsSection() {
           accentPeriod={copy.headlineAccentPeriod}
           subhead={copy.subhead}
           size="lg"
-          className="max-w-xl"
+          className="max-w-xl [&_p:last-child]:max-w-[38rem] [&_p:last-child]:text-[0.9375rem]"
         />
 
         <div
@@ -214,8 +214,8 @@ export function CheckDimensionsSection() {
 
         <RevealOnView>
           <div role="tabpanel" id={panelId} aria-labelledby={tabButtonId(tab)}>
-            <div className="mx-auto grid max-w-[72rem] items-start gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(22rem,1.45fr)_minmax(0,0.84fr)] lg:gap-8 xl:gap-10">
-              <div className="space-y-4 lg:pt-4">
+            <div className="mx-auto grid max-w-[72rem] items-start gap-7 lg:grid-cols-[minmax(0,0.74fr)_minmax(20rem,1.24fr)_minmax(0,0.84fr)] lg:gap-7 xl:gap-8">
+              <div className="space-y-3 lg:pt-1">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
                     {(() => {
@@ -239,10 +239,10 @@ export function CheckDimensionsSection() {
                 <h3 className="text-xl font-semibold tracking-heading sm:text-[1.35rem]">
                   {activeCard.panelTitle}
                 </h3>
-                <p className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+                <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
                   {activeCard.panelBody}
                 </p>
-                <ul className="space-y-2.5 pt-1">
+                <ul className="space-y-2 pt-0.5">
                   {activeCard.checks.map((check) => (
                     <li
                       key={check}
@@ -258,9 +258,9 @@ export function CheckDimensionsSection() {
                 </ul>
               </div>
 
-              <CheckDimensionsScene className="lg:pt-8" />
+              <CheckDimensionsScene className="max-w-[20rem] lg:pt-3" />
 
-              <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
+              <div className="rounded-[1.15rem] bg-background p-4 shadow-card sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="text-sm font-semibold">
                     {copy.topIssuesTitle}
@@ -269,11 +269,11 @@ export function CheckDimensionsSection() {
                     {activeCard.topIssues.length}
                   </span>
                 </div>
-                <ul className="mt-4 space-y-0">
+                <ul className="mt-3 space-y-0">
                   {activeCard.topIssues.map((issue) => (
                     <li
                       key={issue.title}
-                      className="border-b border-border/50 py-2.5 first:pt-0 last:border-0 last:pb-0"
+                      className="border-b border-border/50 py-2 first:pt-0 last:border-0 last:pb-0"
                     >
                       <div className="flex items-start gap-2.5">
                         <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center">
@@ -281,7 +281,7 @@ export function CheckDimensionsSection() {
                         </span>
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-foreground text-pretty">
+                            <p className="text-[0.8125rem] font-medium text-foreground text-pretty">
                               {issue.title}
                             </p>
                             <span
@@ -295,7 +295,7 @@ export function CheckDimensionsSection() {
                             </span>
                           </div>
                           <div className="flex items-end gap-2">
-                            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground text-pretty">
+                            <p className="min-w-0 flex-1 text-[0.6875rem] leading-relaxed text-muted-foreground text-pretty">
                               {issue.body}
                             </p>
                             <Link
@@ -313,7 +313,7 @@ export function CheckDimensionsSection() {
                 </ul>
                 <Link
                   href={copy.viewAllIssuesHref}
-                  className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
+                  className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
                 >
                   {copy.viewAllIssues}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -330,7 +330,7 @@ export function CheckDimensionsSection() {
               <li
                 key={item.id}
                 className={cn(
-                  "flex items-start gap-3.5 px-5 py-4 sm:px-5 sm:py-5",
+                  "flex items-start gap-3 px-5 py-3.5 sm:px-5 sm:py-4",
                   index > 0 && "border-t border-border/50 sm:border-t-0",
                   index % 2 === 1 && "sm:border-l sm:border-border/50",
                   index > 0 && "lg:border-l lg:border-border/50",

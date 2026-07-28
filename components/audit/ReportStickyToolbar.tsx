@@ -28,8 +28,6 @@ interface Props {
   showLaunch?: boolean
   showStack?: boolean
   showRecheckSection?: boolean
-  /** When true, Re-check nav scrolls to the diff strip instead of the bottom hint. */
-  hasRecheckDiff?: boolean
   siteUrl?: string
   actions?: ReactNode
 }
@@ -55,7 +53,6 @@ export function ReportStickyToolbar({
   showLaunch = false,
   showStack = false,
   showRecheckSection = true,
-  hasRecheckDiff = false,
   siteUrl,
   actions,
 }: Props) {
@@ -84,7 +81,6 @@ export function ReportStickyToolbar({
     showLaunch,
     showStack,
     showRecheckSection,
-    hasRecheckDiff,
   ])
 
   const [active, setActive] = useState<string>(sections[0]?.id ?? FLAGS_SECTION.id)
