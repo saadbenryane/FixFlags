@@ -172,6 +172,85 @@ final result: passed
 
 ---
 
+# Complete homepage refinement QA
+
+## Comparison target
+
+- Hero reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/hero-comparison.png`
+- Sample report reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/sample-report-comparison.png`
+- Dimensions reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/dimensions-comparison.png`
+- Benefits and builder workflow reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/benefits-workflow-comparison.png`
+- MCP reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/mcp-comparison.png`
+- Final CTA and footer reference and implementation: `/Users/saadbenryane/Code/qewos/.agents/artifacts/homepage-refinement/cta-footer-comparison.png`
+- Desktop source widths: `1086px`, `1144px`, and `1090px`, matching the supplied references
+- Responsive browser states: `375 × 812` and `390 × 844`, light theme
+
+## Full-view comparison evidence
+
+- The homepage now follows one continuous visual system from hero to footer: warm neutral canvas, Flag Orange accents, compact editorial spacing, real product copy, and consistent glass surfaces.
+- The six supplied reference compositions were compared side by side at their source widths after the permanent artwork and final density pass.
+- The hero, report, dimensions, workflow, MCP, CTA, and footer preserve the reference hierarchy without inheriting unsupported claims or stale terminology.
+- The source compositions measure between `682px` and `727px` high. The final implementation regions measure between `715px` and `842px`; the extra height is concentrated in the product-true issue detail and value evidence, not empty spacing.
+
+## Focused region comparison evidence
+
+- The hero uses the high-density transparent master with live DOM labels for the review states and the three canonical rubrics.
+- The three-step Check, Fix, Re-check loop uses one permanent glass plate with product-true DOM overlays instead of Lighthouse categories or baked UI text.
+- The builder workflow card reproduces the source’s inbound actions, supported editor rail, central FixFlags mark, and three real outcomes.
+- The MCP workflow uses four permanent transparent illustrations. All four assets were loaded and inspected at the reference viewport.
+- The mobile layouts preserve the reading order, keep every primary control at least `44px`, and have zero horizontal overflow.
+
+## Findings
+
+- No actionable P0, P1, or P2 visual differences remain.
+- Typography: the implementation keeps the existing FixFlags display, sans, and mono system for cross-page consistency while matching the references’ line breaks, weight, and density.
+- Spacing: the sample report, dimensions, benefits, and MCP sections were compressed to remove the earlier oversized gaps. Product evidence remains readable at desktop and mobile sizes.
+- Artwork: the hero, shared loop plate, builder workflow scene, and four MCP visuals are permanent transparent WebP assets with integrity tests for filename, dimensions, and alpha.
+- Copy: Message, Experience, Reach, Check, Fix, and Re-check remain canonical. Lighthouse categories, Run Audit, unsupported automatic-PR claims, invented statistics, and coming-soon copy are absent.
+- Interaction: desktop and mobile navigation, mobile menu, rubric tabs, keyboard tab movement, both URL forms, retry behavior, newsletter validation, and reduced motion have focused automated coverage.
+- Runtime: PostgreSQL, Redis, Chromium, migrations, and the worker are healthy. A fresh AI-adjudicated local scan still requires an `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`; this is an environment credential requirement rather than a homepage defect.
+
+## Comparison history
+
+### Pass 1
+
+- [P1] The hero used a low-density crop and the workflow sections used incorrect or approximate illustrations.
+- [P1] The builder workflow composition was missing.
+- [P2] Sample report, dimensions, benefits, and MCP sections were materially taller than the references.
+- [P2] The original visual configuration mixed baked artwork, component enums, and duplicated one-off styling.
+
+Fixes:
+
+- Added high-density transparent permanent artwork and asset metadata tests.
+- Restored the builder workflow as a complete copy-led, asset-backed composition.
+- Rebuilt the Check, Fix, Re-check and MCP visuals around product-true copy and supported editor marks.
+- Consolidated shared landing treatments while keeping section-specific compositions in their owners.
+
+### Pass 2
+
+- [P2] The final MCP mark did not appear in the first anchored browser capture because the below-fold image remained lazy.
+- [P2] Sample report and dimensions still exceeded their intended desktop rhythm.
+- [P2] The first target-size assertion treated inline text links as isolated `44px` controls instead of checking the primary touch controls.
+
+Fixes:
+
+- Loaded the four compact MCP assets eagerly so anchored navigation cannot expose empty tiles.
+- Tightened section padding, internal gaps, rows, scene scale, and trust/value rails.
+- Reworked the interaction test around the menu button, primary CTA, URL field, and rubric tabs.
+
+### Pass 3
+
+- Re-captured all six source compositions side by side at the supplied widths.
+- Verified `375 × 812` and `390 × 844` states in the in-app browser.
+- Confirmed keyboard tab navigation moves from Message to Experience.
+- Confirmed the mobile menu exposes the real `/how-it-works` destination.
+- Confirmed zero horizontal overflow and no missing MCP artwork.
+- No actionable P0/P1/P2 differences remain.
+
+final result: passed
+
+---
+
 # Homepage MCP workflow section QA
 
 ## Comparison target

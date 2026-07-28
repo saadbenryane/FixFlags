@@ -270,7 +270,7 @@ export function buildPartialExplorerModel(input: {
   })
 }
 
-function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
+function mapSampleFlag(flag: SampleFlagDisplay, mayShowPrompt: boolean): ExplorerFlag {
   return {
     id: flag.id,
     checkId: null,
@@ -282,12 +282,12 @@ function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
     impactTag: flag.impactTag,
     whyItMatters: flag.whyItMatters,
     evidence: flag.evidence,
-    fixPrompt: flag.fixPrompt,
-    copyFixPrompt: flag.fixPrompt,
+    fixPrompt: mayShowPrompt ? flag.fixPrompt : '',
+    copyFixPrompt: mayShowPrompt ? flag.fixPrompt : '',
     toolPrompts: {},
     verificationRule: flag.verificationRule,
     affectedDevices: flag.affectedDevices,
-    hasFixPrompt: Boolean(flag.fixPrompt),
+    hasFixPrompt: mayShowPrompt && Boolean(flag.fixPrompt),
     pageUrl: flag.pageUrl ?? null,
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     occurrenceCount: 1,
@@ -296,7 +296,11 @@ function mapSampleFlag(flag: SampleFlagDisplay): ExplorerFlag {
   }
 }
 
-export function buildSampleExplorerModel(report: SampleReportDisplay): ReportExplorerModel {
+export function buildSampleExplorerModel(
+  report: SampleReportDisplay,
+  options: { promptAccess?: 'one' | 'all' | 'none' } = {}
+): ReportExplorerModel {
+  const promptAccess = options.promptAccess ?? 'one'
   return {
     displayHost: report.displayHost,
     pageType: report.pageType,
@@ -306,7 +310,13 @@ export function buildSampleExplorerModel(report: SampleReportDisplay): ReportExp
     desktopScreenshot: report.desktopScreenshot,
     mobileScreenshot: report.mobileScreenshot,
     rubricScores: report.rubricScores,
-    flags: report.flags.map(mapSampleFlag),
+    flags: report.flags.map((flag) =>
+      mapSampleFlag(
+        flag,
+        promptAccess === 'all' ||
+          (promptAccess === 'one' && flag.id === report.demonstratedFlagId)
+      )
+    ),
     allHighlights: report.flags.flatMap((f) => f.evidenceHighlights),
     previewMeta: null,
   }

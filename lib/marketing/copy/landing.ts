@@ -848,6 +848,41 @@ export const LANDING_PAGE = {
 } as const
 
 export const REPORT_COPY = {
+  workspace: {
+    eyebrow: 'Release review',
+    heading: 'Fix these before you share it',
+    checkingScope: 'FixFlags is checking the release. Verified Flags will appear here as evidence arrives.',
+    context: ({
+      unresolved,
+      highImpact,
+      checkedScope,
+    }: {
+      unresolved: number
+      highImpact: number
+      checkedScope: string | null
+    }) => {
+      const scope = checkedScope ? `Checked ${checkedScope}. ` : ''
+      const unresolvedLabel = `${unresolved} unresolved ${unresolved === 1 ? 'Flag' : 'Flags'}`
+      const impactLabel =
+        highImpact > 0
+          ? `, including ${highImpact} high-impact ${highImpact === 1 ? 'Flag' : 'Flags'}`
+          : ''
+      return `${scope}${unresolvedLabel}${impactLabel}.`
+    },
+    summaryLabel: 'Release readiness summary',
+    highImpact: 'High-impact Flags',
+    rubricCoverage: 'Message, Experience, Reach',
+    history: 'Score history',
+    recheckCount: (count: number) => `${count} completed ${count === 1 ? 'Re-check' : 'Re-checks'}`,
+    readiness: {
+      label: 'Readiness',
+      ready: 'Ready to share',
+      fixFirst: 'Fix before sharing',
+      notReady: 'Not ready',
+      checking: 'Checking',
+      unavailable: 'Unavailable',
+    },
+  },
   reportFirst: {
     loadingLabel: 'Loading report',
     loadingTitle: 'Loading report…',

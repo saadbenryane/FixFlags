@@ -3,7 +3,10 @@ import dynamic from 'next/dynamic'
 import { type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
-import { ReportOverviewBand } from '@/components/report/ReportOverviewBand'
+import {
+  ReportWorkspaceOutcome,
+  ReportWorkspaceSummary,
+} from '@/components/report/ReportWorkspaceChrome'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
@@ -26,7 +29,7 @@ import type {
 import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import { ReportFeedback } from '@/components/report/ReportFeedback'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
-import type { RubricComputed } from '@/lib/audit/rubric'
+import type { RubricComputed, ShareStatus } from '@/lib/audit/rubric'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -53,7 +56,7 @@ import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { computeRubricsFromRows } from '@/lib/audit/rubric'
+import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 
 interface RubricRow {
   id: string
@@ -76,7 +79,7 @@ interface AuditReportProps {
     rubrics: RubricComputed[]
     rubricRows: RubricRow[]
     flags: RankableFlag[]
-    shareStatus: string
+    shareStatus: ShareStatus
     launchReadiness?: LaunchReadinessData | null
     reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
     pipelineVersion?: string | null
@@ -176,32 +179,52 @@ export function AuditReport({
       ? resolveFreeUserUpgradeMoment({ atAuditLimit })
       : null
 
-  const explorerModel =
-    audit.flags.length > 0
-      ? buildLiveExplorerModel({
-          url: audit.url,
-          pageType: audit.pageType,
-          score: audit.score,
-          verdict: audit.verdict,
-          flags: audit.flags,
-          screenshots: audit.screenshots,
-          rubricRows: audit.rubricRows,
-          evidenceAnchors: audit.evidenceAnchors,
-          previewMeta: audit.previewMeta,
-          flagVisualEvidence: audit.flagVisualEvidence,
-          productContract: audit.productContract ?? null,
-          promptAccess: fixPromptLocked ? (sampleFixFlag ? 'one' : 'none') : 'all',
-          demonstratedFlag: sampleFixFlag,
-        })
-      : null
-  const unresolvedFlagCount = explorerModel?.flagCount ?? 0
-  const displayedRubrics = computeRubricsFromRows(audit.rubricRows, audit.flags)
+  const explorerModel = buildLiveExplorerModel({
+    url: audit.url,
+    pageType: audit.pageType,
+    score: audit.score,
+    verdict: audit.verdict,
+    flags: audit.flags,
+    screenshots: audit.screenshots,
+    rubricRows: audit.rubricRows,
+    evidenceAnchors: audit.evidenceAnchors,
+    previewMeta: audit.previewMeta,
+    flagVisualEvidence: audit.flagVisualEvidence,
+    productContract: audit.productContract ?? null,
+    promptAccess: fixPromptLocked ? (sampleFixFlag ? 'one' : 'none') : 'all',
+    demonstratedFlag: sampleFixFlag,
+  })
+  const completedAt =
+    audit.completedAt instanceof Date
+      ? audit.completedAt
+      : audit.completedAt
+        ? new Date(audit.completedAt)
+        : null
+  const isPartialReport = audit.reportCompleteness === 'PARTIAL'
+  const workspace = buildReportWorkspaceModel({
+    kind: isSample ? 'sample' : 'completed',
+    explorer: explorerModel,
+    auditId,
+    url: audit.url,
+    pageType: audit.pageType,
+    checkedAt: completedAt,
+    status: isPartialReport ? 'partial' : triageDegraded ? 'degraded' : 'completed',
+    shareStatus: audit.shareStatus,
+    launchReadiness: audit.launchReadiness?.readiness,
+    checkedScope: pages.length > 1 ? `${pages.length} pages` : 'the submitted page',
+    canShare: !isSample && isLoggedIn && isViewerOwner,
+    canRecheck: !isSample && isLoggedIn && isViewerOwner,
+    canGiveFeedback: showFeedback,
+    demonstratedFlagId: sampleFixFlag?.id,
+    recheckOutcome: recheckDiff,
+    degradedReason: triageDegraded ? failureCode : null,
+  })
+  const unresolvedFlagCount = workspace.outcome.unresolvedCount
   const userVerdict = resolveReportVerdict(
     displayVerdict(audit.verdict ?? null),
-    explorerModel?.flags[0]
+    explorerModel.flags[0]
   )
 
-  const isPartialReport = audit.reportCompleteness === 'PARTIAL'
   const showStatusCallouts =
     !isSample &&
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
@@ -220,6 +243,8 @@ export function AuditReport({
         pageSpeedCoverage={audit.pageSpeedCoverage}
         actions={toolbarActions ?? actions}
       />
+
+      <ReportWorkspaceOutcome model={workspace} compact={isSample} />
 
       {!isSample && (
         <>
@@ -276,12 +301,7 @@ export function AuditReport({
         </>
       )}
 
-      <ReportOverviewBand
-        unresolvedCount={unresolvedFlagCount}
-        score={audit.score}
-        rubrics={displayedRubrics}
-        rubricRows={audit.rubricRows}
-      />
+      <ReportWorkspaceSummary model={workspace} />
 
       {!isSample && audit.technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
@@ -311,7 +331,7 @@ export function AuditReport({
         </div>
       ) : null}
 
-      {explorerModel && unresolvedFlagCount > 0 ? (
+      {unresolvedFlagCount > 0 ? (
         <section id="report-flags" className="scroll-mt-[var(--header-offset)] space-y-3">
           <div>
             <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>

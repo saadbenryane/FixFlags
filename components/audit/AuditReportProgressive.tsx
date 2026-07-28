@@ -7,13 +7,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SectionTitle } from '@/components/ui/typography'
 import { Card } from '@/components/ui/card'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
-import { ReportOverviewBand } from '@/components/report/ReportOverviewBand'
+import {
+  ReportWorkspaceOutcome,
+  ReportWorkspaceSummary,
+} from '@/components/report/ReportWorkspaceChrome'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
-import { computeRubricStatus, type RubricComputed } from '@/lib/audit/rubric'
 import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
@@ -27,6 +29,7 @@ import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
+import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
@@ -73,30 +76,6 @@ interface AuditReportProgressiveProps {
   productContract?: ProductContract | null
   technologyProfile?: TechnologyProfile
   sectionId?: string
-}
-
-function buildPartialRubricsComputed(
-  rubrics: AuditReportProgressiveProps['rubrics'],
-  partialFlags: NonNullable<AuditReportProgressiveProps['partialFlags']>
-): RubricComputed[] {
-  return RUBRIC_ORDER.map((name) => {
-    const row = rubrics?.find((r) => r.name === name)
-    const flagsForRubric = partialFlags.filter((f) => f.rubric === name)
-    const criticalCount = flagsForRubric.filter((f) => f.severity === 'CRITICAL').length
-    const importantCount = flagsForRubric.filter((f) => f.severity === 'IMPORTANT').length
-    return {
-      name,
-      status: computeRubricStatus({
-        name,
-        grade: row?.grade ?? null,
-        score: row?.score ?? null,
-        flags: flagsForRubric.map((f) => ({ severity: f.severity })),
-      }),
-      flagCount: flagsForRubric.length,
-      criticalCount,
-      importantCount,
-    }
-  })
 }
 
 export function AuditReportProgressive({
@@ -165,16 +144,6 @@ export function AuditReportProgressive({
     if (status === 'COMPLETED') setDisplayProgress(100)
   }, [status])
 
-  const rubricsComputed = useMemo(
-    () => buildPartialRubricsComputed(rubrics, partialFlags),
-    [rubrics, partialFlags]
-  )
-
-  const rubricRowsForBar = RUBRIC_ORDER.map((name) => {
-    const row = rubrics.find((r) => r.name === name)
-    return { name, score: row?.score ?? null, grade: row?.grade ?? null }
-  })
-
   const userVerdict = displayVerdict(verdict ?? null)
   const capturePresentation = resolveScreenshotPresentation(
     status,
@@ -215,6 +184,15 @@ export function AuditReportProgressive({
   const showContract = Boolean(productContract)
   const showTimeline = actionTimeline.length > 0
   const showSticky = !isFailed
+  const workspace = buildReportWorkspaceModel({
+    kind: 'progressive',
+    explorer: explorerModel,
+    url,
+    pageType,
+    status: isFailed ? 'failed' : 'checking',
+    loading: isLoading,
+    checkedScope: 'the submitted page',
+  })
   return (
     <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-6">
       <AuditReportHero
@@ -225,6 +203,8 @@ export function AuditReportProgressive({
         scanningLabel={isLoading ? stage.scanningLabel : null}
         capturePresentation={capturePresentation}
       />
+
+      <ReportWorkspaceOutcome model={workspace} />
 
       {(workerIdle || showWorkerWarning) && (
         <Callout variant="warning" title="Still preparing">
@@ -244,13 +224,7 @@ export function AuditReportProgressive({
         captureStatus={screenshotCapture}
       />
 
-      <ReportOverviewBand
-        unresolvedCount={partialFlags.length}
-        score={score}
-        rubrics={rubricsComputed}
-        rubricRows={rubricRowsForBar}
-        loading={isLoading}
-      />
+      <ReportWorkspaceSummary model={workspace} />
 
       {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
         <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">

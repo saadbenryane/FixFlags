@@ -69,7 +69,7 @@ export function EditorIntegrationsSection() {
                         width={step.visual.width}
                         height={step.visual.height}
                         sizes="176px"
-                        loading="lazy"
+                        loading="eager"
                         className={cn(
                           'h-[82%] w-[82%] select-none object-contain drop-shadow-[0_14px_18px_hsl(var(--brand)/0.16)]',
                           step.id === 'findings' && 'h-[90%] w-[90%]',

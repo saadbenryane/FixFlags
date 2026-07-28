@@ -121,32 +121,24 @@ export function LandingHeroSection() {
                 draggable={false}
               />
               <div
-                className="pointer-events-none absolute inset-0 select-none text-[0.48rem] leading-tight text-foreground sm:text-[0.58rem]"
-                aria-hidden
+                className="pointer-events-none absolute inset-0 select-none text-[0.5rem] leading-tight text-foreground sm:text-[0.58rem]"
+                role="group"
+                aria-label="FixFlags review workflow preview"
               >
-                <div className="absolute left-[18%] top-[22%] w-[37%] space-y-[6%] sm:space-y-3">
-                  {HERO_STATES.map(([title, detail], index) => (
+                <div className="absolute left-[25%] top-[20%] w-[27%] space-y-4 sm:space-y-[1.15rem]">
+                  {HERO_STATES.map(([title, detail]) => (
                     <div
                       key={title}
-                      className="grid grid-cols-[0.65rem_1fr] items-center gap-1.5 sm:grid-cols-[0.8rem_1fr] sm:gap-2"
+                      className="rounded-[0.25rem] bg-background/35 px-1.5 py-1 backdrop-blur-[1px]"
                     >
-                      <span
-                        className={
-                          index === 1
-                            ? 'h-2.5 w-2.5 rounded-[0.2rem] bg-brand sm:h-3 sm:w-3'
-                            : index === HERO_STATES.length - 1
-                              ? 'h-2.5 w-2.5 rounded-full border border-success/70 bg-success/10 sm:h-3 sm:w-3'
-                              : 'h-2.5 w-2.5 rounded-full border border-foreground/35 sm:h-3 sm:w-3'
-                        }
-                      />
-                      <div>
-                        <p className="font-semibold text-foreground">{title}</p>
-                        <p className="mt-0.5 text-muted-foreground">{detail}</p>
-                      </div>
+                      <p className="font-semibold text-foreground">{title}</p>
+                      <p className="mt-0.5 text-[0.45rem] text-muted-foreground sm:text-[0.5rem]">
+                        {detail}
+                      </p>
                     </div>
                   ))}
                 </div>
-                <div className="absolute right-[3%] top-[28%] w-[29%] space-y-2 sm:space-y-3">
+                <div className="absolute right-[3%] top-[27%] w-[29%] space-y-2 sm:space-y-3">
                   {HERO_RUBRICS.map(([title, detail]) => (
                     <div
                       key={title}

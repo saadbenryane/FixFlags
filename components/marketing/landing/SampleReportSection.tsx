@@ -47,17 +47,18 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
 
   return (
     <Section
-      spacing="tight"
+      spacing="compact"
       tint="subtle"
+      className="py-6 sm:py-7 lg:py-7"
     >
       <SampleViewTracker placement="homepage" />
       <Container
         id="sample-review"
-        className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] space-y-9 px-4 sm:space-y-10 sm:px-6 lg:space-y-11 lg:px-12"
+        className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] space-y-5 px-4 sm:space-y-5 sm:px-6 lg:space-y-5 lg:px-12"
         variant="marketing"
       >
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,0.64fr)_minmax(0,1.36fr)] lg:gap-7 xl:gap-9">
-          <RevealOnView className="flex flex-col gap-5 sm:gap-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.64fr)_minmax(0,1.36fr)] lg:gap-7 xl:gap-9">
+          <RevealOnView className="flex flex-col gap-3.5 sm:gap-4">
             <LandingSectionHeader
               align="left"
               label={copy.label}
@@ -66,10 +67,10 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
               accentPeriod={copy.headlineAccentPeriod}
               subhead={copy.body}
               size="lg"
-              className="max-w-md space-y-4 sm:space-y-5"
+              className="max-w-md space-y-3 sm:space-y-4"
             />
 
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-1.5">
               {copy.rubricRows.map((row) => {
                 const Icon = rubricIcon(row.icon)
                 const count = preview.rubricCounts[row.id as keyof typeof preview.rubricCounts] ?? 0
@@ -78,21 +79,21 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                     <Link
                       href="/samples"
                       className={cn(
-                        'group flex min-h-[3.5rem] items-center gap-3 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-4 py-2.5 sm:gap-3.5 sm:px-4',
+                        'group flex min-h-11 items-center gap-3 rounded-[var(--radius-inner)] border border-border/45 bg-background/90 px-3.5 py-1.5 sm:px-4',
                         'shadow-glass-subtle',
                         'transition-[background-color,box-shadow,border-color,transform] duration-200 ease-out',
                         'hover:border-border/65 hover:bg-background hover:shadow-glass',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
                       )}
                     >
-                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
                         <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-foreground">
                           {row.title}
                         </span>
-                        <span className="mt-0.5 block text-[0.8125rem] leading-snug text-muted-foreground text-pretty">
+                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground text-pretty">
                           {row.body}
                         </span>
                       </span>
@@ -114,21 +115,21 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             <SampleSectionCta flagCount={flagCount} />
           </RevealOnView>
 
-          <div className="relative min-w-0 lg:aspect-[1.48/1]">
+          <div className="relative min-w-0 lg:aspect-[1.62/1]">
             <SampleReportDashboardMock
               preview={preview}
               checksLabel={copy.checksShortLabel(CHECK_ID_COUNT)}
-              className="lg:absolute lg:left-0 lg:top-0 lg:w-[147.06%] lg:origin-top-left lg:scale-[0.68]"
+              className="lg:absolute lg:left-0 lg:top-0 lg:w-[161.3%] lg:origin-top-left lg:scale-[0.62]"
             />
           </div>
         </div>
 
         <RevealOnView>
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             <p className="text-center font-mono text-[0.6875rem] font-medium uppercase tracking-label text-muted-foreground">
               {copy.trustLabel}
             </p>
-            <ul className="grid grid-cols-1 gap-4 overflow-hidden rounded-[1.35rem] glass-surface-elevated px-5 py-5 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:py-6 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-6 xl:px-5">
+            <ul className="grid grid-cols-1 gap-4 overflow-hidden rounded-[1.35rem] glass-surface-elevated px-5 py-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:py-4 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-3 xl:px-5">
               <TrustMetric
                 icon={ShieldCheck}
                 value={copy.checksMetric(CHECK_ID_COUNT).value}

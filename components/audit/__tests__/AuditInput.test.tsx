@@ -54,7 +54,74 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Review my site/i })).toBeEnabled()
+    const retryButton = screen.getByRole('button', { name: /Review my site/i })
+    expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
+
+    fireEvent.click(retryButton)
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(2))
+  })
+
+  it.each([
+    ['hero', '-hero-validation'],
+    ['final', '-final-validation'],
+  ] as const)('validates empty and malformed URLs in the %s form', async (placement, idSuffix) => {
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput
+          variant="landing"
+          ctaPlacement={placement}
+          idSuffix={idSuffix}
+        />
+      </MeProvider>
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.submit(input.closest('form')!)
+    expect(await screen.findByText('Enter a URL like https://yoursite.com')).toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: 'not a url' } })
+    fireEvent.submit(input.closest('form')!)
+    expect(
+      await screen.findByText('Enter a valid URL like https://yoursite.com')
+    ).toBeInTheDocument()
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['hero', '-hero-success'],
+    ['final', '-final-success'],
+  ] as const)('normalizes and hands off a valid URL from the %s form', async (placement, idSuffix) => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: true,
+      reportId: 'report-homepage-qa',
+    })
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput
+          variant="landing"
+          ctaPlacement={placement}
+          idSuffix={idSuffix}
+        />
+      </MeProvider>
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com/' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(
+      router,
+      expect.objectContaining({
+        url: 'https://example.com',
+        body: expect.objectContaining({
+          url: 'https://example.com',
+          source: 'homepage',
+        }),
+      })
+    )
   })
 })

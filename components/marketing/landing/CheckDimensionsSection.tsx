@@ -74,7 +74,7 @@ function ValuePedestal({
   icon: (typeof VALUE_ICONS)[keyof typeof VALUE_ICONS];
 }) {
   return (
-    <span className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center">
+    <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center">
       {/* Soft pedestal shadow using CSS only, with no white-fringe raster */}
       <span
         aria-hidden
@@ -84,8 +84,8 @@ function ValuePedestal({
         aria-hidden
         className="absolute bottom-1 h-2.5 w-9 rounded-full bg-background shadow-[0_1px_2px_hsl(240_8%_5%/0.08),inset_0_1px_0_hsl(0_0%_100%/0.9)]"
       />
-      <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-[0_6px_16px_-8px_hsl(240_8%_5%/0.28),inset_0_1px_0_hsl(0_0%_100%/0.95)]">
-        <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+      <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-background text-brand shadow-[0_6px_16px_-8px_hsl(240_8%_5%/0.28),inset_0_1px_0_hsl(0_0%_100%/0.95)]">
+        <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
       </span>
     </span>
   );
@@ -133,14 +133,14 @@ export function CheckDimensionsSection() {
 
   return (
     <Section
-      spacing="tight"
+      spacing="compact"
       tint="subtle"
       id="what-it-checks"
-      className="scroll-mt-[var(--header-offset)]"
+      className="scroll-mt-[var(--header-offset)] py-5 sm:py-6 lg:py-6"
     >
       <Container
         variant="marketing"
-        className="space-y-6 px-4 sm:space-y-7 sm:px-6 lg:space-y-8 lg:px-12"
+        className="space-y-4 px-4 sm:space-y-4 sm:px-6 lg:space-y-4 lg:px-12"
       >
         <LandingSectionHeader
           label={copy.label}
@@ -149,7 +149,7 @@ export function CheckDimensionsSection() {
           accentPeriod={copy.headlineAccentPeriod}
           subhead={copy.subhead}
           size="lg"
-          className="max-w-xl [&_p:last-child]:max-w-[38rem] [&_p:last-child]:text-[0.9375rem]"
+          className="max-w-xl !space-y-2.5 [&_p:last-child]:max-w-[38rem] [&_p:last-child]:text-[0.875rem] [&_p:last-child]:leading-relaxed"
         />
 
         <div
@@ -214,8 +214,8 @@ export function CheckDimensionsSection() {
 
         <RevealOnView>
           <div role="tabpanel" id={panelId} aria-labelledby={tabButtonId(tab)}>
-            <div className="mx-auto grid max-w-[72rem] items-start gap-7 lg:grid-cols-[minmax(0,0.74fr)_minmax(20rem,1.24fr)_minmax(0,0.84fr)] lg:gap-7 xl:gap-8">
-              <div className="space-y-3 lg:pt-1">
+            <div className="mx-auto grid max-w-[72rem] items-start gap-6 lg:grid-cols-[minmax(0,0.74fr)_minmax(18rem,1.15fr)_minmax(0,0.9fr)] lg:gap-6 xl:gap-7">
+              <div className="space-y-2.5">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
                     {(() => {
@@ -242,7 +242,7 @@ export function CheckDimensionsSection() {
                 <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
                   {activeCard.panelBody}
                 </p>
-                <ul className="space-y-2 pt-0.5">
+                <ul className="space-y-1.5">
                   {activeCard.checks.map((check) => (
                     <li
                       key={check}
@@ -258,9 +258,9 @@ export function CheckDimensionsSection() {
                 </ul>
               </div>
 
-              <CheckDimensionsScene className="max-w-[20rem] lg:pt-3" />
+              <CheckDimensionsScene className="max-w-[18rem] lg:pt-1" />
 
-              <div className="rounded-[1.15rem] bg-background p-4 shadow-card sm:p-5">
+              <div className="rounded-[1.15rem] bg-background p-4 shadow-card">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="text-sm font-semibold">
                     {copy.topIssuesTitle}
@@ -269,11 +269,11 @@ export function CheckDimensionsSection() {
                     {activeCard.topIssues.length}
                   </span>
                 </div>
-                <ul className="mt-3 space-y-0">
+                <ul className="mt-2.5 space-y-0">
                   {activeCard.topIssues.map((issue) => (
                     <li
                       key={issue.title}
-                      className="border-b border-border/50 py-2 first:pt-0 last:border-0 last:pb-0"
+                      className="border-b border-border/50 py-1.5 first:pt-0 last:border-0 last:pb-0"
                     >
                       <div className="flex items-start gap-2.5">
                         <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center">
@@ -330,7 +330,7 @@ export function CheckDimensionsSection() {
               <li
                 key={item.id}
                 className={cn(
-                  "flex items-start gap-3 px-5 py-3.5 sm:px-5 sm:py-4",
+                  "flex items-start gap-3 px-5 py-2.5 sm:px-5 sm:py-2.5",
                   index > 0 && "border-t border-border/50 sm:border-t-0",
                   index % 2 === 1 && "sm:border-l sm:border-border/50",
                   index > 0 && "lg:border-l lg:border-border/50",
@@ -342,7 +342,7 @@ export function CheckDimensionsSection() {
                   <p className="text-sm font-semibold text-foreground">
                     {item.title}
                   </p>
-                  <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                  <p className="text-xs leading-relaxed text-muted-foreground text-pretty">
                     {item.body}
                   </p>
                 </div>

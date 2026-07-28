@@ -80,6 +80,7 @@ export interface SampleReportDisplay {
   rubricSummaries: Record<string, string>
   pipelineSteps: PipelineStep[]
   flags: SampleFlagDisplay[]
+  demonstratedFlagId: string | null
 }
 
 function gradeFromScore(score: number | null): string | null {
@@ -255,5 +256,6 @@ export function buildSampleReportDisplay(
       mode: 'sample',
     }),
     flags,
+    demonstratedFlagId: flags.find((flag) => flag.fixPrompt.trim().length > 0)?.id ?? null,
   }
 }
